@@ -9,6 +9,8 @@ corner of the game window, an offset as a share of the window, a scale) and draw
 opacity, then the items, the whole panel at the layout's alpha. Items:
 
     {"t": "text", "x", "y", "s", "c", "size", "bold", "align"}   (x, y: the text's top left; align right: x is its right edge)
+    {"t": "runs", "x", "y", "runs": [[s, c, size, bold], ...]}   (a line of differently coloured parts, set one after the
+                                                                 other with the font's own widths)
     {"t": "rect", "x", "y", "w", "h", "c", "f", "lw"}            (c: the line's colour or None, f: the fill or None)
     {"t": "circle", "x", "y", "r", "c", "f", "lw"}               (x, y: the centre)
     {"t": "line", "pts": [[x, y], ...], "c", "lw"}
@@ -171,6 +173,11 @@ def marker(x, y, kind, c, r=6, rot=0):
     return {"t": "marker", "x": round(x, 1), "y": round(y, 1), "kind": kind, "c": c, "r": r, "rot": round(rot, 1)}
 
 
+def runs(x, y, parts):
+    """A line of (text, colour, size, bold) parts set one after another by the window, with the font's real widths."""
+    return {"t": "runs", "x": round(x, 1), "y": round(y, 1), "runs": [[str(s), c, size, bool(b)] for s, c, size, b in parts]}
+
+
 def text_width(s, size="normal"):
     return len(str(s)) * CHAR_W.get(size, CHAR_W["normal"])
 
@@ -187,12 +194,15 @@ def text_panel(pid, title, rows, pal, width=400, size="normal", subtitle=None):
     (text, colour key) set left to right, with an optional right-aligned last part: {"left": [...], "right": (text,
     key)}; the string "rule" is a thin line; None is a half-line gap. Colour keys are the palette's (title, text,
     muted, good, warn, bad, accent). The panel's height follows its rows."""
-    lh, big = LINE_H.get(size, 20), "large" if size != "large" else "large"
+    lh, big = LINE_H.get(size, 20), "large"
     items, y = [], PAD
-    items.append(text(PAD, y, fit(title, width - 2 * PAD, big), pal["title"], big, bold=True))
-    if subtitle:
-        tw = text_width(title, big) + 10
-        items.append(text(PAD + tw, y + (LINE_H[big] - lh) / 2 + 1, fit(subtitle, width - 2 * PAD - tw, size), pal["muted"], size))
+    head = fit(title, width - 2 * PAD, big)
+    parts = [(head, pal["title"], big, True)]
+    if subtitle and head == title:
+        room = width - 2 * PAD - text_width(title, big) - CHAR_W[size] * 2
+        if room > CHAR_W[size] * 4:
+            parts.append(("  " + fit(subtitle, room, size), pal["muted"], size, False))
+    items.append(runs(PAD, y, parts))
     y += LINE_H[big] + 4
     items.append(line([(PAD, y), (width - PAD, y)], pal["frame"]))
     y += 6
@@ -213,14 +223,15 @@ def text_panel(pid, title, rows, pal, width=400, size="normal", subtitle=None):
             rt, rk = right
             items.append(text(width - PAD, y, rt, pal.get(rk, pal["text"]), size, align="right"))
             room_right = text_width(rt, size) + 12
-        x = PAD
+        room, parts = width - 2 * PAD - room_right, []
         for seg, key in left:
-            room = width - PAD - room_right - x
             if room <= CHAR_W[size]:
                 break
             s = fit(seg, room, size)
-            items.append(text(x, y, s, pal.get(key, pal["text"]), size, bold=key == "title"))
-            x += text_width(s, size)
+            parts.append((s, pal.get(key, pal["text"]), size, key == "title"))
+            room -= text_width(s, size)
+        if parts:
+            items.append(runs(PAD, y, parts))
         y += lh
     return {"id": pid, "w": width, "h": round(y + PAD - 2), "bg": pal["panel"], "frame": pal["frame"], "items": items}
 

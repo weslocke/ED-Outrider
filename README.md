@@ -106,13 +106,14 @@ The project's history is in the [changelog](docs/CHANGELOG.md). Contributors and
 | Planetary mining odds | CMDR Grumlop's survey, [Elite Dangerous Field Manual](https://edfieldmanual.com/index.php?title=Module:Data/SurfaceMiningProspecting) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | `resources/mining_odds.json`, unchanged |
 | Geology sites; checklist pictures | [Canonn](https://canonn.science)'s codex records and screenshots | Canonn's | site counts in `resources/geo_codex.json`; pictures linked, never copied, credited to the commander who took each |
 | EDDN and EDSM upload rules | [EDMarketConnector](https://github.com/EDCD/EDMarketConnector) (EDCD) | GPL v2 or later | followed, with EDCD's notice in `outrider/eddn.py` |
+| The overlay window's code | [EDMC Modern Overlay](https://github.com/SweetJonnySauce/EDMCModernOverlay) | GPL v3 | adapted, with its notice: `outrider/overlay_tracking.py`, `outrider/overlay_window.py` |
 
 The tablet themes' emblems (`static/emblems/`, each under the terms in its `CREDITS.txt`, not the GPL): the Explorer
 Elite badge under Frontier's media usage rules; the Babylon 5 emblems (© Warner Bros.), public-domain redrawings from
 the Babylon 5 Wiki; the Sith emblem, Gameposo's, vectorised by Marnanel (Wikimedia Commons, CC BY-SA 4.0); the Rebel
 Alliance emblem, a public-domain Wikimedia Commons file (both Lucasfilm trademarks). Unofficial, non-commercial fan use.
 
-ED Outrider is free software under the [GNU GPL v2 or later](LICENSE).
+ED Outrider is free software under the [GNU GPL v3 or later](LICENSE).
 
 <p align="center"><sub>
 ED Outrider was created using assets and imagery from Elite Dangerous, with the permission of Frontier Developments

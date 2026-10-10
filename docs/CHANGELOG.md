@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay O2: the window on the game PC, and GPL-3 (branch EDMC-Functionality; not to be pushed yet)
+- `python3 -m outrider.overlay_window` (PyQt6: `pip install -r requirements-overlay.txt`; never in the Docker image):
+  a frameless, translucent, always-on-top window that lets clicks through, follows Elite's window (X11, and XWayland
+  on a Wayland session as Elite under Proton is; Windows untried), hides when the game is not in front, and paints the
+  panels from GET `/api/overlay` (once a second; signs in to a server with `[overlay] password`). `--render PNG` draws
+  one frame into a picture instead.
+- Finding the game's window (`outrider/overlay_tracking.py`) and the window's flags are adapted from EDMC Modern
+  Overlay (GPL v3), so **ED Outrider is now GPL v3 or later** (LICENSE, README, the Docker label). The README credits
+  Modern Overlay, and EDMarketConnector for the upload rules. This commit is not to be pushed before EDMC-ExploData's
+  licence is settled (its colour tables ship in resources/bio_rules.json; its repository has only the GPL v2 text).
+
 ## 2026-10-10 · Overlay O1: the panels' server side (branch EDMC-Functionality)
 - `outrider/overlay.py`: the in-game overlay's panels as draw lists on a 1280x960 canvas (text, rectangles, circles,
   lines, markers), a text-panel builder, test panels, the `[overlay]` settings (enabled, theme, text_size, each panel

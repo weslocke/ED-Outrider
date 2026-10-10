@@ -6,7 +6,7 @@ FROM python:3.12-slim
 # published as ghcr.io/weslocke/ed-outrider (these labels link the package to the repository)
 LABEL org.opencontainers.image.source="https://github.com/weslocke/ED-Outrider" \
       org.opencontainers.image.description="ED Outrider: an exploration companion for Elite Dangerous, as a server (the game-PC automation is off in Docker)" \
-      org.opencontainers.image.licenses="GPL-2.0-or-later"
+      org.opencontainers.image.licenses="GPL-3.0-or-later"
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 OUTRIDER_CONTAINER=1
 WORKDIR /app

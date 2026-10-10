@@ -64,12 +64,15 @@ class Panels(unittest.TestCase):
         p = O.text_panel("system", "Title", [[("plain", "text")], {"left": [("left", "muted")], "right": ("9.9M", "accent")},
                                              "rule", None, [("x" * 200, "text")]], pal, width=300)
         self.assertEqual((p["id"], p["w"], p["bg"], p["frame"]), ("system", 300, pal["panel"], pal["frame"]))
-        texts = [i for i in p["items"] if i["t"] == "text"]
-        self.assertEqual(texts[0]["s"], "Title")
-        right = next(i for i in texts if i["s"] == "9.9M")
+        lines = [i for i in p["items"] if i["t"] == "runs"]
+        self.assertEqual(lines[0]["runs"], [["Title", pal["title"], "large", True]])
+        self.assertEqual(lines[1]["runs"], [["plain", pal["text"], "normal", False]])
+        right = next(i for i in p["items"] if i["t"] == "text" and i["s"] == "9.9M")
         self.assertEqual((right["align"], right["x"], right["c"]), ("right", 300 - O.PAD, pal["accent"]))
-        long = texts[-1]["s"]
+        long = lines[-1]["runs"][0][0]
         self.assertTrue(long.endswith("…") and O.text_width(long) <= 300 - 2 * O.PAD)   # cut to the panel's width
+        sub = O.text_panel("body", "B 1", [], pal, width=300, subtitle="Icy body")["items"][0]["runs"]
+        self.assertEqual([r[0] for r in sub], ["B 1", "  Icy body"])
         self.assertGreater(p["h"], 5 * O.LINE_H["normal"])
         self.assertTrue(all(0 <= i.get("y", 0) <= p["h"] for i in p["items"]))
 
@@ -79,7 +82,7 @@ class Panels(unittest.TestCase):
         for p in panels:
             self.assertTrue(p["items"] and p["w"] > 0 and p["h"] > 0)
             for i in p["items"]:
-                self.assertIn(i["t"], ("text", "rect", "circle", "line", "marker"))
+                self.assertIn(i["t"], ("text", "runs", "rect", "circle", "line", "marker"))
                 for k in ("c", "f"):
                     if i.get(k) is not None:
                         self.assertRegex(i[k], r"^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$")
