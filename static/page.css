@@ -1109,5 +1109,6 @@ body.app #richPane { grid-column: 1; grid-row: 2; }
 #hereLegend .lg { white-space: nowrap; } #hereLegend .lgi { color: var(--text); }
 body.app #hereMain.halves > #hereLegend { flex: 0 0 auto; position: static; margin: 0; padding: 4px 8px; }
 /* Settings -> In-game overlay: each panel's place, size and transparency */
+dialog ul.ovhelp { margin: 6px 0 0; padding-left: 18px; } dialog ul.ovhelp li { margin: 2px 0; }
 table.ovlay tr.ovoff td { opacity: .55; }   /* a panel switched off: its row dimmed */
 table.ovlay { border-collapse: collapse; margin: 6px 0; font-size: 13px; } table.ovlay th, table.ovlay td { padding: 2px 6px; text-align: left; }

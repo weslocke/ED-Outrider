@@ -716,11 +716,13 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
     </details>
     <details class="setsec pcOnly" data-sec-key="overlay" data-chip="In-game overlay"><summary>In-game overlay <span class="sum-note">panels drawn over the game: what they show, where they go</span></summary>
       <div id="overlayBox"></div>
-      <div class="hint">Outrider runs the window that draws the panels itself, while the overlay is on (it needs PyQt6:
-        the button above appears when it is missing). Play Elite borderless or windowed: the window sits over it and
-        lets every click through. A game-PC feature: an Outrider on a server has no overlay.
-        <b>Arrange panels</b> lets you move them (drag), size them (drag the corner) and set their transparency (mouse
-        wheel: the background; Shift and wheel: the whole panel) right over the game; <b>Done</b> there, or here, ends it.</div>
+      <ul class="hint ovhelp">
+        <li><b>Game PC only.</b> Outrider runs the overlay window itself while the overlay is on (an Outrider on a server
+          has none). It installs PyQt6, which the window needs, the first time.</li>
+        <li><b>Play Elite borderless or windowed.</b> The window sits over the game and lets every click through.</li>
+        <li><b>Arrange panels</b> right over the game: drag to move, drag the corner to resize, mouse wheel for the
+          background's transparency, Shift + wheel for the whole panel's. <b>Done</b> there or here ends it.</li>
+      </ul>
     </details>
     <details class="setsec" data-sec-key="display" data-chip="Display"><summary>Display <span class="sum-note">this device: theme, header tiles</span></summary>
       <label class="mod">Theme on this browser <select id="deskTheme"><option value="">Default - Outrider</option></select>

@@ -4224,7 +4224,9 @@ const settle = async maxMs => {
                  // each panel's on/off box in its own row, what it shows as the hover tip, a panel switched off dimmed
                  inRows: [...box.querySelectorAll("table.ovlay tbody tr")].every(tr => tr.querySelectorAll("[data-ovpanel]").length === 1),
                  tip: /every bio signal/.test(box.querySelector('[data-ovpanel="bio"]').closest("label").title),
-                 dimmed: box.querySelector('[data-ovpanel="body"]').closest("tr").classList.contains("ovoff")};
+                 dimmed: box.querySelector('[data-ovpanel="body"]').closest("tr").classList.contains("ovoff"),
+                 // the help under it: three short points, no button it no longer has
+                 help: d.querySelectorAll("ul.ovhelp li").length === 3 && !/button/.test(d.querySelector("ul.ovhelp").textContent)};
     const x = box.querySelector('[data-ovlay="radar"][data-k="x"]');
     x.value = "30"; x.dispatchEvent(new w.Event("change", {bubbles: true}));
     box.querySelector('[data-ovact="test"]').click();
@@ -4233,7 +4235,7 @@ const settle = async maxMs => {
     got.posted = posted;
     w.fetch = real;
     w.eval(`data.overlay = JSON.parse(${JSON.stringify(saved)}); overlayNote = ""; overlayDrawn = ""; renderOverlay();`);
-    const want = {rows: 6, body: "120", off: true, theme: "elite", nowin: true, nowName: true, inRows: true, tip: true, dimmed: true, note: true,
+    const want = {rows: 6, body: "120", off: true, theme: "elite", nowin: true, nowName: true, inRows: true, tip: true, dimmed: true, help: true, note: true,
                   posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}]]};
     const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && ok;

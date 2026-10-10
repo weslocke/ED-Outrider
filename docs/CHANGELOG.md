@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Settings: the overlay's help as three short points (branch EDMC-Functionality)
+- Settings -> In-game overlay: the paragraph under the table becomes a list (game PC only and PyQt6, borderless or
+  windowed, Arrange panels), without the Install PyQt6 button it still mentioned.
+
 ## 2026-10-10 · Overlay: PyQt6 installed when the overlay is on; each panel's switch in its row (branch EDMC-Functionality)
 - No Install PyQt6 button any more (the author's call: not a menu option). launch_outrider.sh / .bat install PyQt6
   before Outrider starts when `[overlay] enabled = true` is in the config and it is missing
