@@ -1102,6 +1102,8 @@ system_panel = {"true" if st["overlay"]["system_panel"] else "false"}   # the sy
 body_panel = {"true" if st["overlay"]["body_panel"] else "false"}   # the body panel: the body you are heading to or near
 radar = {"true" if st["overlay"]["radar"] else "false"}   # the surface radar: samples, colony rings, the ship, on a body's surface
 strip_panel = {"true" if st["overlay"]["strip_panel"] else "false"}   # the system strip: one line across the top (where you are, the star, bodies found, values)
+now_panel = {"true" if st["overlay"]["now_panel"] else "false"}   # Now, condensed: the target, fuel, data at risk, what to do next, this session
+bio_panel = {"true" if st["overlay"]["bio_panel"] else "false"}   # every bio signal in the system, the ones over your bio_min highlighted, with samples and values
 system_seconds = {st["overlay"]["system_seconds"]}   # how long the system panel stays after the honk (0: while in supercruise in that system)
 radar_range = {st["overlay"]["radar_range"]}   # metres from the radar's centre to its edge (it widens to fit a colony ring)
 
@@ -6630,6 +6632,27 @@ class State:
                 "planets": row.get("planets") or len(bodies) or None,
                 "in_spansh": row.get("in_spansh") if "in_spansh" in row else None}
 
+    def overlay_now_info(self, pos, now):
+        """What the Now panel says (outrider.overlay.now_panel): the inputs of the page's Now view, from the server."""
+        detail = self.overlay_detail(pos["id64"])
+        bodies = {b.get("name"): b for b in (detail or {}).get("bodies") or []}
+        ob = self.on_body() or self.near_body()
+        dest = self.destination()
+        a = self.arrival if self.arrival and self.arrival.get("id64") == str(pos["id64"]) else None
+        t = self.target
+        return {"name": pos.get("name"), "now": now, "arrival": a,
+                "target": t and {k: t.get(k) for k in ("name", "status", "known", "count", "star_class")},
+                "fuel": self.fuel_summary(), "boost": (self.journals.boost or {}).get("value"),
+                "unsold": self.unsold, "unsold_levels": (UNSOLD_WARN, UNSOLD_URGENT),
+                "rebuy": (self.journals.ship or {}).get("rebuy"), "since_sale": self.since_sale(),
+                "on_body": ob, "body": bodies.get(ob["body"]) if ob else None,
+                "sampling": self.sampling_summary() if ob else None,
+                "detail_ready": detail is not None, "leaving": (detail or {}).get("leaving"),
+                "value_now": (self.systems.get(pos["id64"]) or {}).get("value_now"),
+                "destination": dest["name"] if dest else None,
+                "destination_ls": (bodies.get(dest["name"]) or {}).get("dist_ls") if dest else None,
+                "this_session": self.this_session(), "last_session": self.last_session()}
+
     def overlay_panels(self, now=None):
         """The panels to draw now: the test panels while they show, else the ones switched on that have something to
         say (none while [overlay] enabled is off, the game is not live, a map, the FSS, the SAA or the codex is open, or
@@ -6668,6 +6691,17 @@ class State:
         # the system strip: where you are, wherever you are (ship, SRV, on foot)
         if cfg.get("strip_panel") and pos:
             p = outrider.overlay.strip_panel(self.overlay_strip_info(pos), pal, cfg["text_size"])
+            if p:
+                out.append(p)
+        # Now, condensed, and every bio signal in the system: anywhere in the system, as the strip
+        if cfg.get("now_panel") and pos:
+            p = outrider.overlay.now_panel(self.overlay_now_info(pos, now), pal, cfg["text_size"], BODY_HIGHLIGHT, BIO_MIN,
+                                           HIGH_GRAVITY, CODEX_INTERESTING)
+            if p:
+                out.append(p)
+        if cfg.get("bio_panel") and pos:
+            p = outrider.overlay.bio_panel(self.overlay_detail(pos["id64"]), pal, cfg["text_size"], BIO_MIN, HIGH_GRAVITY,
+                                           CODEX_INTERESTING)
             if p:
                 out.append(p)
         # the surface radar: on a body (landed, in the SRV, on foot) or low over it, as the surface map shows
@@ -6727,7 +6761,7 @@ class State:
                 "runner": self.overlay_runner.status() if self.overlay_runner else None}
 
     def overlay_set(self, body, now=None):
-        """POST /api/overlay {enabled?, theme?, text_size?, panels?: {system|body|radar: bool}, test?: bool, arrange?:
+        """POST /api/overlay {enabled?, theme?, text_size?, panels?: {system|body|radar|strip|now|bio: bool}, test?: bool, arrange?:
         bool}: the switches, applied at once and written into [overlay] for the next start; test panels for
         TEST_SECONDS; Arrange mode (the window takes the mouse to move and size the panels) until it is switched off or
         ARRANGE_SECONDS pass. (answer, HTTP status)."""

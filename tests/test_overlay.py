@@ -5,6 +5,7 @@ Run all: python3 -m unittest discover tests (or scripts/verify.sh).
 """
 import contextlib
 import io
+import math
 import os
 import tempfile
 import types
@@ -335,6 +336,186 @@ class Runner(unittest.TestCase):
         self.assertEqual(len(self.started), self.R.CRASHES_MAX + 1)
 
 
+def texts(p):
+    """A panel's lines as plain text (a right-aligned value as its own entry, after its row)."""
+    return ["".join(r[0] for r in i["runs"]) if i["t"] == "runs" else i["s"] for i in p["items"] if i["t"] in ("runs", "text")]
+
+
+def colour_of(p, word):
+    """The colour of the first run or text holding `word`."""
+    for i in p["items"]:
+        for s, c in ([(r[0], r[1]) for r in i["runs"]] if i["t"] == "runs" else [(i.get("s", ""), i.get("c"))]):
+            if word in s:
+                return c
+    return None
+
+
+LEAVING = {"honked": True, "unscanned": 0, "body_count": 6, "scanned": 6, "bio_pending": [
+    {"body": "B 3", "signals": 1, "genera": None, "partial": {}, "potential": 1_000_000, "factor": 5, "dist_ls": 30},   # under bio_min
+    {"body": "B 1", "signals": 2, "genera": ["Stratum"], "partial": {"Bacterium": 1}, "potential": 19_000_000, "factor": 1,
+     "dist_ls": 900, "gravity": 2.4, "atmosphere": "Thin Neon atmosphere"},
+    {"body": "B 2", "signals": 1, "genera": ["Fonticulua"], "partial": {}, "potential": 2_000_000, "factor": 1, "dist_ls": 40,
+     "codex_new": True},                                                                         # new to your codex: worth it
+    {"body": "B 4", "signals": 1, "genera": None, "partial": {}, "potential": None, "factor": 1, "dist_ls": None}],   # unpriced
+    "unmapped": [
+    {"body": "A 2", "subtype": "Icy body", "increment": 1_721, "value_mapped": 2_221, "value_mapped_bonus": 6_252, "dist_ls": 20},
+    {"body": "A 3", "subtype": "Water world", "terraformable": True, "increment": 900_000, "value_mapped": 1_100_000,
+     "value_mapped_bonus": 3_400_000, "dist_ls": 600},
+    {"body": "A 5", "subtype": "High metal content body", "increment": 800_000, "dist_ls": 10, "mapped_before": True}]}
+
+
+class NowPanel(unittest.TestCase):
+    def test_supercruise_times_as_the_page(self):
+        self.assertEqual([O.sc_seconds(x) for x in (None, -1, "far")], [None, None, None])
+        self.assertEqual(O.sc_seconds(50), 15)                                   # never under 15 s
+        self.assertAlmostEqual(O.sc_seconds(2000), 7.5 * math.log(2000) - 20)
+        self.assertAlmostEqual(O.sc_seconds(100_000), 360)
+        self.assertEqual([O.sc_text(s) for s in (15, 37.0, 12.4, 360)], ["~15 s", "~35 s", "~10 s", "~6 min"])
+        self.assertEqual(O.sc_text(17.5), "~20 s")                               # JavaScript's rounding, half up
+
+    def test_plan_as_the_page(self):
+        plan = O.plan_items(LEAVING, 500_000, 10_000_000)
+        self.assertEqual([(it["kind"], it["body"]) for it in plan],
+                         [("bio", "B 2"), ("map", "A 3"), ("bio", "B 1"), ("bio", "B 4")])   # nearest first, no distance last
+        self.assertEqual([it["body"] for it in O.plan_items(LEAVING, 500_000, 10_000_000, codex=False)], ["A 3", "B 1", "B 4"])
+        self.assertEqual(O.plan_items(None, 500_000, 10_000_000), [])
+        b1 = plan[2]
+        self.assertAlmostEqual(b1["per_min"], 19_000_000 / (O.sc_seconds(900) / 60))
+        head, detail = O.plan_parts(b1, high_gravity=2.0)
+        self.assertEqual("".join(t for t, _ in head), "bio on B 1: Bacterium 1/3, Stratum")
+        self.assertIn(("2.4 g", "warn"), detail)                                # at your high-gravity level
+        head, detail = O.plan_parts(plan[1])
+        self.assertEqual("".join(t for t, _ in head), "map A 3 (Water world T)")
+        self.assertEqual(detail[0], ("1.1M/3.4M", "accent"))                    # with your bonuses, as Now
+        head, _ = O.plan_parts(plan[3])
+        self.assertEqual("".join(t for t, _ in head), "bio on B 4 (1 signal not DSS'd)")
+
+    INFO = {"name": "Drojau BJ-A a41-3", "now": 1_000_000, "detail_ready": True, "leaving": LEAVING, "value_now": 4_500_000,
+            "target": {"name": "Drojau AB-C d1", "status": "unreported", "known": 0, "count": 12, "star_class": "N"},
+            "fuel": {"live": True, "pct": 22, "jumps_max": 4, "since_scoop": 6}, "boost": 4,
+            "unsold": {"total": 120_000_000, "carto": {"estimated_payout": 20_000_000}, "bio": {"estimated_value": 100_000_000}},
+            "unsold_levels": (50_000_000, 250_000_000), "rebuy": 10_000_000, "since_sale": {"days": 3.6},
+            "this_session": {"start": "1970-01-12T12:00:00Z", "jumps": 28, "ly": 6540.7, "firsts": 12, "samples": 1}}
+
+    def test_now(self):
+        pal = O.palette()
+        p = O.now_panel(self.INFO, pal)
+        lines = texts(p)
+        self.assertEqual(p["id"], "now")
+        self.assertEqual(lines[0], "Drojau BJ-A a41-3")
+        self.assertEqual(lines[1], "➜ Drojau AB-C d1  never reported · 0/12 known · N ✕ ⚠")
+        self.assertEqual(lines[2], "⛽ 22% · 4 jumps · 6 since scoop · boosted ×4")
+        self.assertEqual(colour_of(p, "⛽ 22%"), pal["warn"])
+        self.assertEqual(lines[3], "⚠ 🗺 20.0M · 🧬 100.0M aboard · 12.0× rebuy · 4 d unsold")
+        self.assertEqual(lines[4:6], ["4.5M here", "Next: bio on B 2: Fonticulua"])
+        self.assertTrue(lines[6].strip().startswith("up to 2.0M ✦ · ~15 s · 8.0M/min · 3 more"))
+        self.assertEqual(lines[-2:], ["This session 1 h 46 · 28 jumps · 6,541 ly · 12 new systems", "1 sample"])   # wrapped, not cut
+        quiet = O.now_panel(dict(self.INFO, unsold={"total": 1_000_000}, fuel={"live": True, "pct": 80}, target=None,
+                                 this_session=None, last_session={"jumps": 3}), pal)
+        self.assertNotIn("aboard", " ".join(texts(quiet)))                      # under unsold_warn: nothing at risk
+        self.assertEqual(colour_of(quiet, "⛽ 80%"), pal["text"])
+        self.assertEqual(texts(quiet)[-1], "Last session · 3 jumps")
+        self.assertIsNone(O.now_panel({}, pal))
+
+    def test_arrival_next_states_and_destination(self):
+        pal = O.palette()
+        arrived = dict(self.INFO, arrival={"ts": "1970-01-12T13:46:30Z", "undiscovered": True})   # 10 s ago
+        self.assertIn("🏁 undiscovered", texts(O.now_panel(arrived, pal))[0])
+        self.assertEqual(texts(O.now_panel(dict(arrived, now=1_000_000 + 30), pal))[0], "Drojau BJ-A a41-3")   # 40 s: gone
+        line = lambda **kw: [t for t in texts(O.now_panel(dict(self.INFO, **kw), pal)) if "Next" in t or "✓" in t or "checking" in t][0]
+        self.assertEqual(line(detail_ready=False), "checking…")
+        self.assertEqual(line(leaving=None), "Next: honk (FSS discovery scan)")
+        self.assertEqual(line(leaving={"honked": True, "unscanned": 3}), "Next: 3 bodies to find in the FSS")
+        self.assertEqual(line(leaving={"honked": True, "unscanned": 0}), "✓ nothing worth staying for")
+        heading = texts(O.now_panel(dict(self.INFO, destination="A 3", destination_ls=600), pal))
+        self.assertIn("➜ A 3 · ~30 s · worth it · 1.9M/min", heading)
+        self.assertIn("➜ A 2 · nothing to do here", texts(O.now_panel(dict(self.INFO, destination="A 2"), pal)))
+        self.assertIn("Next: ➜ bio on B 2: Fonticulua", texts(O.now_panel(dict(self.INFO, destination="B 2"), pal)))   # it is Next
+
+    def test_on_a_body(self):
+        pal = O.palette()
+        b = {"name": "B 1", "bio": 3, "geo": 1, "genera": ["Stratum", "Bacterium"],
+             "organics": [{"genus": "Bacterium", "samples": 2}, {"genus": "Stratum", "samples": 3, "done": True}]}
+        info = dict(self.INFO, on_body={"body": "B 1", "how": "in the SRV", "vehicle": "Scarab"}, body=b,
+                    sampling={"genus": "Bacterium", "samples": 2, "need": 500, "nearest": 320, "to_go": 180, "clear": False})
+        lines = texts(O.now_panel(info, pal))
+        self.assertIn("On B 1 (in the Scarab)", lines)
+        i = lines.index("Stratum 3/3 ✓  ·  Bacterium 2/3  ·  1 bio not DSS'd")
+        self.assertEqual(lines[i + 1], "🪨 1 geo")                                 # wrapped onto the next row
+        self.assertIn("Bacterium 2/3 · 180 m to go (320 of 500 m)", lines)
+        self.assertFalse(any(t.startswith("Next") for t in lines))             # the body's card instead of Next
+        clear = texts(O.now_panel(dict(info, sampling=dict(info["sampling"], clear=True, to_go=0, nearest=540)), pal))
+        self.assertIn("Bacterium 2/3 · ✓ clear to sample (540 of 500 m)", clear)
+
+
+BIO_DETAIL = {"name": "Drojau BJ-A a41-3", "bodies": [
+    {"name": "A", "type": "Star", "bio": 0},
+    {"name": "A 1", "type": "Planet", "bio": 1, "gravity": 0.39, "dist_ls": 335, "genera": ["Bacterium"],
+     "value_parts": {"bio_left": 0, "bio_factor": 5},
+     "organics": [{"genus": "Bacterium", "species": "Bacterium Acies", "variant": "Bacterium Acies - Cyan", "samples": 3, "done": True,
+                   "value": 1_000_000}]},
+    {"name": "A 4", "type": "Planet", "bio": 1, "gravity": 0.35, "dist_ls": 996, "genera": [],
+     "value_parts": {"bio_left": 5_000_000, "bio_factor": 5},
+     "bio_guess": [{"genus": "Bacterium", "best": "Bacterium Acies", "value": 1_000_000, "variants": ["Bacterium Acies - Cobalt"],
+                    "codex_have": ["Cobalt"]}]},
+    {"name": "B 1", "type": "Planet", "bio": 3, "gravity": 2.6, "dist_ls": 1200, "genera": ["Stratum", "Bacterium"],
+     "value_parts": {"bio_left": 20_000_000, "bio_factor": 1},
+     "organics": [{"genus": "Bacterium", "species": "Bacterium Vesicula", "samples": 1, "value": 1_000_000}],
+     "bio_guess": [{"genus": "Stratum", "best": "Stratum Tectonicas", "value": 19_000_000, "codex_new": True,
+                    "codex_galaxy_new": True, "variants": ["Stratum Tectonicas - Lime"], "codex_have": []}],
+     "bio_options": {"genera": [{"genus": "Osseus"}, {"genus": "Tussock"}, {"genus": "Stratum"}], "low": 1_000_000, "high": 8_000_000}},
+    {"name": "C 1", "type": "Planet", "bio": 1, "dist_ls": 50, "genera": ["Fungoida"],
+     "value_parts": {"bio_left": 1_500_000, "bio_factor": 1},
+     "organics": [{"genus": "Fungoida", "species": "Fungoida Setisis", "samples": 3, "done": True, "lost": True, "value": 1_500_000}]},
+    {"name": "C 2", "type": "Planet", "subtype": "Rocky body", "dist_ls": 60}]}   # no bio: not listed
+
+
+class BioPanel(unittest.TestCase):
+    def test_every_signal_worth_it_or_not(self):
+        blocks, tot = O.bio_blocks(BIO_DETAIL, bio_min=10_000_000)
+        self.assertEqual([(b["name"], b["state"]) for b in blocks],
+                         [("C 1", "todo"), ("B 1", "todo"), ("A 4", "under"), ("A 1", "done")])   # worth it, under, done
+        self.assertEqual(tot, {"signals": 6, "done": 1, "left": 26_500_000, "under": 1})
+        self.assertEqual([b["state"] for b in O.bio_blocks(BIO_DETAIL, bio_min=500_000)[0]], ["todo", "todo", "todo", "done"])
+
+    def test_panel(self):
+        pal = O.palette()
+        p = O.bio_panel(BIO_DETAIL, pal, bio_min=10_000_000)
+        lines = texts(p)
+        self.assertEqual(lines[0], "Bio signals  4 bodies · 6 signals")
+        self.assertIn("B 1  🧬3 · 2.60 g · 1,200 ls", lines)
+        self.assertIn("   Stratum Tectonicas  ✪ Lime", lines)
+        self.assertIn("   Bacterium Vesicula  1/3", lines)
+        self.assertIn("   ? 1 not DSS'd: Osseus or Tussock", lines)              # the options less the genera known
+        self.assertIn("1.0M–8.0M", lines)
+        self.assertIn("   ✗ Fungoida Setisis  lost: sample again", lines)
+        self.assertIn("   ? Bacterium Acies  Cobalt", lines)
+        self.assertIn("≤5.0M", lines)                                            # with the first-footfall ×5
+        self.assertIn("   ✓ Bacterium Acies  Cyan", lines)
+        self.assertIn("✓ 5.0M", lines)
+        self.assertEqual(lines[-1], "Sampled 1/6 · left 26.5M · 1 under your level")
+        self.assertEqual(colour_of(p, "B 1"), pal["title"])                      # worth it: highlighted
+        self.assertEqual(colour_of(p, "A 4"), pal["muted"])                      # under your level: muted
+        self.assertEqual(colour_of(p, "A 1"), pal["good"])                       # finished
+        self.assertEqual(colour_of(p, "2.60 g"), pal["warn"])
+        self.assertIsNone(O.bio_panel({"bodies": [BIO_DETAIL["bodies"][-1]]}, pal))   # no bio: no panel
+
+    def test_long_list_cut(self):
+        pal = O.palette()
+        many = {"bodies": [dict(BIO_DETAIL["bodies"][1], name=f"A {i}", dist_ls=i) for i in range(10)] +
+                          [dict(BIO_DETAIL["bodies"][3], name=f"B {i}", dist_ls=i) for i in range(10)]}
+        lines = texts(O.bio_panel(many, pal, max_rows=20))
+        self.assertTrue(lines[-1].endswith("· 15 more"))                       # 5 bodies of 4 rows; the rest counted
+        self.assertFalse(any("Cyan" in t for t in lines))                       # finished bodies keep only their head
+        self.assertTrue(O.bio_panel(many, pal, max_rows=20)["h"] < 26 * O.LINE_H["normal"] + 60)
+
+    def test_settings(self):
+        cfg = O.overlay_settings({})["overlay"]
+        self.assertEqual((cfg["now_panel"], cfg["bio_panel"]), (False, False))   # optional: off by default
+        self.assertTrue(O.overlay_settings({"overlay": {"bio_panel": True}})["overlay"]["bio_panel"])
+        self.assertEqual(set(O.clean_layout(None)), set(O.PANELS))
+
+
 class Strip(unittest.TestCase):
     def test_strip(self):
         pal = O.palette()
@@ -388,7 +569,8 @@ class Server(unittest.TestCase):
         out, status = self.state.overlay_set({"enabled": True, "theme": "elite", "panels": {"radar": False}, "test": True}, now=50)
         self.assertEqual(status, 200)
         self.assertEqual((out["enabled"], out["theme"], out["panels"], out["test"]),
-                         (True, "elite", {"system": True, "body": True, "radar": False, "strip": False}, O.TEST_SECONDS))
+                         (True, "elite", {"system": True, "body": True, "radar": False, "strip": False, "now": False, "bio": False},
+                          O.TEST_SECONDS))
         with open(self.state.config_path, encoding="utf-8") as f:   # written for the next start
             text = f.read()
         for line in ('enabled = true', 'theme = "elite"', 'radar = false'):
@@ -487,6 +669,26 @@ class Server(unittest.TestCase):
         self.assertEqual(text[0], "Test Sector AB-C d1-2  ·  Inner Orion Spur")
         self.assertEqual(text[1], "Sol 5 ly  ·  now 1  ·  max 2.0M  ·  🏁 first discovered  ·  9 bodies  ·  5/9 found  ·  🏁 4  ·  "
                                   "🗺 1/6  ·  Spansh ✗ (new to it)")   # C 1 is mapped
+
+    def test_now_and_bio_show_anywhere(self):
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Drojau BJ-A a41-3",
+                                    "SystemAddress": 77, "StarPos": [3, 4, 0]})
+        self.state.system_detail = lambda id64: dict(BIO_DETAIL, leaving=LEAVING) if id64 == 77 else None
+        self.state.overlay_cfg.update(enabled=True, system_panel=False, body_panel=False, radar=False)
+        st = {"live": True, "flags": 0, "flags2": 1, "gui_focus": 0, "body": "Drojau BJ-A a41-3 B 1"}   # on foot on B 1
+        self.state.journals.status_json = st
+        self.assertEqual(self.state.overlay_panels(now=1010), [])                               # both off by default
+        self.state.overlay_cfg.update(now_panel=True, bio_panel=True)
+        now, bio = self.state.overlay_panels(now=1010)
+        self.assertEqual((now["id"], bio["id"]), ("now", "bio"))
+        self.assertIn("On B 1 (on foot)", texts(now))
+        self.assertIn("Stratum 0/3  ·  Bacterium 1/3  ·  1 bio not DSS'd", texts(now))   # the body's card from system_detail
+        self.assertEqual(texts(bio)[0], "Bio signals  4 bodies · 6 signals")
+        st.update(flags=ed_outrider.FLAG_SUPERCRUISE | ed_outrider.FLAG_IN_MAIN_SHIP, flags2=0, body=None)   # in supercruise
+        now = self.state.overlay_panels(now=1010)[0]
+        self.assertIn("Next: bio on B 2: Fonticulua", texts(now))                # the config's levels (bio_min 10M)
+        st["gui_focus"] = 6                                                       # the galaxy map: nothing
+        self.assertEqual(self.state.overlay_panels(now=1010), [])
 
     def test_layout(self):
         out, status = self.state.overlay_layout_set({"body": {"x": 0.4, "scale": 2.0}})

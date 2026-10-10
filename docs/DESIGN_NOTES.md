@@ -202,6 +202,10 @@ upstream project's choices, not rules of the game.
   `high_gravity`): the page's per-browser ones are not known to the server. Linux is where it is tried (X11, and
   XWayland on a Wayland session, as Modern Overlay runs on GNOME); Windows has the code, untried; native Wayland
   compositors, gamescope and exclusive fullscreen are out of scope.
+- **The overlay's Now panel copies Now's suggested order in Python** (`overlay.plan_items`; the page's is `planItems`).
+  The panels are built on the server, which cannot see a browser's levels, so the overlay uses the config's
+  (`body_highlight_level`, `bio_min`, `codex_interesting`, `unsold_warn`) and leaves out what only the page knows (the
+  skip floor, the high-g approach stakes, captions). Two copies of one rule: a change to either is made to both.
 - **Here's icon legend lists only what is shown.** The footer under Here's list (`HERE_LEGEND` in page.js) names the
   icons the list or schematic shows now, not every icon there is (the author's call, 2026-10-10), and is absent when
   there are none; sticky to the bottom of the scrolling pane so it stays in view. The codex marks write the new

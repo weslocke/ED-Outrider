@@ -625,14 +625,15 @@ const streakCfg = () => { const c = store.get("streakCfg", {}) || {}, v = k => {
 // items under this many credits per minute of supercruise get a muted "skip?" (per browser; blank = 100k)
 const skipFloor = () => { const v = Number(store.get("skipFloor", null) ?? 100000); return isFinite(v) && v >= 0 ? v : 100000; };
 const scText = sec => sec < 90 ? `~${Math.max(10, Math.round(sec / 5) * 5)} s` : `~${Math.round(sec / 60)} min`;
-// the map and bio items worth doing by your thresholds, nearest to the arrival star first, value per minute of
-// supercruise breaking ties, a body with no distance last (in the server's order)
 // metres between samples of a genus (the server's shipped table: review S1), or null for one it does not know
 const colonyM = g => (data && data.colony && g && data.colony[String(g).toLowerCase()]) || null;
 const colonyTxt = g => colonyM(g) ? ` <span class="unk" title="samples of one species must be this far apart">· ${colonyM(g).toLocaleString("en-US")} m</span>` : "";
 // how you are on the body, naming the vehicle the journal says you launched ("in the Rhino", "in the Nomad")
 const howOnBody = ob => ob.how === "in the SRV" && ob.vehicle ? `in the ${ob.vehicle}` : ob.how === "flying low" ? `flying low, ${surfDist(ob.alt)}` : ob.how;
 const onOrOver = ob => ob.how === "flying low" ? "Over" : "On";
+// the map and bio items worth doing by your thresholds, nearest to the arrival star first, value per minute of
+// supercruise breaking ties, a body with no distance last (in the server's order).
+// The overlay's Now panel has a Python copy (outrider/overlay.py plan_items): change both together.
 function planItems(l) {
   const w = worthLeavingFor(l);
   if (!w) return [];
@@ -7810,7 +7811,9 @@ document.getElementById("uploadsBox").addEventListener("click", async e => {
 const OV_THEMES = ["default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark"];
 const OV_PANELS = [["system", "System", "the bodies worth your time, in supercruise"], ["body", "Body", "the body you are heading to or near"],
                    ["radar", "Surface radar", "on a body's surface: samples, colony rings, the ship"],
-                   ["strip", "System strip", "one line across the top: where you are, the star, bodies found, values"]];
+                   ["strip", "System strip", "one line across the top: where you are, the star, bodies found, values"],
+                   ["now", "Now", "Now, condensed: the target, fuel, data at risk, what to do next, this session"],
+                   ["bio", "Bio signals", "every bio signal in the system, the ones worth it highlighted: samples, values"]];
 const OV_CORNERS = {nw: "top left", n: "top centre", ne: "top right", sw: "bottom left", s: "bottom centre", se: "bottom right"};
 let overlayDrawn = "", overlayNote = "";
 // the window's state: Outrider runs it on the game PC (o.runner); on a server it runs on the game PC by hand

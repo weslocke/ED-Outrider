@@ -26,6 +26,17 @@ every click through, so you play as before.
   The second, condensed: the distance from Sol, what its data pays now and at most, 🏁 when you discovered it, how many
   bodies and how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether
   Spansh knows the system ("Spansh ✗ (new to it)" when it does not).
+- **Now** (optional): the page's Now view in a few lines. The system (and for 20 s after the jump whether it was
+  undiscovered), the system you have targeted next (never reported, partly or fully scanned, bodies known, the star
+  with ⛽ or ✕), fuel, and what the data aboard stands to lose once it passes your `unsold_warn` level. Then, on a body,
+  each genus there with its samples and how far the next sample must be; elsewhere **Next**, the first item of Here's
+  suggested order with what it pays, the supercruise time and how many more, and the body you have targeted when it is
+  not that one. Last, this session's figures.
+- **Bio signals** (optional): every body in the system with bio signals, whether it meets your levels or not. A body
+  worth it (over `bio_min`, a run started, new to your codex, or not priced yet) is in bright colours, the rest are
+  muted and the finished ones carry a green ✓. Under each body, each species: sampled ✓ with its colour, a run under
+  way ("2/3"), lost, or not started with its likeliest species, codex mark and value; signals the DSS has not named yet
+  show what they could be. The foot says how many are sampled, what is left and how many bodies are under your level.
 
 No panel covers the galaxy or system map, the orrery, the FSS, the SAA or the codex.
 

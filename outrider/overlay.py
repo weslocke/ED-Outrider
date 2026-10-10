@@ -20,6 +20,7 @@ opacity, then the items, the whole panel at the layout's alpha. Items:
 Colours are "#RRGGBB" or "#AARRGGBB".
 """
 import copy
+import datetime
 import math
 import os
 import re
@@ -28,8 +29,9 @@ import sys
 from . import ROOT
 
 CANVAS_W, CANVAS_H = 1280, 960
-PANELS = ("system", "body", "radar", "strip")
-PANEL_NAMES = {"system": "System", "body": "Body", "radar": "Surface radar", "strip": "System strip"}
+PANELS = ("system", "body", "radar", "strip", "now", "bio")
+PANEL_NAMES = {"system": "System", "body": "Body", "radar": "Surface radar", "strip": "System strip", "now": "Now",
+               "bio": "Bio signals"}
 # a panel is placed from a corner of the game window, or centred along its top or bottom edge (n, s: x is not used)
 CORNERS = ("nw", "ne", "sw", "se", "n", "s")
 SIZES = ("small", "normal", "large")
@@ -38,13 +40,16 @@ TEST_SECONDS = 60       # "Show test panels": how long they stay (shown whether 
 ARRANGE_SECONDS = 600   # Arrange mode ends by itself after this, so the overlay never stays in the way of the mouse
 
 DEFAULTS = {"enabled": False, "theme": "default", "text_size": "normal", "system_panel": True, "body_panel": True,
-            "radar": True, "strip_panel": False, "system_seconds": 0, "radar_range": 800}
+            "radar": True, "strip_panel": False, "now_panel": False, "bio_panel": False, "system_seconds": 0,
+            "radar_range": 800}
 # where each panel starts: a corner of the game window, the offset from it as a share of the window's width (x) and
 # height (y), its size (1 = the canvas's own), its background's opacity (0: text only) and the whole panel's
 LAYOUT_DEFAULT = {"system": {"corner": "nw", "x": 0.02, "y": 0.16, "scale": 1.0, "bg": 0.65, "alpha": 1.0},
                   "body": {"corner": "ne", "x": 0.02, "y": 0.16, "scale": 1.0, "bg": 0.65, "alpha": 1.0},
                   "radar": {"corner": "se", "x": 0.02, "y": 0.10, "scale": 1.0, "bg": 0.5, "alpha": 1.0},
-                  "strip": {"corner": "n", "x": 0.0, "y": 0.005, "scale": 1.0, "bg": 0.5, "alpha": 1.0}}
+                  "strip": {"corner": "n", "x": 0.0, "y": 0.005, "scale": 1.0, "bg": 0.5, "alpha": 1.0},
+                  "now": {"corner": "sw", "x": 0.02, "y": 0.06, "scale": 1.0, "bg": 0.65, "alpha": 1.0},
+                  "bio": {"corner": "nw", "x": 0.02, "y": 0.45, "scale": 1.0, "bg": 0.65, "alpha": 1.0}}
 LIMITS = {"x": (0.0, 0.95), "y": (0.0, 0.95), "scale": (0.5, 2.5), "bg": (0.0, 1.0), "alpha": (0.1, 1.0)}
 
 # text metrics on the canvas: line heights and an average character width per size (the window's font is close to
@@ -132,7 +137,7 @@ def overlay_settings(cfg):
     if "overlay" in cfg and not isinstance(cfg.get("overlay"), dict):
         _warn("must be a section (a table of settings); ignored")
     out = dict(DEFAULTS)
-    for key in ("enabled", "system_panel", "body_panel", "radar", "strip_panel"):
+    for key in ("enabled", "system_panel", "body_panel", "radar", "strip_panel", "now_panel", "bio_panel"):
         v = o.get(key)
         if v is None:
             continue
@@ -606,10 +611,393 @@ def strip_panel(info, pal, size="normal"):
             "style": pal.get("style", "rounded"), "accent": pal["title"], "items": items}
 
 
+# ---- the Now panel: the page's Now view, condensed (the author, 2026-10-10) ----
+
+# supercruise seconds from the arrival star on the page's community curve (page.js scSeconds): a rough guide
+SC_KNEE = 7.5 * math.log(2000) - 20
+TARGET_WORDS = {"unreported": ("never reported", "good"), "no bodies": ("no scan data", "warn"),
+                "partial": ("partly scanned", "warn"), "explored": ("fully scanned", "muted"), "visited": ("visited", "muted")}
+ARRIVAL_SECONDS = 20   # the arrival verdict stays this long after the jump, as on Now
+NOW_W = 520
+
+
+def _half_up(x):
+    return math.floor(x + 0.5)   # JavaScript's Math.round, so the panel's figures are the page's
+
+
+def sc_seconds(ls):
+    if not isinstance(ls, (int, float)) or isinstance(ls, bool) or not math.isfinite(ls) or ls < 0:
+        return None
+    return max(15, 7.5 * math.log(max(ls, 1)) - 20) if ls <= 2000 else SC_KNEE + (ls - 2000) * (360 - SC_KNEE) / 98000
+
+
+def sc_text(sec):
+    return f"~{max(10, _half_up(sec / 5) * 5)} s" if sec < 90 else f"~{_half_up(sec / 60)} min"
+
+
+def plan_items(leaving, highlight, bio_min, codex=True):
+    """Now's suggested order (page.js worthLeavingFor + planItems) with the config's levels: the mapping over the
+    highlight level (or special) and the bio over bio_min (or started, unpriced, or new to your codex), nearest to the
+    arrival star first, then the best value per minute of supercruise. [{kind, body, dist, value, sec, per_min, u|b}]."""
+    if not leaving:
+        return []
+    bio = [b for b in leaving.get("bio_pending") or [] if b.get("partial") or b.get("potential") is None
+           or b["potential"] >= bio_min or (codex and b.get("codex_new"))]
+    maps = [u for u in leaving.get("unmapped") or [] if not u.get("mapped_before")
+            and (u.get("special") or (u.get("increment") is not None and u["increment"] >= highlight))]
+    items = [{"kind": "map", "body": u.get("body"), "dist": u.get("dist_ls"), "value": u.get("increment"), "u": u} for u in maps]
+    items += [{"kind": "bio", "body": b.get("body"), "dist": b.get("dist_ls"),
+               "value": None if b.get("potential") is None else b["potential"] * (b.get("factor") or 1), "b": b} for b in bio]
+    for it in items:
+        it["sec"] = sc_seconds(it["dist"])
+        it["per_min"] = it["value"] / (it["sec"] / 60) if it["sec"] and it["value"] else None
+    return sorted(items, key=lambda it: (it["dist"] is None, it["dist"] or 0,
+                                         -(it["per_min"] if it["per_min"] is not None else -1)))
+
+
+def map_totals(u):
+    """A body's mapped value as Now gives it: "771k" or, with your first-discovery / first-mapped bonuses, "771k/2.2M"."""
+    a, b = (u or {}).get("value_mapped"), (u or {}).get("value_mapped_bonus")
+    if not a:
+        return ""
+    return credits(a) if not b or credits(a) == credits(b) else f"{credits(a)}/{credits(b)}"
+
+
+def plan_parts(it, high_gravity=2.0):
+    """A plan item as two rows of (text, colour key): what to do, then what it pays and costs."""
+    if it["kind"] == "map":
+        u = it["u"]
+        head = [("map ", "warn"), (u.get("body") or "?", "title"), (f" ({u.get('subtype') or '?'}{' T' if u.get('terraformable') else ''})", "text")]
+        t = map_totals(u) or (f"+{credits(u['increment'])}" if u.get("increment") else "")
+        detail = [(t, "accent")] if t else []
+    else:
+        b = it["b"]
+        partial = b.get("partial") or {}
+        parts = [f"{g} {n}/3" for g, n in partial.items()] + [g for g in b.get("genera") or [] if g not in partial]
+        head = [("bio on ", "warn"), (b.get("body") or "?", "title")]
+        if b.get("genera") is None:
+            n = b.get("signals") or 0
+            unk = [f"{n} signal{'' if n == 1 else 's'} not DSS'd"] if n else []
+            head.append((f" ({', '.join(parts + unk)})", "text"))
+        elif parts:
+            head.append((": " + ", ".join(parts), "text"))
+        detail = []
+        if b.get("potential"):
+            detail.append((f"up to {credits(b['potential'] * (b.get('factor') or 1))}", "accent"))
+            if b.get("factor") == 5:
+                detail.append((" 👣×5", "good"))
+        if b.get("codex_galaxy") or b.get("codex_new"):
+            detail.append((" ✪" if b.get("codex_galaxy") else " ✦", "good" if b.get("codex_galaxy") else "accent"))
+        g = b.get("gravity")
+        if isinstance(g, (int, float)):
+            detail += [(" · " if detail else "", "muted"), (f"{g:.1f} g", "warn" if g >= high_gravity else "text")]
+        if b.get("atmosphere") and b["atmosphere"] != "None":
+            detail.append((f" · {b['atmosphere']}", "muted"))
+    if it.get("sec") is not None:
+        detail.append(((" · " if detail else "") + sc_text(it["sec"]) + (f" · {credits(it['per_min'])}/min" if it.get("per_min") else ""), "muted"))
+    return head, detail
+
+
+def wrap(bits, room, size="normal", sep=" · "):
+    """(text, colour key) bits as rows joined by `sep`, a new row whenever the next bit would not fit in `room`."""
+    rows, row, used = [], [], 0.0
+    for t, k in bits:
+        if not t:
+            continue
+        w = text_width(t, size) + (text_width(sep, size) if row else 0)
+        if row and used + w > room:
+            rows.append(row)
+            row, used, w = [], 0.0, text_width(t, size)
+        if row:
+            row.append((sep, "muted"))
+        row.append((t, k))
+        used += w
+    return rows + ([row] if row else [])
+
+
+def session_bits(st):
+    """Now's session figures (page.js sessionLine): ["28 jumps", "6,541 ly", "12 new systems", …]."""
+    def n(k, one, many):
+        v = st.get(k)
+        return f"{v:,} {one if v == 1 else many}" if v else None
+    jumps = st.get("jumps") or 0
+    bits = [f"{jumps:,} jump{'' if jumps == 1 else 's'}", f"{_half_up(st['ly']):,} ly" if st.get("ly") else None,
+            n("firsts", "new system", "new systems"), n("bodies_first", "new body", "new bodies"), n("mapped", "mapped", "mapped"),
+            n("footfalls", "footfall", "footfalls"), n("samples", "sample", "samples"), n("codex_new", "codex entry", "codex entries")]
+    return [b for b in bits if b]
+
+
+def _ts(s):
+    try:
+        return datetime.datetime.fromisoformat(str(s).replace("Z", "+00:00")).timestamp()
+    except (TypeError, ValueError):
+        return None
+
+
+def on_body_parts(ob, b, sampling, room=500, size="normal"):
+    """Now's on-body card: where you are and each genus on the body ("Bacterium 2/3", "Stratum 0/3"), then the sample
+    spacing of the run under way. Rows of (text, colour key)."""
+    how = f"in the {ob['vehicle']}" if ob.get("how") == "in the SRV" and ob.get("vehicle") else \
+        f"flying low, {ob.get('alt')} m" if ob.get("how") == "flying low" else ob.get("how") or ""
+    head = [("Over " if ob.get("how") == "flying low" else "On ", "muted"), (ob.get("body") or "?", "title"), (f" ({how})", "muted")]
+    rows = [head]
+    if b:
+        orgs = {o.get("genus"): o for o in b.get("organics") or []}
+        genera = list(dict.fromkeys(list(b.get("genera") or []) + list(orgs)))
+        bits = []
+        for g in genera:
+            o = orgs.get(g)
+            if o and o.get("lost"):
+                bits.append((f"{g} lost ✗", "bad"))
+            elif o:
+                bits.append((f"{g} {o.get('samples', 0)}/3" + (" ✓" if o.get("done") else ""), "good" if o.get("done") else "accent"))
+            else:
+                bits.append((f"{g} 0/3", "text"))
+        unknown = (b.get("bio") or 0) - len(genera)
+        if unknown > 0:
+            bits.append((f"{unknown} bio not DSS'd", "muted"))
+        if b.get("geo"):
+            bits.append((f"🪨 {b['geo']} geo", "text"))
+        rows += wrap(bits, room, size, "  ·  ") or [[("no bio or geo signals known", "muted")]]
+    sm = sampling or {}
+    if sm.get("samples") and sm["samples"] < 3 and not sm.get("elsewhere"):
+        head = (f"{sm.get('genus') or ''} {sm['samples']}/3 · ", "text")
+        if sm.get("to_go") is None:
+            rows.append([head, (f"need {sm['need']} m from the last sample" if sm.get("need") else "spacing unknown", "muted")])
+        elif sm.get("clear"):
+            rows.append([head, ("✓ clear to sample", "good"), (f" ({sm.get('nearest')} of {sm.get('need')} m)", "muted")])
+        else:
+            rows.append([head, (f"{sm['to_go']} m to go", "warn"), (f" ({sm.get('nearest')} of {sm.get('need')} m)", "muted")])
+    elif (sm.get("elsewhere") or {}).get("species") and sm["elsewhere"].get("samples") == 2:
+        e = sm["elsewhere"]
+        rows.append([("In progress elsewhere: ", "warn"), (f"{e['species']} 2/3 on {e.get('body') or 'another body'}", "text")])
+    return rows
+
+
+def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, high_gravity=2.0, codex=True):
+    """The Now panel: the page's Now view in a few lines (the author, 2026-10-10). The system (and, for 20 s after the
+    jump, whether it was undiscovered); the system targeted next; fuel; what the data aboard stands to lose once it
+    passes your levels; on a body its card, else Next (the first of the suggested order) and the body you have
+    targeted; this session. The levels are the config's. info: {name, now, arrival, target, fuel, boost, unsold,
+    unsold_levels, rebuy, since_sale, on_body, body, sampling, leaving, detail_ready, value_now, destination,
+    this_session, last_session}. None without a system."""
+    if not info or not info.get("name"):
+        return None
+    now = info.get("now") or 0
+    rows = []
+    a = info.get("arrival") or {}
+    sub = None
+    at = _ts(a.get("ts"))
+    if a and at is not None and 0 <= now - at < ARRIVAL_SECONDS:
+        sub = "🏁 undiscovered: first discovery is yours" if a.get("undiscovered") else "already discovered"
+    t = info.get("target")
+    if t and t.get("name"):
+        words, key = TARGET_WORDS.get(t.get("status"), (t.get("status") or "", "muted"))
+        row = [("➜ ", "accent"), (t["name"] + "  ", "title"), (words, key)]
+        if t.get("count"):
+            row.append((f" · {t.get('known') or 0}/{t['count']} known", "muted"))
+        sc = t.get("star_class")
+        if sc:
+            scoop = bool(re.match(r"^[OBAFGKM](_|$)", sc))
+            row.append((f" · {sc}{' ⛽' if scoop else ' ✕'}", "good" if scoop else "warn"))
+            if sc == "N" or sc.startswith("D"):
+                row.append((" ⚠", "bad"))
+        rows.append(row)
+    f = info.get("fuel") or {}
+    if f.get("live") and f.get("pct") is not None:
+        key = "bad" if f["pct"] < 15 else "warn" if f["pct"] < 30 else "text"
+        row = [(f"⛽ {f['pct']}%", key)]
+        if f.get("jumps_max") is not None:
+            row.append((f" · {f['jumps_max']} jump{'' if f['jumps_max'] == 1 else 's'}", "muted"))
+        if f.get("since_scoop") is not None:
+            row.append((f" · {f['since_scoop']} since scoop", "muted"))
+        if info.get("boost"):
+            row.append((f" · boosted ×{info['boost']}", "good"))
+        rows.append(row)
+    u = info.get("unsold") or {}
+    warn, urgent = info.get("unsold_levels") or (50_000_000, 250_000_000)
+    total = u.get("total") if isinstance(u.get("total"), (int, float)) else None
+    if total is not None and total >= warn:
+        key = "bad" if total >= urgent else "warn"
+        carto = (u.get("carto") or {}).get("estimated_payout") or (u.get("carto") or {}).get("estimated_value")
+        bio = (u.get("bio") or {}).get("estimated_value")
+        kinds = " · ".join(x for x in (f"🗺 {credits(carto)}" if carto else "", f"🧬 {credits(bio)}" if bio else "") if x)
+        bits = [f"{kinds or credits(total)} aboard"]
+        if info.get("rebuy"):
+            bits.append(f"{total / info['rebuy']:.1f}× rebuy")
+        days = (info.get("since_sale") or {}).get("days") or 0
+        if days >= 1:
+            bits.append(f"{_half_up(days)} d unsold")
+        rows.append([("⚠ ", key), (" · ".join(bits), key)])
+    ob = info.get("on_body")
+    if ob:
+        rows += on_body_parts(ob, info.get("body"), info.get("sampling"), NOW_W - 2 * PAD, size)
+    else:
+        l = info.get("leaving")
+        plan = plan_items(l, highlight, bio_min, codex) if info.get("detail_ready") else []
+        dest = info.get("destination")
+        dest_next = bool(dest and plan and plan[0]["body"] == dest)
+        right = (f"{credits(info['value_now'])} here", "muted") if info.get("value_now") else None
+        if plan:
+            head, detail = plan_parts(plan[0], high_gravity)
+            rows.append({"left": [("Next: ", "warn")] + ([("➜ ", "accent")] if dest_next else []) + head, "right": right})
+            more = [(f" · {len(plan) - 1} more", "muted")] if len(plan) > 1 else []
+            if detail or more:
+                rows.append([("   ", "muted")] + detail + more)
+        else:
+            left = [("checking…", "muted")] if not info.get("detail_ready") \
+                else [("Next: honk", "warn"), (" (FSS discovery scan)", "muted")] if not l or not l.get("honked") \
+                else [(f"Next: {l['unscanned']} bod{'y' if l['unscanned'] == 1 else 'ies'} to find in the FSS", "warn")] if (l.get("unscanned") or 0) > 0 \
+                else [("✓ nothing worth staying for", "good")]
+            rows.append({"left": left, "right": right})
+        if dest and not dest_next:
+            it = next((x for x in plan if x["body"] == dest), None)
+            row = [("➜ ", "accent"), (dest, "title")]
+            sec = sc_seconds(info.get("destination_ls"))
+            if sec is not None:
+                row.append((f" · {sc_text(sec)}", "muted"))
+            row.append((" · worth it" + (f" · {credits(it['per_min'])}/min" if it.get("per_min") else ""), "good") if it
+                       else (" · nothing to do here", "muted"))
+            rows.append(row)
+    ts, ls = info.get("this_session"), info.get("last_session")
+    if ts or ls:
+        rows.append("rule")
+    if ts:
+        start = _ts(ts.get("start"))
+        mins = max(0, int((now - start) // 60)) if start is not None else None
+        took = "" if mins is None else f" {mins} min" if mins < 60 else f" {mins // 60} h {mins % 60:02d}"
+        rows += wrap([("This session" + took, "muted")] + [(b, "text") for b in session_bits(ts)]
+                     + [(f"~{credits(ts['found'])} found" if ts.get("found") else "", "accent")], NOW_W - 2 * PAD, size)
+    elif ls:
+        rows += wrap([("Last session", "muted")] + [(b, "text") for b in session_bits(ls)], NOW_W - 2 * PAD, size)
+    return text_panel("now", info["name"], rows, pal, width=NOW_W, size=size, subtitle=sub)
+
+
+# ---- the bio panel: every bio signal in the system, worth it or not (the author, 2026-10-10) ----
+
+def bio_blocks(detail, bio_min=10_000_000, high_gravity=2.0, codex=True):
+    """Each body with bio signals: a header row and a row per species, worth it (by your bio level: started, new to
+    your codex, unpriced, or a body that could pay at least bio_min before the first-footfall bonus) highlighted, the rest
+    muted, finished ones ticked. [{name, state ("todo", "under", "done"), dist, rows}], and the totals."""
+    blocks, tot = [], {"signals": 0, "done": 0, "left": 0, "under": 0}
+    for b in (detail or {}).get("bodies") or []:
+        if b.get("type") == "Star":
+            continue
+        orgs = {o.get("genus"): o for o in b.get("organics") or []}
+        genera = list(dict.fromkeys(list(b.get("genera") or []) + list(orgs)))
+        n_sig = max(b.get("bio") or 0, len(genera))
+        if not n_sig:
+            continue
+        vp = b.get("value_parts") or {}
+        factor, left = vp.get("bio_factor") or 1, vp.get("bio_left") or 0
+        guesses = {g.get("genus"): g for g in b.get("bio_guess") or []}
+        unknown = n_sig - len(genera)
+        done = sum(1 for o in orgs.values() if o.get("done") and not o.get("lost"))
+        started = any(not o.get("done") or o.get("lost") for o in orgs.values())
+        unsampled = [guesses[g] for g in genera if g not in orgs and g in guesses]
+        if unknown > 0 and not b.get("bio_options"):
+            unsampled += [g for k, g in guesses.items() if k not in genera][:unknown]
+        new_codex = codex and any(codex_mark([g]) for g in unsampled)
+        finished = done >= n_sig
+        unpriced = not finished and not left and unknown > 0
+        worth = not finished and (started or new_codex or unpriced or left / factor >= bio_min)
+        state = "done" if finished else "todo" if worth else "under"
+        tot["signals"] += n_sig
+        tot["done"] += done
+        tot["left"] += left
+        tot["under"] += state == "under"
+        hue = {"todo": ("text", "accent"), "under": ("muted", "muted"), "done": ("muted", "muted")}[state]
+        facts = [f"🧬{n_sig}"]
+        g = b.get("gravity")
+        head = [(b.get("name") or "?", {"todo": "title", "under": "muted", "done": "good"}[state]), ("  " + facts[0], "muted")]
+        if isinstance(g, (int, float)):
+            head.append((f" · {g:.2f} g", "warn" if g >= high_gravity and state == "todo" else "muted"))
+        if b.get("dist_ls") is not None:
+            head.append((f" · {_half_up(b['dist_ls']):,} ls", "muted"))
+        if factor == 5 and not finished:
+            head.append((" · 👣×5", "good" if state == "todo" else "muted"))
+        right = (f"✓ {credits(sum((o.get('value') or 0) for o in orgs.values()) * factor)}", "good") if finished \
+            else (f"up to {credits(left)}", hue[1]) if left else ("?", hue[1])
+        rows = [{"left": head, "right": right}]
+        for gname in genera:
+            o, x = orgs.get(gname), guesses.get(gname)
+            if o and o.get("lost"):
+                rows.append({"left": [("   ✗ " + (o.get("species") or gname), "bad"), ("  lost: sample again", "bad")],
+                             "right": (credits((o.get("value") or 0) * factor), "bad")})
+            elif o and o.get("done"):
+                colour = (o.get("variant") or "").split(" - ")[-1] if " - " in (o.get("variant") or "") else ""
+                rows.append({"left": [("   ✓ ", "good"), (o.get("species") or gname, "muted"), (f"  {colour}" if colour else "", "muted")],
+                             "right": (credits((o.get("value") or 0) * factor), "muted")})
+            elif o:
+                rows.append({"left": [("   " + (o.get("species") or gname), hue[0]), (f"  {o.get('samples', 0)}/3", "accent")],
+                             "right": (credits((o.get("value") or 0) * factor), "accent")})
+            else:
+                rows.append(_guess_row(gname, x, factor, hue, "   ", "0/3 "))
+        if unknown > 0:
+            opts = b.get("bio_options")
+            if opts:
+                names = " or ".join(x.get("genus", "?") for x in opts.get("genera") or [] if x.get("genus") not in genera) or "?"
+                rows.append({"left": [(f"   ? {unknown} not DSS'd: ", "muted"), (names, hue[0])],
+                             "right": (f"{credits((opts.get('low') or 0) * factor)}–{credits((opts.get('high') or 0) * factor)}", hue[1])})
+            else:
+                extra = [g for k, g in guesses.items() if k not in genera][:unknown]
+                for x in extra:
+                    rows.append(_guess_row(x.get("genus"), x, factor, hue, "   ? ", "≤"))
+                if len(extra) < unknown:
+                    rows.append([(f"   ? {unknown - len(extra)} not DSS'd", "muted")])
+        blocks.append({"name": b.get("name"), "state": state, "dist": b.get("dist_ls") if b.get("dist_ls") is not None else 1e12,
+                       "rows": rows})
+    blocks.sort(key=lambda k: ({"todo": 0, "under": 1, "done": 2}[k["state"]], k["dist"]))
+    return blocks, tot
+
+
+def _guess_row(genus, x, factor, hue, indent, prefix):
+    """A species not sampled yet: its likeliest species, the codex mark with the colour, what it could pay."""
+    x = x or {}
+    mark = codex_mark([x])
+    left = [(indent + (x.get("best") or genus or "?"), hue[0])]
+    if mark:
+        left.append(("  " + mark, "good" if mark.startswith("✪") else "accent"))
+    elif x.get("variants"):
+        left.append(("  " + " or ".join(v.split(" - ")[-1] for v in x["variants"]), "muted"))
+    return {"left": left, "right": (prefix + credits((x.get("value") or 0) * factor), hue[1]) if x.get("value") else ("", "muted")}
+
+
+def bio_panel(detail, pal, size="normal", bio_min=10_000_000, high_gravity=2.0, codex=True, max_rows=20):
+    """The bio panel: every body with bio signals, worth it or not (blocks from bio_blocks), then the totals. Over
+    max_rows the finished bodies lose their species rows first, then the last bodies are left out (counted). None
+    without bio in the system."""
+    blocks, tot = bio_blocks(detail, bio_min, high_gravity, codex)
+    if not blocks:
+        return None
+    size_of = lambda bs: sum(len(b["rows"]) for b in bs)
+    if size_of(blocks) > max_rows:
+        for b in blocks:
+            if b["state"] == "done":
+                b["rows"] = b["rows"][:1]
+    shown = []
+    for b in blocks:
+        if size_of(shown) + len(b["rows"]) > max_rows and shown:
+            break
+        shown.append(b)
+    rows = [r for b in shown for r in b["rows"]]
+    rows.append("rule")
+    foot = [("Sampled ", "muted"), (f"{tot['done']}/{tot['signals']}", "good" if tot["done"] >= tot["signals"] else "text")]
+    if tot["left"]:
+        foot += [(" · left ", "muted"), (credits(tot["left"]), "accent")]
+    if tot["under"]:
+        foot.append((f" · {tot['under']} under your level", "muted"))
+    if len(shown) < len(blocks):
+        foot.append((f" · {len(blocks) - len(shown)} more", "muted"))
+    rows.append(foot)
+    return text_panel("bio", "Bio signals", rows, pal, width=470, size=size,
+                      subtitle=f"{len(blocks)} bod{'y' if len(blocks) == 1 else 'ies'} · {tot['signals']} signal{'' if tot['signals'] == 1 else 's'}")
+
+
 # ---- the test panels: every panel with sample data, to arrange them before flying ----
 
 def test_panels(pal, size="normal", radar_range=800):
-    """The three panels with made-up contents ("Show test panels" in Settings, and the window's Arrange mode)."""
+    """Every panel with made-up contents ("Show test panels" in Settings, and the window's Arrange mode)."""
     system = text_panel("system", "Test Sector AB-C d1-2", [
         {"left": [("A 3 ", "title"), ("Water world, terraformable", "text")], "right": ("TO MAP 2.4M", "warn")},
         {"left": [("B 1 ", "title"), ("Bacterium · Stratum", "text")], "right": ("TO LAND 19.0M", "warn")},
@@ -628,7 +1016,32 @@ def test_panels(pal, size="normal", radar_range=800):
     strip = strip_panel({"name": "Test Sector AB-C d1-2", "region": "Inner Orion Spur", "sol_ly": 5411, "star": "K",
                          "found": 12, "total": 14, "honked": True, "value_now": 2_100_000, "value_max": 35_100_000,
                          "first": True, "firsts": 12, "mapped": 3, "planets": 11, "in_spansh": False}, pal, size)
-    return [system, body, radar_test(pal, size, radar_range), strip]
+    now = now_panel({"name": "Test Sector AB-C d1-2", "now": 0, "detail_ready": True, "value_now": 2_100_000,
+                     "target": {"name": "Test Sector AB-C d1-3", "status": "unreported", "star_class": "K"},
+                     "fuel": {"live": True, "pct": 64, "jumps_max": 9, "since_scoop": 3},
+                     "unsold": {"total": 120_000_000, "carto": {"estimated_payout": 20_000_000}, "bio": {"estimated_value": 100_000_000}},
+                     "rebuy": 12_000_000, "since_sale": {"days": 4},
+                     "leaving": {"honked": True, "unscanned": 0, "unmapped": [], "bio_pending": [
+                         {"body": "B 1", "genera": ["Stratum"], "partial": {}, "potential": 19_000_000, "factor": 1, "dist_ls": 50,
+                          "gravity": 0.42, "atmosphere": "Neon", "codex_galaxy": True},
+                         {"body": "B 2", "genera": ["Bacterium"], "partial": {}, "potential": 12_000_000, "factor": 1, "dist_ls": 70}]},
+                     "this_session": {"start": None, "jumps": 28, "ly": 1540, "firsts": 12, "samples": 6}}, pal, size)
+    now["items"][0]["runs"].append(["  test panel", pal["muted"], size, False])
+    bio = bio_panel({"bodies": [
+        {"name": "B 1", "type": "Planet", "bio": 2, "gravity": 0.42, "dist_ls": 50, "genera": ["Stratum", "Bacterium"],
+         "value_parts": {"bio_left": 20_000_000, "bio_factor": 1},
+         "organics": [{"genus": "Bacterium", "species": "Bacterium Acies", "samples": 2, "value": 1_000_000}],
+         "bio_guess": [{"genus": "Stratum", "best": "Stratum Tectonicas", "value": 19_000_000, "codex_new": True,
+                        "codex_galaxy_new": True, "variants": ["Stratum Tectonicas - Lime"], "codex_have": []}]},
+        {"name": "A 4", "type": "Planet", "bio": 1, "gravity": 0.35, "dist_ls": 996, "genera": [],
+         "value_parts": {"bio_left": 1_000_000, "bio_factor": 1},
+         "bio_guess": [{"genus": "Bacterium", "best": "Bacterium Acies", "value": 1_000_000, "variants": ["Bacterium Acies - Cobalt"]}]},
+        {"name": "A 1", "type": "Planet", "bio": 1, "gravity": 0.39, "dist_ls": 335, "genera": ["Bacterium"],
+         "value_parts": {"bio_left": 0, "bio_factor": 5},
+         "organics": [{"genus": "Bacterium", "species": "Bacterium Acies", "variant": "Bacterium Acies - Cyan", "samples": 3,
+                       "done": True, "value": 1_000_000}]}]}, pal, size)
+    bio["items"][0]["runs"].append(["  test panel", pal["muted"], size, False])
+    return [system, body, radar_test(pal, size, radar_range), strip, now, bio]
 
 
 def radar_test(pal, size="normal", radar_range=800):

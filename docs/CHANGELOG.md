@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: the Now and Bio signals panels (branch EDMC-Functionality)
+- Two more optional panels, off by default (`[overlay] now_panel`, `bio_panel`; Settings -> In-game overlay).
+- **Now**, the page's Now view condensed: the system (and the arrival verdict for 20 s), the target, fuel, the data at
+  risk past `unsold_warn`, the on-body card with the sample spacing, or Next (the first of the suggested order, with the
+  supercruise time and per-minute value) and the targeted body, this session. Now's plan is ported to Python
+  (`overlay.plan_items`, the page's `worthLeavingFor` + `planItems`) with the config's levels.
+- **Bio signals**: every body with bio in the system, worth it or not. The ones meeting your levels (`bio_min`, a run
+  started, new to your codex, unpriced) are highlighted, the rest muted, the finished ones ticked; per species: the
+  samples, the colour, the codex mark and the value; not-DSS'd signals show what they could be.
+
 ## 2026-10-10 · Overlay: the system strip's lines rearranged and centred (branch EDMC-Functionality)
 - Line 1 is the system, its region and the star; the distance from Sol, now, max and first discovered move to line 2,
   before the body counts; both lines are centred in the box (a `runs` line can be centred: `align` "center", measured
