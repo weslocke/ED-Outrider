@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay O1: the panels' server side (branch EDMC-Functionality)
+- `outrider/overlay.py`: the in-game overlay's panels as draw lists on a 1280x960 canvas (text, rectangles, circles,
+  lines, markers), a text-panel builder, test panels, the `[overlay]` settings (enabled, theme, text_size, each panel
+  on/off, system_seconds, radar_range; url and password for the window on the game PC) and the panels' layout (per
+  panel a corner, an offset, a size, the background's and the whole panel's opacity; meta `overlay_layout`).
+- GET `/api/overlay` (with `since=<version>`: just `{same}` when nothing changed), POST `/api/overlay` (the switches,
+  written into the config; test panels for 20 s; Arrange mode for at most 10 minutes), POST `/api/overlay/layout`.
+  The real panels come in O4-O6; nothing draws them until the window (O2).
+
 ## 2026-10-10 · ExploData's colour tables downloaded, not shipped; the README's credits (branch EDMC-Functionality)
 - The colour tables (EDMC-ExploData: its repository has the GPL v2 text without "or later", and Outrider is now GPL
   v3) leave the repository: `resources/bio_rules.json` ships with no colours, and they are downloaded on the first
