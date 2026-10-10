@@ -250,6 +250,90 @@ class Themes(unittest.TestCase):
         self.assertEqual(O.test_panels(O.palette("minbari"))[0]["style"], "double")
 
 
+class FakeProc:
+    def __init__(self, cmd, cwd=None):
+        self.cmd, self.cwd, self.code, self.pid, self.signals = cmd, cwd, None, 4242, []
+
+    def poll(self):
+        return self.code
+
+    def terminate(self):
+        self.signals.append("term")
+        self.code = 0
+
+    def wait(self, timeout=None):
+        return self.code
+
+    def kill(self):
+        self.signals.append("kill")
+
+
+class Runner(unittest.TestCase):
+    """Outrider runs the overlay window itself (outrider/overlay_runner.py), here with a fake process and clock: nothing
+    is started for real."""
+
+    def setUp(self):
+        import outrider.overlay_runner as R
+        self.R, self.started, self.t, self.qt = R, [], 0.0, True
+        self.run = R.OverlayRunner("http://127.0.0.1:8025", popen=self.popen, has_qt=lambda: self.qt, python="py",
+                                   log=lambda *a: None, clock=lambda: self.t)
+
+    def popen(self, cmd, cwd=None):
+        p = FakeProc(cmd, cwd)
+        self.started.append(p)
+        return p
+
+    def test_runs_while_wanted(self):
+        self.run.tick(False)
+        self.assertEqual((self.started, self.run.status()["state"]), ([], "off"))
+        self.run.tick(True)
+        self.assertEqual(self.started[0].cmd, ["py", "-m", "outrider.overlay_window", "--url", "http://127.0.0.1:8025"])
+        self.run.tick(True)
+        self.assertEqual((len(self.started), self.run.status()["state"]), (1, "running"))   # one window, kept
+        self.run.tick(False)
+        self.assertEqual((self.started[0].signals, self.run.status()["state"]), (["term"], "off"))
+
+    def test_without_pyqt(self):
+        self.qt = False
+        self.run.tick(True)
+        self.assertEqual((self.started, self.run.status()["state"]), ([], "no_qt"))
+        ran = []
+
+        def pip_fails(cmd, **kw):
+            ran.append(cmd)
+            return types.SimpleNamespace(returncode=1, stdout="", stderr="ERROR: No matching distribution found for PyQt6")
+        self.assertTrue(self.run.install(run=pip_fails, background=False))
+        self.assertEqual(ran[0][:5], ["py", "-m", "pip", "install", "--quiet"])
+        self.assertEqual(self.run.status(), {"state": "install_failed", "why": "ERROR: No matching distribution found for PyQt6"})
+        self.run.install(run=lambda cmd, **kw: types.SimpleNamespace(returncode=0, stdout="", stderr=""), background=False)
+        self.qt = True
+        self.run.tick(True)
+        self.assertEqual((len(self.started), self.run.status()["state"]), (1, "starting"))   # installed: started
+
+    def test_crashes_back_off_then_give_up(self):
+        self.run.tick(True)
+        for n in range(1, self.R.CRASHES_MAX + 1):
+            self.started[-1].code = 1                                 # it died
+            self.run.tick(True)
+            if n == self.R.CRASHES_MAX:
+                break
+            self.assertEqual(self.run.status()["state"], "restarting")
+            wait = self.R.BACKOFF_S[min(n - 1, len(self.R.BACKOFF_S) - 1)]
+            self.t += wait - 1
+            self.run.tick(True)
+            self.assertEqual(len(self.started), n)                   # not before the wait
+            self.t += 1
+            self.run.tick(True)
+            self.assertEqual(len(self.started), n + 1)               # then again
+        self.assertEqual(self.run.status()["state"], "failed")
+        self.t += 10_000
+        self.run.tick(True)
+        self.assertEqual(len(self.started), self.R.CRASHES_MAX)      # given up
+        self.run.tick(False)                                         # switched off and on: tries again
+        self.run.tick(True)
+        self.assertEqual(len(self.started), self.R.CRASHES_MAX + 1)
+
+
 class Server(unittest.TestCase):
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")
@@ -338,6 +422,20 @@ class Server(unittest.TestCase):
         self.assertEqual(self.state.overlay_panels(now=1), [])
         self.state.surface_summary = lambda now=None: None
         self.assertEqual(self.state.overlay_panels(now=1), [])
+
+    def test_window_wanted(self):
+        import outrider.overlay_runner as R
+        self.assertFalse(self.state.overlay_wanted(now=100))
+        self.state.overlay_set({"test": True}, now=100)
+        self.assertTrue(self.state.overlay_wanted(now=101))                   # test panels: the window runs for them
+        self.assertFalse(self.state.overlay_wanted(now=101 + O.TEST_SECONDS))
+        self.state.overlay_cfg.update(enabled=True)
+        self.assertTrue(self.state.overlay_wanted(now=500))
+        self.state.overlay_runner = R.OverlayRunner("http://x", popen=None, has_qt=lambda: True, log=lambda *a: None)
+        self.state.overlay_view(window=True, now=500)                         # a window started by hand is drawing
+        self.assertFalse(self.state.overlay_wanted(now=501))                  # no second one
+        self.assertTrue(self.state.overlay_wanted(now=500 + ed_outrider.OVERLAY_SEEN_S + 1))
+        self.assertEqual(self.state.overlay_info(now=600)["runner"], {"state": "off", "why": None})
 
     def test_layout(self):
         out, status = self.state.overlay_layout_set({"body": {"x": 0.4, "scale": 2.0}})

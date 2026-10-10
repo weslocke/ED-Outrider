@@ -7812,6 +7812,24 @@ const OV_PANELS = [["system", "System", "the bodies worth your time, in supercru
                    ["radar", "Surface radar", "on a body's surface: samples, colony rings, the ship"]];
 const OV_CORNERS = {nw: "top left", ne: "top right", sw: "bottom left", se: "bottom right"};
 let overlayDrawn = "", overlayNote = "";
+// the window's state: Outrider runs it on the game PC (o.runner); on a server it runs on the game PC by hand
+function overlayStatusHtml(o) {
+  const r = o.runner;
+  if (o.window) return `<span class="ok">the overlay window is drawing</span>`;
+  if (!r) return `<span class="warnc">this Outrider is not on the game PC: run the overlay window there, ` +
+    `<code>./launch_overlay.sh --url http://&lt;this server&gt;:8025 --password …</code> (Windows: <code>launch_overlay.bat</code>)</span>`;
+  const st = r.state;
+  if (st === "no_qt") return `<span class="warnc">the overlay window needs PyQt6 (about 100 MB, into Outrider's own environment)</span> ` +
+    `<button type="button" class="try" data-ovinstall>Install PyQt6</button>`;
+  if (st === "installing") return `<span class="unk">installing PyQt6… (a minute or two)</span>`;
+  if (st === "install_failed") return `<span class="bad">installing PyQt6 failed: ${esc(r.why || "?")}</span> ` +
+    `<button type="button" class="try" data-ovinstall>Try again</button>`;
+  if (st === "starting") return `<span class="unk">starting the overlay window…</span>`;
+  if (st === "running") return `<span class="unk">the overlay window is running, waiting for the game's window</span>`;
+  if (st === "restarting") return `<span class="warnc">the overlay window ${esc(r.why || "stopped")}</span>`;
+  if (st === "failed") return `<span class="bad">the overlay window: ${esc(r.why || "it stopped")}</span>`;
+  return `<span class="unk">the overlay window starts when the overlay is on (or for the test panels)</span>`;
+}
 function overlayHtml(o) {
   if (!o) return `<div class="unk">not known yet</div>`;
   const opt = (vals, cur, label = v => v) => vals.map(v => `<option value="${v}"${v === cur ? " selected" : ""}>${esc(label(v))}</option>`).join("");
@@ -7828,9 +7846,7 @@ function overlayHtml(o) {
       `<td><a href="#" data-ovreset="${id}" title="back to where it started">reset</a></td></tr>`;
   }).join("");
   return `<label class="mod"><input type="checkbox" data-ov="enabled"${o.enabled ? " checked" : ""}> <b>Show the overlay</b> <span class="hint">the panels below, when they have something to say</span></label>` +
-    `<div class="hint">${o.window ? `<span class="ok">an overlay window is drawing</span>`
-      : `<span class="warnc">no overlay window is running, so nothing is drawn (test panels included): start it on the game PC, ` +
-        `<code>./launch_overlay.sh</code> in Outrider's folder (Windows: <code>launch_overlay.bat</code>)</span>`}</div>` +
+    `<div class="hint">${overlayStatusHtml(o)}</div>` +
     OV_PANELS.map(([id, name, what]) => `<label class="mod"><input type="checkbox" data-ovpanel="${id}"${(o.panels || {})[id] ? " checked" : ""}> ${name} <span class="hint">${esc(what)}</span></label>`).join("") +
     `<div class="mod">Theme <select data-ov="theme">${opt(OV_THEMES, o.theme)}</select> · text <select data-ov="text_size">${opt(["small", "normal", "large"], o.text_size)}</select></div>` +
     `<div class="mod"><button type="button" class="try" data-ovact="test">${o.test ? `test panels: ${o.test} s` : "▶ Show test panels"}</button> ` +
@@ -7874,12 +7890,15 @@ document.getElementById("overlayBox").addEventListener("change", e => {
 });
 document.getElementById("overlayBox").addEventListener("click", e => {
   const act = e.target.closest("[data-ovact]"), reset = e.target.closest("[data-ovreset]");
+  if (e.target.closest("[data-ovinstall]")) { overlayPost("api/overlay/install", {}); return; }
   if (act) {
     const on = !(data.overlay || {})[act.dataset.ovact];
     overlayPost("api/overlay", {[act.dataset.ovact]: on}).then(() => {
-      // no window to draw them: say so, or the button seems to do nothing (the author, 2026-10-10)
-      if (on && !overlayNote && data.overlay && !data.overlay.window) {
-        overlayNote = "On, but no overlay window is running to draw anything: start ./launch_overlay.sh on the game PC.";
+      // nothing can draw them yet: say why, or the button seems to do nothing (the author, 2026-10-10)
+      const o = data.overlay;
+      if (on && !overlayNote && o && !o.window && (!o.runner || ["no_qt", "install_failed", "failed"].includes(o.runner.state))) {
+        overlayNote = o.runner ? "On, but the overlay window cannot run yet: see above." :
+          "On, but no overlay window is running to draw anything: start ./launch_overlay.sh on the game PC.";
         overlayDrawn = ""; renderOverlay();
       }
     });

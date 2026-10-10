@@ -4212,23 +4212,25 @@ const settle = async maxMs => {
       ? (posted.push([String(u).replace(/.*api\//, ""), JSON.parse(o.body)]), json({layout: w.eval("data.overlay.layout")})) : real(u, o);
     const saved = w.eval("JSON.stringify(data.overlay || null)");
     w.eval(`data.overlay = {enabled: true, theme: "elite", text_size: "normal", panels: {system: true, body: false, radar: true},
-      window: false, test: 0, arrange: 0, layout: {system: {corner: "nw", x: 0.02, y: 0.16, scale: 1, bg: 0.65, alpha: 1},
+      window: false, test: 0, arrange: 0, runner: {state: "no_qt", why: null}, layout: {system: {corner: "nw", x: 0.02, y: 0.16, scale: 1, bg: 0.65, alpha: 1},
       body: {corner: "ne", x: 0.02, y: 0.16, scale: 1.2, bg: 0.5, alpha: 0.8}, radar: {corner: "se", x: 0.02, y: 0.1, scale: 1, bg: 0.5, alpha: 1}}};
       overlayDrawn = ""; renderOverlay();`);
     const d = w.document, box = d.getElementById("overlayBox");
     const got = {rows: box.querySelectorAll("table.ovlay tbody tr").length, body: box.querySelector('[data-ovlay="body"][data-k="scale"]').value,
                  off: !box.querySelector('[data-ovpanel="body"]').checked, theme: box.querySelector('[data-ov="theme"]').value,
-                 nowin: /no overlay window/.test(box.textContent)};
+                 nowin: /needs PyQt6/.test(box.textContent) && !!box.querySelector("[data-ovinstall]")};
     const x = box.querySelector('[data-ovlay="radar"][data-k="x"]');
     x.value = "30"; x.dispatchEvent(new w.Event("change", {bubbles: true}));
     box.querySelector('[data-ovact="test"]').click();
     await sleep(100);
+    got.note = /cannot run yet/.test(w.eval("overlayNote"));   // nothing can draw yet: the button says why
+    box.querySelector("[data-ovinstall]").click();   // Settings' Install PyQt6: Outrider installs it for its own window
+    await sleep(100);
     got.posted = posted;
-    got.note = /no overlay window is running to draw anything/.test(box.textContent);   // no window: the button says why nothing shows
     w.fetch = real;
     w.eval(`data.overlay = JSON.parse(${JSON.stringify(saved)}); overlayNote = ""; overlayDrawn = ""; renderOverlay();`);
-    const want = {rows: 3, body: "120", off: true, theme: "elite", nowin: true,
-                  posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}]], note: true};
+    const want = {rows: 3, body: "120", off: true, theme: "elite", nowin: true, note: true,
+                  posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}], ["overlay/install", {}]]};
     const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && ok;
     console.log(ok ? "OK" : "FAIL", "| settings: in-game overlay |", ok ? "switches, panels' places, a change and the test button posted" : JSON.stringify(got), errors.slice(before));

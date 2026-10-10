@@ -202,6 +202,7 @@ import outrider.edsm       # EDSM's journal upload: the events with where you we
 import outrider.checklist  # the exobiology checklist: every species by region, with your state (pure)
 import outrider.codex_images  # the checklists' pictures: Canonn's links and credits, refreshed once a day
 import outrider.overlay    # the in-game overlay's panels as draw lists (the window: python3 -m outrider.overlay_window)
+import outrider.overlay_runner  # Outrider runs that window itself on the game PC while the overlay is wanted
 from outrider.core import iso_ts, ts_seconds   # journal timestamps
 from outrider.fsd import (   # the frame shift drive's maths: range, fuel per jump, the fuel model, fleet figures
     FSD_RANGE_MODS, GUARDIAN_BOOST, conservative_optimal_mass, conservative_range, fleet_figures, fleet_range, fsd_range,
@@ -279,6 +280,7 @@ AUTOTARGET_HONK_WAIT = 60       # s an auto-target waits for an auto honk on the
 OVERLAY_HIDE_FOCUS = {6, 7, 8, 9, 10, 11}   # Status.json GuiFocus: galaxy map, system map, orrery, FSS, SAA, codex (no panels over them)
 FLAG_SUPERCRUISE = 1 << 4
 OVERLAY_UA = "outrider-overlay"   # the overlay window's User-Agent (outrider/overlay_window.py): only it counts as drawing
+OVERLAY_TICK_S = 2             # s between checks that the overlay window runs while wanted
 OVERLAY_SEEN_S = 5             # s: an overlay window that asked this recently counts as connected (Settings says so)
 AUTOTARGET_DANGER_WAIT = 60     # s after an arrival a run waits for the game's own in-danger flag to clear (see arrival_danger_until)
 # The Highway map's optional background image ([highway] background_image): only the configured file is served
@@ -5562,6 +5564,7 @@ class State:
         self.overlay_test_until = 0.0
         self.overlay_arrange_until = 0.0
         self.overlay_seen = 0.0
+        self.overlay_runner = None   # outrider.overlay_runner.OverlayRunner on the game PC (run() makes it; None in tests)
         self._hw_copied = (meta_get(db, "highway") or {}).get("arrival_ts")   # copied before a restart: not again
         self._autotarget_boost = (journals.boost or {}).get("ts")
         self.autotarget_task = None
@@ -6670,6 +6673,26 @@ class State:
             return {"same": True, "version": version}
         return dict(out, version=version)
 
+    def overlay_wanted(self, now=None):
+        """Whether Outrider should run the overlay window now: the overlay on, or the test panels or Arrange mode,
+        unless another overlay window (one started by hand) is already drawing."""
+        now = time.time() if now is None else now
+        want = bool(self.overlay_cfg.get("enabled")) or now < self.overlay_test_until or now < self.overlay_arrange_until
+        r = self.overlay_runner
+        other = r is not None and r.proc is None and r.state == "off" and now - self.overlay_seen < OVERLAY_SEEN_S
+        return want and not other
+
+    async def watch_overlay_window(self):
+        """Keep the overlay window running while it is wanted (OverlayRunner.tick every OVERLAY_TICK_S)."""
+        last = None
+        while True:
+            self.overlay_runner.tick(self.overlay_wanted())
+            st = self.overlay_runner.status()
+            if st != last:
+                last = st
+                self.bump()   # Settings shows the window's state
+            await asyncio.sleep(OVERLAY_TICK_S)
+
     def overlay_info(self, now=None):
         """The page's Settings -> In-game overlay: the switches, whether a window is drawing (it asked within the last
         few seconds), the layout, and the test panels' and Arrange mode's time left."""
@@ -6678,7 +6701,9 @@ class State:
         return {"enabled": bool(cfg.get("enabled")), "theme": cfg.get("theme"), "text_size": cfg.get("text_size"),
                 "panels": {p: bool(cfg.get(f"{p}_panel" if p != "radar" else "radar")) for p in outrider.overlay.PANELS},
                 "window": now - self.overlay_seen < OVERLAY_SEEN_S, "layout": self.overlay_layout(),
-                "test": max(0, round(self.overlay_test_until - now)), "arrange": max(0, round(self.overlay_arrange_until - now))}
+                "test": max(0, round(self.overlay_test_until - now)), "arrange": max(0, round(self.overlay_arrange_until - now)),
+                # Outrider runs the window itself on the game PC: its state; None on a server (the window runs elsewhere)
+                "runner": self.overlay_runner.status() if self.overlay_runner else None}
 
     def overlay_set(self, body, now=None):
         """POST /api/overlay {enabled?, theme?, text_size?, panels?: {system|body|radar: bool}, test?: bool, arrange?:
@@ -13576,6 +13601,14 @@ def make_app(state, hosts=None):
         out, status = state.overlay_set(await json_object(request))
         return web.json_response(out, status=status)
 
+    async def overlay_install_post(_request):
+        """POST /api/overlay/install: PyQt6 into Outrider's own environment, for the overlay window (game PC only)."""
+        if not state.overlay_runner:
+            return web.json_response({"error": "the overlay window is not run by this Outrider"}, status=409)
+        state.overlay_runner.install()
+        state.bump()
+        return web.json_response(state.overlay_info())
+
     async def overlay_layout_post(request):
         body = await json_object(request)
         out, status = state.overlay_layout_set(body if body is not None else None)
@@ -13745,6 +13778,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/overlay", overlay_get)
     app.router.add_post("/api/overlay", overlay_post)
     app.router.add_post("/api/overlay/layout", overlay_layout_post)
+    app.router.add_post("/api/overlay/install", pc_only(overlay_install_post))
     app.router.add_get("/api/rail", rail_view)
     app.router.add_post("/api/ask", ask_view)
     app.router.add_get("/api/config", config_get_view)
@@ -14205,6 +14239,12 @@ async def run(args, st):
     firsts_task = asyncio.create_task(state.watch_firsts()) if st["watch_firsts"] else None
     update_task = asyncio.create_task(state.watch_updates()) if st["update_check"] else None
     images_task = asyncio.create_task(state.watch_codex_images())   # the checklists' picture links, once a day
+    # the in-game overlay's window, run by Outrider on the game PC while the overlay is wanted (never on a server,
+    # under --simulate or with OUTRIDER_NO_OVERLAY_WINDOW: verify.sh's scratch server)
+    overlay_task = None
+    if state.game_pc and not state.simulate and not os.environ.get(outrider.overlay_runner.NO_WINDOW_ENV):
+        state.overlay_runner = outrider.overlay_runner.OverlayRunner(f"http://127.0.0.1:{args.port}")
+        overlay_task = asyncio.create_task(state.watch_overlay_window())
     # uploads: their own session (never queued behind Spansh), named and versioned as EDDN asks of a sender
     state.upload_session = ClientSession(timeout=ClientTimeout(total=20),
                                          headers={"User-Agent": f"ED-Outrider/{outrider.__version__}"})
@@ -14254,7 +14294,9 @@ async def run(args, st):
             state._honk_cancel.set()      # an auto honk holding Primary Fire lets go now (it held on for up to 20 s)
         if state.honker:
             state.honker.shutdown()       # ...and a press still waiting for the keyboard is refused
-        tasks = [t for t in (watcher, rules_task, button_task, firsts_task, update_task, images_task,   # the quit backup: finish_backup
+        if state.overlay_runner:
+            state.overlay_runner.stop()   # the overlay window closes with Outrider
+        tasks = [t for t in (watcher, rules_task, button_task, firsts_task, update_task, images_task, overlay_task,   # the quit backup: finish_backup
                              *state.background_tasks()) if t]
         for t in tasks:
             t.cancel()

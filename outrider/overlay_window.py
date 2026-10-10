@@ -668,6 +668,10 @@ def main(argv=None):
     elif sys.platform.startswith("linux") and os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland" \
             and not os.environ.get("QT_QPA_PLATFORM"):
         os.environ["QT_QPA_PLATFORM"] = "xcb"   # XWayland: a Wayland window cannot place itself over the game
+    if os.environ.get("QT_QPA_PLATFORM") == "xcb":
+        # Qt's GNOME theme starts Gtk, which follows GDK_BACKEND (wayland on a GNOME session): on the same X display
+        # as Qt, or without a Wayland display it exits the program
+        os.environ["GDK_BACKEND"] = "x11"
     try:
         from PyQt6.QtWidgets import QApplication
     except ImportError:

@@ -25,18 +25,21 @@ No panel covers the galaxy or system map, the orrery, the FSS, the SAA or the co
 
 ## Starting it
 
-1. In Outrider's **⚙ Settings → In-game overlay**, tick **Show the overlay**.
-2. On the game PC, in Outrider's folder: `./launch_overlay.sh` (Windows: `launch_overlay.bat`). The first time it
-   offers to install PyQt6 (about 100 MB) into Outrider's own environment. On Linux it needs `wmctrl` and `xprop` /
-   `xwininfo` (Debian and Ubuntu: `sudo apt install wmctrl x11-utils`) to find Elite's window.
+1. In Outrider's **⚙ Settings → In-game overlay**, tick **Show the overlay**. Outrider starts the overlay window itself
+   on the game PC (and closes it when you untick it or stop Outrider): one application, nothing else to run.
+2. The first time, Settings says the window needs PyQt6 (about 100 MB): press **Install PyQt6**, and it goes into
+   Outrider's own environment. On Linux the window finds Elite's with `wmctrl` and `xprop` / `xwininfo` (Debian and
+   Ubuntu: `sudo apt install wmctrl x11-utils`).
 3. Play Elite **borderless or windowed**; exclusive fullscreen hides anything drawn over it.
 
-Settings → In-game overlay says whether a window is drawing. **Show test panels** draws all three with made-up
-contents for 20 seconds, without flying anywhere.
+Settings → In-game overlay says how the window is doing (starting, drawing, waiting for the game's window). **Show
+test panels** draws all three with made-up contents for 20 seconds, without flying anywhere. Start Outrider from your
+desktop (the launcher, or a terminal in your session): the window needs your screen.
 
-**Outrider on a server (Docker):** the window still runs on the game PC, pointed at the server:
-`./launch_overlay.sh --url http://192.168.1.81:8025 --password ...` (its `[server]` password), or set `[overlay]
-url` and `password` in the config file on the game PC.
+**Outrider on a server (Docker):** a container has no screen, so the window runs on the game PC instead, pointed at
+the server: in a copy of Outrider's folder there, `./launch_overlay.sh --url http://192.168.1.81:8025 --password ...`
+(its `[server]` password; Windows: `launch_overlay.bat`), which offers to install PyQt6 the first time. If Outrider
+also runs on the game PC, nothing is needed: that one runs the window.
 
 ## Arranging the panels
 

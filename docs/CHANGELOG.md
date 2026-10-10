@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: Outrider runs the window itself (branch EDMC-Functionality)
+- On the game PC, Outrider starts the overlay window while the overlay is on (or for the test panels and Arrange mode),
+  closes it when it is switched off and when Outrider stops, and starts it again after a crash (a growing wait; it
+  gives up after five in a row and says so). One application: launch_overlay.sh is only for an Outrider on a server.
+  It does not start a second window when one started by hand is drawing.
+- Without PyQt6, Settings -> In-game overlay says so with an **Install PyQt6** button (into Outrider's own
+  environment); the window's state is shown there (starting, drawing, restarting, failed).
+- The window sets GDK_BACKEND=x11 when it runs through XWayland: Qt's GNOME theme starts Gtk, which followed the
+  session's GDK_BACKEND=wayland and could exit the window.
+
 ## 2026-10-10 · Overlay: say when no window is running (branch EDMC-Functionality)
 - Show test panels (or Arrange panels) with no overlay window running looked like it did nothing: the panels are drawn
   by the window on the game PC. Settings -> In-game overlay now says so with the command to start it

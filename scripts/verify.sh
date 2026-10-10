@@ -103,7 +103,8 @@ EOF
   # Offline: every outside service goes to a closed local port, the bio-rules check keeps the shipped copy
   # (it would otherwise rewrite resources/bio_rules.json) and a missing Piper voice is not downloaded.
   # --journals: the fixture copy, whatever ED_JOURNALS says (the flag beats the environment, which beats the config)
-  "$PY" - --config "$TMP/scratch.toml" --db "$TMP/scratch.sqlite" --port "$PORT" --host 127.0.0.1 --journals "$TMP/journals" \
+  # OUTRIDER_NO_OVERLAY_WINDOW: never the overlay window on this machine's screen (Outrider runs it on a game PC)
+  OUTRIDER_NO_OVERLAY_WINDOW=1 "$PY" - --config "$TMP/scratch.toml" --db "$TMP/scratch.sqlite" --port "$PORT" --host 127.0.0.1 --journals "$TMP/journals" \
       >"$TMP/server.log" 2>&1 <<'EOF' &
 import sys
 sys.path.insert(0, ".")
