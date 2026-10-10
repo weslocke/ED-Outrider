@@ -3,8 +3,8 @@
 Newest first, one entry per commit.
 
 ## 2026-10-10 · ExploData's colour tables downloaded, not shipped; the README's credits (branch EDMC-Functionality)
-- The colour tables (EDMC-ExploData: its repository has the GPL v2 text without "or later", and Outrider is now GPL
-  v3) leave the repository: `resources/bio_rules.json` ships with no colours, and they are downloaded on the first
+- The colour tables (EDMC-ExploData: its repository carries only the GPL v2 text, without "or later") leave the
+  repository: `resources/bio_rules.json` ships with no colours, and they are downloaded on the first
   start into `resources/bio_colours.json` (git- and docker-ignored), merged in when the rules load and refreshed with
   them; a missing colours file makes the rules out of date, so a fresh install or a new container fetches it. If
   ExploData cannot be fetched, the colours already downloaded are kept. BioScan's rules and the region map still

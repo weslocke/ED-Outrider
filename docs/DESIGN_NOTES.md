@@ -183,9 +183,9 @@ upstream project's choices, not rules of the game.
   seconds") and presses nothing meanwhile; the co-pilot button's second press cancels it like the countdown.
   Interdicted, the FSD charging, or still in danger past the minute: refused as a real danger. Once the map's close
   key went down, an FSD charge or a jump is a success when the target is set (you set off before step 7 looked).
-- **ExploData's colour tables are downloaded, never shipped** (the author, 2026-10-10). Outrider became GPL v3 with
-  the overlay; EDMC-ExploData's repository carries the GPL v2 text without "or later", so its tables are not in the
-  repository or the Docker image: `resources/bio_colours.json` is fetched on the first start (and refreshed with the
+- **ExploData's colour tables are downloaded, never shipped** (the author, 2026-10-10). EDMC-ExploData's repository
+  carries the GPL v2 text without "or later", so its tables are kept out of the repository and the Docker image, and
+  Outrider's own licence does not depend on them: `resources/bio_colours.json` is fetched on the first start (and refreshed with the
   rules) and merged in at load. A first start offline has no colour check, which costs nothing: the game cannot be
   played offline either. BioScan's rules (GPL v2 or later) and the region map (MIT) still ship. The colony distances
   are the game's (the Genetic Sampler shows them), kept in `outrider/bio.py`.
