@@ -3574,7 +3574,7 @@ const settle = async maxMs => {
     const want = {colony: [500, null, " · 1,000 m"], sortTh: ["dist", "grav", "now", "max"], sortCycle: ["dist", "-dist rev", "max"],
       nearCycle: ["value", "-value", "distance"], treeSort: "max", halves: [true, true, true], halvesOff: false, matRow: true, link: ["linked · 2 s", "linked"],
       stale: ["stale · 48 s", "stale"], none: ["no link · retrying since 14:02", "none"], pill: true,
-      chips: ["Alerts", "Voice", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Auto honk", "Uploads", "Display", "Sharing", "Server", "Spoken lines"],
+      chips: ["Alerts", "Voice", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Auto honk", "Uploads", "In-game overlay", "Display", "Sharing", "Server", "Spoken lines"],
       autoSmall: true, autoBig: false, line: true, cut: true};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodB12 = !bad.length && errors.length === before;
@@ -4199,10 +4199,38 @@ const settle = async maxMs => {
     await sleep(100);
     got.push(w.eval(`JSON.stringify(Object.values(JSON.parse(localStorage.getItem("settingsOpen"))).some(Boolean))`));
     w.eval(`document.getElementById("alertDialog").close ? document.getElementById("alertDialog").close() : document.getElementById("alertDialog").removeAttribute("open")`);
-    const want = ["Settings", true, 13, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, autohonk: {enabled: true}}), "false"];
+    const want = ["Settings", true, 14, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, autohonk: {enabled: true}}), "false"];
     const goodS = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodS;
     console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "12 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
+  }
+  // Settings > In-game overlay: the switches and each panel's place from data.overlay; a change posts it (stubbed)
+  {
+    const w = dom.window, before = errors.length, real = w.fetch, posted = [];
+    const json = body => Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
+    w.fetch = (u, o) => /api\/overlay/.test(String(u)) && o && o.method === "POST"
+      ? (posted.push([String(u).replace(/.*api\//, ""), JSON.parse(o.body)]), json({layout: w.eval("data.overlay.layout")})) : real(u, o);
+    const saved = w.eval("JSON.stringify(data.overlay || null)");
+    w.eval(`data.overlay = {enabled: true, theme: "elite", text_size: "normal", panels: {system: true, body: false, radar: true},
+      window: false, test: 0, arrange: 0, layout: {system: {corner: "nw", x: 0.02, y: 0.16, scale: 1, bg: 0.65, alpha: 1},
+      body: {corner: "ne", x: 0.02, y: 0.16, scale: 1.2, bg: 0.5, alpha: 0.8}, radar: {corner: "se", x: 0.02, y: 0.1, scale: 1, bg: 0.5, alpha: 1}}};
+      overlayDrawn = ""; renderOverlay();`);
+    const d = w.document, box = d.getElementById("overlayBox");
+    const got = {rows: box.querySelectorAll("table.ovlay tbody tr").length, body: box.querySelector('[data-ovlay="body"][data-k="scale"]').value,
+                 off: !box.querySelector('[data-ovpanel="body"]').checked, theme: box.querySelector('[data-ov="theme"]').value,
+                 nowin: /no overlay window/.test(box.textContent)};
+    const x = box.querySelector('[data-ovlay="radar"][data-k="x"]');
+    x.value = "30"; x.dispatchEvent(new w.Event("change", {bubbles: true}));
+    box.querySelector('[data-ovact="test"]').click();
+    await sleep(100);
+    got.posted = posted;
+    w.fetch = real;
+    w.eval(`data.overlay = JSON.parse(${JSON.stringify(saved)}); overlayDrawn = ""; renderOverlay();`);
+    const want = {rows: 3, body: "120", off: true, theme: "elite", nowin: true,
+                  posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}]]};
+    const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && ok;
+    console.log(ok ? "OK" : "FAIL", "| settings: in-game overlay |", ok ? "switches, panels' places, a change and the test button posted" : JSON.stringify(got), errors.slice(before));
   }
   // Settings > Voice > More voices: Piper's catalogue from the server (stubbed here: no network), one language at a time;
   // "Download and use" asks the server for that voice (POST api/voice, stubbed: nothing downloads)

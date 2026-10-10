@@ -2508,6 +2508,7 @@ function unsoldHtml(u) {
 
 function render() {
   renderUploads();
+  renderOverlay();
   if (!data) return;
   if (TABLET) tabAutoView();   // the surface map's switch to Now and back, before the views are shown
   const bms = bmMap();
@@ -7803,6 +7804,76 @@ document.getElementById("uploadsBox").addEventListener("click", async e => {
     row.querySelectorAll("input").forEach(i => i.blur());   // Safari leaves the focus in the field: no redraw then
     uploadsDrawn = ""; renderUploads();
   }
+});
+// Settings -> In-game overlay (data.overlay: State.overlay_info): the switches, whether a window is drawing, the test
+// panels and Arrange mode, and each panel's place, size and transparency (POST api/overlay, api/overlay/layout)
+const OV_THEMES = ["default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark"];
+const OV_PANELS = [["system", "System", "the bodies worth your time, in supercruise"], ["body", "Body", "the body you are heading to or near"],
+                   ["radar", "Surface radar", "on a body's surface: samples, colony rings, the ship"]];
+const OV_CORNERS = {nw: "top left", ne: "top right", sw: "bottom left", se: "bottom right"};
+let overlayDrawn = "", overlayNote = "";
+function overlayHtml(o) {
+  if (!o) return `<div class="unk">not known yet</div>`;
+  const opt = (vals, cur, label = v => v) => vals.map(v => `<option value="${v}"${v === cur ? " selected" : ""}>${esc(label(v))}</option>`).join("");
+  const pct = v => Math.round(v * 100);
+  const lay = o.layout || {};
+  const rows = OV_PANELS.map(([id, name]) => {
+    const e = lay[id] || {};
+    const num = (k, v, min, max, title) => `<td><input type="number" data-ovlay="${id}" data-k="${k}" min="${min}" max="${max}" step="1" value="${v}" title="${title}" style="width:4.5em"></td>`;
+    return `<tr><th>${name}</th><td><select data-ovlay="${id}" data-k="corner" title="the corner of the game window it is placed from">${opt(Object.keys(OV_CORNERS), e.corner, c => OV_CORNERS[c])}</select></td>` +
+      num("x", pct(e.x || 0), 0, 95, "how far in from that corner's side, in % of the game window's width") +
+      num("y", pct(e.y || 0), 0, 95, "how far in from that corner's top or bottom, in % of the game window's height") +
+      num("scale", pct(e.scale || 1), 50, 250, "its size, in %") + num("bg", pct(e.bg ?? 0.65), 0, 100, "its background's opacity, in % (0: text only)") +
+      num("alpha", pct(e.alpha ?? 1), 10, 100, "the whole panel's opacity, in %") +
+      `<td><a href="#" data-ovreset="${id}" title="back to where it started">reset</a></td></tr>`;
+  }).join("");
+  return `<label class="mod"><input type="checkbox" data-ov="enabled"${o.enabled ? " checked" : ""}> <b>Show the overlay</b> <span class="hint">the panels below, when they have something to say</span></label>` +
+    `<div class="hint">${o.window ? `<span class="ok">an overlay window is drawing</span>` : `<span class="unk">no overlay window is running: start it on the game PC (below)</span>`}</div>` +
+    OV_PANELS.map(([id, name, what]) => `<label class="mod"><input type="checkbox" data-ovpanel="${id}"${(o.panels || {})[id] ? " checked" : ""}> ${name} <span class="hint">${esc(what)}</span></label>`).join("") +
+    `<div class="mod">Theme <select data-ov="theme">${opt(OV_THEMES, o.theme)}</select> · text <select data-ov="text_size">${opt(["small", "normal", "large"], o.text_size)}</select></div>` +
+    `<div class="mod"><button type="button" class="try" data-ovact="test">${o.test ? `test panels: ${o.test} s` : "▶ Show test panels"}</button> ` +
+    `<button type="button" class="try" data-ovact="arrange">${o.arrange ? `✓ Done arranging (${Math.ceil(o.arrange / 60)} min left)` : "✥ Arrange panels"}</button></div>` +
+    `<table class="ovlay"><thead><tr><th></th><th>Placed from</th><th>Across %</th><th>Down %</th><th>Size %</th><th>Background %</th><th>Panel %</th><th></th></tr></thead><tbody>${rows}</tbody></table>` +
+    `<div class="hint" id="overlayMsg">${esc(overlayNote)}</div>`;
+}
+function renderOverlay() {
+  const box = document.getElementById("overlayBox");
+  if (!box || !data) return;
+  if (box.contains(document.activeElement) && /^(INPUT|SELECT)$/.test(document.activeElement.tagName) && document.activeElement.type !== "checkbox") return;
+  const html = overlayHtml(data.overlay);
+  if (html === overlayDrawn) return;
+  box.innerHTML = html; overlayDrawn = html;
+}
+async function overlayPost(path, body) {
+  try {
+    const j = await apiJson(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    overlayNote = j.error || j.note || "";
+    if (!j.error && data.overlay) {
+      if (j.layout) data.overlay.layout = j.layout;
+      else { delete j.note; data.overlay = j; }
+    }
+  } catch (err) {
+    overlayNote = `could not reach Outrider: ${err.message}`;
+  } finally {
+    overlayDrawn = ""; renderOverlay();
+  }
+}
+document.getElementById("overlayBox").addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.ov === "enabled") overlayPost("api/overlay", {enabled: t.checked});
+  else if (t.dataset.ov) overlayPost("api/overlay", {[t.dataset.ov]: t.value});
+  else if (t.dataset.ovpanel) overlayPost("api/overlay", {panels: {[t.dataset.ovpanel]: t.checked}});
+  else if (t.dataset.ovlay) {
+    const k = t.dataset.k, v = k === "corner" ? t.value : Number(t.value) / 100;
+    if (k !== "corner" && !isFinite(v)) return;
+    t.blur();
+    overlayPost("api/overlay/layout", {[t.dataset.ovlay]: {[k]: v}});
+  }
+});
+document.getElementById("overlayBox").addEventListener("click", e => {
+  const act = e.target.closest("[data-ovact]"), reset = e.target.closest("[data-ovreset]");
+  if (act) overlayPost("api/overlay", {[act.dataset.ovact]: !(data.overlay || {})[act.dataset.ovact]});
+  else if (reset) { e.preventDefault(); overlayPost("api/overlay/layout", {[reset.dataset.ovreset]: {reset: true}}); }
 });
 // Canonn's Bioforge: what is known of a codex entry across the galaxy (where it grows, the conditions)
 const bioforgeLink = id => Number.isInteger(id) && id > 0

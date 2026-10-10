@@ -68,6 +68,48 @@ class LayoutInPixels(unittest.TestCase):
         self.assertIsNone(W.screen_for([], 0, 0))
 
 
+class Arranging(unittest.TestCase):
+    """Arrange mode's maths: which panel a press is on, what a drag or the wheel makes of its layout."""
+
+    def test_hit(self):
+        geoms = [("system", (10, 10, 200, 100)), ("body", (150, 50, 200, 100))]
+        self.assertEqual(W.hit(geoms, 20, 20), ("system", "move"))
+        self.assertEqual(W.hit(geoms, 160, 60), ("body", "move"))                     # the one drawn last is on top
+        self.assertEqual(W.hit(geoms, 345, 145), ("body", "resize"))                  # its corner handle
+        self.assertIsNone(W.hit(geoms, 500, 500))
+        x, y, w, h = W.done_rect(1920)
+        self.assertTrue(W.inside((x, y, w, h), 960, y + 5))
+
+    def test_drag_moves_and_keeps_inside(self):
+        e = dict(O.LAYOUT_DEFAULT["system"])
+        start = W.panel_rect(e, 400, 100, 1920, 1080)
+        moved = W.dragged(e, start, 1300, 800, "move", 400, 100, 1920, 1080)
+        self.assertEqual(moved["corner"], "se")                                     # dropped bottom right: kept from there
+        x, y, w, h = W.panel_rect(moved, 400, 100, 1920, 1080)
+        self.assertAlmostEqual(x, start[0] + 1300, delta=1)
+        far = W.dragged(e, start, 99999, 99999, "move", 400, 100, 1920, 1080)
+        x, y, w, h = W.panel_rect(far, 400, 100, 1920, 1080)
+        self.assertLessEqual(x + w, 1920 + 1e-6)
+        self.assertLessEqual(y + h, 1080 + 1e-6)
+
+    def test_drag_corner_sizes(self):
+        e = dict(O.LAYOUT_DEFAULT["system"])
+        start = W.panel_rect(e, 400, 100, 1920, 1080)
+        bigger = W.dragged(e, start, start[2] / 2, 0, "resize", 400, 100, 1920, 1080)
+        self.assertAlmostEqual(bigger["scale"], 1.5, places=3)
+        x, y, w, h = W.panel_rect(bigger, 400, 100, 1920, 1080)
+        self.assertAlmostEqual((x, y), start[:2], delta=1)                         # its top left stays put
+        self.assertEqual(W.dragged(e, start, 99999, 0, "resize", 400, 100, 1920, 1080)["scale"], O.LIMITS["scale"][1])
+        self.assertEqual(W.dragged(e, start, -99999, 0, "resize", 400, 100, 1920, 1080)["scale"], O.LIMITS["scale"][0])
+
+    def test_wheel(self):
+        e = dict(O.LAYOUT_DEFAULT["system"], bg=0.65, alpha=1.0)
+        self.assertEqual(W.wheeled(e, "bg", 2)["bg"], 0.75)
+        self.assertEqual(W.wheeled(e, "bg", -100)["bg"], 0.0)
+        self.assertEqual(W.wheeled(e, "alpha", 3)["alpha"], 1.0)
+        self.assertEqual(W.wheeled(e, "alpha", -100)["alpha"], O.LIMITS["alpha"][0])
+
+
 class Tracking(unittest.TestCase):
     WMCTRL = ("0x04400003  0 0    0    2560 1440 steam_app_359320.steam_app_359320  pc Elite - Dangerous (CLIENT)\n"
               "0x03000007  0 100  100  800  600  firefox.Firefox  pc Elite - Dangerous wiki - Mozilla Firefox\n"

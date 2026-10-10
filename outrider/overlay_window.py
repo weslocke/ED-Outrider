@@ -74,6 +74,55 @@ def place(x, y, w, h, win_w, win_h):
             "y": round(min(hi_y, max(lo_y, oy / win_h)), 4) if win_h else 0.0}
 
 
+# ---- Arrange mode (pure): which panel is under the mouse, what a drag or the wheel makes of its layout ----
+
+HANDLE_PX = 16          # the square at a panel's bottom-right corner that sizes it
+DONE_W, DONE_H = 220, 34
+WHEEL_STEP = 0.05       # one wheel notch: this much more or less opacity
+
+
+def done_rect(win_w):
+    """Arrange mode's Done button, at the top middle of the game window: (x, y, w, h)."""
+    return win_w / 2 - DONE_W / 2, 10, DONE_W, DONE_H
+
+
+def inside(rect, x, y):
+    rx, ry, rw, rh = rect
+    return rx <= x <= rx + rw and ry <= y <= ry + rh
+
+
+def hit(geoms, x, y):
+    """geoms: [(panel id, (x, y, w, h))] in drawing order. The topmost panel under (x, y) and what a press there does:
+    (id, "resize") on its corner handle, (id, "move") elsewhere on it; None off every panel."""
+    for pid, (px, py, pw, ph) in reversed(geoms):
+        if inside((px, py, pw, ph), x, y):
+            return pid, ("resize" if x >= px + pw - HANDLE_PX and y >= py + ph - HANDLE_PX else "move")
+    return None
+
+
+def dragged(entry, start_rect, dx, dy, mode, nat_w, nat_h, win_w, win_h):
+    """A panel's layout entry after dragging (dx, dy) px from where it was (start_rect): moved (kept inside the
+    window), or sized from its corner handle (top left kept, the aspect kept, the scale within LIMITS); its corner and
+    offsets re-chosen from where it ends up (place)."""
+    x, y, w, h = start_rect
+    if mode == "move":
+        nx = min(max(0.0, x + dx), max(0.0, win_w - w))
+        ny = min(max(0.0, y + dy), max(0.0, win_h - h))
+        return dict(entry, **place(nx, ny, w, h, win_w, win_h))
+    lo, hi = O.LIMITS["scale"]
+    gx, gy = (dx / w if w else 0.0), (dy / h if h else 0.0)
+    grow = gx if abs(gx) >= abs(gy) else gy   # the direction dragged more: smaller as well as bigger
+    scale = round(min(hi, max(lo, entry["scale"] * (1 + grow))), 4)
+    s = base_scale(win_h) * scale
+    return dict(entry, scale=scale, **place(x, y, nat_w * s, nat_h * s, win_w, win_h))
+
+
+def wheeled(entry, key, notches):
+    """The entry with its background's ("bg") or whole panel's ("alpha") opacity moved by `notches` wheel steps."""
+    lo, hi = O.LIMITS[key]
+    return dict(entry, **{key: round(min(hi, max(lo, entry[key] + WHEEL_STEP * notches)), 4)})
+
+
 def screen_for(infos, nx, ny):
     """Of the screens (overlay_tracking.ScreenInfo), the one whose native rectangle holds the point (nx, ny), else the
     first; None with no screens."""
@@ -215,9 +264,10 @@ class Feed:
 
 # ---- Qt: painting and the window ----
 
-def paint(painter, data, win_w, win_h, arrange=False):
+def paint(painter, data, win_w, win_h, arrange=False, override=None):
     """Draw every panel of `data` (GET /api/overlay's answer) for a game window of win_w x win_h px. arrange: frame
-    and label each panel for moving and sizing (Arrange mode)."""
+    and label each panel for moving and sizing, and the Done button (Arrange mode); override: {panel: layout entry}
+    being dragged here, not saved yet. -> [(panel id, (x, y, w, h))] as drawn (for hit tests)."""
     from PyQt6.QtCore import QPointF, QRectF, Qt
     from PyQt6.QtGui import QBrush, QColor, QFont, QFontMetricsF, QPainterPath, QPen, QPolygonF
 
@@ -230,7 +280,8 @@ def paint(painter, data, win_w, win_h, arrange=False):
             p.setWidthF(lw)
         return p
 
-    layout = (data or {}).get("layout") or O.clean_layout(None)
+    layout = dict((data or {}).get("layout") or O.clean_layout(None), **(override or {}))
+    geoms = []
     painter.setRenderHint(painter.RenderHint.Antialiasing, True)
     painter.setRenderHint(painter.RenderHint.TextAntialiasing, True)
     for panel in (data or {}).get("panels") or []:
@@ -311,8 +362,33 @@ def paint(painter, data, win_w, win_h, arrange=False):
                     painter.drawPath(path)
                     painter.restore()
         painter.restore()
+        geoms.append((panel.get("id"), (x, y, w, h)))
         if arrange:
             paint_arrange_frame(painter, panel, (x, y, w, h))
+    if arrange:
+        paint_done(painter, win_w)
+    return geoms
+
+
+def paint_done(painter, win_w):
+    """Arrange mode's Done button and what the mouse does, at the top middle."""
+    from PyQt6.QtCore import QPointF, QRectF, Qt
+    from PyQt6.QtGui import QBrush, QColor, QFont, QPen
+    x, y, w, h = done_rect(win_w)
+    painter.setPen(QPen(Qt.PenStyle.NoPen))
+    painter.setBrush(QBrush(QColor(255, 200, 60)))
+    painter.drawRoundedRect(QRectF(x, y, w, h), 6, 6)
+    f = QFont()
+    f.setPixelSize(15)
+    f.setBold(True)
+    painter.setFont(f)
+    painter.setPen(QColor(20, 20, 20))
+    painter.drawText(QRectF(x, y, w, h), int(Qt.AlignmentFlag.AlignCenter), "✓ Done arranging")
+    f.setPixelSize(13)
+    f.setBold(False)
+    painter.setFont(f)
+    painter.setPen(QColor(255, 200, 60))
+    painter.drawText(QPointF(x - 170, y + h + 22), "drag: move · drag the corner: size · wheel: background · Shift+wheel: panel")
 
 
 def paint_arrange_frame(painter, panel, rect):
@@ -338,7 +414,6 @@ def paint_arrange_frame(painter, panel, rect):
 
 
 _APP = None      # render_png's application when none runs (kept: Qt must not lose it mid-paint)
-HANDLE_PX = 16   # Arrange mode: the square at a panel's bottom-right corner that sizes it
 
 
 def render_png(data, path, win_w=1920, win_h=1080, arrange=False):
@@ -400,6 +475,85 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
             self.setWindowTitle("ED Outrider overlay")
             self.seq = -1
             self.click_through = True
+            # Arrange mode: the panels as drawn (for hit tests), the drag under way, the edits not saved yet
+            # dirty: an edit not sent yet (kept over Outrider's answers until it is); saved_at: the feed's seq when the
+            # last edit was sent (the next answer carries it, and the local copy can go)
+            self.geoms, self.drag, self.override, self.saved_at, self.dirty = [], None, {}, None, False
+            self.wheel_timer = QTimer(self)
+            self.wheel_timer.setSingleShot(True)
+            self.wheel_timer.timeout.connect(self.save_override)
+
+        def arranging(self):
+            return bool(feed.data and feed.data.get("arrange"))
+
+        def post(self, fn, *args):
+            """Send to Outrider off the GUI thread (a slow server must not freeze the overlay)."""
+            def run():
+                try:
+                    fn(*args)
+                except (OSError, RuntimeError, ValueError) as e:
+                    log.warning("overlay: %s", e)
+                self.saved_at = feed.seq   # the next answer after this one carries the change: the edits can go
+            threading.Thread(target=run, daemon=True).start()
+
+        def edited(self):
+            self.dirty, self.saved_at = True, None
+
+        def save_override(self):
+            change = {pid: {k: e[k] for k in ("corner", "x", "y", "scale", "bg", "alpha")} for pid, e in self.override.items()}
+            self.dirty = False
+            if change:
+                self.post(client.set_layout, change)
+
+        def entry(self, pid):
+            lay = (feed.data or {}).get("layout") or O.clean_layout(None)
+            return dict(self.override.get(pid) or lay.get(pid) or O.LAYOUT_DEFAULT[pid])
+
+        def panel(self, pid):
+            return next((p for p in (feed.data or {}).get("panels") or [] if p.get("id") == pid), None)
+
+        def mousePressEvent(self, ev):
+            if not self.arranging():
+                return
+            x, y = ev.position().x(), ev.position().y()
+            if inside(done_rect(self.width()), x, y):
+                self.post(client.set, {"arrange": False})
+                return
+            got = hit(self.geoms, x, y)
+            if got:
+                pid, mode = got
+                rect = dict(self.geoms)[pid]
+                self.drag = (pid, mode, x, y, rect, self.entry(pid))
+
+        def mouseMoveEvent(self, ev):
+            if not self.drag:
+                return
+            pid, mode, x0, y0, rect, start = self.drag
+            p = self.panel(pid)
+            if not p:
+                return
+            self.override[pid] = dragged(start, rect, ev.position().x() - x0, ev.position().y() - y0, mode, p["w"], p["h"],
+                                         self.width(), self.height())
+            self.edited()
+            self.update()
+
+        def mouseReleaseEvent(self, _ev):
+            if self.drag:
+                self.drag = None
+                self.save_override()
+
+        def wheelEvent(self, ev):
+            if not self.arranging():
+                return
+            got = hit(self.geoms, ev.position().x(), ev.position().y())
+            if not got:
+                return
+            notches = ev.angleDelta().y() / 120 or ev.angleDelta().x() / 120
+            key = "alpha" if ev.modifiers() & Qt.KeyboardModifier.ShiftModifier else "bg"
+            self.override[got[0]] = wheeled(self.entry(got[0]), key, notches)
+            self.edited()
+            self.update()
+            self.wheel_timer.start(400)   # saved once the wheel stops
 
         def apply_click_through(self, through):
             self.click_through = through
@@ -419,7 +573,9 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
 
         def follow(self):
             st = tracker.poll() if tracker else None
-            arranging = bool(feed.data and feed.data.get("arrange"))
+            arranging = self.arranging()
+            if self.click_through == arranging:   # Arrange mode takes the mouse; otherwise every click goes to the game
+                self.apply_click_through(not arranging)
             if not st or not st.is_visible or not (st.is_foreground or arranging or self.isActiveWindow()):
                 if self.isVisible():
                     self.hide()
@@ -435,12 +591,16 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
         def tick(self):
             if feed.seq != self.seq:
                 self.seq = feed.seq
+                if self.saved_at is not None and self.seq > self.saved_at and not self.drag and not self.dirty:
+                    self.override, self.saved_at = {}, None   # Outrider has the edits now
+                if not self.arranging():
+                    self.override, self.drag = {}, None
                 self.update()
 
         def paintEvent(self, _event):
             p = QPainter(self)
             try:
-                paint(p, feed.data, self.width(), self.height(), arrange=bool(feed.data and feed.data.get("arrange")))
+                self.geoms = paint(p, feed.data, self.width(), self.height(), arrange=self.arranging(), override=self.override)
             finally:
                 p.end()
 

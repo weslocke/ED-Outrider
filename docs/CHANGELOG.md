@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay O3: arranging the panels (branch EDMC-Functionality)
+- Arrange mode (Settings -> In-game overlay, **Arrange panels**): the overlay window takes the mouse and frames each
+  panel. Drag to move it (it is kept from the corner nearest where it lands, so a resolution change keeps it there),
+  drag its corner to size it, wheel over it for its background's opacity, Shift and wheel for the whole panel's;
+  **Done** at the top (or the page's button) ends it. Edits are sent when the drag ends or the wheel stops.
+- Settings -> In-game overlay: the overlay on or off, each panel on or off, the theme and text size, whether an
+  overlay window is drawing, Show test panels, Arrange panels, and each panel's corner, offsets, size and the two
+  opacities as fields (with a reset).
+
 ## 2026-10-10 · Overlay O2: the window on the game PC, and GPL-3 (branch EDMC-Functionality; not to be pushed yet)
 - `python3 -m outrider.overlay_window` (PyQt6: `pip install -r requirements-overlay.txt`; never in the Docker image):
   a frameless, translucent, always-on-top window that lets clicks through, follows Elite's window (X11, and XWayland

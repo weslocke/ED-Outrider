@@ -714,6 +714,15 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         in your journal folder (<code>.outrider/</code>) so another Outrider can see it; EDMC on this PC is checked too.
         See the guide's Uploads page.</div>
     </details>
+    <details class="setsec" data-sec-key="overlay" data-chip="In-game overlay"><summary>In-game overlay <span class="sum-note">panels drawn over the game: what they show, where they go</span></summary>
+      <div id="overlayBox"></div>
+      <div class="hint">The panels are drawn by a small window on the game PC: <code>python3 -m outrider.overlay_window</code>
+        in Outrider's folder (it needs PyQt6: <code>pip install -r requirements-overlay.txt</code>; with Outrider on a
+        server, give the window <code>--url</code> and <code>--password</code>, or [overlay] url and password in its
+        config). Play Elite borderless or windowed: the window sits over it and lets every click through.
+        <b>Arrange panels</b> lets you move them (drag), size them (drag the corner) and set their transparency (mouse
+        wheel: the background; Shift and wheel: the whole panel) right over the game; <b>Done</b> there, or here, ends it.</div>
+    </details>
     <details class="setsec" data-sec-key="display" data-chip="Display"><summary>Display <span class="sum-note">this device: theme, header tiles</span></summary>
       <label class="mod">Theme on this browser <select id="deskTheme"><option value="">Default - Outrider</option></select>
         <span class="hint">the tablet's themes, for this page too (dark; only the Default follows your system's light mode). The tablet chooses its own</span></label>
