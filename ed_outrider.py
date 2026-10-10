@@ -6631,6 +6631,18 @@ class State:
                 p = outrider.overlay.system_panel(self.overlay_detail(pos["id64"]), pal, cfg["text_size"], BODY_HIGHLIGHT, BIO_MIN)
                 if p:
                     out.append(p)
+        # the body panel: the body targeted in game in this system, else the one you are flying near; flying your ship
+        # (landed, in the SRV or on foot the radar has the screen)
+        if cfg.get("body_panel") and pos and flags & FLAG_IN_MAIN_SHIP and not flags & (FLAG_LANDED | FLAG_IN_SRV) \
+                and not (st.get("flags2") or 0) & 1:
+            dest = self.destination()
+            name = dest["name"] if dest else short_name(pos["name"], st["body"]) if st.get("body") else None
+            detail = self.overlay_detail(pos["id64"]) if name else None
+            b = next((x for x in (detail or {}).get("bodies") or [] if x.get("name") == name), None)
+            p = outrider.overlay.body_panel(b, pal, cfg["text_size"], HIGH_GRAVITY,
+                                            outrider.bio.colony_table() if outrider.bio else None) if b else None
+            if p:
+                out.append(p)
         return out
 
     def overlay_view(self, since=None, now=None):

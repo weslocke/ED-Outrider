@@ -134,6 +134,47 @@ class SystemPanel(unittest.TestCase):
         self.assertEqual([O.credits(v) for v in (950, 59_400, 2_400_000, 1_230_000_000, None)], ["950", "59k", "2.4M", "1.2B", "0"])
 
 
+class BodyPanel(unittest.TestCase):
+    B = body("B 1", 50, subtype="Icy body", landable=True, gravity=0.42, atmosphere="Thin Neon atmosphere", temperature=27.4,
+             first_discovered=True, geo=2, value_parts={"carto_left": 1_200_000, "bio_left": 20_000_000, "bio_factor": 5},
+             genera=["Stratum", "Bacterium"],
+             bio_guess=[{"genus": "Stratum", "best": "Stratum Tectonicas", "value": 3_800_000, "codex_galaxy_new": True,
+                         "variants": ["Stratum Tectonicas - Lime"], "codex_have": []},
+                        {"genus": "Bacterium", "best": "Bacterium Acies", "value": 1_000_000}],
+             organics=[{"genus": "Bacterium", "species": "Bacterium Acies", "samples": 2, "done": False, "lost": False, "value": 1_000_000}])
+
+    def texts(self, p):
+        return [" ".join(" ".join(r[0] for r in i["runs"]).split()) if i["t"] == "runs" else i["s"] for i in p["items"]
+                if i["t"] in ("runs", "text")]
+
+    def test_body(self):
+        t = self.texts(O.body_panel(self.B, O.palette(), high_gravity=2.0, colony={"stratum": 500, "bacterium": 500}))
+        self.assertEqual(t[0], "B 1 Icy")
+        self.assertIn("landable · 0.42 g · Thin Neon · 27 K", t)
+        self.assertTrue(any("Map:" in x and "1.2M" in x and "first discovered" in x and "2 geo" in x for x in t))
+        self.assertTrue(any(x.startswith("Bacterium Acies") and "2/3" in x and "500 m" in x for x in t))     # the run under way
+        self.assertTrue(any(x.startswith("Stratum Tectonicas") and "✪ Lime" in x for x in t))
+        self.assertIn("≤19.0M", t)                                                                       # x5: nobody's foot here
+        self.assertTrue(any(x.startswith("Worth landing: up to") and "20.0M" in x and "×5" in x for x in t))
+
+    def test_heavy_and_undecided(self):
+        heavy = dict(self.B, gravity=2.6, organics=[], bio_guess=[], genera=[], bio=2,
+                     bio_options={"genera": [{"genus": "Stratum"}, {"genus": "Bacterium"}], "low": 1_000_000, "high": 4_000_000})
+        p = O.body_panel(heavy, O.palette(), high_gravity=2.0)
+        g = next(r for i in p["items"] if i["t"] == "runs" for r in i["runs"] if r[0].endswith(" g"))
+        self.assertEqual((g[0], g[1]), ("2.60 g", O.palette()["warn"]))
+        t = self.texts(p)
+        self.assertIn("2 signals, not DSS'd: Stratum or Bacterium", t)
+        self.assertIn("5.0M to 20.0M", t)
+        done = dict(self.B, organics=[dict(self.B["organics"][0], samples=3, done=True)], bio_guess=self.B["bio_guess"][1:],
+                    value_parts={"bio_left": 0, "bio_factor": 5})
+        t = self.texts(O.body_panel(done, O.palette()))
+        self.assertIn("Bacterium Acies ✓", t)                     # finished: shown with its ✓, not left out
+        self.assertFalse(any(x.startswith("Worth landing") for x in t))
+        self.assertIsNone(O.body_panel({"name": "A", "type": "Star"}, O.palette()))
+        self.assertIsNone(O.body_panel(None, O.palette()))
+
+
 class Server(unittest.TestCase):
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")
@@ -191,6 +232,22 @@ class Server(unittest.TestCase):
         self.state.overlay_cfg.update(system_seconds=0, system_panel=False)
         self.assertEqual(self.state.overlay_panels(now=1010), [])
         self.state.overlay_cfg.update(system_panel=True, enabled=False)
+        self.assertEqual(self.state.overlay_panels(now=1010), [])
+
+    def test_body_panel_shows_flying_near_or_heading_to(self):
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Test Sector AB-C d1-2",
+                                    "SystemAddress": 77, "StarPos": [0, 0, 0]})
+        self.state.system_detail = lambda id64: DETAIL if id64 == 77 else None
+        self.state.overlay_cfg.update(enabled=True, system_panel=False)
+        ship = ed_outrider.FLAG_IN_MAIN_SHIP
+        st = {"live": True, "flags": ship, "gui_focus": 0, "body": "Test Sector AB-C d1-2 B 1"}
+        self.state.journals.status_json = st
+        self.assertEqual([p["items"][0]["runs"][0][0] for p in self.state.overlay_panels(now=1010)], ["B 1"])   # near it
+        st.update(destination={"System": 77, "Body": 9, "Name": "Test Sector AB-C d1-2 A 3"})
+        self.assertEqual([p["items"][0]["runs"][0][0] for p in self.state.overlay_panels(now=1010)], ["A 3"])   # targeted wins
+        st["flags"] = ship | ed_outrider.FLAG_LANDED                                                    # landed: the radar's
+        self.assertEqual(self.state.overlay_panels(now=1010), [])
+        st.update(flags=ship, destination=None, body=None)                                             # nothing near
         self.assertEqual(self.state.overlay_panels(now=1010), [])
 
     def test_layout(self):

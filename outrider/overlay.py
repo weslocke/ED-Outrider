@@ -327,6 +327,79 @@ def system_panel(detail, pal, size="normal", highlight=500_000, bio_min=10_000_0
                       subtitle=f"{n} bod{'y' if n == 1 else 'ies'}")
 
 
+def body_panel(b, pal, size="normal", high_gravity=2.0, colony=None):
+    """The body panel: what the body is, what mapping it is worth, and its life (each likely species with its codex
+    mark, colony distance and value, or what it could be before the DSS), and whether it is worth landing. None for
+    a star or nothing known."""
+    if not b or b.get("type") == "Star":
+        return None
+    colony = colony or {}
+    vp = b.get("value_parts") or {}
+    factor = vp.get("bio_factor") or 1
+    facts = []
+    if b.get("type") == "Planet":
+        facts.append(("landable" if b.get("landable") else "not landable", "text" if b.get("landable") else "muted"))
+        g = b.get("gravity")
+        if isinstance(g, (int, float)):
+            facts += [(" · ", "muted"), (f"{g:.2f} g", "warn" if g >= high_gravity else "good")]
+        atm = b.get("atmosphere")
+        if atm and atm != "None":
+            facts += [(" · ", "muted"), (atm.replace(" atmosphere", ""), "text")]
+        t = b.get("temperature")
+        if isinstance(t, (int, float)):
+            facts += [(" · ", "muted"), (f"{round(t)} K", "text")]
+    lines = [facts] if facts else []
+    worth = []
+    if b.get("mapped") or b.get("first_mapped"):
+        worth.append(("mapped", "good"))
+    elif vp.get("carto_left"):
+        worth += [("Map: ", "muted"), (credits(vp["carto_left"]), "accent")]
+    if b.get("first_discovered"):
+        worth += [(" · " if worth else "", "muted"), ("first discovered", "good")]
+    if b.get("geo"):
+        worth += [(" · " if worth else "", "muted"), (f"{b['geo']} geo", "text")]
+    if worth:
+        lines.append(worth)
+    bio_rows = []
+    running = {o.get("genus"): o for o in b.get("organics") or []}
+    for o in b.get("organics") or []:
+        if o.get("lost"):
+            bio_rows.append({"left": [(o.get("species") or o.get("genus") or "?", "text"), ("  lost: sample again", "bad")]})
+        elif o.get("done"):   # finished: as Here's ✓, with what it pays
+            bio_rows.append({"left": [(o.get("species") or o.get("genus") or "?", "muted"), ("  ✓", "good")],
+                             "right": (credits((o.get("value") or 0) * factor), "muted")})
+        else:
+            bio_rows.append({"left": [(o.get("species") or o.get("genus") or "?", "text"), (f"  {o.get('samples', 0)}/3", "accent")]
+                             + ([(f" · {colony[o['genus'].lower()]} m", "muted")] if o.get("genus") and colony.get(o["genus"].lower()) else []),
+                             "right": (credits((o.get("value") or 0) * factor), "accent")})
+    for g in b.get("bio_guess") or []:
+        if g.get("genus") in running:
+            continue
+        mark = codex_mark([g])
+        left = [(g.get("best") or g.get("genus") or "?", "text")]
+        if mark:
+            left.append(("  " + mark, "good" if mark.startswith("✪") else "accent"))
+        if colony.get((g.get("genus") or "").lower()):
+            left.append((f" · {colony[g['genus'].lower()]} m", "muted"))
+        bio_rows.append({"left": left, "right": ("≤" + credits((g.get("value") or 0) * factor), "text")})
+    opts = b.get("bio_options")
+    if opts and not b.get("genera"):
+        n = b.get("bio") or 0
+        bio_rows.append([(f"{n} signal{'s' if n != 1 else ''}, not DSS'd: ", "muted"),
+                         (" or ".join(x.get("genus", "?") for x in opts.get("genera") or []) or "?", "text")])
+        bio_rows.append({"left": [("could pay", "muted")],
+                         "right": (f"{credits((opts.get('low') or 0) * factor)} to {credits((opts.get('high') or 0) * factor)}", "text")})
+    if bio_rows:
+        lines.append("rule")
+        lines += bio_rows
+        if vp.get("bio_left"):
+            lines.append([("Worth landing: up to ", "good"), (credits(vp["bio_left"]), "good"),
+                          (" (×5 first footfall)" if factor == 5 else "", "muted")])
+    if not lines:
+        return None
+    return text_panel("body", b.get("name") or "Body", lines, pal, width=420, size=size, subtitle=body_what(b))
+
+
 # ---- the test panels: every panel with sample data, to arrange them before flying ----
 
 def test_panels(pal, size="normal", radar_range=800):

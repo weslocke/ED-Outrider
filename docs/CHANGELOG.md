@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay O5: the body panel (branch EDMC-Functionality)
+- Flying your ship, the body panel shows the body targeted in game in this system (else the one you are near): landable,
+  gravity (amber at your `high_gravity`), atmosphere, temperature; what mapping is still worth, first discovered, geo
+  signals; its life: each run under way ("2/3", with the colony distance), each finished species (✓, its value), each
+  likely species with its codex mark and colour, colony distance and "up to" value, or before the DSS what it could
+  be and pay; and "Worth landing: up to ..." with the ×5 first-footfall note. Landed, in the SRV or on foot it gives
+  way to the radar.
+
 ## 2026-10-10 · Overlay O4: the system panel (branch EDMC-Functionality)
 - In supercruise, the system panel lists what is worth your time in the system you are in, from what Here knows
   (`State.system_detail`, cached on the scan version): each body with mapping or bio left over your levels (the
