@@ -14174,6 +14174,10 @@ def main(argv=None):
     p.add_argument("--list-backups", action="store_true",
                    help="List this database's backup zips in backup_dir (name, size, time) and exit.")
     args = p.parse_args(argv)
+    # the log's first line says which Outrider this is (the author, 2026-10-10): before the config is read, so before any
+    # of its warnings; not for the commands that print something and exit
+    if not (args.write_config or args.list_backups or args.restore is not None):
+        print(f"ED Outrider {outrider.__version__}")
     detected = (outrider.unsold.LIVE_DIRS, outrider.unsold.LEGACY_DIRS) if outrider.unsold else ([], [])
     st = settings_from(load_config(args.config), args, os.environ.get("ED_JOURNALS"), detected)
     if args.write_config:

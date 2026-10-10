@@ -1109,5 +1109,21 @@ class ToolingSafety(unittest.TestCase):
             printed = out.buffer.getvalue().decode("utf-8")
             m = re.search(r"^live = (.*)$", printed, re.M)
             self.assertIsNotNone(m, printed[:500])
+            self.assertNotIn("ED Outrider 20", printed)   # --write-config prints the settings only
+            # starting the server: its first line is the name and version (the author, 2026-10-10), before anything
+            # the config's reading prints (here a warning for an unknown key)
+            with open(os.path.join(tmp, "scratch.toml"), "a") as f:
+                f.write("\n[nonsense]\nkey = 1\n")
+            out = io.TextIOWrapper(io.BytesIO(), encoding="utf-8")
+
+            async def no_server(args, st):
+                print("server would start")
+            with unittest.mock.patch.object(ed_outrider, "run", no_server), contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(out):
+                ed_outrider.main(argv[:-1])
+            out.flush()
+            lines = out.buffer.getvalue().decode("utf-8").splitlines()
+            self.assertEqual(lines[0], f"ED Outrider {ed_outrider.outrider.__version__}")
+            self.assertIn("server would start", lines)
             self.assertIn(f"{tmp}/journals", m.group(1))
             self.assertNotIn("elsewhere", m.group(1))

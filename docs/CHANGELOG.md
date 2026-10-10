@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · The log's first line: the name and version
+- Starting the server prints "ED Outrider <version>" first, before the config's reading and its warnings, so a log
+  (Docker's included) says which Outrider wrote it. Not for --write-config, --list-backups or --restore.
+
 ## 2026-10-10 · Exo-Biology: a green ✓ on a complete genus
 - A genus box's heading gets a green ✓ when every species that can grow in the region shown has all its colours
   found (one with no colour table: found at all; All regions asks for every species). Not on Geology (no colours).
