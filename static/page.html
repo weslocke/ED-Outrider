@@ -714,12 +714,11 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         in your journal folder (<code>.outrider/</code>) so another Outrider can see it; EDMC on this PC is checked too.
         See the guide's Uploads page.</div>
     </details>
-    <details class="setsec" data-sec-key="overlay" data-chip="In-game overlay"><summary>In-game overlay <span class="sum-note">panels drawn over the game: what they show, where they go</span></summary>
+    <details class="setsec pcOnly" data-sec-key="overlay" data-chip="In-game overlay"><summary>In-game overlay <span class="sum-note">panels drawn over the game: what they show, where they go</span></summary>
       <div id="overlayBox"></div>
-      <div class="hint">On the game PC Outrider runs the window that draws the panels itself, while the overlay is on (it
-        needs PyQt6: the button above appears when it is missing). Play Elite borderless or windowed: the window sits
-        over it and lets every click through. With Outrider on a server, run the window on the game PC:
-        <code>./launch_overlay.sh --url http://&lt;server&gt;:8025 --password …</code>.
+      <div class="hint">Outrider runs the window that draws the panels itself, while the overlay is on (it needs PyQt6:
+        the button above appears when it is missing). Play Elite borderless or windowed: the window sits over it and
+        lets every click through. A game-PC feature: an Outrider on a server has no overlay.
         <b>Arrange panels</b> lets you move them (drag), size them (drag the corner) and set their transparency (mouse
         wheel: the background; Shift and wheel: the whole panel) right over the game; <b>Done</b> there, or here, ends it.</div>
     </details>

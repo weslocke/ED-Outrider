@@ -19,7 +19,7 @@ SECTION_TITLES = {"journals": "Journal folders", "server": "Server: network, pas
                   "autohonk": "Auto honk", "copilot": "Co-pilot button", "highway": "Neutron Highway and auto-target",
                   "assistant": "Voice: the AI layer", "mcp": "MCP bridge (AI clients)", "overlay": "In-game overlay"}
 HIDDEN_SECTIONS = {"eddn", "edsm"}   # written by their own page sections (Settings -> Uploads), not the Server list
-SECRETS = {("server", "password"), ("assistant", "api_key"), ("mcp", "password"), ("overlay", "password")}   # never sent to the page, only "set" or not
+SECRETS = {("server", "password"), ("assistant", "api_key"), ("mcp", "password")}   # never sent to the page, only "set" or not
 # keys with a fixed set of values, shown as a choice (ed_outrider.py adds [speech] server_player's, from outrider.tts)
 CHOICES = {("server", "game_pc"): ("auto", "true", "false"), ("highway", "autotarget_entry"): ("type", "paste"),
            ("overlay", "theme"): ("default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance",

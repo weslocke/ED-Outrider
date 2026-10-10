@@ -213,8 +213,8 @@
 # background_opacity = 0.6  # 0.05 to 1
 
 [overlay]
-# The in-game overlay: panels drawn over Elite's window (borderless or windowed) by a small window on the game PC,
-# python3 -m outrider.overlay_window. The page's Settings -> In-game overlay switches it and arranges the panels.
+# The in-game overlay: panels drawn over Elite's window (borderless or windowed) by a small window Outrider runs on the
+# game PC (a game-PC feature: not on a server). The page's Settings -> In-game overlay switches it and arranges the panels.
 # enabled = false
 # theme = "default"         # the panels' colours: default, lcars, elite, babylon5, narn, minbari, centauri, sith, alliance, dark
 # text_size = "normal"      # small, normal or large
@@ -224,9 +224,6 @@
 # strip_panel = false       # the system strip: two short lines across the top (where you are, the star, bodies found, mapped, Spansh)
 # system_seconds = 0        # how long the system panel stays after the honk (0: while in supercruise in that system)
 # radar_range = 800         # metres from the radar's centre to its edge (it widens to fit a colony ring)
-# For the window: the Outrider it draws from, and its password when that is another computer (a server).
-# url = ""                  # "" for this PC at [server] port; e.g. "http://192.168.1.81:8025"
-# password = ""
 
 [mcp]
 # The MCP bridge, for asking an AI client (Claude Code, the Claude desktop app) about your game: the client starts

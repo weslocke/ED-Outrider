@@ -1,14 +1,15 @@
-"""The in-game overlay's window, run on the game PC beside Elite (borderless or windowed):
+"""The in-game overlay's window, on the game PC beside Elite (borderless or windowed). Outrider on the game PC starts
+and stops it itself (outrider/overlay_runner.py): the overlay is a game-PC feature, as the key presses are (the
+author, 2026-10-10), never drawn from a server. By hand, for development:
 
-    python3 -m outrider.overlay_window                     (this PC's Outrider: [overlay] url/password, else [server] port)
-    python3 -m outrider.overlay_window --url http://192.168.1.81:8025 --password ...   (an Outrider on a server)
+    python3 -m outrider.overlay_window                     (this PC's Outrider, at [server] port)
     python3 -m outrider.overlay_window --render frame.png  (draw one frame into a picture and stop: nothing on screen)
 
 It asks Outrider for the panels (GET /api/overlay, about once a second) and paints them over Elite's window: a
 frameless, translucent, always-on-top window that lets every click through to the game, follows Elite's window and
-hides when the game is not in front. Needs PyQt6 (pip install -r requirements-overlay.txt; never in the Docker
-image: the window runs on the game PC and can point at a server). On Linux it finds Elite's window with wmctrl, xprop
-and xwininfo; on a Wayland session it runs through XWayland, as Elite under Proton does.
+hides when the game is not in front. Needs PyQt6 (requirements-overlay.txt; Settings -> In-game overlay installs it;
+never in the Docker image). On Linux it finds Elite's window with wmctrl, xprop and xwininfo; on a Wayland session it
+runs through XWayland, as Elite under Proton does.
 
 The window's flags and the Windows click-through call are adapted from EDMC Modern Overlay
 (https://github.com/SweetJonnySauce/EDMCModernOverlay, overlay_client/setup_surface.py and
@@ -176,9 +177,9 @@ def rgba(colour, alpha=1.0):
 
 # ---- talking to Outrider (pure: urllib) ----
 
-def config_target(path=None):
-    """(url, password) from the config file beside this checkout: [overlay] url and password, else this PC at
-    [server] port. A missing or broken file: this PC on 8025."""
+def config_url(path=None):
+    """This PC's Outrider, at the config file's [server] port (a missing or broken file: 8025). Outrider passes --url
+    when it starts the window; this is for a window started by hand."""
     import tomllib
     path = path or os.path.join(O_ROOT, "ed_outrider.toml")
     try:
@@ -186,56 +187,36 @@ def config_target(path=None):
             cfg = tomllib.load(f)
     except (OSError, ValueError):
         cfg = {}
-    ov = O.overlay_settings(cfg)["overlay"]
     sv = cfg.get("server") if isinstance(cfg.get("server"), dict) else {}
     port = sv.get("port", 8025)
     port = port if isinstance(port, int) and not isinstance(port, bool) else 8025
-    return ov["url"] or f"http://127.0.0.1:{port}", ov["password"]
+    return f"http://127.0.0.1:{port}"
 
 
 O_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class Client:
-    """GET /api/overlay and POST the layout, signing in with the password when the Outrider asks for one (a server
-    elsewhere): the session goes as a Bearer token, as the MCP bridge sends it."""
+    """GET /api/overlay and POST the layout, to Outrider on this PC (loopback: no sign-in, whatever [server]
+    password says)."""
 
-    def __init__(self, url, password="", opener=None):
-        self.url, self.password = url.rstrip("/"), password
-        self.token = None
+    def __init__(self, url, opener=None):
+        self.url = url.rstrip("/")
         self.opener = opener or urllib.request.build_opener()
-        self.error = None
 
     def _request(self, method, path, body=None):
         data = json.dumps(body).encode() if body is not None else None
-        for attempt in (1, 2):
-            req = urllib.request.Request(self.url + path, data=data, method=method,
-                                         headers={"User-Agent": "outrider-overlay", "Content-Type": "application/json",
-                                                  **({"Authorization": f"Bearer {self.token}"} if self.token else {})})
-            try:
-                with self.opener.open(req, timeout=HTTP_TIMEOUT) as r:
-                    return json.loads(r.read().decode("utf-8"))
-            except urllib.error.HTTPError as e:
-                with e:   # its body read (or not) and closed
-                    if e.code == 401 and self.password and attempt == 1:
-                        self._signin()
-                        continue
-                    if e.code == 401:
-                        raise RuntimeError("this Outrider asks for a password: set [overlay] password (its [server] password)")
-                    try:
-                        return json.loads(e.read().decode("utf-8"))
-                    except ValueError:
-                        raise RuntimeError(f"HTTP {e.code}") from None
-        raise RuntimeError("could not sign in")
-
-    def _signin(self):
-        req = urllib.request.Request(self.url + "/api/auth/signin", data=json.dumps({"password": self.password}).encode(),
-                                     method="POST", headers={"User-Agent": "outrider-overlay", "Content-Type": "application/json"})
+        req = urllib.request.Request(self.url + path, data=data, method=method,
+                                     headers={"User-Agent": "outrider-overlay", "Content-Type": "application/json"})
         try:
             with self.opener.open(req, timeout=HTTP_TIMEOUT) as r:
-                self.token = json.loads(r.read().decode("utf-8")).get("token")
-        except (urllib.error.URLError, ValueError, OSError):
-            self.token = None
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            with e:   # its body read (or not) and closed
+                try:
+                    return json.loads(e.read().decode("utf-8"))
+                except ValueError:
+                    raise RuntimeError(f"HTTP {e.code}") from None
 
     def view(self, since=None):
         q = f"?since={urllib.request.quote(since)}" if since else ""
@@ -678,16 +659,14 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="ED Outrider's in-game overlay: panels drawn over Elite's window.")
-    p.add_argument("--url", help="the Outrider to draw from (default: [overlay] url, else this PC)")
-    p.add_argument("--password", help="its [server] password (default: [overlay] password)")
-    p.add_argument("--config", help="the config file to read url and password from (default: ed_outrider.toml here)")
+    p.add_argument("--url", help="this PC's Outrider (default: http://127.0.0.1:<[server] port>; Outrider passes it)")
+    p.add_argument("--config", help="the config file to read [server] port from (default: ed_outrider.toml here)")
     p.add_argument("--title", help="a part of the game window's title (default: Elite - Dangerous)")
     p.add_argument("--render", metavar="PNG", help="draw one frame of the current panels into this picture and stop")
     p.add_argument("--size", default="1920x1080", help="--render's game window size (default 1920x1080)")
     a = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    url, password = config_target(a.config)
-    client = Client(a.url or url, a.password if a.password is not None else password)
+    client = Client(a.url or config_url(a.config))
     if a.render and not os.environ.get("QT_QPA_PLATFORM"):
         os.environ["QT_QPA_PLATFORM"] = "offscreen"   # a picture needs no screen
     elif sys.platform.startswith("linux") and os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland" \

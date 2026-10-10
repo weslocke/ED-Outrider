@@ -7817,8 +7817,7 @@ let overlayDrawn = "", overlayNote = "";
 function overlayStatusHtml(o) {
   const r = o.runner;
   if (o.window) return `<span class="ok">the overlay window is drawing</span>`;
-  if (!r) return `<span class="warnc">this Outrider is not on the game PC: run the overlay window there, ` +
-    `<code>./launch_overlay.sh --url http://&lt;this server&gt;:8025 --password …</code> (Windows: <code>launch_overlay.bat</code>)</span>`;
+  if (!r) return `<span class="unk">the overlay needs Outrider on the game PC</span>`;
   const st = r.state;
   if (st === "no_qt") return `<span class="warnc">the overlay window needs PyQt6 (about 100 MB, into Outrider's own environment)</span> ` +
     `<button type="button" class="try" data-ovinstall>Install PyQt6</button>`;
@@ -7899,7 +7898,7 @@ document.getElementById("overlayBox").addEventListener("click", e => {
       const o = data.overlay;
       if (on && !overlayNote && o && !o.window && (!o.runner || ["no_qt", "install_failed", "failed"].includes(o.runner.state))) {
         overlayNote = o.runner ? "On, but the overlay window cannot run yet: see above." :
-          "On, but no overlay window is running to draw anything: start ./launch_overlay.sh on the game PC.";
+          "On, but the overlay needs Outrider on the game PC.";
         overlayDrawn = ""; renderOverlay();
       }
     });

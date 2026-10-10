@@ -193,8 +193,10 @@ upstream project's choices, not rules of the game.
   EDMC will not be running, so Modern Overlay (an EDMC plugin) is not used; its code for finding Elite's window,
   following it, letting clicks through and its window flags is adapted instead (`outrider/overlay_tracking.py`,
   parts of `outrider/overlay_window.py`), which made ED Outrider GPL-3.0-or-later. Outrider builds the panels as draw
-  lists (`outrider/overlay.py`, GET `/api/overlay`) and any window pointed at it draws them, so a Docker server works
-  the same as the game PC. The layout is Outrider's (meta `overlay_layout`), not the window's: one arrangement
+  lists (`outrider/overlay.py`, GET `/api/overlay`) and runs the window that draws them itself on the game PC
+  (`outrider/overlay_runner.py`). The overlay is a game-PC feature, as the key presses are (the author, 2026-10-10):
+  an Outrider on a server has none (no window drawn from a server: the game PC's Status.json reached a server a second
+  late over the share, and one application on the game PC is simpler). The layout is Outrider's (meta `overlay_layout`), not the window's: one arrangement
   whichever window draws. A panel's place is kept from the window corner nearest it, as a share of the window, so a
   resolution change keeps the arrangement. The panels use the config's levels (`body_highlight_level`, `bio_min`,
   `high_gravity`): the page's per-browser ones are not known to the server. Linux is where it is tried (X11, and

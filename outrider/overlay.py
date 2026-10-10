@@ -38,7 +38,7 @@ TEST_SECONDS = 60       # "Show test panels": how long they stay (shown whether 
 ARRANGE_SECONDS = 600   # Arrange mode ends by itself after this, so the overlay never stays in the way of the mouse
 
 DEFAULTS = {"enabled": False, "theme": "default", "text_size": "normal", "system_panel": True, "body_panel": True,
-            "radar": True, "strip_panel": False, "system_seconds": 0, "radar_range": 800, "url": "", "password": ""}
+            "radar": True, "strip_panel": False, "system_seconds": 0, "radar_range": 800}
 # where each panel starts: a corner of the game window, the offset from it as a share of the window's width (x) and
 # height (y), its size (1 = the canvas's own), its background's opacity (0: text only) and the whole panel's
 LAYOUT_DEFAULT = {"system": {"corner": "nw", "x": 0.02, "y": 0.16, "scale": 1.0, "bg": 0.65, "alpha": 1.0},
@@ -156,15 +156,6 @@ def overlay_settings(cfg):
             out[key] = int(min(hi, max(lo, v)))
         else:
             _warn(f"{key} = {v!r} must be a number; using {DEFAULTS[key]}")
-    url = o.get("url", "")
-    if not isinstance(url, str) or (url and not url.startswith(("http://", "https://"))):
-        _warn(f"url = {url!r} must be an http:// address, e.g. \"http://192.168.1.81:8025\"; using this PC")
-        url = ""
-    password = o.get("password", "")
-    if not isinstance(password, str):
-        _warn("password must be text in quotes; ignored")
-        password = ""
-    out["url"], out["password"] = url.rstrip("/"), password
     return {"overlay": out}
 
 

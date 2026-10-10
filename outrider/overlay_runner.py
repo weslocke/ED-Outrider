@@ -4,8 +4,8 @@ test panels or Arrange mode), stopped when it is not and when Outrider stops, st
 growing wait; given up after CRASHES_MAX in a row). PyQt6 is not one of Outrider's requirements: without it the
 status says so and `install()` puts it into Outrider's own environment (requirements-overlay.txt), from Settings.
 
-Never on a server (Docker: no display; there the window runs on the game PC, launch_overlay.sh --url), under
---simulate, or with OUTRIDER_NO_OVERLAY_WINDOW set (verify.sh's scratch server). Tests drive it with a fake `popen`,
+Never on a server (the overlay is a game-PC feature: an Outrider on a server has none), under --simulate, or with
+OUTRIDER_NO_OVERLAY_WINDOW set (verify.sh's scratch server). Tests drive it with a fake `popen`,
 `has_qt` and clock: nothing here opens a window in a test.
 """
 import importlib

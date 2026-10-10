@@ -1094,7 +1094,7 @@ background_image = {p(_root_relative(st["highway"]["background_image"])) if st["
 background_extent = [{", ".join(n(x) for x in st["highway"]["background_extent"])}]   # ly: the image's edges, [xmin, xmax, zmin, zmax] (the usual galaxy images: -45000, 45000, -20000, 70000)
 background_opacity = {n(st["highway"]["background_opacity"])}   # 0.05 to 1
 
-[overlay]   # the in-game overlay: panels drawn over Elite's window by python3 -m outrider.overlay_window on the game PC
+[overlay]   # the in-game overlay: panels drawn over Elite's window by a window Outrider runs on the game PC (not on a server)
 enabled = {"true" if st["overlay"]["enabled"] else "false"}   # build the panels (the window shows nothing while false; Settings -> In-game overlay switches it)
 theme = {q(st["overlay"]["theme"])}   # the panels' colours: default, lcars, elite, babylon5, narn, minbari, centauri, sith, alliance or dark
 text_size = {q(st["overlay"]["text_size"])}   # small, normal or large
@@ -1104,8 +1104,6 @@ radar = {"true" if st["overlay"]["radar"] else "false"}   # the surface radar: s
 strip_panel = {"true" if st["overlay"]["strip_panel"] else "false"}   # the system strip: one line across the top (where you are, the star, bodies found, values)
 system_seconds = {st["overlay"]["system_seconds"]}   # how long the system panel stays after the honk (0: while in supercruise in that system)
 radar_range = {st["overlay"]["radar_range"]}   # metres from the radar's centre to its edge (it widens to fit a colony ring)
-url = {q(st["overlay"]["url"])}   # for the overlay window: the Outrider it draws from ("" for this PC at [server] port; a server: its address)
-password = {q(st["overlay"]["password"])}   # for the overlay window: that Outrider's [server] password ("" on this PC)
 
 [assistant]
 enabled = {"true" if st["assistant"]["enabled"] else "false"}   # the voice's AI layer for questions the fixed phrases do not match (resources/ask.json); nothing is sent anywhere while false
@@ -13799,8 +13797,8 @@ def make_app(state, hosts=None):
     app.router.add_post("/api/backup", backup_view)
     app.router.add_get("/api/highway", highway_view)
     app.router.add_get("/api/overlay", overlay_get)
-    app.router.add_post("/api/overlay", overlay_post)
-    app.router.add_post("/api/overlay/layout", overlay_layout_post)
+    app.router.add_post("/api/overlay", pc_only(overlay_post))   # the overlay is a game-PC feature (the author, 2026-10-10)
+    app.router.add_post("/api/overlay/layout", pc_only(overlay_layout_post))
     app.router.add_post("/api/overlay/install", pc_only(overlay_install_post))
     app.router.add_get("/api/rail", rail_view)
     app.router.add_post("/api/ask", ask_view)

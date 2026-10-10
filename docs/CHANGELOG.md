@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: a game-PC feature only (branch EDMC-Functionality)
+- The overlay joins the key presses as a game-PC feature (the author's call): Outrider on the game PC runs the window,
+  and an Outrider on a server has no overlay. Gone: launch_overlay.sh / .bat (a window drawn from a server),
+  `[overlay] url` and `password`, the window's sign-in; Settings -> In-game overlay is left out on a server (as Auto
+  honk is), and POST `/api/overlay` and `/api/overlay/layout` answer 409 there.
+
 ## 2026-10-10 · Overlay: Windows' click-through both ways; where it works (branch EDMC-Functionality)
 - On Windows the window only ever added the click-through style (WS_EX_TRANSPARENT), so Arrange mode would never have
   had the mouse there: it is taken away again for Arrange mode (`win_exstyle`).

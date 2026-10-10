@@ -172,28 +172,14 @@ class Packaging(unittest.TestCase):
         gotos = set(re.findall(r"goto (\w+)", script))
         self.assertLessEqual(gotos, labels)   # every goto has its label
 
-    def test_overlay_launchers(self):
-        """launch_overlay.sh / .bat: the overlay window with Outrider's .venv, PyQt6 offered (never installed without a
-        yes), exec'd (Linux) so Ctrl-C reaches it; the .bat with Windows line endings, every goto with its label; PyQt6
-        never in the Docker image."""
-        import subprocess
-        path = os.path.join(self.ROOT, "launch_overlay.sh")
-        self.assertTrue(os.access(path, os.X_OK))
-        self.assertEqual(subprocess.run(["bash", "-n", path], capture_output=True).returncode, 0)
-        script = self.read("launch_overlay.sh")
-        for part in ("VPY=.venv/bin/python", "import PyQt6.QtWidgets", "pip install --quiet -r requirements-overlay.txt",
-                     'read -r -p "Install it now? [y/N] "', 'exec "$VPY" -m outrider.overlay_window "$@"', "command -v \"$tool\""):
-            self.assertIn(part, script)
-        with open(os.path.join(self.ROOT, "launch_overlay.bat"), "rb") as f:
-            raw = f.read()
-        self.assertEqual(raw.count(b"\n"), raw.count(b"\r\n"))
-        bat = raw.decode("ascii")
-        for part in ('"%VPY%" -m outrider.overlay_window %*', "requirements-overlay.txt", "pause"):
-            self.assertIn(part, bat)
-        labels = {line[1:].strip() for line in bat.splitlines() if line.startswith(":")}
-        self.assertLessEqual(set(re.findall(r"goto (\w+)", bat)), labels)
+    def test_overlay_is_game_pc_only(self):
+        """The overlay is a game-PC feature (the author, 2026-10-10): no launcher for a window drawn from a server, no
+        [overlay] url or password, PyQt6 never in the Docker image."""
+        for gone in ("launch_overlay.sh", "launch_overlay.bat"):
+            self.assertFalse(os.path.exists(os.path.join(self.ROOT, gone)), gone)
         self.assertIn("PyQt6", self.read("requirements-overlay.txt"))
         self.assertNotIn("PyQt6", self.read("requirements.txt") + self.read("Dockerfile"))
+        self.assertNotIn("password", ed_outrider.outrider.overlay.DEFAULTS)
 
     def test_bundle_rewrites_the_compose_file(self):
         """scripts/docker_bundle.sh runs the saved image instead of a build: the two lines it rewrites are there, and the

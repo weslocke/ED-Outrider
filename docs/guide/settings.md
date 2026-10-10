@@ -40,7 +40,7 @@ Outrider folder; they default to `data/ed_outrider.sqlite`, `data/backups` and `
 | `[assistant]` | `enabled`, `base_url`, `api_key`, `model`, `timeout`, `max_rounds`: the voice's optional AI layer |
 | `[mcp]` | `url`, `max_rows`, `password`: for the MCP bridge (see Ask an AI about your game) |
 | `[eddn]`, `[edsm]` | `enabled`: written by the switches in Settings → Uploads (the only place to change them; off by default) |
-| `[overlay]` | `enabled`, `theme`, `text_size`, `system_panel`, `body_panel`, `radar`, `strip_panel`, `system_seconds`, `radar_range`; for the window on the game PC: `url`, `password` (see In-game overlay) |
+| `[overlay]` | `enabled`, `theme`, `text_size`, `system_panel`, `body_panel`, `radar`, `strip_panel`, `system_seconds`, `radar_range` (the overlay is a game-PC feature: see In-game overlay) |
 | `[highway]` | `clipboard`, `efficiency`, `conservative`, `conservative_ly`, `background_image`, `background_extent`, `background_opacity`; auto-target: `autotarget`, `autotarget_delay`, `autotarget_entry`, `autotarget_map_wait`, `autotarget_search_wait`, `autotarget_key_delay`, `autotarget_keys`, `autotarget_search`, `autotarget_submit`, `autotarget_plot`, `autotarget_dry_run` |
 
 Command-line flags override the file for a single run:

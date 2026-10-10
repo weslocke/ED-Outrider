@@ -20,12 +20,13 @@ class Settings(unittest.TestCase):
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
             got = O.overlay_settings({"overlay": {"enabled": "yes", "theme": "Neon", "text_size": "LARGE", "radar_range": 50,
-                                                  "system_seconds": True, "url": "ftp://x", "password": 3}})["overlay"]
-        self.assertEqual((got["enabled"], got["theme"], got["text_size"], got["radar_range"], got["system_seconds"],
-                          got["url"], got["password"]), (False, "default", "large", 100, 0, "", ""))
-        for word in ("enabled", "theme", "system_seconds", "url", "password"):
+                                                  "system_seconds": True}})["overlay"]
+        self.assertEqual((got["enabled"], got["theme"], got["text_size"], got["radar_range"], got["system_seconds"]),
+                         (False, "default", "large", 100, 0))
+        for word in ("enabled", "theme", "system_seconds"):
             self.assertIn(word, err.getvalue())
-        self.assertEqual(O.overlay_settings({"overlay": {"url": "http://erangel:8025/"}})["overlay"]["url"], "http://erangel:8025")
+        # no url or password: the overlay is a game-PC feature, drawn from this PC's Outrider only (the author, 2026-10-10)
+        self.assertNotIn("url", O.overlay_settings({"overlay": {"url": "http://erangel:8025"}})["overlay"])
 
     def test_written_and_read_back(self):
         """--write-config writes [overlay] with every key, and the file reads back to the same settings."""
@@ -510,6 +511,11 @@ class Server(unittest.TestCase):
                 lay = await c.post("/api/overlay/layout", json={"system": {"y": 0.5}})
                 lay_bad = (await c.post("/api/overlay/layout", json={"system": {"y": "low"}})).status
                 cross = (await c.post("/api/overlay", json={"test": True}, headers={"Origin": "http://evil.example"})).status
+                self.state.game_pc = False   # a server: the overlay is a game-PC feature
+                server = [(await c.post(u, json=b)).status for u, b in (("/api/overlay", {"test": True}),
+                                                                        ("/api/overlay/layout", {"system": {"y": 0.5}}))]
+                self.assertEqual(server, [409, 409])
+                self.state.game_pc = True
                 return (first, same, bad, ok, lay.status, (await lay.json())["layout"]["system"]["y"], lay_bad, cross,
                         seen_by_visitor, seen_by_window)
         first, same, bad, ok, lay, y, lay_bad, cross, by_visitor, by_window = asyncio.run(go())

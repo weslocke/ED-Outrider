@@ -210,38 +210,29 @@ class FakeResponse(io.BytesIO):
 
 
 class FakeOpener:
-    """Answers like an Outrider with a password: 401 without the Bearer token, the panels with it."""
+    """Answers like this PC's Outrider: the panels, or {same} when nothing changed."""
 
-    def __init__(self, password="pw"):
-        self.password, self.seen = password, []
+    def __init__(self):
+        self.seen = []
 
     def open(self, req, timeout=None):
-        self.seen.append((req.get_method(), req.full_url, req.get_header("Authorization")))
-        if req.full_url.endswith("/api/auth/signin"):
-            ok = json.loads(req.data.decode())["password"] == self.password
-            if not ok:
-                raise urllib.error.HTTPError(req.full_url, 401, "no", {}, io.BytesIO(b'{"error": "wrong password"}'))
-            return FakeResponse(b'{"token": "tok"}')
-        if req.get_header("Authorization") != "Bearer tok":
-            raise urllib.error.HTTPError(req.full_url, 401, "no", {}, io.BytesIO(b'{"error": "signin_required"}'))
+        self.seen.append((req.get_method(), req.full_url, req.get_header("User-agent")))
         if "since=v1" in req.full_url:
             return FakeResponse(b'{"same": true, "version": "v1"}')
         return FakeResponse(json.dumps({"version": "v1", "panels": [{"id": "system"}], "layout": {}}).encode())
 
 
 class ClientAndFeed(unittest.TestCase):
-    def test_signs_in_on_401(self):
+    def test_client(self):
         op = FakeOpener()
-        c = W.Client("http://srv:8025/", "pw", opener=op)
+        c = W.Client("http://127.0.0.1:8025/", opener=op)
         self.assertEqual(c.view()["version"], "v1")
-        self.assertEqual([m for m, *_ in op.seen], ["GET", "POST", "GET"])   # refused, signed in, asked again
         self.assertEqual(c.view("v1"), {"same": True, "version": "v1"})
-        with self.assertRaises(RuntimeError):
-            W.Client("http://srv:8025", "", opener=FakeOpener()).view()   # no password: says what to set
+        self.assertEqual(op.seen[0], ("GET", "http://127.0.0.1:8025/api/overlay", "outrider-overlay"))   # the window's own UA
 
     def test_feed_keeps_the_last_answer_and_drops_it_when_gone(self):
         op = FakeOpener()
-        feed = W.Feed(W.Client("http://srv:8025", "pw", opener=op))
+        feed = W.Feed(W.Client("http://127.0.0.1:8025", opener=op))
         feed.fetch_once()
         self.assertEqual((feed.data["version"], feed.seq), ("v1", 1))
         feed.fetch_once()   # unchanged: the same data, no repaint
@@ -260,16 +251,13 @@ class ClientAndFeed(unittest.TestCase):
         self.assertEqual(feed.seq, 2)
         self.assertIn("connection refused", feed.error)
 
-    def test_config_target(self):
+    def test_config_url(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "c.toml")
             with open(path, "w") as f:
                 f.write('[server]\nport = 8100\n')
-            self.assertEqual(W.config_target(path), ("http://127.0.0.1:8100", ""))
-            with open(path, "w") as f:
-                f.write('[overlay]\nurl = "http://192.168.1.81:8025"\npassword = "x"\n')
-            self.assertEqual(W.config_target(path), ("http://192.168.1.81:8025", "x"))
-            self.assertEqual(W.config_target(os.path.join(tmp, "none.toml")), ("http://127.0.0.1:8025", ""))
+            self.assertEqual(W.config_url(path), "http://127.0.0.1:8100")
+            self.assertEqual(W.config_url(os.path.join(tmp, "none.toml")), "http://127.0.0.1:8025")
 
 
 class Drawing(unittest.TestCase):

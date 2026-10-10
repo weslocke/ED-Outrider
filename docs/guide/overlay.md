@@ -42,10 +42,9 @@ Settings → In-game overlay says how the window is doing (starting, drawing, wa
 test panels** draws all three with made-up contents for a minute, without flying anywhere, even while Outrider's page is in front of the game. Start Outrider from your
 desktop (the launcher, or a terminal in your session): the window needs your screen.
 
-**Outrider on a server (Docker):** a container has no screen, so the window runs on the game PC instead, pointed at
-the server: in a copy of Outrider's folder there, `./launch_overlay.sh --url http://192.168.1.81:8025 --password ...`
-(its `[server]` password; Windows: `launch_overlay.bat`), which offers to install PyQt6 the first time. If Outrider
-also runs on the game PC, nothing is needed: that one runs the window.
+**A game-PC feature.** Like auto honk and auto-target, the overlay needs Outrider running on the game PC: an
+Outrider on a server (Docker) has no overlay (its Settings leave the section out). With Outrider on both, the game
+PC's draws it.
 
 ## Arranging the panels
 
