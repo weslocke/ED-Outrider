@@ -175,6 +175,53 @@ class BodyPanel(unittest.TestCase):
         self.assertIsNone(O.body_panel(None, O.palette()))
 
 
+class Radar(unittest.TestCase):
+    R = 1_000_000.0
+
+    def at(self, north_m, east_m):
+        import math
+        return math.degrees(north_m / self.R), math.degrees(east_m / self.R)
+
+    def test_projection(self):
+        here = {"lat": 0.0, "lon": 0.0, "heading": 0, "radius": self.R}
+        lat, lon = self.at(400, 0)                              # 400 m due north, facing north: straight up, half way out
+        x, y, beyond = O.radar_xy(here, lat, lon, 100, 100, 50, 800)
+        self.assertAlmostEqual(x, 100, delta=0.1)
+        self.assertAlmostEqual(y, 75, delta=0.2)
+        self.assertFalse(beyond)
+        x, y, _ = O.radar_xy(dict(here, heading=90), lat, lon, 100, 100, 50, 800)   # facing east: north is on the left
+        self.assertAlmostEqual((x, y), (75, 100), delta=0.2)
+        lat, lon = self.at(0, 5000)                             # 5 km east: on the rim, to the right
+        x, y, beyond = O.radar_xy(here, lat, lon, 100, 100, 50, 800)
+        self.assertTrue(beyond)
+        self.assertAlmostEqual((x, y), (150, 100), delta=0.2)
+
+    def surf(self, clear=False, **kw):
+        lat, lon = self.at(300, 0)
+        out = {"lat": 0.0, "lon": 0.0, "heading": 0, "radius": self.R, "body": "B 1", "ship": None, "rigs": [], "tags": [],
+               "bio": [{"species": "Stratum Tectonicas", "genus": "Stratum", "samples": 1, "current": True, "need": 500,
+                        "clear": clear, "points": [{"n": 1, "lat": lat, "lon": lon, "dist": 300}]}]}
+        out.update(kw)
+        return out
+
+    def test_panel(self):
+        pal = O.palette()
+        p = O.radar_panel(self.surf(), pal, radar_range=200)
+        rings = [i for i in p["items"] if i["t"] == "circle" and i["c"] == pal["bad"]]
+        self.assertEqual(len(rings), 1)                         # the colony ring, red: you are inside it
+        texts = [i["s"] for i in p["items"] if i["t"] == "text"]
+        self.assertIn("Next: 500 m from all · nearest 300 m", texts)
+        self.assertIn("edge 700 m", texts)                       # widened from 200 m to fit the 500 m ring
+        self.assertEqual([p["items"][0]["runs"][0][0], p["items"][1]["runs"][0][0]], ["Stratum Tectonicas", "sample 2 of 3"])
+        ok = O.radar_panel(self.surf(clear=True), pal)
+        self.assertTrue(any(i["t"] == "circle" and i["c"] == pal["good"] for i in ok["items"]))
+        self.assertIn("Clear: sample here (500 m from all)", [i["s"] for i in ok["items"] if i["t"] == "text"])
+        self.assertIsNone(O.radar_panel(self.surf(bio=[]), pal))          # nothing to draw
+        self.assertIsNone(O.radar_panel(None, pal))
+        shipped = O.radar_panel(self.surf(bio=[], ship={"lat": 0.0, "lon": 0.0, "dist": 1500}), pal)
+        self.assertIn("ship 1.5 km", [i["s"] for i in shipped["items"] if i["t"] == "text"])
+
+
 class Server(unittest.TestCase):
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")
@@ -249,6 +296,17 @@ class Server(unittest.TestCase):
         self.assertEqual(self.state.overlay_panels(now=1010), [])
         st.update(flags=ship, destination=None, body=None)                                             # nothing near
         self.assertEqual(self.state.overlay_panels(now=1010), [])
+
+    def test_radar_on_a_body(self):
+        self.state.overlay_cfg.update(enabled=True, system_panel=False, body_panel=False)
+        self.state.journals.status_json = {"live": True, "flags": ed_outrider.FLAG_IN_SRV, "gui_focus": 0}
+        surf = Radar().surf()
+        self.state.surface_summary = lambda now=None: dict(surf, down=True, show=True)
+        self.assertEqual([p["id"] for p in self.state.overlay_panels(now=1)], ["radar"])
+        self.state.surface_summary = lambda now=None: dict(surf, down=False, show=False)   # high over it: no radar
+        self.assertEqual(self.state.overlay_panels(now=1), [])
+        self.state.surface_summary = lambda now=None: None
+        self.assertEqual(self.state.overlay_panels(now=1), [])
 
     def test_layout(self):
         out, status = self.state.overlay_layout_set({"body": {"x": 0.4, "scale": 2.0}})

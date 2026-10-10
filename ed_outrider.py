@@ -6643,6 +6643,13 @@ class State:
                                             outrider.bio.colony_table() if outrider.bio else None) if b else None
             if p:
                 out.append(p)
+        # the surface radar: on a body (landed, in the SRV, on foot) or low over it, as the surface map shows
+        if cfg.get("radar"):
+            surf = self.surface_summary(now)
+            if surf and (surf.get("down") or surf.get("show")):
+                p = outrider.overlay.radar_panel(surf, pal, cfg["text_size"], cfg["radar_range"])
+                if p:
+                    out.append(p)
         return out
 
     def overlay_view(self, since=None, now=None):

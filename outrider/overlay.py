@@ -400,6 +400,86 @@ def body_panel(b, pal, size="normal", high_gravity=2.0, colony=None):
     return text_panel("body", b.get("name") or "Body", lines, pal, width=420, size=size, subtitle=body_what(b))
 
 
+def surface_m(lat1, lon1, lat2, lon2, radius):
+    """Great-circle metres between two points on a body of `radius` m (as the server's surface_m)."""
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
+    return 2 * radius * math.asin(min(1.0, math.sqrt(a)))
+
+
+def bearing(lat1, lon1, lat2, lon2):
+    """Degrees from north, from the first point to the second (as the server's surface_bearing)."""
+    p1, p2, dl = math.radians(lat1), math.radians(lat2), math.radians(lon2 - lon1)
+    return math.degrees(math.atan2(math.sin(dl) * math.cos(p2),
+                                   math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl))) % 360
+
+
+def radar_xy(here, lat, lon, cx, cy, r, rng):
+    """Where a point goes on the heading-up radar (centre cx, cy; radius r for `rng` m), and whether it is beyond the
+    edge (then on the rim, in its direction). here: {lat, lon, heading, radius}."""
+    d = surface_m(here["lat"], here["lon"], lat, lon, here["radius"])
+    rel = math.radians(bearing(here["lat"], here["lon"], lat, lon) - (here.get("heading") or 0))
+    k = min(d / rng, 1.0) if rng else 1.0
+    return cx + r * k * math.sin(rel), cy - r * k * math.cos(rel), d > rng
+
+
+def radar_panel(surf, pal, size="normal", radar_range=800):
+    """The surface radar, heading up: you at the centre, N on the rim; the sample points of the run in progress with
+    their colony rings (red while you are inside one, green once clear), other runs' faint, tagged plants, the ship and
+    your rigs; what the next sample needs underneath. None with nothing to draw."""
+    if not surf or surf.get("lat") is None or not surf.get("radius"):
+        return None
+    bio = surf.get("bio") or []
+    cur = next((s for s in bio if s.get("current")), None)
+    if not (bio or surf.get("ship") or surf.get("rigs") or surf.get("tags")):
+        return None
+    rng = max(radar_range, (cur.get("need") or 0) * 1.4 if cur else 0)
+    w, r = 300, 118
+    lh_small = LINE_H["small"]
+    title = cur["species"] if cur else surf.get("body") or "Surface"
+    items = [runs(PAD, PAD, [(fit(title, w - 2 * PAD, "large"), pal["title"], "large", True)])]
+    head = PAD + LINE_H["large"]
+    if cur and (cur.get("samples") or 0) < 3:   # the run's next sample, on a line of its own (a long name fills the title)
+        items.append(runs(PAD, head, [(f"sample {(cur.get('samples') or 0) + 1} of 3", pal["accent"], size, False)]))
+        head += LINE_H.get(size, 20)
+    cx, cy = w / 2, head + 14 + r
+    items += [circle(cx, cy, r, pal["frame"]), circle(cx, cy, r / 2, pal["frame"])]
+    north = math.radians(-(surf.get("heading") or 0))
+    items.append(text(cx + (r + 8) * math.sin(north) - 4, cy - (r + 8) * math.cos(north) - 8, "N", pal["muted"], "small"))
+    here = {"lat": surf["lat"], "lon": surf["lon"], "heading": surf.get("heading") or 0, "radius": surf["radius"]}
+    for s in sorted(bio, key=lambda s: bool(s.get("current"))):   # the run in progress drawn last, on top
+        c = (pal["good"] if s.get("clear") else pal["bad"]) if s.get("current") else pal["muted"]
+        for p in s.get("points") or []:
+            x, y, beyond = radar_xy(here, p["lat"], p["lon"], cx, cy, r, rng)
+            if s.get("need") and not beyond:
+                items.append(circle(x, y, s["need"] / rng * r, c, lw=2 if s.get("current") else 1))
+            items.append(marker(x, y, "dot", c, r=4 if s.get("current") else 3))
+    for t in surf.get("tags") or []:
+        x, y, _ = radar_xy(here, t["lat"], t["lon"], cx, cy, r, rng)
+        items.append(marker(x, y, "dot", pal["accent"], r=4))
+    ship = surf.get("ship")
+    if ship:
+        x, y, beyond = radar_xy(here, ship["lat"], ship["lon"], cx, cy, r, rng)
+        items.append(marker(x, y, "cross", pal["text"], r=6))
+        dist = ship.get("dist") or 0
+        items.append(text(x + 8, y + 2, f"ship {dist / 1000:.1f} km" if dist >= 1000 else f"ship {round(dist)} m", pal["muted"], "small"))
+    for rig in surf.get("rigs") or []:
+        x, y, _ = radar_xy(here, rig["lat"], rig["lon"], cx, cy, r, rng)
+        items.append(rect(x - 4, y - 4, 8, 8, pal["warn"], None))
+        items.append(text(x + 6, y - 6, str(rig.get("n", "")), pal["warn"], "small"))
+    items.append(marker(cx, cy, "arrow", pal["text"], r=9))
+    y = cy + r + 14
+    scale = f"edge {rng / 1000:.1f} km" if rng >= 1000 else f"edge {round(rng)} m"
+    items.append(text(w - PAD, y, scale, pal["muted"], "small", align="right"))
+    if cur and cur.get("need"):
+        near = min((p.get("dist") or 0 for p in cur.get("points") or []), default=None)
+        if cur.get("clear"):
+            items.append(text(PAD, y, f"Clear: sample here ({cur['need']} m from all)", pal["good"], "small"))
+        elif near is not None:
+            items.append(text(PAD, y, f"Next: {cur['need']} m from all · nearest {round(near)} m", pal["warn"], "small"))
+    return {"id": "radar", "w": w, "h": round(y + lh_small + PAD), "bg": pal["panel"], "frame": pal["frame"], "items": items}
+
+
 # ---- the test panels: every panel with sample data, to arrange them before flying ----
 
 def test_panels(pal, size="normal", radar_range=800):
@@ -423,17 +503,13 @@ def test_panels(pal, size="normal", radar_range=800):
 
 
 def radar_test(pal, size="normal", radar_range=800):
-    """A sample surface radar: you at the centre heading up, a sample point with its colony ring, the ship, N."""
-    w, r = 300, 120
-    cx, cy = w / 2, 40 + r
-    items = [text(PAD, PAD, "Stratum Tectonicas · 1 of 3", pal["title"], size, bold=True),
-             circle(cx, cy, r, pal["frame"]), circle(cx, cy, r / 2, pal["frame"]),
-             text(cx, cy - r - 16, "N", pal["muted"], "small", align="left"),
-             circle(cx + 40, cy - 50, 500 / radar_range * r, pal["bad"]),   # a 500 m colony ring, you inside it
-             marker(cx + 40, cy - 50, "dot", pal["bad"], r=4),
-             marker(cx - 70, cy + 60, "cross", pal["muted"], r=6),
-             text(cx - 64, cy + 68, "ship 1.4 km", pal["muted"], "small"),
-             marker(cx, cy, "arrow", pal["text"], r=9, rot=0),
-             text(PAD, cy + r + 10, "Next: 500 m from the sample · nearest 64 m", pal["warn"], "small")]
-    return {"id": "radar", "w": w, "h": round(cy + r + 10 + LINE_H["small"] + PAD), "bg": pal["panel"],
-            "frame": pal["frame"], "items": items}
+    """A sample surface radar, from radar_panel: a run's first sample 300 m ahead-right (you inside its 500 m colony
+    ring), the ship behind on the left."""
+    R = 1_000_000.0
+    m = lambda dn, de: (math.degrees(dn / R), math.degrees(de / R))   # metres north/east to degrees near 0, 0
+    (s1, s2), (h1, h2) = m(250, 170), m(-700, -900)
+    surf = {"lat": 0.0, "lon": 0.0, "heading": 20, "radius": R, "body": "B 1",
+            "bio": [{"species": "Stratum Tectonicas", "genus": "Stratum", "samples": 1, "current": True, "need": 500, "clear": False,
+                     "points": [{"n": 1, "lat": s1, "lon": s2, "dist": 302}]}],
+            "ship": {"lat": h1, "lon": h2, "dist": 1140}, "rigs": [], "tags": []}
+    return radar_panel(surf, pal, size, radar_range)

@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay O6: the surface radar (branch EDMC-Functionality)
+- On a body (landed, in the SRV, on foot) or low over it, as the surface map shows: a heading-up radar from the
+  surface summary, you at the centre, N on the rim; the run in progress's sample points with their colony rings (red
+  while you are inside one, green once clear), other runs' faint, tagged plants, the ship with its distance, your
+  rigs; what lies beyond the edge on the rim in its direction. The edge is `[overlay] radar_range`, widened to fit
+  the run's colony ring. Underneath: "Next: 500 m from all · nearest 302 m", or "Clear: sample here".
+  The test panels' radar is built the same way.
+
 ## 2026-10-10 · Overlay O5: the body panel (branch EDMC-Functionality)
 - Flying your ship, the body panel shows the body targeted in game in this system (else the one you are near): landable,
   gravity (amber at your `high_gravity`), atmosphere, temperature; what mapping is still worth, first discovered, geo
