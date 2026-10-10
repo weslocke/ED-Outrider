@@ -189,6 +189,17 @@ upstream project's choices, not rules of the game.
   rules) and merged in at load. A first start offline has no colour check, which costs nothing: the game cannot be
   played offline either. BioScan's rules (GPL v2 or later) and the region map (MIT) still ship. The colony distances
   are the game's (the Genetic Sampler shows them), kept in `outrider/bio.py`.
+- **The in-game overlay is our own window** (the author, 2026-10-08 and 2026-10-10; project/PLAN-overlay-build-2026-10-10.md).
+  EDMC will not be running, so Modern Overlay (an EDMC plugin) is not used; its code for finding Elite's window,
+  following it, letting clicks through and its window flags is adapted instead (`outrider/overlay_tracking.py`,
+  parts of `outrider/overlay_window.py`), which made ED Outrider GPL-3.0-or-later. Outrider builds the panels as draw
+  lists (`outrider/overlay.py`, GET `/api/overlay`) and any window pointed at it draws them, so a Docker server works
+  the same as the game PC. The layout is Outrider's (meta `overlay_layout`), not the window's: one arrangement
+  whichever window draws. A panel's place is kept from the window corner nearest it, as a share of the window, so a
+  resolution change keeps the arrangement. The panels use the config's levels (`body_highlight_level`, `bio_min`,
+  `high_gravity`): the page's per-browser ones are not known to the server. Linux is where it is tried (X11, and
+  XWayland on a Wayland session, as Modern Overlay runs on GNOME); Windows has the code, untried; native Wayland
+  compositors, gamescope and exclusive fullscreen are out of scope.
 - **Here's icon legend lists only what is shown.** The footer under Here's list (`HERE_LEGEND` in page.js) names the
   icons the list or schematic shows now, not every icon there is (the author's call, 2026-10-10), and is absent when
   there are none; sticky to the bottom of the scrolling pane so it stays in view. The codex marks write the new

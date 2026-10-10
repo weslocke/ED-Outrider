@@ -85,6 +85,7 @@ Everything about installing, the optional parts, Docker, other devices and backu
 | <a id="-alerts"></a><a id="-the-voice"></a><a id="-ask-outrider-by-voice"></a><a id="-ask-an-ai-about-your-game"></a>**[Voice and alerts](docs/guide/voice-and-alerts.md)** | What Outrider tells you and when, the voice and its personalities, editing and banning lines, asking by voice, asking an AI |
 | <a id="-auto-honk"></a><a id="-the-co-pilot-button"></a>**[Automation](docs/guide/automation.md)** | Auto honk and the co-pilot button (on the game PC) |
 | <a id="-on-a-tablet"></a>**[On a tablet](docs/guide/tablet.md)** | The touch layout at /tablet, its nine themes, the control rail, the Android app |
+| **[In-game overlay](docs/guide/overlay.md)** | Panels drawn over the game: the system worth your time, the body you are heading to, a surface radar; arranging them |
 | **[Uploads](docs/guide/uploads.md)** | EDDN and EDSM (opt-in, off by default): what is sent and never sent, one uploader at a time, EDSM's key |
 | <a id="-settings"></a><a id="-good-to-know"></a>**[Settings and good to know](docs/guide/settings.md)** | Every setting and config key, and the things worth knowing (what "not on the page" means, estimates, updates) |
 | <a id="-for-the-curious"></a>**[For the curious](docs/guide/for-developers.md)** | What's in the box, the code's layout, the status API for overlays; contributors start with the agent guide |

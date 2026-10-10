@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: the launchers and the guide (branch EDMC-Functionality)
+- `launch_overlay.sh` / `launch_overlay.bat` start the overlay window with Outrider's .venv and offer to install PyQt6
+  into it the first time (only on a yes); on Linux they warn when wmctrl, xprop or xwininfo is missing. Windows has
+  the code and the launcher but is not yet tried against the game.
+- The guide's new page, In-game overlay (docs/guide/overlay.md): what the panels show, starting the window (and
+  pointing it at a server), arranging, the settings; in every page's links and the README's index. DESIGN_NOTES: why
+  our own window, Modern Overlay's code and GPL-3, the layout kept by Outrider, the config's levels.
+
 ## 2026-10-10 · Overlay O7: themes (branch EDMC-Functionality)
 - `[overlay] theme` colours the panels from the theme's own stylesheet (static/themes/<name>.css: its title, text,
   muted, good, warn, bad, accent, panel and line colours, `var()` chains resolved; anything missing: the Default's,
