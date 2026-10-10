@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: say when no window is running (branch EDMC-Functionality)
+- Show test panels (or Arrange panels) with no overlay window running looked like it did nothing: the panels are drawn
+  by the window on the game PC. Settings -> In-game overlay now says so with the command to start it
+  (`./launch_overlay.sh`, Windows `launch_overlay.bat`), and pressing either button says nothing can show until it
+  runs. "An overlay window is drawing" counts only the window's own requests (its User-Agent), not any visitor's GET.
+
 ## 2026-10-10 · Overlay: nothing in the hyperspace tunnel (branch EDMC-Functionality)
 - The panels hide while Status.json's FSD jump flag is on (BioScan's "hidden during FSD jumps"): the system is
   changing under them.

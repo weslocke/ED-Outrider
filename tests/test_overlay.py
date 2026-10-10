@@ -354,13 +354,18 @@ class Server(unittest.TestCase):
             async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
                 r = await c.get("/api/overlay")
                 first = await r.json()
+                seen_by_visitor = self.state.overlay_info()["window"]   # another visitor's GET: not a window
+                await c.get("/api/overlay", headers={"User-Agent": "outrider-overlay"})
+                seen_by_window = self.state.overlay_info()["window"]
                 same = await (await c.get("/api/overlay", params={"since": first["version"]})).json()
                 bad = (await c.post("/api/overlay", data="[1]", headers={"Content-Type": "application/json"})).status
                 ok = await (await c.post("/api/overlay", json={"test": True})).json()
                 lay = await c.post("/api/overlay/layout", json={"system": {"y": 0.5}})
                 lay_bad = (await c.post("/api/overlay/layout", json={"system": {"y": "low"}})).status
                 cross = (await c.post("/api/overlay", json={"test": True}, headers={"Origin": "http://evil.example"})).status
-                return first, same, bad, ok, lay.status, (await lay.json())["layout"]["system"]["y"], lay_bad, cross
-        first, same, bad, ok, lay, y, lay_bad, cross = asyncio.run(go())
+                return (first, same, bad, ok, lay.status, (await lay.json())["layout"]["system"]["y"], lay_bad, cross,
+                        seen_by_visitor, seen_by_window)
+        first, same, bad, ok, lay, y, lay_bad, cross, by_visitor, by_window = asyncio.run(go())
+        self.assertEqual((by_visitor, by_window), (False, True))   # only the overlay window counts as drawing
         self.assertEqual((first["panels"], same["same"], bad, ok["test"], lay, y, lay_bad, cross),
                          ([], True, 400, O.TEST_SECONDS, 200, 0.5, 400, 403))

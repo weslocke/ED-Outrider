@@ -278,6 +278,7 @@ AUTOTARGET_TEST_COUNTDOWN = 5   # s: the Plot Route tab's "test now": time to cl
 AUTOTARGET_HONK_WAIT = 60       # s an auto-target waits for an auto honk on the same arrival to finish (honk first)
 OVERLAY_HIDE_FOCUS = {6, 7, 8, 9, 10, 11}   # Status.json GuiFocus: galaxy map, system map, orrery, FSS, SAA, codex (no panels over them)
 FLAG_SUPERCRUISE = 1 << 4
+OVERLAY_UA = "outrider-overlay"   # the overlay window's User-Agent (outrider/overlay_window.py): only it counts as drawing
 OVERLAY_SEEN_S = 5             # s: an overlay window that asked this recently counts as connected (Settings says so)
 AUTOTARGET_DANGER_WAIT = 60     # s after an arrival a run waits for the game's own in-danger flag to clear (see arrival_danger_until)
 # The Highway map's optional background image ([highway] background_image): only the configured file is served
@@ -6654,11 +6655,13 @@ class State:
                     out.append(p)
         return out
 
-    def overlay_view(self, since=None, now=None):
+    def overlay_view(self, since=None, now=None, window=True):
         """GET /api/overlay: what the overlay window draws, {version, enabled, arrange, canvas, layout, panels}; with
-        since = that version and nothing changed, only {same, version} (the window asks about once a second)."""
+        since = that version and nothing changed, only {same, version} (the window asks about once a second). window:
+        the overlay window asked (its User-Agent), not another visitor: only it counts as a window drawing."""
         now = time.time() if now is None else now
-        self.overlay_seen = now
+        if window:
+            self.overlay_seen = now
         out = {"enabled": bool(self.overlay_cfg.get("enabled")), "arrange": now < self.overlay_arrange_until,
                "test": now < self.overlay_test_until, "canvas": [outrider.overlay.CANVAS_W, outrider.overlay.CANVAS_H],
                "layout": self.overlay_layout(), "panels": self.overlay_panels(now)}
@@ -13566,7 +13569,8 @@ def make_app(state, hosts=None):
 
     async def overlay_get(request):
         """GET /api/overlay[?since=version]: the overlay window's panels (State.overlay_view)."""
-        return web.json_response(state.overlay_view(request.query.get("since")))
+        return web.json_response(state.overlay_view(request.query.get("since"),
+                                                     window=request.headers.get("User-Agent", "").startswith(OVERLAY_UA)))
 
     async def overlay_post(request):
         out, status = state.overlay_set(await json_object(request))

@@ -7828,7 +7828,9 @@ function overlayHtml(o) {
       `<td><a href="#" data-ovreset="${id}" title="back to where it started">reset</a></td></tr>`;
   }).join("");
   return `<label class="mod"><input type="checkbox" data-ov="enabled"${o.enabled ? " checked" : ""}> <b>Show the overlay</b> <span class="hint">the panels below, when they have something to say</span></label>` +
-    `<div class="hint">${o.window ? `<span class="ok">an overlay window is drawing</span>` : `<span class="unk">no overlay window is running: start it on the game PC (below)</span>`}</div>` +
+    `<div class="hint">${o.window ? `<span class="ok">an overlay window is drawing</span>`
+      : `<span class="warnc">no overlay window is running, so nothing is drawn (test panels included): start it on the game PC, ` +
+        `<code>./launch_overlay.sh</code> in Outrider's folder (Windows: <code>launch_overlay.bat</code>)</span>`}</div>` +
     OV_PANELS.map(([id, name, what]) => `<label class="mod"><input type="checkbox" data-ovpanel="${id}"${(o.panels || {})[id] ? " checked" : ""}> ${name} <span class="hint">${esc(what)}</span></label>`).join("") +
     `<div class="mod">Theme <select data-ov="theme">${opt(OV_THEMES, o.theme)}</select> · text <select data-ov="text_size">${opt(["small", "normal", "large"], o.text_size)}</select></div>` +
     `<div class="mod"><button type="button" class="try" data-ovact="test">${o.test ? `test panels: ${o.test} s` : "▶ Show test panels"}</button> ` +
@@ -7872,7 +7874,16 @@ document.getElementById("overlayBox").addEventListener("change", e => {
 });
 document.getElementById("overlayBox").addEventListener("click", e => {
   const act = e.target.closest("[data-ovact]"), reset = e.target.closest("[data-ovreset]");
-  if (act) overlayPost("api/overlay", {[act.dataset.ovact]: !(data.overlay || {})[act.dataset.ovact]});
+  if (act) {
+    const on = !(data.overlay || {})[act.dataset.ovact];
+    overlayPost("api/overlay", {[act.dataset.ovact]: on}).then(() => {
+      // no window to draw them: say so, or the button seems to do nothing (the author, 2026-10-10)
+      if (on && !overlayNote && data.overlay && !data.overlay.window) {
+        overlayNote = "On, but no overlay window is running to draw anything: start ./launch_overlay.sh on the game PC.";
+        overlayDrawn = ""; renderOverlay();
+      }
+    });
+  }
   else if (reset) { e.preventDefault(); overlayPost("api/overlay/layout", {[reset.dataset.ovreset]: {reset: true}}); }
 });
 // Canonn's Bioforge: what is known of a codex entry across the galaxy (where it grows, the conditions)

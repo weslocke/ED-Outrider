@@ -4224,10 +4224,11 @@ const settle = async maxMs => {
     box.querySelector('[data-ovact="test"]').click();
     await sleep(100);
     got.posted = posted;
+    got.note = /no overlay window is running to draw anything/.test(box.textContent);   // no window: the button says why nothing shows
     w.fetch = real;
-    w.eval(`data.overlay = JSON.parse(${JSON.stringify(saved)}); overlayDrawn = ""; renderOverlay();`);
+    w.eval(`data.overlay = JSON.parse(${JSON.stringify(saved)}); overlayNote = ""; overlayDrawn = ""; renderOverlay();`);
     const want = {rows: 3, body: "120", off: true, theme: "elite", nowin: true,
-                  posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}]]};
+                  posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}]], note: true};
     const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && ok;
     console.log(ok ? "OK" : "FAIL", "| settings: in-game overlay |", ok ? "switches, panels' places, a change and the test button posted" : JSON.stringify(got), errors.slice(before));
