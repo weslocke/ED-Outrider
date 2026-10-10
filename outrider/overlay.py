@@ -236,6 +236,97 @@ def text_panel(pid, title, rows, pal, width=400, size="normal", subtitle=None):
     return {"id": pid, "w": width, "h": round(y + PAD - 2), "bg": pal["panel"], "frame": pal["frame"], "items": items}
 
 
+# ---- what the panels say ----
+
+def credits(v):
+    """Credits as the page writes them: 950, 59k, 2.4M, 1.2B."""
+    v = float(v or 0)
+    for div, unit, digits in ((1e9, "B", 1), (1e6, "M", 1), (1e3, "k", 0)):
+        if abs(v) >= div:
+            return f"{v / div:.{digits}f}{unit}"
+    return f"{v:.0f}"
+
+
+def body_what(b):
+    """A body in a few words: its notable tag (ELW, WW, AW) or its subtype without "body", T for terraformable."""
+    what = b.get("notable") or (b.get("subtype") or "").replace(" body", "").replace("Sudarsky class", "Class")
+    return what + (" T" if b.get("terraformable") and b.get("notable") != "T" else "")
+
+
+def codex_mark(guesses):
+    """The strongest codex mark among a body's likely species, with the new colour: "✪ Cobalt", "✦ Grey" or ""."""
+    for key, mark in (("codex_galaxy_new", "✪"), ("codex_new", "✦")):
+        for g in guesses or []:
+            if g.get(key):
+                have = set(g.get("codex_have") or [])
+                fresh = [v.split(" - ")[-1] for v in g.get("variants") or [] if v.split(" - ")[-1] not in have]
+                return f"{mark} {' or '.join(fresh)}" if fresh else mark
+    return ""
+
+
+def system_rows(detail, highlight, bio_min):
+    """The system panel's bodies: what is left to do on each body worth it, nearest first, then the valuable ones
+    already done. [{name, what, status, value, key (warn/accent/good), mark, todo, dist}], the credits left in the
+    whole system, and how many bodies have something left that is under your levels (not listed)."""
+    rows, left_all, under = [], 0, 0
+    for b in (detail or {}).get("bodies") or []:
+        if b.get("type") == "Star":
+            continue
+        vp = b.get("value_parts") or {}
+        map_left, bio_left = vp.get("carto_left") or 0, vp.get("bio_left") or 0
+        left_all += map_left + bio_left
+        organics = b.get("organics") or []
+        partial = [o for o in organics if not o.get("done") and not o.get("lost")]
+        mapped = bool(b.get("mapped") or b.get("first_mapped"))
+        special = bool(b.get("notable") or b.get("terraformable"))
+        to_map = not mapped and b.get("type") == "Planet" and map_left > 0 and (map_left >= highlight or special)
+        to_land = bool(partial) or bio_left >= bio_min
+        base = {"name": b.get("name", "?"), "what": body_what(b), "mark": codex_mark(b.get("bio_guess")) if to_land else "",
+                "dist": b.get("dist_ls") if b.get("dist_ls") is not None else 1e12}
+        if partial:
+            o = partial[0]
+            rows.append(dict(base, status=f"{o.get('genus', 'bio')} {o.get('samples', 0)}/3", value=bio_left + (map_left if to_map else 0),
+                             key="accent", todo=True))
+        elif to_land or to_map:
+            status = "MAP + LAND" if to_land and to_map else "TO LAND" if to_land else "TO MAP"
+            rows.append(dict(base, status=status, value=(bio_left if to_land else 0) + (map_left if to_map else 0), key="warn", todo=True))
+        elif (mapped and (b.get("value_max") or 0) >= highlight) or (organics and all(o.get("done") for o in organics)
+                                                                      and (b.get("value_max") or 0) >= bio_min):
+            rows.append(dict(base, status="MAPPED" if mapped else "SAMPLED", value=None, key="good", todo=False))
+        if not to_land and not to_map and (bio_left or (map_left and not mapped)):
+            under += 1
+    rows.sort(key=lambda r: (not r["todo"], r["dist"]))
+    return rows, left_all, under
+
+
+def system_panel(detail, pal, size="normal", highlight=500_000, bio_min=10_000_000, max_rows=8):
+    """The system panel ("worth your time"): None when no body is worth listing."""
+    rows, left_all, under = system_rows(detail, highlight, bio_min)
+    if not rows:
+        return None
+    shown = rows[:max_rows]
+    lines = []
+    for r in shown:
+        left = [(r["name"] + " ", "title"), (r["what"], "text" if r["todo"] else "muted")]
+        if r["mark"]:
+            left.append(("  " + r["mark"], "good" if r["mark"].startswith("✪") else "accent"))
+        right = f"{r['status']} {credits(r['value'])}" if r["value"] else r["status"]
+        lines.append({"left": left, "right": (right, r["key"])})
+    curious = [f"{b.get('name')} {c.get('tag')}" for b in (detail or {}).get("bodies") or [] for c in (b.get("curiosities") or [])[:1]]
+    if curious:
+        lines.append([("Also here: ", "muted"), (", ".join(curious), "text")])
+    lines.append("rule")
+    foot = [("Left here: ", "muted"), (credits(left_all), "accent")]
+    if len(rows) > len(shown):
+        foot.append((f" · {len(rows) - len(shown)} more", "muted"))
+    if under:
+        foot.append((f" · {under} under your levels", "muted"))
+    lines.append(foot)
+    n = len([b for b in (detail or {}).get("bodies") or []])
+    return text_panel("system", (detail or {}).get("name") or "System", lines, pal, width=440, size=size,
+                      subtitle=f"{n} bod{'y' if n == 1 else 'ies'}")
+
+
 # ---- the test panels: every panel with sample data, to arrange them before flying ----
 
 def test_panels(pal, size="normal", radar_range=800):

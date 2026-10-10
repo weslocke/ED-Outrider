@@ -88,6 +88,52 @@ class Panels(unittest.TestCase):
                         self.assertRegex(i[k], r"^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$")
 
 
+def body(name, dist, **kw):
+    b = {"name": name, "type": "Planet", "subtype": "High metal content body", "dist_ls": dist, "value_parts": {}, "organics": [],
+         "bio_guess": [], "mapped": False, "value_max": 0}
+    b.update(kw)
+    return b
+
+
+DETAIL = {"name": "Test Sector AB-C d1-2", "bodies": [
+    {"name": "A", "type": "Star", "subtype": "K (Yellow-Orange) Star", "dist_ls": 0, "value_parts": {"carto_left": 0}},
+    body("A 3", 900, notable="WW", terraformable=True, subtype="Water world", value_parts={"carto_left": 2_400_000}),
+    body("A 1", 300, value_parts={"carto_left": 90_000}),                                        # small: not listed
+    body("B 1", 50, subtype="Icy body", value_parts={"bio_left": 19_000_000}, genera=["Stratum"],
+         bio_guess=[{"genus": "Stratum", "codex_new": True, "codex_galaxy_new": True, "variants": ["Stratum Tectonicas - Lime"],
+                     "codex_have": []}]),
+    body("B 2", 70, subtype="Rocky body", value_parts={"bio_left": 4_000_000}, organics=[
+        {"genus": "Bacterium", "samples": 1, "done": False, "lost": False}]),
+    body("C 1", 20, mapped=True, value_max=3_000_000, value_parts={"carto_left": 0}),
+    body("C 2", 25, value_parts={"carto_left": 600_000}, curiosities=[{"tag": "close ring", "why": "x"}]),
+]}
+
+
+class SystemPanel(unittest.TestCase):
+    def test_rows(self):
+        rows, left, under = O.system_rows(DETAIL, 500_000, 10_000_000)
+        self.assertEqual(under, 1)   # A 1: 90k of mapping, under the 500k level
+        got = [(r["name"], r["status"], r["value"]) for r in rows]
+        self.assertEqual(got, [("C 2", "TO MAP", 600_000), ("B 1", "TO LAND", 19_000_000), ("B 2", "Bacterium 1/3", 4_000_000),
+                               ("A 3", "TO MAP", 2_400_000), ("C 1", "MAPPED", None)])   # to do nearest first, then done
+        self.assertEqual(left, 600_000 + 19_000_000 + 4_000_000 + 2_400_000 + 90_000)
+        self.assertEqual(rows[1]["mark"], "✪ Lime")
+        self.assertEqual(rows[3]["what"], "WW T")
+
+    def test_panel(self):
+        pal = O.palette()
+        p = O.system_panel(DETAIL, pal, highlight=500_000, bio_min=10_000_000, max_rows=3)
+        texts = [" ".join(r[0] for r in i["runs"]) if i["t"] == "runs" else i["s"] for i in p["items"] if i["t"] in ("runs", "text")]
+        self.assertTrue(texts[0].startswith("Test Sector AB-C d1-2"))
+        self.assertIn("TO LAND 19.0M", texts)
+        self.assertTrue(any("Also here:" in t and "C 2 close ring" in t for t in texts))
+        self.assertTrue(any(t.startswith("Left here:") and "26.1M" in t and "2 more" in t and "1 under your levels" in t for t in texts))
+        self.assertIsNone(O.system_panel({"name": "Empty", "bodies": [body("A 1", 10)]}, pal))   # nothing worth it: no panel
+
+    def test_credits(self):
+        self.assertEqual([O.credits(v) for v in (950, 59_400, 2_400_000, 1_230_000_000, None)], ["950", "59k", "2.4M", "1.2B", "0"])
+
+
 class Server(unittest.TestCase):
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")
@@ -125,6 +171,27 @@ class Server(unittest.TestCase):
         for bad in (None, {}, {"enabled": "yes"}, {"theme": "neon"}, {"panels": {"map": True}}, {"panels": {}}, {"test": 1},
                     {"volume": 3}):
             self.assertEqual(self.state.overlay_set(bad, now=300)[1], 400, bad)
+
+    def test_system_panel_shows_in_supercruise(self):
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Test Sector AB-C d1-2",
+                                    "SystemAddress": 77, "StarPos": [0, 0, 0]})
+        self.state.system_detail = lambda id64: DETAIL if id64 == 77 else None
+        self.state.overlay_cfg.update(enabled=True)
+        st = {"live": True, "flags": ed_outrider.FLAG_SUPERCRUISE, "gui_focus": 0}
+        self.state.journals.status_json = st
+        self.assertEqual([p["id"] for p in self.state.overlay_panels(now=1010)], ["system"])
+        st["gui_focus"] = 9                                                # the FSS: nothing over it
+        self.assertEqual(self.state.overlay_panels(now=1010), [])
+        st.update(gui_focus=0, flags=0)                                   # dropped out of supercruise
+        self.assertEqual(self.state.overlay_panels(now=1010), [])
+        st["flags"] = ed_outrider.FLAG_SUPERCRUISE
+        self.state.overlay_cfg.update(system_seconds=60)                  # only for a minute after arriving
+        self.assertEqual(len(self.state.overlay_panels(now=1050)), 1)
+        self.assertEqual(self.state.overlay_panels(now=1070), [])
+        self.state.overlay_cfg.update(system_seconds=0, system_panel=False)
+        self.assertEqual(self.state.overlay_panels(now=1010), [])
+        self.state.overlay_cfg.update(system_panel=True, enabled=False)
+        self.assertEqual(self.state.overlay_panels(now=1010), [])
 
     def test_layout(self):
         out, status = self.state.overlay_layout_set({"body": {"x": 0.4, "scale": 2.0}})

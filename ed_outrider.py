@@ -276,6 +276,8 @@ HIGHWAY = {"clipboard": True, "autotarget": False, "autotarget_delay": 5.0, "eff
            "autotarget_dry_run": False}
 AUTOTARGET_TEST_COUNTDOWN = 5   # s: the Plot Route tab's "test now": time to click into the game before the sequence
 AUTOTARGET_HONK_WAIT = 60       # s an auto-target waits for an auto honk on the same arrival to finish (honk first)
+OVERLAY_HIDE_FOCUS = {6, 7, 8, 9, 10, 11}   # Status.json GuiFocus: galaxy map, system map, orrery, FSS, SAA, codex (no panels over them)
+FLAG_SUPERCRUISE = 1 << 4
 OVERLAY_SEEN_S = 5             # s: an overlay window that asked this recently counts as connected (Settings says so)
 AUTOTARGET_DANGER_WAIT = 60     # s after an arrival a run waits for the game's own in-danger flag to clear (see arrival_danger_until)
 # The Highway map's optional background image ([highway] background_image): only the configured file is served
@@ -6597,16 +6599,39 @@ class State:
     def overlay_palette(self):
         return outrider.overlay.palette(self.overlay_cfg.get("theme", "default"))
 
+    def overlay_detail(self, id64):
+        """system_detail for the overlay's panels, kept until your scans or what is known of the system change (the
+        window asks once a second)."""
+        key = (id64, self.scan_version, id64 in self.bases, (self.systems.get(id64) or {}).get("status"))
+        cached = getattr(self, "_overlay_detail", None)
+        if cached and cached[0] == key:
+            return cached[1]
+        detail = self.system_detail(id64)
+        self._overlay_detail = (key, detail)
+        return detail
+
     def overlay_panels(self, now=None):
         """The panels to draw now: the test panels while they show, else the ones switched on that have something to
-        say (none while [overlay] enabled is off)."""
+        say (none while [overlay] enabled is off, the game is not live, or a map, the FSS, the SAA or the codex is open)."""
         now = time.time() if now is None else now
         cfg, pal = self.overlay_cfg, self.overlay_palette()
         if now < self.overlay_test_until or now < self.overlay_arrange_until:
             return outrider.overlay.test_panels(pal, cfg["text_size"], cfg["radar_range"])
-        if not cfg.get("enabled"):
+        st = self.journals.status_json or {}
+        if not cfg.get("enabled") or not st.get("live") or (st.get("gui_focus") or 0) in OVERLAY_HIDE_FOCUS:
             return []
-        return []
+        flags, pos, out = st.get("flags") or 0, self.journals.pos, []
+        # the system panel: in supercruise in the system you are in (for system_seconds after arriving, when set)
+        if cfg.get("system_panel") and pos and flags & FLAG_SUPERCRUISE:
+            try:
+                fresh = not cfg.get("system_seconds") or now - ts_seconds(pos["ts"]) <= cfg["system_seconds"]
+            except (KeyError, TypeError, ValueError):
+                fresh = True
+            if fresh:
+                p = outrider.overlay.system_panel(self.overlay_detail(pos["id64"]), pal, cfg["text_size"], BODY_HIGHLIGHT, BIO_MIN)
+                if p:
+                    out.append(p)
+        return out
 
     def overlay_view(self, since=None, now=None):
         """GET /api/overlay: what the overlay window draws, {version, enabled, arrange, canvas, layout, panels}; with

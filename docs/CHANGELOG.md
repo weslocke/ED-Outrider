@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay O4: the system panel (branch EDMC-Functionality)
+- In supercruise, the system panel lists what is worth your time in the system you are in, from what Here knows
+  (`State.system_detail`, cached on the scan version): each body with mapping or bio left over your levels (the
+  config's `body_highlight_level` and `bio_min`), nearest first, as TO MAP, TO LAND, MAP + LAND or a run in progress
+  ("Bacterium 1/3") with the credits and the codex mark with its colour ("✪ Lime"); then the valuable ones done
+  (MAPPED, SAMPLED); curiosities on an "Also here" line; what is left in the whole system, and how many bodies are
+  under your levels. Hidden over the maps, the FSS, the SAA and the codex; `[overlay] system_seconds` limits it to
+  that long after arriving.
+
 ## 2026-10-10 · Overlay O3: arranging the panels (branch EDMC-Functionality)
 - Arrange mode (Settings -> In-game overlay, **Arrange panels**): the overlay window takes the mouse and frames each
   panel. Drag to move it (it is kept from the corner nearest where it lands, so a resolution change keeps it there),
