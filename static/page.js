@@ -7822,11 +7822,11 @@ function overlayStatusHtml(o) {
   if (o.window) return `<span class="ok">the overlay window is drawing</span>`;
   if (!r) return `<span class="unk">the overlay needs Outrider on the game PC</span>`;
   const st = r.state;
-  if (st === "no_qt") return `<span class="warnc">the overlay window needs PyQt6 (about 100 MB, into Outrider's own environment)</span> ` +
-    `<button type="button" class="try" data-ovinstall>Install PyQt6</button>`;
-  if (st === "installing") return `<span class="unk">installing PyQt6… (a minute or two)</span>`;
+  // PyQt6 is installed by Outrider when the overlay is on (and by the launchers at start): no button for it
+  if (st === "no_qt") return `<span class="warnc">the overlay window needs PyQt6: Outrider installs it while the overlay is on</span>`;
+  if (st === "installing") return `<span class="unk">installing PyQt6 for the overlay window… (about 100 MB, a minute or two)</span>`;
   if (st === "install_failed") return `<span class="bad">installing PyQt6 failed: ${esc(r.why || "?")}</span> ` +
-    `<button type="button" class="try" data-ovinstall>Try again</button>`;
+    `<span class="unk">(switch the overlay off and on to try again)</span>`;
   if (st === "starting") return `<span class="unk">starting the overlay window…</span>`;
   if (st === "running") return `<span class="unk">the overlay window is running, waiting for the game's window</span>`;
   if (st === "restarting") return `<span class="warnc">the overlay window ${esc(r.why || "stopped")}</span>`;
@@ -7838,10 +7838,11 @@ function overlayHtml(o) {
   const opt = (vals, cur, label = v => v) => vals.map(v => `<option value="${v}"${v === cur ? " selected" : ""}>${esc(label(v))}</option>`).join("");
   const pct = v => Math.round(v * 100);
   const lay = o.layout || {};
-  const rows = OV_PANELS.map(([id, name]) => {
-    const e = lay[id] || {};
+  const rows = OV_PANELS.map(([id, name, what]) => {
+    const e = lay[id] || {}, on = !!(o.panels || {})[id];
     const num = (k, v, min, max, title) => `<td><input type="number" data-ovlay="${id}" data-k="${k}" min="${min}" max="${max}" step="1" value="${v}" title="${title}" style="width:4.5em"></td>`;
-    return `<tr><th>${esc(name)}</th><td><select data-ovlay="${id}" data-k="corner" title="the corner of the game window it is placed from">${opt(Object.keys(OV_CORNERS), e.corner, c => OV_CORNERS[c])}</select></td>` +
+    // each panel's own row: its on/off box (what it shows on hover), then where it goes; a panel switched off is dimmed
+    return `<tr class="${on ? "" : "ovoff"}"><th><label title="${esc(what)}"><input type="checkbox" data-ovpanel="${id}"${on ? " checked" : ""}> ${esc(name)}</label></th><td><select data-ovlay="${id}" data-k="corner" title="the corner of the game window it is placed from">${opt(Object.keys(OV_CORNERS), e.corner, c => OV_CORNERS[c])}</select></td>` +
       num("x", pct(e.x || 0), 0, 95, "how far in from that corner's side, in % of the game window's width") +
       num("y", pct(e.y || 0), 0, 95, "how far in from that corner's top or bottom, in % of the game window's height") +
       num("scale", pct(e.scale || 1), 50, 250, "its size, in %") + num("bg", pct(e.bg ?? 0.65), 0, 100, "its background's opacity, in % (0: text only)") +
@@ -7850,11 +7851,10 @@ function overlayHtml(o) {
   }).join("");
   return `<label class="mod"><input type="checkbox" data-ov="enabled"${o.enabled ? " checked" : ""}> <b>Show the overlay</b> <span class="hint">the panels below, when they have something to say</span></label>` +
     `<div class="hint">${overlayStatusHtml(o)}</div>` +
-    OV_PANELS.map(([id, name, what]) => `<label class="mod"><input type="checkbox" data-ovpanel="${id}"${(o.panels || {})[id] ? " checked" : ""}> ${esc(name)} <span class="hint">${esc(what)}</span></label>`).join("") +
     `<div class="mod">Theme <select data-ov="theme">${opt(OV_THEMES, o.theme)}</select> · text <select data-ov="text_size">${opt(["small", "normal", "large"], o.text_size)}</select></div>` +
     `<div class="mod"><button type="button" class="try" data-ovact="test">${o.test ? `test panels: ${o.test} s` : "▶ Show test panels"}</button> ` +
     `<button type="button" class="try" data-ovact="arrange">${o.arrange ? `✓ Done arranging (${Math.ceil(o.arrange / 60)} min left)` : "✥ Arrange panels"}</button></div>` +
-    `<table class="ovlay"><thead><tr><th></th><th>Placed from</th><th>Across %</th><th>Down %</th><th>Size %</th><th>Background %</th><th>Panel %</th><th></th></tr></thead><tbody>${rows}</tbody></table>` +
+    `<table class="ovlay"><thead><tr><th title="tick a panel to show it; hover its name for what it shows">Panel</th><th>Placed from</th><th>Across %</th><th>Down %</th><th>Size %</th><th>Background %</th><th>Panel %</th><th></th></tr></thead><tbody>${rows}</tbody></table>` +
     `<div class="hint" id="overlayMsg">${esc(overlayNote)}</div>`;
 }
 function renderOverlay() {
@@ -7893,13 +7893,12 @@ document.getElementById("overlayBox").addEventListener("change", e => {
 });
 document.getElementById("overlayBox").addEventListener("click", e => {
   const act = e.target.closest("[data-ovact]"), reset = e.target.closest("[data-ovreset]");
-  if (e.target.closest("[data-ovinstall]")) { overlayPost("api/overlay/install", {}); return; }
   if (act) {
     const on = !(data.overlay || {})[act.dataset.ovact];
     overlayPost("api/overlay", {[act.dataset.ovact]: on}).then(() => {
       // nothing can draw them yet: say why, or the button seems to do nothing (the author, 2026-10-10)
       const o = data.overlay;
-      if (on && !overlayNote && o && !o.window && (!o.runner || ["no_qt", "install_failed", "failed"].includes(o.runner.state))) {
+      if (on && !overlayNote && o && !o.window && (!o.runner || ["no_qt", "installing", "install_failed", "failed"].includes(o.runner.state))) {
         overlayNote = o.runner ? "On, but the overlay window cannot run yet: see above." :
           "On, but the overlay needs Outrider on the game PC.";
         overlayDrawn = ""; renderOverlay();

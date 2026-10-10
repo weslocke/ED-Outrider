@@ -181,6 +181,16 @@ class Packaging(unittest.TestCase):
         self.assertNotIn("PyQt6", self.read("requirements.txt") + self.read("Dockerfile"))
         self.assertNotIn("password", ed_outrider.outrider.overlay.DEFAULTS)
 
+    def test_launchers_install_the_overlays_pyqt6(self):
+        """PyQt6 is installed when the overlay is on, never from a menu (the author, 2026-10-10): both launchers run the
+        setup step before Outrider starts, with Outrider's own arguments (--config), and no install route is left."""
+        for name in ("launch_outrider.sh", "launch_outrider.bat"):
+            script = self.read(name)
+            step = script.index("-m outrider.overlay_runner --setup")
+            self.assertLess(step, script.index("ed_outrider.py \"$@\"" if name.endswith(".sh") else "ed_outrider.py %*"), name)
+        self.assertIn('--setup "$@" || true', self.read("launch_outrider.sh"))   # never stops Outrider starting
+        self.assertNotIn("/api/overlay/install", self.read("ed_outrider.py") + self.read("static/page.js"))
+
     def test_bundle_rewrites_the_compose_file(self):
         """scripts/docker_bundle.sh runs the saved image instead of a build: the two lines it rewrites are there, and the
         bundles (dist/) and your .env never go into an image."""

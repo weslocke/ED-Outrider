@@ -1,7 +1,8 @@
 @echo off
 rem Start ED Outrider on Windows, setting it up first when needed: makes the virtual environment (.venv) and installs
 rem requirements.txt on the first run, again whenever requirements.txt has changed (after a git pull), and if the
-rem environment is broken; otherwise it starts at once. Double-click it, or run it in a Command Prompt; any arguments
+rem environment is broken; otherwise it starts at once. With the in-game overlay on ([overlay] enabled = true) it also
+rem installs PyQt6 when missing. Double-click it, or run it in a Command Prompt; any arguments
 rem go to Outrider (launch_outrider.bat --port 8026). PYTHON=C:\path\to\python.exe picks the Python that makes the
 rem environment (3.11 or newer); otherwise the py launcher's newest Python 3, then python on the PATH.
 rem The game-PC functions (auto honk, auto-target, the control rail, the co-pilot button) are Linux only for now;
@@ -68,6 +69,8 @@ goto fail
 copy /y requirements.txt "%STAMP%" >nul
 
 :run
+rem the in-game overlay's PyQt6, installed when [overlay] enabled is true in the config and it is missing
+"%VPY%" -m outrider.overlay_runner --setup %*
 "%VPY%" ed_outrider.py %*
 if errorlevel 1 goto stopped
 exit /b 0

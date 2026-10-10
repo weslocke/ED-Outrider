@@ -276,9 +276,14 @@ class Runner(unittest.TestCase):
 
     def setUp(self):
         import outrider.overlay_runner as R
-        self.R, self.started, self.t, self.qt = R, [], 0.0, True
+        self.R, self.started, self.t, self.qt, self.pips, self.pip_answer = R, [], 0.0, True, [], (0, "")
         self.run = R.OverlayRunner("http://127.0.0.1:8025", popen=self.popen, has_qt=lambda: self.qt, python="py",
-                                   log=lambda *a: None, clock=lambda: self.t)
+                                   log=lambda *a: None, clock=lambda: self.t, pip=self.pip, background=False)
+
+    def pip(self, cmd, **kw):
+        """A fake pip: records the command and answers pip_answer (returncode, stderr)."""
+        self.pips.append(cmd)
+        return types.SimpleNamespace(returncode=self.pip_answer[0], stdout="", stderr=self.pip_answer[1])
 
     def popen(self, cmd, cwd=None):
         p = FakeProc(cmd, cwd)
@@ -295,22 +300,58 @@ class Runner(unittest.TestCase):
         self.run.tick(False)
         self.assertEqual((self.started[0].signals, self.run.status()["state"]), (["term"], "off"))
 
-    def test_without_pyqt(self):
-        self.qt = False
+    def test_without_pyqt_it_installs_it_once(self):
+        """The overlay on and PyQt6 missing: Outrider installs it by itself (no button: the author, 2026-10-10), once per
+        switching on; a failure waits for the overlay to be switched off and on."""
+        self.qt, self.pip_answer = False, (1, "ERROR: No matching distribution found for PyQt6")
+        self.run.tick(False)
+        self.assertEqual(self.pips, [])                                              # not wanted: nothing installed
         self.run.tick(True)
-        self.assertEqual((self.started, self.run.status()["state"]), ([], "no_qt"))
-        ran = []
-
-        def pip_fails(cmd, **kw):
-            ran.append(cmd)
-            return types.SimpleNamespace(returncode=1, stdout="", stderr="ERROR: No matching distribution found for PyQt6")
-        self.assertTrue(self.run.install(run=pip_fails, background=False))
-        self.assertEqual(ran[0][:5], ["py", "-m", "pip", "install", "--quiet"])
+        self.assertEqual(self.pips[0][:5], ["py", "-m", "pip", "install", "--quiet"])
         self.assertEqual(self.run.status(), {"state": "install_failed", "why": "ERROR: No matching distribution found for PyQt6"})
-        self.run.install(run=lambda cmd, **kw: types.SimpleNamespace(returncode=0, stdout="", stderr=""), background=False)
+        self.run.tick(True)
+        self.assertEqual(len(self.pips), 1)                                          # not again and again
+        self.run.tick(False)
+        self.pip_answer = (0, "")
+        self.run.tick(True)                                                          # switched off and on: tried again
+        self.assertEqual((len(self.pips), self.started), (2, []))
         self.qt = True
         self.run.tick(True)
         self.assertEqual((len(self.started), self.run.status()["state"]), (1, "starting"))   # installed: started
+        self.assertEqual(len(self.pips), 2)
+
+    def test_launcher_setup(self):
+        """launch_outrider.sh / .bat: PyQt6 installed before Outrider starts when [overlay] enabled is true and it is
+        missing; nothing otherwise; never a reason not to start."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        cfg = os.path.join(tmp.name, "ed_outrider.toml")
+        said = []
+
+        def setup(text, qt=False, wmctrl=True, answer=0, platform="linux"):
+            with open(cfg, "w", encoding="utf-8") as f:
+                f.write(text)
+            self.pips.clear(), said.clear()
+            self.pip_answer = (answer, "")
+            return self.R.setup(cfg, python="py", has_qt=lambda: qt, run=self.pip, which=lambda name: "/usr/bin/x" if wmctrl else None,
+                                platform=platform, out=said.append)
+        self.assertTrue(setup("[overlay]\nenabled = false\n"))
+        self.assertEqual((self.pips, said), ([], []))
+        self.assertTrue(setup(""))                                                  # no [overlay]: off
+        self.assertTrue(setup("not = [valid"))                                       # a config that does not parse: off
+        self.assertEqual(self.pips, [])
+        self.assertTrue(setup("[overlay]\nenabled = true\n"))
+        self.assertEqual(self.pips[0], ["py", "-m", "pip", "install", "--quiet", "-r", self.R.REQUIREMENTS])
+        self.assertIn("installing PyQt6", said[0])
+        self.assertTrue(setup("[overlay]\nenabled = true\n", qt=True))
+        self.assertEqual((self.pips, said), ([], []))                                # already there
+        self.assertFalse(setup("[overlay]\nenabled = true\n", answer=1))
+        self.assertIn("starts anyway", said[-1])
+        setup("[overlay]\nenabled = true\n", qt=True, wmctrl=False)
+        self.assertIn("wmctrl", said[0])                                             # Linux: the system programs
+        setup("[overlay]\nenabled = true\n", qt=True, wmctrl=False, platform="win32")
+        self.assertEqual(said, [])
+        self.assertEqual(self.R.main(["--port", "8026", "--config", os.path.join(tmp.name, "none.toml"), "--setup"]), 0)   # Outrider's own arguments pass
 
     def test_crashes_back_off_then_give_up(self):
         self.run.tick(True)

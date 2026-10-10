@@ -13656,14 +13656,6 @@ def make_app(state, hosts=None):
         out, status = state.overlay_set(await json_object(request))
         return web.json_response(out, status=status)
 
-    async def overlay_install_post(_request):
-        """POST /api/overlay/install: PyQt6 into Outrider's own environment, for the overlay window (game PC only)."""
-        if not state.overlay_runner:
-            return web.json_response({"error": "the overlay window is not run by this Outrider"}, status=409)
-        state.overlay_runner.install()
-        state.bump()
-        return web.json_response(state.overlay_info())
-
     async def overlay_layout_post(request):
         body = await json_object(request)
         out, status = state.overlay_layout_set(body if body is not None else None)
@@ -13833,7 +13825,6 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/overlay", overlay_get)
     app.router.add_post("/api/overlay", pc_only(overlay_post))   # the overlay is a game-PC feature (the author, 2026-10-10)
     app.router.add_post("/api/overlay/layout", pc_only(overlay_layout_post))
-    app.router.add_post("/api/overlay/install", pc_only(overlay_install_post))
     app.router.add_get("/api/rail", rail_view)
     app.router.add_post("/api/ask", ask_view)
     app.router.add_get("/api/config", config_get_view)

@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: PyQt6 installed when the overlay is on; each panel's switch in its row (branch EDMC-Functionality)
+- No Install PyQt6 button any more (the author's call: not a menu option). launch_outrider.sh / .bat install PyQt6
+  before Outrider starts when `[overlay] enabled = true` is in the config and it is missing
+  (`python -m outrider.overlay_runner --setup`; on Linux they also say when wmctrl is missing), and Outrider installs
+  it itself, once per switching on, when the overlay (or the test panels, or Arrange mode) is switched on without it.
+  POST `/api/overlay/install` is gone.
+- Settings -> In-game overlay: each panel's on/off box is in its own row of the table, beside its place, size and
+  opacity (the list above the table is gone, so the section is smaller); what a panel shows is its name's hover tip,
+  and a panel switched off is dimmed.
+
 ## 2026-10-10 · Overlay: the Now panel named "Now (To-Do & Info)" (branch EDMC-Functionality)
 - Its name in Settings -> In-game overlay, Arrange mode's labels, the config's comment and the guide (the key stays
   `now_panel`). Settings writes the panels' names escaped.
