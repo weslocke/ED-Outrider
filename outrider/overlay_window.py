@@ -321,6 +321,8 @@ def paint(painter, data, win_w, win_h, arrange=False, override=None):
                     fonts.append((s_, c_, f, QFontMetricsF(f)))
                 base = it["y"] + max((fm.ascent() for *_, fm in fonts), default=0)
                 fm_x = it["x"]
+                if it.get("align") == "center":   # x is the line's middle: measured with the real fonts
+                    fm_x -= sum(fm.horizontalAdvance(s_) for s_, _, _, fm in fonts) / 2
                 for s_, c_, f, fm in fonts:
                     painter.setFont(f)
                     painter.setPen(colour(c_))

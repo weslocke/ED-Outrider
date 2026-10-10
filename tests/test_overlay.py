@@ -343,15 +343,16 @@ class Strip(unittest.TestCase):
                 "firsts": 20, "mapped": 4, "planets": 18, "in_spansh": True}
         p = O.strip_panel(info, pal)
         lines = ["".join(r[0] for r in i["runs"]) for i in p["items"]]
-        self.assertEqual(lines, ["Drojau BJ-A a41-3  ·  Inner Orion Spur  ·  Sol 5,411 ly  ·  L dwarf  ·  now 20.0M  ·  max 35.1M  ·  "
-                                 "🏁 first discovered",
-                                 "20 bodies  ·  20/20 found ✓  ·  🏁 20  ·  🗺 4/18  ·  Spansh ✓"])
+        self.assertEqual(lines, ["Drojau BJ-A a41-3  ·  Inner Orion Spur  ·  L dwarf",
+                                 "Sol 5,411 ly  ·  now 20.0M  ·  max 35.1M  ·  🏁 first discovered  ·  20 bodies  ·  20/20 found ✓  ·  "
+                                 "🏁 20  ·  🗺 4/18  ·  Spansh ✓"])
+        self.assertTrue(all(i.get("align") == "center" and i["x"] == p["w"] / 2 for i in p["items"]))   # both centred
         self.assertEqual(p["id"], "strip")
         self.assertLessEqual(p["w"], O.CANVAS_W - 40)
         self.assertLess(p["h"], 70)                                   # short: two lines
         new = O.strip_panel(dict(info, total=None, honked=False, first=False, firsts=0, planets=None, in_spansh=False), pal)
         second = "".join(r[0] for r in new["items"][1]["runs"])
-        self.assertEqual(second, "bodies ?  ·  not honked  ·  Spansh ✗ (new to it)")
+        self.assertEqual(second, "Sol 5,411 ly  ·  now 20.0M  ·  max 35.1M  ·  not honked  ·  Spansh ✗ (new to it)")
         self.assertNotIn("first discovered", "".join(r[0] for r in new["items"][0]["runs"]))
         self.assertIsNone(O.strip_panel({}, pal))
 
@@ -483,9 +484,9 @@ class Server(unittest.TestCase):
         self.state.overlay_cfg.update(strip_panel=True)
         p = self.state.overlay_panels(now=1010)[0]
         text = ["".join(r[0] for r in i["runs"]) for i in p["items"]]
-        self.assertTrue(text[0].startswith("Test Sector AB-C d1-2  ·  Inner Orion Spur  ·  Sol 5 ly"))
-        self.assertIn("first discovered", text[0])
-        self.assertEqual(text[1], "9 bodies  ·  5/9 found  ·  🏁 4  ·  🗺 1/6  ·  Spansh ✗ (new to it)")   # C 1 is mapped
+        self.assertEqual(text[0], "Test Sector AB-C d1-2  ·  Inner Orion Spur")
+        self.assertEqual(text[1], "Sol 5 ly  ·  now 1  ·  max 2.0M  ·  🏁 first discovered  ·  9 bodies  ·  5/9 found  ·  🏁 4  ·  "
+                                  "🗺 1/6  ·  Spansh ✗ (new to it)")   # C 1 is mapped
 
     def test_layout(self):
         out, status = self.state.overlay_layout_set({"body": {"x": 0.4, "scale": 2.0}})

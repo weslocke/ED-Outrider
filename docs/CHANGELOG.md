@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: the system strip's lines rearranged and centred (branch EDMC-Functionality)
+- Line 1 is the system, its region and the star; the distance from Sol, now, max and first discovered move to line 2,
+  before the body counts; both lines are centred in the box (a `runs` line can be centred: `align` "center", measured
+  with the window's real fonts).
+
 ## 2026-10-10 · Overlay: a game-PC feature only (branch EDMC-Functionality)
 - The overlay joins the key presses as a game-PC feature (the author's call): Outrider on the game PC runs the window,
   and an Outrider on a server has no overlay. Gone: launch_overlay.sh / .bat (a window drawn from a server),

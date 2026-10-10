@@ -21,11 +21,11 @@ every click through, so you play as before.
   the rim; the sample points of your run with their colony rings, red while you are inside one and green once you are
   clear; tagged plants, the ship and your rigs. Underneath: how far the next sample must be, or "Clear: sample here".
 
-- **The system strip** (optional, off until you tick it), made for the top of the screen: two short lines. The first
-  says where you are: the system, its region, the distance from Sol, the star (⛽ scoopable, ⚡ a neutron star or white
-  dwarf), what its data pays now and at most, and 🏁 when you discovered it. The second, condensed: how many bodies,
-  how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether Spansh knows
-  the system ("Spansh ✗ (new to it)" when it does not).
+- **The system strip** (optional, off until you tick it), made for the top of the screen: two short lines, centred.
+  The first says where you are: the system, its region and the star (⛽ scoopable, ⚡ a neutron star or white dwarf).
+  The second, condensed: the distance from Sol, what its data pays now and at most, 🏁 when you discovered it, how many
+  bodies and how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether
+  Spansh knows the system ("Spansh ✗ (new to it)" when it does not).
 
 No panel covers the galaxy or system map, the orrery, the FSS, the SAA or the codex.
 

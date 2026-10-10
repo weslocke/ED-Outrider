@@ -10,8 +10,8 @@ corner of the game window, an offset as a share of the window, a scale) and draw
 opacity, then the items, the whole panel at the layout's alpha. Items:
 
     {"t": "text", "x", "y", "s", "c", "size", "bold", "align"}   (x, y: the text's top left; align right: x is its right edge)
-    {"t": "runs", "x", "y", "runs": [[s, c, size, bold], ...]}   (a line of differently coloured parts, set one after the
-                                                                 other with the font's own widths)
+    {"t": "runs", "x", "y", "runs": [[s, c, size, bold], ...], "align"}   (a line of differently coloured parts, set one
+                                         after the other with the font's own widths; align "center": x is its middle)
     {"t": "rect", "x", "y", "w", "h", "c", "f", "lw"}            (c: the line's colour or None, f: the fill or None)
     {"t": "circle", "x", "y", "r", "c", "f", "lw"}               (x, y: the centre)
     {"t": "line", "pts": [[x, y], ...], "c", "lw"}
@@ -229,9 +229,13 @@ def marker(x, y, kind, c, r=6, rot=0):
     return {"t": "marker", "x": round(x, 1), "y": round(y, 1), "kind": kind, "c": c, "r": r, "rot": round(rot, 1)}
 
 
-def runs(x, y, parts):
-    """A line of (text, colour, size, bold) parts set one after another by the window, with the font's real widths."""
-    return {"t": "runs", "x": round(x, 1), "y": round(y, 1), "runs": [[str(s), c, size, bool(b)] for s, c, size, b in parts]}
+def runs(x, y, parts, align="left"):
+    """A line of (text, colour, size, bold) parts set one after another by the window, with the font's real widths;
+    align "center": x is the line's middle."""
+    out = {"t": "runs", "x": round(x, 1), "y": round(y, 1), "runs": [[str(s), c, size, bool(b)] for s, c, size, b in parts]}
+    if align != "left":
+        out["align"] = align
+    return out
 
 
 def text_width(s, size="normal"):
@@ -561,46 +565,42 @@ def star_words(code):
 
 
 def strip_panel(info, pal, size="normal"):
-    """The system strip: two short lines across the top. Line 1: where you are (system, region, distance from Sol,
-    the star, the values, your first discovery); line 2, condensed: bodies, found of total, discovered by you, mapped of
-    planets, whether Spansh knows the system. info: {name, region, star, sol_ly, total, found, all_found, honked,
-    value_now, value_max, first, firsts, mapped, planets, in_spansh}. Its width follows its text."""
+    """The system strip: two short lines across the top, centred in their box. Line 1: the system, its region, the
+    star. Line 2: the distance from Sol, now and max, your first discovery; then bodies, found of total, discovered by
+    you, mapped of planets, whether Spansh knows the system (the author, 2026-10-10). info: {name, region, star, sol_ly,
+    total, found, all_found, honked, value_now, value_max, first, firsts, mapped, planets, in_spansh}. Its width follows
+    its text."""
     if not info or not info.get("name"):
         return None
     sep = ("  ·  ", pal["muted"], size, False)
 
     def line(first, rest):
-        parts = [first]
+        parts = [first] if first else []
         for text, key in rest:
             if text:
-                parts.extend([sep, (text, pal[key], size, False)])
+                parts.extend([sep, (text, pal[key], size, False)] if parts else [(text, pal[key], size, False)])
         return parts
-    one = [(info.get("region"), "muted"),
-           (f"Sol {info['sol_ly']:,.0f} ly" if info.get("sol_ly") is not None else "", "muted"),
-           (star_words(info.get("star")), "text")]
+    one = line((info["name"], pal["title"], "large", True), [(info.get("region"), "muted"), (star_words(info.get("star")), "text")])
+    rest = [(f"Sol {info['sol_ly']:,.0f} ly" if info.get("sol_ly") is not None else "", "muted")]
     if info.get("value_max"):
-        one += [(f"now {credits(info.get('value_now'))}", "text"), (f"max {credits(info['value_max'])}", "accent")]
-    one.append(("🏁 first discovered" if info.get("first") else "", "good"))
+        rest += [(f"now {credits(info.get('value_now'))}", "text"), (f"max {credits(info['value_max'])}", "accent")]
+    rest.append(("🏁 first discovered" if info.get("first") else "", "good"))
     total, found = info.get("total"), info.get("found")
-    two = []
+    rest.append((f"{total} bod{'y' if total == 1 else 'ies'}" if total else "", "text"))
     if total:
-        two.append((f"{found or 0}/{total} found" + (" ✓" if info.get("all_found") else ""), "good" if info.get("all_found") else "warn"))
+        rest.append((f"{found or 0}/{total} found" + (" ✓" if info.get("all_found") else ""), "good" if info.get("all_found") else "warn"))
     elif not info.get("honked"):
-        two.append(("not honked", "warn"))
-    two += [(f"🏁 {info['firsts']}" if info.get("firsts") else "", "good"),
-            (f"🗺 {info.get('mapped') or 0}/{info['planets']}" if info.get("planets") else "", "text")]
+        rest.append(("not honked", "warn"))
+    rest += [(f"🏁 {info['firsts']}" if info.get("firsts") else "", "good"),
+             (f"🗺 {info.get('mapped') or 0}/{info['planets']}" if info.get("planets") else "", "text")]
     if info.get("in_spansh") is not None:
-        two.append(("Spansh ✓" if info["in_spansh"] else "Spansh ✗ (new to it)", "muted" if info["in_spansh"] else "warn"))
-    first_line = line((info["name"], pal["title"], "large", True), one)
-    lines = [first_line]
-    if two:
-        body_word = (f"{total} bod{'y' if total == 1 else 'ies'}", pal["text"], size, False) if total \
-            else ("bodies ?", pal["muted"], size, False)
-        lines.append(line(body_word, two))
-    width = min(CANVAS_W - 40, PAD * 2 + 10 + max(sum(text_width(t, s) for t, _, s, _ in ln) for ln in lines))
+        rest.append(("Spansh ✓" if info["in_spansh"] else "Spansh ✗ (new to it)", "muted" if info["in_spansh"] else "warn"))
+    two = line(None, rest)
+    lines = [one] + ([two] if two else [])
+    width = round(min(CANVAS_W - 40, PAD * 2 + 10 + max(sum(text_width(t, s) for t, _, s, _ in ln) for ln in lines)))
     items, y = [], PAD - 2
     for i, ln in enumerate(lines):
-        items.append(runs(PAD, y, ln))
+        items.append(runs(width / 2, y, ln, align="center"))
         y += LINE_H["large"] if i == 0 else LINE_H.get(size, 20)
     return {"id": "strip", "w": round(width), "h": round(y + PAD - 4), "bg": pal["panel"], "frame": pal["frame"],
             "style": pal.get("style", "rounded"), "accent": pal["title"], "items": items}
