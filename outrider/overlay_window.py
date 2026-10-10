@@ -123,6 +123,16 @@ def wheeled(entry, key, notches):
     return dict(entry, **{key: round(min(hi, max(lo, entry[key] + WHEEL_STEP * notches)), 4)})
 
 
+def should_show(st, data, active=False):
+    """Whether the overlay shows over the game's window state `st` (overlay_tracking.WindowState or None): while the
+    game is in front, or this window is (Arrange mode takes the mouse), or for Arrange mode and the test panels whatever
+    is in front (they are pressed from Outrider's page: the game is behind it then)."""
+    if not st or not st.is_visible:
+        return False
+    data = data or {}
+    return bool(st.is_foreground or active or data.get("arrange") or data.get("test"))
+
+
 def screen_for(infos, nx, ny):
     """Of the screens (overlay_tracking.ScreenInfo), the one whose native rectangle holds the point (nx, ny), else the
     first; None with no screens."""
@@ -608,7 +618,7 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
             arranging = self.arranging()
             if self.click_through == arranging:   # Arrange mode takes the mouse; otherwise every click goes to the game
                 self.apply_click_through(not arranging)
-            if not st or not st.is_visible or not (st.is_foreground or arranging or self.isActiveWindow()):
+            if not should_show(st, feed.data, self.isActiveWindow()):
                 if self.isVisible():
                     self.hide()
                 return

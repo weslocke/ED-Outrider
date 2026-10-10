@@ -102,6 +102,19 @@ class Arranging(unittest.TestCase):
         self.assertEqual(W.dragged(e, start, 99999, 0, "resize", 400, 100, 1920, 1080)["scale"], O.LIMITS["scale"][1])
         self.assertEqual(W.dragged(e, start, -99999, 0, "resize", 400, 100, 1920, 1080)["scale"], O.LIMITS["scale"][0])
 
+    def test_when_it_shows(self):
+        """Over the game while it is in front; Arrange mode and the test panels whatever is in front (pressed from the
+        page, the game is behind it: they showed only once you were back in the game, the author, 2026-10-10)."""
+        front = T.WindowState(0, 0, 1920, 1080, True, True)
+        behind = T.WindowState(0, 0, 1920, 1080, False, True)
+        self.assertTrue(W.should_show(front, {}))
+        self.assertFalse(W.should_show(behind, {}))
+        self.assertTrue(W.should_show(behind, {"test": True}))
+        self.assertTrue(W.should_show(behind, {"arrange": True}))
+        self.assertTrue(W.should_show(behind, {}, active=True))
+        self.assertFalse(W.should_show(None, {"test": True}))                       # no game window: nowhere to draw
+        self.assertFalse(W.should_show(T.WindowState(0, 0, 0, 0, True, False), {"test": True}))   # minimised
+
     def test_frames(self):
         self.assertEqual(W.frame_points("chamfer", 100, 50, cut=10), [(10, 0), (100, 0), (100, 40), (90, 50), (0, 50), (0, 10)])
         self.assertIsNone(W.frame_points("rounded", 100, 50))

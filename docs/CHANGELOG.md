@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: test panels for a minute, whatever is in front (branch EDMC-Functionality)
+- The test panels showed only once you were back in the game (the overlay draws while the game is in front, and they
+  are pressed from Outrider's page), so most of their 20 s went by unseen. They now stay a minute and show over the
+  game's window whatever is in front, as Arrange mode does (`overlay_window.should_show`).
+
 ## 2026-10-10 · Overlay: Outrider runs the window itself (branch EDMC-Functionality)
 - On the game PC, Outrider starts the overlay window while the overlay is on (or for the test panels and Arrange mode),
   closes it when it is switched off and when Outrider stops, and starts it again after a crash (a growing wait; it

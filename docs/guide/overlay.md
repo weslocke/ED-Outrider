@@ -33,7 +33,7 @@ No panel covers the galaxy or system map, the orrery, the FSS, the SAA or the co
 3. Play Elite **borderless or windowed**; exclusive fullscreen hides anything drawn over it.
 
 Settings → In-game overlay says how the window is doing (starting, drawing, waiting for the game's window). **Show
-test panels** draws all three with made-up contents for 20 seconds, without flying anywhere. Start Outrider from your
+test panels** draws all three with made-up contents for a minute, without flying anywhere, even while Outrider's page is in front of the game. Start Outrider from your
 desktop (the launcher, or a terminal in your session): the window needs your screen.
 
 **Outrider on a server (Docker):** a container has no screen, so the window runs on the game PC instead, pointed at

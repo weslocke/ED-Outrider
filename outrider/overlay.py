@@ -33,7 +33,7 @@ PANEL_NAMES = {"system": "System", "body": "Body", "radar": "Surface radar"}
 CORNERS = ("nw", "ne", "sw", "se")
 SIZES = ("small", "normal", "large")
 THEMES = ("default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark")
-TEST_SECONDS = 20       # "Show test panels": how long they stay
+TEST_SECONDS = 60       # "Show test panels": how long they stay (shown whether or not the game is in front)
 ARRANGE_SECONDS = 600   # Arrange mode ends by itself after this, so the overlay never stays in the way of the mouse
 
 DEFAULTS = {"enabled": False, "theme": "default", "text_size": "normal", "system_panel": True, "body_panel": True,
