@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: the Now panel named "Now (To-Do & Info)" (branch EDMC-Functionality)
+- Its name in Settings -> In-game overlay, Arrange mode's labels, the config's comment and the guide (the key stays
+  `now_panel`). Settings writes the panels' names escaped.
+
 ## 2026-10-10 · Overlay: the Now and Bio signals panels (branch EDMC-Functionality)
 - Two more optional panels, off by default (`[overlay] now_panel`, `bio_panel`; Settings -> In-game overlay).
 - **Now**, the page's Now view condensed: the system (and the arrival verdict for 20 s), the target, fuel, the data at

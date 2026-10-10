@@ -7812,7 +7812,7 @@ const OV_THEMES = ["default", "lcars", "elite", "babylon5", "narn", "minbari", "
 const OV_PANELS = [["system", "System", "the bodies worth your time, in supercruise"], ["body", "Body", "the body you are heading to or near"],
                    ["radar", "Surface radar", "on a body's surface: samples, colony rings, the ship"],
                    ["strip", "System strip", "one line across the top: where you are, the star, bodies found, values"],
-                   ["now", "Now", "Now, condensed: the target, fuel, data at risk, what to do next, this session"],
+                   ["now", "Now (To-Do & Info)", "Now, condensed: the target, fuel, data at risk, what to do next, this session"],
                    ["bio", "Bio signals", "every bio signal in the system, the ones worth it highlighted: samples, values"]];
 const OV_CORNERS = {nw: "top left", n: "top centre", ne: "top right", sw: "bottom left", s: "bottom centre", se: "bottom right"};
 let overlayDrawn = "", overlayNote = "";
@@ -7841,7 +7841,7 @@ function overlayHtml(o) {
   const rows = OV_PANELS.map(([id, name]) => {
     const e = lay[id] || {};
     const num = (k, v, min, max, title) => `<td><input type="number" data-ovlay="${id}" data-k="${k}" min="${min}" max="${max}" step="1" value="${v}" title="${title}" style="width:4.5em"></td>`;
-    return `<tr><th>${name}</th><td><select data-ovlay="${id}" data-k="corner" title="the corner of the game window it is placed from">${opt(Object.keys(OV_CORNERS), e.corner, c => OV_CORNERS[c])}</select></td>` +
+    return `<tr><th>${esc(name)}</th><td><select data-ovlay="${id}" data-k="corner" title="the corner of the game window it is placed from">${opt(Object.keys(OV_CORNERS), e.corner, c => OV_CORNERS[c])}</select></td>` +
       num("x", pct(e.x || 0), 0, 95, "how far in from that corner's side, in % of the game window's width") +
       num("y", pct(e.y || 0), 0, 95, "how far in from that corner's top or bottom, in % of the game window's height") +
       num("scale", pct(e.scale || 1), 50, 250, "its size, in %") + num("bg", pct(e.bg ?? 0.65), 0, 100, "its background's opacity, in % (0: text only)") +
@@ -7850,7 +7850,7 @@ function overlayHtml(o) {
   }).join("");
   return `<label class="mod"><input type="checkbox" data-ov="enabled"${o.enabled ? " checked" : ""}> <b>Show the overlay</b> <span class="hint">the panels below, when they have something to say</span></label>` +
     `<div class="hint">${overlayStatusHtml(o)}</div>` +
-    OV_PANELS.map(([id, name, what]) => `<label class="mod"><input type="checkbox" data-ovpanel="${id}"${(o.panels || {})[id] ? " checked" : ""}> ${name} <span class="hint">${esc(what)}</span></label>`).join("") +
+    OV_PANELS.map(([id, name, what]) => `<label class="mod"><input type="checkbox" data-ovpanel="${id}"${(o.panels || {})[id] ? " checked" : ""}> ${esc(name)} <span class="hint">${esc(what)}</span></label>`).join("") +
     `<div class="mod">Theme <select data-ov="theme">${opt(OV_THEMES, o.theme)}</select> · text <select data-ov="text_size">${opt(["small", "normal", "large"], o.text_size)}</select></div>` +
     `<div class="mod"><button type="button" class="try" data-ovact="test">${o.test ? `test panels: ${o.test} s` : "▶ Show test panels"}</button> ` +
     `<button type="button" class="try" data-ovact="arrange">${o.arrange ? `✓ Done arranging (${Math.ceil(o.arrange / 60)} min left)` : "✥ Arrange panels"}</button></div>` +

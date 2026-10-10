@@ -26,7 +26,7 @@ every click through, so you play as before.
   The second, condensed: the distance from Sol, what its data pays now and at most, 🏁 when you discovered it, how many
   bodies and how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether
   Spansh knows the system ("Spansh ✗ (new to it)" when it does not).
-- **Now** (optional): the page's Now view in a few lines. The system (and for 20 s after the jump whether it was
+- **Now (To-Do & Info)** (optional): the page's Now view in a few lines. The system (and for 20 s after the jump whether it was
   undiscovered), the system you have targeted next (never reported, partly or fully scanned, bodies known, the star
   with ⛽ or ✕), fuel, and what the data aboard stands to lose once it passes your `unsold_warn` level. Then, on a body,
   each genus there with its samples and how far the next sample must be; elsewhere **Next**, the first item of Here's

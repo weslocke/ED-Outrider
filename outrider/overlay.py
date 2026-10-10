@@ -30,8 +30,8 @@ from . import ROOT
 
 CANVAS_W, CANVAS_H = 1280, 960
 PANELS = ("system", "body", "radar", "strip", "now", "bio")
-PANEL_NAMES = {"system": "System", "body": "Body", "radar": "Surface radar", "strip": "System strip", "now": "Now",
-               "bio": "Bio signals"}
+PANEL_NAMES = {"system": "System", "body": "Body", "radar": "Surface radar", "strip": "System strip",
+               "now": "Now (To-Do & Info)", "bio": "Bio signals"}
 # a panel is placed from a corner of the game window, or centred along its top or bottom edge (n, s: x is not used)
 CORNERS = ("nw", "ne", "sw", "se", "n", "s")
 SIZES = ("small", "normal", "large")

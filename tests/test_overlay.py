@@ -514,6 +514,7 @@ class BioPanel(unittest.TestCase):
         self.assertEqual((cfg["now_panel"], cfg["bio_panel"]), (False, False))   # optional: off by default
         self.assertTrue(O.overlay_settings({"overlay": {"bio_panel": True}})["overlay"]["bio_panel"])
         self.assertEqual(set(O.clean_layout(None)), set(O.PANELS))
+        self.assertEqual(O.PANEL_NAMES["now"], "Now (To-Do & Info)")             # its name in Settings and Arrange mode
 
 
 class Strip(unittest.TestCase):

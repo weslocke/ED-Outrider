@@ -4218,7 +4218,8 @@ const settle = async maxMs => {
     const d = w.document, box = d.getElementById("overlayBox");
     const got = {rows: box.querySelectorAll("table.ovlay tbody tr").length, body: box.querySelector('[data-ovlay="body"][data-k="scale"]').value,
                  off: !box.querySelector('[data-ovpanel="body"]').checked, theme: box.querySelector('[data-ov="theme"]').value,
-                 nowin: /needs PyQt6/.test(box.textContent) && !!box.querySelector("[data-ovinstall]")};
+                 nowin: /needs PyQt6/.test(box.textContent) && !!box.querySelector("[data-ovinstall]"),
+                 nowName: /Now \(To-Do & Info\)/.test(box.querySelector('[data-ovpanel="now"]').parentNode.textContent)};
     const x = box.querySelector('[data-ovlay="radar"][data-k="x"]');
     x.value = "30"; x.dispatchEvent(new w.Event("change", {bubbles: true}));
     box.querySelector('[data-ovact="test"]').click();
@@ -4229,7 +4230,7 @@ const settle = async maxMs => {
     got.posted = posted;
     w.fetch = real;
     w.eval(`data.overlay = JSON.parse(${JSON.stringify(saved)}); overlayNote = ""; overlayDrawn = ""; renderOverlay();`);
-    const want = {rows: 6, body: "120", off: true, theme: "elite", nowin: true, note: true,
+    const want = {rows: 6, body: "120", off: true, theme: "elite", nowin: true, nowName: true, note: true,
                   posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}], ["overlay/install", {}]]};
     const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && ok;
