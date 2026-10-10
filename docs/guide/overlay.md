@@ -21,6 +21,12 @@ every click through, so you play as before.
   the rim; the sample points of your run with their colony rings, red while you are inside one and green once you are
   clear; tagged plants, the ship and your rigs. Underneath: how far the next sample must be, or "Clear: sample here".
 
+- **The system strip** (optional, off until you tick it), made for the top of the screen: two short lines. The first
+  says where you are: the system, its region, the distance from Sol, the star (⛽ scoopable, ⚡ a neutron star or white
+  dwarf), what its data pays now and at most, and 🏁 when you discovered it. The second, condensed: how many bodies,
+  how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether Spansh knows
+  the system ("Spansh ✗ (new to it)" when it does not).
+
 No panel covers the galaxy or system map, the orrery, the FSS, the SAA or the codex.
 
 ## Starting it
@@ -45,8 +51,8 @@ also runs on the game PC, nothing is needed: that one runs the window.
 
 **Arrange panels** (in Settings → In-game overlay) frames each panel over the game. Then:
 
-- **drag** a panel to move it; it is kept from the nearest corner of the game window, so it stays there when the
-  window or resolution changes;
+- **drag** a panel to move it; it is kept from the nearest corner of the game window (or, dropped about the middle,
+  centred along the top or bottom edge), so it stays there when the window or resolution changes;
 - **drag its corner** (the square handle) to make it bigger or smaller;
 - **mouse wheel** over it: its background, from solid to text only; **Shift and wheel**: the whole panel's
   transparency;

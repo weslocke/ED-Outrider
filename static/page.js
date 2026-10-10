@@ -7809,8 +7809,9 @@ document.getElementById("uploadsBox").addEventListener("click", async e => {
 // panels and Arrange mode, and each panel's place, size and transparency (POST api/overlay, api/overlay/layout)
 const OV_THEMES = ["default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark"];
 const OV_PANELS = [["system", "System", "the bodies worth your time, in supercruise"], ["body", "Body", "the body you are heading to or near"],
-                   ["radar", "Surface radar", "on a body's surface: samples, colony rings, the ship"]];
-const OV_CORNERS = {nw: "top left", ne: "top right", sw: "bottom left", se: "bottom right"};
+                   ["radar", "Surface radar", "on a body's surface: samples, colony rings, the ship"],
+                   ["strip", "System strip", "one line across the top: where you are, the star, bodies found, values"]];
+const OV_CORNERS = {nw: "top left", n: "top centre", ne: "top right", sw: "bottom left", s: "bottom centre", se: "bottom right"};
 let overlayDrawn = "", overlayNote = "";
 // the window's state: Outrider runs it on the game PC (o.runner); on a server it runs on the game PC by hand
 function overlayStatusHtml(o) {

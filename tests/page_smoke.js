@@ -4229,7 +4229,7 @@ const settle = async maxMs => {
     got.posted = posted;
     w.fetch = real;
     w.eval(`data.overlay = JSON.parse(${JSON.stringify(saved)}); overlayNote = ""; overlayDrawn = ""; renderOverlay();`);
-    const want = {rows: 3, body: "120", off: true, theme: "elite", nowin: true, note: true,
+    const want = {rows: 4, body: "120", off: true, theme: "elite", nowin: true, note: true,
                   posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}], ["overlay/install", {}]]};
     const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && ok;

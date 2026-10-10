@@ -1101,6 +1101,7 @@ text_size = {q(st["overlay"]["text_size"])}   # small, normal or large
 system_panel = {"true" if st["overlay"]["system_panel"] else "false"}   # the system panel: the bodies worth your time, in supercruise
 body_panel = {"true" if st["overlay"]["body_panel"] else "false"}   # the body panel: the body you are heading to or near
 radar = {"true" if st["overlay"]["radar"] else "false"}   # the surface radar: samples, colony rings, the ship, on a body's surface
+strip_panel = {"true" if st["overlay"]["strip_panel"] else "false"}   # the system strip: one line across the top (where you are, the star, bodies found, values)
 system_seconds = {st["overlay"]["system_seconds"]}   # how long the system panel stays after the honk (0: while in supercruise in that system)
 radar_range = {st["overlay"]["radar_range"]}   # metres from the radar's centre to its edge (it widens to fit a colony ring)
 url = {q(st["overlay"]["url"])}   # for the overlay window: the Outrider it draws from ("" for this PC at [server] port; a server: its address)
@@ -6614,6 +6615,23 @@ class State:
         self._overlay_detail = (key, detail)
         return detail
 
+    def overlay_strip_info(self, pos):
+        """What the system strip says about the system you are in."""
+        detail = self.overlay_detail(pos["id64"]) or {}
+        lv = detail.get("leaving") or {}
+        sol = math.dist((pos["x"], pos["y"], pos["z"]), (0, 0, 0)) if pos.get("x") is not None else None
+        firsts = detail.get("firsts") or {}
+        row = self.systems.get(pos["id64"]) or {}   # the Nearby list's row: Spansh's knowledge, planets, your maps
+        bodies = [b for b in detail.get("bodies") or [] if b.get("type") == "Planet"]
+        return {"name": pos.get("name"), "region": detail.get("region"), "sol_ly": sol, "star": self.here_star(),
+                "found": lv.get("scanned"), "total": lv.get("body_count") or row.get("body_count"),
+                "all_found": lv.get("all_found"), "honked": lv.get("honked"),
+                "value_now": detail.get("value_now"), "value_max": detail.get("value_max"),
+                "first": bool(firsts.get("system")), "firsts": firsts.get("bodies") or 0,
+                "mapped": sum(1 for b in bodies if b.get("mapped") or b.get("first_mapped")),
+                "planets": row.get("planets") or len(bodies) or None,
+                "in_spansh": row.get("in_spansh") if "in_spansh" in row else None}
+
     def overlay_panels(self, now=None):
         """The panels to draw now: the test panels while they show, else the ones switched on that have something to
         say (none while [overlay] enabled is off, the game is not live, a map, the FSS, the SAA or the codex is open, or
@@ -6647,6 +6665,11 @@ class State:
             b = next((x for x in (detail or {}).get("bodies") or [] if x.get("name") == name), None)
             p = outrider.overlay.body_panel(b, pal, cfg["text_size"], HIGH_GRAVITY,
                                             outrider.bio.colony_table() if outrider.bio else None) if b else None
+            if p:
+                out.append(p)
+        # the system strip: where you are, wherever you are (ship, SRV, on foot)
+        if cfg.get("strip_panel") and pos:
+            p = outrider.overlay.strip_panel(self.overlay_strip_info(pos), pal, cfg["text_size"])
             if p:
                 out.append(p)
         # the surface radar: on a body (landed, in the SRV, on foot) or low over it, as the surface map shows

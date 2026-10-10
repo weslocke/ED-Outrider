@@ -40,6 +40,17 @@ class LayoutInPixels(unittest.TestCase):
         x, y, w, h = W.panel_rect(dict(e("nw"), x=0.95, scale=2.5), 400, 100, W_, H_)
         self.assertLessEqual(x + w, W_ + 1e-6)
 
+    def test_centred(self):
+        e = dict(O.LAYOUT_DEFAULT["strip"], y=0.01)
+        x, y, w, h = W.panel_rect(e, 800, 40, 1920, 1080)
+        self.assertAlmostEqual(x + w / 2, 960)                                          # centred, whatever x says
+        self.assertAlmostEqual(y, 10.8)
+        x, y, w, h = W.panel_rect(dict(e, corner="s"), 800, 40, 2560, 1440)
+        self.assertAlmostEqual((x + w / 2, y + h), (1280, 1440 - 14.4))
+        self.assertEqual(W.place(960 - 400 + 30, 20, 800, 40, 1920, 1080)["corner"], "n")   # dropped about the middle
+        self.assertEqual(W.place(960 - 400 + 30, 1000, 800, 40, 1920, 1080)["corner"], "s")
+        self.assertEqual(W.place(100, 20, 800, 40, 1920, 1080)["corner"], "nw")             # well off it: a corner
+
     def test_place_is_the_inverse(self):
         """A panel dropped somewhere is stored from its nearest corner, and put back exactly there."""
         W_, H_ = 2560, 1440

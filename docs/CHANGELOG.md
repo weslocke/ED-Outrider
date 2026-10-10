@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: the system strip (branch EDMC-Functionality)
+- A fourth panel, optional (`[overlay] strip_panel`, off by default), made for the top of the screen: line 1 where you
+  are (system, region, distance from Sol, the star in words with ⛽ / ⚡, now and max, 🏁 first discovered), line 2
+  condensed (bodies, found of total, 🏁 discovered by you, 🗺 mapped of the planets, Spansh ✓ or ✗). It shows wherever
+  you are (ship, SRV, on foot). The author's EDMC had BioScan's line along the top.
+- Panels can be centred along the top or bottom edge (layout corners `n`, `s`; "top centre" and "bottom centre" in
+  Settings): Arrange mode centres a panel dropped about the middle. Star words name giants and supergiants.
+
 ## 2026-10-10 · Overlay: test panels for a minute, whatever is in front (branch EDMC-Functionality)
 - The test panels showed only once you were back in the game (the overlay draws while the game is in front, and they
   are pressed from Outrider's page), so most of their 20 s went by unseen. They now stay a minute and show over the

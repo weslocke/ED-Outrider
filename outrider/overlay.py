@@ -28,21 +28,23 @@ import sys
 from . import ROOT
 
 CANVAS_W, CANVAS_H = 1280, 960
-PANELS = ("system", "body", "radar")
-PANEL_NAMES = {"system": "System", "body": "Body", "radar": "Surface radar"}
-CORNERS = ("nw", "ne", "sw", "se")
+PANELS = ("system", "body", "radar", "strip")
+PANEL_NAMES = {"system": "System", "body": "Body", "radar": "Surface radar", "strip": "System strip"}
+# a panel is placed from a corner of the game window, or centred along its top or bottom edge (n, s: x is not used)
+CORNERS = ("nw", "ne", "sw", "se", "n", "s")
 SIZES = ("small", "normal", "large")
 THEMES = ("default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark")
 TEST_SECONDS = 60       # "Show test panels": how long they stay (shown whether or not the game is in front)
 ARRANGE_SECONDS = 600   # Arrange mode ends by itself after this, so the overlay never stays in the way of the mouse
 
 DEFAULTS = {"enabled": False, "theme": "default", "text_size": "normal", "system_panel": True, "body_panel": True,
-            "radar": True, "system_seconds": 0, "radar_range": 800, "url": "", "password": ""}
+            "radar": True, "strip_panel": False, "system_seconds": 0, "radar_range": 800, "url": "", "password": ""}
 # where each panel starts: a corner of the game window, the offset from it as a share of the window's width (x) and
 # height (y), its size (1 = the canvas's own), its background's opacity (0: text only) and the whole panel's
 LAYOUT_DEFAULT = {"system": {"corner": "nw", "x": 0.02, "y": 0.16, "scale": 1.0, "bg": 0.65, "alpha": 1.0},
                   "body": {"corner": "ne", "x": 0.02, "y": 0.16, "scale": 1.0, "bg": 0.65, "alpha": 1.0},
-                  "radar": {"corner": "se", "x": 0.02, "y": 0.10, "scale": 1.0, "bg": 0.5, "alpha": 1.0}}
+                  "radar": {"corner": "se", "x": 0.02, "y": 0.10, "scale": 1.0, "bg": 0.5, "alpha": 1.0},
+                  "strip": {"corner": "n", "x": 0.0, "y": 0.005, "scale": 1.0, "bg": 0.5, "alpha": 1.0}}
 LIMITS = {"x": (0.0, 0.95), "y": (0.0, 0.95), "scale": (0.5, 2.5), "bg": (0.0, 1.0), "alpha": (0.1, 1.0)}
 
 # text metrics on the canvas: line heights and an average character width per size (the window's font is close to
@@ -130,7 +132,7 @@ def overlay_settings(cfg):
     if "overlay" in cfg and not isinstance(cfg.get("overlay"), dict):
         _warn("must be a section (a table of settings); ignored")
     out = dict(DEFAULTS)
-    for key in ("enabled", "system_panel", "body_panel", "radar"):
+    for key in ("enabled", "system_panel", "body_panel", "radar", "strip_panel"):
         v = o.get(key)
         if v is None:
             continue
@@ -545,6 +547,74 @@ def radar_panel(surf, pal, size="normal", radar_range=800):
             "style": pal.get("style", "rounded"), "accent": pal["title"], "items": items}
 
 
+STAR_WORDS = {"N": "neutron star", "H": "black hole", "SupermassiveBlackHole": "black hole", "TTS": "T Tauri star",
+              "AeBe": "Herbig Ae/Be star", "W": "Wolf-Rayet", "WN": "Wolf-Rayet", "WNC": "Wolf-Rayet", "WC": "Wolf-Rayet",
+              "WO": "Wolf-Rayet", "C": "carbon star", "CN": "carbon star", "CJ": "carbon star", "MS": "MS-type star",
+              "S": "S-type star", "L": "L dwarf", "T": "T dwarf", "Y": "Y dwarf", "X": "exotic"}
+
+
+def star_words(code):
+    """The arrival star in a few words from its journal class ("K" -> "K star", "DA" -> "white dwarf"), with ⛽ when it
+    can be scooped (KGBFOAM) and ⚡ for a neutron star or white dwarf (a supercharge)."""
+    if not code:
+        return ""
+    c = str(code)
+    if c.startswith("D"):
+        return "white dwarf ⚡"
+    if c == "N":
+        return "neutron star ⚡"
+    giant = "supergiant" if "SuperGiant" in c else "giant" if "Giant" in c else None
+    words = STAR_WORDS.get(c) or (f"{c.split('_')[0]} {giant}" if giant else f"{c.split('_')[0]} star" if len(c) <= 3
+                                  else c.replace("_", " "))
+    return words + (" ⛽" if c[:1] in "KGBFOAM" and len(c.split("_")[0]) == 1 else "")
+
+
+def strip_panel(info, pal, size="normal"):
+    """The system strip: two short lines across the top. Line 1: where you are (system, region, distance from Sol,
+    the star, the values, your first discovery); line 2, condensed: bodies, found of total, discovered by you, mapped of
+    planets, whether Spansh knows the system. info: {name, region, star, sol_ly, total, found, all_found, honked,
+    value_now, value_max, first, firsts, mapped, planets, in_spansh}. Its width follows its text."""
+    if not info or not info.get("name"):
+        return None
+    sep = ("  ·  ", pal["muted"], size, False)
+
+    def line(first, rest):
+        parts = [first]
+        for text, key in rest:
+            if text:
+                parts.extend([sep, (text, pal[key], size, False)])
+        return parts
+    one = [(info.get("region"), "muted"),
+           (f"Sol {info['sol_ly']:,.0f} ly" if info.get("sol_ly") is not None else "", "muted"),
+           (star_words(info.get("star")), "text")]
+    if info.get("value_max"):
+        one += [(f"now {credits(info.get('value_now'))}", "text"), (f"max {credits(info['value_max'])}", "accent")]
+    one.append(("🏁 first discovered" if info.get("first") else "", "good"))
+    total, found = info.get("total"), info.get("found")
+    two = []
+    if total:
+        two.append((f"{found or 0}/{total} found" + (" ✓" if info.get("all_found") else ""), "good" if info.get("all_found") else "warn"))
+    elif not info.get("honked"):
+        two.append(("not honked", "warn"))
+    two += [(f"🏁 {info['firsts']}" if info.get("firsts") else "", "good"),
+            (f"🗺 {info.get('mapped') or 0}/{info['planets']}" if info.get("planets") else "", "text")]
+    if info.get("in_spansh") is not None:
+        two.append(("Spansh ✓" if info["in_spansh"] else "Spansh ✗ (new to it)", "muted" if info["in_spansh"] else "warn"))
+    first_line = line((info["name"], pal["title"], "large", True), one)
+    lines = [first_line]
+    if two:
+        body_word = (f"{total} bod{'y' if total == 1 else 'ies'}", pal["text"], size, False) if total \
+            else ("bodies ?", pal["muted"], size, False)
+        lines.append(line(body_word, two))
+    width = min(CANVAS_W - 40, PAD * 2 + 10 + max(sum(text_width(t, s) for t, _, s, _ in ln) for ln in lines))
+    items, y = [], PAD - 2
+    for i, ln in enumerate(lines):
+        items.append(runs(PAD, y, ln))
+        y += LINE_H["large"] if i == 0 else LINE_H.get(size, 20)
+    return {"id": "strip", "w": round(width), "h": round(y + PAD - 4), "bg": pal["panel"], "frame": pal["frame"],
+            "style": pal.get("style", "rounded"), "accent": pal["title"], "items": items}
+
+
 # ---- the test panels: every panel with sample data, to arrange them before flying ----
 
 def test_panels(pal, size="normal", radar_range=800):
@@ -564,7 +634,10 @@ def test_panels(pal, size="normal", radar_range=800):
         {"left": [("Bacterium Acies ", "text"), ("✦ Cobalt", "accent")], "right": ("1.0M", "text")},
         [("Worth landing: up to 20.0M (×5 first footfall)", "good")],
     ], pal, width=400, size=size, subtitle="test panel")
-    return [system, body, radar_test(pal, size, radar_range)]
+    strip = strip_panel({"name": "Test Sector AB-C d1-2", "region": "Inner Orion Spur", "sol_ly": 5411, "star": "K",
+                         "found": 12, "total": 14, "honked": True, "value_now": 2_100_000, "value_max": 35_100_000,
+                         "first": True, "firsts": 12, "mapped": 3, "planets": 11, "in_spansh": False}, pal, size)
+    return [system, body, radar_test(pal, size, radar_range), strip]
 
 
 def radar_test(pal, size="normal", radar_range=800):

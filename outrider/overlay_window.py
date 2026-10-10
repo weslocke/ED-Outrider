@@ -53,8 +53,8 @@ def panel_rect(entry, pw, ph, win_w, win_h):
     w, h = pw * s, ph * s
     ox, oy = entry["x"] * win_w, entry["y"] * win_h
     corner = entry["corner"]
-    x = win_w - ox - w if corner in ("ne", "se") else ox
-    y = win_h - oy - h if corner in ("sw", "se") else oy
+    x = (win_w - w) / 2 if corner in ("n", "s") else win_w - ox - w if corner in ("ne", "se") else ox
+    y = win_h - oy - h if corner in ("sw", "se", "s") else oy
     x = min(max(0.0, x), max(0.0, win_w - w))
     y = min(max(0.0, y), max(0.0, win_h - h))
     return x, y, w, h
@@ -65,6 +65,10 @@ def place(x, y, w, h, win_w, win_h):
     stays put against that edge when the window changes size."""
     cx, cy = x + w / 2, y + h / 2
     east, south = cx > win_w / 2, cy > win_h / 2
+    if abs(cx - win_w / 2) < CENTRE_SNAP * win_w:   # dropped about the middle: centred along that edge
+        oy = (win_h - y - h) if south else y
+        lo_y, hi_y = O.LIMITS["y"]
+        return {"corner": "s" if south else "n", "x": 0.0, "y": round(min(hi_y, max(lo_y, oy / win_h)), 4) if win_h else 0.0}
     corner = ("s" if south else "n") + ("e" if east else "w")
     ox = (win_w - x - w) if east else x
     oy = (win_h - y - h) if south else y
@@ -77,6 +81,7 @@ def place(x, y, w, h, win_w, win_h):
 # ---- Arrange mode (pure): which panel is under the mouse, what a drag or the wheel makes of its layout ----
 
 HANDLE_PX = 16          # the square at a panel's bottom-right corner that sizes it
+CENTRE_SNAP = 0.06      # a panel dropped with its centre this close to the window's middle (a share of the width) is centred
 DONE_W, DONE_H = 220, 34
 WHEEL_STEP = 0.05       # one wheel notch: this much more or less opacity
 

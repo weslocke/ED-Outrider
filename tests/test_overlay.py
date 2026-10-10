@@ -78,7 +78,7 @@ class Panels(unittest.TestCase):
 
     def test_test_panels(self):
         panels = O.test_panels(O.palette())
-        self.assertEqual([p["id"] for p in panels], list(O.PANELS))
+        self.assertEqual([p["id"] for p in panels], list(O.PANELS))   # the strip too
         for p in panels:
             self.assertTrue(p["items"] and p["w"] > 0 and p["h"] > 0)
             for i in p["items"]:
@@ -334,6 +334,38 @@ class Runner(unittest.TestCase):
         self.assertEqual(len(self.started), self.R.CRASHES_MAX + 1)
 
 
+class Strip(unittest.TestCase):
+    def test_strip(self):
+        pal = O.palette()
+        info = {"name": "Drojau BJ-A a41-3", "region": "Inner Orion Spur", "sol_ly": 5411.4, "star": "L", "found": 20, "total": 20,
+                "all_found": True, "honked": True, "value_now": 20_049_458, "value_max": 35_118_786, "first": True,
+                "firsts": 20, "mapped": 4, "planets": 18, "in_spansh": True}
+        p = O.strip_panel(info, pal)
+        lines = ["".join(r[0] for r in i["runs"]) for i in p["items"]]
+        self.assertEqual(lines, ["Drojau BJ-A a41-3  ·  Inner Orion Spur  ·  Sol 5,411 ly  ·  L dwarf  ·  now 20.0M  ·  max 35.1M  ·  "
+                                 "🏁 first discovered",
+                                 "20 bodies  ·  20/20 found ✓  ·  🏁 20  ·  🗺 4/18  ·  Spansh ✓"])
+        self.assertEqual(p["id"], "strip")
+        self.assertLessEqual(p["w"], O.CANVAS_W - 40)
+        self.assertLess(p["h"], 70)                                   # short: two lines
+        new = O.strip_panel(dict(info, total=None, honked=False, first=False, firsts=0, planets=None, in_spansh=False), pal)
+        second = "".join(r[0] for r in new["items"][1]["runs"])
+        self.assertEqual(second, "bodies ?  ·  not honked  ·  Spansh ✗ (new to it)")
+        self.assertNotIn("first discovered", "".join(r[0] for r in new["items"][0]["runs"]))
+        self.assertIsNone(O.strip_panel({}, pal))
+
+    def test_star_words(self):
+        self.assertEqual([O.star_words(c) for c in ("K", "M", "N", "DA", "H", "Y", "TTS", "B_BlueWhiteSuperGiant", "")],
+                         ["K star ⛽", "M star ⛽", "neutron star ⚡", "white dwarf ⚡", "black hole", "Y dwarf", "T Tauri star",
+                          "B supergiant ⛽", ""])
+
+    def test_setting_and_centred_layout(self):
+        self.assertFalse(O.overlay_settings({})["overlay"]["strip_panel"])          # optional: off by default
+        self.assertTrue(O.overlay_settings({"overlay": {"strip_panel": True}})["overlay"]["strip_panel"])
+        self.assertEqual(O.clean_layout(None)["strip"]["corner"], "n")
+        self.assertEqual(O.layout_update(None, {"system": {"corner": "s"}})[0]["system"]["corner"], "s")
+
+
 class Server(unittest.TestCase):
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")
@@ -354,7 +386,7 @@ class Server(unittest.TestCase):
         out, status = self.state.overlay_set({"enabled": True, "theme": "elite", "panels": {"radar": False}, "test": True}, now=50)
         self.assertEqual(status, 200)
         self.assertEqual((out["enabled"], out["theme"], out["panels"], out["test"]),
-                         (True, "elite", {"system": True, "body": True, "radar": False}, O.TEST_SECONDS))
+                         (True, "elite", {"system": True, "body": True, "radar": False, "strip": False}, O.TEST_SECONDS))
         with open(self.state.config_path, encoding="utf-8") as f:   # written for the next start
             text = f.read()
         for line in ('enabled = true', 'theme = "elite"', 'radar = false'):
@@ -436,6 +468,23 @@ class Server(unittest.TestCase):
         self.assertFalse(self.state.overlay_wanted(now=501))                  # no second one
         self.assertTrue(self.state.overlay_wanted(now=500 + ed_outrider.OVERLAY_SEEN_S + 1))
         self.assertEqual(self.state.overlay_info(now=600)["runner"], {"state": "off", "why": None})
+
+    def test_strip_shows_anywhere(self):
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Test Sector AB-C d1-2",
+                                    "SystemAddress": 77, "StarPos": [3, 4, 0]})
+        self.state.system_detail = lambda id64: dict(DETAIL, region="Inner Orion Spur", value_now=1, value_max=2_000_000,
+                                                     leaving={"scanned": 5, "body_count": 9, "honked": True},
+                                                     firsts={"system": True, "bodies": 4})
+        self.state.systems[77] = {"in_spansh": False, "planets": 6, "body_count": 9}
+        self.state.overlay_cfg.update(enabled=True, system_panel=False, body_panel=False, radar=False)
+        self.state.journals.status_json = {"live": True, "flags": 0, "flags2": 1, "gui_focus": 0}   # on foot
+        self.assertEqual(self.state.overlay_panels(now=1010), [])                                 # off by default
+        self.state.overlay_cfg.update(strip_panel=True)
+        p = self.state.overlay_panels(now=1010)[0]
+        text = ["".join(r[0] for r in i["runs"]) for i in p["items"]]
+        self.assertTrue(text[0].startswith("Test Sector AB-C d1-2  ·  Inner Orion Spur  ·  Sol 5 ly"))
+        self.assertIn("first discovered", text[0])
+        self.assertEqual(text[1], "9 bodies  ·  5/9 found  ·  🏁 4  ·  🗺 1/6  ·  Spansh ✗ (new to it)")   # C 1 is mapped
 
     def test_layout(self):
         out, status = self.state.overlay_layout_set({"body": {"x": 0.4, "scale": 2.0}})
