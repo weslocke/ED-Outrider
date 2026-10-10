@@ -298,6 +298,9 @@ class Server(unittest.TestCase):
         self.assertEqual([p["id"] for p in self.state.overlay_panels(now=1010)], ["system"])
         st["gui_focus"] = 9                                                # the FSS: nothing over it
         self.assertEqual(self.state.overlay_panels(now=1010), [])
+        st["gui_focus"] = 0
+        st["flags"] = ed_outrider.FLAG_SUPERCRUISE | ed_outrider.FLAG_FSD_JUMP   # the hyperspace tunnel: nothing
+        self.assertEqual(self.state.overlay_panels(now=1010), [])
         st.update(gui_focus=0, flags=0)                                   # dropped out of supercruise
         self.assertEqual(self.state.overlay_panels(now=1010), [])
         st["flags"] = ed_outrider.FLAG_SUPERCRUISE

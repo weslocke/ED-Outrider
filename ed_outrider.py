@@ -6612,13 +6612,15 @@ class State:
 
     def overlay_panels(self, now=None):
         """The panels to draw now: the test panels while they show, else the ones switched on that have something to
-        say (none while [overlay] enabled is off, the game is not live, or a map, the FSS, the SAA or the codex is open)."""
+        say (none while [overlay] enabled is off, the game is not live, a map, the FSS, the SAA or the codex is open, or
+        in the hyperspace tunnel)."""
         now = time.time() if now is None else now
         cfg, pal = self.overlay_cfg, self.overlay_palette()
         if now < self.overlay_test_until or now < self.overlay_arrange_until:
             return outrider.overlay.test_panels(pal, cfg["text_size"], cfg["radar_range"])
         st = self.journals.status_json or {}
-        if not cfg.get("enabled") or not st.get("live") or (st.get("gui_focus") or 0) in OVERLAY_HIDE_FOCUS:
+        if not cfg.get("enabled") or not st.get("live") or (st.get("gui_focus") or 0) in OVERLAY_HIDE_FOCUS \
+                or (st.get("flags") or 0) & FLAG_FSD_JUMP:   # nothing in the hyperspace tunnel: the system is changing
             return []
         flags, pos, out = st.get("flags") or 0, self.journals.pos, []
         # the system panel: in supercruise in the system you are in (for system_seconds after arriving, when set)

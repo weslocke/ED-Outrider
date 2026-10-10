@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: nothing in the hyperspace tunnel (branch EDMC-Functionality)
+- The panels hide while Status.json's FSD jump flag is on (BioScan's "hidden during FSD jumps"): the system is
+  changing under them.
+
 ## 2026-10-10 · Overlay: the launchers and the guide (branch EDMC-Functionality)
 - `launch_overlay.sh` / `launch_overlay.bat` start the overlay window with Outrider's .venv and offer to install PyQt6
   into it the first time (only on a yes); on Linux they warn when wmctrl, xprop or xwininfo is missing. Windows has
