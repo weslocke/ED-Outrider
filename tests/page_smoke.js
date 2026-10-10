@@ -104,6 +104,17 @@ const settle = async maxMs => {
       renderChecklist();
       const out = [document.getElementById("clStatus").textContent, document.querySelector("#clGrid .clbox h4 .unk").textContent];
       CL.data = saved; renderChecklist(); return JSON.stringify(out); })()`));
+    // a genus whose every species that can grow here has all its colours found gets a green ✓ (the author, 2026-10-10)
+    const ticks = JSON.parse(dom.window.eval(`(() => { const saved = CL.data;
+      const sp = (id, possible, state, found, total) => ({id, name: "Sp " + id, short: id, possible, state, value: 1, variants: {found, total, list: []}});
+      CL.data = Object.assign({}, saved, {kind: "bio", genera: [
+        {genus: "Done", species: [sp("a", "yes", "sold", 2, 2), sp("b", "parts", "logged", 1, 1), sp("c", null, null, 0, 3)]},
+        {genus: "Partly", species: [sp("d", "yes", "sold", 1, 2), sp("e", "yes", "sold", 1, 1)]},
+        {genus: "Never", species: [sp("f", null, null, 0, 1)]}]});
+      renderChecklist();
+      const out = [...document.querySelectorAll("#clGrid .clbox")].map(b => b.querySelector("h4 span").textContent.trim());
+      CL.data = saved; renderChecklist(); return JSON.stringify(out); })()`));
+    const ticksOk = JSON.stringify(ticks) === JSON.stringify(["Done ✓", "Partly", "Never"]);
     const countsOk = /^Galactic Centre: 2 of 2 entries reported here logged · 100\.00% complete · 1 logged that nobody has reported here yet/.test(counts[0])
       && counts[1] === "2 / 2";
     // keyboard (#8 of the Fable review, 2026-10-10): a species row is reachable with Tab, Enter opens it, and the row
@@ -140,9 +151,9 @@ const settle = async maxMs => {
     await sleep(300);
     const back = !d.getElementById("bioView").classList.contains("check") && dom.window.getComputedStyle(d.getElementById("bioPane")).display !== "none";
     const good = boxes >= 20 && /possible species found/.test(status) && options === 44 && side && side.textContent === name &&
-                 shown === "check" && geo && countsOk && keyOk && raceOk && back && errors.length === before;
+                 shown === "check" && geo && countsOk && ticksOk && keyOk && raceOk && back && errors.length === before;
     allOk = allOk && good;
-    console.log(good ? "OK" : "FAIL", "| exobiology checklist |", `${boxes} genus boxes, ${options} region choices, panel ${side && side.textContent}, geology ${geo} (${geoFirst}), counts ${countsOk || JSON.stringify(counts)}, keyboard ${keyOk}, region race ${raceOk || JSON.stringify(race)}, back to runs ${back}`,
+    console.log(good ? "OK" : "FAIL", "| exobiology checklist |", `${boxes} genus boxes, ${options} region choices, panel ${side && side.textContent}, geology ${geo} (${geoFirst}), counts ${countsOk || JSON.stringify(counts)}, genus ticks ${ticksOk || JSON.stringify(ticks)}, keyboard ${keyOk}, region race ${raceOk || JSON.stringify(race)}, back to runs ${back}`,
                 status.slice(0, 80), errors.slice(before));
   }
   // the map reopened while its request was on its way asks again with the same key: the older request's failure

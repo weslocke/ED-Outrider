@@ -4372,7 +4372,13 @@ function renderChecklist() {
     (s.elsewhere ? ` · <span class="clelse">${s.elsewhere} more found in other regions</span>` : "");
   const html = d.genera.map(g => {
     const found = g.species.filter(r => r.state && r.possible).length, poss = g.species.filter(r => r.possible).length;
-    return `<div class="clbox"><h4><span>${esc(g.genus)}</span><span class="unk">${found} / ${poss}</span></h4><table>` + g.species.map(r => {
+    // complete (the author, 2026-10-10): every species that can grow here has all its colours found (one with no colour
+    // table: found at all); a green ✓ beside the genus. Geology has no colours: no mark
+    const canGrow = g.species.filter(r => r.possible);
+    const complete = !geo && canGrow.length && canGrow.every(r => r.state && r.variants && r.variants.total > 0 && r.variants.found >= r.variants.total);
+    return `<div class="clbox${complete ? " cldone" : ""}"><h4><span>${esc(g.genus)}${complete
+      ? ` <span class="clcheck" title="complete: every colour of every species that can grow ${d.region == null ? "anywhere" : "here"} found">✓</span>` : ""}</span>` +
+      `<span class="unk">${found} / ${poss}</span></h4><table>` + g.species.map(r => {
       const cls = r.state ? `cl-${r.state}` : r.possible ? "" : "cl-no";
       const tip = geo ? `${r.name} · ${r.sites ? `${r.sites.toLocaleString()} reported sites ${d.region == null ? "in all" : "in this region"}`
           : "not reported in this region yet"}${r.elsewhere ? " · logged in another region" : ""}`

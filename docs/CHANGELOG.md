@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Exo-Biology: a green ✓ on a complete genus
+- A genus box's heading gets a green ✓ when every species that can grow in the region shown has all its colours
+  found (one with no colour table: found at all; All regions asks for every species). Not on Geology (no colours).
+
 ## 2026-10-10 · Version 2026.10.20
 - Bio/Geo (was Samples): the Exo-Biology and Geology checklists with Canonn's pictures linked; auto-target waiting out
   the game's own danger flag after a jump or supercruise entry (and an early FSD charge no longer a failure); exact

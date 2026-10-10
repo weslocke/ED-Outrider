@@ -154,6 +154,7 @@ are (the default), any other, or **All regions**. Each species shows your best t
 - greyed: not here, the rules say it cannot grow in this region. That is the rules' prediction, not proof that
   nobody has found it there;
 - ◐: only in parts of the region (near Guardian sites, in tuber zones, by nebulae);
+- a green **✓** beside a genus: complete there, every colour of every species that can grow in the region found;
 - the colours you have found out of those it comes in (**3 / 12**). Anemones, brain trees and the like are their own
   one colour.
 

@@ -1069,6 +1069,7 @@ body.app #richPane { grid-column: 1; grid-row: 2; }
 .clbox { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; break-inside: avoid; display: inline-block;
   width: 100%; box-sizing: border-box; margin: 0 0 10px; }
 .clbox h4 { margin: 0 0 4px; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+.clbox h4 .clcheck { color: var(--good); font-weight: 700; }   /* a genus complete in this region */
 .clbox table, .clvars { width: 100%; border-collapse: collapse; font-size: 13px; }
 .clbox td, .clvars td, .clvars th { padding: 1px 4px; text-align: left; }
 .clbox table { table-layout: fixed; }
