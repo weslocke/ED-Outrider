@@ -63,7 +63,7 @@ it is switched on for) and `edmc_uploads` (EDMC's config.toml on this PC). In `e
 | `static/emblems/` | The faction emblems under the tablet's page list (Elite, Babylon 5, Star Wars themes; `TB_EMBLEMS`, Settings' Show the theme's emblem), each credited in `CREDITS.txt` (`test_tablet.py` checks) |
 | `static/sounds.json` | The alert sounds (synthesised note lists), shared by the page and the PC player |
 | `resources/speech.json` | Spoken lines per alert and personality (business, sarcastic, sweet, plus `_profane` lists) |
-| `resources/bio_rules.json` | Spawn rules and region map data fetched from upstream projects (refreshed at start when upstream changed) |
+| `resources/bio_rules.json` | Spawn rules and region map data fetched from upstream projects (refreshed at start when upstream changed); ships with every species' `colors` None. ExploData's colour tables go to `resources/bio_colours.json` beside it (git- and docker-ignored: downloaded on the first start, never shipped; `load_rules` merges them, `colours_available()`; a missing one makes the rules out of date). Tests needing the real colours skip without it |
 | `resources/mining_odds.json` | Planetary mining survey odds per ground type (EDFM, CC BY-SA 4.0); read only, never edit by hand |
 | `ed_outrider.toml.example` | Every config key, commented. The real `ed_outrider.toml` is git-ignored |
 | `data/` | The player's own files, git-ignored as a whole: `ed_outrider.sqlite` (default `db`), `browser_defaults.json` (beside the database), `speech_banned.json`, `backups/` (default `backup_dir`), `piper-voices/` (with `voices.json`, Piper's catalogue cached a week), `fonts/` (the player's own theme fonts, served at `/userfonts/`). Created on first start |

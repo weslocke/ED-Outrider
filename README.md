@@ -94,25 +94,28 @@ The project's history is in the [changelog](docs/CHANGELOG.md). Contributors and
 
 ---
 
-<p align="center">
-Data from <a href="https://spansh.co.uk">Spansh</a> and <a href="https://www.edsm.net">EDSM</a>.
-Exobiology spawn conditions are the community's work, as gathered by the Canonn Research Group and maintained in
-<a href="https://github.com/Silarn/EDMC-BioScan">EDMC-BioScan</a>; the galactic region map (for the exobiology rules and the Highway map's regions) is
-<a href="https://github.com/klightspeed/EliteDangerousRegionMap">klightspeed's</a> (MIT); sample colony
-distances and colour variants are from <a href="https://github.com/Silarn/EDMC-ExploData">EDMC-ExploData</a> (GPL-2.0).
-Planetary mining odds are CMDR Grumlop's survey from the
-<a href="https://edfieldmanual.com/index.php?title=Module:Data/SurfaceMiningProspecting">Elite Dangerous Field Manual</a>
-(<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>), shipped unchanged in <code>resources/mining_odds.json</code>.<br>
-The geology checklist's reported sites are counted from <a href="https://canonn.science">Canonn</a>'s codex records
-(<code>resources/geo_codex.json</code>); the checklists' pictures are Canonn's screenshots, linked (never copied) and
-credited to the commander who took each (<code>resources/codex_images.json</code> holds only the links).<br>
-The tablet themes' emblems (in <code>static/emblems/</code>, each under the terms in its <code>CREDITS.txt</code>, not the GPL):
-the Explorer Elite badge is used under Frontier's media usage rules; the Babylon 5 emblems (© Warner Bros.) are public-domain
-redrawings from the Babylon 5 Wiki; the Sith emblem is Gameposo's, vectorised by Marnanel (Wikimedia Commons,
-CC BY-SA 4.0), and the Rebel Alliance emblem a public-domain Wikimedia Commons file (both Lucasfilm trademarks).
-Unofficial, non-commercial fan use.<br>
-ED Outrider is free software under the <a href="LICENSE">GNU GPL v2 or later</a>.<br>
+## Credits and licence
+
+| What | From | Licence | In Outrider |
+|---|---|---|---|
+| Systems, bodies, stations, routes | [Spansh](https://spansh.co.uk), [EDSM](https://www.edsm.net) | their terms | looked up as you play |
+| Exobiology spawn conditions, nebulae | the community's work, gathered by the Canonn Research Group, maintained in [EDMC-BioScan](https://github.com/Silarn/EDMC-BioScan) | GPL v2 or later | `resources/bio_rules.json`, refreshed when it changes |
+| Colour variants | [EDMC-ExploData](https://github.com/Silarn/EDMC-ExploData) | GPL v2 | downloaded on the first start, not shipped |
+| Colony distances | the game (the Genetic Sampler shows them) | | `outrider/bio.py` |
+| Galactic region map | [klightspeed's EliteDangerousRegionMap](https://github.com/klightspeed/EliteDangerousRegionMap) | MIT | in `resources/bio_rules.json` |
+| Planetary mining odds | CMDR Grumlop's survey, [Elite Dangerous Field Manual](https://edfieldmanual.com/index.php?title=Module:Data/SurfaceMiningProspecting) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | `resources/mining_odds.json`, unchanged |
+| Geology sites; checklist pictures | [Canonn](https://canonn.science)'s codex records and screenshots | Canonn's | site counts in `resources/geo_codex.json`; pictures linked, never copied, credited to the commander who took each |
+| EDDN and EDSM upload rules | [EDMarketConnector](https://github.com/EDCD/EDMarketConnector) (EDCD) | GPL v2 or later | followed, with EDCD's notice in `outrider/eddn.py` |
+
+The tablet themes' emblems (`static/emblems/`, each under the terms in its `CREDITS.txt`, not the GPL): the Explorer
+Elite badge under Frontier's media usage rules; the Babylon 5 emblems (© Warner Bros.), public-domain redrawings from
+the Babylon 5 Wiki; the Sith emblem, Gameposo's, vectorised by Marnanel (Wikimedia Commons, CC BY-SA 4.0); the Rebel
+Alliance emblem, a public-domain Wikimedia Commons file (both Lucasfilm trademarks). Unofficial, non-commercial fan use.
+
+ED Outrider is free software under the [GNU GPL v2 or later](LICENSE).
+
+<p align="center"><sub>
 ED Outrider was created using assets and imagery from Elite Dangerous, with the permission of Frontier Developments
 plc, for non-commercial purposes. It is not endorsed by nor reflects the views or opinions of Frontier Developments and
 no employee of Frontier Developments was involved in the making of it.
-</p>
+</sub></p>

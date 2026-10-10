@@ -13636,9 +13636,10 @@ def install_kind(root=None, env=None):
 
 
 async def check_bio_rules(state):
-    """Keep the exobiology spawn rules current. A copy ships with Outrider; each start asks GitHub
-    whether BioScan or the region map changed and fetches the new data if so (offline just keeps
-    the copy). Rows carry bio estimates, so they are rebuilt after an update."""
+    """Keep the exobiology spawn rules current. A copy ships with Outrider (without ExploData's colour tables, which
+    are downloaded on the first start into resources/bio_colours.json); each start asks GitHub whether BioScan,
+    ExploData or the region map changed and fetches the new data if so (offline just keeps the copy). Rows carry bio
+    estimates, so they are rebuilt after an update."""
     try:
         updated = await asyncio.get_running_loop().run_in_executor(None, lambda: outrider.bio.update_if_newer(log=print))
     except Exception as e:  # noqa: BLE001 -- no shipped copy and no network: the page works without predictions

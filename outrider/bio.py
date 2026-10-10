@@ -14,13 +14,14 @@ the class of star the body orbits (or, for some genera, on a surface material), 
 variant for this body's star or materials has never been seen in such a place and is ruled out --
 Stratum, for instance, has no variant for a G star. When the stars or materials are not known nothing
 is ruled out on that account. The colour tables come from EDMC-ExploData
-(https://github.com/Silarn/EDMC-ExploData, GPL-2.0-or-later) and are fetched with the rules.
+(https://github.com/Silarn/EDMC-ExploData, GPL-2.0: its repository carries the version 2 text): they are downloaded
+into resources/bio_colours.json on the first start and refreshed with the rules, never shipped. The colony distances
+(COLONY_DISTANCE) are the game's own: the Genetic Sampler shows them.
 
 The spawn conditions are the community's work, maintained in the BioScan plugin for EDMC
-(https://github.com/Silarn/EDMC-BioScan, GPL-2.0-or-later). They are not shipped with this
-tool: `--update-rules` downloads them (plus ExploData's colour variants and the galactic region map
-from https://github.com/klightspeed/EliteDangerousRegionMap, MIT) into resources/bio_rules.json, and ED Outrider does that itself on first start and refreshes
-it whenever upstream changes.
+(https://github.com/Silarn/EDMC-BioScan, GPL-2.0-or-later), with the galactic region map from
+https://github.com/klightspeed/EliteDangerousRegionMap (MIT): both ship in resources/bio_rules.json, which ED Outrider
+refreshes on each start when upstream has changed (`--update-rules` does it by hand).
 
     python3 -m outrider.bio --update-rules     fetch the latest spawn rules
     python3 -m outrider.bio --backtest         check the rules against your own journals
@@ -80,6 +81,15 @@ except ImportError:  # standalone use without the price table
 from . import RESOURCES_DIR  # noqa: E402
 
 RULES_FILE = os.path.join(RESOURCES_DIR, "bio_rules.json")
+# ExploData's colour tables are kept apart, in bio_colours.json beside the rules (git- and docker-ignored): downloaded on
+# the first start and refreshed with the rules, never shipped (its repository carries the GPL v2 text without "or
+# later"; the author, 2026-10-10). The shipped bio_rules.json has every species' "colors" None.
+COLOURS_NAME = "bio_colours.json"
+
+
+def colours_path(rules_path=None):
+    """The colour tables' file beside a rules file."""
+    return os.path.join(os.path.dirname(rules_path or RULES_FILE), COLOURS_NAME)
 
 BIOSCAN = "https://raw.githubusercontent.com/Silarn/EDMC-BioScan/master/src/bio_scan/"
 BIOSCAN_API = "https://api.github.com/repos/Silarn/EDMC-BioScan/"
@@ -232,9 +242,9 @@ def _genus_name(genus_id, species_name):
     return GENUS_NAMES.get(genus_id) or species_name.split()[0]
 
 
-# How far apart the samples of one species must be (metres): a colony counts as new only beyond this.
-# From EDMC-ExploData (Silarn, GPL-2.0), bio_data/genus.py, commit 3d2e2ee (2025-12-28), keyed by the
-# journal's genus code; the Horizons life forms have no genus code, so their species code stands in.
+# How far apart the samples of one species must be (metres): a colony counts as new only beyond this. The game's own
+# figures: the Genetic Sampler shows each species' colony range in game. Keyed by the journal's genus code; the Horizons
+# life forms have no genus code, so their species code stands in.
 COLONY_DISTANCE = {
     "$Codex_Ent_Aleoids_Genus_Name;": 150, "$Codex_Ent_Bacterial_Genus_Name;": 500,
     "$Codex_Ent_Cactoid_Genus_Name;": 300, "$Codex_Ent_Clypeus_Genus_Name;": 150,
@@ -311,7 +321,8 @@ def update_if_newer(path=None, log=print):
         if current:
             return None
         raise
-    if current and current.get("versions") == remote:
+    # without the colour tables (a fresh install: they are never shipped) it is out of date whatever its versions say
+    if current and current.get("versions") == remote and os.path.exists(colours_path(path)):
         return False
     try:
         update_rules(path, log=lambda *_: None, versions=remote)
@@ -378,13 +389,8 @@ def update_rules(path=None, log=print, versions=None):
     except Exception as e:  # noqa: BLE001 -- without them species are simply not ruled out by colour
         genus_data = {}
         versions["explodata"] = ""   # still retried at the next start
-        # Keep the colour tables the current file has rather than turning the colour check off until then.
-        try:
-            with open(path, encoding="utf-8") as fh:
-                kept = {(sp.get("genus_id"), sp.get("id")): sp["colors"]
-                        for sp in json.load(fh).get("species") or [] if sp.get("colors")}
-        except (OSError, ValueError, AttributeError, TypeError):
-            kept = None
+        # Keep the colour tables already downloaded rather than turning the colour check off until then.
+        kept = _read_colours(colours_path(path))
         log(f"bio rules: could not fetch colour variants ({e})"
             + (f"; keeping the {len(kept)} colour tables already there" if kept else ""))
 
@@ -405,6 +411,17 @@ def update_rules(path=None, log=print, versions=None):
             species.append({"id": species_id, "genus_id": genus_id, "genus": _genus_name(genus_id, d["name"]),
                             "name": d["name"], "value": d.get("value"), "rulesets": d.get("rulesets") or [],
                             "colors": colours(genus_id, species_id)})
+    # the colours apart (never shipped: see COLOURS_NAME); written only when ExploData's arrived, else the file stays
+    if kept is None:
+        cfile = colours_path(path)
+        cdoc = {"generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+                "source": {"name": "EDMC-ExploData", "url": "https://github.com/Silarn/EDMC-ExploData",
+                           "commit": versions.get("explodata", ""), "licence": "GPL-2.0"},
+                "colors": {f"{sp['genus_id']}|{sp['id']}": sp["colors"] for sp in species if sp.get("colors")}}
+        with open(cfile + ".tmp", "w", encoding="utf-8") as fh:
+            json.dump(cdoc, fh, separators=(",", ":"))
+        os.replace(cfile + ".tmp", cfile)
+    species = [dict(sp, colors=None) for sp in species]
     data = {
         "generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "sources": [
@@ -412,8 +429,8 @@ def update_rules(path=None, log=print, versions=None):
              "commit": versions.get("bioscan", ""), "licence": "GPL-2.0-or-later",
              "what": "species spawn rules, nebula and region tables"},
             {"name": "EDMC-ExploData", "url": "https://github.com/Silarn/EDMC-ExploData",
-             "commit": versions.get("explodata", ""), "licence": "GPL-2.0-or-later",
-             "what": "colour variants by parent star and surface material"},
+             "commit": versions.get("explodata", ""), "licence": "GPL-2.0",
+             "what": "colour variants by parent star and surface material (in bio_colours.json, downloaded, not shipped)"},
             {"name": "EliteDangerousRegionMap", "url": "https://github.com/klightspeed/EliteDangerousRegionMap",
              "commit": versions.get("regionmap", ""), "licence": "MIT", "what": "galactic region map"},
         ],
@@ -457,13 +474,36 @@ def load_rules(path=None, force=False):
     except (OSError, ValueError):
         _rules = None
         return None
+    colours = _read_colours(colours_path(path)) or {}
     try:
+        for sp in data.get("species") or []:
+            if not sp.get("colors"):
+                sp["colors"] = colours.get((sp.get("genus_id"), sp.get("id")))
+        data["colours"] = bool(colours)
         return _prepare_rules(data)
     except (KeyError, TypeError, AttributeError, ValueError):
         # parses but is not a rules file this version understands (an older schema, a hand edit):
         # treat it as absent so update_if_newer() fetches a fresh copy instead of every call raising
         _rules = None
         return None
+
+
+def _read_colours(path):
+    """{(genus id, species id): colours} from a bio_colours.json, or None when it is missing or unreadable."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            got = json.load(fh).get("colors")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(got, dict):
+        return None
+    return {tuple(k.split("|", 1)): v for k, v in got.items() if isinstance(k, str) and "|" in k and isinstance(v, dict)}
+
+
+def colours_available():
+    """Whether ExploData's colour tables are loaded (downloaded on the first start; tests needing them skip without)."""
+    r = load_rules()
+    return bool(r and r.get("colours"))
 
 
 def _prepare_rules(data):

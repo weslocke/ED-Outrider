@@ -417,8 +417,8 @@ class BioColours(unittest.TestCase):
 
     def test_variant_names_real_rules(self):
         # the colour spellings come from ExploData's tables; they match the journal's (e.g. "Ocher", "Grey")
-        if not outrider.bio.load_rules():
-            self.skipTest("no bio_rules.json")
+        if not outrider.bio.colours_available():
+            self.skipTest("ExploData's colour tables not downloaded (bio_colours.json: python3 -m outrider.bio --update-rules)")
         cols = {c for sp in outrider.bio.load_rules()["species"] for t in (sp.get("colors") or {}).values() for c in t.values()}
         self.assertIn("Ocher", cols)
         self.assertIn("Grey", cols)
@@ -916,17 +916,35 @@ class RulesDownload(unittest.TestCase):
                 return genus if "genus.py" in url else base(url)
             return get
 
-        def colours():
-            with open(self.path) as fh:
-                return [sp["colors"] for sp in json.load(fh)["species"]]
+        def colours():   # as loaded: the rules with the colour tables beside them merged in
+            return [sp["colors"] for sp in outrider.bio.load_rules(self.path, force=True)["species"]]
         with unittest.mock.patch.object(outrider.bio, "_get", get_with()):
             outrider.bio.update_rules(self.path, log=self.log.append, versions=dict(self.V))
         self.assertEqual(colours(), [{"star": {"F": "Teal"}}])
+        # ExploData's colours are never in the rules file itself (it ships): in bio_colours.json beside it (downloaded)
+        with open(self.path) as fh:
+            self.assertEqual([sp["colors"] for sp in json.load(fh)["species"]], [None])
+        self.assertTrue(os.path.exists(outrider.bio.colours_path(self.path)))
         with unittest.mock.patch.object(outrider.bio, "_get", get_with(fail=("genus.py",))):
             outrider.bio.update_rules(self.path, log=self.log.append, versions=dict(self.V, bioscan="b2"))
-        self.assertEqual(colours(), [{"star": {"F": "Teal"}}])      # the colour check stays on
+        self.assertEqual(colours(), [{"star": {"F": "Teal"}}])      # the colour check stays on: the file there is kept
         with open(self.path) as fh:
             self.assertEqual(json.load(fh)["versions"]["explodata"], "")   # and ExploData is fetched again next start
+
+    def test_no_colour_file_means_out_of_date(self):
+        """The shipped rules carry no colours (ExploData's are downloaded, never shipped: the author, 2026-10-10): with
+        no bio_colours.json beside them they are fetched on the first start even when their versions are current."""
+        with unittest.mock.patch.object(outrider.bio, "_get", self.fake_get()):
+            outrider.bio.update_rules(self.path, log=self.log.append, versions=dict(self.V))
+        os.remove(outrider.bio.colours_path(self.path))
+        with unittest.mock.patch.object(outrider.bio, "remote_versions", return_value=dict(self.V)), \
+                unittest.mock.patch.object(outrider.bio, "update_rules") as upd:
+            self.assertTrue(outrider.bio.update_if_newer(self.path, log=self.log.append))
+            upd.assert_called_once()
+        with unittest.mock.patch.object(outrider.bio, "_get", self.fake_get()):
+            outrider.bio.update_rules(self.path, log=self.log.append, versions=dict(self.V))
+        with unittest.mock.patch.object(outrider.bio, "remote_versions", return_value=dict(self.V)):
+            self.assertFalse(outrider.bio.update_if_newer(self.path, log=self.log.append))   # both there: current
 
 
 class BatchS1(unittest.TestCase):

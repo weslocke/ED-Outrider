@@ -7,6 +7,9 @@ eddn_listener
 run.sh
 scripts/install.sh
 resources/bio_rules.json.tmp
+# ExploData's colour tables: the container downloads them on its first start, never baked into the image
+resources/bio_colours.json
+resources/bio_colours.json.tmp
 data
 docker/data
 docker/config

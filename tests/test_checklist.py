@@ -187,6 +187,8 @@ class ChecklistServer(unittest.TestCase):
                         (system, variant, done, done))
 
     def test_checklist(self):
+        if not outrider.bio.colours_available():   # the colours' states below need ExploData's tables (downloaded)
+            self.skipTest("ExploData's colour tables not downloaded (bio_colours.json)")
         self.jump("2026-01-01T00:00:00Z", 1, "Near Sol", [0, 0, 0])                         # Inner Orion Spur (18)
         self.organic(1, "Stratum Tectonicas - Lime", "2026-01-01T00:10:00Z")
         self.j.handle({"event": "Died", "timestamp": "2026-01-01T00:20:00Z"})                # lost with the ship

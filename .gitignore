@@ -20,6 +20,9 @@ package-lock.json
 
 # Half-written rules download
 resources/bio_rules.json.tmp
+# ExploData's colour tables: downloaded on the first start, never shipped
+resources/bio_colours.json
+resources/bio_colours.json.tmp
 
 # private planning notes, never committed
 project/
