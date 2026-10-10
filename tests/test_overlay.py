@@ -222,6 +222,34 @@ class Radar(unittest.TestCase):
         self.assertIn("ship 1.5 km", [i["s"] for i in shipped["items"] if i["t"] == "text"])
 
 
+class Themes(unittest.TestCase):
+    def test_colours(self):
+        self.assertEqual(O.css_colour("#abc"), "#AABBCC")
+        self.assertEqual(O.css_colour("#11223380"), "#80112233")          # CSS's alpha last, the window's first
+        self.assertEqual(O.css_colour("rgba(63, 200, 244, .14)"), "#243FC8F4")
+        self.assertEqual(O.css_colour("rgb(1,2,3)"), "#010203")
+        self.assertIsNone(O.css_colour("transparent"))
+        self.assertIsNone(O.css_colour(None))
+
+    def test_vars_resolved(self):
+        css = (':root[data-theme="x"] { --a: #FF0000; --b: var(--a); --c: var(--missing, #00FF00); }\n'
+               ':root[data-theme="x"] body.tablet { --b: #000; }\n:root[data-theme="y"] { --a: #123456; }')
+        self.assertEqual(O.theme_vars(css, "x"), {"a": "#FF0000", "b": "#FF0000", "c": "#00FF00"})
+
+    def test_every_theme(self):
+        for t in O.THEMES:
+            pal = O.palette(t)
+            self.assertEqual(set(pal), set(O.DEFAULT_PALETTE), t)
+            for k, v in pal.items():
+                if k != "style":
+                    self.assertRegex(v, r"^#([0-9A-F]{6}|[0-9A-F]{8})$", f"{t}.{k}")
+            self.assertIn(pal["style"], ("rounded", "chamfer", "double", "lcars"))
+        self.assertEqual(O.palette("elite")["title"], "#FF7A00")             # elite.css's --tb-title, its orange
+        self.assertEqual(O.palette("elite")["style"], "chamfer")
+        self.assertNotEqual(O.palette("lcars"), O.palette("default"))
+        self.assertEqual(O.test_panels(O.palette("minbari"))[0]["style"], "double")
+
+
 class Server(unittest.TestCase):
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")

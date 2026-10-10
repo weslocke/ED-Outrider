@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay O7: themes (branch EDMC-Functionality)
+- `[overlay] theme` colours the panels from the theme's own stylesheet (static/themes/<name>.css: its title, text,
+  muted, good, warn, bad, accent, panel and line colours, `var()` chains resolved; anything missing: the Default's,
+  which are the page's dark colours) and frames them as the 10-05 plan drew them: cut corners (Elite, Narn), a double
+  line (Centauri, Minbari), LCARS's bars, rounded for the rest.
+
 ## 2026-10-10 · Overlay O6: the surface radar (branch EDMC-Functionality)
 - On a body (landed, in the SRV, on foot) or low over it, as the surface map shows: a heading-up radar from the
   surface summary, you at the centre, N on the rim; the run in progress's sample points with their colony rings (red

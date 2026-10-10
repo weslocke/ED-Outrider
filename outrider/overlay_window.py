@@ -292,11 +292,8 @@ def paint(painter, data, win_w, win_h, arrange=False, override=None):
         painter.setOpacity(entry["alpha"])
         painter.translate(x, y)
         painter.scale(s, s)
-        box = QRectF(0, 0, panel["w"], panel["h"])
         if entry["bg"] > 0:
-            painter.setPen(pen(panel.get("frame")) if entry["bg"] >= 0.15 else QPen(Qt.PenStyle.NoPen))
-            painter.setBrush(QBrush(colour(panel.get("bg"), entry["bg"])))
-            painter.drawRoundedRect(box, RADIUS, RADIUS)
+            paint_frame(painter, panel, entry["bg"])
         for it in panel.get("items") or []:
             t = it.get("t")
             painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -368,6 +365,41 @@ def paint(painter, data, win_w, win_h, arrange=False, override=None):
     if arrange:
         paint_done(painter, win_w)
     return geoms
+
+
+def frame_points(style, w, h, cut=10):
+    """The outline of a panel's frame for a polygon style ("chamfer": the top left and bottom right corners cut), in
+    the panel's own units; None for the other styles (pure: tested without Qt)."""
+    if style == "chamfer":
+        return [(cut, 0), (w, 0), (w, h - cut), (w - cut, h), (0, h), (0, cut)]
+    return None
+
+
+def paint_frame(painter, panel, opacity):
+    """A panel's background at `opacity` and its frame in the theme's style."""
+    from PyQt6.QtCore import QPointF, QRectF, Qt
+    from PyQt6.QtGui import QBrush, QColor, QPen, QPolygonF
+    w, h, style = panel["w"], panel["h"], panel.get("style") or "rounded"
+    fill = QBrush(QColor(*rgba(panel.get("bg"), opacity)))
+    line = QPen(QColor(*rgba(panel.get("frame")))) if opacity >= 0.15 else QPen(Qt.PenStyle.NoPen)
+    painter.setPen(line)
+    painter.setBrush(fill)
+    pts = frame_points(style, w, h)
+    if pts:
+        painter.drawPolygon(QPolygonF([QPointF(x, y) for x, y in pts]))
+    elif style == "double":
+        painter.drawRect(QRectF(0, 0, w, h))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRect(QRectF(3, 3, w - 6, h - 6))
+    elif style == "lcars":   # a solid bar down the left and one across the top, in the theme's title colour
+        painter.drawRect(QRectF(0, 0, w, h))
+        bar = QColor(*rgba(panel.get("accent") or panel.get("frame"), max(opacity, 0.6)))
+        painter.setPen(QPen(Qt.PenStyle.NoPen))
+        painter.setBrush(QBrush(bar))
+        painter.drawRect(QRectF(0, 0, 5, h))
+        painter.drawRect(QRectF(0, 0, w * 0.4, 3))
+    else:
+        painter.drawRoundedRect(QRectF(0, 0, w, h), RADIUS, RADIUS)
 
 
 def paint_done(painter, win_w):

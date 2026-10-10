@@ -102,6 +102,10 @@ class Arranging(unittest.TestCase):
         self.assertEqual(W.dragged(e, start, 99999, 0, "resize", 400, 100, 1920, 1080)["scale"], O.LIMITS["scale"][1])
         self.assertEqual(W.dragged(e, start, -99999, 0, "resize", 400, 100, 1920, 1080)["scale"], O.LIMITS["scale"][0])
 
+    def test_frames(self):
+        self.assertEqual(W.frame_points("chamfer", 100, 50, cut=10), [(10, 0), (100, 0), (100, 40), (90, 50), (0, 50), (0, 10)])
+        self.assertIsNone(W.frame_points("rounded", 100, 50))
+
     def test_wheel(self):
         e = dict(O.LAYOUT_DEFAULT["system"], bg=0.65, alpha=1.0)
         self.assertEqual(W.wheeled(e, "bg", 2)["bg"], 0.75)

@@ -3,8 +3,9 @@ draw lists on a 1280x960 canvas, for the overlay window on the game PC (outrider
 Elite's window. Pure: the server's State hands these builders the summaries Here, Now and the surface map already
 have, and serves the result at GET /api/overlay.
 
-A panel is {"id", "w", "h", "bg", "frame", "items"}: its natural size in canvas units, its background and frame
-colours, and its items in its own coordinates (0,0 its top left). The window places each panel by the layout (a
+A panel is {"id", "w", "h", "bg", "frame", "style", "accent", "items"}: its natural size in canvas units, its
+background and frame colours, its frame's style (rounded, chamfer, double or lcars: the theme's) and the colour of
+LCARS's bars, and its items in its own coordinates (0,0 its top left). The window places each panel by the layout (a
 corner of the game window, an offset as a share of the window, a scale) and draws its background at the layout's
 opacity, then the items, the whole panel at the layout's alpha. Items:
 
@@ -20,7 +21,11 @@ Colours are "#RRGGBB" or "#AARRGGBB".
 """
 import copy
 import math
+import os
+import re
 import sys
+
+from . import ROOT
 
 CANVAS_W, CANVAS_H = 1280, 960
 PANELS = ("system", "body", "radar")
@@ -46,14 +51,72 @@ LINE_H = {"small": 16, "normal": 20, "large": 26}
 CHAR_W = {"small": 6.6, "normal": 8.2, "large": 10.4}
 PAD = 10
 
-# the Default theme's colours (the page's dark values); outrider.overlay_theme reads the other themes' (O7)
-DEFAULT_PALETTE = {"title": "#4FC3F7", "text": "#E6E6E6", "muted": "#9AA4AE", "good": "#4CD964", "warn": "#FFB020",
-                   "bad": "#FF5A5A", "accent": "#FF8C00", "panel": "#101418", "frame": "#3A4450"}
+# the Default theme's colours: the page's dark ones (page.css :root), the title in its info blue
+DEFAULT_PALETTE = {"title": "#6AA8FF", "text": "#D8DDE4", "muted": "#7D8794", "good": "#5CC98A", "warn": "#E3B341",
+                   "bad": "#E05D5D", "accent": "#FF8C1A", "panel": "#161A20", "frame": "#262C35", "style": "rounded"}
+THEMES_DIR = os.path.join(ROOT, "static", "themes")
+# each palette key from the theme's variables, the first one set (the themes' own: static/themes/<name>.css)
+THEME_VARS = {"title": ("tb-title", "info", "accent"), "text": ("text",), "muted": ("muted",), "good": ("good",),
+              "warn": ("warn",), "bad": ("bad",), "accent": ("accent",), "panel": ("panel",), "frame": ("line",)}
+# the panels' frames per theme, as the 10-05 plan drew them: cut corners (Elite, Narn), a double line (Centauri,
+# Minbari), LCARS's bars, rounded for the rest
+THEME_STYLE = {"elite": "chamfer", "narn": "chamfer", "centauri": "double", "minbari": "double", "lcars": "lcars"}
+_palettes = {}
+
+
+def css_colour(v):
+    """A CSS colour as "#RRGGBB" or "#AARRGGBB" (#rgb, #rrggbb, #rrggbbaa, rgb(), rgba()), else None."""
+    v = (v or "").strip()
+    m = re.fullmatch(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})", v)
+    if m:
+        h = m.group(1)
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        return "#" + (h[6:] + h[:6] if len(h) == 8 else h).upper()   # CSS's alpha is last, the window's first
+    m = re.fullmatch(r"rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)", v)
+    if m:
+        r, g, b = (max(0, min(255, round(float(x)))) for x in m.groups()[:3])
+        a = max(0, min(255, round(float(m.group(4)) * 255))) if m.group(4) is not None else 255
+        return f"#{r:02X}{g:02X}{b:02X}" if a == 255 else f"#{a:02X}{r:02X}{g:02X}{b:02X}"
+    return None
+
+
+def theme_vars(css, theme):
+    """A theme stylesheet's custom properties from its :root[data-theme="<theme>"] blocks, var() references resolved."""
+    raw = {}
+    for m in re.finditer(r':root\[data-theme="%s"\]\s*\{([^}]*)\}' % re.escape(theme), css):
+        for name, value in re.findall(r"--([\w-]+)\s*:\s*([^;]+);", m.group(1)):
+            raw[name] = value.strip()
+
+    def resolve(v, depth=0):
+        if depth > 10:
+            return v
+        return re.sub(r"var\(--([\w-]+)(?:\s*,\s*([^)]*))?\)",
+                      lambda m: resolve(raw.get(m.group(1), m.group(2) or ""), depth + 1), v)
+    return {k: resolve(v) for k, v in raw.items()}
 
 
 def palette(theme="default"):
-    """A theme's colours for the panels: {title, text, muted, good, warn, bad, accent, panel, frame}."""
-    return dict(DEFAULT_PALETTE)
+    """A theme's colours for the panels: {title, text, muted, good, warn, bad, accent, panel, frame, style}. Read from
+    the theme's stylesheet (once); anything missing or not a plain colour: the Default's."""
+    if theme in _palettes:
+        return dict(_palettes[theme])
+    pal = dict(DEFAULT_PALETTE)
+    if theme in THEMES and theme != "default":
+        try:
+            with open(os.path.join(THEMES_DIR, f"{theme}.css"), encoding="utf-8") as f:
+                found = theme_vars(f.read(), theme)
+        except OSError:
+            found = {}
+        for key, names in THEME_VARS.items():
+            for name in names:
+                c = css_colour(found.get(name))
+                if c:
+                    pal[key] = c
+                    break
+        pal["style"] = THEME_STYLE.get(theme, "rounded")
+    _palettes[theme] = pal
+    return dict(pal)
 
 
 def _warn(msg):
@@ -233,7 +296,8 @@ def text_panel(pid, title, rows, pal, width=400, size="normal", subtitle=None):
         if parts:
             items.append(runs(PAD, y, parts))
         y += lh
-    return {"id": pid, "w": width, "h": round(y + PAD - 2), "bg": pal["panel"], "frame": pal["frame"], "items": items}
+    return {"id": pid, "w": width, "h": round(y + PAD - 2), "bg": pal["panel"], "frame": pal["frame"],
+            "style": pal.get("style", "rounded"), "accent": pal["title"], "items": items}
 
 
 # ---- what the panels say ----
@@ -477,7 +541,8 @@ def radar_panel(surf, pal, size="normal", radar_range=800):
             items.append(text(PAD, y, f"Clear: sample here ({cur['need']} m from all)", pal["good"], "small"))
         elif near is not None:
             items.append(text(PAD, y, f"Next: {cur['need']} m from all · nearest {round(near)} m", pal["warn"], "small"))
-    return {"id": "radar", "w": w, "h": round(y + lh_small + PAD), "bg": pal["panel"], "frame": pal["frame"], "items": items}
+    return {"id": "radar", "w": w, "h": round(y + lh_small + PAD), "bg": pal["panel"], "frame": pal["frame"],
+            "style": pal.get("style", "rounded"), "accent": pal["title"], "items": items}
 
 
 # ---- the test panels: every panel with sample data, to arrange them before flying ----
