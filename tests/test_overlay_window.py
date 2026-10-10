@@ -126,6 +126,12 @@ class Arranging(unittest.TestCase):
         self.assertFalse(W.should_show(None, {"test": True}))                       # no game window: nowhere to draw
         self.assertFalse(W.should_show(T.WindowState(0, 0, 0, 0, True, False), {"test": True}))   # minimised
 
+    def test_windows_click_through_both_ways(self):
+        """On Windows the click-through style is taken away for Arrange mode as well as added (it was only added)."""
+        through = W.win_exstyle(0x100, True)
+        self.assertEqual(through, 0x100 | W.WS_EX_LAYERED | W.WS_EX_TRANSPARENT)
+        self.assertEqual(W.win_exstyle(through, False), 0x100 | W.WS_EX_LAYERED)   # takes the mouse; layered stays
+
     def test_frames(self):
         self.assertEqual(W.frame_points("chamfer", 100, 50, cut=10), [(10, 0), (100, 0), (100, 40), (90, 50), (0, 50), (0, 10)])
         self.assertIsNone(W.frame_points("rounded", 100, 50))

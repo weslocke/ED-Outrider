@@ -128,6 +128,16 @@ def wheeled(entry, key, notches):
     return dict(entry, **{key: round(min(hi, max(lo, entry[key] + WHEEL_STEP * notches)), 4)})
 
 
+WS_EX_LAYERED, WS_EX_TRANSPARENT = 0x80000, 0x20   # Windows' extended window styles (click-through: both)
+
+
+def win_exstyle(style, through):
+    """A window's extended style with Windows' click-through on or off: WS_EX_TRANSPARENT added (with WS_EX_LAYERED)
+    while clicks pass to the game, taken away again for Arrange mode (it was only ever added: the window never got
+    the mouse on Windows)."""
+    return (style | WS_EX_LAYERED | WS_EX_TRANSPARENT) if through else (style & ~WS_EX_TRANSPARENT)
+
+
 def should_show(st, data, active=False):
     """Whether the overlay shows over the game's window state `st` (overlay_tracking.WindowState or None): while the
     game is in front, or this window is (Arrange mode takes the mouse), or for Arrange mode and the test panels whatever
@@ -608,13 +618,13 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
             handle = self.windowHandle()
             if handle is not None:
                 handle.setFlag(Qt.WindowType.WindowTransparentForInput, through)
-            if through and sys.platform.startswith("win"):   # Modern Overlay's platform_integration
+            if sys.platform.startswith("win"):   # Modern Overlay's platform_integration, both ways
                 try:
                     import ctypes
                     user32 = ctypes.windll.user32
                     hwnd = int(self.winId())
                     style = user32.GetWindowLongW(hwnd, -20)   # GWL_EXSTYLE
-                    user32.SetWindowLongW(hwnd, -20, style | 0x80000 | 0x20)   # WS_EX_LAYERED | WS_EX_TRANSPARENT
+                    user32.SetWindowLongW(hwnd, -20, win_exstyle(style, through))
                 except Exception as e:  # noqa: BLE001 -- best effort
                     log.debug("Windows click-through: %s", e)
 

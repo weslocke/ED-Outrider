@@ -72,9 +72,16 @@ orange with cut corners, LCARS's bars, ...); **text** is small, normal or large.
 
 ## Good to know
 
-- **Linux** (X11, and Wayland sessions through XWayland, as Elite under Proton runs) is where it is made and tried.
-  **Windows** has the same window but is not yet tried against the game.
-- Native Wayland compositors (KDE's, Hyprland, sway), gamescope and exclusive fullscreen are not supported.
+- **Linux on X11** (Xfce, Cinnamon, MATE, KDE on X11...): the native case. Transparency needs a compositor, as every
+  modern desktop runs; with a bare window manager the space around the panels shows black.
+- **Linux on Wayland**: through XWayland, as Elite under Proton runs. Tried on GNOME. KDE Plasma should behave the same;
+  sway and Hyprland treat XWayland windows their own way and are not tried.
+- **Proton's native Wayland mode** (`PROTON_ENABLE_WAYLAND=1`) makes Elite a native Wayland window, which the overlay
+  cannot find or follow: leave it off. Fractional display scaling on Wayland (125%, 150%) may put the panels a little
+  off or blur them: not tried yet.
+- **Windows**: the same window (finding Elite's with the Windows API, letting clicks through, always on top), not yet
+  tried against the game. Play borderless; tell us how it goes.
+- Exclusive fullscreen and gamescope (the Steam Deck's game mode) are not supported: nothing can draw over them.
 - The window's code for finding and following the game's window, and drawing over it, is adapted from
   [EDMC Modern Overlay](https://github.com/SweetJonnySauce/EDMCModernOverlay); neither EDMC nor Modern Overlay is
   needed.

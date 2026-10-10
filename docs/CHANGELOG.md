@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: Windows' click-through both ways; where it works (branch EDMC-Functionality)
+- On Windows the window only ever added the click-through style (WS_EX_TRANSPARENT), so Arrange mode would never have
+  had the mouse there: it is taken away again for Arrange mode (`win_exstyle`).
+- The guide's "Good to know" says where the overlay works: X11 (a compositor needed), Wayland through XWayland (tried
+  on GNOME), not with Proton's native Wayland mode, fractional scaling untried, Windows untried, never exclusive
+  fullscreen or gamescope.
+
 ## 2026-10-10 · Overlay: the system strip (branch EDMC-Functionality)
 - A fourth panel, optional (`[overlay] strip_panel`, off by default), made for the top of the screen: line 1 where you
   are (system, region, distance from Sol, the star in words with ⛽ / ⚡, now and max, 🏁 first discovered), line 2
