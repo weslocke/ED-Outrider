@@ -154,6 +154,48 @@ class Packaging(unittest.TestCase):
                      "command -v wl-copy", "command -v xclip"):   # the clipboard tools pip cannot install: a hint
             self.assertIn(part, script)
 
+    def test_launch_script_clipboard_hint(self):
+        """launch_outrider.sh's clipboard_hint (the author, 2026-10-11): on a Linux desktop session without the clipboard
+        program Outrider would use (wl-copy under Wayland, xclip with an X display), a block naming the right one with
+        this system's package-manager command and the both-at-once option; nothing when one is there or without a
+        session. Run in a PATH of fakes only, so this machine's own programs never decide it."""
+        import re as re_
+        import shutil
+        import subprocess
+        script = self.read("launch_outrider.sh")
+        func = re_.search(r"^clipboard_hint\(\) \{\n.*?^\}\n", script, re_.S | re_.M).group(0)
+        self.assertIn("\nclipboard_hint\n", script)                    # called at every start, before Outrider
+        self.assertLess(script.index("\nclipboard_hint\n"), script.index('exec python ed_outrider.py "$@"'))
+        bash, uname = shutil.which("bash"), shutil.which("uname")
+
+        def hint(env, tools=()):
+            with tempfile.TemporaryDirectory() as d:
+                os.symlink(uname, os.path.join(d, "uname"))
+                for t in tools:
+                    with open(os.path.join(d, t), "w") as f:
+                        f.write("#!/bin/sh\nexit 0\n")
+                    os.chmod(os.path.join(d, t), 0o755)
+                r = subprocess.run([bash, "-c", func + "clipboard_hint"], env=dict(env, PATH=d), capture_output=True,
+                                   text=True, timeout=10)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                return r.stdout
+        wayland, x11 = {"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"}, {"DISPLAY": ":0", "XDG_SESSION_TYPE": "x11"}
+        out = hint(wayland, ["apt-get"])
+        self.assertIn("install wl-copy", out)
+        self.assertIn("sudo apt install wl-clipboard\n", out)
+        self.assertIn("sudo apt install wl-clipboard xclip", out)           # or both
+        self.assertNotIn("\033", out)                                     # no colours into a pipe
+        out = hint(x11, ["dnf"])
+        self.assertIn("install xclip", out)
+        self.assertIn("sudo dnf install xclip\n", out)
+        self.assertIn("sudo pacman -S xclip", hint(x11, ["pacman"]))
+        self.assertIn("the xclip package with your distribution's package manager", hint(x11))   # no known manager
+        self.assertEqual(hint(wayland, ["wl-copy", "apt-get"]), "")
+        self.assertEqual(hint(wayland, ["xclip", "apt-get"]), "")          # Outrider falls back to xclip via XWayland
+        self.assertEqual(hint(x11, ["xclip"]), "")
+        self.assertIn("install xclip", hint(x11, ["wl-copy", "apt-get"]))  # wl-copy is no use without Wayland
+        self.assertEqual(hint({}, ["apt-get"]), "")                        # no desktop session: a server, nothing said
+
     def test_windows_launch_script(self):
         """launch_outrider.bat, launch_outrider.sh's twin for Windows: Windows line endings in the file and kept by git
         (.gitattributes), the same install rules, the stamp compared in Python (Wine's fc called identical files

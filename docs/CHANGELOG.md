@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · The launcher says which clipboard program to install
+- launch_outrider.sh checks the desktop session at every start (Wayland: wl-copy, X11: xclip, as Outrider picks them)
+  and, while the one it needs is missing, prints a marked block (coloured in a terminal) with the command for this
+  system's package manager (apt, dnf, pacman or zypper; otherwise the package's name) and the one that installs both.
+  Nothing without a desktop session (a server) or on macOS. It was a one-line hint after an install only.
+
 ## 2026-10-10 · Docs: the overlay's side brought up to date (branch EDMC-Functionality)
 - The README and the overlay guide name all six panels (system, body, radar, the system strip, Now (To-Do & Info), Bio
   signals). The overlay guide: the test panels draw every panel, none shows in the hyperspace tunnel, Now's target

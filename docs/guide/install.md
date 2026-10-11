@@ -38,7 +38,9 @@ is welcome.
 Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste) need **`wl-copy`**
 (the `wl-clipboard` package, for Wayland) or **`xclip`** (for X11), from your distribution, e.g.
 `sudo apt install wl-clipboard` or `sudo apt install xclip`. Without either, nothing is copied and everything else works
-(the start-up log says which one it found). Windows needs nothing. On Linux the [in-game overlay](overlay.md) finds
+(the start-up log says which one it found). `launch_outrider.sh` checks your desktop session (Wayland or X11) at
+every start and, while the one it needs is missing, prints a block with the command for your package manager (apt,
+dnf, pacman or zypper) and the one that installs both. Windows needs nothing. On Linux the [in-game overlay](overlay.md) finds
 Elite's window with **`wmctrl`** and **`xprop`** / **`xwininfo`** (the `x11-utils` package):
 `sudo apt install wmctrl x11-utils`.
 
