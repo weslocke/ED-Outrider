@@ -28,7 +28,7 @@ except ImportError:   # requirements-dev.txt has it; without it only the schema 
 
 def valid(envelope, schema_file):
     """Raise unless `envelope` passes EDDN's schema (draft-04, as EDDN's gateway validates)."""
-    with open(os.path.join(FIX, schema_file), encoding="utf-8") as f:
+    with open(os.path.join(FIX, schema_file), encoding="utf-8-sig") as f:   # some of EDDN's files start with a BOM
         schema = json.load(f)
     jsonschema.Draft4Validator(schema).validate(envelope)
 
@@ -250,6 +250,39 @@ class RouteCodexSettlement(unittest.TestCase):
         self.s.status_body = None
         self.assertNotIn("BodyName", E.build(ev, self.s, "v")[0][1]["message"])
         self.assertEqual(E.build(dict(ev, Region=""), self.s, "v"), [])   # an empty required name: not sent
+
+    def test_scan_organic(self):
+        """scanorganic/1 (the author, 2026-10-11): Log and Sample, never Analyse; Body renamed BodyID; BodyName only for the
+        body approached with that id; Latitude/Longitude only from a live Status.json on that body, read at the scan."""
+        body = "Smojooe AR-E b25-8 A 1"
+        ev = {"timestamp": "2026-10-08T10:40:00Z", "event": "ScanOrganic", "ScanType": "Log",
+              "Genus": "$Codex_Ent_Fungoids_Genus_Name;", "Genus_Localised": "Fungoida",
+              "Species": "$Codex_Ent_Fungoids_01_Name;", "Species_Localised": "Fungoida Setisis",
+              "Variant": "$Codex_Ent_Fungoids_01_Polonium_Name;", "Variant_Localised": "Fungoida Setisis - Teal",
+              "SystemAddress": self.addr, "Body": 5}
+        [(name, env)] = E.build(ev, self.s, "v")                                  # nothing approached: no name, no place
+        valid(env, "scanorganic-v1.0.json")
+        m = env["message"]
+        self.assertEqual((name, m["StarSystem"], m["BodyID"], "Body" in m, "BodyName" in m, "Latitude" in m),
+                         ("scanorganic", "Smojooe AR-E b25-8", 5, False, False, False))
+        self.assertFalse(any(k.endswith("_Localised") for k in m))
+        self.s.feed({"event": "ApproachBody", "timestamp": "2026-10-08T10:30:00Z", "Body": body, "BodyID": 5})
+        self.s.status_pos = (12.5, -40.25, body, "2026-10-08T10:39:58Z")          # read 2 s before the scan
+        m = E.build(ev, self.s, "v")[0][1]["message"]
+        valid(E.build(ev, self.s, "v")[0][1], "scanorganic-v1.0.json")
+        self.assertEqual((m["BodyName"], m["Latitude"], m["Longitude"]), (body, 12.5, -40.25))
+        late = dict(ev, timestamp="2026-10-08T12:00:00Z")                         # a journal caught up later: no place
+        self.assertNotIn("Latitude", E.build(late, self.s, "v")[0][1]["message"])
+        self.s.status_pos = (12.5, -40.25, body, "2026-10-08T10:40:30Z")          # 30 s after: you have moved on
+        self.assertNotIn("Latitude", E.build(ev, self.s, "v")[0][1]["message"])
+        self.s.status_pos = (12.5, -40.25, "Smojooe AR-E b25-8 A 2", "2026-10-08T10:40:00Z")   # another body
+        self.assertNotIn("Latitude", E.build(ev, self.s, "v")[0][1]["message"])
+        other = E.build(dict(ev, Body=6), self.s, "v")[0][1]["message"]           # not the body approached
+        self.assertEqual(("BodyName" in other, other["BodyID"]), (False, 6))
+        self.assertNotIn("Variant", E.build({k: v for k, v in ev.items() if k != "Variant"}, self.s, "v")[0][1]["message"])
+        self.assertEqual(E.build(dict(ev, ScanType="Sample"), self.s, "v")[0][0], "scanorganic")
+        self.assertEqual(E.build(dict(ev, ScanType="Analyse"), self.s, "v"), [])   # can come anywhere: never sent
+        self.assertEqual(E.build(dict(ev, SystemAddress=1), self.s, "v"), [])      # the cross-check
 
     def test_settlement(self):
         ev = {"timestamp": "2026-10-08T10:30:00Z", "event": "ApproachSettlement", "Name": "Hamilton Base", "MarketID": 3820000000,

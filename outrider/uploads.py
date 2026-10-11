@@ -98,6 +98,7 @@ class Session:
         self.crew = False     # crew in another commander's ship: nothing of it is uploaded
         self.body = self.body_id = None       # the body you approached (journal), until LeaveBody / a jump
         self.status_body = None               # Status.json's BodyName (set by the hub from the live reading)
+        self.status_pos = None                # its (Latitude, Longitude, BodyName, timestamp) on a body (scanorganic)
         self.market_id = self.station = None
         self.ship_id = None
         self.dir = None                       # the journal folder of the line (NavRoute.json, Market.json... live there)
@@ -355,9 +356,9 @@ class UploadHub:
         so it is dropped, and the next line wanted primes its file from the top again (status_body is the live
         Status.json's, kept)."""
         if self.primed:
-            body = self.session.status_body
+            body, pos = self.session.status_body, self.session.status_pos
             self.session, self.primed = Session(), set()
-            self.session.status_body = body
+            self.session.status_body, self.session.status_pos = body, pos
 
     def prime(self, path, upto, session=None, depth=0):
         """Feed a session the lines of `path` before byte `upto` (state only): a file met part way through. A
@@ -568,9 +569,13 @@ class UploadHub:
         return n
 
     def status(self, st):
-        """The live Status.json reading: the body it names (EDDN's codex entries say it only then)."""
+        """The live Status.json reading: the body it names (EDDN's codex entries say it only then) and, on a body, where
+        you are on it with the reading's time (EDDN's scanorganic, only when it matches the scan)."""
         st = st or {}
-        self.session.status_body = st.get("body") if st.get("live") else None
+        live = bool(st.get("live"))
+        self.session.status_body = st.get("body") if live else None
+        self.session.status_pos = (st.get("lat"), st.get("lon"), st.get("body"), st.get("ts")) \
+            if live and st.get("lat") is not None and st.get("lon") is not None and st.get("body") else None
 
     def snapshot(self):
         return (self.session.snapshot(), set(self.primed), self.queued, copy.deepcopy(self.marks), self.marks_dirty)
