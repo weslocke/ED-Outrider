@@ -162,7 +162,7 @@ def setup(config, python=None, has_qt=has_pyqt6, run=subprocess.run, which=shuti
             "(or your distribution's packages)")
     if has_qt():
         return True
-    out("The in-game overlay is on: installing PyQt6 into Outrider's environment (about 100 MB, once)")
+    out("The in-game overlay is on: installing PyQt6 in Outrider's venv (about 100 MB, once; nothing system-wide)")
     try:
         r = run([python or sys.executable, "-m", "pip", "install", "--quiet", "-r", REQUIREMENTS], timeout=900)
         ok = r.returncode == 0

@@ -7828,8 +7828,8 @@ function overlayStatusHtml(o) {
   if (!r) return `<span class="unk">the overlay needs Outrider on the game PC</span>`;
   const st = r.state;
   // PyQt6 is installed by Outrider when the overlay is on (and by the launchers at start): no button for it
-  if (st === "no_qt") return `<span class="warnc">the overlay window needs PyQt6: Outrider installs it while the overlay is on</span>`;
-  if (st === "installing") return `<span class="unk">installing PyQt6 for the overlay window… (about 100 MB, a minute or two)</span>`;
+  if (st === "no_qt") return `<span class="warnc">the overlay window needs PyQt6: Outrider installs it in its own venv while the overlay is on</span>`;
+  if (st === "installing") return `<span class="unk">installing PyQt6 in Outrider's venv for the overlay window… (about 100 MB, a minute or two)</span>`;
   if (st === "install_failed") return `<span class="bad">installing PyQt6 failed: ${esc(r.why || "?")}</span> ` +
     `<span class="unk">(switch the overlay off and on to try again)</span>`;
   if (st === "starting") return `<span class="unk">starting the overlay window…</span>`;
@@ -7873,12 +7873,12 @@ function renderOverlayInstall(o) {
   clearTimeout(ovInstallTimer);
   if (st === "installing") {
     el.className = ""; el.hidden = false;
-    el.innerHTML = `<span class="spin">⟳</span>Installing PyQt6 for the in-game overlay… <span class="unk">about 100 MB, a minute or two</span>`;
+    el.innerHTML = `<span class="spin">⟳</span>Installing PyQt6 in Outrider's venv for the in-game overlay… <span class="unk">about 100 MB, a minute or two; nothing system-wide</span>`;
   } else if (was === "installing") {
     const failed = st === "install_failed";
     el.className = failed ? "bad" : ""; el.hidden = false;
     el.innerHTML = failed ? `Installing PyQt6 failed: <span class="unk">see Settings → In-game overlay</span>`
-                          : `✓ PyQt6 installed: <span class="unk">the overlay window is starting</span>`;
+                          : `✓ PyQt6 installed in Outrider's venv: <span class="unk">the overlay window is starting</span>`;
     ovInstallTimer = setTimeout(() => { el.hidden = true; }, OV_INSTALL_DONE_MS);
   } else el.hidden = true;
 }

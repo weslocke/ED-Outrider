@@ -45,7 +45,7 @@ No panel covers the galaxy or system map, the orrery, the FSS, the SAA or the co
 1. In Outrider's **⚙ Settings → In-game overlay**, tick **Show the overlay**. Outrider starts the overlay window itself
    on the game PC (and closes it when you untick it or stop Outrider): one application, nothing else to run.
 2. The overlay window needs PyQt6 (about 100 MB). Nothing to press: while the overlay is on, Outrider installs it
-   into its own environment the first time (a minute or two; a popup at the top of the page says so until it is done), and launch_outrider.sh / .bat install
+   into its own venv (`.venv`, nothing system-wide) the first time (a minute or two; a popup at the top of the page says so until it is done), and launch_outrider.sh / .bat install
    it before Outrider starts whenever `[overlay] enabled = true` is in the config (a new PC with your config copied
    over). On Linux the window finds Elite's with `wmctrl` and `xprop` / `xwininfo`, system programs pip cannot install
    (Debian and Ubuntu: `sudo apt install wmctrl x11-utils`); the launcher says when they are missing.

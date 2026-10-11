@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: the PyQt6 messages say "in Outrider's venv" (branch EDMC-Functionality)
+- The install popup, Settings' status, the launcher's line and the guide say PyQt6 goes into Outrider's own venv, so
+  nobody takes it for a system-wide install.
+
 ## 2026-10-10 · Overlay: a popup while PyQt6 installs (branch EDMC-Functionality)
 - While Outrider installs PyQt6 for the overlay window, a popup at the top of the page says so ("Installing PyQt6 for
   the in-game overlay…", with a spinner), in every window of the page; when it finishes it says "PyQt6 installed: the

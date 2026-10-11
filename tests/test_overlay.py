@@ -342,7 +342,7 @@ class Runner(unittest.TestCase):
         self.assertEqual(self.pips, [])
         self.assertTrue(setup("[overlay]\nenabled = true\n"))
         self.assertEqual(self.pips[0], ["py", "-m", "pip", "install", "--quiet", "-r", self.R.REQUIREMENTS])
-        self.assertIn("installing PyQt6", said[0])
+        self.assertIn("installing PyQt6 in Outrider's venv", said[0])                 # not system-wide
         self.assertTrue(setup("[overlay]\nenabled = true\n", qt=True))
         self.assertEqual((self.pips, said), ([], []))                                # already there
         self.assertFalse(setup("[overlay]\nenabled = true\n", answer=1))
