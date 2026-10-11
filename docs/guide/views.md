@@ -81,7 +81,8 @@ keeps the schematic under the list or tree.
 <td width="50%" valign="top">
 <b>Search</b> — systems with particular stars (or just <i>scoopable</i>), planets, rings, hotspots,
 unfinished exobiology or planetary mining locations (one mineral, if you like) within a radius, from what
-Outrider knows (<i>Local</i>) or everything reported (<i>Spansh</i>). The name box finds any system and opens
+Outrider knows (<i>Local</i>) or everything reported (<i>Spansh</i>; mining locations are Local only, as Spansh cannot
+filter on them). The name box finds any system and opens
 it in Here, where ☆ bookmarks it or makes it the next stop.
 <br><br><img src="../images/search.png" alt="Search">
 </td>
@@ -90,14 +91,17 @@ it in Here, where ☆ bookmarks it or makes it the next stop.
 checks them on Spansh in the background and marks any someone else has scanned since you ("👁 8 d after you");
 selling first still keeps your name if nobody sold before you. <b>Show lost</b> with <b>within N ly</b> is a
 rescan checklist for data lost with a ship, nearest first, priced by what is left to scan and map. <b>Left
-behind</b> lists nearby systems with work over your thresholds; <b>Bookmarks</b> hold notes and your <b>next
-stop</b>.
+behind</b> lists nearby systems with work over your thresholds.
 <br><br><img src="../images/firsts.png" alt="My firsts">
 </td>
 </tr>
 </table>
 
 The **Overview** at the top shows Here and Nearby together: drag the divider, swap sides or stack them.
+
+**Bookmarks** is its own tab: the systems you have bookmarked (☆ beside any system), each with its note and distance.
+The same ☆ sets your **next stop**, shown in the header until you get there. **Plot Route** has its own page:
+[Plot Route](plot-route.md).
 
 On a window of at least about 900 × 600 the page fits the window: the header stays put and each list scrolls
 in its own box. **▴** folds the tiles into one line (remembered on this device; Settings → Display can fold
@@ -118,7 +122,9 @@ what to do next, the body you have targeted, and the nearest unvisited system. T
 known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"): two databases
 with different reporters.
 
-- An **at-risk line** shows what is aboard against your rebuy ("🗺 380M · 🧬 412M aboard · 3.2× rebuy").
+- An **at-risk line** shows what is aboard against your rebuy ("🗺 380M · 🧬 412M aboard · 3.2× rebuy · 4 d
+  unsold"), only once that is over your amber level or rebuy multiple. Docked where your data sells it says what
+  selling here pays ("💰 sell here: 380M"); on a high-g approach it shows that approach's stakes instead.
 - **This session** since your login: "2 h 14 · 74 jumps · 612 ly · 6 new systems · 11 mapped · 4 samples ·
   ~38.0M found" (the unsold estimate's change plus what you sold). After you quit, the last session.
 - **Captions** show the last three lines said; tap one to hear it again. A corner bar has 🗣, hush 30 min,
@@ -234,9 +240,9 @@ rigs lost at 5 km, on leaving the body, or with the Rhino destroyed, a death or 
 placing and picking up rigs, and what a deposit holds. A rig that collected anything is kept as a saved site
 for your next visit and listed under Materials' **Mining sites**.
 
-The map's sizes and the leash distance are in the thresholds table under Alerts; the spoken leash warning
+The map's sizes and the leash distance are in ⚙ Settings → Surface map; the spoken leash warning
 always uses the config file's `rig_warn`.
 
 ---
 
-[ED Outrider](../../README.md) · [Install and run](install.md) · **The views** · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · **The views** · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)

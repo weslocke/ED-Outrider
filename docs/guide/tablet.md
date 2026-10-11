@@ -20,10 +20,10 @@ for this: see [Other devices on your network](install.md#-other-devices-on-your-
 - **The strip on top** shows the system, fuel and unsold data, and the link to Outrider in words ("LINKED",
   "STALE · 48 S AGO", "NO LINK · RETRYING").
 - **The pages** are on the left in three groups of four: Explore (Now, Nearby, Here, Bio/Geo), Navigate (Bookmarks,
-  Search, Map, Highway) and Records (History, Log, Materials, My firsts). There is no Overview.
+  Search, Map, Plot Route) and Records (History, Log, Materials, My firsts). There is no Overview.
 - **Tap a row** in a table for all of its facts, including the columns too narrow to show, with Show in Here and
   Bookmark.
-- **The maps by touch:** on the galaxy map one finger rotates, two fingers move it and a pinch zooms; on the Highway
+- **The maps by touch:** on the galaxy map one finger rotates, two fingers move it and a pinch zooms; on Plot Route's
   map two fingers move and pinch.
 - **On a planet** the tablet switches to Now when the surface map appears (the Now button says MAP) and back to your
   page when it goes. Nothing else switches pages by itself.
@@ -34,7 +34,7 @@ for this: see [Other devices on your network](install.md#-other-devices-on-your-
   with a Docker server and no browser open (turn one off if you hear both). **Choose alerts…** under it picks which
   alerts the tablet says (🗣) and plays (🔊), apart from the PC's choices; it starts from what the PC saved as defaults
   for new browsers.
-- **Target next** on the Highway runs at once (no countdown), since tapping the tablet leaves the game focused. Auto
+- **Target next** on Plot Route runs at once (no countdown), since tapping the tablet leaves the game focused. Auto
   honk, auto-target's switch and test, backups and the voice settings stay on the PC.
 - **Settings** (bottom right): the theme, a dim switch, the theme's emblem, **Show the game controls** (off: no rail
   on this tablet and the pages take its width, for a second tablet), Play alerts here and Choose alerts…, the screen size in CSS
@@ -67,4 +67,4 @@ face), `babylon5-display.ttf`, `narn-display.ttf`, `minbari-display.ttf`, `centa
 
 ---
 
-[ED Outrider](../../README.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · **On a tablet** · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · **On a tablet** · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)

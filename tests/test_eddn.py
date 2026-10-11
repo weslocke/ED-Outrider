@@ -252,7 +252,7 @@ class RouteCodexSettlement(unittest.TestCase):
         self.assertEqual(E.build(dict(ev, Region=""), self.s, "v"), [])   # an empty required name: not sent
 
     def test_scan_organic(self):
-        """scanorganic/1 (the author, 2026-10-11): Log and Sample, never Analyse; Body renamed BodyID; BodyName only for the
+        """scanorganic/1 (the author, 2026-10-10): Log and Sample, never Analyse; Body renamed BodyID; BodyName only for the
         body approached with that id; Latitude/Longitude only from a live Status.json on that body, read at the scan."""
         body = "Smojooe AR-E b25-8 A 1"
         ev = {"timestamp": "2026-10-08T10:40:00Z", "event": "ScanOrganic", "ScanType": "Log",

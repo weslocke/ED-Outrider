@@ -2,7 +2,29 @@
 
 Newest first, one entry per commit.
 
-## 2026-10-11 · EDDN: biology samples (scanorganic/1)
+## 2026-10-10 · Docs brought up to date
+- The guide: every page's bottom nav matches its top (What's new and Uploads included; Uploads and What's new gain
+  one); the README's tab list has Overview, Bookmarks and Plot Route. Views: Bookmarks is its own tab, Search's mining
+  filter is Local only, Now's at-risk line as it is (shown over your levels, "sell here", the high-g stakes, days
+  unsold), the surface map's sizes in Settings → Surface map. Voice and alerts: which alerts notify and which speak by
+  default, the Codex finds count row, the profanity share, the nearest-dock phrases. Plot Route: the two route slots,
+  Exomastery's options, Plot here with Trade chosen, the new voice phrases; the tablet's Plot Route; unique stops for
+  trade routes; the co-pilot press that cancels a waiting run. Uploads: every kind EDDN gets, what a catch-up cannot
+  send, a schema EDDN keeps refusing held until a restart, the developer switches' marks. Settings: the upload
+  switches are not among the Server settings. For the curious: the newer modules and scripts, where ExploData's
+  colours come from, what verify.sh checks.
+- The in-danger wait is 16 to 26 s (measured 16, 16, 26), not 15 to 26, in the guide, DESIGN_NOTES and a docstring.
+- ed_outrider.toml.example names ⚙ Settings and its sections instead of the old alerts dialog, the clipboard on
+  Windows, and biology samples among EDDN's data; launch_outrider.bat says which game-PC parts run on Windows.
+- DESIGN_NOTES: one full list of outside calls (Canonn, GitHub's update check and colour tables, EDAstro, and the AI
+  layer, which is not read-only), EDDN's field-for-field match with EDMC, EDDiscovery and EDDLite, biology samples on
+  scanorganic/1, the two status reports, one note for the survey / trade slot, duplicates cut. JOURNAL_REFERENCE:
+  the uploads see every line before the filter, and the uploads' traps. AGENT_GUIDE: `State.highway_ends`, the
+  newer tests, modules and scripts, the shorter speech keys, the live-only tables, the per-device keys.
+- The SCHEMA comments say `route_systems` and `star_classes` are kept through a journal re-read.
+- verify.sh takes SPANSH_SYSTEM_SEARCH offline too.
+
+## 2026-10-10 · EDDN: biology samples (scanorganic/1)
 - Each ScanOrganic Log and Sample goes to EDDN's scanorganic/1 (EDDI, EDO Materials Helper and EDEXO-Compare send it;
   the schema is on EDDN's develop branch and the gateway takes it). Analyse never does (it can come in another system,
   so the schema leaves it out). StarSystem and StarPos after the location cross-check, Body renamed BodyID, the
@@ -13,14 +35,14 @@ Newest first, one entry per commit.
 - tests/fixtures/eddn gains EDDN's scanorganic-v1.0.json (it starts with a BOM: the tests read the schemas with
   utf-8-sig).
 
-## 2026-10-11 · The example config names Settings -> In-game overlay for [overlay] (branch EDMC-Functionality)
+## 2026-10-10 · The example config names Settings -> In-game overlay for [overlay] (branch EDMC-Functionality)
 - Its heading's list of where each setting is changed in the page gains the overlay's (whose switches apply at once).
 
-## 2026-10-11 · The example config says the page can change every setting
+## 2026-10-10 · The example config says the page can change every setting
 - ed_outrider.toml.example's heading says every setting can be changed in the web page's Settings (Server settings,
   Uploads), which writes ed_outrider.toml itself (comments kept, a .bak of the old copy).
 
-## 2026-10-11 · EDDN: planetary docks name their body; no allowCobraMkIV
+## 2026-10-10 · EDDN: planetary docks name their body; no allowCobraMkIV
 - Compared with EDMC, EDDiscovery and EDDLite on EDDN's relay (45 hours, 1.8 million of their messages): Outrider
   sends every journal schema they do (ApproachSettlement, CarrierJump and FCMaterials not seen live yet), field for
   field, with two differences, both now gone:
@@ -198,7 +220,10 @@ Newest first, one entry per commit.
   written into the config; test panels for 20 s; Arrange mode for at most 10 minutes), POST `/api/overlay/layout`.
   The real panels come in O4-O6; nothing draws them until the window (O2).
 
-## 2026-10-10 · ExploData's colour tables downloaded, not shipped; the README's credits (branch EDMC-Functionality)
+## 2026-10-10 · Docs: the ExploData notes without the licence change still to come
+- The CHANGELOG and DESIGN_NOTES entries for the downloaded colour tables no longer say Outrider's licence changed.
+
+## 2026-10-10 · ExploData's colour tables downloaded, not shipped; the README's credits
 - The colour tables (EDMC-ExploData: its repository carries only the GPL v2 text, without "or later") leave the
   repository: `resources/bio_rules.json` ships with no colours, and they are downloaded on the first
   start into `resources/bio_colours.json` (git- and docker-ignored), merged in when the rules load and refreshed with

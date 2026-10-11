@@ -111,8 +111,8 @@ sys.path.insert(0, ".")
 import ed_outrider, outrider.tts
 OFF = "http://127.0.0.1:9/offline"
 for k in ("SPANSH_SEARCH", "SPANSH_BODY_SEARCH", "SPANSH_STATION_SEARCH", "EDSM_SYSTEM", "EDSM_SPHERE", "EDSM_BODIES",
-          "SPANSH_ROUTE", "SPANSH_GENERIC_ROUTE", "SPANSH_SYSTEM_NAMES", "SPANSH_RICHES", "SPANSH_EXO",
-          "SPANSH_COMMODITIES", "SPANSH_TRADE"):
+          "SPANSH_ROUTE", "SPANSH_GENERIC_ROUTE", "SPANSH_SYSTEM_NAMES", "SPANSH_SYSTEM_SEARCH", "SPANSH_RICHES",
+          "SPANSH_EXO", "SPANSH_COMMODITIES", "SPANSH_TRADE"):
     setattr(ed_outrider, k, OFF)
 ed_outrider.SPANSH_DUMP = OFF + "/{id64}"
 ed_outrider.SPANSH_RESULTS = OFF + "/{job}"

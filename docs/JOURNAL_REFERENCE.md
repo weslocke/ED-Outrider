@@ -10,7 +10,8 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 - The game writes `"event":"Name"` with no space after the colon. `Journals.read_file` only parses lines
   containing one of the `WANTED` byte strings built from the `*_EVENTS` tuples, so **an event that is not in
   one of those tuples is never seen**. `outrider/unsold.py` has its own list (`INTERESTING`); `outrider/log.py` reads
-  every line for the Log.
+  every line for the Log. The uploads (`outrider/uploads.py`) see every line of a live folder before this filter
+  (`self.uploads.line(...)` in `read_file`), so EDDN and EDSM get events Outrider itself never parses.
 - Only complete lines are consumed (the game may be mid-write). Offsets are stored per file in
   `journal_files`; the same file seen in two folders (a copied legacy folder, two Proton prefixes) is read
   once (`twins`).
@@ -30,7 +31,7 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 | `SAASignalsFound` | DSS results: signal counts, `Genuses` (which genera are on the body), ring hotspots. |
 | `SAAScanComplete` | A body mapped (`own_mapped`, the "mapped" call-out); for a ring, the only record that it was probed. |
 | `ScanBaryCentre` | Barycentre orbits for the schematic. |
-| `ScanOrganic` | Sample runs: `Log` starts (and abandons any other run), `Sample`, `Analyse` completes. `Body` is the body id. |
+| `ScanOrganic` | Sample runs: `Log` starts (and abandons any other run), `Sample`, `Analyse` completes. `Body` is the body id. It carries no position: a sample point is the live Status.json's within 90 s (`note_sample_point`). The game writes a biology `CodexEntry` in the same second just before a first `Log`: that is where you stand, not a plant. |
 | `CodexEntry` | Codex entries, "new to your codex", vouchers. A biology one (`Category` `$Codex_Category_Biology;`, `Name` `$Codex_Ent_<Genus>_<NN>_<variant>_Name;`, the species being `$Codex_Ent_<Genus>_<NN>_Name;`) is written each time the composition scanner reads a plant: it carries `Latitude`/`Longitude` on foot only (21 of the author's 23), so from the ship or SRV the position is Status.json's at that moment (`bio_tags`, BioScan's waypoints). |
 | `Disembark` | Footfall on a planet (`OnPlanet`). |
 | `ApproachBody`, `LeaveBody`, `Touchdown` | Approach briefing, leaving a body mid-run, the body you are at; your ship's landing spot. |
@@ -178,6 +179,18 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 - `Loadout` is only written at login and at outfitting, so an `EngineerCraft` in between is applied by hand (the
   fuel model does; `fleet_loadouts` rows stay as of their Loadout).
   Jet-cone boosts wear modules but health only updates at the next `Loadout`.
+
+**Uploads** (EDDN and EDSM: `outrider/uploads.py`, `outrider/eddn.py`)
+- `Docked` names no body. A station on a planet's surface (`eddn.PLANETARY_STATIONS`) gets the body you approached as
+  EDDN's `Body`/`BodyType`, as EDMC adds it.
+- `ScanOrganic` has no position. EDDN's `Latitude`/`Longitude` come from a live Status.json on that body read 90 s
+  before to 10 s after the scan (`ORGANIC_SYNC_S`), else are left out. `Analyse` is never sent: it can be written in
+  another system.
+- Crew in another commander's ship is told by `JoinACrew`'s `Captain` not being the commander: nothing is uploaded
+  then.
+- `horizons` / `odyssey` come from `LoadGame` only: a key it leaves out stays out.
+- Market.json, Outfitting.json, Shipyard.json, FCMaterials.json and NavRoute.json are sent only when their timestamp is
+  within 5 s of the event's and their `MarketID` is the event's (`_wait_check`): NFS can serve an older file.
 
 **Other**
 - `Shutdown` is written only on a clean quit; a crash writes nothing, so the last event is where a session

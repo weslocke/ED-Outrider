@@ -5,8 +5,8 @@ rem environment is broken; otherwise it starts at once. With the in-game overlay
 rem installs PyQt6 when missing. Double-click it, or run it in a Command Prompt; any arguments
 rem go to Outrider (launch_outrider.bat --port 8026). PYTHON=C:\path\to\python.exe picks the Python that makes the
 rem environment (3.11 or newer); otherwise the py launcher's newest Python 3, then python on the PATH.
-rem The game-PC functions (auto honk, auto-target, the control rail, the co-pilot button) are Linux only for now;
-rem everything else works. The Linux and macOS launcher is launch_outrider.sh.
+rem Auto honk, auto-target and the control rail are experimental on Windows; the co-pilot button is Linux only for
+rem now; everything else works. The Linux and macOS launcher is launch_outrider.sh.
 rem Kept with Windows line endings (.gitattributes): cmd can misread labels in a file with Unix ones.
 setlocal
 cd /d "%~dp0"

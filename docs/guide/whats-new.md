@@ -34,7 +34,7 @@ checklists.
 
 ### 🎯 Auto-target waits for the game's "danger"
 
-The game marks you "in danger" for 15 to 26 seconds after every jump, and after entering supercruise, with nothing
+The game marks you "in danger" for 16 to 26 seconds after every jump, and after entering supercruise, with nothing
 around. **Target next** pressed then used to refuse again and again. Now it says *"Not targeting due to danger. I will
 keep trying until you are out of danger, for up to 50 seconds"* and targets as soon as it clears. Being interdicted
 still stops it.
@@ -273,3 +273,5 @@ its own.
 ---
 
 Every change, small ones included, is in the [changelog](../CHANGELOG.md).
+
+[ED Outrider](../../README.md) · **What's new** · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
