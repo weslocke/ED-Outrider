@@ -101,6 +101,12 @@ tr.prev.visited td { opacity: .7; }
 #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--panel);
   border: 1px solid var(--accent); padding: 6px 14px; border-radius: 6px; opacity: 0; transition: opacity .2s; }
 #toast.show { opacity: 1; }
+/* the overlay's PyQt6 install under way (and a few seconds of its outcome): renderOverlayInstall */
+#ovInstalling { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 50; background: var(--panel);
+  border: 1px solid var(--accent); padding: 8px 16px; border-radius: 6px; box-shadow: 0 2px 12px rgba(0, 0, 0, .4); }
+#ovInstalling .spin { display: inline-block; animation: ovspin 1.2s linear infinite; margin-right: 6px; }
+#ovInstalling.bad { border-color: var(--bad); }
+@keyframes ovspin { to { transform: rotate(360deg); } }
 td.bodies { cursor: help; }
 #pop { position: fixed; z-index: 5; max-width: 380px; background: var(--panel); border: 1px solid var(--line);
   border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.35); font-size: 13px;

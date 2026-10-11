@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: a popup while PyQt6 installs (branch EDMC-Functionality)
+- While Outrider installs PyQt6 for the overlay window, a popup at the top of the page says so ("Installing PyQt6 for
+  the in-game overlay…", with a spinner), in every window of the page; when it finishes it says "PyQt6 installed: the
+  overlay window is starting" or that it failed (Settings has why) for five seconds, then goes (`renderOverlayInstall`).
+
 ## 2026-10-10 · No rebuy multiple for a ship whose hull has no value (branch EDMC-Functionality)
 - An Arx-bought ship's Loadout has ModulesValue but no HullValue, and its rebuy covers the modules only (the author's
   ship: 1.09M), so any trip's data read as ~110 rebuys. For such a ship Outrider leaves the rebuy out of the risk

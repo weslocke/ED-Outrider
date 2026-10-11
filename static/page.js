@@ -7862,7 +7862,28 @@ function overlayHtml(o) {
     `<table class="ovlay"><thead><tr><th title="tick a panel to show it; hover its name for what it shows">Panel</th><th>Placed from</th><th>Across %</th><th>Down %</th><th>Size %</th><th>Background %</th><th>Panel %</th><th></th></tr></thead><tbody>${rows}</tbody></table>` +
     `<div class="hint" id="overlayMsg">${esc(overlayNote)}</div>`;
 }
+// A popup while Outrider installs PyQt6 for the overlay window (the author, 2026-10-10), then its outcome for a few
+// seconds: installed (the window starts by itself) or failed (Settings says why). Shown in every window of the page.
+const OV_INSTALL_DONE_MS = 5000;
+let ovInstallWas = null, ovInstallTimer = null;
+function renderOverlayInstall(o) {
+  const el = document.getElementById("ovInstalling"), st = o && o.runner ? o.runner.state : null;
+  if (!el || st === ovInstallWas) return;
+  const was = ovInstallWas; ovInstallWas = st;
+  clearTimeout(ovInstallTimer);
+  if (st === "installing") {
+    el.className = ""; el.hidden = false;
+    el.innerHTML = `<span class="spin">⟳</span>Installing PyQt6 for the in-game overlay… <span class="unk">about 100 MB, a minute or two</span>`;
+  } else if (was === "installing") {
+    const failed = st === "install_failed";
+    el.className = failed ? "bad" : ""; el.hidden = false;
+    el.innerHTML = failed ? `Installing PyQt6 failed: <span class="unk">see Settings → In-game overlay</span>`
+                          : `✓ PyQt6 installed: <span class="unk">the overlay window is starting</span>`;
+    ovInstallTimer = setTimeout(() => { el.hidden = true; }, OV_INSTALL_DONE_MS);
+  } else el.hidden = true;
+}
 function renderOverlay() {
+  renderOverlayInstall(data && data.overlay);
   const box = document.getElementById("overlayBox");
   if (!box || !data) return;
   if (box.contains(document.activeElement) && /^(INPUT|SELECT)$/.test(document.activeElement.tagName) && document.activeElement.type !== "checkbox") return;

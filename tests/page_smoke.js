@@ -4241,9 +4241,15 @@ const settle = async maxMs => {
     got.note = /cannot run yet/.test(w.eval("overlayNote"));   // nothing can draw yet: the button says why
     got.posted = posted;
     w.fetch = real;
+    // the PyQt6 install's popup: shown while installing, then the outcome, then gone (a state it never had: hidden)
+    const pop = d.getElementById("ovInstalling"), shown = () => pop.hidden ? "" : pop.textContent;
+    const step = st => { w.eval(`data.overlay = {...data.overlay, runner: {state: ${JSON.stringify(st)}, why: null}}; renderOverlay();`); return shown(); };
+    got.popup = [step("off"), step("installing"), step("starting"), step("installing"), step("install_failed"), step("off")]
+      .map(t => t.replace(/ .*/, "") + (/installed/.test(t) ? " installed" : /failed/.test(t) ? " failed" : ""));
     w.eval(`data.overlay = JSON.parse(${JSON.stringify(saved)}); overlayNote = ""; overlayDrawn = ""; renderOverlay();`);
     const want = {rows: 6, body: "120", off: true, theme: "elite", nowin: true, nowName: true, inRows: true, tip: true, dimmed: true, help: true, note: true,
-                  posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}]]};
+                  posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}]],
+                  popup: ["", "⟳Installing", "✓ installed", "⟳Installing", "Installing failed", ""]};
     const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && ok;
     console.log(ok ? "OK" : "FAIL", "| settings: in-game overlay |", ok ? "switches, panels' places, a change and the test button posted" : JSON.stringify(got), errors.slice(before));
