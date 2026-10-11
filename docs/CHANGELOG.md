@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · The launcher's clipboard note says which program serves which session
+- The block says wl-copy (wl-clipboard) is for Wayland sessions and xclip for X11 ones, and what is lost without it:
+  the copy, and auto-target's paste (it types the name by default, which still works).
+
 ## 2026-10-11 · The launcher says which clipboard program to install
 - launch_outrider.sh checks the desktop session at every start (Wayland: wl-copy, X11: xclip, as Outrider picks them)
   and, while the one it needs is missing, prints a marked block (coloured in a terminal) with the command for this
