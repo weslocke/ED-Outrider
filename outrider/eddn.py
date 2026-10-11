@@ -28,7 +28,7 @@ JOURNAL_DROP = ("ActiveFine", "CockpitBreach", "BoostUsed", "FuelLevel", "FuelUs
                 "Longitude", "Wanted", "IsNewEntry", "NewTraitsDiscovered", "Traits", "VoucherAmount")
 FACTION_DROP = ("HappiestSystem", "HomeSystem", "MyReputation", "SquadronFaction")
 # stations on a planet's surface: their Docked gets the body you approached (Body, BodyType), as EDMC adds it (the
-# journal's Docked has no body; the author, 2026-10-11)
+# journal's Docked has no body; the author, 2026-10-10)
 PLANETARY_STATIONS = ("CraterOutpost", "CraterPort", "SurfaceStation", "OnFootSettlement", "PlanetaryConstructionDepot")
 
 
@@ -230,7 +230,7 @@ ORGANIC_SYNC_S = (-90, 10)   # s: a Status.json reading this far before / after 
 
 
 def organic_message(ev, session):
-    """scanorganic/1 (EDDN's develop branch, live on the gateway; the author, 2026-10-11): a Log or Sample of a species,
+    """scanorganic/1 (EDDN's develop branch, live on the gateway; the author, 2026-10-10): a Log or Sample of a species,
     never Analyse (it can come in another system: the schema leaves it out). StarSystem/StarPos after the cross-check;
     the event's Body renamed BodyID. BodyName only when the body you approached is that BodyID (journal-synced), and
     Latitude/Longitude only when the live Status.json names that body and was read at the scan (ORGANIC_SYNC_S): a
@@ -353,7 +353,7 @@ def _station_message(schema, data, session):
         if not ships:
             return None
         # no allowCobraMkIV: the schema has it, but it is about the commander (the pre-order), not the station, and
-        # EDMC, EDDiscovery and EDDLite leave it out (the author, 2026-10-11)
+        # EDMC, EDDiscovery and EDDLite leave it out (the author, 2026-10-10)
         msg, key = dict(base, ships=ships), ships
     else:   # fcmaterials_journal
         items = [{k: it[k] for k in ("id", "Name", "Price", "Stock", "Demand") if k in it}

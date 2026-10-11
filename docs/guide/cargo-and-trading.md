@@ -45,7 +45,7 @@ players last reported, so the newer the data, the safer the trip.
 - **Trade routes.** Plot Route's **Trade** plotter asks Spansh's [trade planner](https://spansh.co.uk/trade) for
   station-to-station hops from the station you are docked at, with your credits and hold (from the journal), and its
   options: hops, hop distance, distance from the star, data age, pad, planetary and player-owned stations,
-  prohibited goods, permit systems. It can take a few minutes to plot. It shares a place with Road to Riches and
+  prohibited goods, permit systems, unique stops (no station twice). It can take a few minutes to plot. It shares a place with Road to Riches and
   Exomastery (one of the three at a time).
 
 <p align="center">
@@ -61,4 +61,4 @@ players last reported, so the newer the data, the safer the trip.
 
 ---
 
-[ED Outrider](../../README.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · **Cargo and trading** · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · **Cargo and trading** · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)

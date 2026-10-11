@@ -5,8 +5,9 @@
 ## 🛣 The Neutron Highway
 
 The **Plot Route** tab plots a route with [Spansh](https://spansh.co.uk), using neutron stars as boosts (or a
-Road to Riches, an Exomastery or a trade route, below), and follows it as you fly. One route of each kind is kept (following it needs no network)
-until you plot another or **Clear route**.
+Road to Riches, an Exomastery or a trade route, below), and follows it as you fly. Two routes are kept (following them
+needs no network): one Highway route (Exact or Neutron) and one Road to Riches, Exomastery or trade route, each until
+you plot another of its kind or **Clear route**.
 
 <p align="center">
   <img src="../images/highway.png" alt="The Plot Route tab: the jump list, and the route on a map of the galaxy's regions" width="900">
@@ -53,7 +54,8 @@ With a Highway route as well, a switch above the heading picks which one the tab
 copies its next system to the clipboard. (Road to Riches is thshurka's contribution.)
 
 **Exomastery.** The fourth plotter, Spansh's **Expressway to Exomastery**, plots systems whose bodies carry valuable
-life already reported by other commanders, with the same options as Road to Riches (no mapping value). It shares Road
+life already reported by other commanders, with the same options as Road to Riches but for the mapping value and
+avoiding Thargoid-hit systems. It shares Road
 to Riches' place (and a trade route's): one of them at a time, a new plot replaces it. Each body lists its species with their
 value, ✓ once you have sampled them and ✦ when one would be new to your codex in that region; the voice says on
 arrival how many species are left on how many bodies and the best of them, and the next stop once they are sampled.
@@ -79,7 +81,7 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   a different system it says so by name ("Targeted the wrong system: …. Check before you jump."). A waypoint the
   game reaches by a plotted route of several jumps counts as targeted.
 - It never runs docked, landed, in a vehicle or on foot, in danger, with the FSD charging or a panel open. The game
-  flags you "in danger" for every jump, and on entering supercruise, until some 15-26 s after: pressed in those
+  flags you "in danger" for every jump, and on entering supercruise, until some 16-26 s after: pressed in those
   seconds, it says so ("Not targeting due to danger. I will keep trying until you are out of danger, for up to 55
   seconds"), waits for that to clear and then runs (up to a minute after the jump or the supercruise entry; being
   interdicted is never waited out). It stops
@@ -117,7 +119,7 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   They are remembered on this device.
 - **Each row shows** how far it is (and a rough jump count), how far from its star (far ones marked), what it has, its
   pads, its docking, and where the report came from and how old it is.
-- **Plot here** puts the system in To and plots it with the plotter chosen above. Following the route works as usual.
+- **Plot here** puts the system in To and plots it with the plotter chosen above (Exact when Trade is chosen). Following the route works as usual.
 - **Docking:**
   - "yours" for your own carrier, "open to all";
   - a **⚠ warning** for carriers set to friends or squadron only (Outrider cannot see the owner's list), and for those
@@ -134,7 +136,7 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
     most once an hour, and only downloaded when it has changed. The last copy is kept, so the finder works offline.
   - Your own carrier, from your journal.
 - **By voice** (the Android app): "nearest station", "nearest carrier", "nearest Vista", "nearest cartographics",
-  "nearest repair", "where can I dock". The voice uses the DSSA list Outrider already has; it never fetches it.
+  "nearest repair", "nearest refuel", "nearest shipyard", "where can I dock", "where can I sell". The voice uses the DSSA list Outrider already has; it never fetches it.
 
 <p align="center">
   <img src="../images/nearest-dssa.png" alt="A DSSA carrier in the list: its badge, how long it is stationed, and when it was last seen docked" width="900">
@@ -142,4 +144,4 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
 
 ---
 
-[ED Outrider](../../README.md) · [Install and run](install.md) · [The views](views.md) · **Plot Route** · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · **Plot Route** · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)

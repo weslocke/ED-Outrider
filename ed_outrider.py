@@ -1320,9 +1320,13 @@ CREATE TABLE IF NOT EXISTS jumps (
 -- What Spansh knew about a known system when you arrived (partial / complete): the streak strip's amber and
 -- blue. Live only, so it is kept through a journal re-read (not in RESET_JOURNAL_DATA): colours never change.
 CREATE TABLE IF NOT EXISTS arrival_verdicts (ts TEXT, id64 INTEGER, verdict TEXT, PRIMARY KEY (ts, id64));
+-- The systems of each route the game plotted, from NavRoute.json as it is read. Live only: kept through a journal
+-- re-read (not in RESET_JOURNAL_DATA), backups carry it.
 CREATE TABLE IF NOT EXISTS route_systems (
     id64 INTEGER PRIMARY KEY, name TEXT, x REAL, y REAL, z REAL,
     star_class TEXT, seen_ts TEXT);
+-- A system's main star class as the game told it (FSDTarget, StartJump, NavRoute.json), by id64. Kept through a
+-- journal re-read (not in RESET_JOURNAL_DATA): a re-read only writes the same rows again.
 CREATE TABLE IF NOT EXISTS star_classes (
     id64 INTEGER PRIMARY KEY, star_class TEXT);
 CREATE TABLE IF NOT EXISTS spansh_systems (
@@ -11422,7 +11426,7 @@ class State:
                             *self.upload_tasks.values()) if t]
 
     def arrival_danger_until(self, now=None):
-        """The game sets Status.json's in-danger flag on every use of the FSD, from the charge until some 15-26 s after
+        """The game sets Status.json's in-danger flag on every use of the FSD, from the charge until some 16-26 s after
         a hyperspace arrival or entering supercruise (lifting off a planet...; logged in game 2026-10-09, any star,
         nothing near): no threat, but auto-target's guard refuses it. When that is all it can be (in danger, not
         interdicted, no jump charging, one of those here under AUTOTARGET_DANGER_WAIT s ago): the time a run may wait

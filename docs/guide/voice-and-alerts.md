@@ -19,14 +19,17 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
   you kept back), said 90 seconds after the last page
 - hull damage, heat damage, interdiction, and unsold data past a threshold
 - your carrier arriving somewhere new or leaving without you
-- a Rhino mining rig nearing the 5 km leash, and rigs still marked out when you dock the Rhino (see The surface map)
+- a Rhino mining rig nearing the 5 km leash (see The surface map)
 
 Spoken but not notified unless you tick it: the arrival briefing, the FSS debrief, leaving a body with
 sampling unfinished, each species completed, tank full, a high-gravity approach with a lot aboard, the
-Neutron Highway's next stop, auto-target's result, the jump line, auto honk's result, and discovery streaks (ten known systems in a row, or five undiscovered). Off
-until ticked: **jumponium** (see the voice, below).
+Neutron Highway's next stop, auto-target's result, the jump line, auto honk's result, and the Rhino's rigs (the
+co-pilot button's confirmations, what a rig collected, rigs still marked out when you dock the Rhino). Discovery
+streaks (ten known systems in a row, or five undiscovered) are part of the arrival alert, which is notified. Not
+spoken until ticked: scooping stopped early, supercharge and the body brief on approach (they repeat what the game or
+another alert already said). Off until ticked: **jumponium** (see the voice, below).
 
-The same dialog holds the thresholds. Your browser remembers them; the config file sets what a new
+⚙ Settings also holds the thresholds. Your browser remembers them; the config file sets what a new
 browser starts with.
 
 | Setting | Default | What it does |
@@ -36,6 +39,7 @@ browser starts with.
 | Body highlights | 500k / 10M | Here's row turns green (scan + map) or its bio violet (species) over these. Bonuses left out. |
 | Approach warning | 2 g | Gravity at which orbital cruise at a landable body warns you, with data over the amber level. |
 | Max with bonuses | on | Whether Here's Max column counts first-discovery, mapping and footfall bonuses. |
+| Codex finds count | on | A body whose likeliest species is new to your codex in this region (✦) is worth stopping for, whatever its value. |
 | Discovery streak | 10 / 5 | Known or undiscovered systems in a row for a spoken line (0 turns it off). |
 | Suggested order | 100k/min | Supercruise credits per minute under which Here marks "skip?". |
 | Fuel alerts under N jumps | off | Warns once when jumps left at your pace fall under N; also sets the top-up level. |
@@ -75,7 +79,7 @@ Sound: Allow; Firefox: Autoplay: Allow Audio and Video).
 
 - **Personalities.** Down to business, sarcastic and sweet, up to fifty lines per alert each (fifty for most); tick
   any mix.
-  **With profanity** adds swearing versions. **One personality per system** holds one character a system.
+  **With profanity** uses the swearing versions the share of the time you set (50% by default). **One personality per system** holds one character a system.
 - **Danger alerts always down to business** (on by default): danger is said plainly, never sworn.
 - **Your names.** Commander names are often unpronounceable, so the voice calls you by the names in
   **Call me** (default "Boss, Hefay, Sir").
@@ -160,7 +164,8 @@ Hugging Face: double-click one to download it for Outrider too.
 The Android app asks Outrider a question out loud, after its wake word or a tap on Ask. The answer is said in your
 Piper voice by the window that speaks (a PC browser, or the tablet with Play alerts here) and shown as a caption on
 every open page. Outrider knows these without any AI: **status report, fuel, unsold, next jump, what's left here,
-nearest unvisited, nearest station** (or carrier, Vista, cartographics, repair: see
+nearest unvisited, nearest station** (or carrier, Vista, cartographics, repair, refuel, shipyard, "where can I
+sell": see
 [Nearest place to dock](plot-route.md#-nearest-place-to-dock)), **hush** and **unhush**. Their phrases are in `resources/ask.json`; edit them freely.
 
 Anything else goes to an optional AI layer, off by default (`[assistant] enabled = false`, also in ⚙ Settings →
@@ -194,4 +199,4 @@ anything. Nothing extra to install.
 
 ---
 
-[ED Outrider](../../README.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · **Voice and alerts** · [Automation](automation.md) · [On a tablet](tablet.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · **Voice and alerts** · [Automation](automation.md) · [On a tablet](tablet.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)

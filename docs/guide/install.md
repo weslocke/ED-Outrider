@@ -197,4 +197,4 @@ lists the zips; add `--db` for a second database. `--restore` leaves `speech.jso
 
 ---
 
-[ED Outrider](../../README.md) · **Install and run** · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · **Install and run** · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
