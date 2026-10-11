@@ -7,6 +7,12 @@ to, a radar on a body's surface, and (when you tick them) the system strip, Now 
 small window on the game PC draws them; it sits over Elite's window and lets every click through, so you play as
 before.
 
+<p align="center">
+  <img src="../images/overlay.png" alt="Five panels over a starfield: the system strip at the top, the system panel top left, the targeted body top right, Now bottom left and Bio signals bottom right" width="900">
+  <br><sub>In supercruise in a system with biology: the system strip, the system panel, the body you are heading to, Now
+  and Bio signals (real panels from the author's journals; the starfield stands in for the game)</sub>
+</p>
+
 ## What it shows
 
 - **The system panel**, in supercruise: each body worth your time, nearest first, with what is left to do (TO MAP,
@@ -97,6 +103,10 @@ and Bio signals start off. The **theme** colours and frames the panels as the pa
 cut corners, LCARS's bars, ...); **text** is small, normal or large. In the config file (`[overlay]`):
 `system_seconds` keeps the system panel only that long after arriving (0: while you are in supercruise there), and
 `radar_range` is the radar's edge in metres (it widens to fit a colony ring).
+
+<p align="center">
+  <img src="../images/overlay-settings.png" alt="Settings, In-game overlay: the switch, the window's state, the theme and text size, the test panels and Arrange buttons, and each panel's row with its tick box, corner, offsets, size and opacities" width="740">
+</p>
 
 ## Good to know
 

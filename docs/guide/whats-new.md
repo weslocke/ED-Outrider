@@ -11,6 +11,70 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## 2026.10.21 · 11 October 2026
+
+**Panels over the game, your biology samples on EDDN, and a ✓ for every genus you finish.**
+
+### 🖥 The in-game overlay
+
+Outrider can now draw panels right over Elite's window, on the PC the game runs on: the bodies worth your time in the
+system, the body you are heading to, a radar on a body's surface, and, when you tick them, a strip across the top
+(where you are, the star, bodies found, mapped, values), **Now (To-Do & Info)** (fuel, data at risk, what to do next,
+this session; hidden while docked) and **Bio signals** (every bio signal in the system, the ones worth it highlighted).
+Clicks go straight through to the game.
+
+<p align="center">
+  <img src="../images/overlay.png" alt="Five panels over a starfield: the system strip, the system panel, the targeted body, Now and Bio signals" width="900">
+</p>
+
+- Switch it on in ⚙ Settings → **In-game overlay**, where each panel has its own row: tick it, place it from a corner
+  or the middle of the top or bottom edge, size it, set its background's and its own transparency. **Arrange panels**
+  lets you do the same right over the game with the mouse; **Show test panels** shows all of them for a minute.
+- It needs **PyQt6** (about 100 MB): Outrider installs it into its own venv the first time, with a note at the top of
+  the page while it does (the launcher does it at start when the overlay is on). On Linux it also needs `wmctrl` and
+  `x11-utils` (`sudo apt install wmctrl x11-utils`); play **borderless or windowed** (not exclusive fullscreen).
+- It is a game-PC feature: an Outrider in Docker or on another computer has no overlay. Windows has the code but has
+  not been tried yet. More in the [In-game overlay](overlay.md) page.
+
+<p align="center">
+  <img src="../images/overlay-settings.png" alt="Settings, In-game overlay: each panel's row with its tick box, corner, offsets, size and opacities" width="740">
+</p>
+
+### 🧬 A ✓ for a finished genus
+
+In Bio/Geo → Exo-Biology, a genus gets a green **✓** once you have found every colour of every species that can grow
+in that region.
+
+<p align="center">
+  <img src="../images/checklist.png" alt="The Exo-Biology checklist with several genera complete, each with a green check beside its name" width="900">
+</p>
+
+### 📡 Uploads
+
+- With EDDN on, your **biology samples** go to it too (the Log and Sample scans, with where on the planet you took
+  each, when Outrider read it live).
+- A docking at a station on a planet's surface now names that body, as EDMC does; what Outrider sends matches EDMC,
+  EDDiscovery and EDDLite field for field.
+
+### 🛠 Also
+
+- A ship bought with **Arx** (its hull has no credit value, so its rebuy covers only the modules) no longer shows a
+  "× rebuy" multiple anywhere, and the rebuy-multiple warning levels do not apply to it.
+- Days since you last sold count whole days (6.7 days is "6 d", not 7).
+- On Linux, `launch_outrider.sh` tells you at start which clipboard program to install for Plot Route's copy
+  (wl-copy for Wayland, xclip for X11), with the command for your system.
+- The exobiology colour tables are downloaded on Outrider's first start instead of shipped: a fresh install (or a new
+  Docker container) needs to be online once for the colour check, as it does for everything else.
+- The log's first line names the version.
+- **ED Outrider is now GPL v3 or later** (it was GPL v2 or later): the overlay window adapts EDMC Modern Overlay's
+  GPL v3 code.
+
+### Before you update
+
+Nothing to do: no journal re-read, nothing changes for Docker. To use the overlay, update on the PC the game runs on.
+
+---
+
 ## 2026.10.20 · 10 October 2026
 
 **Checklists for your codex, an auto-target that waits for the game, and a legend for Here's icons.**
