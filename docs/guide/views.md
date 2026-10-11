@@ -123,7 +123,8 @@ known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12
 with different reporters.
 
 - An **at-risk line** shows what is aboard against your rebuy ("🗺 380M · 🧬 412M aboard · 3.2× rebuy · 4 d
-  unsold"), only once that is over your amber level or rebuy multiple. Docked where your data sells it says what
+  unsold"), only once that is over your amber level or rebuy multiple; a ship bought with Arx (its hull has no credit
+  value) gets no rebuy multiple. Docked where your data sells it says what
   selling here pays ("💰 sell here: 380M"); on a high-g approach it shows that approach's stakes instead.
 - **This session** since your login: "2 h 14 · 74 jumps · 612 ly · 6 new systems · 11 mapped · 4 samples ·
   ~38.0M found" (the unsold estimate's change plus what you sold). After you quit, the last session.

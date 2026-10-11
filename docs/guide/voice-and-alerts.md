@@ -35,7 +35,7 @@ browser starts with.
 | Setting | Default | What it does |
 |---|---|---|
 | Exobiology | 10M | A body only counts as unfinished bio if one body could pay over this. |
-| Unsold data | 50M / 250M | When the header turns amber and red, or as a multiple of your rebuy. |
+| Unsold data | 50M / 250M | When the header turns amber and red, or as a multiple of your rebuy (none for a ship bought with Arx: its hull has no credit value). |
 | Body highlights | 500k / 10M | Here's row turns green (scan + map) or its bio violet (species) over these. Bonuses left out. |
 | Approach warning | 2 g | Gravity at which orbital cruise at a landable body warns you, with data over the amber level. |
 | Max with bonuses | on | Whether Here's Max column counts first-discovery, mapping and footfall bonuses. |
@@ -101,7 +101,8 @@ Sound: Allow; Firefox: Autoplay: Allow Audio and Video).
   session recap when you quit.
 - **Exobiology:** leaving a body mid-run warns; the third sample says what it paid and what is left; within 100 m of
   a plant you tagged where the next sample would count, it says so ("Tagged Tussock, 80 metres").
-- **Approach:** "2.6 g. 480 million aboard, 3.2 rebuys. Land gently."
+- **Approach:** "2.6 g. 480 million aboard, 3.2 rebuys. Land gently." (no rebuys for a ship bought with Arx, whose
+  hull has no credit value)
 - **Fuel:** low fuel where you can't scoop, and the **top-up warning** before a likely dry stretch.
 - **Jumponium** (off by default): the best landable body with a material your FSD injections are short
   of ("B 4 has polonium, 1.3 percent.").

@@ -197,23 +197,47 @@ upstream project's choices, not rules of the game.
   rules) and merged in at load. A first start offline has no colour check, which costs nothing: the game cannot be
   played offline either. BioScan's rules (GPL v2 or later) and the region map (MIT) still ship. The colony distances
   are the game's (the Genetic Sampler shows them), kept in `outrider/bio.py`.
-- **The in-game overlay is our own window** (the author, 2026-10-08 and 2026-10-10; project/PLAN-overlay-build-2026-10-10.md).
+- **The in-game overlay is our own window** (the author, 2026-10-08 and 2026-10-10; the author's plan,
+  project/PLAN-overlay-build-2026-10-10.md, is private and git-ignored).
   EDMC will not be running, so Modern Overlay (an EDMC plugin) is not used; its code for finding Elite's window,
   following it, letting clicks through and its window flags is adapted instead (`outrider/overlay_tracking.py`,
   parts of `outrider/overlay_window.py`), which made ED Outrider GPL-3.0-or-later. Outrider builds the panels as draw
   lists (`outrider/overlay.py`, GET `/api/overlay`) and runs the window that draws them itself on the game PC
   (`outrider/overlay_runner.py`). The overlay is a game-PC feature, as the key presses are (the author, 2026-10-10):
   an Outrider on a server has none (no window drawn from a server: the game PC's Status.json reached a server a second
-  late over the share, and one application on the game PC is simpler). The layout is Outrider's (meta `overlay_layout`), not the window's: one arrangement
-  whichever window draws. A panel's place is kept from the window corner nearest it, as a share of the window, so a
-  resolution change keeps the arrangement. The panels use the config's levels (`body_highlight_level`, `bio_min`,
-  `high_gravity`): the page's per-browser ones are not known to the server. Linux is where it is tried (X11, and
-  XWayland on a Wayland session, as Modern Overlay runs on GNOME); Windows has the code, untried; native Wayland
-  compositors, gamescope and exclusive fullscreen are out of scope.
-- **The overlay's Now panel copies Now's suggested order in Python** (`overlay.plan_items`; the page's is `planItems`).
-  The panels are built on the server, which cannot see a browser's levels, so the overlay uses the config's
-  (`body_highlight_level`, `bio_min`, `codex_interesting`, `unsold_warn`) and leaves out what only the page knows (the
-  skip floor, the high-g approach stakes, captions). Two copies of one rule: a change to either is made to both.
+  late over the share, and one application on the game PC is simpler). `--simulate` never starts the overlay window
+  either. The layout lives in the database (meta `overlay_layout`), not the config (the author agreed, 2026-10-10):
+  Arrange mode writes it on every drag, which would rewrite the toml again and again; copying the toml does not carry
+  it, copying the database does. A panel's place is kept from the window corner nearest it, or from the middle of the
+  top or bottom edge, as a share of the window, so a resolution change keeps the arrangement. Linux is where it is
+  tried (X11, and XWayland on a Wayland session, as Modern Overlay runs on GNOME); Windows has the code, untried;
+  native Wayland compositors, gamescope and exclusive fullscreen are out of scope.
+- **The overlay uses the config's levels.** The panels are built on the server, which cannot see a browser's levels:
+  the system panel `body_highlight_level` and `bio_min`; the body panel `high_gravity`; Now `body_highlight_level`,
+  `bio_min`, `high_gravity`, `codex_interesting`, `unsold_warn` and `unsold_urgent`; Bio signals `bio_min`,
+  `high_gravity` and `codex_interesting`. Now leaves out what only the page knows (the skip floor, the high-g approach
+  stakes, captions).
+- **The overlay copies some of the page's rules in Python:** Now's suggested order (`overlay.plan_items`; the page's
+  `worthLeavingFor` + `planItems`), the supercruise time (`overlay.sc_seconds`, `SC_KNEE`; the page's `scSeconds`),
+  the session figures (`overlay.session_bits`; the page's `sessionLine`), and the rebuy the risk figures use
+  (`risk_rebuy` in ed_outrider.py; the page's `riskRebuy`). Two copies of one rule: a change to either is made to both.
+- **PyQt6 is installed when the overlay is on, never from a button** (the author, 2026-10-10: not a menu option).
+  It is not one of Outrider's requirements (about 100 MB, and only the game PC's overlay window needs it). The
+  launchers run `python -m outrider.overlay_runner --setup`, which installs `requirements-overlay.txt` before Outrider
+  starts when `[overlay] enabled = true` and PyQt6 is missing (on Linux it also warns when wmctrl is missing) and never
+  stops the start. Outrider itself installs it once per switching on whenever the window is wanted (the overlay, the
+  test panels or Arrange mode), into the Python it runs with (the launcher's `.venv`), with a popup in every page
+  window; after a failure Settings says why and it waits until the overlay is switched off and on. There is no
+  Install button and no `/api/overlay/install`. A window that crashes is started again after a growing wait, and
+  given up after `CRASHES_MAX` (5) in a row until the overlay is switched off and on.
+- **Time since you sold counts whole days passed** (the author, 2026-10-10): 6.7 days is "6 days", never rounded up,
+  on the page (Now's at-risk line, the welcome back) and on the overlay's Now panel (`overlay.unsold_age`: "3 days
+  unsold", from a week "2 weeks 2 days since sold", or "2wk2d since sold" when the written-out form would not fit).
+- **The panels hide over the maps, the FSS, the SAA and the codex, and in the hyperspace tunnel; the Now panel also
+  while docked** (the author, 2026-10-10, for docked). GuiFocus 6-11 (`OVERLAY_HIDE_FOCUS`) and the FSD-jump flag hide
+  every panel; the ship's docked flag, or on foot in a station, hangar or social space (`FLAG_DOCKED`,
+  `ON_FOOT_DOCKED`), hides Now. The test panels and Arrange mode are the exception: they show over the game's window
+  whatever is in front.
 - **No rebuy multiple for a ship whose hull has no credit value** (the author, 2026-10-10). An Arx-bought ship's
   Loadout carries ModulesValue but no HullValue, and its rebuy is 5% of the modules alone, so "N× rebuy" said ~110
   on any trip and a rebuy-multiple level would always fire. Such a ship gets no rebuy in the risk figures (`risk_rebuy`,
@@ -254,7 +278,8 @@ upstream project's choices, not rules of the game.
 - **`--simulate` is display only.** For screenshots and demos the panels read as if the game were running, with the
   last known values (fuel from the last reading, else the last jump, else a full tank; the Data tile doesn't flag the
   old journal). Nothing is invented (a target the game cleared stays cleared), every guard still reads the real
-  Status.json, and the virtual keyboard, the co-pilot button and the clipboard are off whatever the config says.
+  Status.json, and the virtual keyboard, the co-pilot button, the clipboard and the overlay window are off whatever
+  the config says.
 - **Here's bio items never break inside themselves,** and a compact table shows a codex entry as 📖 ✦ with the name
   in its tooltip (the run beside it already names the species), so a row stays one or two lines beside an open panel.
 - **History's sessions are split by 2 h without a jump.** A session's window runs from its login (the latest one
@@ -476,6 +501,11 @@ upstream project's choices, not rules of the game.
   a route from a station Spansh does not know fails with Spansh's own words.
 - **The Highway's ship list is as of each ship's latest Loadout;** an `EngineerCraft` after it is not applied, and a
   ship never flown (no Loadout) can only be plotted with the neutron plotter and a typed range.
+- **The in-game overlay's reach:** on Linux under X11 its transparency needs a compositor (a bare window manager shows
+  black around the panels); on Wayland it runs through XWayland, tried on GNOME, not with Proton's native Wayland mode
+  (`PROTON_ENABLE_WAYLAND=1`: Elite becomes a Wayland window the overlay cannot find); fractional display scaling is
+  untried; Windows has the code, untried against the game. Native Wayland compositors, gamescope and exclusive
+  fullscreen are out of scope.
 
 ## Not yet tried in a live game
 
@@ -509,5 +539,8 @@ confirmed while playing. Treat reports about them as likely real.
   Target next and Retry from the page, other keyboard layouts and presets, and both entry modes side by side.
 - EDDN: ApproachSettlement, CarrierJump and FCMaterials messages have not been seen live on EDDN's relay yet, nor a
   planetary station's Docked with its Body.
+- The in-game overlay's real panels in live play (only the test panels have been seen over the game), Arrange mode
+  over the game, PyQt6 installed by the launcher and by Outrider, the window's restart after a crash, and the overlay
+  on Windows.
 - The jump line's wait for Status.json's FsdJump flag (bit 30) in a live jump; your own sound files and Volume
   through the real players; the co-pilot button choosing the throttle of a real two-part X-56.

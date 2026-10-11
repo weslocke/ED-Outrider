@@ -9,7 +9,7 @@
 <br>
 
 **⚙ Settings** (top right) holds everything, in folding sections: Alerts, Voice, What is said, Sounds, Values, Risk
-& warnings, Surface map, Auto honk, Uploads, Display, Sharing, **Server** and Spoken lines. Most are this browser's
+& warnings, Surface map, Auto honk, Uploads, In-game overlay, Display, Sharing, **Server** and Spoken lines. Most are this browser's
 own (Sharing exports them or makes them the defaults for new browsers). **Server** is the config file
 itself, every key of it but the upload switches (`[eddn]`, `[edsm]`: Settings → Uploads): the network and the client password, the journal folders, paths, backups, Spansh, the
 Highway, the voice's AI layer and more. Saving there writes `ed_outrider.toml` (only the keys you changed; its
@@ -54,7 +54,7 @@ Command-line flags override the file for a single run:
 | `--journals PATH`, `--legacy PATH` | Journal folders to follow, or older ones to import once (repeatable) |
 | `--rescan` | Rebuild from the journals, keeping the Spansh cache |
 | `--restore [ZIP]`, `--list-backups` | See Backups |
-| `--simulate` | For screenshots and demos: the panels show the last known values (fuel...) as if the game were running; auto honk, auto-target, the co-pilot button and the clipboard are off |
+| `--simulate` | For screenshots and demos: the panels show the last known values (fuel...) as if the game were running; auto honk, auto-target, the co-pilot button, the clipboard and the in-game overlay's window are off |
 
 </details>
 

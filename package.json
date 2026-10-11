@@ -2,7 +2,7 @@
   "name": "ed-outrider-dev",
   "private": true,
   "description": "Development tools for ED Outrider: jsdom for tests/page_smoke.js, playwright for optional screenshots",
-  "license": "GPL-2.0-or-later",
+  "license": "GPL-3.0-or-later",
   "devDependencies": {
     "jsdom": "30.1.1",
     "playwright": "1.63.0"

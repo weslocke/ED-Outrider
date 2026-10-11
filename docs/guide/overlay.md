@@ -3,8 +3,9 @@
 # In-game overlay
 
 Outrider can draw a few panels right over the game: what is worth your time in the system, the body you are heading
-to, and a radar on a body's surface. A small window on the game PC draws them; it sits over Elite's window and lets
-every click through, so you play as before.
+to, a radar on a body's surface, and (when you tick them) the system strip, Now (To-Do & Info) and the bio signals. A
+small window on the game PC draws them; it sits over Elite's window and lets every click through, so you play as
+before.
 
 ## What it shows
 
@@ -28,8 +29,11 @@ every click through, so you play as before.
   Spansh knows the system ("Spansh ✗ (new to it)" when it does not).
 - **Now (To-Do & Info)** (optional): the page's Now view in a few lines, anywhere but docked (at a station or carrier,
   or on foot inside one). The system (and for 20 s after the jump whether it was
-  undiscovered), the system you have targeted next (never reported, partly or fully scanned, bodies known, the star
-  with ⛽ or ✕), fuel, and what the data aboard stands to lose once it passes your `unsold_warn` level. Then, on a body,
+  undiscovered), the system you have targeted next (never reported, no scan data, partly or fully scanned, or visited;
+  how many bodies are known; the star with ⛽ or ✕, and ⚠ for a neutron star or white dwarf), fuel, and what the data
+  aboard stands to lose once it passes your `unsold_warn` level: 🗺 and 🧬, how many times your rebuy it is ("× rebuy";
+  none for a ship bought with Arx, whose hull has no credit value) and how long since you sold ("3 days unsold"; from a
+  week "2 weeks 2 days since sold", or "2wk2d since sold" when that would not fit; whole days). Then, on a body,
   each genus there with its samples and how far the next sample must be; elsewhere **Next**, the first item of Here's
   suggested order with what it pays, the supercruise time and how many more, and the body you have targeted when it is
   not that one. Last, this session's figures.
@@ -39,22 +43,28 @@ every click through, so you play as before.
   way ("2/3"), lost, or not started with its likeliest species, codex mark and value; signals the DSS has not named yet
   show what they could be. The foot says how many are sampled, what is left and how many bodies are under your level.
 
-No panel covers the galaxy or system map, the orrery, the FSS, the SAA or the codex.
+No panel covers the galaxy or system map, the orrery, the FSS, the SAA or the codex, and none shows in the hyperspace
+tunnel.
 
 ## Starting it
 
 1. In Outrider's **⚙ Settings → In-game overlay**, tick **Show the overlay**. Outrider starts the overlay window itself
    on the game PC (and closes it when you untick it or stop Outrider): one application, nothing else to run.
-2. The overlay window needs PyQt6 (about 100 MB). Nothing to press: while the overlay is on, Outrider installs it
-   into its own venv (`.venv`, nothing system-wide) the first time (a minute or two; a popup at the top of the page says so until it is done), and launch_outrider.sh / .bat install
-   it before Outrider starts whenever `[overlay] enabled = true` is in the config (a new PC with your config copied
-   over). On Linux the window finds Elite's with `wmctrl` and `xprop` / `xwininfo`, system programs pip cannot install
-   (Debian and Ubuntu: `sudo apt install wmctrl x11-utils`); the launcher says when they are missing.
+2. The overlay window needs PyQt6 (about 100 MB). Nothing to press: whenever the window is wanted (the overlay on,
+   the test panels or Arrange mode) and PyQt6 is missing, Outrider installs it once into the Python it runs with (the
+   launcher's `.venv`, nothing system-wide; a minute or two, with a popup at the top of every page window until it is
+   done). launch_outrider.sh / .bat also install it before Outrider starts whenever `[overlay] enabled = true` is in
+   the config (a new PC with your config copied over); a failed install never stops Outrider starting. If installing
+   fails, Settings → In-game overlay says why, and Outrider tries again once you switch the overlay off and on. On
+   Linux the window finds Elite's with `wmctrl` and `xprop` / `xwininfo`, system programs pip cannot install (Debian
+   and Ubuntu: `sudo apt install wmctrl x11-utils`); the launcher says when `wmctrl` is missing.
 3. Play Elite **borderless or windowed**; exclusive fullscreen hides anything drawn over it.
 
-Settings → In-game overlay says how the window is doing (starting, drawing, waiting for the game's window). **Show
-test panels** draws all three with made-up contents for a minute, without flying anywhere, even while Outrider's page is in front of the game. Start Outrider from your
-desktop (the launcher, or a terminal in your session): the window needs your screen.
+Settings → In-game overlay says how the window is doing (starting, drawing, waiting for the game's window). If the
+window stops by itself, Outrider starts it again after a growing wait; after five times in a row it gives up (Settings
+says so) until you switch the overlay off and on. **Show test panels** draws every panel (all six, switched on or
+not) with made-up contents for a minute, without flying anywhere, even while Outrider's page is in front of the game.
+Start Outrider from your desktop (the launcher, or a terminal in your session): the window needs your screen.
 
 **A game-PC feature.** Like auto honk and auto-target, the overlay needs Outrider running on the game PC: an
 Outrider on a server (Docker) has no overlay (its Settings leave the section out). With Outrider on both, the game
@@ -76,10 +86,15 @@ While arranging, the overlay takes the mouse: do it with the game paused or in a
 Settings → In-game overlay as fields for each panel (where it is placed from, how far in, its size and the two
 transparencies), with a **reset**.
 
+The arrangement is kept in Outrider's database, not the config file: to take it to another PC, copy
+`data/ed_outrider.sqlite` along with `ed_outrider.toml`.
+
 ## Settings
 
-Each panel can be switched off, and the **theme** colours and frames the panels as the page's themes do (Elite's
-orange with cut corners, LCARS's bars, ...); **text** is small, normal or large. In the config file (`[overlay]`):
+Each panel has its tick box at the start of its row in Settings → In-game overlay's table (hover its name for what
+it shows; a panel switched off has its row dimmed). The system, body and radar panels start on; the system strip, Now
+and Bio signals start off. The **theme** colours and frames the panels as the page's themes do (Elite's orange with
+cut corners, LCARS's bars, ...); **text** is small, normal or large. In the config file (`[overlay]`):
 `system_seconds` keeps the system panel only that long after arriving (0: while you are in supercruise there), and
 `radar_range` is the radar's edge in metres (it widens to fit a colony ring).
 
@@ -98,3 +113,7 @@ orange with cut corners, LCARS's bars, ...); **text** is small, normal or large.
 - The window's code for finding and following the game's window, and drawing over it, is adapted from
   [EDMC Modern Overlay](https://github.com/SweetJonnySauce/EDMCModernOverlay); neither EDMC nor Modern Overlay is
   needed.
+
+---
+
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · **In-game overlay** · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)

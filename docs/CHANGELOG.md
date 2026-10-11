@@ -2,6 +2,26 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Docs: the overlay's side brought up to date (branch EDMC-Functionality)
+- The README and the overlay guide name all six panels (system, body, radar, the system strip, Now (To-Do & Info), Bio
+  signals). The overlay guide: the test panels draw every panel, none shows in the hyperspace tunnel, Now's target
+  words and at-risk line (the rebuy multiple, none for an Arx-bought ship, and how long since you sold), how PyQt6 is
+  installed (by the launcher and by Outrider, into `.venv`, and what happens when that fails), the crash give-up, where
+  each panel's tick box is and which start on, the layout kept in the database (copy `data/ed_outrider.sqlite` to carry
+  it), and a bottom nav line.
+- Install: the launcher's PyQt6 step, wmctrl and x11-utils on Linux, the overlay off in Docker. Settings: the In-game
+  overlay section, and `--simulate` keeps the overlay window off. For the curious: the overlay's files. Views, Voice and
+  alerts, Automation: no rebuy multiple for an Arx-bought ship.
+- The config's comments (and the example config, the page's panel tip): the system strip is two short lines; the
+  system panel's `system_seconds` counts from arriving, not the honk. The overlay window's docstring: PyQt6 is
+  installed while the overlay is on, not from Settings.
+- AGENT_GUIDE, DESIGN_NOTES and JOURNAL_REFERENCE: the overlay's modules, state, tests and limits, its config levels
+  and the page rules it copies, the new decisions (PyQt6 installed when the overlay is on, whole days since you sold,
+  where the panels hide), the Status.json flags and GuiFocus values it reads, and Loadout's HullValue/ModulesValue.
+  The changelog gains the missing entry for "the hint says Outrider runs the window" and O2's entry is corrected (the
+  ExploData tables were already downloaded, not shipped).
+- package.json's licence: GPL-3.0-or-later. `test_server_mode`'s guide check expects In-game overlay in the Settings list.
+
 ## 2026-10-10 · Days since you sold: whole days on the page too (branch EDMC-Functionality)
 - Now's at-risk line ("6 d unsold") and the spoken welcome back ("unsold for 6 days") count whole days passed, as the
   overlay's Now panel does, instead of rounding 6.7 days up to 7.
@@ -140,6 +160,11 @@ Newest first, one entry per commit.
   are pressed from Outrider's page), so most of their 20 s went by unseen. They now stay a minute and show over the
   game's window whatever is in front, as Arrange mode does (`overlay_window.should_show`).
 
+## 2026-10-10 · Overlay settings: the hint says Outrider runs the window (branch EDMC-Functionality)
+- Settings -> In-game overlay's hint said to start the window by hand (`python3 -m outrider.overlay_window`, PyQt6
+  installed with pip). It now says Outrider runs the window itself on the game PC while the overlay is on, and gives
+  the command for the game PC when Outrider runs on a server (`./launch_overlay.sh --url ... --password ...`).
+
 ## 2026-10-10 · Overlay: Outrider runs the window itself (branch EDMC-Functionality)
 - On the game PC, Outrider starts the overlay window while the overlay is on (or for the test panels and Arrange mode),
   closes it when it is switched off and when Outrider stops, and starts it again after a crash (a growing wait; it
@@ -208,7 +233,7 @@ Newest first, one entry per commit.
   overlay window is drawing, Show test panels, Arrange panels, and each panel's corner, offsets, size and the two
   opacities as fields (with a reset).
 
-## 2026-10-10 · Overlay O2: the window on the game PC, and GPL-3 (branch EDMC-Functionality; not to be pushed yet)
+## 2026-10-10 · Overlay O2: the window on the game PC, and GPL-3 (branch EDMC-Functionality)
 - `python3 -m outrider.overlay_window` (PyQt6: `pip install -r requirements-overlay.txt`; never in the Docker image):
   a frameless, translucent, always-on-top window that lets clicks through, follows Elite's window (X11, and XWayland
   on a Wayland session as Elite under Proton is; Windows untried), hides when the game is not in front, and paints the
@@ -216,8 +241,8 @@ Newest first, one entry per commit.
   one frame into a picture instead.
 - Finding the game's window (`outrider/overlay_tracking.py`) and the window's flags are adapted from EDMC Modern
   Overlay (GPL v3), so **ED Outrider is now GPL v3 or later** (LICENSE, README, the Docker label). The README credits
-  Modern Overlay, and EDMarketConnector for the upload rules. This commit is not to be pushed before EDMC-ExploData's
-  licence is settled (its colour tables ship in resources/bio_rules.json; its repository has only the GPL v2 text).
+  Modern Overlay, and EDMarketConnector for the upload rules. EDMC-ExploData's colour tables (its repository has only
+  the GPL v2 text) do not stand in the way: since the commit before O1 they are downloaded, never shipped.
 
 ## 2026-10-10 · Overlay O1: the panels' server side (branch EDMC-Functionality)
 - `outrider/overlay.py`: the in-game overlay's panels as draw lists on a 1280x960 canvas (text, rectangles, circles,

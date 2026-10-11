@@ -44,11 +44,16 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/uploads.py` | Uploads (opt-in, off by default): the session each journal line belongs to, the outbox, what may be sent |
 | `outrider/eddn.py` | EDDN: the messages a journal event becomes, and what EDDN's answer means |
 | `outrider/edsm.py` | EDSM's journal upload: what a line sends to your own EDSM account, and what EDSM's answer means |
+| `outrider/overlay.py` | The in-game overlay, Outrider's side: what each panel draws, as draw lists the overlay window paints (GET `/api/overlay`) |
+| `outrider/overlay_runner.py` | Runs the overlay window as Outrider's child process on the game PC (restarted after a crash), installs PyQt6 when the overlay is on; `--setup` is the launchers' PyQt6 step |
+| `outrider/overlay_window.py` | The overlay window itself (PyQt6), over Elite's window; `--render <file.png>` draws one frame into a picture instead |
+| `outrider/overlay_tracking.py` | Finding Elite's window and following it, adapted from EDMC Modern Overlay (GPL-3) |
+| `requirements-overlay.txt` | PyQt6, for the overlay window only (installed when the overlay is on; never in the Docker image) |
 | `resources/mining_odds.json` | Planetary mining odds per ground type, from the Elite Dangerous Field Manual's survey by CMDR Grumlop (CC BY-SA 4.0); read only |
 | `tests/` | `python3 -m unittest discover tests`; `node tests/page_smoke.js <port> [path to node_modules with jsdom]` for the page, against a scratch server only (it refuses 8025 and a missing port) |
 | `tests/fixtures/` | Synthetic sample journals (a made-up commander and systems) for tests and scratch servers |
 | `Dockerfile`, `docker-compose.yml`, `docker/` | Running Outrider as a server in Docker (see [Running as a server](install.md#-running-as-a-server-docker)); `docker/entrypoint.sh` writes the first config and checks the folders can be written |
-| `launch_outrider.sh`, `launch_outrider.bat` | Start Outrider (Linux and macOS; Windows), making `.venv` and installing `requirements.txt` first when needed |
+| `launch_outrider.sh`, `launch_outrider.bat` | Start Outrider (Linux and macOS; Windows), making `.venv` and installing `requirements.txt` first when needed, and PyQt6 when the in-game overlay is on |
 | `scripts/verify.sh` | Every check in one go: unit tests, lint, `node --check static/page.js` (the page's JavaScript syntax), the page smoke test on a throwaway server (and a clean stop) |
 | `scripts/docker_bundle.sh` | A Docker release bundle in `dist/` (git-ignored): the built image saved with a compose file that runs it (no checkout or build on the server) |
 | `scripts/build_codex_images.py`, `scripts/build_geo_codex.py` | Rebuild `resources/codex_images.json` and `resources/geo_codex.json` from Canonn's codex reference (read only) |

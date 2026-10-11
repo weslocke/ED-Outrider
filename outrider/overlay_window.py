@@ -7,9 +7,9 @@ author, 2026-10-10), never drawn from a server. By hand, for development:
 
 It asks Outrider for the panels (GET /api/overlay, about once a second) and paints them over Elite's window: a
 frameless, translucent, always-on-top window that lets every click through to the game, follows Elite's window and
-hides when the game is not in front. Needs PyQt6 (requirements-overlay.txt; Settings -> In-game overlay installs it;
-never in the Docker image). On Linux it finds Elite's window with wmctrl, xprop and xwininfo; on a Wayland session it
-runs through XWayland, as Elite under Proton does.
+hides when the game is not in front. Needs PyQt6 (requirements-overlay.txt; installed automatically while the overlay
+is on: outrider/overlay_runner.py; never in the Docker image). On Linux it finds Elite's window with wmctrl, xprop and
+xwininfo; on a Wayland session it runs through XWayland, as Elite under Proton does.
 
 The window's flags and the Windows click-through call are adapted from EDMC Modern Overlay
 (https://github.com/SweetJonnySauce/EDMCModernOverlay, overlay_client/setup_surface.py and

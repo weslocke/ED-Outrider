@@ -7817,7 +7817,7 @@ document.getElementById("uploadsBox").addEventListener("click", async e => {
 const OV_THEMES = ["default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark"];
 const OV_PANELS = [["system", "System", "the bodies worth your time, in supercruise"], ["body", "Body", "the body you are heading to or near"],
                    ["radar", "Surface radar", "on a body's surface: samples, colony rings, the ship"],
-                   ["strip", "System strip", "one line across the top: where you are, the star, bodies found, values"],
+                   ["strip", "System strip", "two short lines across the top: where you are, the star, bodies found, values"],
                    ["now", "Now (To-Do & Info)", "Now, condensed: the target, fuel, data at risk, what to do next, this session"],
                    ["bio", "Bio signals", "every bio signal in the system, the ones worth it highlighted: samples, values"]];
 const OV_CORNERS = {nw: "top left", n: "top centre", ne: "top right", sw: "bottom left", s: "bottom centre", se: "bottom right"};

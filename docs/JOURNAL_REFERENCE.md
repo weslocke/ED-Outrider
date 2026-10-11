@@ -41,7 +41,7 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 | `SellOrganicData` | Vista Genomics sales, each `BioData` entry with its `Bonus` (the x5 check). Two sales can share a second, so `bio_sales` rows are keyed by journal line (PARSER_VERSION 38); a visit sold in several goes (sales under 5 minutes apart) is one x5 check. |
 | `Died`, `Resurrect` | Deaths and whether the ship (and its data) was lost (`Option`). |
 | `LoadGame`, `Commander`, `Rank`, `Progress`, `Promotion`, `Statistics`, `Shutdown` | Logins and sessions, credits at login, ranks, career statistics, the quit (recap, quit backup). |
-| `Loadout` | Ship, jump range, fuel capacity, unladen mass, FSD and Guardian booster, engineering modifiers, hull and core module health, rebuy. Also the latest one per `ShipID` goes to `fleet_loadouts` (`note_fleet`, `fleet_figures` in `outrider/fsd.py`): the Highway's ship list and the exact plotter's inputs. |
+| `Loadout` | Ship, jump range, fuel capacity, unladen mass, FSD and Guardian booster, engineering modifiers, hull and core module health, rebuy, `HullValue`/`ModulesValue`. An Arx-bought ship's Loadout has `ModulesValue` but no `HullValue`, and its `Rebuy` covers the modules only, so the risk figures leave its rebuy out ("N× rebuy", the rebuy-multiple levels: `risk_rebuy`, page.js `riskRebuy`). Also the latest one per `ShipID` goes to `fleet_loadouts` (`note_fleet`, `fleet_figures` in `outrider/fsd.py`): the Highway's ship list and the exact plotter's inputs. |
 | `EngineerCraft` | Engineering that moves the jump range before the next `Loadout`. |
 | `Cargo` (`Vessel: Ship`) | Tonnes in the hold: the ship's mass for the fuel model. With `Inventory` (at login) the whole hold (`outrider.cargo.ship_snapshot`); otherwise only the count, the list being in Cargo.json. |
 | `MarketBuy`, `MarketSell` | What you paid (`BuyPrice`; `MarketSell.AvgPricePaid` is the game's own average cost, 0 when unknown). At your carrier's `MarketID`, your own trades there (`cargo_events`). At a trade route's stop, its progress. |
@@ -63,9 +63,12 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 
 - **Status.json** (read on mtime change, `read_status`): `Fuel.FuelMain`/`FuelReservoir`, `Flags`, `Flags2`,
   `BodyName`, `Latitude`, `Longitude`, `Altitude`, `PlanetRadius`, `Heading`, `Cargo`, `Destination`,
-  `GuiFocus`, `FireGroup`, `timestamp`. Flags used: landed (bit 1), scooping (11), FSD charging (17), in SRV
+  `GuiFocus`, `FireGroup`, `timestamp`. Flags used: docked (bit 0; the overlay's Now panel hides, `FLAG_DOCKED`),
+  landed (1), supercruise (4, `FLAG_SUPERCRUISE`: the overlay's system panel shows only then), scooping (11), FSD
+  charging (17), in your main ship (24, `FLAG_IN_MAIN_SHIP`: the overlay's body panel shows only then), in SRV
   (26), HUD analysis mode (27), altitude from average radius (29), in the hyperspace tunnel (30, FsdJump: the jump line is said once it
-  comes on after a hyperspace StartJump; auto honk waits while it is set); Flags2
+  comes on after a hyperspace StartJump; auto honk waits while it is set; the overlay hides every panel); `GuiFocus`
+  6-11 (galaxy map, system map, orrery, FSS, SAA, codex) hide the overlay too (`OVERLAY_HIDE_FOCUS`); Flags2
   bit 0 on foot, bits 3/13/14 on foot in a station, hangar or social space (counted as docked). In the SRV, the
   Nomad or a fighter (bits 25, 26), `Fuel` and `Cargo` are the vehicle's, not the ship's: the fuel tile keeps the
   ship's last figures and shows the vehicle's separately.

@@ -326,7 +326,7 @@ class FableScriptFixes(unittest.TestCase):
         self.assertIn("--start-period=30m", self.read("Dockerfile"))
 
     def test_guide_matches(self):
-        self.assertIn("Auto honk, Uploads, Display", self.read("docs/guide/settings.md"))
+        self.assertIn("Auto honk, Uploads, In-game overlay, Display", self.read("docs/guide/settings.md"))
         self.assertIn("up to fifty lines per alert", self.read("docs/guide/voice-and-alerts.md"))
 
 

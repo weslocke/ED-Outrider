@@ -12,7 +12,9 @@ Open **<http://127.0.0.1:8025/>** and go fly.
 
 `launch_outrider.sh` sets Outrider up the first time (a virtual environment in `.venv` with `requirements.txt`),
 installs again only when `requirements.txt` has changed (after a `git pull`), and otherwise starts Outrider at once;
-its arguments go to Outrider (`./launch_outrider.sh --port 8026`). By hand it is
+its arguments go to Outrider (`./launch_outrider.sh --port 8026`). With the [in-game overlay](overlay.md) on
+(`[overlay] enabled = true`) it also installs PyQt6 (about 100 MB, into `.venv`) when it is missing; a failed install
+never stops Outrider starting. By hand it is
 `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, then `.venv/bin/python ed_outrider.py`.
 
 **On Windows**, install [Python](https://www.python.org/downloads/) 3.11 or newer and double-click
@@ -36,7 +38,9 @@ is welcome.
 Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste) need **`wl-copy`**
 (the `wl-clipboard` package, for Wayland) or **`xclip`** (for X11), from your distribution, e.g.
 `sudo apt install wl-clipboard` or `sudo apt install xclip`. Without either, nothing is copied and everything else works
-(the start-up log says which one it found). Windows needs nothing.
+(the start-up log says which one it found). Windows needs nothing. On Linux the [in-game overlay](overlay.md) finds
+Elite's window with **`wmctrl`** and **`xprop`** / **`xwininfo`** (the `x11-utils` package):
+`sudo apt install wmctrl x11-utils`.
 
 Start Outrider with the `.venv`'s Python (`.venv/bin/python ed_outrider.py`, as above): plain `python3 ed_outrider.py` finds Piper and evdev in a `.venv` in the Outrider folder, but aiohttp must then be installed for that `python3` too.
 Your own files (the database, backups, downloaded voices, banned lines) all go in `data/`.
@@ -61,6 +65,7 @@ folder from a network share, and serve the pages and the tablet from there.
 > - **The co-pilot button** (and marking Rhino rigs with it)
 > - **The Highway's clipboard copy** of the next system
 > - **Play speech and sounds on this PC**
+> - **The [in-game overlay](overlay.md)**
 >
 > If you use any of these, run Outrider on the game PC (Getting started), or run both: each keeps its own database
 > and they don't interfere.

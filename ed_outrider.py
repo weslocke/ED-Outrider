@@ -1102,10 +1102,10 @@ text_size = {q(st["overlay"]["text_size"])}   # small, normal or large
 system_panel = {"true" if st["overlay"]["system_panel"] else "false"}   # the system panel: the bodies worth your time, in supercruise
 body_panel = {"true" if st["overlay"]["body_panel"] else "false"}   # the body panel: the body you are heading to or near
 radar = {"true" if st["overlay"]["radar"] else "false"}   # the surface radar: samples, colony rings, the ship, on a body's surface
-strip_panel = {"true" if st["overlay"]["strip_panel"] else "false"}   # the system strip: one line across the top (where you are, the star, bodies found, values)
+strip_panel = {"true" if st["overlay"]["strip_panel"] else "false"}   # the system strip: two short lines across the top (where you are, the star, bodies found, values)
 now_panel = {"true" if st["overlay"]["now_panel"] else "false"}   # Now (To-Do & Info): Now condensed, the target, fuel, data at risk, what to do next, this session
 bio_panel = {"true" if st["overlay"]["bio_panel"] else "false"}   # every bio signal in the system, the ones over your bio_min highlighted, with samples and values
-system_seconds = {st["overlay"]["system_seconds"]}   # how long the system panel stays after the honk (0: while in supercruise in that system)
+system_seconds = {st["overlay"]["system_seconds"]}   # how long the system panel stays after arriving (0: while in supercruise in that system)
 radar_range = {st["overlay"]["radar_range"]}   # metres from the radar's centre to its edge (it widens to fit a colony ring)
 
 [assistant]
