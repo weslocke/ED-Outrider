@@ -7,9 +7,11 @@ upload. **Both are off unless you switch them on**, in Settings → Uploads. The
 the config file (`[eddn] enabled`, `[edsm] enabled`) for the next start; it is the only place to switch them (they are
 not among the Server settings).
 
-- **EDDN**, the Elite Dangerous Data Network: systems, scans, signals, codex entries, markets, outfitting, shipyards,
-  plotted routes, sent as they happen. Spansh, EDSM, Inara and others read it. EDDN gets your commander name and hashes
-  it before anyone else sees it; personal details (fines, fuel, your position on a planet) are taken out first.
+- **EDDN**, the Elite Dangerous Data Network: systems, scans, signals, codex entries, biology samples, markets,
+  outfitting, shipyards, plotted routes, sent as they happen. Spansh, EDSM, Inara and others read it. EDDN gets your
+  commander name and hashes it before anyone else sees it; personal details (fines, fuel, wanted, where your ship is)
+  are taken out first. Codex entries and biology samples keep where on the planet they were found: that is the data
+  (a sample's place only when it was read live, at the moment of the scan).
   Station data goes once per visit: each docking sends it again, changed or not, since the sites date a station's
   data by it.
 - **EDSM**, the Elite Dangerous Star Map: your flight log, scans, materials, ship and cargo, to your own EDSM account.

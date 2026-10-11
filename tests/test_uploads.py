@@ -982,3 +982,16 @@ class FableUploads(MarksAndCatchUp):
         src = inspect.getsource(ed_outrider.State.watch_leases)
         self.assertIn("run_in_executor(None, outrider.uploads.edmc_uploads)", src)
 
+
+class StatusForEddn(unittest.TestCase):
+    """The hub keeps the live Status.json's body and, on a body, the position and its time (scanorganic's place)."""
+
+    def test_status(self):
+        hub = U.UploadHub(None, {}, enabled=lambda s: False)
+        hub.status({"live": True, "body": "X 1", "lat": 1.5, "lon": -2.5, "ts": "2026-10-08T10:00:00Z"})
+        self.assertEqual((hub.session.status_body, hub.session.status_pos), ("X 1", (1.5, -2.5, "X 1", "2026-10-08T10:00:00Z")))
+        hub.status({"live": True, "body": "X 1", "lat": None, "lon": None, "ts": "2026-10-08T10:01:00Z"})   # in the air
+        self.assertIsNone(hub.session.status_pos)
+        hub.status({"live": False, "body": "X 1", "lat": 1.5, "lon": -2.5})   # not live: nothing
+        self.assertEqual((hub.session.status_body, hub.session.status_pos), (None, None))
+

@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · EDDN: biology samples (scanorganic/1)
+- Each ScanOrganic Log and Sample goes to EDDN's scanorganic/1 (EDDI, EDO Materials Helper and EDEXO-Compare send it;
+  the schema is on EDDN's develop branch and the gateway takes it). Analyse never does (it can come in another system,
+  so the schema leaves it out). StarSystem and StarPos after the location cross-check, Body renamed BodyID, the
+  internal genus, species and variant names. BodyName only when the body you approached has that id; Latitude and
+  Longitude only from the live Status.json on that body, read between 90 s before and 10 s after the scan, so a
+  journal caught up later sends no position (`organic_message`, `Session.status_pos`).
+- The uploads guide says what is taken out more exactly: codex entries and samples keep where they were found.
+- tests/fixtures/eddn gains EDDN's scanorganic-v1.0.json (it starts with a BOM: the tests read the schemas with
+  utf-8-sig).
+
 ## 2026-10-11 · The example config says the page can change every setting
 - ed_outrider.toml.example's heading says every setting can be changed in the web page's Settings (Server settings,
   Uploads), which writes ed_outrider.toml itself (comments kept, a .bak of the old copy).

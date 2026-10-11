@@ -225,6 +225,40 @@ def settlement_message(ev, session):
     return m
 
 
+ORGANIC_SYNC_S = (-90, 10)   # s: a Status.json reading this far before / after a ScanOrganic is its position (as the
+#                              surface map's sample points: at walking pace; a later one means you moved on since)
+
+
+def organic_message(ev, session):
+    """scanorganic/1 (EDDN's develop branch, live on the gateway; the author, 2026-10-11): a Log or Sample of a species,
+    never Analyse (it can come in another system: the schema leaves it out). StarSystem/StarPos after the cross-check;
+    the event's Body renamed BodyID. BodyName only when the body you approached is that BodyID (journal-synced), and
+    Latitude/Longitude only when the live Status.json names that body and was read at the scan (ORGANIC_SYNC_S): a
+    journal caught up later sends neither. None for anything else."""
+    if ev.get("event") != "ScanOrganic" or ev.get("ScanType") not in ("Log", "Sample"):
+        return None
+    if not session.located(ev.get("SystemAddress")) or not isinstance(ev.get("Body"), int) or isinstance(ev.get("Body"), bool):
+        return None
+    if not ev.get("Genus") or not ev.get("Species") or not session.system:
+        return None
+    m = {"timestamp": ev.get("timestamp"), "event": "ScanOrganic", "StarSystem": session.system, "StarPos": list(session.pos),
+         "ScanType": ev["ScanType"], "Genus": ev["Genus"], "Species": ev["Species"], "SystemAddress": ev["SystemAddress"],
+         "BodyID": ev["Body"]}
+    if ev.get("Variant"):
+        m["Variant"] = ev["Variant"]
+    if session.body and session.body_id == ev["Body"]:
+        m["BodyName"] = session.body
+        st = session.status_pos   # (lat, lon, body, ts) of the live Status.json, or None
+        if st and st[2] == session.body and st[0] is not None and st[1] is not None:
+            try:
+                d = _seconds(st[3]) - _seconds(ev.get("timestamp"))
+            except TypeError:
+                d = None
+            if d is not None and ORGANIC_SYNC_S[0] <= d <= ORGANIC_SYNC_S[1]:
+                m["Latitude"], m["Longitude"] = st[0], st[1]
+    return m
+
+
 # ---- station data (part F): the journal folder's files, read when their event comes ----
 
 STATION_FILES = {"Market": ("commodity", "Market.json"), "Outfitting": ("outfitting", "Outfitting.json"),
@@ -390,7 +424,7 @@ def build(ev, session, software_version, test=False):
     if f is not None:
         out.append((f[0], envelope(f[0], f[1], session, software_version, 1, test)))
     for schema, make in (("codexentry", codex_message), ("approachsettlement", settlement_message),
-                         ("navroute", navroute_message)):
+                         ("navroute", navroute_message), ("scanorganic", organic_message)):
         m = make(ev, session)
         if m is not None:
             out.append((schema, envelope(schema, m, session, software_version, 1, test)))
