@@ -101,6 +101,28 @@ class JournalSchema(unittest.TestCase):
         s2 = session()
         self.assertEqual(E.build(SCAN, s2, "v"), [])                          # no position yet
 
+    def test_planetary_dock_names_its_body(self):
+        """A Docked at a station on a planet's surface carries the body approached (Body, BodyType "Planet"), as EDMC
+        adds it; an orbital station's never does, and nor does one with no body approached."""
+        s = session()
+        s.feed(FSDJUMP)
+        dock = {"timestamp": "2026-10-08T10:20:00Z", "event": "Docked", "StationName": "Thorn Constructions",
+                "StationType": "CraterOutpost", "StarSystem": "Smojooe AR-E b25-8", "SystemAddress": 18264118102193,
+                "MarketID": 3700000001}
+        [(_, env)] = E.build(dock, s, "v")
+        self.assertNotIn("Body", env["message"])                                  # nothing approached: nothing guessed
+        s.feed({"timestamp": "2026-10-08T10:10:00Z", "event": "ApproachBody", "StarSystem": "Smojooe AR-E b25-8",
+                "SystemAddress": 18264118102193, "Body": "Smojooe AR-E b25-8 A 1", "BodyID": 5})
+        [(_, env)] = E.build(dock, s, "v")
+        valid(env, "journal-v1.0.json")
+        self.assertEqual((env["message"]["Body"], env["message"]["BodyType"]), ("Smojooe AR-E b25-8 A 1", "Planet"))
+        [(_, env)] = E.build(dict(dock, StationType="Coriolis"), s, "v")
+        self.assertNotIn("Body", env["message"])                                  # an orbital station: no body
+        s.feed({"timestamp": "2026-10-08T10:30:00Z", "event": "LeaveBody", "StarSystem": "Smojooe AR-E b25-8",
+                "SystemAddress": 18264118102193, "Body": "Smojooe AR-E b25-8 A 1", "BodyID": 5})
+        [(_, env)] = E.build(dock, s, "v")
+        self.assertNotIn("Body", env["message"])
+
     def test_saa_signals_and_docked_and_location(self):
         s = session()
         s.feed(FSDJUMP)
@@ -418,6 +440,7 @@ class StationData(unittest.TestCase):
         [(name, env)] = E.build(self.ev("Shipyard"), self.s, "v")
         valid(env, "shipyard-v2.0.json")
         self.assertEqual(env["message"]["ships"], ["adder", "sidewinder"])
+        self.assertNotIn("allowCobraMkIV", env["message"])   # about the commander, not the station: left out as the others do
         with open(os.path.join(self.dir, "FCMaterials.json"), "w", encoding="utf-8") as f:
             json.dump({"timestamp": self.t, "event": "FCMaterials", "MarketID": 3700251648, "CarrierName": "OUT OF THE BLUE",
                        "CarrierID": "G0X-85Z", "Items": [{"id": 128961524, "Name": "$aerogel_name;", "Name_Localised": "Aerogel",

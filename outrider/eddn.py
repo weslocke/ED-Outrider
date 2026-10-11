@@ -27,6 +27,9 @@ JOURNAL_EVENTS = ("Docked", "FSDJump", "Scan", "Location", "SAASignalsFound", "C
 JOURNAL_DROP = ("ActiveFine", "CockpitBreach", "BoostUsed", "FuelLevel", "FuelUsed", "JumpDist", "Latitude",
                 "Longitude", "Wanted", "IsNewEntry", "NewTraitsDiscovered", "Traits", "VoucherAmount")
 FACTION_DROP = ("HappiestSystem", "HomeSystem", "MyReputation", "SquadronFaction")
+# stations on a planet's surface: their Docked gets the body you approached (Body, BodyType), as EDMC adds it (the
+# journal's Docked has no body; the author, 2026-10-11)
+PLANETARY_STATIONS = ("CraterOutpost", "CraterPort", "SurfaceStation", "OnFootSettlement", "PlanetaryConstructionDepot")
 
 
 def schema_ref(name, version=1, test=False):
@@ -69,6 +72,8 @@ def journal_message(ev, session):
         m["Factions"] = [{k: v for k, v in f.items() if k not in FACTION_DROP} if isinstance(f, dict) else f
                          for f in m["Factions"]]
     m.setdefault("StarSystem", session.system)
+    if name == "Docked" and m.get("StationType") in PLANETARY_STATIONS and session.body and "Body" not in m:
+        m["Body"], m["BodyType"] = session.body, "Planet"
     if not m.get("StarPos"):
         m["StarPos"] = list(session.pos)
     if not m.get("StarSystem"):
@@ -313,9 +318,9 @@ def _station_message(schema, data, session):
         ships = sorted({str(x.get("ShipType")) for x in data.get("PriceList") or [] if isinstance(x, dict) and x.get("ShipType")})
         if not ships:
             return None
+        # no allowCobraMkIV: the schema has it, but it is about the commander (the pre-order), not the station, and
+        # EDMC, EDDiscovery and EDDLite leave it out (the author, 2026-10-11)
         msg, key = dict(base, ships=ships), ships
-        if isinstance(data.get("AllowCobraMkIV"), bool):
-            msg["allowCobraMkIV"] = data["AllowCobraMkIV"]
     else:   # fcmaterials_journal
         items = [{k: it[k] for k in ("id", "Name", "Price", "Stock", "Demand") if k in it}
                  for it in data.get("Items") or [] if isinstance(it, dict)]

@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · EDDN: planetary docks name their body; no allowCobraMkIV
+- Compared with EDMC, EDDiscovery and EDDLite on EDDN's relay (45 hours, 1.8 million of their messages): Outrider
+  sends every journal schema they do (ApproachSettlement, CarrierJump and FCMaterials not seen live yet), field for
+  field, with two differences, both now gone:
+- A Docked at a station on a planet's surface (crater outposts and ports, surface stations, settlements, planetary
+  construction depots) carries the body you approached, `Body` and `BodyType` "Planet", as EDMC adds them (the journal's
+  Docked has no body). An orbital station's never does.
+- shipyard/2 no longer carries `allowCobraMkIV`: it is about the commander, not the station, and the other three
+  leave it out.
+
 ## 2026-10-10 · ExploData's colour tables downloaded, not shipped; the README's credits (branch EDMC-Functionality)
 - The colour tables (EDMC-ExploData: its repository carries only the GPL v2 text, without "or later") leave the
   repository: `resources/bio_rules.json` ships with no colours, and they are downloaded on the first
