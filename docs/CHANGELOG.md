@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · The example config says the page can change every setting
+- ed_outrider.toml.example's heading says every setting can be changed in the web page's Settings (Server settings,
+  Uploads), which writes ed_outrider.toml itself (comments kept, a .bak of the old copy).
+
 ## 2026-10-11 · EDDN: planetary docks name their body; no allowCobraMkIV
 - Compared with EDMC, EDDiscovery and EDDLite on EDDN's relay (45 hours, 1.8 million of their messages): Outrider
   sends every journal schema they do (ApproachSettlement, CarrierJump and FCMaterials not seen live yet), field for
