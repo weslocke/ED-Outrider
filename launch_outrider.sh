@@ -98,7 +98,8 @@ clipboard_hint() {
     echo "${on}${bar}"
     echo "  OPTIONAL: install $tool for Plot Route's clipboard copy (and auto-target's paste)"
     echo "${bar}${off}"
-    echo "  Your desktop session is $session, so Outrider copies with $tool, and it is not installed."
+    echo "  Outrider copies with wl-copy (the wl-clipboard package) in Wayland sessions and with xclip in X11 sessions."
+    echo "  Your desktop session is $session, and $tool is not installed."
     if [ -n "$pm" ]; then
         echo "  Install it with:"
         echo
@@ -111,7 +112,8 @@ clipboard_hint() {
     else
         echo "  Install the $pkg package with your distribution's package manager (or both: wl-clipboard and xclip)."
     fi
-    echo "  Without it nothing is copied; everything else works. This note shows at each start until it is installed."
+    echo "  Without it nothing is copied, and auto-target cannot paste the system name (by default it types the name,"
+    echo "  which still works); everything else works. This note shows at each start until it is installed."
     echo "${on}${bar}${off}"
     echo
 }

@@ -185,6 +185,8 @@ class Packaging(unittest.TestCase):
         self.assertIn("sudo apt install wl-clipboard\n", out)
         self.assertIn("sudo apt install wl-clipboard xclip", out)           # or both
         self.assertNotIn("\033", out)                                     # no colours into a pipe
+        self.assertIn("wl-copy (the wl-clipboard package) in Wayland sessions and with xclip in X11 sessions", out)   # why each
+        self.assertIn("auto-target cannot paste the system name (by default it types the name", out)
         out = hint(x11, ["dnf"])
         self.assertIn("install xclip", out)
         self.assertIn("sudo dnf install xclip\n", out)
