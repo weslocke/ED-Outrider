@@ -742,6 +742,12 @@ class Server(unittest.TestCase):
         self.assertIn("Next: bio on B 2: Fonticulua", texts(now))                # the config's levels (bio_min 10M)
         st["gui_focus"] = 6                                                       # the galaxy map: nothing
         self.assertEqual(self.state.overlay_panels(now=1010), [])
+        st.update(gui_focus=0, flags=ed_outrider.FLAG_DOCKED | ed_outrider.FLAG_IN_MAIN_SHIP)     # docked: no Now
+        self.assertEqual([p["id"] for p in self.state.overlay_panels(now=1010)], ["bio"])
+        st.update(flags=0, flags2=1 | (1 << 3))                                   # on foot in the station: no Now
+        self.assertEqual([p["id"] for p in self.state.overlay_panels(now=1010)], ["bio"])
+        st.update(flags=ed_outrider.FLAG_SUPERCRUISE | ed_outrider.FLAG_IN_MAIN_SHIP, flags2=0)  # undocked: back
+        self.assertEqual([p["id"] for p in self.state.overlay_panels(now=1010)], ["now", "bio"])
 
     def test_no_rebuy_multiple_for_a_hull_without_value(self):
         """An Arx-bought ship's Loadout has ModulesValue and no HullValue: its rebuy covers the modules only, so no

@@ -609,6 +609,7 @@ BURST_END_GAP = 30        # s: ...and a collection is over after this quiet (a l
 BURST_RETARGET_S = 2      # s: a position read this soon after a collection's first ton can still move it onto a rig
 LOCATION_NEAR_M = 2000    # m: a saved site this close to a mining location's marker belongs to that location
 SURFACE_BUMP_M, SURFACE_BUMP_DEG, SURFACE_BUMP_S = 5, 10, 0.5   # the map's position updates: a move, a turn, at most 2/s
+FLAG_DOCKED = 1 << 0      # Status.json Flags: docked (at a station, a carrier or a port)
 FLAG_LANDED = 1 << 1      # Status.json Flags: landed (the ship on the ground)
 FLAG_IN_SRV = 1 << 26
 FLAG_IN_FIGHTER = 1 << 25   # with FLAG_IN_SRV: Status.json's Fuel and Cargo are the vehicle's, not the ship's
@@ -6709,8 +6710,10 @@ class State:
             p = outrider.overlay.strip_panel(self.overlay_strip_info(pos), pal, cfg["text_size"])
             if p:
                 out.append(p)
-        # Now, condensed, and every bio signal in the system: anywhere in the system, as the strip
-        if cfg.get("now_panel") and pos:
+        # Now, condensed: anywhere in the system but docked (the ship docked, or on foot in a station, hangar or social
+        # space: the author, 2026-10-10); every bio signal in the system: anywhere, as the strip
+        docked = bool(flags & FLAG_DOCKED) or bool((st.get("flags2") or 0) & ON_FOOT_DOCKED)
+        if cfg.get("now_panel") and pos and not docked:
             p = outrider.overlay.now_panel(self.overlay_now_info(pos, now), pal, cfg["text_size"], BODY_HIGHLIGHT, BIO_MIN,
                                            HIGH_GRAVITY, CODEX_INTERESTING)
             if p:

@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: no Now panel while docked (branch EDMC-Functionality)
+- The Now (To-Do & Info) panel hides while you are docked: the ship's docked flag, or on foot in a station, hangar or
+  social space (`FLAG_DOCKED`, `ON_FOOT_DOCKED`), and comes back when you undock.
+
 ## 2026-10-10 · Docs brought up to date
 - The guide: every page's bottom nav matches its top (What's new and Uploads included; Uploads and What's new gain
   one); the README's tab list has Overview, Bookmarks and Plot Route. Views: Bookmarks is its own tab, Search's mining
