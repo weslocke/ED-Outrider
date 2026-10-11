@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Overlay: long rows wrap; Settings: the placement table fits its section
+- The Now panel's Next detail and the Bio signals footer were cut with … when too long ("7.1M/min…", "5 m…"): they
+  now go on to the next line, broken between their parts (`overlay.flow`).
+- The table was wider than Settings -> In-game overlay (726 px in 711 at a 1600 px window, its reset links cut off):
+  narrower number boxes and padding make it fit, and on a narrow window it scrolls sideways inside the section
+  instead of spilling out (`.ovwrap`).
+
 ## 2026-10-11 · The launcher's clipboard note says which program serves which session
 - The block says wl-copy (wl-clipboard) is for Wayland sessions and xclip for X11 ones, and what is lost without it:
   the copy, and auto-target's paste (it types the name by default, which still works).

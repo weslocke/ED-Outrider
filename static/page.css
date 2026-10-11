@@ -1117,4 +1117,9 @@ body.app #hereMain.halves > #hereLegend { flex: 0 0 auto; position: static; marg
 /* Settings -> In-game overlay: each panel's place, size and transparency */
 dialog ul.ovhelp { margin: 6px 0 0; padding-left: 18px; } dialog ul.ovhelp li { margin: 2px 0; }
 table.ovlay tr.ovoff td { opacity: .55; }   /* a panel switched off: its row dimmed */
-table.ovlay { border-collapse: collapse; margin: 6px 0; font-size: 13px; } table.ovlay th, table.ovlay td { padding: 2px 6px; text-align: left; }
+/* the overlay's placement table: compact, and scrolled sideways inside its section on a narrow window rather than
+   spilling out of it */
+.ovwrap { overflow-x: auto; max-width: 100%; }
+table.ovlay { border-collapse: collapse; margin: 6px 0; font-size: 13px; } table.ovlay th, table.ovlay td { padding: 2px 4px; text-align: left; }
+table.ovlay input[type=number] { width: 3.4em; appearance: textfield; -moz-appearance: textfield; }   /* no spin arrows: room for "100" (typing and the arrow keys still work) */
+table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; } table.ovlay th { white-space: nowrap; }

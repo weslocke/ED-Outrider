@@ -619,6 +619,7 @@ TARGET_WORDS = {"unreported": ("never reported", "good"), "no bodies": ("no scan
                 "partial": ("partly scanned", "warn"), "explored": ("fully scanned", "muted"), "visited": ("visited", "muted")}
 ARRIVAL_SECONDS = 20   # the arrival verdict stays this long after the jump, as on Now
 NOW_W = 520
+BIO_W = 470
 
 
 def _half_up(x):
@@ -712,6 +713,25 @@ def wrap(bits, room, size="normal", sep=" · "):
             row.append((sep, "muted"))
         row.append((t, k))
         used += w
+    return rows + ([row] if row else [])
+
+
+def flow(parts, room, size="normal", indent=""):
+    """A row of (text, colour key) parts as rows within `room`, broken only between parts (never cut with …): a part
+    that starts a new row loses its leading " · " and gets `indent`."""
+    rows, row, used = [], [], 0.0
+    for t, k in parts:
+        if not t:
+            continue
+        if row and used + text_width(t, size) > room:
+            rows.append(row)
+            t = t.lstrip(" ·")
+            if not t:
+                row, used = [], 0.0
+                continue
+            row, used = ([(indent, "muted")] if indent else []), text_width(indent, size)
+        row.append((t, k))
+        used += text_width(t, size)
     return rows + ([row] if row else [])
 
 
@@ -859,7 +879,7 @@ def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, h
             rows.append({"left": [("Next: ", "warn")] + ([("➜ ", "accent")] if dest_next else []) + head, "right": right})
             more = [(f" · {len(plan) - 1} more", "muted")] if len(plan) > 1 else []
             if detail or more:
-                rows.append([("   ", "muted")] + detail + more)
+                rows += flow([("   ", "muted")] + detail + more, NOW_W - 2 * PAD, size, indent="   ")
         else:
             left = [("checking…", "muted")] if not info.get("detail_ready") \
                 else [("Next: honk", "warn"), (" (FSS discovery scan)", "muted")] if not l or not l.get("honked") \
@@ -1005,8 +1025,8 @@ def bio_panel(detail, pal, size="normal", bio_min=10_000_000, high_gravity=2.0, 
         foot.append((f" · {tot['under']} under your level", "muted"))
     if len(shown) < len(blocks):
         foot.append((f" · {len(blocks) - len(shown)} more", "muted"))
-    rows.append(foot)
-    return text_panel("bio", "Bio signals", rows, pal, width=470, size=size,
+    rows += flow(foot, BIO_W - 2 * PAD, size)
+    return text_panel("bio", "Bio signals", rows, pal, width=BIO_W, size=size,
                       subtitle=f"{len(blocks)} bod{'y' if len(blocks) == 1 else 'ies'} · {tot['signals']} signal{'' if tot['signals'] == 1 else 's'}")
 
 

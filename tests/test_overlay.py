@@ -462,6 +462,22 @@ class NowPanel(unittest.TestCase):
         self.assertEqual(texts(quiet)[-1], "Last session · 3 jumps")
         self.assertIsNone(O.now_panel({}, pal))
 
+    def test_long_rows_wrap_not_cut(self):
+        """A row too long for the panel goes on the next line, broken between its parts, never cut with … (the Next
+        detail and the Bio signals footer were: the author's overlay screenshot, 2026-10-11)."""
+        pal = O.palette()
+        b = dict(LEAVING["bio_pending"][2], gravity=0.17, atmosphere="Thin Carbon dioxide atmosphere", codex_galaxy=True,
+                 factor=5, dist_ls=1326)
+        long = dict(LEAVING, unmapped=[], bio_pending=[b, dict(b, body="B 9", dist_ls=2500)])
+        lines = texts(O.now_panel(dict(self.INFO, leaving=long), pal))
+        self.assertFalse(any(t.endswith("…") for t in lines), lines)
+        i = next(n for n, t in enumerate(lines) if t.startswith("Next: "))
+        cont = [t for t in lines[i + 1:] if t.startswith("   ")]
+        self.assertGreaterEqual(len(cont), 2, lines)                             # continued on indented rows
+        self.assertTrue(cont[-1].endswith("1 more") and not cont[-1].startswith("    ·"), lines)
+        rows = O.flow([("a" * 30, "text"), (" · ", "muted"), ("b" * 30, "text")], 300)
+        self.assertEqual([["".join(t for t, _ in r)] for r in rows], [["a" * 30 + " · "], ["b" * 30]])   # no " · " starts a row
+
     def test_unsold_age(self):
         self.assertEqual([O.unsold_age(d) for d in (None, 0.99, 1.6, 6.9)],
                          [("", ""), ("", ""), ("1 day unsold", "1 day unsold"), ("6 days unsold", "6 days unsold")])
@@ -557,7 +573,8 @@ class BioPanel(unittest.TestCase):
         many = {"bodies": [dict(BIO_DETAIL["bodies"][1], name=f"A {i}", dist_ls=i) for i in range(10)] +
                           [dict(BIO_DETAIL["bodies"][3], name=f"B {i}", dist_ls=i) for i in range(10)]}
         lines = texts(O.bio_panel(many, pal, max_rows=20))
-        self.assertTrue(lines[-1].endswith("· 15 more"))                       # 5 bodies of 4 rows; the rest counted
+        self.assertTrue(lines[-1].endswith("15 more"))                         # 5 bodies of 4 rows; the rest counted
+        self.assertFalse(any(t.endswith("…") for t in lines))                   # the footer wraps, never cut
         self.assertFalse(any("Cyan" in t for t in lines))                       # finished bodies keep only their head
         self.assertTrue(O.bio_panel(many, pal, max_rows=20)["h"] < 26 * O.LINE_H["normal"] + 60)
 
