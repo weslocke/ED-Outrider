@@ -1831,7 +1831,7 @@ const settle = async maxMs => {
     got.risk = JSON.parse(w.eval(`(() => {
       const out = {};
       data.unsold = {total: 792e6, carto: {estimated_payout: 380e6}, bio: {estimated_value: 412e6}, thresholds: [50e6, 250e6]};
-      data.ship = Object.assign({}, data.ship, {rebuy: 247.5e6}); data.since_sale = {ts: "2026-01-01T00:00:00Z", days: 6.2, jumps: 1, ly: 1};
+      data.ship = Object.assign({}, data.ship, {rebuy: 247.5e6}); data.since_sale = {ts: "2026-01-01T00:00:00Z", days: 6.7, jumps: 1, ly: 1};   // 6 whole days, never rounded up
       data.docked = null; data.on_body = null; nowStakes = null;
       const txt = r => r ? r.html.replace(/<[^>]+>/g, "") + (r.cls ? " |" : "") : null;
       out.normal = txt(nowRiskLine());

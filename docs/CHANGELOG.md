@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Days since you sold: whole days on the page too (branch EDMC-Functionality)
+- Now's at-risk line ("6 d unsold") and the spoken welcome back ("unsold for 6 days") count whole days passed, as the
+  overlay's Now panel does, instead of rounding 6.7 days up to 7.
+
 ## 2026-10-10 · Overlay: no Now panel while docked (branch EDMC-Functionality)
 - The Now (To-Do & Info) panel hides while you are docked: the ship's docked flag, or on foot in a station, hangar or
   social space (`FLAG_DOCKED`, `ON_FOOT_DOCKED`), and comes back when you undock.

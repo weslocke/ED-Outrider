@@ -860,7 +860,8 @@ function nowRiskLine() {
   if (lvl !== "warn" && lvl !== "urgent") return null;
   const sh = sellableHere(data.docked, u);
   if (sh && sh.value > 0) return {cls: sh.level === "ok" ? "" : sh.level, html: `💰 sell here: <b>${credits(sh.value)}</b>`};
-  const rebuy = riskRebuy(), ss = data.since_sale, days = ss && ss.days >= 1 ? Math.round(ss.days) : 0;
+  // whole days passed, never rounded up (as the overlay's Now panel: overlay.unsold_age)
+  const rebuy = riskRebuy(), ss = data.since_sale, days = ss && ss.days >= 1 ? Math.floor(ss.days) : 0;
   const kinds = [(u.carto || {}).estimated_payout && `🗺 ${credits(u.carto.estimated_payout)}`, (u.bio || {}).estimated_value && `🧬 ${credits(u.bio.estimated_value)}`].filter(Boolean);
   return {cls: lvl, html: [`<b>${kinds.length ? kinds.join(" · ") : credits(u.total)}</b> aboard`, rebuy ? `${(u.total / rebuy).toFixed(1)}× rebuy` : "",
                            days ? `${days} d unsold` : ""].filter(Boolean).join(" · ")};
@@ -2086,7 +2087,7 @@ function welcomeText(away, dockSays) {
   const u = data.unsold, lvl = unsoldLevel(u), ss = data.since_sale, f = data.fuel, dk = data.docked, ob = data.on_body;
   const parts = [`Away ${away}.`];
   if (u && !u.error && lvl && lvl !== "ok" && !dockSays) {
-    const d = ss && ss.days >= 1 ? Math.round(ss.days) : 0;
+    const d = ss && ss.days >= 1 ? Math.floor(ss.days) : 0;   // whole days passed
     parts.push(`${credits(u.total)} aboard${d ? `, unsold for ${d} day${d === 1 ? "" : "s"}` : ""}.`);
   }
   if (f && f.pct != null) parts.push(`Fuel ${f.pct} percent.`);
