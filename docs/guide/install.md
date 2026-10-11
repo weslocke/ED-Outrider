@@ -36,7 +36,9 @@ is welcome.
 Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste) need **`wl-copy`**
 (the `wl-clipboard` package, for Wayland) or **`xclip`** (for X11), from your distribution, e.g.
 `sudo apt install wl-clipboard` or `sudo apt install xclip`. Without either, nothing is copied and everything else works
-(the start-up log says which one it found). Windows needs nothing.
+(the start-up log says which one it found). `launch_outrider.sh` checks your desktop session (Wayland or X11) at
+every start and, while the one it needs is missing, prints a block with the command for your package manager (apt,
+dnf, pacman or zypper) and the one that installs both. Windows needs nothing.
 
 Start Outrider with the `.venv`'s Python (`.venv/bin/python ed_outrider.py`, as above): plain `python3 ed_outrider.py` finds Piper and evdev in a `.venv` in the Outrider folder, but aiohttp must then be installed for that `python3` too.
 Your own files (the database, backups, downloaded voices, banned lines) all go in `data/`.
