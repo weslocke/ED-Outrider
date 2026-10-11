@@ -447,7 +447,11 @@ class NowPanel(unittest.TestCase):
         self.assertEqual(lines[1], "➜ Drojau AB-C d1  never reported · 0/12 known · N ✕ ⚠")
         self.assertEqual(lines[2], "⛽ 22% · 4 jumps · 6 since scoop · boosted ×4")
         self.assertEqual(colour_of(p, "⛽ 22%"), pal["warn"])
-        self.assertEqual(lines[3], "⚠ 🗺 20.0M · 🧬 100.0M aboard · 12.0× rebuy · 4 d unsold")
+        self.assertEqual(lines[3], "⚠ 🗺 20.0M · 🧬 100.0M aboard · 12.0× rebuy · 3 days unsold")   # 3.6: 3 whole days
+        risk = lambda days, **kw: texts(O.now_panel(dict(self.INFO, since_sale={"days": days}, **kw), pal))[3]
+        self.assertTrue(risk(16, rebuy=None).endswith("aboard · 2 weeks 2 days since sold"))   # fits: written out
+        self.assertTrue(risk(16).endswith("· 12.0× rebuy · 2wk2d since sold"))                 # would wrap: short
+        self.assertTrue(risk(0.9).endswith("12.0× rebuy"))                                     # under a day: nothing
         self.assertEqual(lines[4:6], ["4.5M here", "Next: bio on B 2: Fonticulua"])
         self.assertTrue(lines[6].strip().startswith("up to 2.0M ✦ · ~15 s · 8.0M/min · 3 more"))
         self.assertEqual(lines[-2:], ["This session 1 h 46 · 28 jumps · 6,541 ly · 12 new systems", "1 sample"])   # wrapped, not cut
@@ -457,6 +461,13 @@ class NowPanel(unittest.TestCase):
         self.assertEqual(colour_of(quiet, "⛽ 80%"), pal["text"])
         self.assertEqual(texts(quiet)[-1], "Last session · 3 jumps")
         self.assertIsNone(O.now_panel({}, pal))
+
+    def test_unsold_age(self):
+        self.assertEqual([O.unsold_age(d) for d in (None, 0.99, 1.6, 6.9)],
+                         [("", ""), ("", ""), ("1 day unsold", "1 day unsold"), ("6 days unsold", "6 days unsold")])
+        self.assertEqual([O.unsold_age(d) for d in (7, 8, 14, 16.5)],
+                         [("1 week since sold", "1wk since sold"), ("1 week 1 day since sold", "1wk1d since sold"),
+                          ("2 weeks since sold", "2wk since sold"), ("2 weeks 2 days since sold", "2wk2d since sold")])
 
     def test_arrival_next_states_and_destination(self):
         pal = O.palette()

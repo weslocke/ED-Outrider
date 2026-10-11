@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · Overlay: how long since you sold, in words (branch EDMC-Functionality)
+- The Now panel's data-at-risk line says "3 days unsold" (was "3 d unsold"), and from a week "2 weeks 2 days since
+  sold", or "2wk2d since sold" when the written-out form would not fit on the line (`overlay.unsold_age`). Whole days
+  passed, no longer rounded up.
+
 ## 2026-10-10 · Settings: the overlay's help as three short points (branch EDMC-Functionality)
 - Settings -> In-game overlay: the paragraph under the table becomes a list (game PC only and PyQt6, borderless or
   windowed, Arrange panels), without the Install PyQt6 button it still mentioned.

@@ -774,6 +774,21 @@ def on_body_parts(ob, b, sampling, room=500, size="normal"):
     return rows
 
 
+def unsold_age(days):
+    """How long since you last sold, in whole days passed, for the data-at-risk line: (written out, short). Under a
+    day: ("", ""). Under a week: "3 days unsold" both ways; from a week: "2 weeks 2 days since sold" or "2wk2d since
+    sold" (the author, 2026-10-10)."""
+    if not isinstance(days, (int, float)) or isinstance(days, bool) or not math.isfinite(days) or days < 1:
+        return "", ""
+    d = int(days)
+    if d < 7:
+        text = f"{d} day{'' if d == 1 else 's'} unsold"
+        return text, text
+    w, d = divmod(d, 7)
+    long = f"{w} week{'' if w == 1 else 's'}" + (f" {d} day{'' if d == 1 else 's'}" if d else "") + " since sold"
+    return long, f"{w}wk" + (f"{d}d" if d else "") + " since sold"
+
+
 def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, high_gravity=2.0, codex=True):
     """The Now panel: the page's Now view in a few lines (the author, 2026-10-10). The system (and, for 20 s after the
     jump, whether it was undiscovered); the system targeted next; fuel; what the data aboard stands to lose once it
@@ -825,9 +840,10 @@ def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, h
         bits = [f"{kinds or credits(total)} aboard"]
         if info.get("rebuy"):
             bits.append(f"{total / info['rebuy']:.1f}× rebuy")
-        days = (info.get("since_sale") or {}).get("days") or 0
-        if days >= 1:
-            bits.append(f"{_half_up(days)} d unsold")
+        long, short = unsold_age((info.get("since_sale") or {}).get("days"))
+        if long:   # written out when the line fits the panel, else short ("2wk2d since sold"): never wrapped
+            fits = text_width("⚠ " + " · ".join(bits + [long]), size) <= NOW_W - 2 * PAD
+            bits.append(long if fits else short)
         rows.append([("⚠ ", key), (" · ".join(bits), key)])
     ob = info.get("on_body")
     if ob:
