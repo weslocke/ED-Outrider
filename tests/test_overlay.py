@@ -743,6 +743,20 @@ class Server(unittest.TestCase):
         st["gui_focus"] = 6                                                       # the galaxy map: nothing
         self.assertEqual(self.state.overlay_panels(now=1010), [])
 
+    def test_no_rebuy_multiple_for_a_hull_without_value(self):
+        """An Arx-bought ship's Loadout has ModulesValue and no HullValue: its rebuy covers the modules only, so no
+        "× rebuy" (the author, 2026-10-10); a ship with a hull value keeps it."""
+        arx = {"rebuy": 1_087_554, "modules_value": 21_751_050, "hull_value": None}
+        self.assertIsNone(ed_outrider.risk_rebuy(arx))
+        self.assertIsNone(ed_outrider.risk_rebuy(dict(arx, hull_value=0)))
+        self.assertEqual(ed_outrider.risk_rebuy(dict(arx, hull_value=80_000_000)), 1_087_554)
+        self.assertEqual(ed_outrider.risk_rebuy({"rebuy": 5_000_000}), 5_000_000)   # no values known: as before
+        self.assertIsNone(ed_outrider.risk_rebuy(None))
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "X",
+                                    "SystemAddress": 77, "StarPos": [0, 0, 0]})
+        self.state.journals.ship = arx
+        self.assertIsNone(self.state.overlay_now_info(self.state.journals.pos, 1010)["rebuy"])
+
     def test_layout(self):
         out, status = self.state.overlay_layout_set({"body": {"x": 0.4, "scale": 2.0}})
         self.assertEqual((status, out["layout"]["body"]["x"], out["layout"]["body"]["scale"]), (200, 0.4, 2.0))

@@ -1711,6 +1711,18 @@ def journal_star(code):
     return code
 
 
+def risk_rebuy(ship):
+    """The rebuy the risk figures compare the data aboard with ("N× rebuy"), or None: also None for a ship whose hull
+    has no credit value. An Arx-bought ship's Loadout has ModulesValue but no HullValue, and its rebuy covers the
+    modules only, so any trip's data reads as a hundred rebuys (the author, 2026-10-10). page.js riskRebuy is the same."""
+    s = ship or {}
+    rebuy = s.get("rebuy")
+    if not isinstance(rebuy, (int, float)) or rebuy <= 0:
+        return None
+    hull_free = (s.get("modules_value") or 0) > 0 and not (s.get("hull_value") or 0) > 0
+    return None if hull_free else rebuy
+
+
 def journal_planet(cls):
     if cls in JOURNAL_PLANETS:
         return JOURNAL_PLANETS[cls]
@@ -6644,7 +6656,7 @@ class State:
                 "target": t and {k: t.get(k) for k in ("name", "status", "known", "count", "star_class")},
                 "fuel": self.fuel_summary(), "boost": (self.journals.boost or {}).get("value"),
                 "unsold": self.unsold, "unsold_levels": (UNSOLD_WARN, UNSOLD_URGENT),
-                "rebuy": (self.journals.ship or {}).get("rebuy"), "since_sale": self.since_sale(),
+                "rebuy": risk_rebuy(self.journals.ship), "since_sale": self.since_sale(),
                 "on_body": ob, "body": bodies.get(ob["body"]) if ob else None,
                 "sampling": self.sampling_summary() if ob else None,
                 "detail_ready": detail is not None, "leaving": (detail or {}).get("leaving"),

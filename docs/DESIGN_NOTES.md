@@ -206,6 +206,10 @@ upstream project's choices, not rules of the game.
   The panels are built on the server, which cannot see a browser's levels, so the overlay uses the config's
   (`body_highlight_level`, `bio_min`, `codex_interesting`, `unsold_warn`) and leaves out what only the page knows (the
   skip floor, the high-g approach stakes, captions). Two copies of one rule: a change to either is made to both.
+- **No rebuy multiple for a ship whose hull has no credit value** (the author, 2026-10-10). An Arx-bought ship's
+  Loadout carries ModulesValue but no HullValue, and its rebuy is 5% of the modules alone, so "N× rebuy" said ~110
+  on any trip and a rebuy-multiple level would always fire. Such a ship gets no rebuy in the risk figures (`risk_rebuy`,
+  page.js `riskRebuy`); the credit levels still warn. A Loadout with neither value keeps the rebuy as before.
 - **Here's icon legend lists only what is shown.** The footer under Here's list (`HERE_LEGEND` in page.js) names the
   icons the list or schematic shows now, not every icon there is (the author's call, 2026-10-10), and is absent when
   there are none; sticky to the bottom of the scrolling pane so it stays in view. The codex marks write the new

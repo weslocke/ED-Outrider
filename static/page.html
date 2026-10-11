@@ -661,7 +661,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <label class="mod">…or as a multiple of your ship's rebuy: amber at
         <input type="number" id="rebuyWarn" min="0" step="1" style="width:5em">× , red at
         <input type="number" id="rebuyUrgent" min="0" step="1" style="width:5em">× your rebuy <span class="reset" data-reset="rebuy">reset</span>
-        <span class="hint">blank = off; either rule can turn the header amber or red (a cheap ship carrying a fortune is the risk)</span></label>
+        <span class="hint">blank = off; either rule can turn the header amber or red (a cheap ship carrying a fortune is the risk). Not for a ship whose hull has no credit value (bought with Arx): its rebuy covers the modules only, so no "× rebuy" is shown for it</span></label>
       <label class="mod">Approach warning: a landable body of
         <input type="number" id="highG" min="0" step="0.1" style="width:5em"> g or more<span class="reset" data-reset="highG">reset</span>
         <span class="hint">said when you drop into orbital cruise there with unsold data over the amber level or the rebuy multiple below ("2.6 g, 480 million aboard, 3.2 rebuys"); the approach alert above switches it off</span></label>

@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-10 · No rebuy multiple for a ship whose hull has no value (branch EDMC-Functionality)
+- An Arx-bought ship's Loadout has ModulesValue but no HullValue, and its rebuy covers the modules only (the author's
+  ship: 1.09M), so any trip's data read as ~110 rebuys. For such a ship Outrider leaves the rebuy out of the risk
+  figures: no "× rebuy" on the unsold tile, Now's at-risk line, the overlay's Now panel or the status report; the
+  rebuy-multiple warning levels do not apply (the credit levels still do); the approach warning speaks a line without
+  rebuys. `risk_rebuy` (server) and `riskRebuy` (page). Settings says so beside the rebuy levels.
+
 ## 2026-10-10 · Overlay: how long since you sold, in words (branch EDMC-Functionality)
 - The Now panel's data-at-risk line says "3 days unsold" (was "3 d unsold"), and from a week "2 weeks 2 days since
   sold", or "2wk2d since sold" when the written-out form would not fit on the line (`overlay.unsold_age`). Whole days

@@ -524,6 +524,12 @@ const settle = async maxMs => {
         bioLeft: [bioLeftText({partial: {}, untouched: [{genus: "Bacterium", value: 12000000}, {genus: "Fungoida", value: 1000}]}),
                   bioLeftText({partial: {}, untouched: [{genus: "Fungoida", value: 1000}]})],
         hazard: [hazardSaid("N"), hazardSaid("K")],
+        // an Arx-bought ship (ModulesValue, no HullValue): no rebuy multiple anywhere; a hull with a value keeps it
+        arx: (() => { const keep = data.ship, out = [];
+          data.ship = {rebuy: 1087554, modules_value: 21751050, hull_value: null};
+          out.push(riskRebuy(), highGStakes({landable: true, gravity: 2.6}).rebuys);
+          data.ship = {rebuy: 1087554, modules_value: 21751050, hull_value: 50000000}; out.push(riskRebuy());
+          data.ship = keep; return out; })(),
       };
       const s0 = lastMomentSeq, mk = (i, m) => Object.assign({seq: s0 + i, ts: "2026-01-01T00:00:00Z"}, m);
       data.moments = [mk(1, {kind: "honk", ok: true, brief: true, system: "X", bodies: 14, all_found: false}),
@@ -561,6 +567,7 @@ const settle = async maxMs => {
       left: ["Stratum 2 of 3", "Stratum 2 of 3, and Tussock untouched, up to 14.0M", ""],   // Fungoida: under the bio threshold
       bioLeft: ["Bacterium, plus 1 small one", "only 1 small one"],   // F32: never "the last one" with a genus left
       hazard: ["Neutron star ahead: throttle down on arrival, mind the jet cone.", ""],
+      arx: [null, "", 1087554],
       styled: "Hi,en_US-ryan-high,1.2,,1",
     };
     const wantSaid = ["Undiscovered. 14 bodies. Scoopable K star.", "All 3 found. Nothing worth staying for.",

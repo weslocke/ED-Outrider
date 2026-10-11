@@ -860,7 +860,7 @@ function nowRiskLine() {
   if (lvl !== "warn" && lvl !== "urgent") return null;
   const sh = sellableHere(data.docked, u);
   if (sh && sh.value > 0) return {cls: sh.level === "ok" ? "" : sh.level, html: `💰 sell here: <b>${credits(sh.value)}</b>`};
-  const rebuy = data.ship && data.ship.rebuy, ss = data.since_sale, days = ss && ss.days >= 1 ? Math.round(ss.days) : 0;
+  const rebuy = riskRebuy(), ss = data.since_sale, days = ss && ss.days >= 1 ? Math.round(ss.days) : 0;
   const kinds = [(u.carto || {}).estimated_payout && `🗺 ${credits(u.carto.estimated_payout)}`, (u.bio || {}).estimated_value && `🧬 ${credits(u.bio.estimated_value)}`].filter(Boolean);
   return {cls: lvl, html: [`<b>${kinds.length ? kinds.join(" · ") : credits(u.total)}</b> aboard`, rebuy ? `${(u.total / rebuy).toFixed(1)}× rebuy` : "",
                            days ? `${days} d unsold` : ""].filter(Boolean).join(" · ")};
@@ -2199,7 +2199,7 @@ function bodyBriefText(m) {
 // level or the rebuy multiple; null when it is not worth a word
 const highGravity = () => { const v = Number(store.get("highG", null) ?? (data && data.defaults && data.defaults.high_gravity) ?? 2); return isFinite(v) && v > 0 ? v : 2; };
 function highGStakes(m) {
-  const u = data && data.unsold, rebuy = data && data.ship && data.ship.rebuy;
+  const u = data && data.unsold, rebuy = riskRebuy();
   if (!m.landable || m.gravity == null || m.gravity < highGravity() || !u || u.error || u.total == null) return null;
   const lvl = unsoldLevel(u); if (lvl !== "warn" && lvl !== "urgent") return null;
   return {gravity: String(Math.round(m.gravity * 10) / 10), value: credits(u.total), rebuys: rebuy ? (u.total / rebuy).toFixed(1) : ""};
@@ -2298,7 +2298,7 @@ function statusReportText() {
   if (target && target.v === "none") parts.push(`${dest.name}: nothing to do`);
   if (plan.length) { const it = plan[0];
     parts.push(`Next: ${it.kind === "map" ? `map ${it.body}` : `biology on ${it.body}`}${nextValue(it, true) ? `, ${nextValue(it, true)}` : ""}${it.sec != null ? `, ${spokenTime(it.sec)}` : ""}`); }
-  const u = data && data.unsold, rebuy = data && data.ship && data.ship.rebuy;
+  const u = data && data.unsold, rebuy = riskRebuy();
   if (u && !u.error && u.total > 0) parts.push(`${credits(u.total)} aboard${rebuy ? `, ${(u.total / rebuy).toFixed(1)} rebuys` : ""}`);
   const hz = data && !hw ? horizon() : null;   // mid-route the next stop is the Highway's
   if (hz && hz.system) parts.push(`Nearest unvisited: ${hz.system.name}, ${Math.round(hz.system.distance * 10) / 10} light-years`);
@@ -2422,10 +2422,15 @@ function sellableHere(dk, u) {
 }
 const leftToSell = u => [(u.carto || {}).estimated_payout && `${credits(u.carto.estimated_payout)} cr cartographics (Universal Cartographics)`,
                          (u.bio || {}).estimated_value && `${credits(u.bio.estimated_value)} cr exobiology (Vista Genomics)`].filter(Boolean).join(", ");
+// The rebuy that the risk figures ("N× rebuy", the rebuy-multiple levels, the approach's "rebuys") compare with: null
+// for a ship whose hull has no credit value. An Arx-bought ship's Loadout has ModulesValue but no HullValue, and its
+// rebuy covers the modules only, so the data aboard reads as a hundred rebuys on any trip (the author, 2026-10-10).
+const riskRebuy = () => { const s = data && data.ship;
+  return s && s.rebuy > 0 && !(s.modules_value > 0 && !(s.hull_value > 0)) ? s.rebuy : null; };
 function unsoldLevel(u) {
   if (!u || u.error || u.total == null) return null;
   const [w, g] = unsoldThresholds(u);
-  const rebuy = data && data.ship && data.ship.rebuy, rw = unsoldCfg.rebuyWarn, ru = unsoldCfg.rebuyUrgent;
+  const rebuy = riskRebuy(), rw = unsoldCfg.rebuyWarn, ru = unsoldCfg.rebuyUrgent;
   const x = rebuy ? u.total / rebuy : 0;
   return u.total >= g || (ru && x >= ru) ? "urgent" : u.total >= w || (rw && x >= rw) ? "warn" : "ok";
 }
@@ -2435,7 +2440,7 @@ function renderUnsold() {
   if (!u) { el.innerHTML = `<div class="val"><span class="unk">estimating…</span></div>`; fl.innerHTML = ""; return; }
   if (u.error) { el.innerHTML = `<div class="val"><span class="unk">unavailable</span></div>`; fl.innerHTML = esc(u.error).slice(0, 80); return; }
   const f = u.firsts;
-  const rebuy = data.ship && data.ship.rebuy, ss = data.since_sale;
+  const rebuy = riskRebuy(), ss = data.since_sale;
   el.innerHTML = `<div class="val">${credits(u.total)} cr${rebuy ? ` <span class="unk" title="what the data on board is worth, in rebuys of your ship (${credits(rebuy)} cr)">= ${(u.total / rebuy).toFixed(u.total / rebuy < 10 ? 1 : 0)}× rebuy</span>` : ""}</div>` +
     `<div class="ln">🗺 <b>${credits(u.carto.estimated_payout ?? u.carto.estimated_value)}</b> · 🧬 <b>${credits(u.bio.estimated_value)}</b></div>` +
     (ss ? `<div class="ln" title="since your last sale to Universal Cartographics (${esc(ss.ts.slice(0, 10))})"><b>${ss.days}</b> d · <b>${Math.round(ss.ly).toLocaleString()}</b> ly since you last sold</div>` : "") +
