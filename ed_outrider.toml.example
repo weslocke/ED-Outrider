@@ -1,9 +1,9 @@
 # ED Outrider configuration — copy to ed_outrider.toml next to ed_outrider.py and edit.
 #
 # You do not have to edit this file by hand: every setting in it can be changed in Outrider's web page, under
-# ⚙ Settings (Server settings for most of them, Uploads for [eddn] and [edsm]). The page writes your changes into
-# ed_outrider.toml itself, keeping its comments and the previous copy as a .bak; most take effect the next time
-# Outrider starts.
+# ⚙ Settings (Server settings for most of them, Uploads for [eddn] and [edsm], In-game overlay for [overlay]). The
+# page writes your changes into ed_outrider.toml itself, keeping its comments and the previous copy as a .bak; most
+# take effect the next time Outrider starts (the overlay's switches at once).
 #
 # Every key is optional. Precedence, highest first:
 #   command-line flags (--journals, --host, --port, --radius, --db)

@@ -2,6 +2,9 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · The example config names Settings -> In-game overlay for [overlay] (branch EDMC-Functionality)
+- Its heading's list of where each setting is changed in the page gains the overlay's (whose switches apply at once).
+
 ## 2026-10-11 · The example config says the page can change every setting
 - ed_outrider.toml.example's heading says every setting can be changed in the web page's Settings (Server settings,
   Uploads), which writes ed_outrider.toml itself (comments kept, a .bak of the old copy).
