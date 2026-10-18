@@ -58,6 +58,13 @@ KEYS = {
     "phenomena": "the FSS found notable stellar phenomena in a system where you have none on record (said with delight, in "
                  "every style: the co-pilot loves new things): {what} (already phrased, e.g. 'three notable stellar "
                  "phenomena, all in rings')",
+    "ring_found": "a body just scanned has a ring of a type you watch for (Settings → Mining: the miner's call-out, said "
+                  "by the Mining Officer): {body} (short name like 'A 3'), {ring} (the ring, already phrased with its "
+                  "article and its reserves when pristine or depleted, e.g. 'a metallic ring', 'a pristine icy ring', "
+                  "'metallic and icy rings')",
+    "ring_found_many": "several bodies scanned together (a nav beacon, the arrival's own scan) have rings of types you watch "
+                       "for: {count} (how many bodies, a number), {bodies} (their short names, already phrased, e.g. "
+                       "'A 3, A 5 and B 1'), {types} (the ring types among them, already phrased, e.g. 'metallic and icy')",
     "rare_star": "a rare star resolved, by the arrival's own scan or the FSS (said with delight, in every style): {what} "
                  "(already phrased, e.g. 'a black hole at B', 'a Wolf-Rayet star, the main star')",
     "surface_site": "surface sites found on a body: Guardian or Thargoid sites (the DSS's map says them) or an unknown "
@@ -609,6 +616,8 @@ SAMPLES = {
     "docking_denied": {"reason": "no pad free for your ship: try again shortly", "station": "Jameson Memorial"},
     "phenomena": {"what": "three notable stellar phenomena, all in rings"},
     "rare_star": {"what": "a black hole at B"},
+    "ring_found": {"body": "A 3", "ring": "a pristine metallic ring"},
+    "ring_found_many": {"count": 3, "bodies": "A 3, A 5 and B 1", "types": "metallic and icy"},
     "surface_site": {"what": "Guardian sites on B 3"},
     "signal_poi": {"what": "a Guardian beacon"},
     "curious": {},
@@ -666,7 +675,7 @@ CREW_ROLES = (
     ("quartermaster", "Quartermaster", "Quartermaster", ("sell", "saleleft", "unsold", "carrier", "carriertrip", "loss")),
     ("comms", "Comms Officer", "Comms", ("uploads", "firstsseen", "game", "docking", "chat")),
     ("tactical", "Tactical", "Tactical", ()),
-    ("mining", "Mining Officer", "Mining Officer", ("rigs", "rigleash", "rigsout")),
+    ("mining", "Mining Officer", "Mining Officer", ("rigs", "rigleash", "rigsout", "ring")),
 )
 CREW_IDS = tuple(r[0] for r in CREW_ROLES)
 CREW_SHORT = {r[0]: r[2] for r in CREW_ROLES}
@@ -687,7 +696,7 @@ ROW_KEYS = {
     "unsold": ("unsold_warn", "unsold_urgent"), "firstsseen": ("firsts_seen",), "hull": ("hull", "heat", "interdicted"),
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
-    "loss": ("ship_lost",), "rigleash": ("rig_leash",),
+    "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"),
 }
 DANGER = ("hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop",
           "carrier_departs", "ship_lost", "rig_leash")
@@ -746,6 +755,9 @@ def crew_says(role, names=None, start=False):
 # the voice lab's Audition (page.js AUDITION_KEYS): one personality across the alerts that matter, in a session's order
 AUDITION = ("game_start", "arrival_brief", "find_body", "leaving", "fuel_low", "sold", "bio_done_last", "session_recap")
 DEFAULT_NAMES = "Boss, Hefay, Sir"
+# values already phrased in lower case ("a metallic ring", "metallic and icy"): a capital when one starts a sentence
+# (page.js START_CAPS), so the caption reads "Metallic rings at A 3"
+START_CAPS = ("ring", "types")
 
 
 def names_list(text):
@@ -768,8 +780,8 @@ def fill(text, values, names=DEFAULT_NAMES, rng=None, crew=None):
         elif k in CREW_WORDS:
             out.append(crew_says(k, crew, sentence_start("".join(out))))
         else:
-            v = values.get(k)
-            out.append("" if v is None else str(v))
+            v = "" if values.get(k) is None else str(values.get(k))
+            out.append(v[:1].upper() + v[1:] if k in START_CAPS and sentence_start("".join(out)) else v)
     return "".join(out) + text[last:]
 
 

@@ -9,7 +9,7 @@
 <br>
 
 **⚙ Settings** (top right) holds everything, in folding sections: Alerts, Voice, What is said, Sounds, Values, Risk
-& warnings, Surface map, Auto honk, Uploads, In-game overlay, Display, Sharing, **Server**, Spoken lines and Questions asked.
+& warnings, Surface map, Mining, Auto honk, Uploads, In-game overlay, Display, Sharing, **Server**, Spoken lines and Questions asked.
 **Find a setting…** at the top leaves only what matches the words typed (a setting's name, its help or its config key,
 `speech_speed` finds the Speed slider too), in every section at once, Server's keys included; clear it and every
 section is back as it was. A section's name shows all of it, and so does a block's heading inside one: "crew" shows the

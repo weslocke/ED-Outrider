@@ -496,7 +496,7 @@ BROWSER_SETTINGS = ("alerts", "alertSound", "alertSpeak", "speech", "speechStyle
                     "sayMapped", "honkAnnounce", "sound", "unsoldCfg", "highlightCfg", "bioMinCfg", "maxBonus", "codexNewCounts",
                     "highG", "streakCfg", "skipFloor", "sort", "sorts", "showVisited", "showExplored", "oneJump", "map",
                     "log", "lbRadius", "fShowLost", "fWithin", "mHeld", "bioSort", "bState", "bDays", "hDays", "routineQuiet", "fuelJumps",
-                    "surfaceCfg", "moduleWarn", "tilesCollapsed", "highway")
+                    "surfaceCfg", "moduleWarn", "tilesCollapsed", "highway", "miningRings")
 BROWSER_DEFAULTS_MAX = 64 * 1024   # bytes
 BROWSER_DEFAULTS_FILE = "browser_defaults.json"   # next to the database
 # Spoken alerts' wording: the lines file, and the personalities a browser starts with (see outrider/speech.py).
@@ -2121,6 +2121,9 @@ JOURNAL_PLANETS = {
     "Helium rich gas giant": "Helium-rich gas giant",
 }
 
+# a ringed body's reserves (Scan's ReserveLevel): said with its rings for mining (Settings → Mining)
+RESERVE_LEVELS = {"PristineResources": "Pristine", "MajorResources": "Major", "CommonResources": "Common",
+                  "LowResources": "Low", "DepletedResources": "Depleted"}
 RING_CLASSES = {"eRingClass_Icy": "Icy", "eRingClass_Rocky": "Rocky",
                 "eRingClass_MetalRich": "Metal Rich", "eRingClass_Metalic": "Metallic"}
 
@@ -2637,6 +2640,7 @@ class Journals:
         # in memory only (a restart forgets them, which errs on the quiet side):
         self.body_touched = set()  # (system, body_id) touched down, disembarked or sampled on since arriving there
         self.approached = set()    # (system, body_id) briefed on approach this game session (once each)
+        self.rings_said = set()    # (system, body_id) whose rings were announced this visit (Settings → Mining)
         self.brief_key = None      # (id64, arrival ts) of the latest arrival briefing: one per arrival
         self.last_start_jump = None  # ts of the latest hyperspace StartJump (a scoop cut short by a jump is not news)
         self.last_shutdown = None  # ts of the latest Shutdown read (the quit backup)
@@ -3140,18 +3144,19 @@ class Journals:
         rollback and reload(), or the retry would announce its moments twice."""
         return (self.moment_seq, list(self.moments), self.last_heat,
                 set(self.body_touched), set(self.approached), self.brief_key,
-                set(self.regions_said), self.region_entered, self.jumponium, dict(self.sale_run or {}) or None,
+                set(self.regions_said), set(self.rings_said), self.region_entered, self.jumponium, dict(self.sale_run or {}) or None,
                 json.loads(json.dumps(self.burst)), self.uploads.snapshot() if self.uploads else None,
                 json.loads(json.dumps(self.nsp_burst)), json.loads(json.dumps(self.docking_hold)), self.chat_seq, list(self.chat))
 
     def restore(self, cp):
         (self.moment_seq, moments, self.last_heat, touched, approached, self.brief_key,
-         regions, self.region_entered, self.jumponium, self.sale_run, self.burst, uploads, self.nsp_burst, self.docking_hold,
+         regions, rings, self.region_entered, self.jumponium, self.sale_run, self.burst, uploads, self.nsp_burst, self.docking_hold,
          self.chat_seq, chat) = cp
         self.chat = collections.deque(chat, maxlen=CHAT_KEEP)
         if self.uploads and uploads:
             self.uploads.restore(uploads)
         self.body_touched, self.approached, self.regions_said = set(touched), set(approached), set(regions)
+        self.rings_said = set(rings)
         self.moments = collections.deque(moments, maxlen=self.moments.maxlen)
 
     def reload(self):
@@ -3701,6 +3706,7 @@ class Journals:
         # the Highway: a jump, or a Location that moves you (a respawn after a death, a login somewhere else: review
         # F10), not a relog where you already were
         if name in ("FSDJump", "CarrierJump", "Location") and current and not relog:
+            self.rings_said.clear()   # a new visit: each ringed body is news again
             self.highway_arrival(id64, ev.get("StarSystem"), ts)
             self.riches_arrival(id64, ev.get("StarSystem"), ts)
 
@@ -4850,6 +4856,14 @@ class Journals:
                         body = short_name(ev.get("StarSystem") or (self.pos or {}).get("name"), ev.get("BodyName") or "")
                         what = f"{words}, the main star" if record.get("main") or not body else f"{words} at {body}"
                         self.moment("rare_star", ts, system=str(system), what=what, star=record.get("subtype"))
+                if record.get("rings") and live_event(ts) and (system, ev["BodyID"]) not in self.rings_said:
+                    # a ringed body resolved (the FSS, the arrival's own scan, a nav beacon): the page says it when one
+                    # of its rings is a type ticked in Settings → Mining; once per body and visit (the Detailed rescan
+                    # after mapping it must not say it again)
+                    self.rings_said.add((system, ev["BodyID"]))
+                    body = short_name(ev.get("StarSystem") or (self.pos or {}).get("name"), ev.get("BodyName") or "") or ev.get("BodyName")
+                    self.moment("ring", ts, system=str(system), body=body, types=sorted({r["type"] for r in record["rings"] if r["type"]}),
+                                reserve=RESERVE_LEVELS.get(ev.get("ReserveLevel")))
                 if record["type"] == "Planet" and not known:
                     self.moment("scan", ts, system=system, body_id=ev["BodyID"])
                     p = outrider.ggg.predict(ev) if live_event(ts) else None

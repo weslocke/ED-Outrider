@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-18 · Rings to mine: a new Mining section in Settings
+- **Settings → Mining** (new, the author): tick the ring types you watch for (Icy, Rocky, Metallic, Metal Rich) and
+  **pristine only**. A body you scan with one of them is said by the Mining Officer: "A 3 has a pristine metallic ring".
+  - Said as the FSS resolves it, or with the arrival's own scan or a nav beacon.
+  - Once per body each time you come to the system: the rescan after mapping it says nothing.
+  - Bodies scanned together come in one line ("3 bodies with rings you're watching for: A 3, A 5 and B 1").
+  - Off until a type is ticked. Its row in Alerts (Rings to mine) chooses the sound, notification and voice.
+- **The lines:** `ring_found` and `ring_found_many` in every personality, 1,384 in all (52 a list for the built-in
+  personalities' main line, 32 for the others), checked for both "a metallic ring" and "metallic and icy rings".
+- **A capital where a ring starts a sentence:** "{ring} at A 3" shows as "A metallic ring at A 3" (page.js and
+  outrider.speech: START_CAPS).
+
 ## 2026-10-18 · A species scanned twice is one bio line
 - The game logs a CodexEntry for each composition scan of a species, not only the first one. Two scans of Tussock
   Cultro on one body (the author) showed it twice in the body's bio list: once with its value, once as a bare 📖

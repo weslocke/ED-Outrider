@@ -9,7 +9,7 @@ const SETTINGS_KEYS = ["alerts", "alertSound", "alertSpeak", "speech", "speechSt
   "sayMapped", "honkAnnounce", "sound", "unsoldCfg", "highlightCfg", "bioMinCfg", "maxBonus", "codexNewCounts",
   "highG", "streakCfg", "skipFloor", "sort", "sorts", "showVisited", "showExplored", "oneJump", "map",
   "log", "lbRadius", "fShowLost", "fWithin", "mHeld", "bioSort", "bState", "bDays", "hDays", "routineQuiet", "fuelJumps",
-  "surfaceCfg", "moduleWarn", "tilesCollapsed", "highway"];
+  "surfaceCfg", "moduleWarn", "tilesCollapsed", "highway", "miningRings"];
 const serverSettings = () => { const s = typeof window !== "undefined" && window.SERVER_DEFAULTS;
   return s && s.settings && typeof s.settings === "object" ? s.settings : {}; };
 // The shape a shared setting must have to be used: a hand-edited import or server copy with, say, a string for
@@ -17,7 +17,7 @@ const serverSettings = () => { const s = typeof window !== "undefined" && window
 const isObj = v => v !== null && typeof v === "object" && !Array.isArray(v);
 const SETTING_SHAPES = {alerts: isObj, alertSound: isObj, alertSpeak: isObj, speechStyles: Array.isArray, unsoldCfg: isObj,
   highlightCfg: isObj, streakCfg: isObj, sorts: isObj, map: isObj, log: isObj, bioSort: isObj, surfaceCfg: isObj, highway: isObj,
-  chatChannels: Array.isArray, chatMuted: Array.isArray};
+  chatChannels: Array.isArray, chatMuted: Array.isArray, miningRings: isObj};
 // null is a fine value for a plain setting (a reset stores it: "follow the default"), but a key with a shape is
 // read as an object or list at start-up, so a null there reads as unset too (else `lSaved.days` stops the script)
 const settingOk = (k, v) => !SETTING_SHAPES[k] || SETTING_SHAPES[k](v);
@@ -2278,6 +2278,7 @@ const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has rep
   ["loss", "your ship was destroyed with data aboard (or samples died with you): what was lost, and the nearest system to rescan", "danger"],
   ["rigs", "Rhino mining rigs: the co-pilot button's confirmation (rig placed, picked up, six out) and what a rig collected", null],
   ["rigleash", "a Rhino mining rig too far from you (over the rig warning distance, again at 4.5 km; the game destroys it at 5 km)", "danger"],
+  ["ring", "a body just scanned has a ring of a type ticked in Settings → Mining (pristine ones only, if ticked there): once per body and visit, bodies scanned together in one line; nothing until a type is ticked", "find"],
   ["rigsout", "docking the Rhino with rigs still marked out on the body, and which are probably full (Outrider's own record: a rig picked up without a tap still counts until you mark it on the surface map)", null],
   ["uploads", "an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again after it: a card at the top of the page too, never spoken", null]];
 // never spoken, and why: a target's verdict (the arrival is what gets spoken); an upload outage (the card and the
@@ -2288,7 +2289,7 @@ const UNSPOKEN = new Set(Object.keys(UNSPOKEN_WHY));
 const alertCfgBase = () => Object.assign({enabled: false}, Object.fromEntries(ALERTS.map(([k]) => [k, true])),
   // a notification on every jump (or scoop, or FSS) would be noise: these are spoken by default, not notified
   {jump: false, honk: false, brief: false, fss: false, mapped: false, scoop: false, scoopstop: false, supercharge: false, highway: false, autotarget: false, wrongtarget: false,
-   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false});
+   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false});
 const alertCfg = Object.assign(alertCfgBase(), store.get("alerts", {}));
 // off until you tick them (the whole row): the jumponium call-out
 const OFF_KINDS = {jumponium: false};
@@ -2515,12 +2516,12 @@ const JUMP_LINE_WAIT = 8000;   // ms: the jump line's latest start after the cha
 // ms after Status.json says "in the tunnel" (it says so about 2 s before the countdown ends): the line then starts
 // with the tunnel itself (the author's timing, in game 2026-10-03)
 const JUMP_TUNNEL_DELAY = 2500;
-const SPEECH_SYS_BOUND = new Set(["chatter", "find", "signals", "jump", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "jumponium", "phenomena", "ggg", "rare_star", "surface_site", "signal_poi", "curious", "highway", "refuelshort", "lastscoop", "riches", "exo", "trade", "autotarget", "wrongtarget", "docking"]);
+const SPEECH_SYS_BOUND = new Set(["chatter", "find", "signals", "jump", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "jumponium", "phenomena", "ggg", "rare_star", "surface_site", "signal_poi", "curious", "highway", "refuelshort", "lastscoop", "riches", "exo", "trade", "autotarget", "wrongtarget", "docking", "ring"]);
 // a rig confirmation answers your own press, like a line asked for; so does the docking pad (#3: your request's answer,
 // wanted at once)
 const speechPrio = (kind, tag) => DANGER.has(tag) || kind === "hull" || kind === "fuel" ? 0 : kind === "manual" || kind === "rigs" || kind === "docking" ? 1
   : kind === "chatter" || kind === "chat" ? 4   // space chatter (#15) and other players' chat (#17): after everything else
-  : ["find", "signals", "codex", "phenomena", "ggg", "rare_star", "surface_site", "signal_poi", "bodybrief", "supercharge", "jumponium"].includes(kind) ? 3 : 2;
+  : ["find", "signals", "codex", "phenomena", "ggg", "rare_star", "surface_site", "signal_poi", "bodybrief", "supercharge", "jumponium", "ring"].includes(kind) ? 3 : 2;
 // the queue without what went stale by `now` with the ship at `pos`
 const speechExpire = (items, now, pos) => items.filter(it => now - it.notBefore <= SPEECH_MAX_AGE
   && (it.sys == null || it.sys === pos) && (!it.still || it.still()));
@@ -2809,6 +2810,9 @@ function lineVars(vars) {
 // A crew placeholder that opens a sentence (the line's start, or after ". ", "! ", "? ", "... ", as filled so far: a
 // {text} ending in a full stop counts) starts with a capital: "The Engineer" (outrider.speech.fill, the same rule)
 const CREW_START = /(?:^\s*|[.!?…] )$/;
+// values already phrased in lower case ("a metallic ring", "metallic and icy"): a capital at a sentence's start too
+// (outrider.speech.START_CAPS), so the caption reads "Metallic rings at A 3"
+const START_CAPS = new Set(["ring", "types"]);
 function fillLine(text, all) {
   let out = "", last = 0;
   for (const m of text.matchAll(/\{(\w+)\}/g)) {
@@ -2816,7 +2820,7 @@ function fillLine(text, all) {
     const k = m[1];
     if (all[k] == null) continue;
     const v = String(typeof all[k] === "function" ? all[k]() : all[k]);
-    out += isCrewKey(k) && CREW_START.test(out) ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+    out += (isCrewKey(k) || START_CAPS.has(k)) && CREW_START.test(out) ? v.charAt(0).toUpperCase() + v.slice(1) : v;
   }
   return out + text.slice(last);
 }
@@ -2993,6 +2997,7 @@ const LINE_SAMPLES = {
   find_bio: {body: "B 7", value: "19.0M"}, sample_clear: {genus: "Stratum"},
   codex: {entry: "Stratum Tectonicas", what: "new to your codex for this region"},
   phenomena: {what: "three notable stellar phenomena, all in rings"}, ggg: {body: "B 3"}, rare_star: {what: "a black hole at B"},
+  ring_found: {body: "A 3", ring: "a pristine metallic ring"}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
   firsts_seen: {system: "Drojau LL-O b26-3", value: "14.2M"},
   surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
@@ -3063,6 +3068,36 @@ let leftCard = null;   // the sale-left card under the header: {text, until}, un
 // the rigs-out card under the header: {text, system, body_id, until}, until closed, ten minutes, or no rig is out there
 let rigsCard = null;
 const RIGS_OUT_HINT = "Picked one up without a tap? Mark it with the ✕ by its slot in the surface map's legend.";
+// Settings → Mining: the ring types to watch for (the miner's call-out; none ticked, nothing said) and pristine only
+const RING_KINDS = ["Icy", "Rocky", "Metallic", "Metal Rich"];
+const miningRings = () => { const v = store.get("miningRings", {}) || {};
+  return {types: Array.isArray(v.types) ? RING_KINDS.filter(t => v.types.includes(t)) : [], pristine: !!v.pristine}; };
+// a "ring" moment's rings worth saying: the ticked types among them, on a pristine body only when that is ticked
+function ringWatched(m) {
+  const c = miningRings();
+  return !c.types.length || (c.pristine && m.reserve !== "Pristine") ? [] : c.types.filter(t => (m.types || []).includes(t));
+}
+// "a metallic ring", "a pristine icy ring", "metallic and icy rings" (the reserves only when they matter for mining)
+function ringPhrase(types, reserve) {
+  const r = reserve === "Pristine" || reserve === "Depleted" ? reserve.toLowerCase() + " " : "";
+  const what = andList(types.map(t => t.toLowerCase()));
+  return types.length > 1 ? `${r}${what} rings` : `${/^[aeiou]/.test(r + what) ? "an" : "a"} ${r}${what} ring`;
+}
+// the ringed bodies of one payload (a nav beacon, the arrival's own scan: several at once) in one card and one line
+function ringOut(hits) {
+  const got = hits.map(m => ({m, types: ringWatched(m)})).filter(x => x.types.length);
+  if (!got.length) return;
+  const label = x => `${x.m.body}: ${x.types.join(" and ")}${x.m.reserve ? ` (${x.m.reserve})` : ""}`;
+  if (got.length === 1) {
+    const [{m, types}] = got, ring = ringPhrase(types, m.reserve);
+    alertOut("ring", `⛏ ${label(got[0])}`, "a ring type you watch for (Settings → Mining)",
+             {say: () => line("ring_found", {body: m.body, ring}, `${m.body} has ${ring}, on your mining watch list.`)});
+    return;
+  }
+  const bodies = andList(got.map(x => x.m.body)), types = andList([...new Set(got.flatMap(x => x.types))].map(t => t.toLowerCase()));
+  alertOut("ring", `⛏ Rings to mine: ${got.map(label).join(" · ")}`, "ring types you watch for (Settings → Mining)",
+           {say: () => line("ring_found_many", {count: got.length, bodies, types}, `${got.length} bodies with rings you're watching for: ${bodies}.`)});
+}
 const andList = xs => xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0] || "";
 const orList = xs => xs.length > 1 ? `${xs.slice(0, -1).join(", ")} or ${xs[xs.length - 1]}` : xs[0] || "";
 const nBodies = n => `${n} bod${n === 1 ? "y" : "ies"}`;
@@ -9027,6 +9062,7 @@ function onData() {
     lastLowFlag = low; lastUnderJumps = under;
   }
   // moments: valuable finds (priced by the server, judged against your highlight levels), heat, interdiction
+  const ringHits = [];   // ringed bodies (Settings → Mining): said together after the loop
   for (const m of (data.moments || []).filter(m => m.seq > lastMomentSeq)) {
     // first: a moment whose handler throws (a bad setting, an odd field) is not retried on every payload, and
     // the moments after it still get their turn
@@ -9284,6 +9320,7 @@ function onData() {
       }
       else if ((m.kind === "upload_down" || m.kind === "upload_back") && m.text)   // S3: the banner has the card; this notifies
         alertOut("uploads", m.text, m.kind === "upload_down" ? "Settings → Uploads has the detail" : "", {tag: m.kind});
+      else if (m.kind === "ring" && m.body) ringHits.push(m);
       else if (m.kind === "rig_leash" && m.text)   // a rig past the leash warning, or lost at 5 km: danger
         alertOut("rigleash", m.text.replace(/\.$/, ""), "", {tag: "rig_leash", say: m.text});
       else if (m.kind === "rigs_out" && m.text) {   // the Rhino docked with rigs still marked out: spoken, and a card
@@ -9298,6 +9335,7 @@ function onData() {
       }
     } catch (e) { console.error(e); pageError = `alert ${m.kind}: ${e && e.message || e}`; }
   }
+  try { if (ringHits.length) ringOut(ringHits); } catch (e) { console.error(e); pageError = `alert ring: ${e && e.message || e}`; }
   // a region crossing no briefing said within 30 s (none came, or it had nothing else to say): its own line, while
   // still in that system
   if (pendingRegion && Date.now() - pendingRegion.at > 30000) {
@@ -9431,7 +9469,7 @@ const ALERT_SHORT = {arrival: "Arrival", game: "Game start and quit", jump: "FSD
   leaving: "Leaving", fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped", supercharge: "Supercharge", find: "Find",
   jumponium: "Jumponium", sampling: "Sampling", approach: "High-g approach", bodybrief: "Body brief", docking: "Docking", sell: "Selling", saleleft: "Sale left data",
   unsold: "Unsold", firstsseen: "Firsts scanned by others", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
-  rigsout: "Rigs out", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", refuelshort: "Short of the refuel stop", lastscoop: "Last scoopable star", autotarget: "Auto-target", wrongtarget: "Wrong target", manual: "Asked for",
+  rigsout: "Rigs out", ring: "Rings to mine", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", refuelshort: "Short of the refuel stop", lastscoop: "Last scoopable star", autotarget: "Auto-target", wrongtarget: "Wrong target", manual: "Asked for",
   exo: "Exomastery route", riches: "Survey routes", trade: "Trade route", uploads: "Uploads failing"};
 const speechMuted = new Set();   // kinds turned off from the tally this session (each shows an undo)
 // "This session: Arrival brief 42 🔇 · FSD charge 40 (3 dropped) 🔇 · …": every kind that was said or queued (not the
@@ -9732,6 +9770,17 @@ volBox.onchange = () => { store.set("volume", Number(volBox.value)); drawVolume(
 drawVolume();
 for (const [id, key] of [["sayBio", "sayBio"], ["sayGeo", "sayGeo"], ["sayHazard", "sayHazard"], ["sayMapped", "sayMapped"], ["routineQuiet", "routineQuiet"]])
   document.getElementById(id).onchange = e => store.set(key, e.target.checked);
+// Settings → Mining: the ring types ticked and pristine only (miningRings)
+function drawMiningRings() {
+  const c = miningRings();
+  for (const b of document.querySelectorAll("#miningRings [data-ring]")) b.checked = c.types.includes(b.dataset.ring);
+  document.getElementById("ringPristine").checked = c.pristine;
+}
+document.getElementById("miningRings").onchange = () => {
+  store.set("miningRings", {types: [...document.querySelectorAll("#miningRings [data-ring]:checked")].map(b => b.dataset.ring),
+                            pristine: document.getElementById("ringPristine").checked});
+};
+drawMiningRings();
 namesBox.onchange = () => { store.set("speechNames", namesBox.value.trim() ? namesBox.value : null); drawSpeechStyles(); };
 drawSpeechStyles();
 document.getElementById("speechDangerBusiness").onchange = e => store.set("speechDangerBusiness", e.target.checked);
@@ -10326,7 +10375,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
   hull: "hull, heat, interdiction", carrier: "your carrier", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
-  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", uploads: "uploads"};
+  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", uploads: "uploads"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
 const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "region", "streak_new", "streak_known"],
   game: ["game_start", "welcome_back", "game_exit", "session_recap"], jump: ["fsd_charge"], brief: ["arrival_brief"],
@@ -10337,7 +10386,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], carrier: ["carrier_arrived", "carrier_departs"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
-  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"]};
+  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"]};
 const XO_SPEAKS = "voice answers, the status report, the co-pilot, the hush and speech on";
 const crewOn = () => !!(data && data.crew && data.crew.on);
 const crewDangerOn = () => !!(data && data.crew && data.crew.danger !== false);
@@ -13530,7 +13579,7 @@ const TAB_ALERT_NAMES = {discovery: "Targeting a system", arrival: "Arriving som
   jumponium: "Jumponium materials", sampling: "Exobiology unfinished", approach: "High gravity", bodybrief: "Bio signals on approach",
   sell: "Selling", saleleft: "Data left after a sale", unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction",
   carrier: "Carrier arrived", codex: "New codex entry", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
-  rigsout: "Rigs still out", uploads: "Uploads failing"};
+  rigsout: "Rigs still out", ring: "Rings to mine", uploads: "Uploads failing"};
 function tabDrawAlerts() {
   const tog = (attr, k, on, what) => `<label class="tb-tog"><input type="checkbox" data-${attr}="${esc(k)}"${on ? " checked" : ""}> ${what}</label>`;
   document.getElementById("tabAlertList").innerHTML = ALERTS.map(([k, label, snd]) =>

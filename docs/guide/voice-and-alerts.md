@@ -57,6 +57,10 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
   poach your discoveries!"); a first look through many systems adds "3 systems so far today"
 - your carrier arriving somewhere new or leaving without you
 - a Rhino mining rig nearing the 5 km leash (see The surface map)
+- **rings to mine**: a body you scan has a ring of a type you watch for, "A 3 has a pristine metallic ring" (Settings
+  → Mining: tick Icy, Rocky, Metallic or Metal Rich, and **pristine only** if you laser-mine). Said as the FSS resolves
+  the body, or with the arrival's own scan or a nav beacon; once per body each time you come to the system, bodies
+  scanned together in one line ("3 bodies with rings you're watching for: A 3, A 5 and B 1"). Off until you tick a type
 - an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again: a card at the top of
   the page and a notification, never spoken (see [Uploads](uploads.md#status))
 
@@ -84,6 +88,7 @@ browser starts with.
 | Fuel alerts under N jumps | off | Warns once when jumps left at your pace fall under N; also sets the top-up level. |
 | Core modules | 80% | A core module under this shows under hull and is said in the status report. |
 | Surface map | 1,000 m / 500 m / 50 m / 3,500 m | Altitude it shows below, narrowest view, rig spacing ring (0 = none), rig leash warning. |
+| Mining | none ticked | The ring types said when a scanned body has one (Icy, Rocky, Metallic, Metal Rich), and pristine only. |
 
 **Export settings** and **Import settings** move them to another browser profile (both are a browser's: the Android app opens no file picker and saves no file the page makes). **Use these for new
 browsers** keeps a copy on the server (`data/browser_defaults.json`, included in backups), so a tablet running
@@ -221,7 +226,7 @@ the sentence ends:
 | Quartermaster | sales, unsold data, your carrier and its trips, losses |
 | Comms Officer | the game's start and exit, someone scanning your firsts, docking pads and refusals, other players' chat (read aloud, below) |
 | Tactical | every danger line (while Danger lines always in Tactical's voice is on) |
-| Mining Officer | the Rhino's rigs |
+| Mining Officer | the Rhino's rigs, rings to mine |
 
 - **The table.** A row per crew member: an optional **Name** (shown in Settings and the voice lab, and said when another
   crew member mentions it: see Crew lines below), its

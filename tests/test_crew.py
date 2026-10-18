@@ -581,7 +581,7 @@ class CrewLines(unittest.TestCase):
         S = outrider.speech
         self.assertEqual(S.check(doc), [])
         short = {"mapped_before": 12, "bio_tag_near": 15, "autotarget_nothing": 15, "wrong_target": 15,
-                 "docking_granted": 15, "docking_denied": 15}
+                 "docking_granted": 15, "docking_denied": 15, "ring_found_many": 30}   # several ringed bodies at once: rarer
         crew_keys, said = {}, []
         for key, entry in doc["lines"].items():
             for lst, vs in entry.items():

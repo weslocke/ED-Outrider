@@ -167,6 +167,15 @@ upstream project's choices, not rules of the game.
   anomaly; "other" is shown, never said: nobody knows what it is), notable stellar phenomena (the first FSS listing
   in a system with none on record). Curiosities get one line per system, never the list ("check your panels"), once
   per system ever (meta `curious_said`, live-only, the last 2,000 in the order said).
+- **Rings to mine: the page chooses, the server only reports** (2026-10-18, Settings → Mining). Every live Scan of a
+  ringed body is a "ring" moment (its ring types and Scan's ReserveLevel), once per body and visit (`Journals.rings_said`,
+  in memory and in the checkpoint, cleared on arriving somewhere: the Detailed rescan after mapping says nothing, a return
+  visit's AutoScan says it again); which types matter is the browser's `miningRings`, so the server needs no setting. A
+  body re-entered without a new Scan (already resolved in an earlier visit, no AutoScan) is not said: there is no event
+  to say it on. Belts are left out (they hold no hotspots). The ringed bodies of one payload are one line (a nav beacon
+  resolves a system at once); FSS resolves come seconds apart and are said one by one. The reserves are said only when
+  pristine or depleted (they matter for laser mining; major, common and low are on the card). Hotspots (the DSS's map
+  of a ring) are the Mining section's next feature, not this one.
 - **Boxels: what can and cannot be known** (2026-10-11, `outrider/boxel.py`). A procedural name's boxel, its centre and
   any of its systems' id64 are computed from a known system's position (checked: 2,763 of 2,763 of the author's
   standard-sector systems), so auto-target checks a never-visited system by id64. A boxel's size (how many systems)

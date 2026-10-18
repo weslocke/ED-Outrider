@@ -4404,7 +4404,7 @@ const releasePayloads = async () => {
     const want = {colony: [500, null, " · 1,000 m"], sortTh: ["dist", "grav", "now", "max"], sortCycle: ["dist", "-dist rev", "max"],
       nearCycle: ["value", "-value", "distance"], treeSort: "max", halves: [true, true, true], halvesOff: false, matRow: true, link: ["linked", "linked"],
       nogame: ["linked · no game", "linked"], stale: ["unlinked · retrying", "stale"], none: ["unlinked · retrying", "none"], pill: true,
-      chips: ["Alerts", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Auto honk", "Uploads", "In-game overlay", "Display", "Sharing", "Voice", "Server", "Spoken lines", "Questions asked"],
+      chips: ["Alerts", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Mining", "Auto honk", "Uploads", "In-game overlay", "Display", "Sharing", "Voice", "Server", "Spoken lines", "Questions asked"],
       autoSmall: true, autoBig: false, line: true, cut: true};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodB12 = !bad.length && errors.length === before;
@@ -5157,7 +5157,7 @@ const releasePayloads = async () => {
     await sleep(100);
     got.push(w.eval(`JSON.stringify(Object.values(JSON.parse(localStorage.getItem("settingsOpen"))).some(Boolean))`));
     w.eval(`document.getElementById("alertDialog").close ? document.getElementById("alertDialog").close() : document.getElementById("alertDialog").removeAttribute("open")`);
-    const want = ["Settings", true, 15, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, autohonk: {enabled: true}}), "false"];
+    const want = ["Settings", true, 16, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, autohonk: {enabled: true}}), "false"];
     const goodS = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodS;
     console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "12 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
@@ -9308,6 +9308,61 @@ const releasePayloads = async () => {
     allOk = allOk && goodCR;
     console.log(goodCR ? "OK" : "FAIL", "| chat read aloud |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "no backlog, the channels and a mention, one sender in a row as one line, the gap, the summary, stale shown not said, the headers, links and emoji, mute and unmute, off, private to the PC", errors.slice(before));
+  }
+  // Rings to mine (Settings → Mining, the author 2026-10-18): nothing until a type is ticked; a ticked type said (the
+  // ring phrased with its reserves), others not; one payload's bodies in one line; pristine only; the row and its controls
+  {
+    holdPayloads();
+    const w = dom.window, d = w.document, before = errors.length, got = {};
+    w.eval(`window.__rg = {data, speak, flags: [speechOn, isSpeaker], hush: hushState, alert: lastAlert, aspeak: alertSpeak.ring,
+        store: localStorage.getItem("miningRings")};
+      window.__spoken = [];
+      speak = (t, o) => window.__spoken.push([t, o.kind]);
+      speechOn = true; isSpeaker = true; hushState = null; alertSpeak.ring = true; localStorage.removeItem("miningRings"); drawMiningRings();
+      window.__ring = (body, types, reserve = null) => ({kind: "ring", system: "9", body, types, reserve});
+      window.__feed = (...ms) => { linePlain = true; try { data = Object.assign({}, data, {moments: ms.map((m, i) => ({...m, seq: lastMomentSeq + 1 + i}))}); onData(); }
+                                   finally { linePlain = false; } return JSON.stringify(__spoken.splice(0)); };`);
+    const feed = js => JSON.parse(w.eval(`__feed(${js})`));
+    const tick = (...types) => { for (const b of d.querySelectorAll("#miningRings [data-ring]")) b.checked = types.includes(b.dataset.ring);
+                                 d.getElementById("miningRings").dispatchEvent(new w.Event("change", {bubbles: true})); };
+    try {
+      got.row = w.eval(`(() => { const r = ALERTS.find(a => a[0] === "ring"); return [!!r, r && r[2], alertCfg.ring, ROW_KEYS.ring.join()]; })()`);
+      got.none = feed(`__ring("A 3", ["Metallic"], "Pristine")`);                     // nothing ticked: nothing
+      tick("Metallic");
+      got.stored = w.eval(`localStorage.getItem("miningRings")`);
+      got.one = feed(`__ring("A 3", ["Icy", "Metallic"], "Pristine")`);
+      got.title = w.eval("lastAlert.title");
+      got.other = feed(`__ring("A 5", ["Metallic"], "Common"), __ring("A 6", ["Icy"])`);  // A 6's icy is not ticked
+      tick("Metallic", "Icy");
+      got.many = feed(`__ring("A 7", ["Metallic"], "Common"), __ring("A 8", ["Icy"])`);
+      got.manyTitle = w.eval("lastAlert.title");
+      d.getElementById("ringPristine").checked = true;
+      d.getElementById("miningRings").dispatchEvent(new w.Event("change", {bubbles: true}));
+      got.pristine = feed(`__ring("A 9", ["Metallic"], "Major"), __ring("B 1", ["Metal Rich", "Metallic"], "Pristine")`);
+      got.phrases = w.eval(`[ringPhrase(["Icy"], null), ringPhrase(["Rocky"], "Major"), ringPhrase(["Icy", "Metallic"], "Depleted"), ringPhrase(["Metal Rich"], "Pristine")].join("|")`);
+      got.caps = w.eval(`fillLine("{ring} at {body}. So: {types} rings. {types}!", {ring: "a metallic ring", body: "A 3", types: "icy"})`);
+      w.eval(`localStorage.setItem("miningRings", JSON.stringify({types: ["Rocky", "Bogus"], pristine: false})); drawMiningRings()`);
+      got.ui = [[...d.querySelectorAll("#miningRings [data-ring]")].filter(b => b.checked).map(b => b.dataset.ring), d.getElementById("ringPristine").checked,
+                w.eval("JSON.stringify(miningRings())")];
+    } finally {
+      w.eval(`const k = window.__rg; data = k.data; speak = k.speak; [speechOn, isSpeaker] = k.flags; hushState = k.hush; lastAlert = k.alert;
+        alertSpeak.ring = k.aspeak; if (k.store === null) localStorage.removeItem("miningRings"); else localStorage.setItem("miningRings", k.store);
+        drawMiningRings(); delete window.__rg; delete window.__spoken; delete window.__ring; delete window.__feed;`);
+      await releasePayloads();
+    }
+    const want = {row: [true, "find", false, "ring_found,ring_found_many"], none: [], stored: JSON.stringify({types: ["Metallic"], pristine: false}),
+      one: [["A 3 has a pristine metallic ring, on your mining watch list.", "ring"]], title: "⛏ A 3: Metallic (Pristine)",
+      other: [["A 5 has a metallic ring, on your mining watch list.", "ring"]],
+      many: [["2 bodies with rings you're watching for: A 7 and A 8.", "ring"]], manyTitle: "⛏ Rings to mine: A 7: Metallic (Common) · A 8: Icy",
+      pristine: [["B 1 has a pristine metallic ring, on your mining watch list.", "ring"]],   // its metal rich ring: not ticked
+      phrases: "an icy ring|a rocky ring|depleted icy and metallic rings|a pristine metal rich ring",
+      caps: "A metallic ring at A 3. So: icy rings. Icy!",
+      ui: [["Rocky"], false, JSON.stringify({types: ["Rocky"], pristine: false})]};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const goodRG = !bad.length && errors.length === before;
+    allOk = allOk && goodRG;
+    console.log(goodRG ? "OK" : "FAIL", "| rings to mine |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
+      : "nothing until ticked, a ticked type said with its reserves, unticked ones not, bodies together in one line, pristine only, the controls", errors.slice(before));
   }
   // Main personality (the author, 2026-10-16): beside Main voice, one personality or "A mix…" (the boxes and One
   // personality per system); a browser with one ticked gets the dropdown, with several the mix; the explanation says

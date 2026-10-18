@@ -715,6 +715,15 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
           warning for it uses the config file's <code>rig_warn</code>, since the server says it for every window. Blank = the config file's value.</span></label>
       <label data-find="defaults.surface_map_strip" class="mod"><input type="checkbox" id="surfStrip"> Also a small copy of the surface map in the on-body strip (under the header), with a one-line legend</label>
     </details>
+    <details class="setsec" data-sec-key="mining" data-chip="Mining"><summary>Mining <span class="sum-note">rings to watch for</span></summary>
+      <div class="mod inlineopts" id="miningRings">Say when a scanned body has a ring of these types:
+        <label><input type="checkbox" data-ring="Icy"> Icy</label>
+        <label><input type="checkbox" data-ring="Rocky"> Rocky</label>
+        <label><input type="checkbox" data-ring="Metallic"> Metallic</label>
+        <label><input type="checkbox" data-ring="Metal Rich"> Metal Rich</label>
+        <label title="only bodies whose reserves are pristine (the scan says so; the system map shows it too)"><input type="checkbox" id="ringPristine"> pristine only</label>
+        <span class="hint">"A 3 has a pristine metallic ring" as the FSS resolves it (or the arrival's scan, a nav beacon), once per body and visit, said by the Mining Officer; bodies scanned together in one line. Off until you tick a type; its row in Alerts chooses the sound, notification and voice.</span></div>
+    </details>
     <details class="setsec pcOnly" data-sec-key="honk" data-chip="Auto honk" id="honkSettings"><summary>Auto honk and the co-pilot button</summary>
       <div id="autoHonkReady" class="honkready" role="status"><span class="hint">checking whether auto honk can work here…</span></div>
       <label data-find="autohonk.enabled" class="mod"><input type="checkbox" id="autoHonk"> Honk automatically on arriving in a system by hyperspace
