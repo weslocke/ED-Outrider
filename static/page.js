@@ -3070,6 +3070,7 @@ let rigsCard = null;
 const RIGS_OUT_HINT = "Picked one up without a tap? Mark it with the ✕ by its slot in the surface map's legend.";
 // Settings → Mining: the ring types to watch for (the miner's call-out; none ticked, nothing said) and pristine only
 const RING_KINDS = ["Icy", "Rocky", "Metallic", "Metal Rich"];
+const RESERVE_WORDS = {PristineResources: "Pristine", MajorResources: "Major", CommonResources: "Common", LowResources: "Low", DepletedResources: "Depleted"};
 const miningRings = () => { const v = store.get("miningRings", {}) || {};
   return {types: Array.isArray(v.types) ? RING_KINDS.filter(t => v.types.includes(t)) : [], pristine: !!v.pristine}; };
 // What each ring type yields, [commodity, laser, core] (1 = yes): the hover table on each type in Settings → Mining.
@@ -4268,8 +4269,19 @@ function bodyValueTitle(b) {
   return (maxBonus() ? "" : `Max without bonuses: ${credits(b.value_max_base || 0)} (with them: ${credits(b.value_max || 0)})\n\n`) +
     `On board: ${part(v.carto_now, v.bio_now, scan)}\nStill available: ${part(v.carto_left, v.bio_left)}\n\nExobiology here counts ×${v.bio_factor}${v.bio_factor === 5 ? " (nobody had set foot here when you scanned)" : " (someone had already landed here, or you have not scanned it)"}.`;
 }
-// Here's Rings cell: "2 (1 mapped, 0 with hotspots)"
-const ringsText = b => `${b.rings}${b.rings_mapped ? ` (${b.rings_mapped} mapped${b.hotspots < b.rings_mapped ? `, ${b.hotspots} with hotspots` : ""})` : ""}`;
+// Here's Rings cell: the count, then "1🗺/5" once one is mapped (rings mapped, hotspots in them); its hover says it in
+// words with the body's reserves, and each ring with its hotspots
+const ringHotspots = b => (b.ring_details || []).reduce((n, r) => n + Object.values(r.hotspots || {}).reduce((a, v) => a + v, 0), 0);
+const ringsMapLine = b => b.rings_mapped ? `${b.rings_mapped}🗺/${ringHotspots(b)}` : "";
+const ringsText = b => {
+  const n = ringHotspots(b);
+  const head = `${b.rings} ring${b.rings === 1 ? "" : "s"}${b.rings_mapped ? `, ${b.rings_mapped} mapped (🗺), ${n} hotspot${n === 1 ? "" : "s"}` : ", none mapped"}` +
+    (b.reserve ? ` · ${b.reserve} reserves` : "");
+  return [head, ...(b.ring_details || []).map(r => {
+    const hs = Object.entries(r.hotspots || {}).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
+    return `${r.name} · ${r.type || "?"}: ${hs.length ? hs.map(([k, v]) => `${mineral(k)} ${v}`).join(", ") : r.mapped ? "mapped, no hotspots" : "not mapped"}`;
+  })].join("\n");
+};
 function renderHere() {
   const h = hereData, head = document.getElementById("hereHead"), lv = document.getElementById("hereLeaving");
   if (!h) {   // another system on its way: nothing of the last one stays on screen, or clickable (the sweep of 2026-10-09)
@@ -4385,7 +4397,7 @@ function renderHere() {
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
       <td class="hide-sm c2hide">${b.type === "Planet" ? (atm ? sfText("atmosphere", atm) : b.landable ? dual("none · landable", "landable") : "") : ""}${b.stale_bio ? ` <span class="unk old" title="${esc(staleBodyTitle(b))}">${dual("landable? (old data)", "landable?", {title: `landable? (old data): ${staleBodyTitle(b)}`})}</span>` : ""}${b.bio_unknown ? ` <span class="warnc" title="${BIO_UNKNOWN_TITLE}">${dual("bio possible: check the FSS", "🧬?")}</span>` : ""}</td>
       <td class="bio">${bio.join(" ")}${geoTag(b)}${volcanoIcon(b)}${codex}${siteTags(b.sites)}${b.mining || (b.mined || []).length ? `<span class="sf2"> ${mineTag(b)}</span>` : ""}</td>
-      <td class="c2hide rings"${b.rings ? ` title="${esc(ringsText(b))}"` : ""}>${b.rings ? `${b.rings}${b.rings_mapped ? `<div class="sub2 unk">${b.rings_mapped} mapped</div>${b.hotspots < b.rings_mapped ? `<div class="sub2 unk">${b.hotspots} hotspot${b.hotspots === 1 ? "" : "s"}</div>` : ""}` : ""}` : ""}</td>
+      <td class="c2hide rings"${b.rings ? ` title="${esc(ringsText(b))}"` : ""}>${b.rings ? `${b.rings}${b.rings_mapped ? `<div class="sub2 unk">${ringsMapLine(b)}</div>` : ""}` : ""}</td>
       <td class="num mine c2hide">${mineTag(b)}</td>
       <td class="c2hide">${firsts}</td>
       <td class="num c2hide" title="${bodyValueTitle(b)}">${b.value_now ? credits(b.value_now) : ""}</td>
@@ -4768,9 +4780,13 @@ function bodyPopHtml(b, region) {
   ].filter(Boolean);
   let h = `<h3>${esc(b.name)} <span class="src">${esc(b.subtype || "")}</span></h3><div>${phys.join(" · ")}</div>`;
   if ((b.ring_details || []).length)
-    h += `<div class="sec"><div class="lbl">Rings</div><ul>` + b.ring_details.map(r =>
-      `<li><span>${esc(r.name)} · ${esc(r.type || "?")}${r.density != null ? ` · ${r.density.toFixed(3)} Mt/km²` : ""}${r.width_km ? ` · ${fmtK(r.width_km)} km wide` : ""}</span>` +
-      (r.hotspots && Object.keys(r.hotspots).length ? `<b>${Object.entries(r.hotspots).map(([k, v]) => `${esc(k)} ${v}`).join(", ")}</b>` : r.mapped ? `<b class="unk">mapped, no hotspots</b>` : `<b class="unk">not mapped</b>`) + `</li>`).join("") + `</ul></div>`;
+    // each ring on its line, its hotspots under it (the most first); the body's reserves with the heading
+    h += `<div class="sec"><div class="lbl">Rings${b.reserve ? ` · ${esc(b.reserve)} reserves` : ""}</div><ul>` + b.ring_details.map(r => {
+      const hs = Object.entries(r.hotspots || {}).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
+      return `<li><span>${esc(r.name)} · ${esc(r.type || "?")}${r.width_km ? ` · ${fmtK(r.width_km)} km wide` : ""}${r.density != null ? ` · ${r.density.toFixed(3)} Mt/km²` : ""}` +
+        (hs.length ? hs.map(([k, v]) => `<span class="hs">${esc(mineral(k))} ×${v}</span>`).join("")
+          : `<span class="hs unk">${r.mapped ? "mapped, no hotspots" : "not mapped"}</span>`) + `</span></li>`;
+    }).join("") + `</ul></div>`;
   if (b.bio || (b.genera || []).length || (b.organics || []).length) {
     const lines = [];
     const f = bioFactor(b);
@@ -4894,7 +4910,9 @@ function renderBodyInto(panel, d, bodyName, closeJs) {
     if (solid) compSec += sec("composition", "Composition", `<dl><dt>Solid</dt><dd>${solid}</dd></dl>`);
     if (mats) compSec += sec("materials", "Materials", mats);
   }
-  if ((d.rings || []).length) ringSec = sec("rings", "Rings", `<table><thead><tr><th>Ring</th><th>Type</th><th class="num">Mass Mt</th><th class="num">Inner km</th><th class="num">Outer km</th><th class="num">Width km</th><th class="num">Density Mt/km²</th></tr></thead><tbody>` +
+  // the body's reserves (your scan's, else Spansh's) with the heading: miners hunt pristine rings
+  const reserve = row.reserve || (d.own && RESERVE_WORDS[d.own.ReserveLevel]) || (d.spansh && d.spansh.reserveLevel) || null;
+  if ((d.rings || []).length) ringSec = sec("rings", `Rings${reserve ? ` · ${esc(String(reserve).replace(/Resources$/, ""))} reserves` : ""}`, `<table><thead><tr><th>Ring</th><th>Type</th><th class="num">Mass Mt</th><th class="num">Inner km</th><th class="num">Outer km</th><th class="num">Width km</th><th class="num">Density Mt/km²</th></tr></thead><tbody>` +
     d.rings.map(r => {
       const hs = Object.entries(r.hotspots || {}).sort((a, b) => a[0].localeCompare(b[0]));
       return `<tr class="ring"><td>${esc(short(r.name))}</td><td>${esc(r.type || "")}</td><td class="num">${r.mass != null ? n(r.mass, 0) : ""}</td><td class="num">${r.inner_km != null ? n(r.inner_km, 0) : ""}</td><td class="num">${r.outer_km != null ? n(r.outer_km, 0) : ""}</td><td class="num">${r.width_km != null ? n(r.width_km, 0) : ""}</td><td class="num">${r.density != null ? n(r.density, 4) : ""}</td></tr>` +

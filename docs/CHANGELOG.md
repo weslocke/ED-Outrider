@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-18 · Here's rings: "1🗺/5" and each ring's hotspots under it, with the reserves
+- **The Rings cell** (the author): the count, then "1🗺/5" once a ring is mapped (rings mapped, hotspots in them) in
+  place of "1 mapped" and "N hotspots". Its hover lists each ring with its hotspots, and the body's reserves.
+- **The body card** (hover a body): each ring on its line (type, width, density), its hotspots under it, the most
+  first, "not mapped" or "mapped, no hotspots" otherwise; the reserves with the heading ("Rings · Pristine reserves").
+  The details panel's ring table gets the same heading.
+- **Reserves kept:** a body record's `reserve` from your Scan's ReserveLevel or Spansh's reserveLevel
+  (`spansh_reserve`). PARSER_VERSION 55 (one journal re-read at the next start) and CACHE_VERSION 18 (Spansh records
+  fetched again as you go). Hotspot size or position is in neither the journal nor Spansh: not shown.
+- A test helper put its events at live_event's very edge (300 s): a slow run read them as old. Now 120 s.
+
 ## 2026-10-18 · Settings → Mining: each ring type's table of what lasers and cores give
 - Hovering a ring type (or focusing it: a tap on a touch screen) shows a table of the commodities found in that ring
   type, ticked for laser (laser mining, abrasion blasting, sub-surface deposits) and core (the author): Painite and

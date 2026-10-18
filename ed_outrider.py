@@ -1435,7 +1435,8 @@ WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + 
 #     were dropped; the SRV's refinery and scoop stay out of the ship's hold; an older Location's relog is judged
 #     against the arrival before it (a legacy folder read late counted every login as a visit).
 # 43: a system's population (system_population) and own_firsts.bio_x5: no x5 bio bonus in populated systems.
-PARSER_VERSION = 54
+# 55: a body record's reserve (Scan's ReserveLevel: a ringed body's Pristine...), for Here's rings (mining).
+PARSER_VERSION = 55
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1461,6 +1462,7 @@ PARSER_VERSION = 54
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    55: "each ringed body keeps its reserves (pristine, major...), shown with its rings in Here",
     54: "ore you mined still counts as mined after a trip through your carrier (the Commander tab's Earnings)",
     53: "each exobiology sale keeps what every species in it paid (the Commander tab's Earnings)",
     52: "each sale keeps where it was made and with which ship, as do your jumps, scans and samples, and the ore you "
@@ -2124,6 +2126,17 @@ JOURNAL_PLANETS = {
 # a ringed body's reserves (Scan's ReserveLevel): said with its rings for mining (Settings → Mining)
 RESERVE_LEVELS = {"PristineResources": "Pristine", "MajorResources": "Major", "CommonResources": "Common",
                   "LowResources": "Low", "DepletedResources": "Depleted"}
+
+
+def spansh_reserve(v):
+    """Spansh's reserveLevel ("Pristine", or the journal's "PristineResources") as RESERVE_LEVELS words; None when
+    it is missing or unknown."""
+    if not isinstance(v, str):
+        return None
+    w = RESERVE_LEVELS.get(v) or v.removesuffix("Resources").strip().capitalize()
+    return w if w in RESERVE_LEVELS.values() else None
+
+
 RING_CLASSES = {"eRingClass_Icy": "Icy", "eRingClass_Rocky": "Rocky",
                 "eRingClass_MetalRich": "Metal Rich", "eRingClass_Metalic": "Metallic"}
 
@@ -2390,6 +2403,7 @@ def record_from_dump(system, b):
                    "mass": r.get("mass"), "inner": r.get("innerRadius"), "outer": r.get("outerRadius")}
                   for r in b.get("rings") or []],
         "pressure": round(b["surfacePressure"], 4) if b.get("surfacePressure") is not None else None,
+        "reserve": spansh_reserve(b.get("reserveLevel")),   # a ringed body's reserves, as your Scan's ReserveLevel
         "pressure_raw": b.get("surfacePressure"),   # the spawn rules' limits are finer than 0.0001 atm
         "belts": [r.get("type") for r in b.get("belts") or []],
         "bio": signals.get(BIO, 0), "geo": signals.get(GEO, 0), "mining": signals.get(MINING, 0), "full": True,
@@ -2446,6 +2460,7 @@ def record_from_scan(ev):
         # "" is the journal's "no volcanism"; None (no key) is "not known", which rules nothing out
         "atmosphere": ev.get("AtmosphereType") or None, "volcanism": ev["Volcanism"] if "Volcanism" in ev else None,
         "dist_ls": ev.get("DistanceFromArrivalLS"), "temperature": ev.get("SurfaceTemperature"),
+        "reserve": RESERVE_LEVELS.get(ev.get("ReserveLevel")),   # a ringed body's reserves (Pristine...), for miners
         "pressure": round(ev["SurfacePressure"] / 101325, 4) if ev.get("SurfacePressure") else (0 if "SurfacePressure" in ev else None),
         # the spawn rules' limits (0.00289 atm, 0.0161 ...) are finer than the 4 places kept above
         "pressure_raw": ev["SurfacePressure"] / 101325 if ev.get("SurfacePressure") else None,
@@ -6221,7 +6236,7 @@ def summarise(records, body_count, star=None, ctx=None, genera=None):
 FIND_NAME_MAX = 100   # /api/find: the longest system name taken (real ones are far shorter)
 
 # Bump when the cached record layout changes so cached systems get re-fetched.
-CACHE_VERSION = 17   # 14: pressure_raw; 15: updated, signals_known (stale_bio_body); 16: mining; 17: "Terraformable" priced
+CACHE_VERSION = 18   # 14: pressure_raw; 15: updated, signals_known (stale_bio_body); 16: mining; 17: "Terraformable" priced; 18: reserve
 
 
 def cached_base(db, id64):
@@ -10663,7 +10678,7 @@ class State:
                 "name": r["name"], "type": r["type"], "subtype": r["subtype"], "main": r.get("main"),
                 "dist_ls": r.get("dist_ls"), "gravity": r.get("gravity"), "atmosphere": r.get("atmosphere"),
                 "temperature": r.get("temperature"), "volcanism": r.get("volcanism"), "pressure": r.get("pressure"),
-                "ring_details": ring_stats(r.get("rings")),
+                "ring_details": ring_stats(r.get("rings")), "reserve": r.get("reserve"),
                 "landable": r.get("landable"), "terraformable": r.get("terraformable"),
                 # a pre-Odyssey Spansh record: "not landable" may be wrong and bio unreported (your scan replaces it)
                 "stale_bio": stale_bio_body(r, star, ctx), "updated": r.get("updated"),

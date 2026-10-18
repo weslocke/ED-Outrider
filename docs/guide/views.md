@@ -29,6 +29,8 @@ beacons and memorials (hover for which).
 DSS the genera each bio signal could be. Hover a body for a summary, click it for everything, with a picture of
 it drawn from its scan data (an impression: class colours, bands, clouds, atmosphere, rings, size). ⛏ gives a
 community survey's mineral odds for that ground (odds, not contents) and what your SRV mined there before.
+Rings shows the count and, once one is mapped, "1🗺/5": rings mapped and the hotspots in them; hover it (or the
+body) for each ring's hotspots under it, with its width, density and the body's reserves (pristine, major...).
 The to-do line ticks itself off as you honk, map and sample, in a suggested order with supercruise time and
 credits per minute ("~2 min · 450k/min"; "skip?" when not worth the trip). Bio nobody has set foot on is
 valued with the ×5 first-footfall bonus, except in a populated system: Vista Genomics never pays it there.

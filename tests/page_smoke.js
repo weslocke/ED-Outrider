@@ -1094,7 +1094,8 @@ const releasePayloads = async () => {
           organics: [{genus: "Bacterium", species: "Bacterium Alcyoneum", variant: "Bacterium Alcyoneum - Red", samples: 3, done: true, lost: false, value: 8300000},
                      {genus: "Stratum", species: "Stratum Tectonicas", variant: "Stratum Tectonicas - Grey", samples: 1, done: false, lost: false, value: 19010800}],
           codex: [{name: "Bacterium Alcyoneum - Red", new: true}, {name: "Stratum Tectonicas - Grey"}],
-          rings: 2, rings_mapped: 2, hotspots: 1});
+          rings: 2, rings_mapped: 2, hotspots: 1, ring_details: [{name: "A Ring", type: "Metallic", hotspots: {Platinum: 3}, mapped: true},
+                                                                 {name: "B Ring", type: "Icy", hotspots: {}, mapped: true}]});
         const hb1 = localStorage.getItem("hereBio");
         localStorage.setItem("hereBio", JSON.stringify({colours: true}));
         hereData = Object.assign({}, hd, {bodies: [doneBody()], tree: null}); renderHere();
@@ -1115,7 +1116,7 @@ const releasePayloads = async () => {
           && fin.textContent.endsWith(" ✦ 8.3M")
           && fin.title.startsWith("codex: Bacterium Alcyoneum - Red") && dc.textContent.includes("Stratum 1/3")
           && sp.some(e => lf(e) === "Stratum Tectonicas - Grey") && colOn && colOff
-          && !!rc && rc.textContent === "22 mapped1 hotspot" && rc.title === "2 (2 mapped, 1 with hotspots)"
+          && !!rc && rc.textContent === "22🗺/3" && rc.title === "2 rings, 2 mapped (🗺), 3 hotspots\\nA Ring · Metallic: Platinum 3\\nB Ring · Icy: mapped, no hotspots"
           ? true : [fin && fin.textContent, fin && fin.title, colOn, colOff, rc && rc.textContent, dc && dc.textContent];
         if (hg === null) localStorage.removeItem("highG"); else localStorage.setItem("highG", hg);
         hereData = hd; hereKey = hk; renderHere();
@@ -9349,6 +9350,16 @@ const releasePayloads = async () => {
                  w.eval(`Object.keys(RING_MINERALS).join()`), d.querySelectorAll("#miningRings [data-ringtip]").length];
       lab.dispatchEvent(new w.Event("pointerleave"));
       got.tipGone = tip.hidden;
+      // Here's Rings cell (the author, 2026-10-18): "1🗺/3" (rings mapped, hotspots in them), the hover in words, the
+      // body card each ring with its hotspots under it and the reserves with the heading
+      w.eval(`window.__rb = {name: "A 3", type: "Planet", subtype: "Class I gas giant", rings: 2, rings_mapped: 1, reserve: "Pristine",
+        ring_details: [{name: "A Ring", type: "Metallic", width_km: 12400, density: 0.118, hotspots: {Platinum: 2, Painite: 1}, mapped: true},
+                       {name: "B Ring", type: "Icy", width_km: 8100, density: 0.05, hotspots: {}, mapped: false}]}`);
+      got.ringCell = w.eval(`[ringsMapLine(__rb), ringsText(__rb), ringsMapLine({...__rb, rings_mapped: 0})]`);
+      const card = new w.DOMParser().parseFromString(w.eval(`bodyPopHtml(__rb, null)`), "text/html");
+      const ringSec = [...card.querySelectorAll(".sec")].find(x => /^Rings/.test(x.querySelector(".lbl").textContent));
+      got.ringCard = [ringSec.querySelector(".lbl").textContent, [...ringSec.querySelectorAll("li")].map(li => [...li.querySelectorAll(".hs")].map(x => x.textContent))];
+      w.eval("delete window.__rb");
       got.caps = w.eval(`fillLine("{ring} at {body}. So: {types} rings. {types}!", {ring: "a metallic ring", body: "A 3", types: "icy"})`);
       w.eval(`localStorage.setItem("miningRings", JSON.stringify({types: ["Rocky", "Bogus"], pristine: false})); drawMiningRings()`);
       got.ui = [[...d.querySelectorAll("#miningRings [data-ring]")].filter(b => b.checked).map(b => b.dataset.ring), d.getElementById("ringPristine").checked,
@@ -9368,6 +9379,8 @@ const releasePayloads = async () => {
       caps: "A metallic ring at A 3. So: icy rings. Icy!",
       tip: [false, "Metallic rings", ["Painite", "✔", "✔"], ["Gold", "✔", ""], ["Rhodplumsite", "", "✔"], false, "Icy,Rocky,Metallic,Metal Rich", 4],
       tipGone: true,
+      ringCell: ["1🗺/3", "2 rings, 1 mapped (🗺), 3 hotspots · Pristine reserves\nA Ring · Metallic: Platinum 2, Painite 1\nB Ring · Icy: not mapped", ""],
+      ringCard: ["Rings · Pristine reserves", [["Platinum ×2", "Painite ×1"], ["not mapped"]]],
       ui: [["Rocky"], false, JSON.stringify({types: ["Rocky"], pristine: false})]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodRG = !bad.length && errors.length === before;

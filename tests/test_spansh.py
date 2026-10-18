@@ -255,7 +255,7 @@ class BatchFSpansh(unittest.TestCase):
     # ---- P16 ----
 
     def test_record_keeps_update_time_and_signals_block(self):
-        self.assertEqual(ed_outrider.CACHE_VERSION, 17)   # 16: mining (Batch M4); 17: "Terraformable" priced
+        self.assertEqual(ed_outrider.CACHE_VERSION, 18)   # 16: mining (Batch M4); 17: "Terraformable" priced; 18: reserve
         r = self.rec()
         self.assertEqual((r["updated"], r["signals_known"]), ("2019-06-01 10:00:00+00", False))
         self.assertTrue(self.rec(signals={"signals": {}, "updateTime": "2019-06-01"})["signals_known"])

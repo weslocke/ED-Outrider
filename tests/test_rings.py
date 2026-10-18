@@ -15,7 +15,8 @@ class Rings(unittest.TestCase):
         self.now = time.time()
 
     def at(self, s):
-        return ed_outrider.iso_ts(self.now - 300 + s)
+        # well inside live_event's window (SHUTDOWN_LIVE_S, 300 s): at its very edge a slow run read the scans as old
+        return ed_outrider.iso_ts(self.now - 120 + s)
 
     def jump(self, s, name, id64):
         self.j.handle({"event": "FSDJump", "timestamp": self.at(s), "StarSystem": name, "SystemAddress": id64, "StarPos": [0, 0, id64]})
@@ -72,6 +73,24 @@ class Rings(unittest.TestCase):
         import outrider.speech as sp
         self.assertEqual(sp.fill("{ring} at {body}. So: {types} rings. {types}!", {"ring": "a metallic ring", "body": "A 3", "types": "icy"}),
                          "A metallic ring at A 3. So: icy rings. Icy!")
+
+    def test_reserve_level_kept_on_the_body(self):
+        """A ringed body's reserves (Pristine...) are kept on its record, from your Scan or Spansh's dump, and reach
+        Here's row (its Rings cell and hover)."""
+        self.jump(0, "Ring", 9)
+        self.scan(1, 3, "A 3", [("A", "eRingClass_Metalic")])
+        rec = __import__("json").loads(self.db.execute("SELECT record FROM own_bodies WHERE body_id=3").fetchone()[0])
+        self.assertEqual(rec["reserve"], "Pristine")
+        self.assertEqual([ed_outrider.spansh_reserve(v) for v in ("Pristine", "MajorResources", "low", "", None, "Bogus", 3)],
+                         ["Pristine", "Major", "Low", None, None, None, None])
+        dump = ed_outrider.record_from_dump("Sys", {"name": "Sys 3", "type": "Planet", "subType": "Class I gas giant",
+                                                     "reserveLevel": "Depleted", "rings": []})
+        self.assertEqual(dump["reserve"], "Depleted")
+        self.assertIsNone(ed_outrider.record_from_dump("Sys", {"name": "Sys 4", "type": "Planet", "subType": "Icy body"})["reserve"])
+        import types
+        state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        body = [b for b in state.system_detail(9)["bodies"] if b["name"] == "A 3"][0]
+        self.assertEqual((body["reserve"], body["rings"], body["rings_mapped"]), ("Pristine", 1, 0))
 
     def test_kept_in_step(self):
         """The page's alert row, its crew member and its lines (the speech registry's side)."""
