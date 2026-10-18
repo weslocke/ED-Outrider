@@ -14,6 +14,11 @@ Newest first, one entry per commit.
 - **A capital where a ring starts a sentence:** "{ring} at A 3" shows as "A metallic ring at A 3" (page.js and
   outrider.speech: START_CAPS).
 
+## 2026-10-18 · Version 2026.10.26, The Release with Personality
+- The eight new personalities and over 70,000 lines, the crew as characters, space chatter, chat read aloud, surface
+  pins, carrier trips, the terraformable worlds route, the fixes since 2026.10.25. What's new has its section. No
+  journal re-read. The mining work (branch `mining`) waits for the next release.
+
 ## 2026-10-18 · Chat's header choices name no real commander
 - Settings → Voice → Chat's "as" list showed a real commander's name as its example ("Kurbo: …"). It now shows
   `<CommanderName>: …` and `Commander <CommanderName> on <Channel>: …` (the author), and the guide likewise.

@@ -11,6 +11,120 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## 2026.10.26 · 18 October 2026 · The Release with Personality
+
+**Eight new personalities and over 70,000 spoken lines, a crew that talks among itself in quiet moments, other
+players' chat read aloud, surface pins with fly-to guidance, carrier trips and a terraformable worlds route.**
+
+No journal re-read: it starts as usual.
+
+### 🎭 Eight new personalities
+
+Down to business, sarcastic and sweet now have company. Each new one is a whole character, with its own lines for
+every alert, its own way of addressing you and (all but Vulcan) a swearing version:
+
+- **US Navy** and **Royal Navy**: by the book, crisp reports, a friendlier "Skipper" between watches. Captain or Sir.
+- **Vulcan**: dry, precise, never excited, never swears, a little disappointed in its human captain.
+- **Ivanova (Station Cmdr)**: temperamental, fatalistic, bored by routine exploration, eager for action, full of tall
+  tales. Commander or Sir.
+- **Good Ol' Boy** and **Southern Belle**: warm, playful, slow to anger, full of family sayings, the old days and
+  food. Buddy and partner, or sugar and darlin'.
+- **Klingon**: loud, honour-bound, exploration as the hunt. Captain, Sir, Commander or My Lord.
+- **Scoundrel**: a cocky smuggler who cares about credits, calls you buddy and pal, and tells stories about the Hutton
+  twins.
+
+**Over 70,000 lines** between the eleven personalities (the last release had about 14,000): about 59,000 for the
+alerts and 11,000 for the crew's chatter, clean and swearing versions. Every line was reviewed before release, and 464
+that were wrong for their alert, badly worded or out of character were rewritten.
+
+- **Main personality** sits beside **Main voice** in ⚙ Settings → Voice: one personality, or **A mix…** to tick
+  several. Under it, a line says what it means: with the crew off, the main voice and personality say every alert.
+- **With profanity** names the personalities that never swear ("all but Down to business, Vulcan").
+- **Personalities are files** now: Outrider's own in `resources/personalities/`, yours in `data/personalities/` (a
+  copy there under the same name replaces the shipped one, so an update never overwrites your changes). Settings shows
+  a new file at once, with how much of the alerts it covers. See
+  [Your own personality](voice-and-alerts.md#your-own-personality).
+
+### 🎙 The crew: give each station a character
+
+With **Split the alerts among a crew** on (⚙ Settings → Voice → Crew), each of the nine stations, the XO, Navigator,
+Science Officer, Exobiologist, Chief Engineer, Quartermaster, Comms Officer, Tactical and the Mining Officer, can now
+be a different personality as well as a different voice: a Klingon at Tactical, a Vulcan in Science, a Scoundrel as
+Quartermaster. You know who is talking, and what about, before the sentence ends.
+
+- The crew table is tidier: narrower Personality and Voice columns, and a **Chatter** column to leave a station out of
+  the conversation (below).
+- The Voice section is full width, with Main voice and personality on one line, beside the other wide sections.
+
+### 💬 Space chatter
+
+Off by default. Tick **Talk in quiet moments** in ⚙ Settings → Voice → Space chatter, and after a while with no
+alert someone says something: in supercruise, or while you are on foot or in the SRV on a planet. See
+[Space chatter](voice-and-alerts.md#-the-voice).
+
+- **Alone:** about 60 lines per personality for supercruise (some knowing the system, your time in supercruise, the
+  session's jumps and first discoveries) and 30 each for a planet, with the ship landed nearby or up in orbit.
+- **With the crew on, the stations talk among themselves:** a question about another's work (fuel, the route, the
+  drive, the stars, the money, mining, threats...) or, now and then, something personal (family, home, food, the best
+  day, life before this ship), an answer, and sometimes a last word. Two stations that sound alike never talk to each
+  other.
+- **How often:** five steps, Rare, Occasional, Normal, Chatty and Non-stop, each with a few words on what it means.
+- **Never at a bad moment:** not while docked, in danger, overheating, low on fuel, charging the FSD, low on oxygen or
+  health on foot, with a map, the FSS or the DSS open, nor with the game closed. An alert always comes first, and
+  cuts a conversation short.
+
+### 📻 Other players' chat, read aloud
+
+Off by default. Tick **Read aloud** on the **Chat** line in ⚙ Settings → Voice, and the **Comms Officer** reads other
+players' messages to you: squadron, wing and direct messages to start, local and voice chat if you tick them, NPCs
+never. See [Chat read aloud](voice-and-alerts.md#-the-voice).
+
+- Start each with the commander's name, the name and channel ("Commander Kurbo on Squadron: …"), or nothing.
+- **Paced:** one commander's messages in a row are read as one, at most one every 15 seconds, and a crowd is summed
+  up ("And 3 more on Squadron"). A message that mentions you is read at once.
+- **Private:** chat is never stored, cached or written to the log. 🔇 in Spoken lines mutes a commander.
+
+### 📍 Surface pins
+
+Named points on a body, kept until you delete them: the Anaconda wreck, Guardian ruins, a good spot to come back to.
+See [Pins](views.md).
+
+- **Add one** from the body's **📍 Pins** section in Here, by pasting or typing its coordinates (`-12.34, 45.67`,
+  `Lat -12.34 Lon 45.67`...), with **📍 Pin here** where you stand, or with 📍 beside a site, a mining location or the
+  ship in the surface map's legend.
+- **Fly to it:** the **Navigator** guides you from orbit down: the way to turn and the distance when it is set, at
+  10 km, 1 km and 100 m, and on arrival, then the next pin takes over. It shows on the surface map, the overlay's
+  radar and Now.
+- **Find them again:** 📍 beside a body with pins in Here and the Overview, and every pin in **Bookmarks**.
+
+### 🚀 Carrier trips
+
+**Plot Route → Carrier** plans your fleet carrier's trip with Spansh's carrier router: the legs, the tritium each one
+burns, and where the hold has to top up the depot. It is planning only (the game still books one jump at a time), so
+each leg's system is one 📋 away from the carrier's galaxy map. See [Carrier](plot-route.md).
+
+- **The Carrier tile follows the trip:** "Leg 2/6 → the next system 📋", the cooldown counting down, then **ready**,
+  and a note when the carrier is off the plan. The **Quartermaster** says when the carrier should be ready for its next
+  leg.
+- **A tighter Carrier tile:** tritium on one line, "Tritium: 668t/14,199t", beside UC/Vista; the meeting line reads
+  "To it 1 jump · to you 1, ≈21 t".
+
+### 🪨 A terraformable worlds route
+
+Beside the Earth-like and ammonia routes, **Plot Route → Terraformable** chains systems with terraformable rocky and
+high metal content worlds nobody has mapped yet, worth about 460 thousand credits or more mapped.
+
+### 🛠 And more
+
+- **The terminal's log** starts each line with the time, lines the subjects up, and words the start-up more clearly.
+- **Fixes:**
+  - space chatter (and the pins' guidance) could keep talking after the game was closed;
+  - a species scanned twice with the composition scanner showed twice in Here's bio list;
+  - a plant you tagged vanished from the surface map once you were 3 km away (thanks, Kurbo26);
+  - the tablet's Map pill was hard to read in some themes (thanks, Kurbo26).
+
+---
+
 ## 2026.10.25 · 16 October 2026 · bug fix release
 
 **The overlay no longer breaks the game's mouse lock, fixes from a code review, and a few small improvements.**
