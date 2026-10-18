@@ -9290,7 +9290,8 @@ const releasePayloads = async () => {
       got.off = JSON.parse(w.eval("chatPump(Date.now()), __said()"));
       w.eval("drawChatRead()");
       got.ui = [d.getElementById("chatRead").checked, d.querySelectorAll("#chatChans [data-chatch]").length,
-                [...d.querySelectorAll("#chatChans [data-chatch]")].filter(x => x.checked).map(x => x.dataset.chatch)];
+                [...d.querySelectorAll("#chatChans [data-chatch]")].filter(x => x.checked).map(x => x.dataset.chatch),
+                [...d.querySelectorAll("#chatHeader option")].map(o => o.textContent).join("|")];   // the sender's name a placeholder, not a real one
     } finally {
       w.eval(`const k = window.__ch; data.chat = k.chat; speak = k.speak; [speechOn, isSpeaker] = k.flags; hushState = k.hush; lastAlert = k.alert;
         alertSpeak.chat = k.aspeak; Object.assign(CHATQ, JSON.parse(k.q)); captions.length = 0; captions.push(...k.caps);
@@ -9302,7 +9303,7 @@ const releasePayloads = async () => {
       alertKept: true, mention: [["Alice: Hefay, is that you?", "chat", true]], gapWait: [], gapDue: [["Zed: next.", "chat", true]],
       summary: [["P6: msg 6. And 3 more on Squadron, 1 more on Wing.", "chat", true]], stale: [[], "Late: too late"],
       full: "Commander Kurbo on Squadron: look a link.", none: "hi.", muted: [[], JSON.stringify(["Kurbo"]), true], unmuted: "[]", off: [],
-      ui: [false, 5, ["squadron", "wing", "player"]]};
+      ui: [false, 5, ["squadron", "wing", "player"], "<CommanderName>: …|Commander <CommanderName> on <Channel>: …|the message only"]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodCR = !bad.length && errors.length === before;
     allOk = allOk && goodCR;

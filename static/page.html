@@ -840,8 +840,8 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div id="chatReadBox" class="mod inlineopts" data-find-block="chat read aloud squadron wing">
         <b>Chat</b>&nbsp; <label title="other players' messages (never NPCs'), read aloud by Comms after any alert, never while hushed; off by default"><input type="checkbox" id="chatRead"> Read aloud</label>
         <span id="chatChans"></span>
-        <label>as <select id="chatHeader" aria-label="how a message starts"><option value="name">Kurbo: …</option>
-          <option value="full">Commander Kurbo on Squadron: …</option><option value="none">the message only</option></select></label>
+        <label>as <select id="chatHeader" aria-label="how a message starts"><option value="name">&lt;CommanderName&gt;: …</option>
+          <option value="full">Commander &lt;CommanderName&gt; on &lt;Channel&gt;: …</option><option value="none">the message only</option></select></label>
         <span id="chatMutedList" class="hint"></span>
       </div>
       <div id="crewBox" class="crewbox" data-find-block="crew">

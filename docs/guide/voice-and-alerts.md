@@ -358,8 +358,8 @@ someone says something: in supercruise, or while you are on foot or in the SRV o
 Off by default. Tick **Read aloud** on the **Chat** line in ⚙ Settings → Voice and Comms reads other players'
 messages to you: squadron, wing and direct messages by default, local and voice chat if you tick them, NPCs never.
 
-- **How it starts:** "Kurbo: …" (the default), "Commander Kurbo on Squadron: …", or the message alone. The caption
-  strip always shows "Kurbo: …".
+- **How it starts:** `<CommanderName>: …` (the default), `Commander <CommanderName> on <Channel>: …` (say,
+  "Commander Kurbo on Squadron: …"), or the message alone. The caption strip always shows `<CommanderName>: …`.
 - **The pace:** several messages from one commander in a row are read as one; at most one every 15 seconds; with
   more waiting, the first is read and the rest summed up ("And 3 more on Squadron"); anything waiting over a minute is
   shown in the captions but not read. A message that mentions your commander name is read at once, even from a
