@@ -1116,7 +1116,7 @@ const releasePayloads = async () => {
           && fin.textContent.endsWith(" ✦ 8.3M")
           && fin.title.startsWith("codex: Bacterium Alcyoneum - Red") && dc.textContent.includes("Stratum 1/3")
           && sp.some(e => lf(e) === "Stratum Tectonicas - Grey") && colOn && colOff
-          && !!rc && rc.textContent === "22🗺/3" && rc.title === "2 rings, 2 mapped (🗺), 3 hotspots\\nA Ring · Metallic: Platinum 3\\nB Ring · Icy: mapped, no hotspots"
+          && !!rc && rc.textContent === "2🗺/3" && rc.title === "2 rings, 2 mapped (🗺), 3 hotspots\\nA Ring · Metallic: Platinum 3\\nB Ring · Icy: mapped, no hotspots"
           ? true : [fin && fin.textContent, fin && fin.title, colOn, colOff, rc && rc.textContent, dc && dc.textContent];
         if (hg === null) localStorage.removeItem("highG"); else localStorage.setItem("highG", hg);
         hereData = hd; hereKey = hk; renderHere();
@@ -9355,7 +9355,8 @@ const releasePayloads = async () => {
       w.eval(`window.__rb = {name: "A 3", type: "Planet", subtype: "Class I gas giant", rings: 2, rings_mapped: 1, reserve: "Pristine",
         ring_details: [{name: "A Ring", type: "Metallic", width_km: 12400, density: 0.118, hotspots: {Platinum: 2, Painite: 1}, mapped: true},
                        {name: "B Ring", type: "Icy", width_km: 8100, density: 0.05, hotspots: {}, mapped: false}]}`);
-      got.ringCell = w.eval(`[ringsMapLine(__rb), ringsText(__rb), ringsMapLine({...__rb, rings_mapped: 0})]`);
+      got.ringCell = w.eval(`[ringsMapLine(__rb), ringsText(__rb), ringsMapLine({...__rb, rings_mapped: 0}),
+        ringsCell(__rb), ringsCell({...__rb, rings_mapped: 2}), ringsCell({...__rb, rings_mapped: 0}), ringsCell({rings: 0})]`);
       const card = new w.DOMParser().parseFromString(w.eval(`bodyPopHtml(__rb, null)`), "text/html");
       const ringSec = [...card.querySelectorAll(".sec")].find(x => /^Rings/.test(x.querySelector(".lbl").textContent));
       got.ringCard = [ringSec.querySelector(".lbl").textContent, [...ringSec.querySelectorAll("li")].map(li => [...li.querySelectorAll(".hs")].map(x => x.textContent))];
@@ -9379,7 +9380,8 @@ const releasePayloads = async () => {
       caps: "A metallic ring at A 3. So: icy rings. Icy!",
       tip: [false, "Metallic rings", ["Painite", "✔", "✔"], ["Gold", "✔", ""], ["Rhodplumsite", "", "✔"], false, "Icy,Rocky,Metallic,Metal Rich", 4],
       tipGone: true,
-      ringCell: ["1🗺/3", "2 rings, 1 mapped (🗺), 3 hotspots · Pristine reserves\nA Ring · Metallic: Platinum 2, Painite 1\nB Ring · Icy: not mapped", ""],
+      ringCell: ["1🗺/3", "2 rings, 1 mapped (🗺), 3 hotspots · Pristine reserves\nA Ring · Metallic: Platinum 2, Painite 1\nB Ring · Icy: not mapped", "",
+                 '2<div class="sub2 unk">1🗺/3</div>', "2🗺/3", "2", ""],
       ringCard: ["Rings · Pristine reserves", [["Platinum ×2", "Painite ×1"], ["not mapped"]]],
       ui: [["Rocky"], false, JSON.stringify({types: ["Rocky"], pristine: false})]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));

@@ -4273,6 +4273,9 @@ function bodyValueTitle(b) {
 // words with the body's reserves, and each ring with its hotspots
 const ringHotspots = b => (b.ring_details || []).reduce((n, r) => n + Object.values(r.hotspots || {}).reduce((a, v) => a + v, 0), 0);
 const ringsMapLine = b => b.rings_mapped ? `${b.rings_mapped}🗺/${ringHotspots(b)}` : "";
+// the cell: every ring mapped, "2🗺/20" alone (the count once, the author); some, the count over "1🗺/5"; none, the count
+const ringsCell = b => !b.rings ? "" : !b.rings_mapped ? `${b.rings}` : b.rings_mapped >= b.rings ? ringsMapLine(b)
+  : `${b.rings}<div class="sub2 unk">${ringsMapLine(b)}</div>`;
 const ringsText = b => {
   const n = ringHotspots(b);
   const head = `${b.rings} ring${b.rings === 1 ? "" : "s"}${b.rings_mapped ? `, ${b.rings_mapped} mapped (🗺), ${n} hotspot${n === 1 ? "" : "s"}` : ", none mapped"}` +
@@ -4397,7 +4400,7 @@ function renderHere() {
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
       <td class="hide-sm c2hide">${b.type === "Planet" ? (atm ? sfText("atmosphere", atm) : b.landable ? dual("none · landable", "landable") : "") : ""}${b.stale_bio ? ` <span class="unk old" title="${esc(staleBodyTitle(b))}">${dual("landable? (old data)", "landable?", {title: `landable? (old data): ${staleBodyTitle(b)}`})}</span>` : ""}${b.bio_unknown ? ` <span class="warnc" title="${BIO_UNKNOWN_TITLE}">${dual("bio possible: check the FSS", "🧬?")}</span>` : ""}</td>
       <td class="bio">${bio.join(" ")}${geoTag(b)}${volcanoIcon(b)}${codex}${siteTags(b.sites)}${b.mining || (b.mined || []).length ? `<span class="sf2"> ${mineTag(b)}</span>` : ""}</td>
-      <td class="c2hide rings"${b.rings ? ` title="${esc(ringsText(b))}"` : ""}>${b.rings ? `${b.rings}${b.rings_mapped ? `<div class="sub2 unk">${ringsMapLine(b)}</div>` : ""}` : ""}</td>
+      <td class="c2hide rings"${b.rings ? ` title="${esc(ringsText(b))}"` : ""}>${ringsCell(b)}</td>
       <td class="num mine c2hide">${mineTag(b)}</td>
       <td class="c2hide">${firsts}</td>
       <td class="num c2hide" title="${bodyValueTitle(b)}">${b.value_now ? credits(b.value_now) : ""}</td>

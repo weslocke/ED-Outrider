@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-18 · Here's rings: the count once when every ring is mapped
+- "2" over "2🗺/20" read as the rings listed twice (the author): with every ring mapped the cell is "2🗺/20" alone;
+  partly mapped, the count over "1🗺/5"; none mapped, the count (`ringsCell`).
+
 ## 2026-10-18 · Here's rings: "1🗺/5" and each ring's hotspots under it, with the reserves
 - **The Rings cell** (the author): the count, then "1🗺/5" once a ring is mapped (rings mapped, hotspots in them) in
   place of "1 mapped" and "N hotspots". Its hover lists each ring with its hotspots, and the body's reserves.
