@@ -9341,6 +9341,14 @@ const releasePayloads = async () => {
       d.getElementById("miningRings").dispatchEvent(new w.Event("change", {bubbles: true}));
       got.pristine = feed(`__ring("A 9", ["Metallic"], "Major"), __ring("B 1", ["Metal Rich", "Metallic"], "Pristine")`);
       got.phrases = w.eval(`[ringPhrase(["Icy"], null), ringPhrase(["Rocky"], "Major"), ringPhrase(["Icy", "Metallic"], "Depleted"), ringPhrase(["Metal Rich"], "Pristine")].join("|")`);
+      // each type's hover: its table of what lasers and cores give (Painite: both in a metallic ring), gone on leaving
+      const lab = d.querySelector('#miningRings [data-ringtip="Metallic"]'), tip = d.getElementById("ringTip");
+      lab.dispatchEvent(new w.Event("pointerenter"));
+      const row = n => [...tip.querySelectorAll("tbody tr")].map(tr => [...tr.children].map(td => td.textContent)).find(r => r[0] === n);
+      got.tip = [tip.hidden, tip.querySelector("b").textContent, row("Painite"), row("Gold"), row("Rhodplumsite"), !!row("Void Opal"),
+                 w.eval(`Object.keys(RING_MINERALS).join()`), d.querySelectorAll("#miningRings [data-ringtip]").length];
+      lab.dispatchEvent(new w.Event("pointerleave"));
+      got.tipGone = tip.hidden;
       got.caps = w.eval(`fillLine("{ring} at {body}. So: {types} rings. {types}!", {ring: "a metallic ring", body: "A 3", types: "icy"})`);
       w.eval(`localStorage.setItem("miningRings", JSON.stringify({types: ["Rocky", "Bogus"], pristine: false})); drawMiningRings()`);
       got.ui = [[...d.querySelectorAll("#miningRings [data-ring]")].filter(b => b.checked).map(b => b.dataset.ring), d.getElementById("ringPristine").checked,
@@ -9358,6 +9366,8 @@ const releasePayloads = async () => {
       pristine: [["B 1 has a pristine metallic ring, on your mining watch list.", "ring"]],   // its metal rich ring: not ticked
       phrases: "an icy ring|a rocky ring|depleted icy and metallic rings|a pristine metal rich ring",
       caps: "A metallic ring at A 3. So: icy rings. Icy!",
+      tip: [false, "Metallic rings", ["Painite", "✔", "✔"], ["Gold", "✔", ""], ["Rhodplumsite", "", "✔"], false, "Icy,Rocky,Metallic,Metal Rich", 4],
+      tipGone: true,
       ui: [["Rocky"], false, JSON.stringify({types: ["Rocky"], pristine: false})]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodRG = !bad.length && errors.length === before;

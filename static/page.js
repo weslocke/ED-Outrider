@@ -3072,6 +3072,24 @@ const RIGS_OUT_HINT = "Picked one up without a tap? Mark it with the ✕ by its 
 const RING_KINDS = ["Icy", "Rocky", "Metallic", "Metal Rich"];
 const miningRings = () => { const v = store.get("miningRings", {}) || {};
   return {types: Array.isArray(v.types) ? RING_KINDS.filter(t => v.types.includes(t)) : [], pristine: !!v.pristine}; };
+// What each ring type yields, [commodity, laser, core] (1 = yes): the hover table on each type in Settings → Mining.
+// "Laser" covers laser mining, abrasion blasting and sub-surface deposits; "core" is a motherlode cracked open. From
+// the Elite Dangerous Wiki's Miner page (its "Resource availability" table, 2026-10-18), the facts retyped; four of
+// its rows (Liquid Oxygen, Methane Clathrate, Methanol Monohydrate, Tritium) are a cell short there, their tick read
+// as icy laser mining, which is where the game has them.
+const RING_MINERALS = {
+  "Icy": [["Alexandrite", 0, 1], ["Bromellite", 1, 1], ["Grandidierite", 0, 1], ["Hydrogen Peroxide", 1, 0], ["Liquid Oxygen", 1, 0], ["Lithium Hydroxide", 1, 0], ["Low Temperature Diamonds", 1, 1], ["Methane Clathrate", 1, 0], ["Methanol Monohydrate Crystals", 1, 0], ["Tritium", 1, 0], ["Void Opal", 0, 1], ["Water", 1, 0]],
+  "Rocky": [["Alexandrite", 0, 1], ["Bauxite", 1, 0], ["Benitoite", 0, 1], ["Cobalt", 1, 0], ["Coltan", 1, 0], ["Gallite", 1, 0], ["Indite", 1, 0], ["Lepidolite", 1, 0], ["Monazite", 0, 1], ["Musgravite", 0, 1], ["Rhodplumsite", 0, 1], ["Rutile", 1, 0], ["Samarium", 1, 0], ["Serendibite", 0, 1], ["Uraninite", 1, 0]],
+  "Metallic": [["Bertrandite", 1, 0], ["Gallite", 1, 0], ["Gold", 1, 0], ["Indite", 1, 0], ["Monazite", 0, 1], ["Osmium", 1, 0], ["Painite", 1, 1], ["Palladium", 1, 0], ["Platinum", 1, 1], ["Praseodymium", 1, 0], ["Rhodplumsite", 0, 1], ["Samarium", 1, 0], ["Serendibite", 0, 1], ["Silver", 1, 0]],
+  "Metal Rich": [["Alexandrite", 0, 1], ["Bertrandite", 1, 0], ["Coltan", 1, 0], ["Gallite", 1, 0], ["Gold", 1, 0], ["Indite", 1, 0], ["Lepidolite", 1, 0], ["Monazite", 0, 1], ["Osmium", 1, 0], ["Painite", 0, 1], ["Platinum", 0, 1], ["Praseodymium", 1, 0], ["Rhodplumsite", 0, 1], ["Samarium", 1, 0], ["Serendibite", 0, 1], ["Silver", 1, 0], ["Uraninite", 1, 0]]};
+// the hover table for ring type `t` (Settings → Mining): what lasers and cores give there
+function ringTipHtml(t) {
+  const rows = RING_MINERALS[t] || [];
+  const tick = v => v ? "✔" : "";
+  return `<b>${esc(t)} rings</b><table><thead><tr><th>Commodity</th><th title="laser mining, abrasion blasting and sub-surface deposits">Laser</th><th title="a motherlode cracked open">Core</th></tr></thead><tbody>` +
+    rows.map(([n, l, c]) => `<tr><td>${esc(n)}</td><td>${tick(l)}</td><td>${tick(c)}</td></tr>`).join("") +
+    `</tbody></table><div class="hint">Laser also counts abrasion blasting and sub-surface deposits. Source: the Elite Dangerous Wiki.</div>`;
+}
 // a "ring" moment's rings worth saying: the ticked types among them, on a pristine body only when that is ticked
 function ringWatched(m) {
   const c = miningRings();
@@ -9781,6 +9799,22 @@ document.getElementById("miningRings").onchange = () => {
                             pristine: document.getElementById("ringPristine").checked});
 };
 drawMiningRings();
+// each ring type's hover (or focus, on a touch screen): its table of what lasers and cores give, beside the box
+{
+  const tip = document.getElementById("ringTip");
+  const show = lab => {
+    tip.innerHTML = ringTipHtml(lab.dataset.ringtip); tip.hidden = false;
+    const r = lab.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + "px";
+    tip.style.top = (r.bottom + 6 + h > window.innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + "px";
+  };
+  for (const lab of document.querySelectorAll("#miningRings [data-ringtip]")) {
+    lab.addEventListener("pointerenter", () => show(lab));
+    lab.addEventListener("focusin", () => show(lab));
+    lab.addEventListener("pointerleave", () => { tip.hidden = true; });
+    lab.addEventListener("focusout", () => { tip.hidden = true; });
+  }
+}
 namesBox.onchange = () => { store.set("speechNames", namesBox.value.trim() ? namesBox.value : null); drawSpeechStyles(); };
 drawSpeechStyles();
 document.getElementById("speechDangerBusiness").onchange = e => store.set("speechDangerBusiness", e.target.checked);

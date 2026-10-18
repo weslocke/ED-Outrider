@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-18 · Settings → Mining: each ring type's table of what lasers and cores give
+- Hovering a ring type (or focusing it: a tap on a touch screen) shows a table of the commodities found in that ring
+  type, ticked for laser (laser mining, abrasion blasting, sub-surface deposits) and core (the author): Painite and
+  Platinum by laser only in metallic rings, cores only in metal-rich ones, and so on.
+- The data: the Elite Dangerous Wiki's Miner page ("Resource availability"), retyped into `RING_MINERALS` (page.js),
+  credited in the README. Four of its rows are a cell short (Liquid Oxygen, Methane Clathrate, Methanol Monohydrate,
+  Tritium): read as icy laser mining, where the game has them.
+
 ## 2026-10-18 · Rings to mine: a new Mining section in Settings
 - **Settings → Mining** (new, the author): tick the ring types you watch for (Icy, Rocky, Metallic, Metal Rich) and
   **pristine only**. A body you scan with one of them is said by the Mining Officer: "A 3 has a pristine metallic ring".

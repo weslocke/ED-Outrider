@@ -717,12 +717,13 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
     </details>
     <details class="setsec" data-sec-key="mining" data-chip="Mining"><summary>Mining <span class="sum-note">rings to watch for</span></summary>
       <div class="mod inlineopts" id="miningRings">Say when a scanned body has a ring of these types:
-        <label><input type="checkbox" data-ring="Icy"> Icy</label>
-        <label><input type="checkbox" data-ring="Rocky"> Rocky</label>
-        <label><input type="checkbox" data-ring="Metallic"> Metallic</label>
-        <label><input type="checkbox" data-ring="Metal Rich"> Metal Rich</label>
+        <label data-ringtip="Icy"><input type="checkbox" data-ring="Icy"> Icy</label>
+        <label data-ringtip="Rocky"><input type="checkbox" data-ring="Rocky"> Rocky</label>
+        <label data-ringtip="Metallic"><input type="checkbox" data-ring="Metallic"> Metallic</label>
+        <label data-ringtip="Metal Rich"><input type="checkbox" data-ring="Metal Rich"> Metal Rich</label>
         <label title="only bodies whose reserves are pristine (the scan says so; the system map shows it too)"><input type="checkbox" id="ringPristine"> pristine only</label>
-        <span class="hint">"A 3 has a pristine metallic ring" as the FSS resolves it (or the arrival's scan, a nav beacon), once per body and visit, said by the Mining Officer; bodies scanned together in one line. Off until you tick a type; its row in Alerts chooses the sound, notification and voice.</span></div>
+        <span class="hint">"A 3 has a pristine metallic ring" as the FSS resolves it (or the arrival's scan, a nav beacon), once per body and visit, said by the Mining Officer; bodies scanned together in one line. Off until you tick a type; its row in Alerts chooses the sound, notification and voice. Hover a type for what lasers and cores give in it.</span>
+        <div id="ringTip" class="ringtip" role="tooltip" hidden></div></div>
     </details>
     <details class="setsec pcOnly" data-sec-key="honk" data-chip="Auto honk" id="honkSettings"><summary>Auto honk and the co-pilot button</summary>
       <div id="autoHonkReady" class="honkready" role="status"><span class="hint">checking whether auto honk can work here…</span></div>

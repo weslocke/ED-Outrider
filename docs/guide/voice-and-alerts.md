@@ -60,7 +60,9 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
 - **rings to mine**: a body you scan has a ring of a type you watch for, "A 3 has a pristine metallic ring" (Settings
   → Mining: tick Icy, Rocky, Metallic or Metal Rich, and **pristine only** if you laser-mine). Said as the FSS resolves
   the body, or with the arrival's own scan or a nav beacon; once per body each time you come to the system, bodies
-  scanned together in one line ("3 bodies with rings you're watching for: A 3, A 5 and B 1"). Off until you tick a type
+  scanned together in one line ("3 bodies with rings you're watching for: A 3, A 5 and B 1"). Off until you tick a type.
+  Hover a type (or tap it on a touch screen) for a table of what lasers and cores give in that ring (laser counting
+  abrasion blasting and sub-surface deposits; from the Elite Dangerous Wiki)
 - an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again: a card at the top of
   the page and a notification, never spoken (see [Uploads](uploads.md#status))
 

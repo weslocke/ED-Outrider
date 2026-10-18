@@ -1488,3 +1488,11 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 .pinadd input { margin-right: 4px; }
 .pintable { width: 100%; border-collapse: collapse; font-size: 13px; }
 .pintable td, .pintable th { padding: 2px 6px; text-align: left; }
+
+/* Settings → Mining: a ring type's hover table (what lasers and cores give there), placed by script beside its box */
+.ringtip { position: fixed; z-index: 50; background: var(--panel); color: var(--text); border: 1px solid var(--accent);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.45); max-width: 320px; pointer-events: none; }
+.ringtip table { border-collapse: collapse; margin-top: 4px; width: 100%; }
+.ringtip th, .ringtip td { padding: 1px 6px; text-align: left; }
+.ringtip th { color: var(--muted); font-weight: normal; border-bottom: 1px solid var(--line); }
+.ringtip td + td, .ringtip th + th { text-align: center; color: var(--good, var(--accent)); }
