@@ -215,6 +215,19 @@ function codexGeoMark(list, region) {
   return ` <span class="cxnew cxgeo${gal ? " cxgal" : ""}" title="its volcanism could show geology new to your codex: ${fresh.map(x =>
     esc(x.t.name) + (x.st === "galaxy" ? " (anywhere)" : "")).join(", ")} (logged when you scan one)">${gal ? "✪" : "✦"}</span>`;
 }
+// the geology a body with geological signals could show (S22, from its volcanism), each marked ✪ / ✦ when new to your
+// codex, and how such an entry is logged: the body card and the details panel (the author, 2026-10-19: the ✪ beside
+// the name said nothing of the signals themselves). "" with no signals, or a volcanism that tells nothing
+function geoCandidatesHtml(b, region) {
+  const list = (b && b.codex_geo) || [];
+  if (!b || !b.geo || !list.length) return "";
+  const v = String(b.volcanism || "").replace(/ volcanism$/i, "").toLowerCase();
+  const states = list.map(t => codexTypeState(t, region));
+  const items = list.map((t, i) => esc(t.name) + (states[i] === "galaxy" ? ` <span class="cxnew cxgal" title="new to your codex anywhere">✪</span>`
+    : states[i] === "region" ? ` <span class="cxnew" title="new to your codex in this region">✦</span>` : ""));
+  return `<div class="unk">from its ${esc(v)}${list.length > 1 ? ", one of" : ""}: ${items.join(" · ")}</div>` +
+    (states.some(Boolean) ? `<div class="unk">✪ new to your codex anywhere, ✦ new in this region: logged when you scan one on the surface. The DSS map shows where the signals are.</div>` : "");
+}
 // Nearby: the types here new to your codex, one tag ("✦2"), each named in its title
 function codexTypesTag(s) {
   const fresh = (s.codex_types || []).map(t => ({t, st: codexTypeState(t, s.region)})).filter(x => x.st);
@@ -5027,7 +5040,7 @@ function bodyPopHtml(b, region, sys = null) {   // sys: the body's system id64 s
     h += `<div class="sec"><div class="lbl">🧬 Bio${b.bio ? ` · ${b.bio} signal${b.bio === 1 ? "" : "s"}` : ""}${bioRange(b)}</div><ul>${lines.join("")}</ul></div>`;
   }
   h += curiosityList(b.curiosities);
-  if (b.geo) h += `<div class="sec">${b.geo} geological signal${b.geo === 1 ? "" : "s"}</div>`;
+  if (b.geo) h += `<div class="sec">${b.geo} geological signal${b.geo === 1 ? "" : "s"}${geoCandidatesHtml(b, region)}</div>`;
   if (b.mining || (b.mined || []).length) h += `<div class="sec">${b.mining ? `⛏ ${mineCount(b.mining)}` : ""}${b.mining_odds ? `<div class="unk">${mineOddsLine(b.mining_odds)}</div>` : ""}${minedHtml(b)}</div>`;
   const flags = [b.first_discovered && "🏁 first discovered", b.first_mapped && "🗺 first mapped", !b.first_mapped && b.mapped && "mapped", b.first_footfall && "👣 first footfall", !b.scanned && "not scanned by you"].filter(Boolean);
   h += `<div class="sec"><span>${maxOf(b) ? `now ${credits(b.value_now || 0)} · max ${credits(maxOf(b))}` : ""}</span>` +
@@ -5165,6 +5178,10 @@ function renderBodyInto(panel, d, bodyName, closeJs) {
     bioSec = sec("bio", `🧬 Exobiology${row.bio ? ` · ${row.bio} signal${row.bio === 1 ? "" : "s"}` : ""}${bioRange(row)}`,
                  `<ul>${lines.join("")}</ul>${cn ? `<div class="unk">${cn}</div>` : ""}${why}`);
   }
+  // the geology its signals could be, new to your codex marked (geoCandidatesHtml); the region only for Here's own system
+  const geoRegion = hereData && String(hereData.id64) === String(d.id64) ? hereData.region : null;
+  const geoSec = row.geo ? sec("geo", `🪨 ${row.geo} geological signal${row.geo === 1 ? "" : "s"}`,
+    geoCandidatesHtml(row, geoRegion) || `<span class="unk">its volcanism does not tell which kinds</span>`) : "";
   const curSec = (row.curiosities || []).length ? sec("curiosities", "🔭 Curiosities", row.curiosities.map(c => `<div><b>${esc(c.tag)}</b> · ${esc(c.why)}</div>`).join("")) : "";
   const mineSec = row.mining || (row.mined || []).length ? sec("mining", row.mining ? `⛏ ${mineCount(row.mining)}` : "⛏ Mining",
     (row.mining ? row.mining_odds ? mineOddsHtml(row.mining_odds) : `<span class="unk">no survey odds for this ground</span>` : "") + minedHtml(row)) : "";
@@ -5172,7 +5189,7 @@ function renderBodyInto(panel, d, bodyName, closeJs) {
   const npins = (PINS.list || []).filter(p => p.system === String(d.id64) && p.body === d.full_name).length;
   const pinSec = isStar ? "" : `<div class="sec${(bodySecs.pins ?? !npins) ? " closed" : ""}" data-sec="pins"><div class="lbl">📍 Pins${npins ? ` · ${npins}` : ""}</div>` +
     `<div class="secbody" data-sys="${esc(d.id64)}" data-body="${esc(d.full_name)}" data-sysname="${esc(d.system || "")}">${pinsListHtml(d.id64, d.full_name)}</div></div>`;
-  h += pinSec + curSec + bioSec + mineSec + ringSec + compSec + `<div class="two">${physSec}${orbitSec}</div>`;
+  h += pinSec + curSec + bioSec + geoSec + mineSec + ringSec + compSec + `<div class="two">${physSec}${orbitSec}</div>`;
   h += sec("value", "Value and discovery", kv([
     ["Pays now", has(row.value_now) ? credits(row.value_now) + " cr" : null], ["Could pay", has(row.value_max) ? credits(row.value_max) + " cr" + (has(row.value_max_base) && row.value_max_base !== row.value_max ? ` (${credits(row.value_max_base)} without bonuses)` : "") : null],
     ["Of which", row.value_parts ? `${credits(row.value_parts.carto_now)} + ${credits(row.value_parts.bio_now)} bio held · ${credits(row.value_parts.carto_left)} + ${credits(row.value_parts.bio_left)} bio still there (bio ×${row.value_parts.bio_factor})` : null],

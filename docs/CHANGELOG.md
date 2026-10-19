@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · The geology a body's signals could be, in its card and details
+- The ✪ beside a body's name (geology its volcanism could show, new to your codex) said nothing in the body card,
+  which read only "3 geological signals" (the author). The card now names the kinds its volcanism allows ("from its
+  major rocky magma, one of: Sulphur Dioxide Fumarole · Silicate Magma Lava Spout ✪ · ..."), each new one marked ✪
+  (anywhere) or ✦ (this region), and how one is logged; the details panel gets a 🪨 section saying the same
+  (`geoCandidatesHtml`).
+
 ## 2026-10-19 · "Neutron jump target" only for the Highway
 - 🎯 on a Nearby row said "Successfully targeted neutron jump target Smojoo DL-Y d8" (the author): every target but a
   boxel's took the Highway's wording. Now only the Highway's (Target next, the auto-target after a supercharge, 🎯 on a

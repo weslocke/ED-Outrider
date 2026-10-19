@@ -9480,6 +9480,27 @@ const releasePayloads = async () => {
     console.log(goodRG ? "OK" : "FAIL", "| rings to mine |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "nothing until ticked, a ticked type said with its reserves, unticked ones not, bodies together in one line, pristine only, the controls", errors.slice(before));
   }
+  // The geology a body's signals could be (the author, 2026-10-19): the body card names the kinds its volcanism allows,
+  // each new to your codex marked (✪ anywhere, ✦ this region), and how one is logged
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      const saved = data.codex_types; data.codex_types = {"Inner Orion Spur": [1400102], "Odin's Hold": [1400402]};
+      const b = {name: "B 7", type: "Planet", subtype: "High metal content world", geo: 3, volcanism: "Major Rocky Magma volcanism", ring_details: [],
+                 codex_geo: [{id: 1400102, name: "Sulphur Dioxide Fumarole"}, {id: 1400306, name: "Silicate Magma Lava Spout"},
+                             {id: 1400402, name: "Sulphur Dioxide Gas Vent"}]};
+      const card = document.createElement("div"); card.innerHTML = bodyPopHtml(b, "Inner Orion Spur");
+      const sec = [...card.querySelectorAll(".sec")].find(x => /geological signals/.test(x.textContent));
+      const out = [sec ? [...sec.childNodes].map(n => n.textContent).join(" ").replace(/\\s+/g, " ").trim() : null, geoCandidatesHtml({...b, geo: 0}, "Inner Orion Spur"),
+                   geoCandidatesHtml({...b, codex_geo: null}, "Inner Orion Spur")];
+      data.codex_types = saved;
+      return JSON.stringify(out); })()`));
+    const want = ["3 geological signals from its major rocky magma, one of: Sulphur Dioxide Fumarole · Silicate Magma Lava Spout ✪ · Sulphur Dioxide Gas Vent ✦ " +
+                  "✪ new to your codex anywhere, ✦ new in this region: logged when you scan one on the surface. The DSS map shows where the signals are.", "", ""];
+    const okG = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && okG;
+    console.log(okG ? "OK" : "FAIL", "| geology kinds |", okG ? "the body card names the kinds its volcanism allows, new ones marked, how to log one" : JSON.stringify(got), errors.slice(before));
+  }
   // #11 (Kurbo26): pre-Odyssey Spansh data: Nearby's pill (🪦 when narrow), Here's header date, never routine, the
   // briefing's clause and line, the Now line until your own scans have every body
   {
