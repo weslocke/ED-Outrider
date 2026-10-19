@@ -1831,6 +1831,82 @@
     "{bodies}. Hell of a list, {name}, and every one has rings you're hunting: {types}."
    ]
   },
+  "prospect_hit": {
+   "naval_us": [
+    "{what}. That's a keeper.",
+    "Prospector reports {what}. Recommend we work it.",
+    "{what}. Worth the laser time, {name}.",
+    "Good rock: {what}.",
+    "{what}. Recommend we mine this one.",
+    "Contact, {name}. {what}.",
+    "Limpet reports {what}. Above your mark.",
+    "{what}. Lasers on it.",
+    "Prospect confirmed: {what}.",
+    "{what}. Meets the standard, {name}.",
+    "Survey in: {what}. Recommend we stay.",
+    "{what}. Worth our while.",
+    "Mining Officer: {what}. Work this rock.",
+    "{name}, {what}. That one's ours.",
+    "{what}. Logged as a mining target.",
+    "Prospector says {what}. Collectors ready."
+   ],
+   "naval_us_profane": [
+    "{what}. Damn good rock.",
+    "Hell yes. {what}.",
+    "{what}. Burn the damn thing, {name}.",
+    "Prospector says {what}. Damn worth it.",
+    "{what}. Hell of a rock.",
+    "{what}. Damn, that's what I like to see.",
+    "Lasers hot, damn it. {what}.",
+    "Now we're talking. {what}. Damn fine.",
+    "Hell, we're not leaving this one. {what}.",
+    "Limpet reports {what}. Damn right we stay.",
+    "{what}. Don't you dare fly past it, damn it.",
+    "Hot damn. {what}.",
+    "{what}. Hell of a find, {name}.",
+    "Survey's in, and it's damn good: {what}.",
+    "{what}. Worth every damn limpet.",
+    "{name}, {what}. Mine the hell out of it."
+   ]
+  },
+  "motherlode": {
+   "naval_us": [
+    "Motherlode detected. {mineral} core. Break out the charges.",
+    "{name}, prospector reports a motherlode. {mineral} at the core.",
+    "Core asteroid: {mineral}. Recommend seismic charges.",
+    "{mineral} motherlode, {name}. Ready the charges.",
+    "Mining Officer: {mineral} core confirmed. Request permission to crack it.",
+    "Be advised, motherlode. {mineral}.",
+    "Core asteroid, {mineral}. Recommend we survey the fissures.",
+    "{mineral} core located. Pulse wave scan recommended.",
+    "Motherlode, {name}. {mineral} inside.",
+    "Core of {mineral}. Charges standing by.",
+    "Prospector has a motherlode: {mineral}.",
+    "{name}, that rock has {mineral} at its heart. Set the charges.",
+    "Motherlode logged. {mineral}.",
+    "{mineral} motherlode. Recommend we take our time with this one.",
+    "Core confirmed, {name}: {mineral}. Mind the blast.",
+    "Seismic team, stand by. {mineral} core."
+   ],
+   "naval_us_profane": [
+    "Hot damn. {mineral}, dead center of the rock.",
+    "Hell yes, {name}. There's {mineral} in the middle of that rock.",
+    "{mineral} core. Crack the damn thing open.",
+    "Damn, {name}. Motherlode, and it's {mineral}.",
+    "Hell of a rock. {mineral} core.",
+    "{mineral} motherlode. Charges out, damn it.",
+    "Well, damn. {mineral}, right in the core.",
+    "{name}, {mineral} in the core. Place those damn charges right.",
+    "Motherlode. {mineral}. Damn fine.",
+    "{mineral} core, {name}. Blow the hell out of it.",
+    "Hell's bells. {mineral} motherlode.",
+    "{mineral} core confirmed. Damn good hunting.",
+    "Core of {mineral}. Mind the damn blast radius.",
+    "Damn right, {name}. {mineral} motherlode.",
+    "{mineral} core. Hell of a payday inside that rock.",
+    "Wake the hell up, demolition crew. We've got {mineral}."
+   ]
+  },
   "limpets_none": {
    "naval_us": [
     "Be advised, {name}: we have no limpets aboard. Recommend we turn back and buy some.",

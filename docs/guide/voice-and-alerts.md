@@ -67,6 +67,11 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
   with none in the hold, while you can still turn back: **Remind me to take limpets** in Settings → Mining, off by
   default. Mining's alerts have their sound, notification, voice and crew switches in Settings → Mining's own table,
   not under Alerts
+- **the prospector call-out**: as each prospector limpet reports, a rock with your threshold (30 % to start) of the
+  minerals ticked in Settings → Mining is said ("Platinum, 34 percent"), or with **combined**, their sum ("Combined
+  52 percent: Platinum 31, Gold 21": tick Platinum, Palladium, Gold, Silver and Osmium with 50 for a rock half precious
+  metals); a **motherlode** always (its own box). Duds and rocks mined before stay silent, and "Material content:
+  High" (engineering materials, not the commodity) only when ticked. None ticked: only motherlodes
 - an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again: a card at the top of
   the page and a notification, never spoken (see [Uploads](uploads.md#status))
 

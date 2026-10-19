@@ -1836,6 +1836,82 @@
     "{name}, {bodies} have {types} rings. Pick the nearest one. Damn fuel's not free."
    ]
   },
+  "prospect_hit": {
+   "scoundrel": [
+    "{what}. Worth a dig.",
+    "{what}, {name}. Get the laser on it.",
+    "Ooh. {what}. That one's ours.",
+    "Good rock. {what}.",
+    "{what}. Start cutting.",
+    "Prospector says {what}. I like this one.",
+    "Hey, {name}. {what}. Dig in.",
+    "{what}. Now we're talking money.",
+    "That's a keeper. {what}.",
+    "{what}. Mine it before someone else does.",
+    "Payday rock. {what}.",
+    "Got one, {name}. {what}.",
+    "{what}. Lasers on.",
+    "Limpet likes this rock. {what}.",
+    "{what}. That's credits in stone form.",
+    "Here's a good one. {what}."
+   ],
+   "scoundrel_profane": [
+    "{what}. Damn, nice rock.",
+    "Hell yes. {what}.",
+    "{what}, {name}. Cut the bastard open.",
+    "Shit, look at that. {what}.",
+    "{what}. Now that's a rock worth a damn.",
+    "Ooh, {what}. Get the bloody laser on it.",
+    "{what}. Hot damn.",
+    "Prospector says {what}. Hell of a rock.",
+    "{what}. Dig in, damn it.",
+    "Oh, that's the good shit. {what}.",
+    "{what}. Mine the crap out of it.",
+    "Holy crap. {what}.",
+    "{what}. That bastard's worth money.",
+    "Damn, {name}. {what}. Ours now.",
+    "{what}. Fucking lovely.",
+    "Keep your damn hands off, everybody. {what}."
+   ]
+  },
+  "motherlode": {
+   "scoundrel": [
+    "Motherlode, {name}. {mineral} core. Get the charges out.",
+    "{mineral} core! This is a safe I know how to crack.",
+    "Core rock, {mineral}. Seismic charges, and keep your fingers clear.",
+    "Ooh, {mineral} motherlode. Now we're robbing the bank, not the till.",
+    "Got a core, {name}. {mineral}. Find the fissures.",
+    "{mineral} motherlode. Let's blow it open.",
+    "That rock's got a {mineral} heart. Crack it.",
+    "Jackpot. {mineral} core, {name}.",
+    "Motherlode. {mineral}. My favourite word, then my second favourite.",
+    "{mineral}, right in the middle of that rock. Charges, please.",
+    "Core detected, {name}. {mineral}. Time for fireworks.",
+    "{name}, that's a core full of {mineral}. Big score. Careful with the charges.",
+    "Big one. {mineral} motherlode. Light it up.",
+    "{mineral} core. I've cracked safes with less inside.",
+    "Prospector found the motherlode. {mineral}. Do the honours, {name}.",
+    "{mineral} core. Set the charges and stand back."
+   ],
+   "scoundrel_profane": [
+    "Holy shit, a motherlode. {mineral}. Charges out.",
+    "{mineral} core, {name}. Let's blow the bastard open.",
+    "Hell yes. {mineral} motherlode.",
+    "Damn, {name}. That rock's got {mineral} in its guts.",
+    "Motherlode. {mineral}. Find the fissures and crack the damn thing.",
+    "{mineral} core! Fuck me, payday.",
+    "Hot damn, {mineral}. Seismic charges, now.",
+    "Core rock, {mineral}. Don't botch the charges, for crap's sake.",
+    "{mineral} motherlode. Blow that bloody thing to bits.",
+    "Shit, a core. {mineral}. Big score, {name}.",
+    "{mineral}. A whole damn core of it.",
+    "Jackpot, damn it. {mineral} core.",
+    "A motherlode, damn it! {mineral}. Blow it sky high.",
+    "{mineral} core. Bloody beautiful. Go.",
+    "That's {mineral}, a whole motherlode of it. Charges, and keep your arse clear.",
+    "Somebody hid {mineral} in a rock, the sneaky bastard. Crack it, {name}."
+   ]
+  },
   "limpets_none": {
    "scoundrel": [
     "Hold on, {name}. Not a single limpet aboard. Turn around and buy some.",

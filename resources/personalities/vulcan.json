@@ -954,6 +954,48 @@
     "{bodies} have {types} rings. You asked to be told. I am telling you."
    ]
   },
+  "prospect_hit": {
+   "vulcan": [
+    "{what}.",
+    "Prospector reports {what}.",
+    "{what}. Worth mining.",
+    "{name}, {what}.",
+    "Target asteroid. {what}.",
+    "{what}. Above your threshold.",
+    "This one meets your criteria. {what}.",
+    "Prospector result: {what}.",
+    "{what}. I recommend this rock.",
+    "Analysis complete. {what}.",
+    "{what}. Logical to mine.",
+    "Acceptable. {what}.",
+    "{what}, {name}. Begin extraction.",
+    "Composition: {what}.",
+    "{what}. Proceed with the laser.",
+    "A worthy asteroid. {what}.",
+    "{what}. Satisfactory."
+   ]
+  },
+  "motherlode": {
+   "vulcan": [
+    "Motherlode detected. {mineral}.",
+    "{name}, this asteroid has a core. {mineral}.",
+    "Core detected. {mineral}. Seismic charges are required.",
+    "{mineral} motherlode. Prepare the charges.",
+    "Prospector reports a motherlode of {mineral}.",
+    "Fascinating. A motherlode. {mineral}.",
+    "A core asteroid, {name}. The mineral is {mineral}.",
+    "{mineral}, in the core. Locate the fissures.",
+    "Motherlode. {mineral}. Detonation is the logical next step.",
+    "This rock conceals {mineral}. A motherlode.",
+    "{name}. Motherlode, {mineral}. Mind the charge strength.",
+    "Core of {mineral} detected. The fissures should be visible.",
+    "{mineral} core. I believe humans call this hitting the jackpot. It is a rock with a centre.",
+    "Motherlode confirmed. {mineral}. Do not overcharge.",
+    "{mineral}. A core worth cracking.",
+    "Prospector result: motherlode, {mineral}.",
+    "{name}, {mineral} at the core. Precision with the charges, please."
+   ]
+  },
   "limpets_none": {
    "vulcan": [
     "{name}, the hold contains no limpets. A mining expedition without them would be illogical.",

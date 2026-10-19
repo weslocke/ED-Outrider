@@ -1849,6 +1849,82 @@
     "Not one but {count}, damn it. {bodies}, with {types} rings."
    ]
   },
+  "prospect_hit": {
+   "naval_rn": [
+    "{what}. That's a keeper.",
+    "Prospector reports {what}. Recommend we work it.",
+    "{what}, {name}. Worth the laser.",
+    "Good rock. {what}.",
+    "{what}. Mark that one.",
+    "Prospector contact: {what}.",
+    "{name}, {what}. Recommend we mine.",
+    "{what}. Very good.",
+    "Worth mining: {what}.",
+    "{what}. Lasers on it, {name}.",
+    "Survey in. {what}.",
+    "{what}. One for the hold.",
+    "Bravo Zulu. {what}.",
+    "Target asteroid: {what}.",
+    "{what}. Recommend we stay on this one.",
+    "Prospect confirmed, {name}. {what}."
+   ],
+   "naval_rn_profane": [
+    "{what}. Bloody good rock.",
+    "{what}. Damn fine, {name}.",
+    "Get the bloody laser on it. {what}.",
+    "{what}. That'll do nicely, damn it.",
+    "Damn good reading. {what}.",
+    "{what}. Bloody keeper, that.",
+    "Well, damn. {what}.",
+    "{name}, {what}. Mine the bloody thing.",
+    "{what}. Hell of a rock.",
+    "Prospector's earned its keep, damn it. {what}.",
+    "{what}. Bloody lovely.",
+    "Damn, {name}. {what}.",
+    "{what}. Don't you bloody dare fly past it.",
+    "Bloody marvellous. {what}.",
+    "{what}. Damn worth the effort.",
+    "Here's a good one, damn it. {what}."
+   ]
+  },
+  "motherlode": {
+   "naval_rn": [
+    "Motherlode, {name}. {mineral} core.",
+    "{mineral} motherlode. Seismic charges ready.",
+    "Core detected: {mineral}. Recommend we crack it.",
+    "Prospector has a {mineral} core, {name}.",
+    "Motherlode contact. {mineral}.",
+    "{mineral} core, {name}. Find the fissures.",
+    "Very good. A {mineral} motherlode.",
+    "Core asteroid: {mineral}. Stand by charges.",
+    "{name}, motherlode. {mineral} inside.",
+    "Bravo Zulu. {mineral} core.",
+    "A {mineral} core. Charges at the ready, {name}.",
+    "Motherlode logged: {mineral}.",
+    "{mineral} core asteroid. Recommend we crack it open.",
+    "Prospector reports a core. {mineral}.",
+    "Mining Officer here. {mineral} motherlode, {name}.",
+    "{mineral} core. Stand well clear when it blows."
+   ],
+   "naval_rn_profane": [
+    "Bloody hell, a {mineral} core.",
+    "{mineral} motherlode, {name}. Damn fine find.",
+    "Get the bloody charges out. {mineral} core.",
+    "There's {mineral} in the heart of that rock, damn it. Motherlode.",
+    "{mineral} core. Crack the bastard open, {name}.",
+    "Hell of a find. {mineral} motherlode.",
+    "Well, I'll be damned. {mineral} core.",
+    "{name}, it's a bloody {mineral} motherlode.",
+    "{mineral} inside that rock. Damn lovely.",
+    "Charges ready. {mineral} core, and a bloody big one.",
+    "Damn, {name}. {mineral} motherlode.",
+    "{mineral} core. Blow the bloody thing.",
+    "Prospector's hit the jackpot, damn it. {mineral} core.",
+    "Bloody marvellous. A {mineral} motherlode.",
+    "{mineral} core, {name}. Mind your arse when it goes.",
+    "Hell yes. {mineral} motherlode."
+   ]
+  },
   "limpets_none": {
    "naval_rn": [
     "Mining Officer, {name}. We've sailed without limpets. Recommend we return and take some on.",

@@ -72,5 +72,105 @@ class LimpetReminder(unittest.TestCase):
         self.assertEqual(self.said(), [])   # a journal caught up on: never said
 
 
+class Stints(unittest.TestCase):
+    """B: a drop into a ring until leaving it, with what was prospected and refined there; the hotspot from a live
+    drop's Status.json Destination (none: the ring; unknown: an older journal)."""
+    def setUp(self):
+        import types
+        import unittest.mock
+        # a stint spans half an hour: every line in it is live here (an older journal's are years old)
+        p = unittest.mock.patch.object(ed_outrider, "SHUTDOWN_LIVE_S", 10 ** 6)
+        p.start()
+        self.addCleanup(p.stop)
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        self.now = time.time()
+        self.j.handle({"event": "Loadout", "timestamp": self.at(0), "Ship": "python", "ShipID": 7, "ShipName": "Digger",
+                       "ShipIdent": "DG", "CargoCapacity": 128, "MaxJumpRange": 20.0, "Modules": []})
+
+    def at(self, s):
+        return ed_outrider.iso_ts(self.now - 3000 + s)
+
+    def drop(self, s, ring="Sys 4 B Ring", body=18, dest=None, ts=None):
+        self.j.status_json = {"live": True, "destination": dest}
+        self.j.handle({"event": "SupercruiseExit", "timestamp": ts or self.at(s), "StarSystem": "Sys", "SystemAddress": 9,
+                       "Body": ring, "BodyID": body, "BodyType": "PlanetaryRing"})
+
+    def prospect(self, s, ts=None, remaining=100.0, lode=None, **mats):
+        ev = {"event": "ProspectedAsteroid", "timestamp": ts or self.at(s), "Content": "$AsteroidMaterialContent_High;",
+              "Remaining": remaining, "Materials": [{"Name": k, "Proportion": v} for k, v in mats.items()]}
+        if lode:
+            ev.update(MotherlodeMaterial=lode, MotherlodeMaterial_Localised="Void Opal" if lode == "Opal" else lode)
+        self.j.handle(ev)
+
+    def refine(self, s, kind, ts=None):
+        self.j.handle({"event": "MiningRefined", "timestamp": ts or self.at(s), "Type": f"${kind}_name;",
+                       "Type_Localised": {"opal": "Void Opal"}.get(kind, kind.title())})   # as the game names them
+
+    def leave(self, s, ts=None):
+        self.j.handle({"event": "SupercruiseEntry", "timestamp": ts or self.at(s), "StarSystem": "Sys", "SystemAddress": 9})
+
+    def groups(self):
+        return {(g["ring"], g["hotspot"]): g for g in self.state.mining_hotspots()["hotspots"]}
+
+    def test_a_hotspot_stint(self):
+        hot = {"System": 9, "Body": 18, "Name": "$SAA_RingHotspot:#type=$Alexandrite_name;;", "Name_Localised": "Alexandrite Hotspot"}
+        self.drop(0, dest=hot)
+        self.j.handle({"event": "LaunchDrone", "timestamp": self.at(5), "Type": "Prospector"})
+        self.prospect(10, platinum=31.5, Painite=4.2)
+        self.prospect(20, remaining=60.0, gold=40.0)
+        self.prospect(30, lode="Opal", water=12.0)
+        for i in range(6):
+            self.refine(40 + i, "platinum")
+        self.j.handle({"event": "AsteroidCracked", "timestamp": self.at(50), "Body": "Sys 4 B Ring"})
+        self.refine(1800, "opal")
+        self.leave(1900)
+        g = self.groups()[("4 B Ring", "alexandrite")]
+        self.assertEqual((g["stints"], g["tons"], g["refined"], g["motherlodes"], g["cracked"], g["seconds"], g["open"]),
+                         (1, 7, {"platinum": 6, "opal": 1}, 1, 1, 1800, False))
+        self.assertEqual(g["prospects"], [[{"platinum": 31.5, "painite": 4.2}, 1], [{"gold": 40.0}, 0], [{"water": 12.0}, 1]])
+        self.assertEqual([(x["name"], x["tons"]) for x in g["ships"]], [("Digger", 7)])
+        names = self.state.mining_hotspots()["names"]
+        self.assertEqual((names["opal"], names["painite"]), ("Void Opal", "Painite"))
+        # live prospects are moments for the page's call-out, with the minerals' names
+        p = [m for m in self.j.moments if m["kind"] == "prospect"]
+        self.assertEqual([(m["untouched"], m["motherlode"], m["content"]) for m in p], [(True, None, "High"), (False, None, "High"), (True, "opal", "High")])
+        self.assertEqual((p[2]["motherlode_name"], p[0]["names"]), ("Void Opal", {"platinum": "Platinum", "painite": "Painite"}))
+
+    def test_no_hotspot_unknown_and_empty(self):
+        ring = {"System": 9, "Body": 18, "Name": "Sys 4 B Ring"}
+        self.drop(0, dest=ring)                       # aimed at the ring itself: no hotspot
+        self.refine(10, "platinum")
+        self.leave(20)
+        self.drop(100, ring="Sys 4 A Ring", body=17)  # a drop with nothing done there: not kept
+        self.leave(150)
+        self.drop(0, ts="2020-01-01T00:00:00Z")       # an older journal: the hotspot is not known
+        self.refine(0, "platinum", ts="2020-01-01T00:05:00Z")
+        self.leave(0, ts="2020-01-01T00:10:00Z")
+        self.assertEqual({k: g["tons"] for k, g in self.groups().items()}, {("4 B Ring", ""): 1, ("4 B Ring", None): 1})
+
+    def test_relog_in_the_ring_and_a_reread(self):
+        hot = {"System": 9, "Body": 18, "Name": "$SAA_RingHotspot:#type=$Platinum_name;;"}
+        self.drop(0, dest=hot)
+        self.refine(10, "platinum")
+        self.j.handle({"event": "Location", "timestamp": self.at(60), "StarSystem": "Sys", "SystemAddress": 9, "Body": "Sys 4 B Ring",
+                       "BodyID": 18, "BodyType": "PlanetaryRing", "StarPos": [0, 0, 0]})
+        self.refine(70, "platinum")
+        g = self.groups()[("4 B Ring", "platinum")]
+        self.assertEqual((g["stints"], g["tons"], g["open"]), (1, 2, True))   # still the same stint, still open
+        # a journal re-read rebuilds the stints; the hotspot a live drop was aimed at is kept
+        self.db.executescript(ed_outrider.RESET_JOURNAL_DATA)
+        self.assertEqual(self.db.execute("SELECT count(*) FROM mining_stints").fetchone()[0], 0)
+        self.assertEqual(self.db.execute("SELECT hotspot FROM mining_hotspot_drops").fetchall()[0][0], "platinum")
+
+    def test_what_mined_ore_sold_for(self):
+        self.db.execute("INSERT INTO mining_sales (ts, source, commodity, tons, mined_tons, total, mined_total, own_carrier) "
+                        "VALUES ('t1', 's', 'platinum', 10, 10, 2000000, 2000000, 0), ('t2', 's', 'platinum', 10, 10, 1000000, 1000000, 0), "
+                        "('t3', 's', 'painite', 5, 5, 9000000, 9000000, 1)")
+        self.assertEqual(self.state.mining_hotspots()["per_ton"], {"platinum": 150000})   # your own carrier left out
+
+
 if __name__ == "__main__":
     unittest.main()

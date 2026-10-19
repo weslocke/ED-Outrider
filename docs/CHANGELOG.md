@@ -2,6 +2,24 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-18 · Mining B and C: the hotspot record and the prospector call-out
+- **The hotspot record** (B, the author): `mining_stints` (journal-derived, PARSER_VERSION 56): each drop into a ring
+  (SupercruiseExit or a login with BodyType PlanetaryRing) until leaving it (MINING_CLOSE, a Location elsewhere), with
+  every prospect's percentages raw, tons refined by mineral, motherlodes, cores cracked, limpets launched; a stint
+  with no mining dropped; `Journals.handle_mining`, before the Commander view's early returns. The hotspot a live drop
+  was aimed at: `mining_hotspot_drops` (Status.json's Destination, `RING_HOTSPOT`; live only, kept through a re-read):
+  a mineral, "" for none, no row for unknown (older journals).
+- `State.mining_hotspots()` (GET `/api/mining/hotspots`, and in `/api/commander/sessions`): stints by ring and
+  hotspot, ships by t/h, per_ton (what your mined ore sold for, mining_sales, your own carrier left out), the
+  minerals' names (`MINED_NAMES`). The page reads it again on the payload's `mining_version`.
+- **The page:** CMDR → Sessions' **Hotspots** table (hit rate against the call-out, best ship's t/h, ≈ cr/h, refined,
+  last; sorted by t/h, hit rate or last visit; 🎯); Here's ring hover and body card add "you, Alexandrite: 3 stints ·
+  38 t/h · 41 % hits" under each ring (`ringRecord`; the body card now knows its system).
+- **The prospector call-out** (C): a live ProspectedAsteroid is a "prospect" moment (materials by commodity id with
+  names, untouched, content, motherlode). Settings → Mining: the minerals (the common ones, the rest under "more"),
+  one threshold % (30), combined, motherlodes (on), High material content (off); `prospectHit`, `prospectOut`; a
+  newer call-out replaces one waiting (tag "prospect"). Lines `prospect_hit`, `motherlode`, 15 a list, 652 in all.
+
 ## 2026-10-18 · Mining A: a reminder to take limpets; mining's alerts in Settings → Mining
 - **Remind me to take limpets** (Settings → Mining, off by default; the author): undocking (a station or a carrier,
   not a taxi or multicrew) in a ship with a refinery or a collector, prospector, mining or universal limpet controller

@@ -61,6 +61,10 @@ KEYS = {
     "limpets_none": "you just undocked in a mining ship (a refinery, a collector or prospector limpet controller fitted) "
                     "with no limpets in the hold: a reminder to turn back for some (Settings → Mining's reminder, said by "
                     "the Mining Officer)",
+    "prospect_hit": "a prospector reported a rock (not mined before) over your threshold of the minerals ticked in Settings → "
+                    "Mining (the call-out, said by the Mining Officer; short: they come every few seconds): {what} (already "
+                    "phrased, e.g. 'Platinum, 34 percent', 'Combined 52 percent: Platinum 31, Gold 21')",
+    "motherlode": "a prospector found a motherlode, a core to crack (Settings → Mining's call-out): {mineral} (e.g. 'Void Opal')",
     "ring_found": "a body just scanned has a ring of a type you watch for (Settings → Mining: the miner's call-out, said "
                   "by the Mining Officer): {body} (short name like 'A 3'), {ring} (the ring, already phrased with its "
                   "article and its reserves when pristine or depleted, e.g. 'a metallic ring', 'a pristine icy ring', "
@@ -619,7 +623,7 @@ SAMPLES = {
     "docking_denied": {"reason": "no pad free for your ship: try again shortly", "station": "Jameson Memorial"},
     "phenomena": {"what": "three notable stellar phenomena, all in rings"},
     "rare_star": {"what": "a black hole at B"},
-    "ring_found": {"body": "A 3", "ring": "a pristine metallic ring"}, "limpets_none": {},
+    "ring_found": {"body": "A 3", "ring": "a pristine metallic ring"}, "limpets_none": {}, "prospect_hit": {"what": "Platinum, 34 percent"}, "motherlode": {"mineral": "Void Opal"},
     "ring_found_many": {"count": 3, "bodies": "A 3, A 5 and B 1", "types": "metallic and icy"},
     "surface_site": {"what": "Guardian sites on B 3"},
     "signal_poi": {"what": "a Guardian beacon"},
@@ -678,7 +682,7 @@ CREW_ROLES = (
     ("quartermaster", "Quartermaster", "Quartermaster", ("sell", "saleleft", "unsold", "carrier", "carriertrip", "loss")),
     ("comms", "Comms Officer", "Comms", ("uploads", "firstsseen", "game", "docking", "chat")),
     ("tactical", "Tactical", "Tactical", ()),
-    ("mining", "Mining Officer", "Mining Officer", ("rigs", "rigleash", "rigsout", "ring", "limpets")),
+    ("mining", "Mining Officer", "Mining Officer", ("rigs", "rigleash", "rigsout", "ring", "limpets", "prospect")),
 )
 CREW_IDS = tuple(r[0] for r in CREW_ROLES)
 CREW_SHORT = {r[0]: r[2] for r in CREW_ROLES}
@@ -699,7 +703,7 @@ ROW_KEYS = {
     "unsold": ("unsold_warn", "unsold_urgent"), "firstsseen": ("firsts_seen",), "hull": ("hull", "heat", "interdicted"),
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
-    "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none",),
+    "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none",), "prospect": ("prospect_hit", "motherlode"),
 }
 DANGER = ("hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop",
           "carrier_departs", "ship_lost", "rig_leash")

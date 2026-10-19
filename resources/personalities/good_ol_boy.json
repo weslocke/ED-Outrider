@@ -1848,6 +1848,86 @@
     "{bodies} have {types} rings. Sweeter than pecan pie and worth a damn detour."
    ]
   },
+  "prospect_hit": {
+   "good_ol_boy": [
+    "{what}. That's a keeper, partner.",
+    "Prospector says {what}, {name}.",
+    "{what}. Light her up, buddy.",
+    "Got one, pal. {what}.",
+    "Hot diggity. {what}.",
+    "{what}. Worth a crack, chief.",
+    "Ooh, {what}. Dig in.",
+    "Good rock, friend. {what}.",
+    "{what}. Fire away, partner.",
+    "Well, lookee here. {what}.",
+    "{what}. Mighty fine, {name}.",
+    "This one's a good'un. {what}.",
+    "{what}. Send the collectors, buddy.",
+    "Butter my biscuit. {what}.",
+    "{what}. Sweet as pie, pal.",
+    "Dadgum, {what}.",
+    "Rock's worth it, chief. {what}."
+   ],
+   "good_ol_boy_profane": [
+    "{what}. Damn fine rock, partner.",
+    "Hot damn. {what}.",
+    "{what}. Hell yes, buddy.",
+    "Prospector says {what}. Hit the damn thing, pal.",
+    "{what}. Burn that damn rock down, {name}.",
+    "Shit, that's nice. {what}.",
+    "That rock's a damn beauty, chief. {what}.",
+    "Damn, {name}. {what}.",
+    "{what}. Get the damn laser on it.",
+    "Well, I'll be damned. {what}.",
+    "{what}. Hell, that's worth a crack, friend.",
+    "Hot damn and hallelujah. {what}.",
+    "{what}. Now that's a damn keeper.",
+    "Holy hell, buddy. {what}.",
+    "{what}. Shoot the hell out of it, partner.",
+    "Crap on a cracker, {what}.",
+    "Fuck yeah. {what}."
+   ]
+  },
+  "motherlode": {
+   "good_ol_boy": [
+    "Motherlode, partner! {mineral} core. Get them charges ready.",
+    "{name}, core rock. {mineral} inside. Time for the seismic charges.",
+    "Hot diggity, a core! {mineral}, buddy.",
+    "{mineral} motherlode, pal. Grandpa'd be dancin'.",
+    "Good gravy, {mineral} in a core. Charges out, chief.",
+    "Lord have mercy. {mineral} motherlode, friend.",
+    "We got us a core, partner. {mineral}. Crack her open.",
+    "Butter my biscuit. {mineral} motherlode!",
+    "{mineral} core, {name}. Like strikin' oil in the back forty.",
+    "Motherlode! {mineral}. Mind the fissures, buddy.",
+    "Dadgum, pal, {mineral} core rock. Let's go crack it.",
+    "Well, I'll be. {mineral} motherlode, chief.",
+    "{mineral}, buddy, in a core. Fixin' to make some fireworks.",
+    "Hey now, motherlode. {mineral} inside, partner.",
+    "Prospector found a core, {name}. {mineral}. Ready the charges.",
+    "{mineral} motherlode. Happier than a pig in slop, friend.",
+    "Shoot, a core full of {mineral}. Let's blow it, pal."
+   ],
+   "good_ol_boy_profane": [
+    "Hot damn, partner! Core's packed with {mineral}.",
+    "{mineral} core, {name}. Get the damn charges out.",
+    "Holy shit, buddy, {mineral} motherlode.",
+    "Well, I'll be damned. {mineral} in a core, pal.",
+    "Hell yes. {mineral} motherlode, chief. Let's blow it.",
+    "{mineral} core rock, friend. Time to make some damn fireworks.",
+    "Fuck yeah, motherlode! {mineral}.",
+    "Damn, partner, that's {mineral} in there. Charges ready.",
+    "Son of a biscuit, a core! {mineral}. Hell of a find.",
+    "{mineral} motherlode, {name}. Grandpa'd cuss, and damn if I won't too.",
+    "Crap on a cracker, {mineral} core, buddy. Mind the damn fissures.",
+    "Motherlode, pal. {mineral}. Blow the hell out of it.",
+    "Hell's bells, chief. {mineral} core.",
+    "Kiss my grits, {mineral} motherlode! Damn fine, friend.",
+    "{mineral} in a core, partner. Hallelujah and pass the damn dynamite.",
+    "Damn it all, {name}, {mineral} core. My hands are shakin'.",
+    "Holy hell, buddy. {mineral}. Crack it."
+   ]
+  },
   "limpets_none": {
    "good_ol_boy": [
     "Hold on, partner. We undocked without a single limpet aboard. Let's turn back and buy some.",

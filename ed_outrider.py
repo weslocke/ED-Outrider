@@ -1406,6 +1406,12 @@ CHAT_KEEP = 32               # messages the payload carries (a burst between two
 CHAT_CHANNELS = ("squadron", "wing", "player", "friend", "local", "starsystem", "voicechat")
 CHAT_MAX = 300               # characters of a message kept (the page says "and more" past it)
 MINED_EVENTS = ("MiningRefined", "CargoTransfer", "EjectCargo", "Died", "MarketSell", "CarrierBuy")
+# Mining stints (Journals.handle_mining): a drop into a ring opens one, these fill it, MINING_CLOSE ends it
+MINING_FILL = ("ProspectedAsteroid", "MiningRefined", "AsteroidCracked", "LaunchDrone")
+MINING_CLOSE = ("SupercruiseEntry", "FSDJump", "CarrierJump", "Docked", "Shutdown", "Died", "LoadGame")
+MINING_EVENTS = frozenset(MINING_FILL + MINING_CLOSE + ("SupercruiseExit", "Location"))
+# a hotspot's Destination name ("$SAA_RingHotspot:#type=$Alexandrite_name;;"): its mineral
+RING_HOTSPOT = re.compile(r"RingHotspot:#type=\$(\w+?)_name", re.I)
 _OTHER_EVENTS = (POSITION_EVENTS + STAR_CLASS_EVENTS + SCAN_EVENTS + DATA_EVENTS + SHIP_EVENTS + CMDR_EVENTS + MATERIAL_EVENTS
                  + BODY_EVENTS + SRV_EVENTS + CARGO_ONLY + DOCKING_EVENTS + CHAT_EVENTS + ("Loadout", "Shutdown", "Fileheader"))
 # The Commander view (outrider/commander.py): Journals.handle_commander folds these into the meta keys of
@@ -1436,7 +1442,8 @@ WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + 
 #     against the arrival before it (a legacy folder read late counted every login as a visit).
 # 43: a system's population (system_population) and own_firsts.bio_x5: no x5 bio bonus in populated systems.
 # 55: a body record's reserve (Scan's ReserveLevel: a ringed body's Pristine...), for Here's rings (mining).
-PARSER_VERSION = 55
+# 56: mining stints (mining_stints: each drop into a ring with what was prospected and refined there).
+PARSER_VERSION = 56
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1462,6 +1469,7 @@ PARSER_VERSION = 55
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    56: "each stretch of mining in a ring is kept: what you prospected and refined there (CMDR → Sessions' Hotspots)",
     55: "each ringed body keeps its reserves (pristine, major...), shown with its rings in Here",
     54: "ore you mined still counts as mined after a trip through your carrier (the Commander tab's Earnings)",
     53: "each exobiology sale keeps what every species in it paid (the Commander tab's Earnings)",
@@ -1687,6 +1695,17 @@ CREATE INDEX IF NOT EXISTS own_firsts_system ON own_firsts (system);
 CREATE TABLE IF NOT EXISTS own_ring_signals (
     system INTEGER, name TEXT, hotspots TEXT, ts TEXT,
     PRIMARY KEY (system, name));
+-- Mining stints (the hotspot record, mining B): a drop into a ring (SupercruiseExit, or a login there) until leaving it,
+-- with every prospect ([{mineral: %}, untouched], untouched: Remaining 100), the tons refined by mineral, motherlodes,
+-- cores cracked and limpets launched. From the journal (a re-read rebuilds it); one with no mining in it is not kept.
+CREATE TABLE IF NOT EXISTS mining_stints (
+    start_ts TEXT PRIMARY KEY, system INTEGER, system_name TEXT, ring TEXT, body_id INTEGER, ship_id INTEGER, ship TEXT,
+    ship_type TEXT, end_ts TEXT, last_ts TEXT, prospects TEXT, refined TEXT, motherlodes INTEGER, cracked INTEGER,
+    prospectors INTEGER, collectors INTEGER, open INTEGER);
+-- The hotspot a live drop was aimed at (Status.json's Destination; the journal never says): its mineral's commodity id,
+-- "" for none (the ring itself, or nothing targeted). Live only, so kept through a journal re-read.
+CREATE TABLE IF NOT EXISTS mining_hotspot_drops (
+    system INTEGER, body_id INTEGER, start_ts TEXT, hotspot TEXT, PRIMARY KEY (system, body_id, start_ts));
 -- Where each exobiology sample of the current run was taken (from Status.json at the time, live play only):
 -- the sample-spacing readout measures from these. n = 1 (Log), 2 (Sample). Live only, so a journal re-read
 -- keeps them (not in RESET_JOURNAL_DATA): a replay has no position to rebuild them from.
@@ -1848,7 +1867,7 @@ DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 's
 DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
 DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_carrier', 'sale_dock');
-DELETE FROM play_activity;
+DELETE FROM play_activity; DELETE FROM mining_stints;
 DELETE FROM meta WHERE key IN ('reputation', 'powerplay', 'squadron', 'stored_ships', 'stored_modules', 'ship_locker',
                                'suit_loadouts', 'engineers', 'missions');
 DELETE FROM meta WHERE key IN ('ship', 'carrier', 'fuel_hist', 'last_scoop', 'commander', 'materials', 'last_session', 'cargo',
@@ -2131,6 +2150,13 @@ RESERVE_LEVELS = {"PristineResources": "Pristine", "MajorResources": "Major", "C
                   "LowResources": "Low", "DepletedResources": "Depleted"}
 
 
+def prospect_content(v):
+    """ProspectedAsteroid's Content ("$AsteroidMaterialContent_High;"): High, Medium or Low (the raw engineering
+    materials, not the commodity), else None."""
+    m = re.search(r"Content_(\w+);", str(v or ""))
+    return m.group(1) if m else None
+
+
 def spansh_reserve(v):
     """Spansh's reserveLevel ("Pristine", or the journal's "PristineResources") as RESERVE_LEVELS words; None when
     it is missing or unknown."""
@@ -2262,6 +2288,11 @@ def split_ring_name(system, ring):
 # Journal and Spansh dumps say "LowTemperatureDiamond"/"Opal"; Spansh's search API and the
 # game's UI say "Low Temperature Diamonds"/"Void Opal". Everything here uses the latter.
 MINERAL_NAMES = {"LowTemperatureDiamond": "Low Temperature Diamonds", "Opal": "Void Opal"}
+# mined commodities by their commodity id (outrider.cargo.cid) whose name the title-cased id would get wrong: mining's
+# prospects and refined tons, before the journal has taught the commodity's own name
+MINED_NAMES = {"lowtemperaturediamond": "Low Temperature Diamonds", "opal": "Void Opal", "liquidoxygen": "Liquid Oxygen",
+               "methanolmonohydratecrystals": "Methanol Monohydrate Crystals", "lithiumhydroxide": "Lithium Hydroxide",
+               "hydrogenperoxide": "Hydrogen Peroxide", "methaneclathrate": "Methane Clathrate"}
 HOTSPOT_MINERALS = ["Alexandrite", "Benitoite", "Bromellite", "Grandidierite",
                     "Low Temperature Diamonds", "Monazite", "Musgravite", "Painite", "Platinum",
                     "Rhodplumsite", "Serendibite", "Tritium", "Void Opal"]
@@ -2690,6 +2721,7 @@ class Journals:
         # reload(): the payload's commander_version, on which the page asks for the view's tab again. Only ever goes
         # up: a rolled-back tick that reads the lines again bumps it again, which only means one more read
         self.commander_version = 0
+        self.mining_version = 0   # moves with every change to a mining stint (the page's cue to read the hotspots again)
         # the live tail's quick scan (S18): per journal its last size and how many stats in a row found it unchanged;
         # `settled` the files unchanged for JOURNAL_SETTLE_STATS stats, which a quick scan does not stat again until
         # the folder's full re-check (full_check_at, on `clock`) comes round
@@ -3421,6 +3453,8 @@ class Journals:
             self.note_sale_dock(name, ev, ts)
         # before the Commander view's fold: its Sessions count a sale's mined part as this works it out (one rule)
         mined = self.note_mined(name, ev, ts) if name in MINED_EVENTS else None
+        if name in MINING_EVENTS:
+            self.handle_mining(name, ev, ts)
         if name in CHAT_EVENTS:
             self.handle_chat(ev, ts)
             return
@@ -4527,6 +4561,84 @@ class Journals:
             c["earned"] = (c.get("earned") or 0) + int(amount)
             self.cmdr_changed = True
             meta_set(self.db, "commander", c)
+
+    def handle_mining(self, name, ev, ts):
+        """Mining stints (mining_stints, mining B): a SupercruiseExit into a planetary ring (or a login there) opens one,
+        closing the one before; prospects, refined tons, cracked cores and launched limpets fill the open one; leaving
+        (MINING_CLOSE, or a Location elsewhere) ends it, and one with no mining in it is dropped. A live drop also keeps
+        the hotspot it was aimed at (mining_hotspot_drops, from Status.json's Destination). Live prospects are moments
+        too (kind "prospect": the page's call-out, mining C)."""
+        db = self.db
+        row = db.execute("SELECT * FROM mining_stints WHERE open = 1 ORDER BY start_ts DESC LIMIT 1").fetchone()
+        if row and ts < row["start_ts"]:
+            return   # older than the open stint (a legacy folder read late)
+        ring = name in ("SupercruiseExit", "Location") and ev.get("BodyType") == "PlanetaryRing"
+        if name in MINING_CLOSE or name in ("SupercruiseExit", "Location"):
+            if row and not (name == "Location" and ring and ev.get("Body") == row["ring"]):   # a relog in the same ring: kept
+                self.mining_close(row, ts)
+                row = None
+            if not ring or row:
+                return
+            system = ev.get("SystemAddress")
+            ship = self.ship or {}
+            db.execute("INSERT OR REPLACE INTO mining_stints VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, '[]', '{}', 0, 0, 0, 0, 1)",
+                       (ts, system, ev.get("StarSystem"), ev.get("Body"), ev.get("BodyID"), ship.get("ship_id"),
+                        ship.get("name"), ship.get("type"), ts))
+            if live_event(ts) and name == "SupercruiseExit":
+                d = (self.status_json or {}).get("destination") or {}
+                m = RING_HOTSPOT.search(str(d.get("Name") or "")) if d.get("System") == system and d.get("Body") == ev.get("BodyID") else None
+                db.execute("INSERT OR REPLACE INTO mining_hotspot_drops VALUES (?, ?, ?, ?)",
+                           (system, ev.get("BodyID"), ts, outrider.cargo.cid(m.group(1)) if m else ""))
+            self.mining_version += 1
+            return
+        if not row:
+            return
+        if name == "MiningRefined" and self.vehicle and ts >= (self.vehicle.get("ts") or ""):
+            return   # the SRV's refinery: surface mining, not the ring's
+        fields = {"last_ts": ts}
+        if name == "ProspectedAsteroid":
+            mats = {outrider.cargo.cid(m.get("Name")): round(float(m.get("Proportion") or 0), 1)
+                    for m in ev.get("Materials") or [] if isinstance(m, dict) and m.get("Name")}
+            untouched = (ev.get("Remaining") or 0) >= 100
+            fields["prospects"] = json.dumps(json.loads(row["prospects"] or "[]") + [[mats, int(untouched)]])
+            if ev.get("MotherlodeMaterial"):
+                fields["motherlodes"] = (row["motherlodes"] or 0) + 1
+            if live_event(ts):
+                lode = ev.get("MotherlodeMaterial")
+                self.moment("prospect", ts, materials=mats, names={k: self.mineral_name(k) for k in mats}, untouched=untouched,
+                            content=prospect_content(ev.get("Content")),
+                            motherlode=outrider.cargo.cid(lode) if lode else None,
+                            motherlode_name=MINERAL_NAMES.get(lode, ev.get("MotherlodeMaterial_Localised") or lode) if lode else None)
+        elif name == "MiningRefined":
+            got = json.loads(row["refined"] or "{}")
+            t = outrider.cargo.cid(ev.get("Type"))
+            got[t] = got.get(t, 0) + 1
+            fields["refined"] = json.dumps(got)
+        elif name == "AsteroidCracked":
+            fields["cracked"] = (row["cracked"] or 0) + 1
+        elif name == "LaunchDrone":
+            kind = {"Prospector": "prospectors", "Collection": "collectors"}.get(ev.get("Type"))
+            if not kind:
+                return
+            fields[kind] = (row[kind] or 0) + 1
+        db.execute(f"UPDATE mining_stints SET {', '.join(k + '=?' for k in fields)} WHERE start_ts=?",
+                   (*fields.values(), row["start_ts"]))
+        self.mining_version += 1
+
+    def mineral_name(self, i):
+        """A mined commodity's name by its commodity id: the journal's own, else MINED_NAMES, else the id title-cased."""
+        return self.commodity_names.get(i) or MINED_NAMES.get(i) or outrider.cargo.display(i, {})
+
+    def mining_close(self, row, ts):
+        """End the open stint at `ts` (its last activity when that is earlier: a logout's gap is not mining time); one
+        with no prospect, refined ton or cracked core is dropped."""
+        empty = row["prospects"] in (None, "[]") and row["refined"] in (None, "{}") and not row["cracked"]
+        if empty:
+            self.db.execute("DELETE FROM mining_stints WHERE start_ts=?", (row["start_ts"],))
+        else:
+            self.db.execute("UPDATE mining_stints SET open=0, end_ts=? WHERE start_ts=?",
+                            (min(ts, row["last_ts"] or ts) if row["last_ts"] else ts, row["start_ts"]))
+        self.mining_version += 1
 
     def handle_cargo(self, name, ev, ts):
         """The ship's hold (folded now, outrider.cargo.ship_apply) and your carrier's history (stored per journal line
@@ -7449,6 +7561,7 @@ class State:
             "plan_first": self.plan_first(),   # S30: the body you made the suggested order's first stop here
             "moments": self.moments_summary(),
             "chat": list(self.journals.chat),   # #17: live chat, in memory only (the page reads it aloud if asked)
+            "mining_version": self.journals.mining_version,   # mining B: the page reads /api/mining/hotspots again on a change
             "hull": self.journals.hull,
             "modules": self.modules_summary(),
             "last_sale": self.journals.last_sale,
@@ -9424,6 +9537,52 @@ class State:
         """GET /api/commander/missions."""
         return {"missions": outrider.commander.missions(self.journals.cmdr_view.get("missions"))}
 
+    def mining_hotspots(self):
+        """GET /api/mining/hotspots (and CMDR → Sessions): your mining stints by ring and hotspot (mining B), oldest
+        stint first within each. A group's hotspot: the mineral's commodity id, "" for none (the drop was aimed at the
+        ring itself, or nothing), None for unknown (no live drop kept: older journals). Each group: stints, seconds
+        (drop to last activity), tons and refined {mineral: t}, by_ship [{id, name, type, tons, seconds}], motherlodes,
+        cracked, prospects [[{mineral: %}, untouched]] (the page rates them against your call-out's minerals), first
+        and last. per_ton: what your mined ore sold for, by mineral (mining_sales, your own carrier left out); names:
+        the minerals' display names."""
+        db = self.db
+        drops = {(r["system"], r["body_id"], r["start_ts"]): r["hotspot"] for r in db.execute("SELECT * FROM mining_hotspot_drops")}
+        groups, minerals = {}, set()
+        for r in db.execute("SELECT * FROM mining_stints ORDER BY start_ts"):
+            hs = drops.get((r["system"], r["body_id"], r["start_ts"]))
+            g = groups.setdefault((r["system"], r["ring"], hs), {
+                "system": str(r["system"]), "system_name": r["system_name"], "ring": short_name(r["system_name"], r["ring"] or ""),
+                "ring_full": r["ring"], "hotspot": hs, "stints": 0, "seconds": 0, "tons": 0, "refined": {}, "ships": {},
+                "motherlodes": 0, "cracked": 0, "prospects": [], "first": r["start_ts"], "last": r["start_ts"], "open": False})
+            refined = json.loads(r["refined"] or "{}")
+            end = r["end_ts"] or r["last_ts"] or r["start_ts"]
+            secs = max(0, round(ts_seconds(end) - ts_seconds(r["start_ts"])))
+            tons = sum(refined.values())
+            g["stints"] += 1
+            g["seconds"] += secs
+            g["tons"] += tons
+            for k, v in refined.items():
+                g["refined"][k] = g["refined"].get(k, 0) + v
+                minerals.add(k)
+            sh = g["ships"].setdefault(r["ship_id"], {"id": r["ship_id"], "name": r["ship"], "type": r["ship_type"], "tons": 0, "seconds": 0})
+            sh["tons"] += tons
+            sh["seconds"] += secs
+            g["motherlodes"] += r["motherlodes"] or 0
+            g["cracked"] += r["cracked"] or 0
+            prospects = json.loads(r["prospects"] or "[]")
+            g["prospects"] += prospects
+            minerals.update(k for mats, _ in prospects for k in mats)
+            g["last"] = r["start_ts"]
+            g["open"] = bool(r["open"])
+        per_ton = {r[0]: round(r[1] / r[2]) for r in db.execute(
+            "SELECT commodity, sum(mined_total), sum(mined_tons) FROM mining_sales WHERE own_carrier = 0 AND mined_tons > 0 "
+            "GROUP BY commodity") if r[0] and r[2]}
+        out = [dict(g, ships=sorted(g["ships"].values(), key=lambda x: -(x["tons"] / x["seconds"] if x["seconds"] else 0)))
+               for g in groups.values()]
+        out.sort(key=lambda g: g["last"], reverse=True)
+        return {"hotspots": out, "per_ton": per_ton,
+                "names": {k: self.journals.mineral_name(k) for k in minerals | set(per_ton)}}
+
     def commander_sessions(self, now=None):
         """GET /api/commander/sessions: the logins of the last 30 days with fighting or mining (play_activity), the
         newest first, 40 at most (outrider.commander.SESSIONS_DAYS, SESSIONS_MAX)."""
@@ -9433,7 +9592,7 @@ class State:
                                          "AND login_ts >= ? ORDER BY login_ts DESC", (outrider.commander.sessions_since(now),)))
         out = outrider.commander.sessions(rows)
         return {"sessions": out, "totals": outrider.commander.totals(out), "max": outrider.commander.SESSIONS_MAX,
-                "days": outrider.commander.SESSIONS_DAYS}
+                "days": outrider.commander.SESSIONS_DAYS, "hotspots": self.mining_hotspots()}
 
     def commander_earnings(self, year=None, month=None):
         """GET /api/commander/earnings?year=&month=: what exploration, exobiology and mining paid in the period (all time,
@@ -20062,6 +20221,7 @@ def make_app(state, hosts=None):
                      ("engineering", state.commander_engineering), ("missions", state.commander_missions),
                      ("sessions", state.commander_sessions)):   # the Commander view's tabs, read from the database
         app.router.add_get(f"/api/commander/{part}", commander_view(fn))
+    app.router.add_get("/api/mining/hotspots", commander_view(state.mining_hotspots))   # mining B: Here's rings use it too
     app.router.add_get("/api/commander/earnings", commander_earnings_view)   # its period in the query (not an AI tool yet)
     app.router.add_post("/api/cargo/recount", cargo_recount_view)
     app.router.add_get("/api/cargo/lookup", cargo_lookup_view)

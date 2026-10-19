@@ -8711,7 +8711,8 @@ const releasePayloads = async () => {
       sessions: [["2026-10-12 08:00 | Krait Mk II | 3 | Anaconda 2 | 400k cr | 60k cr | NaN | 30 min | 1",
                   "2026-10-12 11:00 | Type-9 Heavy | 6 t + 3 t SRV | Platinum 5, Osmium 1 · SRV: Gold 3 | 12 | 2 High 1, Low 1 · 1 core | 1 / 1 | 30 min | 1.5M cr"],
                  ["Sessions1", "Kills3", "Bounties400k cr", "Combat bonds60k cr", "Deaths1", "Sessions1", "Refined6 t", "SRV refined3 t", "Asteroids prospected2", "Sold1.5M cr"],
-                 ["Combat your sessions of the last 30 days, 40 at most", "Mining your sessions of the last 30 days, 40 at most"]],
+                 ["Combat your sessions of the last 30 days, 40 at most", "Mining your sessions of the last 30 days, 40 at most",
+                  "Hotspots · every ring you mined, by hotspot: hit rate by the call-out's minerals (Settings → Mining)"]],
       unchanged: 0, matOther: 0,
       moved: ["api/commander/sessions"],
       after: ["api/commander/sessions", "api/commander/missions", "api/commander/missions"],
@@ -9317,10 +9318,11 @@ const releasePayloads = async () => {
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {};
     w.eval(`window.__rg = {data, speak, flags: [speechOn, isSpeaker], hush: hushState, alert: lastAlert, aspeak: alertSpeak.ring,
-        lspeak: alertSpeak.limpets, store: localStorage.getItem("miningRings"), mstore: localStorage.getItem("mining")};
+        lspeak: alertSpeak.limpets, pspeak: alertSpeak.prospect, store: localStorage.getItem("miningRings"), mstore: localStorage.getItem("mining"),
+        md: JSON.stringify(MINING), cmsort: CM.hotSort};
       window.__spoken = [];
       speak = (t, o) => window.__spoken.push([t, o.kind]);
-      speechOn = true; isSpeaker = true; hushState = null; alertSpeak.ring = true; alertSpeak.limpets = true;
+      speechOn = true; isSpeaker = true; hushState = null; alertSpeak.ring = true; alertSpeak.limpets = true; alertSpeak.prospect = true;
       localStorage.removeItem("miningRings"); localStorage.removeItem("mining"); drawMiningRings();
       window.__ring = (body, types, reserve = null) => ({kind: "ring", system: "9", body, types, reserve});
       window.__feed = (...ms) => { linePlain = true; try { data = Object.assign({}, data, {moments: ms.map((m, i) => ({...m, seq: lastMomentSeq + 1 + i}))}); onData(); }
@@ -9372,13 +9374,42 @@ const releasePayloads = async () => {
       got.tables = [[...d.querySelectorAll("#miningAlertOpts [data-aspeak]")].map(x => x.dataset.aspeak).join(),
                     !!d.querySelector('#alertOpts [data-aspeak="ring"], #alertOpts [data-aspeak="limpets"]'),
                     !!d.querySelector('#alertOpts [data-aspeak="hull"]'), d.querySelectorAll("#miningAlertOpts [data-acrew]").length];
+      // C, the prospector call-out: nothing ticked, nothing said (a motherlode is); ticking a mineral in Settings →
+      // Mining; a rock over the threshold said, a dud and a rock mined before not; combined; High content when ticked
+      const rock = (mats, extra = "") => `{kind: "prospect", materials: ${JSON.stringify(mats)}, names: {platinum: "Platinum", gold: "Gold"}, untouched: true, content: "Low"${extra}}`;
+      got.pNone = feed(rock({platinum: 60}));
+      got.pLode = feed(rock({water: 5}, `, motherlode: "opal", motherlode_name: "Void Opal"`));
+      d.querySelector('#prospectOpts [data-pmin="platinum"]').checked = true;
+      d.querySelector('#prospectOpts [data-pmin="gold"]').checked = true;
+      d.getElementById("prospectOpts").dispatchEvent(new w.Event("change", {bubbles: true}));
+      got.pCfg = w.eval(`JSON.stringify(miningCfg())`);
+      got.pHits = [feed(rock({platinum: 34.2, gold: 3})), feed(rock({platinum: 12, gold: 20})), feed(rock({platinum: 50}, ", untouched: false")),
+                   feed(rock({platinum: 5}, `, content: "High"`))];
+      w.eval(`miningSet({combined: true, pct: 50, rawHigh: true})`);
+      got.pCombined = [feed(rock({platinum: 31, gold: 21.4})), feed(rock({platinum: 5}, `, content: "High"`)), w.eval("lastAlert.title")];
+      // B, the hotspot record: Here's ring hover and body card lines, Sessions' Hotspots (rate against the call-out)
+      w.eval(`MINING.d = {per_ton: {platinum: 200000}, names: {alexandrite: "Alexandrite", platinum: "Platinum"}, hotspots: [
+        {system: "9", system_name: "Sys", ring: "4 B Ring", hotspot: "alexandrite", stints: 2, seconds: 7200, tons: 80, refined: {platinum: 60, alexandrite: 20},
+         ships: [{id: 7, name: "Digger", type: "python", tons: 80, seconds: 7200}], prospects: [[{platinum: 52, gold: 1}, 1], [{platinum: 10}, 1], [{gold: 90}, 0]],
+         motherlodes: 1, cracked: 1, first: "2026-10-01T00:00:00Z", last: "2026-10-18T00:00:00Z"},
+        {system: "9", system_name: "Sys", ring: "4 B Ring", hotspot: "", stints: 1, seconds: 30, tons: 0, refined: {}, ships: [], prospects: [],
+         motherlodes: 0, cracked: 0, first: "2026-09-01T00:00:00Z", last: "2026-09-01T00:00:00Z"}]};
+        window.__hb = {name: "4", ring_details: [{name: "B Ring", type: "Icy", hotspots: {Alexandrite: 5}, mapped: true}], rings: 1, rings_mapped: 1}`);
+      got.hRec = [w.eval(`hotspotLine(MINING.d.hotspots[0])`), w.eval(`ringsText(__hb, "9").split("\\n").slice(2).join("|")`),
+                  w.eval(`ringsText(__hb, "8").includes("you,")`)];
+      const hcard = new w.DOMParser().parseFromString(w.eval(`bodyPopHtml({...__hb, type: "Planet", subtype: "Class I gas giant"}, null, "9")`), "text/html");
+      got.hCard = [...hcard.querySelectorAll(".hs.mrec")].map(x => x.textContent);
+      const ht = new w.DOMParser().parseFromString(w.eval(`hotspotsHtml(MINING.d)`), "text/html");
+      got.hTable = [...ht.querySelectorAll("#cmHotspots tbody tr")].map(tr => [...tr.children].slice(1, 6).map(td => td.textContent.trim()));
+      w.eval("delete window.__hb");
       got.caps = w.eval(`fillLine("{ring} at {body}. So: {types} rings. {types}!", {ring: "a metallic ring", body: "A 3", types: "icy"})`);
       w.eval(`localStorage.setItem("miningRings", JSON.stringify({types: ["Rocky", "Bogus"], pristine: false})); drawMiningRings()`);
       got.ui = [[...d.querySelectorAll("#miningRings [data-ring]")].filter(b => b.checked).map(b => b.dataset.ring), d.getElementById("ringPristine").checked,
                 w.eval("JSON.stringify(miningRings())")];
     } finally {
       w.eval(`const k = window.__rg; data = k.data; speak = k.speak; [speechOn, isSpeaker] = k.flags; hushState = k.hush; lastAlert = k.alert;
-        alertSpeak.ring = k.aspeak; alertSpeak.limpets = k.lspeak;
+        alertSpeak.ring = k.aspeak; alertSpeak.limpets = k.lspeak; alertSpeak.prospect = k.pspeak;
+        Object.assign(MINING, JSON.parse(k.md)); CM.hotSort = k.cmsort;
         if (k.store === null) localStorage.removeItem("miningRings"); else localStorage.setItem("miningRings", k.store);
         if (k.mstore === null) localStorage.removeItem("mining"); else localStorage.setItem("mining", k.mstore);
         drawMiningRings(); delete window.__rg; delete window.__spoken; delete window.__ring; delete window.__feed;`);
@@ -9395,7 +9426,14 @@ const releasePayloads = async () => {
       tipGone: true,
       limpetsOff: [], limpetBox: false,
       limpetsOn: [[["No limpets aboard. Turn back for some before we head out.", "limpets"]], JSON.stringify({limpetWarn: true}), "No limpets aboard"],
-      tables: ["limpets,ring", false, true, 2],
+      tables: ["limpets,prospect,ring", false, true, 3],
+      pNone: [], pLode: [["Motherlode: Void Opal.", "prospect"]],
+      pCfg: JSON.stringify({limpetWarn: true, minerals: ["platinum", "gold"], pct: 30, combined: false, motherlode: true, rawHigh: false}),
+      pHits: [[["Platinum, 34 percent.", "prospect"]], [], [], []],
+      pCombined: [[["Combined 52 percent: Platinum 31, Gold 21.", "prospect"]], [["High material content.", "prospect"]], "⛏ High material content"],
+      hRec: ["Alexandrite: 2 stints · 40 t/h · 50 % hits", "  you, Alexandrite: 2 stints · 40 t/h · 50 % hits|  you, no hotspot: 1 stint", false],
+      hCard: ["you, Alexandrite: 2 stints · 40 t/h · 50 % hits", "you, no hotspot: 1 stint"],
+      hTable: [["2", "50 %", "40 Digger", "6.0M*", "80 t"], ["1", "", "", "", "0 t"]],
       ringCell: ["1🗺/3", "2 rings, 1 mapped (🗺), 3 hotspots · Pristine reserves\nA Ring · Metallic: Platinum 2, Painite 1\nB Ring · Icy: not mapped", "",
                  '2<div class="sub2 unk">1🗺/3</div>', "2🗺/3", "2", ""],
       ringCard: ["Rings · Pristine reserves", [["Platinum ×2", "Painite ×1"], ["not mapped"]]],

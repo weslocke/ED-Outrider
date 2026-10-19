@@ -1848,6 +1848,84 @@
     "Oh my stars, {bodies} have {types} rings. Like Christmas mornin', only with more damn rocks."
    ]
   },
+  "prospect_hit": {
+   "southern_belle": [
+    "{what}, sugar.",
+    "Ooh, {what}. That's a keeper, darlin'.",
+    "{what}. Get to work, honey.",
+    "Prospector says {what}, {name}.",
+    "Well, look here. {what}.",
+    "{what}. Sweet as pie.",
+    "Darlin', {what}. Worth a laser.",
+    "Good rock, sugar. {what}.",
+    "{what}, honey. Dig in.",
+    "Mm hm. {what}.",
+    "This one's worth it, sweetie. {what}.",
+    "{what}. Grandmama'd say don't let that one get away.",
+    "Heavens, {what}. Fetch the collectors.",
+    "{what}, {name}. Right pretty.",
+    "Here's one, darlin'. {what}.",
+    "{what}. Fire away, sugar.",
+    "Oh my stars. {what}."
+   ],
+   "southern_belle_profane": [
+    "Hot damn. {what}.",
+    "Hell yes, sugar, a live one. {what}.",
+    "Damn fine rock, honey. {what}.",
+    "{what}. Get to diggin', damn it.",
+    "Well, shit, look at that. {what}.",
+    "{what}, darlin'. That's a damn keeper.",
+    "Holy shit, {what}.",
+    "{what}. Light it up like hell, sweetie.",
+    "{name}, the prospector's hollerin' {what}. Damn.",
+    "Hell, that's a good one. {what}.",
+    "{what}. Don't you let that damn rock get away.",
+    "Ooh, {what}. Hell of a rock, honey.",
+    "{what}. Damn right, sugar.",
+    "{what}, {name}. Prettier than a damn debutante.",
+    "Here's your rock, sweetie, by damn. {what}.",
+    "{what}. Fuck yes, darlin'.",
+    "Goddamn, honey. {what}. Somebody send out a collector."
+   ]
+  },
+  "motherlode": {
+   "southern_belle": [
+    "{mineral} motherlode, sugar. Time for the charges.",
+    "Lord have mercy, a {mineral} core. Crack it open, darlin'.",
+    "Ooh, honey, a {mineral} motherlode. Christmas came early.",
+    "{name}, that rock's got a {mineral} core. Seismic charges, if you please.",
+    "Motherlode, sweetie. {mineral}, right in the middle.",
+    "Well, butter my biscuit. A {mineral} core.",
+    "{mineral} at the heart of that one, darlin'. Let's crack it like a pecan.",
+    "Heavens to Betsy, a {mineral} motherlode.",
+    "A {mineral} core, sugar. Fourth of July fireworks coming up.",
+    "Darlin', that rock's hiding {mineral}. Find the fissures.",
+    "{mineral} motherlode, {name}. Grandmama would fetch her good apron.",
+    "Oh my stars, a {mineral} core. Mind the blast, honey.",
+    "Core rock, sweetie. {mineral} inside.",
+    "I do declare, {name}, a {mineral} motherlode.",
+    "{mineral} core, sugar. Charges out, and stand back.",
+    "Goodness gracious, a {mineral} motherlode. Gentle with the charges, darlin'."
+   ],
+   "southern_belle_profane": [
+    "Hot damn, a {mineral} motherlode.",
+    "Holy shit, sugar. {mineral} core. Get the charges.",
+    "{mineral} motherlode, darlin'. Blow that rock to hell.",
+    "Well, I'll be damned. A {mineral} core.",
+    "{name}, that rock's got {mineral} in its heart. Crack the damn thing open.",
+    "Fuck me, honey, a {mineral} motherlode.",
+    "{mineral} core, sweetie. Hell of a find.",
+    "Goddamn, {mineral}. Seismic charges, and quick.",
+    "Hell's bells, a {mineral} motherlode, {name}.",
+    "Sugar, there's {mineral} in that rock. Let's blast the hell out of it.",
+    "{mineral} motherlode. Damn, Grandmama'd swoon.",
+    "Shit, darlin', a {mineral} core. Find them fissures.",
+    "A {mineral} core, honey. Best damn fireworks this side of the Fourth.",
+    "Crack that bastard open, sugar. {mineral} inside.",
+    "{mineral} motherlode, {name}. Damn if that ain't pretty.",
+    "Oh, hell yes. {mineral} core, sweetie."
+   ]
+  },
   "limpets_none": {
    "southern_belle": [
     "Sugar, we've got limpet controllers and not a single limpet. Turn us around and go buy some.",

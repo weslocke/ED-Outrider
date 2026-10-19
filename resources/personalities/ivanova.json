@@ -1829,6 +1829,84 @@
     "{bodies}. {types} rings. The {ship} has not had a decent fight with a rock in ages, damn it."
    ]
   },
+  "prospect_hit": {
+   "ivanova": [
+    "{what}. Worth the laser.",
+    "Prospector says {what}. Mine it.",
+    "{what}, {name}. That one.",
+    "Good rock. {what}.",
+    "{what}. Finally, a rock with manners.",
+    "This one. {what}.",
+    "{what}. Break it.",
+    "Prospector report: {what}. Above your line.",
+    "{what}. Do not wander off to another one.",
+    "Worth it, {name}. {what}.",
+    "{what}. I approve of this rock.",
+    "Mark that one. {what}.",
+    "{what}. Lasers on.",
+    "Hm. {what}. Good enough to mine.",
+    "{what}. Even my grandmother would stop for this one.",
+    "Rock reads {what}. Get to work.",
+    "{what}. Khorosho. Start cutting."
+   ],
+   "ivanova_profane": [
+    "{what}. Hit the damn thing.",
+    "Hell yes. {what}.",
+    "{what}. Get the fucking laser on it.",
+    "This bastard reads {what}. Mine it.",
+    "{what}, {name}. A rock worth a damn.",
+    "Bloody lovely. {what}.",
+    "{what}. Don't you dare fly past this shit.",
+    "{what}. Cut the bastard up.",
+    "{what}. Finally, a rock that isn't crap.",
+    "Damn. {what}. Start cutting.",
+    "{what}. Lasers on, for fuck's sake.",
+    "Chyort, look. {what}. Ours, damn it.",
+    "{what}. Hell, this ring pays after all.",
+    "{what}. That bastard is ours.",
+    "{what}. Strip it bloody bare.",
+    "Fuck yes. {what}.",
+    "Get your ass cutting, {name}. {what}."
+   ]
+  },
+  "motherlode": {
+   "ivanova": [
+    "Motherlode, {name}. {mineral}. Get the charges.",
+    "{mineral} core. Bring the seismic charges and stand back.",
+    "A {mineral} motherlode. Now we are talking.",
+    "Prospector found a {mineral} core. Something to blow up, at last.",
+    "{mineral} motherlode. Drill, seed, detonate. I have waited all day for this.",
+    "Core rock, {name}. {mineral}. Mind the timing on the charges.",
+    "{mineral}, in the core. My favourite kind of rock. The kind that explodes.",
+    "Motherlode. {mineral}. Find the fissures and do not rush it.",
+    "{name}, a {mineral} core. This is war, not farming.",
+    "There. A {mineral} motherlode. My grandmother would already be lighting the fuse.",
+    "{mineral} motherlode. Charges ready. Nobody breathe on the detonator.",
+    "Seismic charges, {name}. This rock has a {mineral} core.",
+    "We have a {mineral} core. Khorosho. Let us make some noise.",
+    "Motherlode found. {mineral}. Try not to overcharge it this time.",
+    "{mineral} core. Finally, a reason to wake up.",
+    "A {mineral} motherlode. Remember Borann? Like that, only in one rock."
+   ],
+   "ivanova_profane": [
+    "Fucking finally, a motherlode. {mineral}. Charges out.",
+    "Hell yes. A {mineral} core. Something to blow up.",
+    "{mineral} motherlode. Drill the bastard, seed it, run.",
+    "Chyort, a {mineral} core. Now this is a damn good day.",
+    "This rock's got {mineral} in its guts, {name}. Blow it to hell.",
+    "{mineral}, right in the core. Finally some bloody fireworks.",
+    "Fuck me, a {mineral} motherlode. Don't screw up the charges.",
+    "A {mineral} core. Don't overcharge it and turn the damn thing to gravel.",
+    "{mineral} motherlode. I have been waiting all bloody week for this.",
+    "Core found, {name}. {mineral}. Light the bastard up.",
+    "{mineral} core. Get the charges, and keep your damn nerve.",
+    "Holy hell, {mineral} in the core. My grandmother would have kissed this rock.",
+    "Motherlode. {mineral}. Time for the loud shit.",
+    "{name}, a {mineral} core. War, not knitting. Fucking finally.",
+    "{mineral} motherlode. Map the fissures first. Don't just whack the damn thing.",
+    "Oh, you beautiful bastard. A {mineral} core."
+   ]
+  },
   "limpets_none": {
    "ivanova": [
     "{name}, we undocked with no limpets. None. Turn around and buy some.",

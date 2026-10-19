@@ -534,6 +534,14 @@ above the list:
   limpets launched, and **Sold**: what the ore you mined sold for in that login, wherever and whenever you mined it (a
   login where you only sold shows 0 t refined). Tons you bought and sold with it, and sales to your own carrier, are
   not counted, the same rule as Earnings below.
+  **Hotspots**: every ring you mined (all time), by hotspot: a stretch from your drop into the ring until you leave
+  it counts as a stint. Per hotspot: stints, the **hit rate** (rocks not mined before that met the call-out's minerals
+  and threshold in Settings → Mining, so it fills in once you tick some), your best ship's tons an hour there, **≈ cr/h**
+  at what your mined ore actually sold for (* when some of its minerals never sold), tons refined and the last visit;
+  sort by t/h, hit rate or last visit, 🎯 targets the system. The hotspot is the one you dropped on (Outrider reads it
+  live; the game's journal never says which, so older mining shows "hotspot not known", and a drop on the ring itself
+  "no hotspot"); a ring with several hotspots of one mineral counts them as one. Here's ring hover and body card add
+  your record under each ring ("you, Alexandrite: 3 stints · 38 t/h · 41 % hits").
 - **Earnings**: what exploration, exobiology and mining paid you, from every sale in your journals.
   - The figures: the total, cartography and exobiology (each its base and bonus, less your NPC crew's share while you
     had crew hired: the total is what you were paid), mining (the tons you mined and sold), and the data you lost to

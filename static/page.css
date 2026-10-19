@@ -1496,3 +1496,6 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 .ringtip th, .ringtip td { padding: 1px 6px; text-align: left; }
 .ringtip th { color: var(--muted); font-weight: normal; border-bottom: 1px solid var(--line); }
 .ringtip td + td, .ringtip th + th { text-align: center; color: var(--good, var(--accent)); }
+#alertDialog #prospectOpts details.pmore { flex-basis: 100%; margin: 2px 0; }
+#alertDialog #prospectOpts details.pmore summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+#pop .hs.mrec { color: var(--info); }   /* your mining record under a ring (mining B) */

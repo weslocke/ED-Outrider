@@ -1845,6 +1845,82 @@
     "{bodies}! {types} rings! Crap, I do not know where to point the laser first!"
    ]
   },
+  "prospect_hit": {
+   "klingon": [
+    "{what}! Worthy prey!",
+    "Prospector reports! {what}!",
+    "{what}! Crack it open, {name}!",
+    "Ha! {what}! Laser on it!",
+    "{what}. This rock is ours!",
+    "A good rock! {what}!",
+    "{what}! The hunt is on!",
+    "Mining Officer! {what}!",
+    "{what}! Strike, {name}!",
+    "Prey marked! {what}!",
+    "{what}! Take it!",
+    "Ha ha! {what}!",
+    "{what}. A rock worth our fire!",
+    "This one, {name}! {what}!",
+    "{what}! Fire the lasers!",
+    "Target this rock! {what}!"
+   ],
+   "klingon_profane": [
+    "{what}! Damn fine rock!",
+    "Hell yes! {what}!",
+    "{what}! Burn the bastard, {name}!",
+    "Damn it, burn this one! {what}!",
+    "Bloody hell! {what}! Gut it!",
+    "Prospector says {what}! Hell of a rock!",
+    "{what}! Now we hunt, damn it!",
+    "Shit, that is a rock! {what}!",
+    "{what}! Carve the damn thing open!",
+    "{what}! Bloody magnificent!",
+    "{what}! Hit it, damn it!",
+    "Hell, {name}, {what}! Rip into it!",
+    "{what}! Not some damn gravel, this one!",
+    "Damn, {name}! {what}! Fire!",
+    "{what}! Grind the bastard down!",
+    "Hell, look at that! {what}!"
+   ]
+  },
+  "motherlode": {
+   "klingon": [
+    "Motherlode! {mineral}! Ready the charges!",
+    "{name}! A {mineral} core! Bring the seismic charges!",
+    "A core of {mineral}! Now we crack the heart of the beast!",
+    "Ha! Motherlode, {mineral}! Find the fissures!",
+    "Mining Officer! {mineral} motherlode! This rock dies by fire!",
+    "{mineral}, deep inside! A core worth a song!",
+    "A {mineral} core, {name}! The charges are hungry!",
+    "Motherlode! {mineral}! Kapla!",
+    "Behold, a {mineral} core! Split it open!",
+    "{mineral} at the heart of this rock! Charges, {name}!",
+    "A motherlode! {mineral}! My blood sings!",
+    "Seismic charges, {name}! There is {mineral} in this core!",
+    "{mineral} motherlode! The finest prey in the ring!",
+    "A core! {mineral}! Blow it apart, {name}!",
+    "Motherlode, {mineral}! Pulse wave it, mark the fissures, crack it!",
+    "Ha ha! {mineral} in the core! Today we feast!"
+   ],
+   "klingon_profane": [
+    "A {mineral} heart in this damn rock! Seismics, {name}!",
+    "Hell yes, {name}! A {mineral} core!",
+    "A {mineral} core! Blow the bastard apart!",
+    "{mineral} motherlode! Mark the damn fissures, {name}!",
+    "{mineral} in the core! Bloody beautiful!",
+    "Shit, {name}! A {mineral} motherlode! Charges!",
+    "Motherlode! {mineral}! Crack the damn thing open!",
+    "A {mineral} core! Hell, my blood is on fire!",
+    "{mineral} motherlode! Kapla, damn it!",
+    "This bloody rock hides {mineral}! Charges in, {name}!",
+    "A core of {mineral}! Let the Ferengi weep, damn them. We blow it up!",
+    "Hell of a find! {mineral} motherlode!",
+    "{mineral}! A damn core! Ready the charges, {name}!",
+    "Motherlode, {mineral}! Rip its bloody heart out!",
+    "Damn fine rock! {mineral} at the core!",
+    "{mineral} core, {name}! Hell, today we feast!"
+   ]
+  },
   "limpets_none": {
    "klingon": [
     "{name}! We undocked with no limpets! Turn back and buy some!",

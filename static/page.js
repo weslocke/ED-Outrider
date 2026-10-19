@@ -2279,6 +2279,7 @@ const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has rep
   ["rigs", "Rhino mining rigs: the co-pilot button's confirmation (rig placed, picked up, six out) and what a rig collected", null],
   ["rigleash", "a Rhino mining rig too far from you (over the rig warning distance, again at 4.5 km; the game destroys it at 5 km)", "danger"],
   ["limpets", "limpets and the hold: undocking a mining ship (a refinery, a collector or prospector controller) with no limpets aboard, when Remind me to take limpets is ticked above", "alert"],
+  ["prospect", "the prospector call-out: a rock (not mined before) with your threshold of the minerals ticked above, and motherlodes; duds stay silent", null],
   ["ring", "a body just scanned has a ring of a type ticked in Settings → Mining (pristine ones only, if ticked there): once per body and visit, bodies scanned together in one line; nothing until a type is ticked", "find"],
   ["rigsout", "docking the Rhino with rigs still marked out on the body, and which are probably full (Outrider's own record: a rig picked up without a tap still counts until you mark it on the surface map)", null],
   ["uploads", "an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again after it: a card at the top of the page too, never spoken", null]];
@@ -2290,7 +2291,7 @@ const UNSPOKEN = new Set(Object.keys(UNSPOKEN_WHY));
 const alertCfgBase = () => Object.assign({enabled: false}, Object.fromEntries(ALERTS.map(([k]) => [k, true])),
   // a notification on every jump (or scoop, or FSS) would be noise: these are spoken by default, not notified
   {jump: false, honk: false, brief: false, fss: false, mapped: false, scoop: false, scoopstop: false, supercharge: false, highway: false, autotarget: false, wrongtarget: false,
-   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false, limpets: false});
+   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false, limpets: false, prospect: false});
 const alertCfg = Object.assign(alertCfgBase(), store.get("alerts", {}));
 // off until you tick them (the whole row): the jumponium call-out
 const OFF_KINDS = {jumponium: false};
@@ -2998,7 +2999,7 @@ const LINE_SAMPLES = {
   find_bio: {body: "B 7", value: "19.0M"}, sample_clear: {genus: "Stratum"},
   codex: {entry: "Stratum Tectonicas", what: "new to your codex for this region"},
   phenomena: {what: "three notable stellar phenomena, all in rings"}, ggg: {body: "B 3"}, rare_star: {what: "a black hole at B"},
-  ring_found: {body: "A 3", ring: "a pristine metallic ring"}, limpets_none: {}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
+  ring_found: {body: "A 3", ring: "a pristine metallic ring"}, limpets_none: {}, prospect_hit: {what: "Platinum, 34 percent"}, motherlode: {mineral: "Void Opal"}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
   firsts_seen: {system: "Drojau LL-O b26-3", value: "14.2M"},
   surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
@@ -3071,14 +3072,45 @@ let rigsCard = null;
 const RIGS_OUT_HINT = "Picked one up without a tap? Mark it with the ✕ by its slot in the surface map's legend.";
 // Settings → Mining: the ring types to watch for (the miner's call-out; none ticked, nothing said) and pristine only
 const RING_KINDS = ["Icy", "Rocky", "Metallic", "Metal Rich"];
-// Settings → Mining's other choices (the "mining" setting): the limpet reminder on undocking
-const MINING_DEFAULTS = {limpetWarn: false};
-const miningCfg = () => { const v = store.get("mining", {}) || {};
-  return {limpetWarn: typeof v.limpetWarn === "boolean" ? v.limpetWarn : MINING_DEFAULTS.limpetWarn}; };
+// Settings → Mining's other choices (the "mining" setting): the limpet reminder on undocking; the prospector call-out
+// (mining C): the minerals wanted (commodity ids), the threshold %, one at least that much (or, combined, their sum),
+// motherlodes said, and a rock's High material content (the engineering materials) said too
+const MINING_DEFAULTS = {limpetWarn: false, minerals: [], pct: 30, combined: false, motherlode: true, rawHigh: false};
+const miningCfg = () => { const v = store.get("mining", {}) || {}, d = MINING_DEFAULTS;
+  const bool = k => typeof v[k] === "boolean" ? v[k] : d[k];
+  const pct = Number.isFinite(v.pct) && v.pct >= 1 && v.pct <= 100 ? v.pct : d.pct;
+  return {limpetWarn: bool("limpetWarn"), minerals: Array.isArray(v.minerals) ? v.minerals.filter(x => typeof x === "string") : [],
+          pct, combined: bool("combined"), motherlode: bool("motherlode"), rawHigh: bool("rawHigh")}; };
+// the laser-minable minerals the call-out offers (commodity ids, as the prospector's names lower-cased), the common
+// targets first; the rest under "more"
+const PROSPECT_MAIN = [["platinum", "Platinum"], ["painite", "Painite"], ["osmium", "Osmium"], ["palladium", "Palladium"], ["gold", "Gold"],
+  ["silver", "Silver"], ["praseodymium", "Praseodymium"], ["samarium", "Samarium"], ["bertrandite", "Bertrandite"], ["gallite", "Gallite"],
+  ["indite", "Indite"], ["lowtemperaturediamond", "Low Temperature Diamonds"], ["bromellite", "Bromellite"], ["tritium", "Tritium"]];
+const PROSPECT_MORE = [["lepidolite", "Lepidolite"], ["uraninite", "Uraninite"], ["coltan", "Coltan"], ["bauxite", "Bauxite"], ["rutile", "Rutile"],
+  ["cobalt", "Cobalt"], ["lithiumhydroxide", "Lithium Hydroxide"], ["liquidoxygen", "Liquid Oxygen"], ["methanolmonohydratecrystals", "Methanol Monohydrate Crystals"],
+  ["hydrogenperoxide", "Hydrogen Peroxide"], ["methaneclathrate", "Methane Clathrate"], ["water", "Water"], ["haematite", "Haematite"]];
+const PROSPECT_NAMES = Object.fromEntries([...PROSPECT_MAIN, ...PROSPECT_MORE]);
+// a prospected rock against the call-out (mats {id: %}): null when not worth it, else {what (spoken), total}. Combined:
+// the ticked minerals' sum at least the threshold ("Combined 52 percent: Platinum 31, Gold 21"); else the best ticked
+// one at least it ("Platinum, 34 percent"). Names: the moment's, else the list's
+function prospectHit(mats, cfg = miningCfg(), names = {}) {
+  if (!cfg.minerals.length || !mats) return null;
+  const name = k => names[k] || PROSPECT_NAMES[k] || k;
+  const got = cfg.minerals.filter(k => mats[k] > 0).map(k => [k, mats[k]]).sort((a, b) => b[1] - a[1]);
+  if (!got.length) return null;
+  if (cfg.combined) {
+    const total = got.reduce((n, [, v]) => n + v, 0);
+    if (total < cfg.pct) return null;
+    return {total, what: got.length === 1 ? `${name(got[0][0])}, ${Math.round(total)} percent`
+      : `Combined ${Math.round(total)} percent: ${got.map(([k, v]) => `${name(k)} ${Math.round(v)}`).join(", ")}`};
+  }
+  const [k, v] = got[0];
+  return v >= cfg.pct ? {total: v, what: `${name(k)}, ${Math.round(v)} percent`} : null;
+}
 const miningSet = patch => store.set("mining", Object.assign({}, store.get("mining", {}) || {}, patch));
 // the alerts that are mining's: their switches sit in Settings → Mining's own table, not Settings → Alerts (the author,
 // 2026-10-18: until the Alerts table is cleaned up); every other part (sounds, crew, the tally) treats them as alerts
-const MINING_ALERTS = new Set(["ring", "limpets"]);
+const MINING_ALERTS = new Set(["ring", "limpets", "prospect"]);
 const RESERVE_WORDS = {PristineResources: "Pristine", MajorResources: "Major", CommonResources: "Common", LowResources: "Low", DepletedResources: "Depleted"};
 const miningRings = () => { const v = store.get("miningRings", {}) || {};
   return {types: Array.isArray(v.types) ? RING_KINDS.filter(t => v.types.includes(t)) : [], pristine: !!v.pristine}; };
@@ -3110,6 +3142,73 @@ function ringPhrase(types, reserve) {
   const r = reserve === "Pristine" || reserve === "Depleted" ? reserve.toLowerCase() + " " : "";
   const what = andList(types.map(t => t.toLowerCase()));
   return types.length > 1 ? `${r}${what} rings` : `${/^[aeiou]/.test(r + what) ? "an" : "a"} ${r}${what} ring`;
+}
+// mining B: your hotspot record (GET api/mining/hotspots: stints by ring and hotspot, what your ore sold for), read
+// again when the payload's mining_version moves; Here's rings and CMDR → Sessions' Hotspots draw from it
+const MINING = {v: null, d: null, busy: false};
+async function loadMining() {
+  if (MINING.busy) return;
+  MINING.busy = true;
+  const v = data && data.mining_version;
+  try {
+    const r = await fetch("api/mining/hotspots");
+    if (r.ok) { MINING.d = await r.json(); MINING.v = v; miningRedraw(); }
+  } catch {} finally { MINING.busy = false; }
+}
+const miningMaybeLoad = () => { if (data && data.mining_version != null && data.mining_version !== MINING.v) loadMining(); };
+function miningRedraw() {
+  if (view === "here" && hereData) renderHere();
+  if (view === "cmdr" && CM.tab === "sessions" && CM.data.sessions) cmdrDrawBody();
+}
+// a hotspot group's figures against your call-out: hits among the rocks not mined before (null with no mineral
+// ticked), the best ship's t/h (a minute of mining at least), cr/h at what your ore sold for (partial: some of its
+// minerals never sold, so not priced)
+function hotspotStats(g, cfg = miningCfg(), d = MINING.d) {
+  const rated = (g.prospects || []).filter(p => p[1]);
+  const hits = cfg.minerals.length ? rated.filter(p => prospectHit(p[0], cfg)).length : null;
+  const best = (g.ships || []).find(s => s.seconds >= 60 && s.tons > 0) || null;
+  const per = (d && d.per_ton) || {};
+  let cr = 0, pricedT = 0;
+  for (const [k, t] of Object.entries(g.refined || {})) if (per[k]) { cr += t * per[k]; pricedT += t; }
+  return {rated: rated.length, hits, rate: hits != null && rated.length ? Math.round(hits * 100 / rated.length) : null,
+          best, tph: best ? best.tons * 3600 / best.seconds : null,
+          crh: g.seconds >= 60 && pricedT ? cr * 3600 / g.seconds : null, partial: pricedT > 0 && pricedT < g.tons};
+}
+const hotspotName = (g, d = MINING.d) => g.hotspot ? ((d && d.names && d.names[g.hotspot]) || PROSPECT_NAMES[g.hotspot] || g.hotspot)
+  : g.hotspot === "" ? "no hotspot" : "hotspot not known";
+// "Alexandrite: 3 stints · 38 t/h · 41 % hits" (Here's ring hover and body card)
+function hotspotLine(g) {
+  const s = hotspotStats(g), n = g.stints;
+  return `${hotspotName(g)}: ${n} stint${n === 1 ? "" : "s"}` + (s.tph != null ? ` · ${Math.round(s.tph)} t/h` : "") +
+    (s.rate != null ? ` · ${s.rate} % hits` : "");
+}
+// your record of the rings of body `b` in system `sys` (an id64 string): {ring short name: [groups]}
+function ringRecord(b, sys) {
+  const out = {};
+  for (const g of (MINING.d && MINING.d.hotspots) || []) {
+    if (g.system !== String(sys)) continue;
+    for (const r of b.ring_details || []) if (g.ring === `${b.name} ${r.name}`) (out[r.name] = out[r.name] || []).push(g);
+  }
+  return out;
+}
+// mining C: a prospected rock said when worth it (prospectHit), a motherlode always (its own box), a rock already mined
+// never; High material content (engineering materials) only when its box is ticked. A newer call-out replaces one still
+// waiting (the tag). Duds say nothing
+function prospectOut(m) {
+  if (!m.untouched) return;
+  const cfg = miningCfg();
+  if (m.motherlode && cfg.motherlode) {
+    const mineral = m.motherlode_name || PROSPECT_NAMES[m.motherlode] || m.motherlode;
+    alertOut("prospect", `⛏ Motherlode: ${mineral}`, "a core to crack", {tag: "prospect",
+             say: () => line("motherlode", {mineral}, `Motherlode: ${mineral}.`)});
+    return;
+  }
+  const hit = prospectHit(m.materials, cfg, m.names || {});
+  if (hit) {
+    alertOut("prospect", `⛏ ${hit.what}`, "a prospected rock over your threshold (Settings → Mining)", {tag: "prospect",
+             say: () => line("prospect_hit", {what: hit.what}, `${hit.what}.`)});
+  } else if (cfg.rawHigh && m.content === "High")
+    alertOut("prospect", "⛏ High material content", "engineering materials", {tag: "prospect", say: "High material content."});
 }
 // the ringed bodies of one payload (a nav beacon, the arrival's own scan: several at once) in one card and one line
 function ringOut(hits) {
@@ -4285,13 +4384,14 @@ const ringsMapLine = b => b.rings_mapped ? `${b.rings_mapped}🗺/${ringHotspots
 // the cell: every ring mapped, "2🗺/20" alone (the count once, the author); some, the count over "1🗺/5"; none, the count
 const ringsCell = b => !b.rings ? "" : !b.rings_mapped ? `${b.rings}` : b.rings_mapped >= b.rings ? ringsMapLine(b)
   : `${b.rings}<div class="sub2 unk">${ringsMapLine(b)}</div>`;
-const ringsText = b => {
-  const n = ringHotspots(b);
+const ringsText = (b, sys = hereData && hereData.id64) => {
+  const n = ringHotspots(b), rec = sys != null ? ringRecord(b, sys) : {};
   const head = `${b.rings} ring${b.rings === 1 ? "" : "s"}${b.rings_mapped ? `, ${b.rings_mapped} mapped (🗺), ${n} hotspot${n === 1 ? "" : "s"}` : ", none mapped"}` +
     (b.reserve ? ` · ${b.reserve} reserves` : "");
   return [head, ...(b.ring_details || []).map(r => {
     const hs = Object.entries(r.hotspots || {}).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
-    return `${r.name} · ${r.type || "?"}: ${hs.length ? hs.map(([k, v]) => `${mineral(k)} ${v}`).join(", ") : r.mapped ? "mapped, no hotspots" : "not mapped"}`;
+    return `${r.name} · ${r.type || "?"}: ${hs.length ? hs.map(([k, v]) => `${mineral(k)} ${v}`).join(", ") : r.mapped ? "mapped, no hotspots" : "not mapped"}` +
+      (rec[r.name] || []).map(g => `\n  you, ${hotspotLine(g)}`).join("");
   })].join("\n");
 };
 function renderHere() {
@@ -4778,7 +4878,7 @@ const staleBodyTitle = b => `Last reported ${(b.updated || "").slice(0, 4)} by a
 // ---- body hover summary ----
 const fmtK = n => n == null ? "?" : Math.round(n).toLocaleString();
 // region: the region of the system the body is in (a search result may be elsewhere than Here)
-function bodyPopHtml(b, region) {
+function bodyPopHtml(b, region, sys = null) {   // sys: the body's system id64 string (your mining record on its rings)
   const isStar = b.type === "Star";
   const phys = [
     b.dist_ls != null && `${fmtK(b.dist_ls)} ls from arrival`,
@@ -4791,14 +4891,18 @@ function bodyPopHtml(b, region) {
     isStar && (b.scoopable ? "scoopable" : "not scoopable"),
   ].filter(Boolean);
   let h = `<h3>${esc(b.name)} <span class="src">${esc(b.subtype || "")}</span></h3><div>${phys.join(" · ")}</div>`;
-  if ((b.ring_details || []).length)
-    // each ring on its line, its hotspots under it (the most first); the body's reserves with the heading
+  if ((b.ring_details || []).length) {
+    // each ring on its line, its hotspots under it (the most first), then your record there (mining B); the body's
+    // reserves with the heading
+    const rec = sys != null ? ringRecord(b, sys) : {};
     h += `<div class="sec"><div class="lbl">Rings${b.reserve ? ` · ${esc(b.reserve)} reserves` : ""}</div><ul>` + b.ring_details.map(r => {
       const hs = Object.entries(r.hotspots || {}).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
       return `<li><span>${esc(r.name)} · ${esc(r.type || "?")}${r.width_km ? ` · ${fmtK(r.width_km)} km wide` : ""}${r.density != null ? ` · ${r.density.toFixed(3)} Mt/km²` : ""}` +
         (hs.length ? hs.map(([k, v]) => `<span class="hs">${esc(mineral(k))} ×${v}</span>`).join("")
-          : `<span class="hs unk">${r.mapped ? "mapped, no hotspots" : "not mapped"}</span>`) + `</span></li>`;
+          : `<span class="hs unk">${r.mapped ? "mapped, no hotspots" : "not mapped"}</span>`) +
+        (rec[r.name] || []).map(g => `<span class="hs mrec">you, ${esc(hotspotLine(g))}</span>`).join("") + `</span></li>`;
     }).join("") + `</ul></div>`;
+  }
   if (b.bio || (b.genera || []).length || (b.organics || []).length) {
     const lines = [];
     const f = bioFactor(b);
@@ -8658,13 +8762,13 @@ function showPop(td, x, y) {
     }
     const b = sd.bodies && sd.bodies.find(q => q.name === td.dataset.sbodypop);
     if (!b) { pop.innerHTML = `<div class="unk">${esc(sd.error || "no details known for this body")}</div>`; pop.style.display = "block"; placePop(x, y); return; }
-    pop.innerHTML = bodyPopHtml(b, sd.region).replace("click for everything known", "click for the details panel"); pop.style.display = "block"; placePop(x, y);
+    pop.innerHTML = bodyPopHtml(b, sd.region, td.dataset.sys).replace("click for everything known", "click for the details panel"); pop.style.display = "block"; placePop(x, y);
     return;
   }
   if (td.dataset.bodypop !== undefined) {
     const b = hereData && hereData.bodies && hereData.bodies.find(x => x.name === td.dataset.bodypop);
     if (!b) return hidePop();
-    popId = "body" + td.dataset.bodypop; pop.innerHTML = bodyPopHtml(b, hereData.region); pop.style.display = "block"; placePop(x, y);
+    popId = "body" + td.dataset.bodypop; pop.innerHTML = bodyPopHtml(b, hereData.region, hereData.id64); pop.style.display = "block"; placePop(x, y);
     return;
   }
   if (td.dataset.bm !== undefined) {
@@ -9369,6 +9473,7 @@ function onData() {
       else if ((m.kind === "upload_down" || m.kind === "upload_back") && m.text)   // S3: the banner has the card; this notifies
         alertOut("uploads", m.text, m.kind === "upload_down" ? "Settings → Uploads has the detail" : "", {tag: m.kind});
       else if (m.kind === "ring" && m.body) ringHits.push(m);
+      else if (m.kind === "prospect") prospectOut(m);
       else if (m.kind === "limpets" && m.what === "none" && miningCfg().limpetWarn)   // a mining ship undocked without limpets
         alertOut("limpets", "No limpets aboard", "a mining ship left the pad without any (Settings → Mining)",
                  {tag: "limpets_none", say: () => line("limpets_none", {}, "No limpets aboard. Turn back for some before we head out.")});
@@ -9387,6 +9492,7 @@ function onData() {
     } catch (e) { console.error(e); pageError = `alert ${m.kind}: ${e && e.message || e}`; }
   }
   try { if (ringHits.length) ringOut(ringHits); } catch (e) { console.error(e); pageError = `alert ring: ${e && e.message || e}`; }
+  miningMaybeLoad();   // mining B: the hotspot record, when a stint changed
   // a region crossing no briefing said within 30 s (none came, or it had nothing else to say): its own line, while
   // still in that system
   if (pendingRegion && Date.now() - pendingRegion.at > 30000) {
@@ -9520,7 +9626,7 @@ const ALERT_SHORT = {arrival: "Arrival", game: "Game start and quit", jump: "FSD
   leaving: "Leaving", fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped", supercharge: "Supercharge", find: "Find",
   jumponium: "Jumponium", sampling: "Sampling", approach: "High-g approach", bodybrief: "Body brief", docking: "Docking", sell: "Selling", saleleft: "Sale left data",
   unsold: "Unsold", firstsseen: "Firsts scanned by others", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
-  rigsout: "Rigs out", ring: "Rings to mine", limpets: "Limpets", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", refuelshort: "Short of the refuel stop", lastscoop: "Last scoopable star", autotarget: "Auto-target", wrongtarget: "Wrong target", manual: "Asked for",
+  rigsout: "Rigs out", ring: "Rings to mine", limpets: "Limpets", prospect: "Prospector", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", refuelshort: "Short of the refuel stop", lastscoop: "Last scoopable star", autotarget: "Auto-target", wrongtarget: "Wrong target", manual: "Asked for",
   exo: "Exomastery route", riches: "Survey routes", trade: "Trade route", uploads: "Uploads failing"};
 const speechMuted = new Set();   // kinds turned off from the tally this session (each shows an undo)
 // "This session: Arrival brief 42 🔇 · FSD charge 40 (3 dropped) 🔇 · …": every kind that was said or queued (not the
@@ -9825,12 +9931,30 @@ for (const [id, key] of [["sayBio", "sayBio"], ["sayGeo", "sayGeo"], ["sayHazard
   document.getElementById(id).onchange = e => store.set(key, e.target.checked);
 // Settings → Mining: the ring types ticked and pristine only (miningRings)
 function drawMiningRings() {
-  document.getElementById("miningLimpets").checked = miningCfg().limpetWarn;
+  const mc = miningCfg();
+  document.getElementById("miningLimpets").checked = mc.limpetWarn;
+  // the prospector call-out (mining C): its minerals' boxes drawn here (the main ones, the rest under "more")
+  const box = ([id, name]) => `<label><input type="checkbox" data-pmin="${id}"${mc.minerals.includes(id) ? " checked" : ""}> ${esc(name)}</label>`;
+  document.getElementById("prospectMinerals").innerHTML = PROSPECT_MAIN.map(box).join("");
+  document.getElementById("prospectMore").innerHTML = PROSPECT_MORE.map(box).join("");
+  const pctBox = document.getElementById("prospectPct");
+  if (document.activeElement !== pctBox) pctBox.value = mc.pct;
+  document.getElementById("prospectCombined").checked = mc.combined;
+  document.getElementById("prospectLode").checked = mc.motherlode;
+  document.getElementById("prospectHigh").checked = mc.rawHigh;
   const c = miningRings();
   for (const b of document.querySelectorAll("#miningRings [data-ring]")) b.checked = c.types.includes(b.dataset.ring);
   document.getElementById("ringPristine").checked = c.pristine;
 }
 document.getElementById("miningLimpets").onchange = e => miningSet({limpetWarn: e.target.checked});
+document.getElementById("prospectOpts").onchange = () => {
+  const n = Number(document.getElementById("prospectPct").value);
+  miningSet({minerals: [...document.querySelectorAll("#prospectOpts [data-pmin]:checked")].map(b => b.dataset.pmin),
+             pct: Number.isFinite(n) && n >= 1 && n <= 100 ? Math.round(n) : MINING_DEFAULTS.pct,
+             combined: document.getElementById("prospectCombined").checked, motherlode: document.getElementById("prospectLode").checked,
+             rawHigh: document.getElementById("prospectHigh").checked});
+  drawMiningRings(); miningRedraw();
+};
 document.getElementById("miningRings").onchange = () => {
   store.set("miningRings", {types: [...document.querySelectorAll("#miningRings [data-ring]:checked")].map(b => b.dataset.ring),
                             pristine: document.getElementById("ringPristine").checked});
@@ -10446,7 +10570,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
   hull: "hull, heat, interdiction", carrier: "your carrier", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
-  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", uploads: "uploads"};
+  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", uploads: "uploads"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
 const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "region", "streak_new", "streak_known"],
   game: ["game_start", "welcome_back", "game_exit", "session_recap"], jump: ["fsd_charge"], brief: ["arrival_brief"],
@@ -10457,7 +10581,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], carrier: ["carrier_arrived", "carrier_departs"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
-  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none"]};
+  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none"], prospect: ["prospect_hit", "motherlode"]};
 const XO_SPEAKS = "voice answers, the status report, the co-pilot, the hush and speech on";
 const crewOn = () => !!(data && data.crew && data.crew.on);
 const crewDangerOn = () => !!(data && data.crew && data.crew.danger !== false);
@@ -11154,7 +11278,8 @@ function starWords(cls, lum) {
 // CM: tab (the one shown), data / error / key (the versions it was read at) / loading per tab, q and craft
 // (Engineering's filter), open (its modules unfolded), period (Earnings': {year, month}, "" for none), chartW (the
 // box's width at the last draw: how many of the chart's months get a label)
-const CM = {tab: "profile", data: {}, error: {}, key: {}, loading: {}, q: "", craft: false, open: {}, period: {year: "", month: ""}, chartW: 0};
+const CM = {tab: "profile", data: {}, error: {}, key: {}, loading: {}, q: "", craft: false, open: {}, period: {year: "", month: ""}, chartW: 0,
+            hotSort: "tph"};   // Sessions' Hotspots: sorted by t/h, hit rate or last visit (mining B)
 const CM_TABS = ["profile", "inventory", "engineering", "missions", "sessions", "earnings"];
 const CM_SOON_S = 1800;   // a mission expiring within this is marked (outrider.commander.MISSION_SOON_S)
 const cmKey = tab => `${data && data.commander_version}` + (tab === "engineering" ? `|${data && data.materials && data.materials.version}` : "") +
@@ -11212,6 +11337,8 @@ document.getElementById("cmdrBody").addEventListener("toggle", e => { const k = 
 // Materials tab (filtered to it) and its ⇄ to the nearest trader. In the tab: a month's bar in Earnings' chart picks that month
 function cmdrGo(el) {
   const t = el.closest("[data-trader]"), m = el.closest("[data-cmmat]"), h = el.closest("[data-cmgo]"), e = el.closest("[data-emmonth]");
+  const hs = el.closest("[data-hotsort]");
+  if (hs) { CM.hotSort = hs.dataset.hotsort; cmdrDrawBody(); return true; }
   if (t) openNearest({need: [t.dataset.trader]});
   else if (m) {   // the grid redrawn here: a Materials tab drawn already is not fetched again on the switch
     mFilter.value = m.dataset.cmmat; mHeld.checked = false; store.set("mHeld", false);
@@ -11470,7 +11597,26 @@ function cmdrSessionsHtml(d) {
     (mining.length ? `<div class="cmfigs">${cmTile("Sessions", cmNum(m.sessions))}${cmTile("Refined", m.tons || !m.srv_tons ? `${cmNum(m.tons)} t` : "")}` +
       `${cmTile("SRV refined", m.srv_tons ? `${cmNum(m.srv_tons)} t` : "", "the SRV's refinery: surface mining")}${cmTile("Asteroids prospected", cmNum(m.prospected))}${cmTile("Sold", cmCr(m.sold))}</div>` +
       cmTable([["Session"], ["Ship"], ["Refined", 1], ["What", 0, "c2hide"], ["t/h", 1], ["Prospected"], ["Limpets", 1, "c2hide"], ["Mining", 1], ["Sold", 1]], mining, "cmMining")
-      : `<div class="unk">No mining in the last ${cmNum(days)} days.</div>`);
+      : `<div class="unk">No mining in the last ${cmNum(days)} days.</div>`) + hotspotsHtml(d.hotspots || MINING.d);
+}
+// Sessions' Hotspots (mining B): every ring you mined, by hotspot (all time), best first by the chosen figure: the
+// best ship's t/h, the hit rate (the call-out's minerals), the last visit; ≈ cr/h at what your ore sold for; 🎯
+function hotspotsHtml(d) {
+  const list = (d && d.hotspots) || [];
+  const head = `<h3 class="subhead">Hotspots <span class="unk">· every ring you mined, by hotspot: hit rate by the call-out's minerals (Settings → Mining)</span></h3>`;
+  if (!list.length) return head + `<div class="unk">Your mining in rings shows here, ring by ring and hotspot by hotspot.</div>`;
+  const rows = list.map(g => ({g, s: hotspotStats(g, miningCfg(), d)}));
+  const key = {tph: x => x.s.tph ?? -1, rate: x => x.s.rate ?? -1, last: x => x.g.last}[CM.hotSort] || (x => x.s.tph ?? -1);
+  rows.sort((a, b) => key(b) > key(a) ? 1 : key(b) < key(a) ? -1 : 0);
+  const sortBtn = (k, label) => `<button type="button" class="mini${CM.hotSort === k ? " on" : ""}" data-hotsort="${k}" title="sort by ${label}">${label}</button>`;
+  const html = rows.map(({g, s}) => `<tr><td>${esc(g.system_name || "")} <b>${esc(g.ring)}</b> · ${g.hotspot ? `<b>${esc(hotspotName(g, d))}</b>` : `<span class="unk">${esc(hotspotName(g, d))}</span>`}` +
+    `${sysAimBtn(g.system_name, g.system)}</td><td class="num">${cmNum(g.stints)}</td>` +
+    `<td class="num" title="${s.hits != null ? `${s.hits} of ${s.rated} rocks not mined before` : "tick the call-out's minerals in Settings → Mining"}">${s.rate != null ? `${s.rate} %` : ""}</td>` +
+    `<td class="num">${s.tph != null ? `<b>${Math.round(s.tph)}</b> <span class="unk c2hide">${esc(shipLabel(s.best.name, s.best.type) || "")}</span>` : ""}</td>` +
+    `<td class="num"${s.partial ? ` title="only the minerals you have sold are priced"` : ""}>${s.crh != null ? `${esc(credits(s.crh))}${s.partial ? "*" : ""}` : ""}</td>` +
+    `<td class="num">${cmNum(g.tons)} t</td><td>${cmWhenDual(g.last)}</td></tr>`);
+  return head + `<div class="hint">sort: ${sortBtn("tph", "t/h")} ${sortBtn("rate", "hit rate")} ${sortBtn("last", "last visit")} · t/h: your best ship there; ≈ cr/h at what your ore sold for</div>` +
+    cmTable([["Hotspot"], ["Stints", 1], ["Hits", 1], ["Best t/h", 1], ["≈ cr/h", 1], ["Refined", 1], ["Last"]], html, "cmHotspots");
 }
 
 // Earnings (NEXT-VERSION #7, GET /api/commander/earnings?year=&month=, outrider/earnings.py): what exploration,
@@ -13651,7 +13797,7 @@ const TAB_ALERT_NAMES = {discovery: "Targeting a system", arrival: "Arriving som
   jumponium: "Jumponium materials", sampling: "Exobiology unfinished", approach: "High gravity", bodybrief: "Bio signals on approach",
   sell: "Selling", saleleft: "Data left after a sale", unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction",
   carrier: "Carrier arrived", codex: "New codex entry", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
-  rigsout: "Rigs still out", ring: "Rings to mine", limpets: "Limpets and the hold", uploads: "Uploads failing"};
+  rigsout: "Rigs still out", ring: "Rings to mine", limpets: "Limpets and the hold", prospect: "Prospector call-out", uploads: "Uploads failing"};
 function tabDrawAlerts() {
   const tog = (attr, k, on, what) => `<label class="tb-tog"><input type="checkbox" data-${attr}="${esc(k)}"${on ? " checked" : ""}> ${what}</label>`;
   document.getElementById("tabAlertList").innerHTML = ALERTS.map(([k, label, snd]) =>
