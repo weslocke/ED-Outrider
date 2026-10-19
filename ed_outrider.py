@@ -6235,6 +6235,20 @@ def bio_options(r, star=None, ctx=None, known=()):
 LEGACY_CUTOFF = "2022-11-29"
 
 
+def spansh_date(records):
+    """The newest date Spansh's records of a system were reported ("YYYY-MM-DD"), or None: your own scans carry none."""
+    dates = [r["updated"][:10] for r in records or [] if isinstance(r.get("updated"), str) and r["updated"][:10]]
+    return max(dates) if dates else None
+
+
+def spansh_old(records):
+    """That date when every Spansh record of the system predates LEGACY_CUTOFF (Kurbo26's idea, discussion #11): the
+    system's Spansh data is pre-Odyssey, its thin-atmosphere worlds marked not landable and its life never reported, so
+    "nothing here" from it means nothing; None when any record is newer, or none says when."""
+    newest = spansh_date(records)
+    return newest if newest and newest < LEGACY_CUTOFF else None
+
+
 def stale_bio_groups(r, star=None, ctx=None):
     """The genus groups the exobiology rules allow on a Spansh body whose record is too old to say: a planet with a
     thin atmosphere, marked not landable, with no signals block, last reported before LEGACY_CUTOFF. [] for any
@@ -6332,6 +6346,7 @@ def summarise(records, body_count, star=None, ctx=None, genera=None):
     if n:
         s["bio_potential"], s["bio_bodies_guessed"] = pot, n
     s["stale_bio"] = stale_bio_summary(records, star, ctx)   # old Spansh data: a mark only, never in the values
+    s["spansh_date"], s["spansh_old"] = spansh_date(records), spansh_old(records)   # Nearby's "Spansh: pre-Odyssey" pill
     s["bio_unknown"] = sum(1 for r in planets if unknown_bio_groups(r, star, ctx)) or None   # check them in the FSS
     if not full:
         return s  # rings, belts and signals arrive with the Spansh dump
@@ -6371,7 +6386,8 @@ def summarise(records, body_count, star=None, ctx=None, genera=None):
 FIND_NAME_MAX = 100   # /api/find: the longest system name taken (real ones are far shorter)
 
 # Bump when the cached record layout changes so cached systems get re-fetched.
-CACHE_VERSION = 18   # 14: pressure_raw; 15: updated, signals_known (stale_bio_body); 16: mining; 17: "Terraformable" priced; 18: reserve
+CACHE_VERSION = 19   # 14: pressure_raw; 15: updated, signals_known (stale_bio_body); 16: mining; 17: "Terraformable" priced;
+#                      18: spansh_date, spansh_old (main, 2026.10.26's fixes); 19: reserve (mining) on top of it
 
 
 def cached_base(db, id64):
@@ -8804,7 +8820,8 @@ class State:
                 "mapped": sum(1 for b in bodies if b.get("mapped") or b.get("first_mapped")),
                 "planets": row.get("planets") or len(bodies) or None,
                 "in_spansh": row.get("in_spansh") if "in_spansh" in row else self.spansh_knows(pos["id64"]),
-                "standing": pos.get("standing"), "mining": (self.mining_live() or {}).get("text")}
+                "standing": pos.get("standing"), "mining": (self.mining_live() or {}).get("text"),
+                "spansh_old": detail.get("spansh_old")}
 
     def overlay_route(self):
         """The route Now's panel gives the next stop of: the unfinished one plotted last (route_newest: the page
@@ -9372,6 +9389,7 @@ class State:
         counts = [c for c in ((base or {}).get("body_count"), own_count) if c]
         count = max(counts) if counts else None
         return {"name": name, "records": records, "star": star, "body_count": count, "own_count": own_count,
+                "spansh_old": spansh_old((base or {}).get("records") or []),
                 "base": base is not None, "base_known": base_known(base, source), "ctx": bio_context(name, records, where[1], where[2], where[3], star, count)}
 
     def body_bio(self, id64, body_id):
@@ -9481,7 +9499,9 @@ class State:
                 "honked": bool(sysrow), "all_found": bool(sysrow and sysrow["all_found"]), "star_class": mr["star"],
                 "base_known": mr["base_known"],
                 "worth": special[:3] + [w for w in worth[:3] if w not in special[:3]], "bio": bio,
-                "region": self.region_crossed(id64)}
+                "region": self.region_crossed(id64),
+                # pre-Odyssey Spansh data (#11): never routine, "worth a rescan"; and its worlds that may hold life
+                "spansh_old": mr["spansh_old"], "old_bodies": (stale_bio_summary(mr["records"], mr["star"], mr["ctx"]) or {}).get("bodies") or 0}
 
     def region_crossed(self, id64):
         """The region this arrival crossed into ({region, spoken, count}), when it was the first crossing into it
@@ -10984,6 +11004,7 @@ class State:
         if leaving is not None:   # the checklist's "N not on Spansh" (leaving_summary itself runs on every poll)
             leaving["base_known"] = base_known(base, source)
         return {"id64": str(id64), "name": name, "bodies": out, "tree": tree, "partial": partial, "region": region,
+                "spansh_date": spansh_date(spansh_recs), "spansh_old": spansh_old(spansh_recs),   # Here's header, Now (#11)
                 "phenomena": phenomena, "rare_stars": rare_stars(out),
                 "pois": [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))],
                 "leaving": leaving,

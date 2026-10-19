@@ -1709,6 +1709,44 @@
     "Well spotted, {name}. {what}. Damn well spotted."
    ]
   },
+  "old_data": {
+   "naval_rn": [
+    "Be advised, {name}: the survey on file dates from {year}. Pre-Odyssey. Recommend a fresh look.",
+    "Records here predate Odyssey. Thin-atmosphere worlds went unlogged then. Worth a rescan.",
+    "For the log: chart data last reported {year}. I would not rely on it, {name}.",
+    "The charts are pre-Odyssey, {name}. Recommend we honk and sweep with the FSS.",
+    "Intelligence on this system is out of date. Last report, {year}.",
+    "Survey data predates Odyssey. Biology was never reported. There may be first footfalls going.",
+    "Last surveyed in {year}, {name}. Recommend we verify for ourselves.",
+    "Old charts, I'm afraid. Everything known here was known before Odyssey, which is not saying much.",
+    "Note the date on the survey: {year}. A rescan is in order.",
+    "The record is pre-Odyssey. Landable worlds were marked otherwise then. Worth checking, {name}.",
+    "Very old data here. Recommend honk, FSS, and our own eyes.",
+    "This system's charts have not been updated since {year}. Unlogged life is possible, {name}.",
+    "Recommend a full survey. The records are pre-Odyssey and take no account of surface biology.",
+    "Chart is dated {year}. Treat it as unconfirmed, {name}.",
+    "A word of caution: the data here predates Odyssey. There may be footfalls to be had.",
+    "Stale survey on file. Worth our own sweep before we move on."
+   ],
+   "naval_rn_profane": [
+    "Bloody hell, {name}, the charts here date from {year}. Worth a proper look.",
+    "This survey's older than my nan's teapot. {year}. Recommend a damn rescan.",
+    "Pre-Odyssey records. Back then they called thin-atmosphere worlds unlandable. Bollocks to that.",
+    "Last reported {year}, {name}. I wouldn't trust it as far as I could bloody throw it.",
+    "Charts say all known. Charts are from before Odyssey. Utter bollocks, most likely.",
+    "Nobody's logged life here because nobody bloody could back then. Honk and see.",
+    "Damn stale data, {name}. Could be first footfalls going begging.",
+    "The record's from {year}. Sod trusting that. FSS it ourselves.",
+    "Old bloody charts. Nobody reported biology before Odyssey, so this lot means nothing.",
+    "Right, {name}, the intel here is pre-Odyssey rubbish. Bloody well worth a rescan.",
+    "Survey data's from {year}. That's a damn long time for nobody to check.",
+    "Everything known about this place fits on a bloody postage stamp. Let's look.",
+    "Pre-Odyssey survey, {name}. Somebody couldn't be arsed to land. We can.",
+    "Hell of an old record, this. {year}. Recommend we sweep it properly.",
+    "Damn it, the database stopped at {year}. Unlogged life is a fair bet, {name}.",
+    "Bloody antique charts. Honk, FSS, and get the boots ready."
+   ]
+  },
   "ring_found": {
    "naval_rn": [
     "{body} has {ring}, {name}. One for the watch list.",

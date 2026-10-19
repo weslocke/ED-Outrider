@@ -1708,6 +1708,44 @@
     "Look here, friend. {what}."
    ]
   },
+  "old_data": {
+   "good_ol_boy": [
+    "Now hold on, {name}. Them charts ain't been touched since {year}. Let's honk and see for ourselves.",
+    "That data's older than Grandpa's pickup, partner. Before Odyssey. Worth a fresh look.",
+    "Last anybody wrote this place down was {year}. Back then nobody knew you could land on half these rocks.",
+    "Buddy, this here's pre-Odyssey data. Could be critters nobody's logged. Let's give her a scan.",
+    "Old news, pal. Back in {year} they called thin-air worlds unlandable. I'd take a fresh look.",
+    "Grandpa always said don't trust a map older than your boots. This one's from {year}. Fire up the FSS.",
+    "Dadgum, these records are from before Odyssey. There might be first footfalls just sittin' out there.",
+    "{name}, the book on this system's from {year}. Back then nobody even looked for life. Let's look.",
+    "Them records say it's all known, but known in {year} is like plantin' by an old almanac. Let's rescan.",
+    "Pre-Odyssey data, partner. Folks back then flew right past life they couldn't see. Honk her and let's check.",
+    "Shoot, nobody's updated this place since {year}. I smell unlogged critters. Let's scan it ourselves.",
+    "Don't let them known bodies fool ya, buddy. That's {year} talk. Could be boots never touched dirt here.",
+    "Data's stale as day-old cornbread, {name}. Pre-Odyssey. Worth a honk and a good look-see.",
+    "Partner, this system's file's been gatherin' dust since {year}. Might be some first footfalls left in it.",
+    "Like Grandma's back pantry, these records ain't been checked in years. Pre-Odyssey. Let's take inventory.",
+    "Dang old data, pal. Nobody walked these rocks back then 'cause they couldn't. We can. FSS it."
+   ],
+   "good_ol_boy_profane": [
+    "Well, hell, {name}. This data's from {year}. Ain't worth a damn till we scan it ourselves.",
+    "Pre-Odyssey records, partner. Back then they didn't know shit about landin' on thin-air worlds.",
+    "Damn, buddy, nobody's touched this place's file since {year}. Honk the son of a gun and let's see.",
+    "Hell's bells, pal. {year} data. Them folks flew right past life they couldn't see.",
+    "Known system, my ass. It ain't been looked at proper since before Odyssey. FSS her, partner.",
+    "Damn old records, {name}. Could be first footfalls just sittin' down there waitin' on us.",
+    "Hell, partner, a map from {year} is about as useful as a screen door on a submarine. Rescan it.",
+    "Shit, this file's stale as last week's biscuits. Pre-Odyssey. Let's give it a honk.",
+    "{year}? Hell, back then they called half these rocks unlandable. Let's go find out for damn sure.",
+    "Partner, that's pre-Odyssey crap on the books. I'd bet my boots there's bugs nobody logged.",
+    "Known in {year} ain't worth a hill of damn beans, buddy. Scan it.",
+    "Hot damn, old data. Old data means maybe nobody's set boot on these worlds. Let's check.",
+    "Buddy, the records here are from {year}, and they didn't look for a damn thing alive. We will.",
+    "Ain't nobody updated this hellhole since {year}. Fire up the FSS and let's see what's hidin'.",
+    "Well, shit, partner. Pre-Odyssey data. Might be some first footfalls with our name on 'em.",
+    "Damn it, {name}, these numbers are older than dirt. Honk, scan, and see for ourselves."
+   ]
+  },
   "ring_found": {
    "good_ol_boy": [
     "Well, look at that. {body} has {ring}, just the kind you told me to keep an eye out for.",

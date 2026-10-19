@@ -1695,6 +1695,44 @@
     "{what}. Something to brag about. Love it."
    ]
   },
+  "old_data": {
+   "scoundrel": [
+    "Data's from {year}, {name}. Back then nobody checked for bugs. Bugs are money. Just saying.",
+    "Pre-Odyssey records. That means somebody missed something, and somebody's about to be us.",
+    "Last time anyone wrote this place up was {year}. I've had warrants fresher than that.",
+    "Everything known, it says. In {year}. Honk it, {name}, and let's see what they left on the table.",
+    "Old data, {name}. Thin-air worlds were off limits back then. Nobody's been through their pockets yet.",
+    "These records are pre-Odyssey. Like an unlocked warehouse nobody's checked in years.",
+    "{year}? That data's older than my fake ID. Let's rescan and find the good stuff.",
+    "Back in {year} the scanners couldn't see life. That's unclaimed loot, {name}. First footfalls too.",
+    "Nobody's updated this system since before Odyssey. Fire up the FSS. I smell a payday.",
+    "Trust old data? I used to sell old data. Pop the honk, {name}, and see for ourselves.",
+    "Last report here, {year}. If there's bugs on these rocks, nobody's cashed them in.",
+    "Old records are like old alarms, {name}. Nobody's watching. Let's take a look.",
+    "Pre-Odyssey data, buddy. Somebody marked half these worlds unlandable and walked away. Their loss.",
+    "I've cased joints with better intel than {year}. Rescan it, {name}.",
+    "Known system, sure. Known in {year}. Could be first footfalls with our names on them.",
+    "This file's been gathering dust since before Odyssey. Dust means nobody's been here to rob it."
+   ],
+   "scoundrel_profane": [
+    "Data's from {year}? Hell, that's practically a museum piece. Rescan it.",
+    "Pre-Odyssey crap, {name}. They didn't even look for bugs back then. Bugs pay.",
+    "{year}? I've had damn parole officers check in more often than that.",
+    "Everything known, my arse. Known in {year}. Honk the bastard and let's see what got missed.",
+    "Thin-air worlds got marked unlandable back then. Hot damn, nobody's picked their pockets since.",
+    "Old data's a load of shit, {name}. I should know, I used to sell it. Run the FSS.",
+    "This system's been sitting unchecked since before Odyssey. Like a bloody unlocked vault.",
+    "Shit, {year} records. Could be first footfalls just lying around for the taking.",
+    "Last update, {year}. Hell, I was still running stolen biowaste back then.",
+    "Nobody's looked here properly since {year}, {name}. Somebody left money on the damn table.",
+    "Pre-Odyssey data, buddy. Those clowns flew past life they couldn't see. Their loss, our damn gain.",
+    "I wouldn't trust intel this old to rob a vending machine. {year}. Scan the hell out of it.",
+    "Crap data from before Odyssey. Honk, scan, and let's find out what's really down there.",
+    "Damn, {name}, nobody's claimed the bugs here. Records say {year}. Go get rich.",
+    "Fresh eyes on stale data, that's where the money is. Pop the bloody honk.",
+    "Known since {year}? Known like my ex-wife knew where I was. Rescan the damn thing."
+   ]
+  },
   "ring_found": {
    "scoundrel": [
     "{body} has {ring}. On your list, {name}. I never forget a list with money on it.",

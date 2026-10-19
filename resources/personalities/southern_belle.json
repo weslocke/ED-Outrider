@@ -1708,6 +1708,44 @@
     "{what}. Lord willin', we'll get a picture."
    ]
   },
+  "old_data": {
+   "southern_belle": [
+    "Oh, sugar, these records date back to {year}. Bless their hearts, they never looked for life. Let's rescan.",
+    "Lord have mercy, pre-Odyssey data, darlin'. There may be first footfalls just waitin' on us.",
+    "Honey, nobody's freshened up this file since {year}. Let's give it a honk and see for ourselves.",
+    "Grandmama never trusted gossip older than her Easter hat. This data's from {year}. Let's check it.",
+    "{name}, back in {year} they called these thin-air worlds unlandable. We know better now.",
+    "Darlin', that data's as stale as last Sunday's pound cake. Pre-Odyssey. Worth a fresh scan.",
+    "Well, I never. All known, it says, but known back in {year}. Fire up the FSS, sugar.",
+    "Bless this system's heart, nobody's looked at it proper since before Odyssey. Let's do it ourselves.",
+    "Sweetie, the last report here is from {year}. There could be little growin' things nobody's logged.",
+    "Dang, honey, old records. Back then folks flew right past life their scanners couldn't see.",
+    "These books haven't been dusted since {year}, darlin'. Might be a first footfall or two left for us.",
+    "Pre-Odyssey data, {name}. Like Grandmama's recipe cards, worth checkin' against the real thing.",
+    "Sugar, I wouldn't trust these old charts any further than I could throw a piano. Honk and look.",
+    "Lord, {year}. That's practically ancient history, honey. Let's see what they missed.",
+    "Don't you let that known label fool you, darlin'. It's from before Odyssey. Rescan, please.",
+    "Honey, those old surveys never set foot on these worlds. Maybe we can be the first."
+   ],
+   "southern_belle_profane": [
+    "Well, damn, sugar. This data's from {year}. They didn't know a damn thing about life back then.",
+    "Pre-Odyssey records, darlin'. Bless their hearts, they flew past the good stuff blind as hell.",
+    "Honey, this file's been gatherin' dust since {year}. Honk the damn thing and let's look.",
+    "Lord have mercy, {name}, known in {year} ain't worth a damn now. Fire up the FSS.",
+    "Hell, darlin', back then they swore thin-air worlds were unlandable. We'll see about that.",
+    "Grandmama'd call this data stale as hell, sugar. Pre-Odyssey. Let's see for ourselves.",
+    "Shit, honey, {year}? There could be first footfalls lyin' all over this place.",
+    "That known label's pre-Odyssey crap, sweetie. I'd honk and look before I'd trust it.",
+    "Damn it all, nobody's checked this place since {year}. Somebody's got to, darlin'.",
+    "Old records, sugar, and old records lie like a damn rug. Let's go look ourselves.",
+    "{name}, those surveys never looked for life. Hell, they never even looked at the dirt.",
+    "Well, shit, pre-Odyssey data. Little growin' things nobody logged, I'd bet my pearls.",
+    "The last soul to report here did it in {year}, honey. Let's make damn sure they didn't miss anything.",
+    "Hot damn, darlin', old data means maybe nobody's set foot here. Let's go find out.",
+    "Lord, these charts are as stale as a damn church bake sale. {year}. Rescan, sugar.",
+    "Bless their hearts, the folks in {year} didn't know shit about thin-air worlds. We do."
+   ]
+  },
   "ring_found": {
    "southern_belle": [
     "Well, I never, {name}. {body} has {ring}, just the kind you asked me to watch for.",

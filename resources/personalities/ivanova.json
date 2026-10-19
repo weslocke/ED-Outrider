@@ -1689,6 +1689,44 @@
     "{what}. Shit. That is pretty."
    ]
   },
+  "old_data": {
+   "ivanova": [
+    "The data here is from {year}. Pre-Odyssey. Nobody looked properly. Of course they did not.",
+    "Old records, {name}. My grandmother had newer maps, and she used a paper atlas.",
+    "Last reported in {year}. Everything known means nothing known. Honk it.",
+    "Pre-Odyssey survey. Back then thin-atmosphere worlds were not landable. Now they are. Funny how that works.",
+    "Data from {year}, {name}. There could be life down there nobody bothered to log. Finally, something to do.",
+    "These charts are older than some of my grudges. Rescan.",
+    "Somebody stopped by in {year}, wrote nothing down, and left. We do it properly.",
+    "Old data, {name}. First footfalls might still be waiting. Try to contain your excitement. I will not.",
+    "Pre-Odyssey records. Nobody reported life here because nobody could. Run the FSS.",
+    "The last report is from {year}. I have socks younger than that. Honk, {name}.",
+    "Everything known about this system was known before Odyssey. So, nothing. Let us look.",
+    "Stale data. My grandmother said never trust a map older than your boots. Rescan, {name}.",
+    "{year}. That is when anyone last cared about this place. We could care. Briefly.",
+    "Pre-Odyssey charts, {name}. Somewhere down there, maybe, unlogged life. Maybe nothing. Check anyway.",
+    "Old records. The galaxy changed and nobody told this system. FSS it.",
+    "I once flew with a pilot who trusted pre-Odyssey charts. Once. Rescan, {name}."
+   ],
+   "ivanova_profane": [
+    "This data is from {year}. Pre-fucking-Odyssey. Rescan.",
+    "Old shit, {name}. My grandmother's star charts were newer, and she drew them in crayon.",
+    "Last reported in {year}. Everything known here is worth exactly fuck all. Honk it.",
+    "Back then they called thin-atmosphere worlds unlandable. Bullshit. We damn well land.",
+    "Somebody logged no life here in {year}. Somebody was full of shit. Let's prove it.",
+    "These charts are older than my grudges, and I have ancient goddamn grudges.",
+    "Some lazy bastard reported this place in {year} and never came back. Typical.",
+    "Old data, {name}. First footfalls could be waiting. Hell, I might even get out of my chair.",
+    "Nobody logged life here because the old clients couldn't see shit. We can. Run the FSS.",
+    "{year}? Hell, that survey is older than the coffee on this deck. Honk.",
+    "Pre-Odyssey survey. Means nobody fucking looked. Let's go embarrass them.",
+    "Stale damn data. Grandmother read maps like tea leaves, and hers were fresher than this.",
+    "Nobody's given a damn about this rock pile since {year}. Perfect. More for us.",
+    "Maybe unlogged life down there, {name}. Maybe fuck all. I'm bored enough to check.",
+    "Charts from {year}. Hell, half the planets here might have grown gardens since. Honk.",
+    "Last pilot I knew who trusted charts from {year}? We scattered him over Ross 128. Rescan the damn thing."
+   ]
+  },
   "ring_found": {
    "ivanova": [
     "{body} has {ring}, {name}. The kind you told me to watch for.",

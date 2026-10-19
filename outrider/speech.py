@@ -77,6 +77,9 @@ KEYS = {
     "ring_found_many": "several bodies scanned together (a nav beacon, the arrival's own scan) have rings of types you watch "
                        "for: {count} (how many bodies, a number), {bodies} (their short names, already phrased, e.g. "
                        "'A 3, A 5 and B 1'), {types} (the ring types among them, already phrased, e.g. 'metallic and icy')",
+    "old_data": "after the arrival briefing, in a system whose Spansh data predates Odyssey (thin-atmosphere worlds marked "
+                "not landable, life never reported) and that you have not resolved yourself: worth a rescan (Kurbo26's idea, "
+                "discussion #11): {year} (the year it was last reported, e.g. '2019')",
     "rare_star": "a rare star resolved, by the arrival's own scan or the FSS (said with delight, in every style): {what} "
                  "(already phrased, e.g. 'a black hole at B', 'a Wolf-Rayet star, the main star')",
     "surface_site": "surface sites found on a body: Guardian or Thargoid sites (the DSS's map says them) or an unknown "
@@ -627,7 +630,7 @@ SAMPLES = {
     "docking_granted": {"pad": 34, "station": "Jameson Memorial"},
     "docking_denied": {"reason": "no pad free for your ship: try again shortly", "station": "Jameson Memorial"},
     "phenomena": {"what": "three notable stellar phenomena, all in rings"},
-    "rare_star": {"what": "a black hole at B"},
+    "rare_star": {"what": "a black hole at B"}, "old_data": {"year": "2019"},
     "ring_found": {"body": "A 3", "ring": "a pristine metallic ring"}, "limpets_none": {}, "limpets_low": {"count": 5}, "hold_nearly_full": {"minutes": 5, "free": 12}, "hold_full": {},
     "prospect_hit": {"what": "Platinum, 34 percent"}, "motherlode": {"mineral": "Void Opal"},
     "ring_found_many": {"count": 3, "bodies": "A 3, A 5 and B 1", "types": "metallic and icy"},
@@ -698,7 +701,7 @@ CREW_ROW_ROLE = {row: r[0] for r in CREW_ROLES for row in r[3]}   # an alert row
 # with the page. (rig_leash: a danger tag with plain words, no lines of its own.)
 ROW_KEYS = {
     "arrival": ("arrival_undiscovered", "arrival_discovered", "region", "streak_new", "streak_known"),
-    "game": ("game_start", "welcome_back", "game_exit", "session_recap"), "jump": ("fsd_charge",), "brief": ("arrival_brief",),
+    "game": ("game_start", "welcome_back", "game_exit", "session_recap"), "jump": ("fsd_charge",), "brief": ("arrival_brief", "old_data"),
     "fss": ("fss_done", "fss_nothing", "fss_unfinished"), "leaving": ("leaving",),
     "fuel": ("fuel_low", "fuel_star", "fuel_target", "fuel_topup"), "scoop": ("tank_full",), "scoopstop": ("scoop_stopped",),
     "supercharge": ("supercharged",), "refuelshort": ("fuel_short",), "lastscoop": ("fuel_last_scoop",),

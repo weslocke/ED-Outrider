@@ -255,7 +255,7 @@ class BatchFSpansh(unittest.TestCase):
     # ---- P16 ----
 
     def test_record_keeps_update_time_and_signals_block(self):
-        self.assertEqual(ed_outrider.CACHE_VERSION, 18)   # 16: mining (Batch M4); 17: "Terraformable" priced; 18: reserve
+        self.assertEqual(ed_outrider.CACHE_VERSION, 19)   # 16: mining (Batch M4); 17: "Terraformable" priced; 18: spansh_old; 19: reserve
         r = self.rec()
         self.assertEqual((r["updated"], r["signals_known"]), ("2019-06-01 10:00:00+00", False))
         self.assertTrue(self.rec(signals={"signals": {}, "updateTime": "2019-06-01"})["signals_known"])
@@ -337,6 +337,36 @@ class BatchFSpansh(unittest.TestCase):
         self.j.handle({"event": "FSDJump", "timestamp": "2026-01-01T00:00:00Z", "StarSystem": "Sys", "SystemAddress": 9,
                        "StarPos": [0, 0, 0]})
         self.assertEqual(self.state.system_value(9, "Sys", old, "K"), self.state.system_value(9, "Sys", new, "K"))
+
+    def test_pre_odyssey_systems(self):
+        """#11 (Kurbo26): a system whose Spansh records all predate the legacy split is "pre-Odyssey" (Nearby's pill, Here's
+        header, the arrival briefing never routine, the overlay's strip), whatever its bodies; one newer record, not."""
+        star = ed_outrider.record_from_dump("Sys", {"name": "Sys A", "type": "Star", "subType": "K (Yellow-Orange) Star",
+                                                    "mainStar": True, "solarMasses": 0.8, "bodyId": 1,
+                                                    "updateTime": "2019-02-11 10:00:00+00"})
+        gas = self.rec(name="Sys A 5", bodyId=5, subType="Class I gas giant", atmosphereType=None, updateTime="2019-02-12 09:00:00+00")
+        self.assertEqual((ed_outrider.spansh_date([star, gas]), ed_outrider.spansh_old([star, gas])), ("2019-02-12", "2019-02-12"))
+        newer = self.rec(name="Sys A 6", bodyId=6, updateTime="2023-03-01T00:00:00Z")
+        self.assertEqual((ed_outrider.spansh_date([star, newer]), ed_outrider.spansh_old([star, newer])), ("2023-03-01", None))
+        self.assertEqual((ed_outrider.spansh_date([{"name": "mine"}]), ed_outrider.spansh_old([])), (None, None))   # your own scans: no date
+        s = ed_outrider.summarise([star, gas], 2, "K")
+        self.assertEqual((s["spansh_date"], s["spansh_old"], s["stale_bio"]), ("2019-02-12", "2019-02-12", None))   # no bio candidate: still old
+        # Here and the arrival briefing
+        self.j.handle({"event": "FSDJump", "timestamp": "2026-01-01T00:00:00Z", "StarSystem": "Sys", "SystemAddress": 9,
+                       "StarPos": [0, 0, 0]})
+        base = {"v": ed_outrider.CACHE_VERSION, "name": "Sys", "x": 0, "y": 0, "z": 0, "body_count": 3, "records": [star, gas, self.rec()]}
+        self.state.bases[9] = ("spansh", base)
+        d = self.state.system_detail(9)
+        self.assertEqual((d["spansh_date"], d["spansh_old"]), ("2019-06-01", "2019-06-01"))
+        facts = self.state.arrival_facts(9)
+        self.assertEqual((facts["spansh_old"], facts["old_bodies"]), ("2019-06-01", 1))
+        base["records"].append(newer)
+        self.assertEqual((self.state.system_detail(9)["spansh_old"], self.state.arrival_facts(9)["spansh_old"]), (None, None))
+        # the overlay's system strip
+        import outrider.overlay as O
+        texts = lambda info: [r[0] for it in O.strip_panel(info, O.palette("elite"))["items"] for r in it.get("runs", [])]
+        self.assertIn("Spansh ✓ (pre-Odyssey)", texts({"name": "Sys", "in_spansh": True, "spansh_old": "2019-06-01"}))
+        self.assertIn("Spansh ✓", texts({"name": "Sys", "in_spansh": True, "spansh_old": None}))
 
     def test_here_and_left_behind_show_the_mark(self):
         self.j.handle({"event": "FSDJump", "timestamp": "2026-01-01T00:00:00Z", "StarSystem": "Sys", "SystemAddress": 9,

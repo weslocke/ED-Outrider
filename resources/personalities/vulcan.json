@@ -880,6 +880,26 @@
     "{what}. Fascinating, {name}. Truly."
    ]
   },
+  "old_data": {
+   "vulcan": [
+    "The data on this system was last reported in {year}, before Odyssey. I would not consider it complete.",
+    "{name}, the records predate Odyssey, when thin-atmosphere worlds were deemed unlandable. A rescan is logical.",
+    "Survey data from {year}. Its completeness is a matter of faith, and I am not given to faith.",
+    "The charts state that everything is known. The charts are from {year}. I find that claim unpersuasive.",
+    "Pre-Odyssey data, {name}. Biological life was never reported, which is not the same as absent.",
+    "Absence of evidence is not evidence of absence. This system was last surveyed in {year}.",
+    "These records are old. I recommend a discovery scan and a full spectrum sweep.",
+    "Humans would call this data stale. I would call it incomplete. Both descriptions apply.",
+    "The last report dates from {year}. Unlogged life, and first footfalls, remain a reasonable probability.",
+    "{name}, the records here predate Odyssey. I suggest we verify them ourselves. It would be logical.",
+    "The data are pre-Odyssey. I have placed very little confidence in them.",
+    "Last updated in {year}. A thorough commander would rescan. I await your decision.",
+    "The survey on file is older than Odyssey. Its omissions are, statistically, likely.",
+    "You may wish to honk, {name}. The existing records were compiled before surface life could be logged.",
+    "Data last reported in {year}. The known information is thin, much like the atmospheres it overlooked.",
+    "A curiosity. The records here predate Odyssey, so first footfalls may remain unclaimed."
+   ]
+  },
   "ring_found": {
    "vulcan": [
     "You asked me to flag such rings, {name}. {body} has {ring}.",

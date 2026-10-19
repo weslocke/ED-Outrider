@@ -232,7 +232,7 @@ function notable(s) {
     (s.bio_potential ? `<span class="nb bio" title="exobiology: up to this much across ${s.bio_bodies_guessed} bod${s.bio_bodies_guessed === 1 ? "y" : "ies"}, from spawn rules">🧬≤${credits(s.bio_potential)}</span>` : "") +
     (gg.length ? gggIcon(false, `potential green gas giant${gg.length > 1 ? "s" : ""} (the community's ladder model, from your scans or Spansh's): ` +
       gg.map(x => `${x.body} (${x.chance})`).join(", "), gg.length) : "") + (s.ggg_green ? gggIcon(true, "a green gas giant your codex confirms", s.ggg_green) : "") +
-    codexTypesTag(s) + phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + poiTag(s.pois) + oldDataTag(s.stale_bio) + bioUnknownTag(s.bio_unknown) +
+    codexTypesTag(s) + phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + poiTag(s.pois) + spanshOldTag(s) + bioUnknownTag(s.bio_unknown) +
     (s.curiosities ? `<span class="nb cur" title="${(s.curiosity_list || []).map(c => esc(`${c.body}: ${c.tag} (${c.why})`)).join("&#10;")}">🔭${s.curiosities > 1 ? "×" + s.curiosities : ""}</span>` : "");
 }
 // pre-Odyssey Spansh data (stale_bio {bodies, genera_top, up_to, reported}): thin-atmosphere worlds marked not
@@ -246,6 +246,22 @@ function oldDataTitle(o) {
 // life (BioScan's "Bios possible, check FSS for signals")
 const BIO_UNKNOWN_TITLE = "landable, signals not counted (your AutoScan or a nav beacon only) and the rules allow life: the FSS would say";
 const bioUnknownTag = n => !n ? "" : `<span class="nb" title="${n} bod${n === 1 ? "y" : "ies"}: ${BIO_UNKNOWN_TITLE}">${dual(`🧬? ${n} to check in the FSS`, `🧬? ${n}`)}</span>`;
+// #11 (Kurbo26): a system whose Spansh data all predates the legacy split (29 Nov 2022: the server's LEGACY_CUTOFF):
+// "Spansh: pre-Odyssey", with its worlds that may hold life ("· 2 may have life"); 🪦 in a narrow pane. Otherwise the
+// old data tag of its stale bodies (some Spansh records newer, some old)
+const SPANSH_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const spanshMonth = (d, long = false) => d ? `${(SPANSH_MONTHS[+String(d).slice(5, 7) - 1] || "").slice(0, long ? 9 : 3)} ${String(d).slice(0, 4)}`.trim() : "";
+const spanshOldTitle = (date, stale) => `Spansh's data here was last reported ${spanshMonth(date)}, before Odyssey's surface data (the legacy split of 29 Nov 2022): ` +
+  `thin-atmosphere worlds were marked not landable and life was not reported, so bio and first footfalls may be waiting. Worth a rescan.` +
+  (stale && stale.bodies ? "&#10;" + oldDataTitle(stale) : "");
+function spanshOldTag(s) {
+  if (!s.spansh_old) return oldDataTag(s.stale_bio);
+  const n = (s.stale_bio && s.stale_bio.bodies) || 0, full = `Spansh: pre-Odyssey${n ? ` · ${n} may have life` : ""}`;
+  return `<span class="nb old" title="${spanshOldTitle(s.spansh_old, s.stale_bio)}">${dual(full, `🪦${n ? " " + n : ""}`, {titleHtml: `${full}. ${spanshOldTitle(s.spansh_old, s.stale_bio)}`})}</span>`;
+}
+// the briefing's clause and the Now line for a pre-Odyssey system you have not resolved yourself (#11)
+const spanshOldWords = (date, n) => `Spansh's data here is from ${spanshMonth(date, true)}, before Odyssey: worth a rescan.` +
+  (n ? ` ${n} thin-atmosphere world${n === 1 ? "" : "s"} may hold life.` : "");
 const oldDataTag = o => { if (!o || !o.bodies) return "";
   const full = `old data: ${o.bodies} bod${o.bodies === 1 ? "y" : "ies"}`;
   return `<span class="nb old" title="${oldDataTitle(o)}">${dual(full, `old ${o.bodies}`, {titleHtml: `${full}. ${oldDataTitle(o)}`})}</span>`; };
@@ -1332,6 +1348,10 @@ function renderNow() {
     }
     if (data.mining_live && data.mining_live.text)   // mining D: the strip while you mine in a ring (the overlay's too)
       lines.push(`<div class="now-line now-mine">${esc(data.mining_live.text)}</div>`);
+    if (hd && hd.spansh_old && !(hd.leaving && hd.leaving.all_found)) {   // #11: until your own scans have every body
+      const n = (hd.bodies || []).filter(b => b.stale_bio).length;
+      lines.push(`<div class="now-line now-old" title="${esc(spanshOldTitle(hd.spansh_old))}">🪦 ${esc(spanshOldWords(hd.spansh_old, n))}</div>`);
+    }
     if (hd && hd.rare_stars && hd.rare_stars.length)   // a black hole, a Wolf-Rayet...: rare stars here
       lines.push(`<div class="now-line now-rare"><span class="ok">⭐ ${esc(rareStarText(hd.rare_stars).replace(/^./, c => c.toUpperCase()))}</span></div>`);
     // notable stellar phenomena the FSS found here: how many and where, and how many are still to visit
@@ -2993,6 +3013,7 @@ const spokenStar = c => !c ? "star" : /^D/.test(c) ? "white dwarf" : c === "N" ?
 // a key's sample values: LINE_SAMPLES, else space chatter's, which come with the lines (speechLib.chatter.samples, #15)
 const lineSample = key => LINE_SAMPLES[key] || (speechLib.chatter && speechLib.chatter.samples && speechLib.chatter.samples[key]) || {};
 const LINE_SAMPLES = {
+  old_data: {year: "2019"},
   docking_granted: {pad: 34, station: "Jameson Memorial"}, docking_denied: {reason: "no pad free for your ship: try again shortly", station: "Jameson Memorial"},
   speech_on: {}, game_start: {}, game_exit: {}, heat: {},
   arrival_undiscovered: {system: "Drojau LL-O b26-3"}, arrival_discovered: {system: "Drojau LL-O b26-3"},
@@ -3456,6 +3477,7 @@ function sayJumponium(j) {
 }
 let briefFacts = null;   // the last arrival briefing's facts ({sys, m}): the FSS debrief of that system asks isRoutine too
 function isRoutine(m) {
+  if (m && m.spansh_old && !m.all_found) return false;   // #11: "known" from pre-Odyssey data is not routine
   if (!m || m.region || (m.undiscovered && !(m.visits > 1)) || (m.undiscovered == null && !m.in_spansh && !(m.visits > 1))) return false;
   const covered = m.all_found || (m.body_count > 0 && m.base_known != null && m.base_known >= m.body_count);
   if (!covered || !/^[OBAFGKM](_|$)/.test(m.star_class || "") || hazardNote(m.star_class)) return false;
@@ -4494,7 +4516,9 @@ function renderHere() {
     // the bookmark star (its dialog also sets the next stop) for a viewed system, which may be in no other list
     (pinned ? bmIcon(pinnedSystem, h.name, bmMap()) + " " : "") +
     `<b>${esc(h.name)}</b>` + (away != null ? ` <span class="unk">· ${away.toFixed(2)} ly away</span>` : "") +
-    ` · ${h.bodies.length} bod${h.bodies.length === 1 ? "y" : "ies"} known · ` + (h.phenomena && h.phenomena.length ? phenomenaTag(h.phenomena) + " · " : "") + (h.rare_stars && h.rare_stars.length ? rareStarTag(h.rare_stars) + " · " : "") + (h.pois && h.pois.length ? poiTag(h.pois) + " · " : "") +
+    ` · ${h.bodies.length} bod${h.bodies.length === 1 ? "y" : "ies"} known · ` +
+    // #11: when Spansh's data was last reported; pre-Odyssey marked
+    (h.spansh_date ? `<span class="${h.spansh_old ? "old" : "unk"}" title="${h.spansh_old ? esc(spanshOldTitle(h.spansh_old)) : "when Spansh's data on this system was last reported"}">Spansh: ${h.spansh_old ? "pre-Odyssey, " : ""}${spanshMonth(h.spansh_date)}</span> · ` : "") + (h.phenomena && h.phenomena.length ? phenomenaTag(h.phenomena) + " · " : "") + (h.rare_stars && h.rare_stars.length ? rareStarTag(h.rare_stars) + " · " : "") + (h.pois && h.pois.length ? poiTag(h.pois) + " · " : "") +
     `<span title="what selling now would pay for data you hold from here / the most this system could pay">now <b>${credits(h.value_now || 0)} cr</b> · max <b>${credits(maxOf(h) || 0)} cr</b>${maxBonus() ? "" : ` <span class="unk" title="Max leaves out first-discovery, first-mapped and first-footfall bonuses (alerts & thresholds dialog)">no bonus</span>`}</span>` +
     ` <a class="unk" href="api/export?what=system&id=${encodeURIComponent(h.id64)}" download title="this system's bodies and values as a spreadsheet (CSV)">⬇ CSV</a>` +
     `<span class="modes">${HERE_MODES.filter(([m]) => m !== "split" || hereCtx() === "tab").map(([m, label, title]) =>
@@ -9409,9 +9433,15 @@ function onData() {
         if (pendingRegion && pendingRegion.sys === String(m.system) && m.region && text) pendingRegion = null;   // said in it
         // "Routine systems: sound only": the soft routine sound in place of the words (only where they would be said)
         const hum = routineQuiet() && speechOn && alertSpeak.brief && isRoutine(m);
-        if (text) alertOut("brief", `${m.system_name || "Arrived"}: ${text.split(". ")[0].replace(/\.$/, "")}`, text,
+        // #11: Spansh's data here predates Odyssey and you have not resolved every body: "worth a rescan", the card's
+        // words and a line of its own after the briefing's (old_data), with the worlds that may hold life
+        const old = m.spansh_old && !m.all_found ? spanshOldWords(m.spansh_old, m.old_bodies) : "";
+        const lifeWords = m.old_bodies ? ` ${m.old_bodies} thin-atmosphere world${m.old_bodies === 1 ? "" : "s"} may hold life.` : "";
+        const card = [text, old].filter(Boolean).join(" ");
+        if (card) alertOut("brief", `${m.system_name || "Arrived"}: ${card.split(". ")[0].replace(/\.$/, "")}`, card,
                            hum ? {sound: "routine", quiet: "sound only: a routine system"}
-                               : {tag: "arrival_brief", say: () => line("arrival_brief", {text}, text)});
+                               : {tag: "arrival_brief", say: () => [text && line("arrival_brief", {text}, text),
+                                   old && line("old_data", {year: String(m.spansh_old).slice(0, 4)}, old.replace(lifeWords, "")) + lifeWords].filter(Boolean).join(" ")});
       }
       else if (m.kind === "fss_done" && m.leaving) {   // every body found in the FSS: go here, or move on
         const count = m.count || m.leaving.body_count, text = worthSaying(m.leaving);
@@ -9419,7 +9449,7 @@ function onData() {
         const bf = briefFacts && briefFacts.sys === m.system ? briefFacts.m : null;
         // a jumponium body (its own row, off by default) rides on the debrief when both are spoken, else goes alone
         const jp = m.jumponium, fold = !!(jp && alertSpeak.jumponium && alertSpeak.fss);
-        const hum = !text && !fold && routineQuiet() && speechOn && alertSpeak.fss && !!bf && isRoutine({...bf, all_found: true, worth: [], bio: null});
+        const hum = !text && !fold && routineQuiet() && speechOn && alertSpeak.fss && !!bf && isRoutine({...bf, all_found: true, worth: [], bio: null, spansh_old: null});
         const said = alertOut("fss", `All ${count ? nBodies(count) + " " : "bodies "}found`, (text ? `worth it: ${text}` : "nothing worth staying for") + (fold ? ` · ${jumponiumSaid(jp)}` : ""),
                  hum ? {sound: "routine", quiet: "sound only: a routine system"}
                      : {tag: "fss_done", say: () => (text ? line("fss_done", {count, text}, `All ${count || ""} found. Worth it: ${text}.`)
@@ -10656,7 +10686,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", uploads: "uploads"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
 const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "region", "streak_new", "streak_known"],
-  game: ["game_start", "welcome_back", "game_exit", "session_recap"], jump: ["fsd_charge"], brief: ["arrival_brief"],
+  game: ["game_start", "welcome_back", "game_exit", "session_recap"], jump: ["fsd_charge"], brief: ["arrival_brief", "old_data"],
   fss: ["fss_done", "fss_nothing", "fss_unfinished"], leaving: ["leaving"], fuel: ["fuel_low", "fuel_star", "fuel_target", "fuel_topup"],
   scoop: ["tank_full"], scoopstop: ["scoop_stopped"], supercharge: ["supercharged"], refuelshort: ["fuel_short"], lastscoop: ["fuel_last_scoop"],
   autotarget: ["autotarget_nothing"], wrongtarget: ["wrong_target"], find: ["find_body", "find_bio", "mapped_before", "sample_clear"],

@@ -1704,6 +1704,44 @@
     "{what}. That, {name}, is a star!"
    ]
   },
+  "old_data": {
+   "klingon": [
+    "{name}! These records date from {year}! Old scouts, old lies. We scan it ourselves!",
+    "Pre-Odyssey data! The scouts of that age never set foot on these worlds. We will!",
+    "Do not trust a report from {year}, {name}! Trust your own eyes! Sound the honk!",
+    "Ha! Known, they say. Known in {year}, by cowards who never landed! Fire the FSS!",
+    "These charts are older than a targ's grandmother! Pre-Odyssey! The hunt here is not finished!",
+    "{name}, the data is from before Odyssey! There may be prey no hunter has logged!",
+    "In {year}, they called thin-air worlds unlandable! Fools! Let us prove them wrong!",
+    "Old intelligence is no intelligence! {year}! Scan it again, {name}!",
+    "A stale report from {year}. Kahless did not conquer with old maps! We look for ourselves!",
+    "The first footfalls here may still be unclaimed, {name}! The old records never looked!",
+    "Pre-Odyssey scouting! Worthless as a Ferengi promise! Honk and see the truth!",
+    "Last reported in {year}! The scouts of that age were blind to life. We are not!",
+    "Do not believe the records, {name}! They are from before Odyssey. Hunt it fresh!",
+    "Ha! Ancient data! There may be unclaimed glory on these worlds! Scan, {name}!",
+    "Old charts hide fresh prey! The data is from {year}. Let the FSS sing!",
+    "Surveyed in {year} by scouts who never landed! We finish their hunt! Kapla!"
+   ],
+   "klingon_profane": [
+    "{year}? Damn! These records are older than the Kronos moon! We scan it ourselves!",
+    "Pre-Odyssey data, {name}! The old scouts never set damn foot on these worlds!",
+    "Known? Hell! Known in {year} by sons of targs who never landed! Honk it!",
+    "Bloody stale records, {name}! There may be prey here no hunter has logged!",
+    "Unlandable, the old scanners said! Damn their eyes! Thin air never stopped a warrior!",
+    "Old data is worth a Ferengi's spit! Hell, {year}! Fire the FSS, {name}!",
+    "These charts are from before Odyssey, damn it! Kahless never trusted a map he had not walked!",
+    "Perhaps no boot has touched these worlds, {name}! Bloody glorious! The first footfalls may be ours!",
+    "Shit! Last reported in {year}! Trust nothing, scan everything!",
+    "Damn the old records, {name}! Our own eyes, our own scan, our own glory!",
+    "Pre-Odyssey scouting? A Romulan lie would be fresher! Honk the damn thing!",
+    "Hell yes, old data! Old data means unclaimed prey, {name}! The hunt is open!",
+    "The cowards of {year} flew past the life here blind, damn them! We will not!",
+    "{name}! This system was surveyed before Odyssey by bloody tourists! We hunt it properly!",
+    "Stale as week-old gagh, damn it! Data from {year}! Scan it again!",
+    "Damn, {name}! Unlogged life may wait here! The scouts of {year} saw nothing!"
+   ]
+  },
   "ring_found": {
    "klingon": [
     "{body} has {ring}! The kind you told me to hunt for, {name}!",

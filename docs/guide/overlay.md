@@ -68,7 +68,8 @@ before.
   (Hostile in red; Unfriendly up to -35, Neutral to +4, Cordial to +35, Friendly to +90, then Allied).
   The second, condensed: the distance from Sol, what its data pays now and at most, 🏁 when you discovered it, how many
   bodies and how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether
-  Spansh knows the system ("Spansh ✗ (new to it)" when it does not).
+  Spansh knows the system ("Spansh ✗ (new to it)" when it does not; "Spansh ✓ (pre-Odyssey)" when its data predates
+  Odyssey's surface data: worth a rescan).
   While you mine in a ring in a mining ship, a third line: "⛏ 4 B Ring · Platinum · 38 t/h · hold 112/256 t (Platinum
   80, Painite 32) · limpets 14 · full in ~41 min" (the same line as on Now; Settings → Mining).
 - **Now (To-Do & Info)** (optional): the page's Now view in a few lines, anywhere in the system (by default not while

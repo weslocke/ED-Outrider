@@ -9480,6 +9480,47 @@ const releasePayloads = async () => {
     console.log(goodRG ? "OK" : "FAIL", "| rings to mine |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "nothing until ticked, a ticked type said with its reserves, unticked ones not, bodies together in one line, pristine only, the controls", errors.slice(before));
   }
+  // #11 (Kurbo26): pre-Odyssey Spansh data: Nearby's pill (🪦 when narrow), Here's header date, never routine, the
+  // briefing's clause and line, the Now line until your own scans have every body
+  {
+    holdPayloads();
+    const w = dom.window, d = w.document, before = errors.length, got = {};
+    w.eval(`window.__po = {data, hereData, speak, flags: [speechOn, isSpeaker], hush: hushState, alert: lastAlert, aspeak: alertSpeak.brief, rq: localStorage.getItem("routineQuiet")};
+      window.__spoken = []; speak = (t, o) => window.__spoken.push([t, o.kind]);
+      speechOn = true; isSpeaker = true; hushState = null; alertSpeak.brief = true; linePlain = true;`);
+    try {
+      got.pill = [w.eval(`spanshOldTag({spansh_old: "2019-02-12", stale_bio: {bodies: 2, genera_top: ["Stratum"], up_to: 5e6, reported: "2019-02-12"}})`).includes("Spansh: pre-Odyssey · 2 may have life"),
+                  w.eval(`spanshOldTag({spansh_old: "2019-02-12"})`).includes("🪦"), w.eval(`spanshOldTag({stale_bio: null})`)];
+      const m = {spansh_old: "2019-02-12", all_found: false, worth: [], bio: null, star_class: "K", in_spansh: true, base_known: 5, body_count: 5, undiscovered: false};
+      got.routine = [w.eval(`isRoutine(${JSON.stringify(m)})`), w.eval(`isRoutine(${JSON.stringify({...m, spansh_old: null})})`),
+                     w.eval(`isRoutine(${JSON.stringify({...m, all_found: true})})`)];
+      w.eval(`localStorage.setItem("routineQuiet", "true"); data = Object.assign({}, data, {moments: [{seq: lastMomentSeq + 1, kind: "arrival_brief", system: "9", system_name: "Sys",
+        ...${JSON.stringify({...m, old_bodies: 2})}}]}); onData()`);
+      got.brief = JSON.parse(w.eval("JSON.stringify(__spoken.splice(0).filter(x => x[1] === 'brief'))")).map(x => x[0]).join("|");
+      got.card = w.eval("lastAlert && lastAlert.body");
+      w.eval(`hereData = Object.assign({}, __po.hereData || {}, {id64: posId(), name: "Sys", bodies: [{name: "A 3", type: "Planet", stale_bio: true, ring_details: []}], tree: null,
+        spansh_date: "2019-02-12", spansh_old: "2019-02-12", leaving: {all_found: false, honked: true, unscanned: 0, bio_pending: [], unmapped: []}, value_now: 0, value_max: 0}); renderNow(); hereData = Object.assign({}, hereData, {bodies: []}); renderHere();
+        hereData.bodies = [{name: "A 3", type: "Planet", stale_bio: true, ring_details: []}]`);
+      got.now = d.querySelector("#nowBody .now-old") ? d.querySelector("#nowBody .now-old").textContent : null;
+      got.head = d.getElementById("hereHead").textContent.includes("Spansh: pre-Odyssey, Feb 2019");
+      w.eval(`hereData = Object.assign({}, hereData, {leaving: {all_found: true, honked: true, unscanned: 0, bio_pending: [], unmapped: []}}); renderNow()`);
+      got.nowGone = !d.querySelector("#nowBody .now-old");
+    } finally {
+      w.eval(`const k = window.__po; data = k.data; hereData = k.hereData; speak = k.speak; [speechOn, isSpeaker] = k.flags; hushState = k.hush; lastAlert = k.alert;
+        alertSpeak.brief = k.aspeak; linePlain = false; if (k.rq === null) localStorage.removeItem("routineQuiet"); else localStorage.setItem("routineQuiet", k.rq);
+        delete window.__po; delete window.__spoken; render()`);
+      await releasePayloads();
+    }
+    const want = {pill: [true, true, ""], routine: [false, true, true],
+      brief: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
+      card: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
+      now: "🪦 Spansh's data here is from February 2019, before Odyssey: worth a rescan. 1 thin-atmosphere world may hold life.", head: true, nowGone: true};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const goodPO = !bad.length && errors.length === before;
+    allOk = allOk && goodPO;
+    console.log(goodPO ? "OK" : "FAIL", "| pre-Odyssey data |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
+      : "the pill (🪦 narrow), never routine, the briefing's clause, Here's header date, the Now line until every body is yours", errors.slice(before));
+  }
   // Main personality (the author, 2026-10-16): beside Main voice, one personality or "A mix…" (the boxes and One
   // personality per system); a browser with one ticked gets the dropdown, with several the mix; the explanation says
   // what they are for with the crew on and off; with profanity names the personalities that never swear, the short way

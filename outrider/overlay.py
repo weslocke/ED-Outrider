@@ -865,7 +865,9 @@ def strip_panel(info, pal, size="normal"):
     rest += [(f"🏁 {info['firsts']}" if info.get("firsts") else "", "good"),
              (f"🗺 {info.get('mapped') or 0}/{info['planets']}" if info.get("planets") else "", "text")]
     if info.get("in_spansh") is not None:
-        rest.append(("Spansh ✓" if info["in_spansh"] else "Spansh ✗ (new to it)", "muted" if info["in_spansh"] else "warn"))
+        old = info["in_spansh"] and info.get("spansh_old")   # #11: its data predates Odyssey, worth a rescan
+        rest.append(("Spansh ✓ (pre-Odyssey)" if old else "Spansh ✓" if info["in_spansh"] else "Spansh ✗ (new to it)",
+                     "warn" if old else "muted" if info["in_spansh"] else "warn"))
     two = line(None, rest)
     three = [(info["mining"], pal["accent"], size, False)] if info.get("mining") else None
     lines = [one] + ([two] if two else []) + ([three] if three else [])

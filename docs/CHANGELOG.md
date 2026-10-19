@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · Pre-Odyssey Spansh data called out (Kurbo26, discussion #11)
+- A system whose Spansh records all predate the legacy split (`LEGACY_CUTOFF`, 29 Nov 2022: thin-atmosphere worlds
+  marked not landable, life never reported) is "pre-Odyssey" (`spansh_date`, `spansh_old`; in the Spansh summaries,
+  CACHE_VERSION 18, and in `system_detail`, `merged_records`, `arrival_facts`), whatever its bodies (the old data tag
+  needed a thin-atmosphere world the rules allow life on).
+- **Nearby:** a "Spansh: pre-Odyssey" pill (🪦 when narrow; "· 2 may have life" with candidates; the date in its
+  hover), `spanshOldTag`. **Here:** the header says when Spansh last heard ("Spansh: pre-Odyssey, Feb 2019", or the
+  plain date). **The overlay's system strip:** "Spansh ✓ (pre-Odyssey)".
+- **Never routine** (`isRoutine`) until your own scans have every body; **the arrival briefing** ends with the clause
+  ("Spansh's data here is from February 2019, before Odyssey: worth a rescan." and the worlds that may hold life), a
+  line of its own (`old_data`, 15 a list, under the briefing's row). **Now:** a 🪦 line until every body is yours.
+
 ## 2026-10-19 · Hold full out in the black: the nearest buyer, never your own carrier
 - After "Hold full", the best price within 100 ly found nothing 1,500 ly from the bubble and said nothing (the
   author). Now (`holdFullSell`): the best price within 100 ly (stations); with none, the nearest buyer within 500,
@@ -83,7 +95,6 @@ Newest first, one entry per commit.
   personalities' main line, 32 for the others), checked for both "a metallic ring" and "metallic and icy rings".
 - **A capital where a ring starts a sentence:** "{ring} at A 3" shows as "A metallic ring at A 3" (page.js and
   outrider.speech: START_CAPS).
-
 ## 2026-10-18 · Version 2026.10.26, The Release with Personality
 - The eight new personalities and over 70,000 lines, the crew as characters, space chatter, chat read aloud, surface
   pins, carrier trips, the terraformable worlds route, the fixes since 2026.10.25. What's new has its section. No

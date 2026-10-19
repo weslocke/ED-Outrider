@@ -294,7 +294,9 @@ the sentence ends:
 - **Arrival briefing.** One sentence after the honk: "Known. 12 bodies. Scoopable M star. The Earth-like
   world at A 2 is unmapped, 1.4 million." Entering a new galactic region opens it ("Entering the Norma Arm.").
 - **Routine systems: sound only** (a tick, off by default) plays a soft two-note sound instead of the
-  briefing where there is nothing to do.
+  briefing where there is nothing to do. A system whose Spansh data predates Odyssey is never routine until your own
+  scans have every body: its briefing ends "Spansh's data here is from February 2019, before Odyssey: worth a
+  rescan" (and how many thin-atmosphere worlds may hold life), since "everything known" there means little.
 - **FSS debrief:** what is worth doing once every body is found. **Signals** as the FSS finds them.
   **The jump line** in the hyperspace tunnel, with whether the star ahead is scoopable, and any hazard.
 - **Greeting and goodbye:** what is at stake after a long break (and any core module under your level), and a
