@@ -954,6 +954,69 @@
     "{bodies} have {types} rings. You asked to be told. I am telling you."
    ]
   },
+  "limpets_low": {
+   "vulcan": [
+    "Limpets low. {count} remaining.",
+    "{name}, {count} limpets left.",
+    "Limpet count is {count}. Consider your remaining targets carefully.",
+    "{count} limpets remain. Prioritise the richest asteroids.",
+    "Limpet reserves at {count}, {name}.",
+    "Only {count} limpets left. Prospect selectively.",
+    "We are down to {count} limpets.",
+    "{count} limpets. Each one should be spent with intent.",
+    "Limpets at {count}. Synthesis would be logical, if materials permit.",
+    "{name}. {count} limpets in the hold. Restocking will soon be necessary.",
+    "Limpet warning. {count} left.",
+    "{count} limpets remaining. I advise against prospecting every rock you see.",
+    "Low on limpets, {name}. {count} remain.",
+    "The limpet supply is diminishing. {count} left.",
+    "{count} limpets. Use the prospectors sparingly.",
+    "Limpets: {count}. Plan the return accordingly.",
+    "{name}, {count} limpets. Wasting them now would be illogical."
+   ]
+  },
+  "hold_nearly_full": {
+   "vulcan": [
+    "The hold will be full in about {minutes} minutes.",
+    "{name}, at the current rate the hold fills in {minutes} minutes.",
+    "{free} tonnes free. Approximately {minutes} minutes of mining remain.",
+    "Cargo capacity will be reached in roughly {minutes} minutes.",
+    "Estimate: hold full in {minutes} minutes, {name}.",
+    "{minutes} minutes until the hold is full. Begin planning the sale.",
+    "Approximately {minutes} minutes of space left in the hold.",
+    "At this yield, {minutes} minutes until capacity. {free} tonnes remain.",
+    "The hold is nearly full, {name}. {minutes} minutes, by my calculation.",
+    "My projection is {minutes} minutes until the hold is full.",
+    "Cargo space is running out. About {minutes} minutes remain.",
+    "{name}. {minutes} minutes to a full hold. I have rounded, reluctantly.",
+    "In {minutes} minutes the hold will be full. Choose the remaining rocks wisely.",
+    "Hold nearly full. {free} tonnes free, about {minutes} minutes.",
+    "Roughly {minutes} minutes more mining, {name}. Then we sell.",
+    "Capacity in about {minutes} minutes. The refinery is working efficiently.",
+    "{minutes} minutes, {name}. That is how long the hold has left."
+   ]
+  },
+  "hold_full": {
+   "vulcan": [
+    "The hold is full.",
+    "Cargo hold at capacity, {name}. Time to sell.",
+    "Hold full. Further mining would be illogical.",
+    "{name}, there is no space remaining. I recommend we sell.",
+    "Cargo capacity reached. Retract the mining laser.",
+    "The hold is full. The ore is worth nothing until it is sold.",
+    "Full hold. Satisfactory. A market is the logical next destination.",
+    "{ship} can carry no more. Time to sell.",
+    "Hold at capacity. Any further fragments will be left to drift.",
+    "Mining complete, {name}. The hold is full.",
+    "Not one more tonne will fit. I have checked.",
+    "Cargo hold full. I believe humans call this a good haul. I concur, for once.",
+    "The refinery has nowhere left to put the ore. We should sell, {name}.",
+    "Full. Retract the hardpoints and leave the ring.",
+    "{name}, the hold is full. Logic dictates we depart.",
+    "Capacity reached. An efficient session.",
+    "Hold full. The remaining limpets are no longer needed here. A market is."
+   ]
+  },
   "prospect_hit": {
    "vulcan": [
     "{what}.",

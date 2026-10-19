@@ -165,6 +165,35 @@ class Stints(unittest.TestCase):
         self.assertEqual(self.db.execute("SELECT count(*) FROM mining_stints").fetchone()[0], 0)
         self.assertEqual(self.db.execute("SELECT hotspot FROM mining_hotspot_drops").fetchall()[0][0], "platinum")
 
+    def test_the_mining_strip(self):
+        """D: while you mine in a ring (an open stint, normal space, a mining ship): the ring and hotspot, t/h, the hold,
+        limpets, minutes to full, and the line in words (Now and the overlay's system strip); nothing otherwise."""
+        self.j.handle({"event": "Loadout", "timestamp": self.at(1), "Ship": "python", "ShipID": 7, "ShipName": "Digger",
+                       "ShipIdent": "DG", "CargoCapacity": 64, "MaxJumpRange": 20.0, "Modules": [{"Slot": "Slot01", "Item": "int_refinery_size4_class5"}]})
+        self.j.handle({"event": "Cargo", "timestamp": self.at(2), "Vessel": "Ship", "Count": 10,
+                       "Inventory": [{"Name": "drones", "Count": 10, "Stolen": 0}]})
+        self.drop(10, dest={"System": 9, "Body": 18, "Name": "$SAA_RingHotspot:#type=$Platinum_name;;"})
+        for i in range(30):
+            self.refine(20 + i * 60, "platinum")
+        now = ed_outrider.ts_seconds(self.at(10)) + 1800   # half an hour after the drop: 30 t, 60 t/h
+        self.j.status_json = {"live": True, "flags": 0}
+        m = self.state.mining_live(now=now)
+        self.assertEqual((m["ring"], m["hotspot"], m["tons"], m["tph"], m["count"], m["free"], m["limpets"], m["full_min"]),
+                         ("4 B Ring", "platinum", 30, 60.0, 40, 24, 10, 24))
+        self.assertEqual(m["text"], "⛏ 4 B Ring · Platinum · 60 t/h · hold 40/64 t (Platinum 30) · limpets 10 · full in ~24 min")
+        # in supercruise, Status.json not live, or a ship with no mining kit: nothing
+        self.j.status_json = {"live": True, "flags": ed_outrider.FLAG_SUPERCRUISE}
+        self.assertIsNone(self.state.mining_live(now=now))
+        self.j.status_json = {"live": False, "flags": 0}
+        self.assertIsNone(self.state.mining_live(now=now))
+        # the overlay's system strip: a third line while mining
+        import outrider.overlay as O
+        pal = O.palette("elite") if hasattr(O, "palette") else None
+        if pal:
+            info = {"name": "Sys", "mining": m["text"]}
+            texts = [r[0] for it in O.strip_panel(info, pal)["items"] for r in it.get("runs", [])]
+            self.assertIn(m["text"], texts)
+
     def test_what_mined_ore_sold_for(self):
         self.db.execute("INSERT INTO mining_sales (ts, source, commodity, tons, mined_tons, total, mined_total, own_carrier) "
                         "VALUES ('t1', 's', 'platinum', 10, 10, 2000000, 2000000, 0), ('t2', 's', 'platinum', 10, 10, 1000000, 1000000, 0), "

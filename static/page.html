@@ -724,6 +724,9 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <label title="only bodies whose reserves are pristine (the scan says so; the system map shows it too)"><input type="checkbox" id="ringPristine"> pristine only</label>
         <span class="hint">"A 3 has a pristine metallic ring" as the FSS resolves it (or the arrival's scan, a nav beacon), once per body and visit, said by the Mining Officer; bodies scanned together in one line. Off until you tick a type; its row in Alerts chooses the sound, notification and voice. Hover a type for what lasers and cores give in it.</span>
         <div id="ringTip" class="ringtip" role="tooltip" hidden></div></div>
+      <label class="mod">While mining in a ring, warn when limpets drop to
+        <input type="number" id="limpetsLow" min="2" max="50" step="1" style="width:4.5em"> or fewer
+        <span class="hint">the Mining Officer, once a stint; also the hold nearly full (about 5 minutes at your rate) and full, with the best price nearby for what you carry. Now and the overlay's system strip show the mining line while you mine</span></label>
       <label class="mod"><input type="checkbox" id="miningLimpets"> Remind me to take limpets when I undock in a mining ship without any
         <span class="hint">a ship with a refinery, or a collector or prospector limpet controller, leaving the pad (a station or a carrier) with none in the hold: the Mining Officer reminds you while you can still turn back. Off by default</span></label>
       <div class="mod inlineopts" id="prospectOpts">Prospector call-out: say a rock with

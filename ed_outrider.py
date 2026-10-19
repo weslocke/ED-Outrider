@@ -7562,6 +7562,7 @@ class State:
             "moments": self.moments_summary(),
             "chat": list(self.journals.chat),   # #17: live chat, in memory only (the page reads it aloud if asked)
             "mining_version": self.journals.mining_version,   # mining B: the page reads /api/mining/hotspots again on a change
+            "mining_live": self.mining_live(),   # mining D: the strip while you mine in a ring, None otherwise
             "hull": self.journals.hull,
             "modules": self.modules_summary(),
             "last_sale": self.journals.last_sale,
@@ -8803,7 +8804,7 @@ class State:
                 "mapped": sum(1 for b in bodies if b.get("mapped") or b.get("first_mapped")),
                 "planets": row.get("planets") or len(bodies) or None,
                 "in_spansh": row.get("in_spansh") if "in_spansh" in row else self.spansh_knows(pos["id64"]),
-                "standing": pos.get("standing")}
+                "standing": pos.get("standing"), "mining": (self.mining_live() or {}).get("text")}
 
     def overlay_route(self):
         """The route Now's panel gives the next stop of: the unfinished one plotted last (route_newest: the page
@@ -9536,6 +9537,48 @@ class State:
     def commander_missions(self):
         """GET /api/commander/missions."""
         return {"missions": outrider.commander.missions(self.journals.cmdr_view.get("missions"))}
+
+    def mining_live(self, now=None):
+        """The mining strip (mining D): while you mine in a ring (an open stint, in normal space, Status.json live) in a
+        mining ship: the ring and hotspot, the stint's tons and t/h (from 5 minutes on), the hold (count, capacity,
+        free, the most of what it holds), limpets aboard, minutes to full at that rate, and its line in words (`text`,
+        the same on Now and in the overlay's system strip). None otherwise."""
+        j = self.journals
+        st = j.status_json or {}
+        if not st.get("live") or (st.get("flags") or 0) & FLAG_SUPERCRUISE:
+            return None
+        row = self.db.execute("SELECT * FROM mining_stints WHERE open = 1 ORDER BY start_ts DESC LIMIT 1").fetchone()
+        if not row or not j.mining_ship():
+            return None
+        drop = self.db.execute("SELECT hotspot FROM mining_hotspot_drops WHERE system=? AND body_id=? AND start_ts=?",
+                               (row["system"], row["body_id"], row["start_ts"])).fetchone()
+        hotspot = drop["hotspot"] if drop else None
+        refined = json.loads(row["refined"] or "{}")
+        tons = sum(refined.values())
+        secs = (now or time.time()) - ts_seconds(row["start_ts"])
+        tph = tons * 3600 / secs if secs >= 300 and tons else None
+        sc = j.ship_cargo
+        lines = sc.get("lines") or {}
+        limpets = (lines.get("drones") or {}).get("count") or 0
+        # the hold's lines (kept up to date ton by ton: MiningRefined adds one), else the Cargo event's count
+        count, cap = sum(v.get("count") or 0 for v in lines.values()) if lines else sc.get("count"), (j.ship or {}).get("cargo_capacity")
+        free = max(0, cap - count) if isinstance(cap, (int, float)) and isinstance(count, (int, float)) else None
+        held = sorted(((k, v.get("count") or 0) for k, v in lines.items() if k != "drones" and v.get("count")), key=lambda x: -x[1])[:3]
+        full_min = (0 if free == 0 else round(free * 60 / tph)) if tph and free is not None else None
+        ring = short_name(row["system_name"], row["ring"] or "")
+        name = j.mineral_name(hotspot) if hotspot else "no hotspot" if hotspot == "" else None
+        bits = [f"⛏ {ring}" + (f" · {name}" if name else "")]
+        if tph:
+            bits.append(f"{round(tph)} t/h")
+        if free is not None:
+            bits.append(f"hold {count:g}/{cap:g} t" + (f" ({', '.join(f'{j.mineral_name(k)} {v}' for k, v in held)})" if held else ""))
+        bits.append(f"limpets {limpets}")
+        if full_min is not None:
+            bits.append("hold full" if full_min == 0 else f"full in ~{full_min} min")
+        return {"start": row["start_ts"], "ring": ring, "hotspot": hotspot, "hotspot_name": name, "tons": tons,
+                "tph": round(tph, 1) if tph else None, "count": count, "capacity": cap, "free": free,
+                "held": [[k, j.mineral_name(k), v] for k, v in held], "limpets": limpets, "full_min": full_min,
+                "text": " · ".join(bits)}
 
     def mining_hotspots(self):
         """GET /api/mining/hotspots (and CMDR → Sessions): your mining stints by ring and hotspot (mining B), oldest

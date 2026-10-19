@@ -1499,3 +1499,4 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 #alertDialog #prospectOpts details.pmore { flex-basis: 100%; margin: 2px 0; }
 #alertDialog #prospectOpts details.pmore summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 #pop .hs.mrec { color: var(--info); }   /* your mining record under a ring (mining B) */
+.now-line.now-mine { color: var(--accent); }   /* mining D: the strip while you mine in a ring */

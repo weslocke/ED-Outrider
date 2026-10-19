@@ -839,8 +839,8 @@ def strip_panel(info, pal, size="normal"):
     you, mapped of planets, whether Spansh knows the system (the author, 2026-10-10). In a populated system the top
     row's right side has its security and your reputation with its controlling faction, in the region's font, Hostile
     in red (the author, 2026-10-14). info: {name, region, star, sol_ly, total, found, all_found, honked, value_now,
-    value_max, first, firsts, mapped, planets, in_spansh, standing: {security, faction, rep}}. Its width follows its
-    text."""
+    value_max, first, firsts, mapped, planets, in_spansh, standing: {security, faction, rep}, mining}. While you mine in a
+    ring (mining D), a third line: `mining`, the mining strip in words. Its width follows its text."""
     if not info or not info.get("name"):
         return None
     sep = ("  ·  ", pal["muted"], size, False)
@@ -867,7 +867,8 @@ def strip_panel(info, pal, size="normal"):
     if info.get("in_spansh") is not None:
         rest.append(("Spansh ✓" if info["in_spansh"] else "Spansh ✗ (new to it)", "muted" if info["in_spansh"] else "warn"))
     two = line(None, rest)
-    lines = [one] + ([two] if two else [])
+    three = [(info["mining"], pal["accent"], size, False)] if info.get("mining") else None
+    lines = [one] + ([two] if two else []) + ([three] if three else [])
     st = info.get("standing") or {}
     level = rep_level(st.get("rep"))
     right = [(x, pal["bad"] if x == "Hostile" else pal["muted"], size, False)

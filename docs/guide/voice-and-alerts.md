@@ -72,6 +72,10 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
   52 percent: Platinum 31, Gold 21": tick Platinum, Palladium, Gold, Silver and Osmium with 50 for a rock half precious
   metals); a **motherlode** always (its own box). Duds and rocks mined before stay silent, and "Material content:
   High" (engineering materials, not the commodity) only when ticked. None ticked: only motherlodes
+- **while mining in a ring** (a mining ship, in normal space): Now and the overlay's system strip show the mining line
+  (the ring and hotspot, tons an hour, the hold and what it holds, limpets, minutes to full), and the Mining Officer
+  says, once a stint: **limpets low** (at the number in Settings → Mining, 5 to start), **hold nearly full** (about 5
+  minutes at your rate) and **hold full**, then the best price within 100 ly for the most you carry (the Sell lookup)
 - an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again: a card at the top of
   the page and a notification, never spoken (see [Uploads](uploads.md#status))
 

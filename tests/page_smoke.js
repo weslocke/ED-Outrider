@@ -9402,6 +9402,16 @@ const releasePayloads = async () => {
       const ht = new w.DOMParser().parseFromString(w.eval(`hotspotsHtml(MINING.d)`), "text/html");
       got.hTable = [...ht.querySelectorAll("#cmHotspots tbody tr")].map(tr => [...tr.children].slice(1, 6).map(td => td.textContent.trim()));
       w.eval("delete window.__hb");
+      // D, the mining strip's warnings: limpets low (the number in Settings → Mining), the hold nearly full (2 to 5
+      // minutes), full; each once a stint; a new stint warns again; Now shows the line while mining
+      const warn = m => JSON.parse(w.eval(`(() => { miningWarn(${JSON.stringify(m)}); return JSON.stringify(__spoken.splice(0)); })()`));
+      const ml = (extra) => Object.assign({start: "s1", limpets: 10, full_min: 20, free: 30, held: [], text: "⛏ 4 B Ring · Platinum · 60 t/h"}, extra);
+      w.eval("linePlain = true");
+      got.warns = [warn(ml()), warn(ml({limpets: 5})), warn(ml({limpets: 4})), warn(ml({full_min: 4})), warn(ml({full_min: 3})),
+                   warn(ml({free: 0, full_min: 0})), warn(ml({start: "s2", limpets: 3, full_min: 1})), warn(ml({start: "s2", limpets: 3, full_min: 1}))];
+      w.eval("linePlain = false");
+      w.eval(`data = Object.assign({}, data, {mining_live: ${JSON.stringify(ml())}}); renderNow()`);
+      got.nowMine = d.querySelector("#nowBody .now-mine") ? d.querySelector("#nowBody .now-mine").textContent : null;
       got.caps = w.eval(`fillLine("{ring} at {body}. So: {types} rings. {types}!", {ring: "a metallic ring", body: "A 3", types: "icy"})`);
       w.eval(`localStorage.setItem("miningRings", JSON.stringify({types: ["Rocky", "Bogus"], pristine: false})); drawMiningRings()`);
       got.ui = [[...d.querySelectorAll("#miningRings [data-ring]")].filter(b => b.checked).map(b => b.dataset.ring), d.getElementById("ringPristine").checked,
@@ -9428,11 +9438,14 @@ const releasePayloads = async () => {
       limpetsOn: [[["No limpets aboard. Turn back for some before we head out.", "limpets"]], JSON.stringify({limpetWarn: true}), "No limpets aboard"],
       tables: ["limpets,prospect,ring", false, true, 3],
       pNone: [], pLode: [["Motherlode: Void Opal.", "prospect"]],
-      pCfg: JSON.stringify({limpetWarn: true, minerals: ["platinum", "gold"], pct: 30, combined: false, motherlode: true, rawHigh: false}),
+      pCfg: JSON.stringify({limpetWarn: true, minerals: ["platinum", "gold"], pct: 30, combined: false, motherlode: true, rawHigh: false, limpetsLow: 5}),
       pHits: [[["Platinum, 34 percent.", "prospect"]], [], [], []],
       pCombined: [[["Combined 52 percent: Platinum 31, Gold 21.", "prospect"]], [["High material content.", "prospect"]], "⛏ High material content"],
       hRec: ["Alexandrite: 2 stints · 40 t/h · 50 % hits", "  you, Alexandrite: 2 stints · 40 t/h · 50 % hits|  you, no hotspot: 1 stint", false],
       hCard: ["you, Alexandrite: 2 stints · 40 t/h · 50 % hits", "you, no hotspot: 1 stint"],
+      warns: [[], [["5 limpets left.", "limpets"]], [], [["Hold full in about 4 minutes.", "limpets"]], [], [["The hold is full. Time to sell.", "limpets"]],
+              [["3 limpets left.", "limpets"]], []],
+      nowMine: "⛏ 4 B Ring · Platinum · 60 t/h",
       hTable: [["2", "50 %", "40 Digger", "6.0M*", "80 t"], ["1", "", "", "", "0 t"]],
       ringCell: ["1🗺/3", "2 rings, 1 mapped (🗺), 3 hotspots · Pristine reserves\nA Ring · Metallic: Platinum 2, Painite 1\nB Ring · Icy: not mapped", "",
                  '2<div class="sub2 unk">1🗺/3</div>', "2🗺/3", "2", ""],

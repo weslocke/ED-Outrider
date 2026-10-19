@@ -61,6 +61,11 @@ KEYS = {
     "limpets_none": "you just undocked in a mining ship (a refinery, a collector or prospector limpet controller fitted) "
                     "with no limpets in the hold: a reminder to turn back for some (Settings → Mining's reminder, said by "
                     "the Mining Officer)",
+    "limpets_low": "limpets running low while you mine in a ring (Settings → Mining's number, once a stint): {count} (how "
+                   "many are left, 2 or more)",
+    "hold_nearly_full": "the hold will be full in about {minutes} minutes at your mining rate (once a stint; {minutes} 2 to 5): "
+                        "{free} (tonnes still free)",
+    "hold_full": "the hold is full while mining: time to go and sell (the page may add the best price nearby after it)",
     "prospect_hit": "a prospector reported a rock (not mined before) over your threshold of the minerals ticked in Settings → "
                     "Mining (the call-out, said by the Mining Officer; short: they come every few seconds): {what} (already "
                     "phrased, e.g. 'Platinum, 34 percent', 'Combined 52 percent: Platinum 31, Gold 21')",
@@ -623,7 +628,8 @@ SAMPLES = {
     "docking_denied": {"reason": "no pad free for your ship: try again shortly", "station": "Jameson Memorial"},
     "phenomena": {"what": "three notable stellar phenomena, all in rings"},
     "rare_star": {"what": "a black hole at B"},
-    "ring_found": {"body": "A 3", "ring": "a pristine metallic ring"}, "limpets_none": {}, "prospect_hit": {"what": "Platinum, 34 percent"}, "motherlode": {"mineral": "Void Opal"},
+    "ring_found": {"body": "A 3", "ring": "a pristine metallic ring"}, "limpets_none": {}, "limpets_low": {"count": 5}, "hold_nearly_full": {"minutes": 5, "free": 12}, "hold_full": {},
+    "prospect_hit": {"what": "Platinum, 34 percent"}, "motherlode": {"mineral": "Void Opal"},
     "ring_found_many": {"count": 3, "bodies": "A 3, A 5 and B 1", "types": "metallic and icy"},
     "surface_site": {"what": "Guardian sites on B 3"},
     "signal_poi": {"what": "a Guardian beacon"},
@@ -703,7 +709,7 @@ ROW_KEYS = {
     "unsold": ("unsold_warn", "unsold_urgent"), "firstsseen": ("firsts_seen",), "hull": ("hull", "heat", "interdicted"),
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
-    "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none",), "prospect": ("prospect_hit", "motherlode"),
+    "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none", "limpets_low", "hold_nearly_full", "hold_full"), "prospect": ("prospect_hit", "motherlode"),
 }
 DANGER = ("hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop",
           "carrier_departs", "ship_lost", "rig_leash")

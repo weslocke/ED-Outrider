@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · Mining D: the mining line and its warnings
+- **The mining line** (the author): `State.mining_live()` while you mine in a ring (an open stint, normal space,
+  Status.json live, a mining ship): the ring and hotspot, the stint's t/h (from 5 minutes on), the hold (its lines,
+  else the Cargo count; capacity from the Loadout), what it holds most, limpets, minutes to full, and `text`: in the
+  payload (`mining_live`) for **Now**, and the overlay's **system strip**'s third line (`strip_panel`'s `mining`).
+- **Spoken, once a stint** (`miningWarn`, this window's memory): `limpets_low` at Settings → Mining's number (5;
+  2 to 50: "1 limpets" reads wrong), `hold_nearly_full` at 2 to 5 minutes, `hold_full` and then the best price within
+  100 ly for the most you carry (`holdFullSell`, GET /api/cargo/lookup). Under the Limpets row, Mining's alerts table.
+  15 lines a list, 969 in all.
+
 ## 2026-10-18 · Mining B and C: the hotspot record and the prospector call-out
 - **The hotspot record** (B, the author): `mining_stints` (journal-derived, PARSER_VERSION 56): each drop into a ring
   (SupercruiseExit or a login with BodyType PlanetaryRing) until leaving it (MINING_CLOSE, a Location elsewhere), with

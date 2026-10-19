@@ -69,6 +69,8 @@ before.
   The second, condensed: the distance from Sol, what its data pays now and at most, 🏁 when you discovered it, how many
   bodies and how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether
   Spansh knows the system ("Spansh ✗ (new to it)" when it does not).
+  While you mine in a ring in a mining ship, a third line: "⛏ 4 B Ring · Platinum · 38 t/h · hold 112/256 t (Platinum
+  80, Painite 32) · limpets 14 · full in ~41 min" (the same line as on Now; Settings → Mining).
 - **Now (To-Do & Info)** (optional): the page's Now view in a few lines, anywhere in the system (by default not while
   docked: see [Settings](#settings)). The system (and for 20 s after the jump whether it was
   undiscovered), the system you have targeted next (never reported, no scan data, partly or fully scanned, or visited;

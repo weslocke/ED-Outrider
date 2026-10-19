@@ -1330,6 +1330,8 @@ function renderNow() {
         `${guess.map(b => `${esc(b.name)}${b.ggg.chance === "possible" ? " (possible)" : ""}`).join(", ")}</span> <span class="unk">· check in the system map</span>` : "") +
         (sure.length ? `${guess.length ? " · " : ""}${gggIcon(true, gggTitle(sure[0].ggg))} <span class="ok">Green gas giant${sure.length > 1 ? "s" : ""}: ${sure.map(b => esc(b.name)).join(", ")}</span>` : "") + `</div>`);
     }
+    if (data.mining_live && data.mining_live.text)   // mining D: the strip while you mine in a ring (the overlay's too)
+      lines.push(`<div class="now-line now-mine">${esc(data.mining_live.text)}</div>`);
     if (hd && hd.rare_stars && hd.rare_stars.length)   // a black hole, a Wolf-Rayet...: rare stars here
       lines.push(`<div class="now-line now-rare"><span class="ok">⭐ ${esc(rareStarText(hd.rare_stars).replace(/^./, c => c.toUpperCase()))}</span></div>`);
     // notable stellar phenomena the FSS found here: how many and where, and how many are still to visit
@@ -2278,7 +2280,7 @@ const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has rep
   ["loss", "your ship was destroyed with data aboard (or samples died with you): what was lost, and the nearest system to rescan", "danger"],
   ["rigs", "Rhino mining rigs: the co-pilot button's confirmation (rig placed, picked up, six out) and what a rig collected", null],
   ["rigleash", "a Rhino mining rig too far from you (over the rig warning distance, again at 4.5 km; the game destroys it at 5 km)", "danger"],
-  ["limpets", "limpets and the hold: undocking a mining ship (a refinery, a collector or prospector controller) with no limpets aboard, when Remind me to take limpets is ticked above", "alert"],
+  ["limpets", "limpets and the hold: undocking a mining ship (a refinery, a collector or prospector controller) with no limpets aboard, when Remind me to take limpets is ticked above; while mining in a ring, limpets low (the number above), the hold nearly full (about 5 minutes at your rate) and full, with the best price nearby for what you carry: each once a stint", "alert"],
   ["prospect", "the prospector call-out: a rock (not mined before) with your threshold of the minerals ticked above, and motherlodes; duds stay silent", null],
   ["ring", "a body just scanned has a ring of a type ticked in Settings → Mining (pristine ones only, if ticked there): once per body and visit, bodies scanned together in one line; nothing until a type is ticked", "find"],
   ["rigsout", "docking the Rhino with rigs still marked out on the body, and which are probably full (Outrider's own record: a rig picked up without a tap still counts until you mark it on the surface map)", null],
@@ -2999,7 +3001,7 @@ const LINE_SAMPLES = {
   find_bio: {body: "B 7", value: "19.0M"}, sample_clear: {genus: "Stratum"},
   codex: {entry: "Stratum Tectonicas", what: "new to your codex for this region"},
   phenomena: {what: "three notable stellar phenomena, all in rings"}, ggg: {body: "B 3"}, rare_star: {what: "a black hole at B"},
-  ring_found: {body: "A 3", ring: "a pristine metallic ring"}, limpets_none: {}, prospect_hit: {what: "Platinum, 34 percent"}, motherlode: {mineral: "Void Opal"}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
+  ring_found: {body: "A 3", ring: "a pristine metallic ring"}, limpets_none: {}, limpets_low: {count: 5}, hold_nearly_full: {minutes: 5, free: 12}, hold_full: {}, prospect_hit: {what: "Platinum, 34 percent"}, motherlode: {mineral: "Void Opal"}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
   firsts_seen: {system: "Drojau LL-O b26-3", value: "14.2M"},
   surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
@@ -3075,12 +3077,14 @@ const RING_KINDS = ["Icy", "Rocky", "Metallic", "Metal Rich"];
 // Settings → Mining's other choices (the "mining" setting): the limpet reminder on undocking; the prospector call-out
 // (mining C): the minerals wanted (commodity ids), the threshold %, one at least that much (or, combined, their sum),
 // motherlodes said, and a rock's High material content (the engineering materials) said too
-const MINING_DEFAULTS = {limpetWarn: false, minerals: [], pct: 30, combined: false, motherlode: true, rawHigh: false};
+const MINING_DEFAULTS = {limpetWarn: false, minerals: [], pct: 30, combined: false, motherlode: true, rawHigh: false, limpetsLow: 5};
 const miningCfg = () => { const v = store.get("mining", {}) || {}, d = MINING_DEFAULTS;
   const bool = k => typeof v[k] === "boolean" ? v[k] : d[k];
   const pct = Number.isFinite(v.pct) && v.pct >= 1 && v.pct <= 100 ? v.pct : d.pct;
   return {limpetWarn: bool("limpetWarn"), minerals: Array.isArray(v.minerals) ? v.minerals.filter(x => typeof x === "string") : [],
-          pct, combined: bool("combined"), motherlode: bool("motherlode"), rawHigh: bool("rawHigh")}; };
+          pct, combined: bool("combined"), motherlode: bool("motherlode"), rawHigh: bool("rawHigh"),
+          // 2 at least: "1 limpets" reads wrong, and one left is too late to warn
+          limpetsLow: Number.isInteger(v.limpetsLow) && v.limpetsLow >= 2 && v.limpetsLow <= 50 ? v.limpetsLow : d.limpetsLow}; };
 // the laser-minable minerals the call-out offers (commodity ids, as the prospector's names lower-cased), the common
 // targets first; the rest under "more"
 const PROSPECT_MAIN = [["platinum", "Platinum"], ["painite", "Painite"], ["osmium", "Osmium"], ["palladium", "Palladium"], ["gold", "Gold"],
@@ -3190,6 +3194,42 @@ function ringRecord(b, sys) {
     for (const r of b.ring_details || []) if (g.ring === `${b.name} ${r.name}`) (out[r.name] = out[r.name] || []).push(g);
   }
   return out;
+}
+// mining D: the strip's spoken warnings, each once a stint (this window's memory: MW.start is the stint's): limpets at
+// or under Settings → Mining's number, the hold full in about 5 minutes at your rate (2 at least: "1 minutes"), and
+// the hold full, then the best price within 100 ly for the most you carry (the Sell lookup, once)
+const MW = {start: null, low: false, near: false, full: false};
+function miningWarn(m) {
+  if (!m) return;
+  if (MW.start !== m.start) Object.assign(MW, {start: m.start, low: false, near: false, full: false});
+  const cfg = miningCfg();
+  if (!MW.low && m.limpets <= cfg.limpetsLow) {
+    MW.low = true;
+    alertOut("limpets", `Limpets: ${m.limpets} left`, m.text, {tag: "limpets_low",
+             say: () => line("limpets_low", {count: m.limpets}, `${m.limpets} limpets left.`)});
+  }
+  if (!MW.near && m.full_min != null && m.full_min >= 2 && m.full_min <= 5) {
+    MW.near = true;
+    alertOut("limpets", `Hold full in ~${m.full_min} min`, m.text, {tag: "hold_nearly_full",
+             say: () => line("hold_nearly_full", {minutes: m.full_min, free: m.free}, `Hold full in about ${m.full_min} minutes.`)});
+  }
+  if (!MW.full && m.free === 0) {
+    MW.full = MW.near = true;
+    alertOut("limpets", "Hold full", m.text, {tag: "hold_full", say: () => line("hold_full", {}, "The hold is full. Time to sell.")});
+    holdFullSell(m);
+  }
+}
+// the best price within 100 ly for the most you carry, said and shown after "Hold full" (GET api/cargo/lookup)
+async function holdFullSell(m) {
+  const top = (m.held || [])[0];
+  if (!top) return;
+  let r;
+  try { r = await apiJson(`api/cargo/lookup?${new URLSearchParams({commodity: top[0], mode: "sell", tons: String(top[2]), from: "ship", sort: "price", within: "100", age: "30"})}`); } catch { return; }
+  const best = r && !r.error && (r.rows || [])[0];
+  if (!best) return;
+  const where = `${best.station} in ${best.system}`, ly = best.distance != null ? `, ${Math.round(best.distance)} light-years` : "";
+  alertOut("limpets", `Sell ${top[1]}: ${best.station}, ${best.system}`, `${credits(best.price)} cr/t${ly ? ` · ${Math.round(best.distance)} ly` : ""}`,
+           {tag: "hold_full_sell", say: `Best price for ${top[1]} within 100 light-years: ${where}${ly}, ${credits(best.price)} credits a ton.`});
 }
 // mining C: a prospected rock said when worth it (prospectHit), a motherlode always (its own box), a rock already mined
 // never; High material content (engineering materials) only when its box is ticked. A newer call-out replaces one still
@@ -9493,6 +9533,7 @@ function onData() {
   }
   try { if (ringHits.length) ringOut(ringHits); } catch (e) { console.error(e); pageError = `alert ring: ${e && e.message || e}`; }
   miningMaybeLoad();   // mining B: the hotspot record, when a stint changed
+  try { miningWarn(data.mining_live); } catch (e) { console.error(e); pageError = `alert mining: ${e && e.message || e}`; }
   // a region crossing no briefing said within 30 s (none came, or it had nothing else to say): its own line, while
   // still in that system
   if (pendingRegion && Date.now() - pendingRegion.at > 30000) {
@@ -9933,6 +9974,8 @@ for (const [id, key] of [["sayBio", "sayBio"], ["sayGeo", "sayGeo"], ["sayHazard
 function drawMiningRings() {
   const mc = miningCfg();
   document.getElementById("miningLimpets").checked = mc.limpetWarn;
+  const lowBox = document.getElementById("limpetsLow");
+  if (document.activeElement !== lowBox) lowBox.value = mc.limpetsLow;
   // the prospector call-out (mining C): its minerals' boxes drawn here (the main ones, the rest under "more")
   const box = ([id, name]) => `<label><input type="checkbox" data-pmin="${id}"${mc.minerals.includes(id) ? " checked" : ""}> ${esc(name)}</label>`;
   document.getElementById("prospectMinerals").innerHTML = PROSPECT_MAIN.map(box).join("");
@@ -9947,6 +9990,10 @@ function drawMiningRings() {
   document.getElementById("ringPristine").checked = c.pristine;
 }
 document.getElementById("miningLimpets").onchange = e => miningSet({limpetWarn: e.target.checked});
+document.getElementById("limpetsLow").onchange = e => {
+  const n = Number(e.target.value);
+  miningSet({limpetsLow: Number.isInteger(n) && n >= 2 && n <= 50 ? n : MINING_DEFAULTS.limpetsLow}); drawMiningRings();
+};
 document.getElementById("prospectOpts").onchange = () => {
   const n = Number(document.getElementById("prospectPct").value);
   miningSet({minerals: [...document.querySelectorAll("#prospectOpts [data-pmin]:checked")].map(b => b.dataset.pmin),
@@ -10581,7 +10628,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], carrier: ["carrier_arrived", "carrier_departs"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
-  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none"], prospect: ["prospect_hit", "motherlode"]};
+  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"]};
 const XO_SPEAKS = "voice answers, the status report, the co-pilot, the hush and speech on";
 const crewOn = () => !!(data && data.crew && data.crew.on);
 const crewDangerOn = () => !!(data && data.crew && data.crew.danger !== false);
