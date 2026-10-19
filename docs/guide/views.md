@@ -124,7 +124,8 @@ order back.
 <b>Search</b> — systems with particular stars (or just <i>scoopable</i>), planets, rings, hotspots,
 unfinished exobiology or planetary mining locations (one mineral, if you like) within a radius, from what
 Outrider knows (<i>Local</i>) or everything reported (<i>Spansh</i>; mining locations are Local only, as Spansh cannot
-filter on them). Planets has <i>Potential green gas giant</i> too (see
+filter on them); 🎯 after a result's name targets it in the galaxy map, where auto-target can work. Planets has
+<i>Potential green gas giant</i> too (see
 <a href="#-potential-green-gas-giants">below</a>). The name box finds any system (what Outrider knows,
 then EDSM, then Spansh when EDSM is down or doesn't know it) and opens it in Here, where ☆ bookmarks it or makes it the
 next stop. <i>Within N ly of</i> searches around you, your destination in game, your carrier, your next stop or a

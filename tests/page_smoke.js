@@ -9501,6 +9501,24 @@ const releasePayloads = async () => {
     allOk = allOk && okG;
     console.log(okG ? "OK" : "FAIL", "| geology kinds |", okG ? "the body card names the kinds its volcanism allows, new ones marked, how to log one" : JSON.stringify(got), errors.slice(before));
   }
+  // 🎯 on a Search result (the author, 2026-10-19): where auto-target can work, never on the system you are in
+  {
+    const w = dom.window, d = w.document, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      const saved = {search, gp: data.game_pc, at: data.autotarget};
+      data.game_pc = true; data.autotarget = Object.assign({}, data.autotarget, {available: true, missing: []});
+      search = {running: false, status: "2 systems", results: [{id: "4242", name: "Far Sys", distance: 3.5, visited: false, firsts: null, matches: {}},
+                                                                {id: posId(), name: "Here Sys", distance: 0, visited: true, firsts: null, matches: {}}]};
+      renderSearch();
+      const aims = [...document.querySelectorAll("#sRows [data-aim]")].map(b => [b.dataset.route, b.dataset.aimid]);
+      data.autotarget = Object.assign({}, data.autotarget, {available: false}); renderSearch();
+      const off = document.querySelectorAll("#sRows [data-aim]").length;
+      search = saved.search; data.game_pc = saved.gp; data.autotarget = saved.at; renderSearch();
+      return JSON.stringify([aims, off]); })()`));
+    const okS = JSON.stringify(got) === JSON.stringify([[["system", "4242"]], 0]) && errors.length === before;
+    allOk = allOk && okS;
+    console.log(okS ? "OK" : "FAIL", "| search target |", okS ? "🎯 on a result, not your own system, not without auto-target" : JSON.stringify(got), errors.slice(before));
+  }
   // #11 (Kurbo26): pre-Odyssey Spansh data: Nearby's pill (🪦 when narrow), Here's header date, never routine, the
   // briefing's clause and line, the Now line until your own scans have every body
   {

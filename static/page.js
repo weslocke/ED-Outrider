@@ -7311,7 +7311,8 @@ function hwyAimBtn(name, route = null, index = null, icon = false) {
     ` title="target ${esc(name)} in the galaxy map${hwyFront() ? " (Outrider brings the game to the front)" : TABLET ? ""
       : ", 5 s from now: click back into the game meanwhile"}">${label}</button>`;
 }
-// S31: 🎯 on any system the page lists (a bookmark, the header's next stop, a Nearest row, a checklist find), by its id64
+// S31: 🎯 on any system the page lists (a bookmark, the header's next stop, a Nearest row, a checklist find, a Search
+// result: the author, 2026-10-19), by its id64
 // string; where auto-target can work (hwyAimBtn: canAim), never for the system you are in
 const sysAimBtn = (name, id) => id != null && data && String(id) !== posId() ? hwyAimBtn(name, "system", String(id), true) : "";
 // 🎯 on a Nearby row (the Overview's too: the author, 2026-10-14): S31's, by the row's id64 string, never your own
@@ -8677,7 +8678,7 @@ function renderSearch(bms) {
     : (a, b) => a.distance - b.distance));
   document.getElementById("sRows").innerHTML = rows.map(r => `<tr>
       <td class="bmcell">${bmIcon(r.id, r.name, bms || bmMap())}</td>
-      <td class="name" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${firstsIcon(r.firsts)}${r.visited
+      <td class="name" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${/^\d+$/.test(String(r.id)) ? sysAimBtn(r.name, r.id) : ""}${firstsIcon(r.firsts)}${r.visited
         ? `<span class="badge s-visited">visited</span>` : ""}</td>
       <td class="num dist"${r.from_you != null ? ` title="${r.from_you.toFixed(2)} ly from you"` : ""}>${r.distance.toFixed(2)}</td>
       <td class="matches">${Object.entries(r.matches).map(([k, hits]) =>

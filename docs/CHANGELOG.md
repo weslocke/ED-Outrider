@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · 🎯 on Search's results
+- Search's results had no target button (the author): each now has 🎯 after its name, as Bookmarks and Nearby do,
+  where auto-target can work and never on the system you are in (`sysAimBtn`).
+
 ## 2026-10-19 · The geology a body's signals could be, in its card and details
 - The ✪ beside a body's name (geology its volcanism could show, new to your codex) said nothing in the body card,
   which read only "3 geological signals" (the author). The card now names the kinds its volcanism allows ("from its
