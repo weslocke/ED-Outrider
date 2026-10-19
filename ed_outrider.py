@@ -3894,9 +3894,12 @@ class Journals:
 
     def limpet_check(self, ts):
         """Undocking a mining ship with no limpets in the hold: a "limpets" moment (what: none) the page says when
-        Settings → Mining's reminder is on. Live only, and only with the hold known (a Cargo snapshot read)."""
+        Settings → Mining's reminder is on. Live only, and only with the hold known (a Cargo snapshot read, and the
+        game's latest count no more than the lines known: a count-only Cargo can hold what no event named)."""
         sc = self.ship_cargo
-        if not live_event(ts) or not sc.get("snap_ts") or ((sc.get("lines") or {}).get("drones") or {}).get("count"):
+        lines = sc.get("lines") or {}
+        if not live_event(ts) or not sc.get("snap_ts") or (lines.get("drones") or {}).get("count") \
+                or (sc.get("count") or 0) > sum(x.get("count") or 0 for x in lines.values()):
             return
         if self.mining_ship():
             self.moment("limpets", ts, what="none")

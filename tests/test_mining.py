@@ -61,6 +61,18 @@ class LimpetReminder(unittest.TestCase):
         self.undock(52)
         self.assertEqual(self.said(), [])
 
+    def test_hold_counted_but_not_listed(self):
+        """2026-10-19: the game's Cargo said 200 t aboard with no list and Cargo.json still empty: what is in the hold
+        is not known, so no warning (the limpets themselves are now followed by BuyDrones, tests/test_cargo.py)."""
+        self.loadout(0, "int_refinery_size4_class5")
+        self.cargo(1)
+        self.j.handle({"event": "Cargo", "timestamp": self.at(2), "Vessel": "Ship", "Count": 200})
+        self.undock(3)
+        self.assertEqual(self.said(), [])
+        self.j.handle({"event": "Cargo", "timestamp": self.at(4), "Vessel": "Ship", "Count": 0})   # sold it all
+        self.undock(5)
+        self.assertEqual(self.said(), ["none"])
+
     def test_hold_or_ship_unknown_and_old_lines(self):
         j2 = ed_outrider.Journals(self.db)
         self.j = j2

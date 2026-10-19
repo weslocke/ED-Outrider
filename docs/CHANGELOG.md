@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · No limpet reminder while the hold is not known
+- The reminder fired on undocking with 200 limpets aboard (the author): the hold had none on record. Besides limpets
+  now being followed (the entry below), it stays quiet when the game's latest count is more than the hold's known lines (a
+  count-only Cargo with Cargo.json not rewritten): it cannot tell what is aboard (`limpet_check`).
+
 ## 2026-10-19 · Limpets bought, sold and launched move the hold
 - 200 limpets bought, yet the hold (Materials → Cargo) had none (the author): the game wrote a Cargo line with only
   the count and never rewrote Cargo.json, and limpet purchases were not read at all. `BuyDrones` now adds limpets,
