@@ -16,6 +16,7 @@ Newest first, one entry per commit.
   ("Spansh's data here is from February 2019, before Odyssey: worth a rescan." and the worlds that may hold life), a
   line of its own (`old_data`, 15 a list, under the briefing's row). **Now:** a 🪦 line until every body is yours, and
   "Next: rescan in the FSS" in place of "nothing worth staying for" (Spansh knowing every body left nothing "to find").
+  The 🪦 line reads "Spansh data pre-Odyssey (Feb2019): worth a rescan for Bio" (the author: one line in Now's type).
 
 ## 2026-10-19 · Hold full out in the black: the nearest buyer, never your own carrier
 - After "Hold full", the best price within 100 ly found nothing 1,500 ly from the bubble and said nothing (the

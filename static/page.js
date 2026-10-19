@@ -263,6 +263,7 @@ const spanshOldBadge = s => s.spansh_old ? statusBadge("s-old", "🪦 pre-Odysse
 // the briefing's clause and the Now line for a pre-Odyssey system you have not resolved yourself (#11)
 const spanshOldWords = (date, n) => `Spansh's data here is from ${spanshMonth(date, true)}, before Odyssey: worth a rescan.` +
   (n ? ` ${n} thin-atmosphere world${n === 1 ? "" : "s"} may hold life.` : "");
+const spanshOldNow = date => `Spansh data pre-Odyssey (${spanshMonth(date).replace(" ", "")}): worth a rescan for Bio`;   // Now's line
 const oldDataTag = o => { if (!o || !o.bodies) return "";
   const full = `old data: ${o.bodies} bod${o.bodies === 1 ? "y" : "ies"}`;
   return `<span class="nb old" title="${oldDataTitle(o)}">${dual(full, `old ${o.bodies}`, {titleHtml: `${full}. ${oldDataTitle(o)}`})}</span>`; };
@@ -1352,8 +1353,8 @@ function renderNow() {
     if (data.mining_live && data.mining_live.text)   // mining D: the strip while you mine in a ring (the overlay's too)
       lines.push(`<div class="now-line now-mine">${esc(data.mining_live.text)}</div>`);
     if (hd && hd.spansh_old && !(hd.leaving && hd.leaving.all_found)) {   // #11: until your own scans have every body
-      const n = (hd.bodies || []).filter(b => b.stale_bio).length;
-      lines.push(`<div class="now-line now-old" title="${esc(spanshOldTitle(hd.spansh_old))}">🪦 ${esc(spanshOldWords(hd.spansh_old, n))}</div>`);
+      // short, so it fits one line in Now's large type (the author): the details are in the hover
+      lines.push(`<div class="now-line now-old" title="${esc(spanshOldTitle(hd.spansh_old))}">🪦 ${esc(spanshOldNow(hd.spansh_old))}</div>`);
     }
     if (hd && hd.rare_stars && hd.rare_stars.length)   // a black hole, a Wolf-Rayet...: rare stars here
       lines.push(`<div class="now-line now-rare"><span class="ok">⭐ ${esc(rareStarText(hd.rare_stars).replace(/^./, c => c.toUpperCase()))}</span></div>`);
