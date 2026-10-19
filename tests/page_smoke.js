@@ -9502,9 +9502,10 @@ const releasePayloads = async () => {
         spansh_date: "2019-02-12", spansh_old: "2019-02-12", leaving: {all_found: false, honked: true, unscanned: 0, bio_pending: [], unmapped: []}, value_now: 0, value_max: 0}); renderNow(); hereData = Object.assign({}, hereData, {bodies: []}); renderHere();
         hereData.bodies = [{name: "A 3", type: "Planet", stale_bio: true, ring_details: []}]`);
       got.now = d.querySelector("#nowBody .now-old") ? d.querySelector("#nowBody .now-old").textContent : null;
+      got.nowNext = [/Next: rescan in the FSS/.test(d.getElementById("nowBody").textContent), /nothing worth staying for/.test(d.getElementById("nowBody").textContent)];
       got.head = d.getElementById("hereHead").textContent.includes("Spansh: pre-Odyssey, Feb 2019");
       w.eval(`hereData = Object.assign({}, hereData, {leaving: {all_found: true, honked: true, unscanned: 0, bio_pending: [], unmapped: []}}); renderNow()`);
-      got.nowGone = !d.querySelector("#nowBody .now-old");
+      got.nowGone = [!d.querySelector("#nowBody .now-old"), /nothing worth staying for/.test(d.getElementById("nowBody").textContent)];
     } finally {
       w.eval(`const k = window.__po; data = k.data; hereData = k.hereData; speak = k.speak; [speechOn, isSpeaker] = k.flags; hushState = k.hush; lastAlert = k.alert;
         alertSpeak.brief = k.aspeak; linePlain = false; if (k.rq === null) localStorage.removeItem("routineQuiet"); else localStorage.setItem("routineQuiet", k.rq);
@@ -9514,7 +9515,7 @@ const releasePayloads = async () => {
     const want = {pill: [true, true, ""], routine: [false, true, true],
       brief: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
       card: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
-      now: "🪦 Spansh's data here is from February 2019, before Odyssey: worth a rescan. 1 thin-atmosphere world may hold life.", head: true, nowGone: true};
+      now: "🪦 Spansh's data here is from February 2019, before Odyssey: worth a rescan. 1 thin-atmosphere world may hold life.", head: true, nowGone: [true, true], nowNext: [true, false]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodPO = !bad.length && errors.length === before;
     allOk = allOk && goodPO;

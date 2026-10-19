@@ -1329,6 +1329,8 @@ function renderNow() {
       : !hd ? `<span class="unk">checking…</span>`
       : !l || !l.honked ? `<span class="warnc">Next: honk</span> <span class="unk">(FSS discovery scan)</span>`
       : l.unscanned > 0 ? `<span class="warnc">Next: ${nBodies(l.unscanned)} to find in the FSS</span>${spanshNoteHtml(l)}`
+      // #11: "nothing" from Spansh's pre-Odyssey records means little (Kurbo26): rescan it yourself first
+      : hd.spansh_old && !l.all_found ? `<span class="warnc">Next: rescan in the FSS</span> <span class="unk">(Spansh's data predates Odyssey)</span>`
       : `<span class="ok">✓ nothing worth staying for</span>`}${here && here.value_now ? ` · <span class="unk">${credits(here.value_now)} cr aboard from here</span>` : ""}</div>`);
     // a body targeted that is not the next item: an extra line, never in place of Next (Status.json keeps the target
     // after you finish a body, so Next must stay visible)
