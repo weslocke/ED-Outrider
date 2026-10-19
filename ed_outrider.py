@@ -6294,7 +6294,7 @@ def stale_bio_summary(records, star=None, ctx=None):
     """{bodies, genera_top, up_to, reported} for the bodies stale_bio_groups flags, or None when none are. up_to
     prices one genus per body, the median of those the rules allow (not the most valuable), so the figure is not
     absurd; it is kept apart from bio_potential and the value columns. reported: the latest of their Spansh dates."""
-    n, up_to, genera, last = 0, 0, collections.Counter(), ""
+    n, up_to, genera, last, names = 0, 0, collections.Counter(), "", []
     for r in records:
         groups = stale_bio_groups(r, star, ctx)
         if not groups:
@@ -6304,9 +6304,11 @@ def stale_bio_summary(records, star=None, ctx=None):
         up_to += vals[len(vals) // 2]
         genera.update(g["genus"] for g in groups)
         last = max(last, r["updated"][:10])
+        names.append(r.get("name"))
     if not n:
         return None
-    return {"bodies": n, "genera_top": [g for g, _ in genera.most_common(3)], "up_to": up_to, "reported": last}
+    return {"bodies": n, "genera_top": [g for g, _ in genera.most_common(3)], "up_to": up_to, "reported": last,
+            "names": [x for x in names if x][:8]}   # #11: the worlds, for the pre-Odyssey hover
 
 
 def summarise(records, body_count, star=None, ctx=None, genera=None):

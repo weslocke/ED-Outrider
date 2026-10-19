@@ -232,7 +232,7 @@ function notable(s) {
     (s.bio_potential ? `<span class="nb bio" title="exobiology: up to this much across ${s.bio_bodies_guessed} bod${s.bio_bodies_guessed === 1 ? "y" : "ies"}, from spawn rules">🧬≤${credits(s.bio_potential)}</span>` : "") +
     (gg.length ? gggIcon(false, `potential green gas giant${gg.length > 1 ? "s" : ""} (the community's ladder model, from your scans or Spansh's): ` +
       gg.map(x => `${x.body} (${x.chance})`).join(", "), gg.length) : "") + (s.ggg_green ? gggIcon(true, "a green gas giant your codex confirms", s.ggg_green) : "") +
-    codexTypesTag(s) + phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + poiTag(s.pois) + spanshOldTag(s) + bioUnknownTag(s.bio_unknown) +
+    codexTypesTag(s) + phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + poiTag(s.pois) + (s.spansh_old ? "" : oldDataTag(s.stale_bio)) + bioUnknownTag(s.bio_unknown) +
     (s.curiosities ? `<span class="nb cur" title="${(s.curiosity_list || []).map(c => esc(`${c.body}: ${c.tag} (${c.why})`)).join("&#10;")}">🔭${s.curiosities > 1 ? "×" + s.curiosities : ""}</span>` : "");
 }
 // pre-Odyssey Spansh data (stale_bio {bodies, genera_top, up_to, reported}): thin-atmosphere worlds marked not
@@ -251,14 +251,15 @@ const bioUnknownTag = n => !n ? "" : `<span class="nb" title="${n} bod${n === 1 
 // old data tag of its stale bodies (some Spansh records newer, some old)
 const SPANSH_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const spanshMonth = (d, long = false) => d ? `${(SPANSH_MONTHS[+String(d).slice(5, 7) - 1] || "").slice(0, long ? 9 : 3)} ${String(d).slice(0, 4)}`.trim() : "";
+// its hover: when, what that means, and the thin-atmosphere worlds that may hold life (their names, what the rules
+// allow there, about what one genus each would pay)
 const spanshOldTitle = (date, stale) => `Spansh's data here was last reported ${spanshMonth(date)}, before Odyssey's surface data (the legacy split of 29 Nov 2022): ` +
   `thin-atmosphere worlds were marked not landable and life was not reported, so bio and first footfalls may be waiting. Worth a rescan.` +
-  (stale && stale.bodies ? "&#10;" + oldDataTitle(stale) : "");
-function spanshOldTag(s) {
-  if (!s.spansh_old) return oldDataTag(s.stale_bio);
-  const n = (s.stale_bio && s.stale_bio.bodies) || 0, full = `Spansh: pre-Odyssey${n ? ` · ${n} may have life` : ""}`;
-  return `<span class="nb old" title="${spanshOldTitle(s.spansh_old, s.stale_bio)}">${dual(full, `🪦${n ? " " + n : ""}`, {titleHtml: `${full}. ${spanshOldTitle(s.spansh_old, s.stale_bio)}`})}</span>`;
-}
+  (stale && stale.bodies ? `&#10;&#10;Thin-atmosphere worlds that may hold life: ${(stale.names || []).length ? stale.names.map(esc).join(", ") : stale.bodies}` +
+    ((stale.genera_top || []).length ? `&#10;The rules allow: ${stale.genera_top.map(esc).join(", ")}` : "") +
+    (stale.up_to ? `&#10;About ${credits(stale.up_to)} cr at one genus each (the median)` : "") : "");
+// Nearby's Status column: "🪦 pre-Odyssey" beside "fully scanned", the warning colour (🪦 alone when narrow)
+const spanshOldBadge = s => s.spansh_old ? statusBadge("s-old", "🪦 pre-Odyssey", spanshOldTitle(s.spansh_old, s.stale_bio), "🪦") : "";
 // the briefing's clause and the Now line for a pre-Odyssey system you have not resolved yourself (#11)
 const spanshOldWords = (date, n) => `Spansh's data here is from ${spanshMonth(date, true)}, before Odyssey: worth a rescan.` +
   (n ? ` ${n} thin-atmosphere world${n === 1 ? "" : "s"} may hold life.` : "");
@@ -3912,7 +3913,7 @@ function render() {
     const known = s.body_count ? `${s.bodies_known}/${s.body_count}` : (s.bodies_known || "");
     // compact3 merges (compact2 drops Jumps and Known first): the status badges go under the name, the notable tags under
     // the bodies
-    const status = statusPill(s) + (s.mapped ? statusBadge("s-mapped", `${s.mapped} mapped`, "DSS-mapped bodies, from your own journal", `🗺${s.mapped}`) : "") +
+    const status = statusPill(s) + spanshOldBadge(s) + (s.mapped ? statusBadge("s-mapped", `${s.mapped} mapped`, "DSS-mapped bodies, from your own journal", `🗺${s.mapped}`) : "") +
       (s.source === "own" ? statusBadge("s-own", "yours only", s.in_spansh === false ? "Spansh doesn't have this system; data is from your own scans"
                                                                                       : "data is from your own scans (Spansh's answer did not cover this system)") : "") +
       (s.source === "edsm" ? `<span class="badge s-edsm" title="Spansh is unreachable; this comes from EDSM (no body data)">EDSM</span>` : "");

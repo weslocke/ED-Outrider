@@ -9489,8 +9489,10 @@ const releasePayloads = async () => {
       window.__spoken = []; speak = (t, o) => window.__spoken.push([t, o.kind]);
       speechOn = true; isSpeaker = true; hushState = null; alertSpeak.brief = true; linePlain = true;`);
     try {
-      got.pill = [w.eval(`spanshOldTag({spansh_old: "2019-02-12", stale_bio: {bodies: 2, genera_top: ["Stratum"], up_to: 5e6, reported: "2019-02-12"}})`).includes("Spansh: pre-Odyssey · 2 may have life"),
-                  w.eval(`spanshOldTag({spansh_old: "2019-02-12"})`).includes("🪦"), w.eval(`spanshOldTag({stale_bio: null})`)];
+      // in the Status column, beside "fully scanned"; its hover names the worlds that may hold life
+      const badge = w.eval(`spanshOldBadge({spansh_old: "2019-02-12", stale_bio: {bodies: 2, genera_top: ["Stratum"], up_to: 5e6, reported: "2019-02-12", names: ["A 3", "A 5"]}})`);
+      got.pill = [badge.includes("🪦 pre-Odyssey") && badge.includes("s-old"), badge.includes("Thin-atmosphere worlds that may hold life: A 3, A 5") && badge.includes("The rules allow: Stratum"),
+                  w.eval(`spanshOldBadge({stale_bio: null})`), w.eval(`notable({spansh_old: "2019-02-12", stale_bio: {bodies: 2, genera_top: [], up_to: 0, reported: "2019-02-12"}})`).includes("old data")];
       const m = {spansh_old: "2019-02-12", all_found: false, worth: [], bio: null, star_class: "K", in_spansh: true, base_known: 5, body_count: 5, undiscovered: false};
       got.routine = [w.eval(`isRoutine(${JSON.stringify(m)})`), w.eval(`isRoutine(${JSON.stringify({...m, spansh_old: null})})`),
                      w.eval(`isRoutine(${JSON.stringify({...m, all_found: true})})`)];
@@ -9512,7 +9514,7 @@ const releasePayloads = async () => {
         delete window.__po; delete window.__spoken; render()`);
       await releasePayloads();
     }
-    const want = {pill: [true, true, ""], routine: [false, true, true],
+    const want = {pill: [true, true, "", false], routine: [false, true, true],
       brief: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
       card: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
       now: "🪦 Spansh's data here is from February 2019, before Odyssey: worth a rescan. 1 thin-atmosphere world may hold life.", head: true, nowGone: [true, true], nowNext: [true, false]};

@@ -10,11 +10,11 @@
 <b>Nearby</b> — every known system within range (20–50 ly, the Where tile's dropdown): distance, how much
 is scanned, the main star and whether it scoops, notable bodies, curiosities (🔭: odd orbits, ringed landables, rare
 classes such as water giants, helium giants, Sudarsky class V and green gas giants) and a credit estimate. Sort,
-hide visited and fully scanned systems, or keep only those one jump away. <i>Spansh: pre-Odyssey</i> (🪦 when the pane
-is narrow) marks a system whose Spansh data was all reported before Odyssey's surface data (the legacy split of
-29 November 2022): its thin-atmosphere worlds were marked not landable and its life never reported, so "fully scanned"
-there may still hide bio and first footfalls; "· 2 may have life" when the exobiology rules allow life on some (hover
-for when, and what could grow). A dashed <i>old data</i> mark flags such bodies in a system with newer data too. Here's
+hide visited and fully scanned systems, or keep only those one jump away. <i>🪦 pre-Odyssey</i> beside the status (🪦
+alone when the pane is narrow) marks a system whose Spansh data was all reported before Odyssey's surface data (the
+legacy split of 29 November 2022): its thin-atmosphere worlds were marked not landable and its life never reported, so
+"fully scanned" there may still hide bio and first footfalls. Hover it for when, and the thin-atmosphere worlds that
+may hold life: their names, what the exobiology rules allow there and about what one genus each would pay. A dashed <i>old data</i> mark flags such bodies in a system with newer data too. Here's
 header says when Spansh's data was last reported ("Spansh: pre-Odyssey, Feb 2019"), and Now says "worth a rescan"
 until your own scans have every body. Click a row to see that system
 body by body beside the list (click it again to close it); its name copies it, ☆ bookmarks it, and where auto-target

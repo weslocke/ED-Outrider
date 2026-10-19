@@ -326,7 +326,7 @@ class BatchFSpansh(unittest.TestCase):
         old, new = [star, self.rec()], [star, self.rec(updateTime="2023-01-05T10:00:00Z")]
         s_old, s_new = ed_outrider.summarise(old, 2, "K"), ed_outrider.summarise(new, 2, "K")
         self.assertEqual(s_old["stale_bio"]["bodies"], 1)
-        self.assertEqual(s_old["stale_bio"]["reported"], "2019-06-01")
+        self.assertEqual((s_old["stale_bio"]["reported"], s_old["stale_bio"]["names"]), ("2019-06-01", ["A 3"]))
         self.assertTrue(s_old["stale_bio"]["genera_top"])
         groups = ed_outrider.stale_bio_groups(self.rec(), "K")
         vals = sorted(g["value"] or 0 for g in groups)

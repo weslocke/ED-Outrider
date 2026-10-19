@@ -7,8 +7,10 @@ Newest first, one entry per commit.
   marked not landable, life never reported) is "pre-Odyssey" (`spansh_date`, `spansh_old`; in the Spansh summaries,
   CACHE_VERSION 18, and in `system_detail`, `merged_records`, `arrival_facts`), whatever its bodies (the old data tag
   needed a thin-atmosphere world the rules allow life on).
-- **Nearby:** a "Spansh: pre-Odyssey" pill (🪦 when narrow; "· 2 may have life" with candidates; the date in its
-  hover), `spanshOldTag`. **Here:** the header says when Spansh last heard ("Spansh: pre-Odyssey, Feb 2019", or the
+- **Nearby:** "🪦 pre-Odyssey" in the Status column beside "fully scanned", in the warning colour (🪦 when narrow;
+  `spanshOldBadge`; first in Notable, too quiet there: the author missed it in the mockup). Its hover: when, and the
+  thin-atmosphere worlds that may hold life by name (`stale_bio_summary`'s `names`), what the rules allow, about what
+  one genus each pays. **Here:** the header says when Spansh last heard ("Spansh: pre-Odyssey, Feb 2019", or the
   plain date). **The overlay's system strip:** "Spansh ✓ (pre-Odyssey)".
 - **Never routine** (`isRoutine`) until your own scans have every body; **the arrival briefing** ends with the clause
   ("Spansh's data here is from February 2019, before Odyssey: worth a rescan." and the worlds that may hold life), a

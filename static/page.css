@@ -339,6 +339,7 @@ td.matches .mlbl { color: var(--muted); font-size: 11px; text-transform: upperca
 #pop .firsts li { justify-content: flex-start; gap: 6px; }
 #pop .firsts .sold { color: var(--good); } #pop .firsts .unsold { color: var(--warn); } #pop .firsts .lost { color: var(--bad); }
 .s-mapped { color: var(--info); margin-left: 4px; }
+.badge.s-old { color: var(--warn); margin-left: 4px; }   /* #11: Spansh's data predates Odyssey: worth a rescan */
 .badge.s-visited { color: var(--muted); margin-left: 6px; }
 .bm { cursor: pointer; color: var(--muted); font-size: 15px; user-select: none; }
 .bm.on { color: #f2c94c; }
