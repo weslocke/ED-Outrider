@@ -263,7 +263,7 @@ const spanshOldBadge = s => s.spansh_old ? statusBadge("s-old", "🪦 pre-Odysse
 // the briefing's clause and the Now line for a pre-Odyssey system you have not resolved yourself (#11)
 const spanshOldWords = (date, n) => `Spansh's data here is from ${spanshMonth(date, true)}, before Odyssey: worth a rescan.` +
   (n ? ` ${n} thin-atmosphere world${n === 1 ? "" : "s"} may hold life.` : "");
-const spanshOldNow = date => `Spansh data pre-Odyssey (${spanshMonth(date).replace(" ", "")}): worth a rescan for Bio`;   // Now's line
+const spanshOldNow = date => `Spansh data pre-Odyssey (${spanshMonth(date).replace(" ", "")}): Rescan for Bio`;   // Now's line
 const oldDataTag = o => { if (!o || !o.bodies) return "";
   const full = `old data: ${o.bodies} bod${o.bodies === 1 ? "y" : "ies"}`;
   return `<span class="nb old" title="${oldDataTitle(o)}">${dual(full, `old ${o.bodies}`, {titleHtml: `${full}. ${oldDataTitle(o)}`})}</span>`; };

@@ -9517,7 +9517,7 @@ const releasePayloads = async () => {
     const want = {pill: [true, true, "", false], routine: [false, true, true],
       brief: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
       card: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
-      now: "🪦 Spansh data pre-Odyssey (Feb2019): worth a rescan for Bio", head: true, nowGone: [true, true], nowNext: [true, false]};
+      now: "🪦 Spansh data pre-Odyssey (Feb2019): Rescan for Bio", head: true, nowGone: [true, true], nowNext: [true, false]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodPO = !bad.length && errors.length === before;
     allOk = allOk && goodPO;
