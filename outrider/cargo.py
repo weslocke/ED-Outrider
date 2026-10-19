@@ -247,6 +247,8 @@ def ship_apply(st, ev):
     counted = ts > (st.get("snap_ts") or "")
     if name == "MarketBuy":
         _ship_add(st, cid(ev.get("Type")), _n(ev.get("Count")), price=ev.get("BuyPrice"), count=counted)
+    elif name == "BuyDrones":   # limpets bought: the game writes a Cargo count but no new Cargo.json (2026-10-19)
+        _ship_add(st, "drones", _n(ev.get("Count")), price=ev.get("BuyPrice"), count=counted)
     elif name == "MarketSell":
         i = cid(ev.get("Type"))
         line = st["lines"].get(i)
@@ -271,6 +273,10 @@ def ship_apply(st, ev):
         _ship_add(st, cid(ev.get("Type")), 1, stolen=1 if ev.get("Stolen") else 0)
     elif name == "MiningRefined":
         _ship_add(st, cid(ev.get("Type")), 1)
+    elif name == "SellDrones":
+        _ship_remove(st, "drones", _n(ev.get("Count")))
+    elif name == "LaunchDrone":   # a prospector or collector (any limpet) leaves the hold
+        _ship_remove(st, "drones", 1)
     else:
         return False
     st["ts"] = max(st["ts"] or "", ts)

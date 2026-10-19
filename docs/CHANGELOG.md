@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · Limpets bought, sold and launched move the hold
+- 200 limpets bought, yet the hold (Materials → Cargo) had none (the author): the game wrote a Cargo line with only
+  the count and never rewrote Cargo.json, and limpet purchases were not read at all. `BuyDrones` now adds limpets,
+  `SellDrones` and `LaunchDrone` take them away (`outrider.cargo.ship_apply`; `LaunchDrone` still counted in CMDR →
+  Sessions too).
+
 ## 2026-10-19 · 🎯 on Search's results
 - Search's results had no target button (the author): each now has 🎯 after its name, as Bookmarks and Nearby do,
   where auto-target can work and never on the system you are in (`sysAimBtn`).

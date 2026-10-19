@@ -83,7 +83,9 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   journal's last `NavRoute` line: then the game has not written the new route (late, or never). The last hop is the
   system plotted to (`navroute_end`: auto-target's check for a waypoint beyond one jump).
 - **Cargo.json** (`read_cargo_file`): the ship's whole hold (`Inventory[]` of `Name`, `Name_Localised`, `Count`,
-  `Stolen`, `MissionID`), rewritten with every `Cargo` event (whose own line then has only the count).
+  `Stolen`, `MissionID`), rewritten with every `Cargo` event (whose own line then has only the count). **Not
+  always:** after `BuyDrones` the game wrote a count-only `Cargo` and left the file as it was (2026-10-19, 200 limpets
+  bought, the file still empty), so limpets are moved by `BuyDrones` / `SellDrones` / `LaunchDrone` themselves.
 - **Market.json** (`read_market`): the market you last opened, with `MarketID`, `StationType` and `Items[]`
   (`Name` as `$platinum_name;`, `Name_Localised`, `BuyPrice`, `SellPrice`, `Stock`, `Demand`). Only your own
   carrier's is kept (`carrier_markets`): the game overwrites the file at the next market.

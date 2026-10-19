@@ -459,6 +459,28 @@ class CargoState(unittest.TestCase):
         self.assertEqual([(x["name"], x["count"], x["avg"]) for x in ship["lines"]], [("Gold", 10, 9000), ("Limpet", 2, None)])
         self.assertEqual(ship["count"], 12)
 
+    def test_limpets_bought_sold_and_launched(self):
+        """2026-10-19: 200 limpets bought, the game wrote a Cargo with only the count and left Cargo.json as it was
+        (the hold empty), so the hold had no limpets. BuyDrones / SellDrones / LaunchDrone move them themselves."""
+        with open(os.path.join(self.dir, "Cargo.json"), "w", encoding="utf-8") as f:
+            json.dump({"timestamp": "2026-10-18T22:56:48Z", "event": "Cargo", "Vessel": "Ship", "Count": 0,
+                       "Inventory": []}, f)
+        self.assertTrue(self.j.read_cargo_file(self.dir))
+        self.j.handle(ev("2026-10-18T23:08:55Z", "BuyDrones", Type="Drones", Count=200, BuyPrice=101, TotalCost=20200))
+        self.j.handle(ev("2026-10-18T23:08:55Z", "Cargo", Vessel="Ship", Count=200))
+        self.assertFalse(self.j.read_cargo_file(self.dir))   # the file is older than the purchase: kept out
+        held = lambda: {k: v["count"] for k, v in self.j.ship_cargo["lines"].items() if v["count"]}
+        self.assertEqual(held(), {"drones": 200})
+        with unittest.mock.patch.object(self.j, "handle_commander", wraps=self.j.handle_commander) as cmdr:
+            self.j.handle(ev("2026-10-18T23:12:00Z", "LaunchDrone", Type="Prospector"))
+            self.j.handle(ev("2026-10-18T23:13:00Z", "LaunchDrone", Type="Collection"))
+        self.assertEqual(held(), {"drones": 198})
+        self.assertEqual(cmdr.call_count, 2)   # still counted in CMDR → Sessions as well
+        self.j.handle(ev("2026-10-18T23:40:00Z", "SellDrones", Type="Drones", Count=8, SellPrice=101, TotalSale=808))
+        self.assertEqual(held(), {"drones": 190})
+        self.j.handle(ev("2026-10-18T23:00:00Z", "BuyDrones", Type="Drones", Count=5, BuyPrice=101, TotalCost=505))
+        self.assertEqual(held(), {"drones": 190})   # older than the hold folded (a legacy folder read late)
+
     def test_recount_errors(self):
         self.assertEqual(self.state.cargo_recount({"gold": 1})[1], 409)   # no carrier yet
         fx, _, _ = real()

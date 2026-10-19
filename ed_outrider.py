@@ -1381,7 +1381,7 @@ MATERIAL_EVENTS = ("Materials", "MaterialCollected", "MaterialDiscarded", "Synth
 # Cargo (outrider/cargo.py): the ship's hold and your carrier's. Cargo, Docked, Undocked, CarrierStats (SHIP_EVENTS)
 # and MiningRefined (SRV_EVENTS) are read here too; these are only for cargo.
 CARGO_ONLY = ("MarketBuy", "MarketSell", "CargoTransfer", "CarrierTradeOrder", "CarrierDepositFuel", "CollectCargo",
-              "EjectCargo", "CarrierCrewServices")
+              "EjectCargo", "CarrierCrewServices", "BuyDrones", "SellDrones", "LaunchDrone")
 # the carrier's movements (SHIP_EVENTS, and CarrierJump a position event too) are stored here as well: S13 B
 CARRIER_MOVE_EVENTS = ("CarrierJumpRequest", "CarrierJumpCancelled", "CarrierLocation", "CarrierJump")
 CARGO_EVENTS = frozenset(CARGO_ONLY) | {"Cargo", "Docked", "Undocked", "CarrierStats", "MiningRefined"} \
