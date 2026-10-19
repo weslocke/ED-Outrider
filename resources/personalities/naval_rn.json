@@ -1849,6 +1849,44 @@
     "Not one but {count}, damn it. {bodies}, with {types} rings."
    ]
   },
+  "limpets_none": {
+   "naval_rn": [
+    "Mining Officer, {name}. We've sailed without limpets. Recommend we return and take some on.",
+    "Be advised, the hold shows no limpets. Recommend we go back alongside before heading out.",
+    "{name}, no limpets aboard. The controllers have nothing to launch.",
+    "Limpet stores empty, {name}. Recommend we turn about and buy some.",
+    "Zero limpets in the hold. Recommend a quick return to the station.",
+    "A word before we go, {name}. We've no limpets. Best re-dock and stock up.",
+    "Mining stores check: no limpets carried. Recommend we turn back.",
+    "{name}, we've left harbour without limpets. Recommend we put back in.",
+    "No limpets aboard. Prospectors and collectors are idle until we buy some.",
+    "Request permission to put back in, {name}. We have no limpets.",
+    "Limpet count nil. Recommend we rectify that before reaching the ring.",
+    "The hold is clear of limpets, {name}. Not ideal for a mining sortie.",
+    "Mining Officer reporting. No limpets embarked. Recommend we return to the pad.",
+    "{ship} has sailed with no limpets, {name}. Recommend we turn back now, while it's close.",
+    "Pre-sortie check failed: no limpets. Recommend we re-dock and purchase.",
+    "No limpets in the hold, {name}. I'd turn back before we commit to the ring."
+   ],
+   "naval_rn_profane": [
+    "{name}, we've come out without a single bloody limpet. Back we go.",
+    "No limpets, damn it. Turn her round and let's buy some.",
+    "Hold's empty of limpets. Bloody embarrassing for a mining ship, {name}.",
+    "Mining Officer here, and damn unhappy. Not one limpet aboard.",
+    "We can't mine on good intentions, {name}. No bloody limpets. Back to the station.",
+    "Hell's teeth. We've sailed with no limpets.",
+    "Damn it, {name}, the controllers are fitted and the racks are empty. Re-dock and stock up.",
+    "Bloody limpets are still on the station, {name}. We're not.",
+    "No limpets embarked. Put back in before we waste a damn trip.",
+    "{ship} without limpets is just a very expensive rock-watcher. Turn back, bloody quick.",
+    "Limpet count nil, {name}. That's a hell of a way to start a sortie.",
+    "Right, nobody bought the damn limpets. Back to the pad, {name}.",
+    "Check the hold, {name}. Not a bloody limpet in it.",
+    "We're out here with lasers and no limpets. Damn poor planning. Turn about.",
+    "Bugger it, no limpets aboard. Back we go to fix that, damn quick.",
+    "{name}, I'd sooner turn back now than reach the ring and find out the hard way. No limpets, damn it."
+   ]
+  },
   "surface_site": {
    "naval_rn": [
     "Surface sites, {name}: {what}.",

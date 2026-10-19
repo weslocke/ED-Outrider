@@ -9,7 +9,7 @@ const SETTINGS_KEYS = ["alerts", "alertSound", "alertSpeak", "speech", "speechSt
   "sayMapped", "honkAnnounce", "sound", "unsoldCfg", "highlightCfg", "bioMinCfg", "maxBonus", "codexNewCounts",
   "highG", "streakCfg", "skipFloor", "sort", "sorts", "showVisited", "showExplored", "oneJump", "map",
   "log", "lbRadius", "fShowLost", "fWithin", "mHeld", "bioSort", "bState", "bDays", "hDays", "routineQuiet", "fuelJumps",
-  "surfaceCfg", "moduleWarn", "tilesCollapsed", "highway", "miningRings"];
+  "surfaceCfg", "moduleWarn", "tilesCollapsed", "highway", "miningRings", "mining"];
 const serverSettings = () => { const s = typeof window !== "undefined" && window.SERVER_DEFAULTS;
   return s && s.settings && typeof s.settings === "object" ? s.settings : {}; };
 // The shape a shared setting must have to be used: a hand-edited import or server copy with, say, a string for
@@ -17,7 +17,7 @@ const serverSettings = () => { const s = typeof window !== "undefined" && window
 const isObj = v => v !== null && typeof v === "object" && !Array.isArray(v);
 const SETTING_SHAPES = {alerts: isObj, alertSound: isObj, alertSpeak: isObj, speechStyles: Array.isArray, unsoldCfg: isObj,
   highlightCfg: isObj, streakCfg: isObj, sorts: isObj, map: isObj, log: isObj, bioSort: isObj, surfaceCfg: isObj, highway: isObj,
-  chatChannels: Array.isArray, chatMuted: Array.isArray, miningRings: isObj};
+  chatChannels: Array.isArray, chatMuted: Array.isArray, miningRings: isObj, mining: isObj};
 // null is a fine value for a plain setting (a reset stores it: "follow the default"), but a key with a shape is
 // read as an object or list at start-up, so a null there reads as unset too (else `lSaved.days` stops the script)
 const settingOk = (k, v) => !SETTING_SHAPES[k] || SETTING_SHAPES[k](v);
@@ -2278,6 +2278,7 @@ const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has rep
   ["loss", "your ship was destroyed with data aboard (or samples died with you): what was lost, and the nearest system to rescan", "danger"],
   ["rigs", "Rhino mining rigs: the co-pilot button's confirmation (rig placed, picked up, six out) and what a rig collected", null],
   ["rigleash", "a Rhino mining rig too far from you (over the rig warning distance, again at 4.5 km; the game destroys it at 5 km)", "danger"],
+  ["limpets", "limpets and the hold: undocking a mining ship (a refinery, a collector or prospector controller) with no limpets aboard, when Remind me to take limpets is ticked above", "alert"],
   ["ring", "a body just scanned has a ring of a type ticked in Settings → Mining (pristine ones only, if ticked there): once per body and visit, bodies scanned together in one line; nothing until a type is ticked", "find"],
   ["rigsout", "docking the Rhino with rigs still marked out on the body, and which are probably full (Outrider's own record: a rig picked up without a tap still counts until you mark it on the surface map)", null],
   ["uploads", "an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again after it: a card at the top of the page too, never spoken", null]];
@@ -2289,7 +2290,7 @@ const UNSPOKEN = new Set(Object.keys(UNSPOKEN_WHY));
 const alertCfgBase = () => Object.assign({enabled: false}, Object.fromEntries(ALERTS.map(([k]) => [k, true])),
   // a notification on every jump (or scoop, or FSS) would be noise: these are spoken by default, not notified
   {jump: false, honk: false, brief: false, fss: false, mapped: false, scoop: false, scoopstop: false, supercharge: false, highway: false, autotarget: false, wrongtarget: false,
-   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false});
+   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false, limpets: false});
 const alertCfg = Object.assign(alertCfgBase(), store.get("alerts", {}));
 // off until you tick them (the whole row): the jumponium call-out
 const OFF_KINDS = {jumponium: false};
@@ -2997,7 +2998,7 @@ const LINE_SAMPLES = {
   find_bio: {body: "B 7", value: "19.0M"}, sample_clear: {genus: "Stratum"},
   codex: {entry: "Stratum Tectonicas", what: "new to your codex for this region"},
   phenomena: {what: "three notable stellar phenomena, all in rings"}, ggg: {body: "B 3"}, rare_star: {what: "a black hole at B"},
-  ring_found: {body: "A 3", ring: "a pristine metallic ring"}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
+  ring_found: {body: "A 3", ring: "a pristine metallic ring"}, limpets_none: {}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
   firsts_seen: {system: "Drojau LL-O b26-3", value: "14.2M"},
   surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
@@ -3070,6 +3071,14 @@ let rigsCard = null;
 const RIGS_OUT_HINT = "Picked one up without a tap? Mark it with the ✕ by its slot in the surface map's legend.";
 // Settings → Mining: the ring types to watch for (the miner's call-out; none ticked, nothing said) and pristine only
 const RING_KINDS = ["Icy", "Rocky", "Metallic", "Metal Rich"];
+// Settings → Mining's other choices (the "mining" setting): the limpet reminder on undocking
+const MINING_DEFAULTS = {limpetWarn: false};
+const miningCfg = () => { const v = store.get("mining", {}) || {};
+  return {limpetWarn: typeof v.limpetWarn === "boolean" ? v.limpetWarn : MINING_DEFAULTS.limpetWarn}; };
+const miningSet = patch => store.set("mining", Object.assign({}, store.get("mining", {}) || {}, patch));
+// the alerts that are mining's: their switches sit in Settings → Mining's own table, not Settings → Alerts (the author,
+// 2026-10-18: until the Alerts table is cleaned up); every other part (sounds, crew, the tally) treats them as alerts
+const MINING_ALERTS = new Set(["ring", "limpets"]);
 const RESERVE_WORDS = {PristineResources: "Pristine", MajorResources: "Major", CommonResources: "Common", LowResources: "Low", DepletedResources: "Depleted"};
 const miningRings = () => { const v = store.get("miningRings", {}) || {};
   return {types: Array.isArray(v.types) ? RING_KINDS.filter(t => v.types.includes(t)) : [], pristine: !!v.pristine}; };
@@ -9360,6 +9369,9 @@ function onData() {
       else if ((m.kind === "upload_down" || m.kind === "upload_back") && m.text)   // S3: the banner has the card; this notifies
         alertOut("uploads", m.text, m.kind === "upload_down" ? "Settings → Uploads has the detail" : "", {tag: m.kind});
       else if (m.kind === "ring" && m.body) ringHits.push(m);
+      else if (m.kind === "limpets" && m.what === "none" && miningCfg().limpetWarn)   // a mining ship undocked without limpets
+        alertOut("limpets", "No limpets aboard", "a mining ship left the pad without any (Settings → Mining)",
+                 {tag: "limpets_none", say: () => line("limpets_none", {}, "No limpets aboard. Turn back for some before we head out.")});
       else if (m.kind === "rig_leash" && m.text)   // a rig past the leash warning, or lost at 5 km: danger
         alertOut("rigleash", m.text.replace(/\.$/, ""), "", {tag: "rig_leash", say: m.text});
       else if (m.kind === "rigs_out" && m.text) {   // the Rhino docked with rigs still marked out: spoken, and a card
@@ -9508,7 +9520,7 @@ const ALERT_SHORT = {arrival: "Arrival", game: "Game start and quit", jump: "FSD
   leaving: "Leaving", fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped", supercharge: "Supercharge", find: "Find",
   jumponium: "Jumponium", sampling: "Sampling", approach: "High-g approach", bodybrief: "Body brief", docking: "Docking", sell: "Selling", saleleft: "Sale left data",
   unsold: "Unsold", firstsseen: "Firsts scanned by others", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
-  rigsout: "Rigs out", ring: "Rings to mine", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", refuelshort: "Short of the refuel stop", lastscoop: "Last scoopable star", autotarget: "Auto-target", wrongtarget: "Wrong target", manual: "Asked for",
+  rigsout: "Rigs out", ring: "Rings to mine", limpets: "Limpets", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", refuelshort: "Short of the refuel stop", lastscoop: "Last scoopable star", autotarget: "Auto-target", wrongtarget: "Wrong target", manual: "Asked for",
   exo: "Exomastery route", riches: "Survey routes", trade: "Trade route", uploads: "Uploads failing"};
 const speechMuted = new Set();   // kinds turned off from the tally this session (each shows an undo)
 // "This session: Arrival brief 42 🔇 · FSD charge 40 (3 dropped) 🔇 · …": every kind that was said or queued (not the
@@ -9526,7 +9538,7 @@ function speechTallyHtml() {
 // the tally's 🔇 and undo: the same per-alert speech setting as the table's 🗣 tick, which is kept in step
 function setAlertSpeak(kind, on) {
   alertSpeak[kind] = on; store.set("alertSpeak", alertSpeak);
-  const cb = document.querySelector(`#alertOpts [data-aspeak="${kind}"]`); if (cb) cb.checked = on;
+  const cb = document.querySelector(`#alertOpts [data-aspeak="${kind}"], #miningAlertOpts [data-aspeak="${kind}"]`); if (cb) cb.checked = on;
   if (on) speechMuted.delete(kind); else speechMuted.add(kind);
   drawSpeechLog();
 }
@@ -9674,12 +9686,14 @@ document.getElementById("voiceCmds").addEventListener("toggle", e => { if (e.tar
 const alertDialog = document.getElementById("alertDialog");
 // a heading over a group of alerts in the list, before its first one: the discoveries together, each still its own row
 const ALERT_GROUPS = {phenomena: "Discoveries: the rare and curious things the FSS finds, said with delight (each has its own switches)"};
-document.getElementById("alertOpts").innerHTML = ALERTS.map(([k, label, snd]) =>
+const alertRowsHtml = rows => rows.map(([k, label, snd]) =>
   (ALERT_GROUPS[k] ? `<tr class="agroup"><th colspan="5">${esc(ALERT_GROUPS[k])}</th></tr>` : "") +
   `<tr><td>${esc(label)}</td><td><input type="checkbox" data-alert="${k}" aria-label="notify"></td>` +
   `<td>${snd || k === "arrival" ? `<input type="checkbox" data-asound="${k}" aria-label="sound">` : `<span class="unk" title="${k === "discovery" ? "the target sound" : "no sound"}">·</span>`}</td>` +
   `<td>${UNSPOKEN.has(k) ? `<span class="unk" title="not spoken: ${esc(UNSPOKEN_WHY[k])}">·</span>` : `<input type="checkbox" data-aspeak="${k}" aria-label="speak">`}</td>` +
   `<td class="acrew" data-acrew="${k}" hidden></td></tr>`).join("");
+document.getElementById("alertOpts").innerHTML = alertRowsHtml(ALERTS.filter(([k]) => !MINING_ALERTS.has(k)));
+document.getElementById("miningAlertOpts").innerHTML = alertRowsHtml(ALERTS.filter(([k]) => MINING_ALERTS.has(k)));
 for (const [attr, cfg, key] of [["asound", alertSound, "alertSound"], ["aspeak", alertSpeak, "alertSpeak"]])
   alertDialog.querySelectorAll(`[data-${attr}]`).forEach(cb => {
     cb.checked = !!cfg[cb.dataset[attr]];
@@ -9811,10 +9825,12 @@ for (const [id, key] of [["sayBio", "sayBio"], ["sayGeo", "sayGeo"], ["sayHazard
   document.getElementById(id).onchange = e => store.set(key, e.target.checked);
 // Settings → Mining: the ring types ticked and pristine only (miningRings)
 function drawMiningRings() {
+  document.getElementById("miningLimpets").checked = miningCfg().limpetWarn;
   const c = miningRings();
   for (const b of document.querySelectorAll("#miningRings [data-ring]")) b.checked = c.types.includes(b.dataset.ring);
   document.getElementById("ringPristine").checked = c.pristine;
 }
+document.getElementById("miningLimpets").onchange = e => miningSet({limpetWarn: e.target.checked});
 document.getElementById("miningRings").onchange = () => {
   store.set("miningRings", {types: [...document.querySelectorAll("#miningRings [data-ring]:checked")].map(b => b.dataset.ring),
                             pristine: document.getElementById("ringPristine").checked});
@@ -10430,7 +10446,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
   hull: "hull, heat, interdiction", carrier: "your carrier", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
-  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", uploads: "uploads"};
+  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", uploads: "uploads"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
 const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "region", "streak_new", "streak_known"],
   game: ["game_start", "welcome_back", "game_exit", "session_recap"], jump: ["fsd_charge"], brief: ["arrival_brief"],
@@ -10441,7 +10457,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], carrier: ["carrier_arrived", "carrier_departs"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
-  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"]};
+  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none"]};
 const XO_SPEAKS = "voice answers, the status report, the co-pilot, the hush and speech on";
 const crewOn = () => !!(data && data.crew && data.crew.on);
 const crewDangerOn = () => !!(data && data.crew && data.crew.danger !== false);
@@ -10520,12 +10536,12 @@ function drawCrew(force = false) {
 // switch is on; hidden with the crew off (its cells emptied, so Find a setting finds no role names there)
 let alertCrewDrawn = "";
 function drawAlertCrew(force = false) {
-  const on = crewOn() && crewRoles().length > 0, c = data && data.crew, tb = document.getElementById("alertOpts");
-  document.querySelectorAll("#alertTable .acrew").forEach(el => { el.hidden = !on; });
+  const on = crewOn() && crewRoles().length > 0, c = data && data.crew;
+  document.querySelectorAll("#alertTable .acrew, #miningAlertTable .acrew").forEach(el => { el.hidden = !on; });
   const key = on ? JSON.stringify([c.rows, c.danger, crewRoles().map(r => r.id), Object.values(c.members || {}).map(m => m.name)]) : "";
-  if (!force && (key === alertCrewDrawn || (tb.contains(document.activeElement) && document.activeElement.matches("[data-arole]")))) return;
+  if (!force && (key === alertCrewDrawn || (document.activeElement && document.activeElement.matches("[data-arole]")))) return;
   alertCrewDrawn = key;
-  for (const td of tb.querySelectorAll("td[data-acrew]")) {
+  for (const td of document.querySelectorAll("#alertOpts td[data-acrew], #miningAlertOpts td[data-acrew]")) {
     const row = td.dataset.acrew;
     if (!on) { td.innerHTML = ""; continue; }
     if (UNSPOKEN.has(row)) { td.innerHTML = `<span class="unk" title="not spoken: nobody says it">·</span>`; continue; }
@@ -10641,9 +10657,10 @@ crewUi = true;
     if (e.target.closest("[data-cplay]")) crewPlay(tr.dataset.crole, crewOut);
     else if (e.target.closest("[data-creset]")) crewPost({role: tr.dataset.crole, reset: true});
   });
-  document.getElementById("alertOpts").addEventListener("change", e => {
-    if (e.target.matches("[data-arole]")) crewPost({row: e.target.dataset.arole, role: e.target.value});
-  });
+  for (const id of ["alertOpts", "miningAlertOpts"])
+    document.getElementById(id).addEventListener("change", e => {
+      if (e.target.matches("[data-arole]")) crewPost({row: e.target.dataset.arole, role: e.target.value});
+    });
 }
 // ---- More voices (Settings > Voice): Piper's catalogue, from the server (GET api/voices/catalogue). Picking one
 // downloads it where Outrider runs and switches to it (POST api/voice, as the voice list does), so a Docker install has
@@ -13634,7 +13651,7 @@ const TAB_ALERT_NAMES = {discovery: "Targeting a system", arrival: "Arriving som
   jumponium: "Jumponium materials", sampling: "Exobiology unfinished", approach: "High gravity", bodybrief: "Bio signals on approach",
   sell: "Selling", saleleft: "Data left after a sale", unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction",
   carrier: "Carrier arrived", codex: "New codex entry", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
-  rigsout: "Rigs still out", ring: "Rings to mine", uploads: "Uploads failing"};
+  rigsout: "Rigs still out", ring: "Rings to mine", limpets: "Limpets and the hold", uploads: "Uploads failing"};
 function tabDrawAlerts() {
   const tog = (attr, k, on, what) => `<label class="tb-tog"><input type="checkbox" data-${attr}="${esc(k)}"${on ? " checked" : ""}> ${what}</label>`;
   document.getElementById("tabAlertList").innerHTML = ALERTS.map(([k, label, snd]) =>

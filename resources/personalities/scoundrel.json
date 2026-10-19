@@ -1836,6 +1836,44 @@
     "{name}, {bodies} have {types} rings. Pick the nearest one. Damn fuel's not free."
    ]
   },
+  "limpets_none": {
+   "scoundrel": [
+    "Hold on, {name}. Not a single limpet aboard. Turn around and buy some.",
+    "We're going mining with zero limpets? That's robbing a bank with no bag. Back to the pad.",
+    "No limpets in the hold, {name}. The rocks won't collect themselves.",
+    "Sir. Limpet count is zero. Turn back and stock up before we go.",
+    "Funny thing, {name}. All those controllers, and not one limpet to fire. Back to the station.",
+    "Limpets: none. Plan: turn around, buy some, look smart.",
+    "We forgot the limpets. I won't tell anyone if you go back now.",
+    "{name}, no limpets aboard. A miner without limpets is just a tourist with a laser.",
+    "Turn around, {name}. We brought the tools and none of the little helpers. Buy limpets.",
+    "No limpets? Then nobody's picking anything up out there. Back to the shop.",
+    "Quick question. Where are the limpets? Oh, right. Still on the shelf. Go get them.",
+    "{ship} is a mining rig with no limpets. Fix that before we leave the station.",
+    "Not one limpet in the hold, {name}. Mining without them is all work and no pay.",
+    "Whoa, whoa. Zero limpets. I'm not chasing rocks by hand, {name}.",
+    "Before we go digging, one small thing. We have no limpets. Go buy some.",
+    "Empty limpet bay, {name}. A getaway with no bags, that's what this is. Turn back."
+   ],
+   "scoundrel_profane": [
+    "Hey! No damn limpets aboard. Turn around, {name}.",
+    "Mining with zero limpets? What the hell, {name}?",
+    "Shit, the hold's empty. Not one limpet. Back to the pad.",
+    "Sir. No limpets. Turn back and buy the bloody things.",
+    "No limpets, {name}. What, we're catching rocks in our damn teeth?",
+    "Crap. All those controllers and nothing to fire out of them. Go buy limpets.",
+    "Limpet count: zero. Hell of a way to start a mining trip.",
+    "A miner with no limpets is a broke jerk with a laser, {name}. A damn broke one. Back you go.",
+    "Fuck me, we forgot the limpets. Back to the station before anyone sees.",
+    "I'm not hauling rocks aboard by hand, damn it. Go get limpets.",
+    "Turn this bloody thing around, {name}. We've got no limpets.",
+    "{ship} with no limpets is a big, expensive piece of crap. Go buy some.",
+    "Sod this. Zero limpets. Back to the shop, {name}.",
+    "Hold up. Where the hell are the limpets? Still on the shelf, that's where.",
+    "We left without limpets, {name}. Bloody amateurs. Go back.",
+    "No limpets, no cargo, no credits. Shit plan. Turn around."
+   ]
+  },
   "surface_site": {
    "scoundrel": [
     "{what}. Old ruins, old loot. My favourite kind of real estate.",

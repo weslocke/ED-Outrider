@@ -1831,6 +1831,44 @@
     "{bodies}. Hell of a list, {name}, and every one has rings you're hunting: {types}."
    ]
   },
+  "limpets_none": {
+   "naval_us": [
+    "Be advised, {name}: we have no limpets aboard. Recommend we turn back and buy some.",
+    "Limpet count zero. The controllers have nothing to launch.",
+    "{name}, the hold shows no limpets. Recommend we return to the station before heading out.",
+    "Mining Officer to the bridge. No limpets embarked. Request we put back in.",
+    "No limpets in the hold, {name}. Recommend we restock before we reach the ring.",
+    "We've sortied without limpets. Recommend we come about and resupply.",
+    "Limpet inventory: none. The rigs can't work without them.",
+    "{name}, prospectors and collectors are fitted, but there's nothing to fire. Recommend we buy limpets.",
+    "Be advised, zero limpets on board. Recommend a stop at the commodities market.",
+    "Logistics report: no limpets in the hold. Recommend we turn back now.",
+    "{ship} is fitted for mining with no limpets aboard. Recommend we resupply first.",
+    "No limpets, {name}. Better to turn around here than at the ring.",
+    "Hold check complete. Limpets: none. Recommend we redock and load out.",
+    "{name}, we're short one essential. No limpets aboard. Recommend we return.",
+    "The limpet controllers report empty. Recommend we purchase limpets before departure.",
+    "Mining Officer reporting, {name}: no limpets embarked. Request permission to turn back."
+   ],
+   "naval_us_profane": [
+    "{name}, we left without a single damn limpet. Turn her around.",
+    "No limpets aboard. Hell of a way to start a mining run.",
+    "Damn it, the hold's empty of limpets. Back to the station, {name}.",
+    "Mining Officer here. Zero limpets. Not one damn drone to launch.",
+    "We're fitted for the rigs and carrying no limpets. Hell, turn back.",
+    "{name}, the controllers are begging for limpets and we have none, damn it.",
+    "No limpets in the hold. Let's fix that before we fly all the damn way to the ring.",
+    "Well, damn. We undocked with an empty limpet locker.",
+    "Turn back, {name}. No limpets, and I'm not mining with my bare damn hands.",
+    "Hell, {name}, we forgot the limpets. Back to the market.",
+    "{ship} has lasers, controllers and not a damn limpet. Recommend we restock.",
+    "Zero limpets aboard. That ring can wait a few damn minutes.",
+    "Damn, {name}. Prospectors fitted, nothing to prospect with. Buy limpets.",
+    "No limpets embarked. Hell of an oversight, Skipper. Let's go back.",
+    "Limpet count: zero. Come about, {name}, before this gets damn embarrassing.",
+    "Bridge, this is mining. We are flat out of limpets, damn it."
+   ]
+  },
   "surface_site": {
    "naval_us": [
     "Surface sites: {what}.",

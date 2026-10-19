@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-18 · Mining A: a reminder to take limpets; mining's alerts in Settings → Mining
+- **Remind me to take limpets** (Settings → Mining, off by default; the author): undocking (a station or a carrier,
+  not a taxi or multicrew) in a ship with a refinery or a collector, prospector, mining or universal limpet controller
+  (`MINING_KIT`, its last Loadout) and no limpets in the hold (the Cargo snapshot known) is a "limpets" moment; the
+  Mining Officer says it when the box is ticked. Live only. 15 lines a list (`limpets_none`).
+- **Mining's alerts have their switches in Settings → Mining** (the author: until Alerts is cleaned up): Rings to mine
+  and Limpets leave the Alerts table for a table of their own there (notify, sound, speak, crew), `MINING_ALERTS`.
+- `Journals.ship_items()` (the ship's Loadout items) under `docking_computer()` and the new `mining_ship()`. The
+  "mining" setting (`miningCfg`) joins SETTINGS_KEYS and BROWSER_SETTINGS.
+
 ## 2026-10-18 · Here's rings: the count once when every ring is mapped
 - "2" over "2🗺/20" read as the rings listed twice (the author): with every ring mapped the cell is "2🗺/20" alone;
   partly mapped, the count over "1🗺/5"; none mapped, the count (`ringsCell`).

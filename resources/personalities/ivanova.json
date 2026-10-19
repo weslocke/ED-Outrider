@@ -1829,6 +1829,46 @@
     "{bodies}. {types} rings. The {ship} has not had a decent fight with a rock in ages, damn it."
    ]
   },
+  "limpets_none": {
+   "ivanova": [
+    "{name}, we undocked with no limpets. None. Turn around and buy some.",
+    "Zero limpets in the hold. We are a mining ship with no miners. Go back.",
+    "No limpets aboard, {name}. The controllers are fitted and the racks are empty. Back to the pad.",
+    "Mining Officer here. We have no limpets. I would like to mention this before the ring, not after.",
+    "Limpet count: zero. My grandmother would turn the ship around. So should you.",
+    "We are leaving without limpets, {name}. Again. Turn back.",
+    "No limpets. The prospectors cannot prospect and the collectors cannot collect. Buy some.",
+    "{name}, the hold has no limpets. Unless you plan to catch the fragments by hand, dock again.",
+    "Before you ask why nothing launches later: we have no limpets. Turn back now.",
+    "Hold check. Not one limpet. We go back, or we go mining with harsh language.",
+    "The {ship} is fitted for mining and carries no limpets. That is a very expensive empty box.",
+    "No limpets, {name}. The station will sell us some. It is what stations are for.",
+    "Limpets: none. Flying all the way to the ring to discover this would be very like us. Let us not.",
+    "{name}, we forgot the limpets. I say we, to be polite. Go back.",
+    "Empty limpet racks. Dock again, buy a hold's worth, then we go.",
+    "No limpets on board. I have seen this end badly. Back to the station, {name}.",
+    "We have controllers and no limpets. Like a gun with no bullets. Turn back."
+   ],
+   "ivanova_profane": [
+    "{name}, we have no fucking limpets. Turn this ship around.",
+    "Oh, for God's sake. Not one limpet aboard. Back to the damn pad.",
+    "Limpet count is zero. Zero. We are a mining ship carrying shit-all. Go back.",
+    "Chyort. We undocked without limpets. Turn around before I lose my bloody mind.",
+    "{name}, the racks are empty. Scoop fragments with your bare hands? Hell no. Buy limpets.",
+    "No limpets, damn it. The prospectors are on holiday and the collectors are unemployed.",
+    "Before we fly all the way to the bloody ring: we have no limpets. Dock again.",
+    "The {ship} is rigged for mining and carries fuck all to mine with. Limpets, {name}. Go.",
+    "My grandmother once went to a wedding without her teeth. Do not be her. No limpets. Turn back, damn it.",
+    "Hold check, {name}. Limpets: none. What the hell were we going to do out there, glare at rocks?",
+    "Zero limpets. I know this story. It ends with us swearing at an asteroid. Turn the hell around.",
+    "We forgot the fucking limpets. I say we. I mean you, {name}.",
+    "Controllers fitted, racks empty. A very expensive shit-box. Back to the station.",
+    "Limpets? None. Not a damn one. Go and buy some, then we talk.",
+    "Hell of a way to start a shift. No limpets aboard. Dock again, {name}.",
+    "Buy limpets, {name}. Now. Before we waste a whole fucking trip.",
+    "I am not flying to the bloody ring just to turn around there. No limpets. Go back."
+   ]
+  },
   "surface_site": {
    "ivanova": [
     "{name}. {what}. Now we are talking.",

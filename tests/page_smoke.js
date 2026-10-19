@@ -9317,10 +9317,11 @@ const releasePayloads = async () => {
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {};
     w.eval(`window.__rg = {data, speak, flags: [speechOn, isSpeaker], hush: hushState, alert: lastAlert, aspeak: alertSpeak.ring,
-        store: localStorage.getItem("miningRings")};
+        lspeak: alertSpeak.limpets, store: localStorage.getItem("miningRings"), mstore: localStorage.getItem("mining")};
       window.__spoken = [];
       speak = (t, o) => window.__spoken.push([t, o.kind]);
-      speechOn = true; isSpeaker = true; hushState = null; alertSpeak.ring = true; localStorage.removeItem("miningRings"); drawMiningRings();
+      speechOn = true; isSpeaker = true; hushState = null; alertSpeak.ring = true; alertSpeak.limpets = true;
+      localStorage.removeItem("miningRings"); localStorage.removeItem("mining"); drawMiningRings();
       window.__ring = (body, types, reserve = null) => ({kind: "ring", system: "9", body, types, reserve});
       window.__feed = (...ms) => { linePlain = true; try { data = Object.assign({}, data, {moments: ms.map((m, i) => ({...m, seq: lastMomentSeq + 1 + i}))}); onData(); }
                                    finally { linePlain = false; } return JSON.stringify(__spoken.splice(0)); };`);
@@ -9361,13 +9362,25 @@ const releasePayloads = async () => {
       const ringSec = [...card.querySelectorAll(".sec")].find(x => /^Rings/.test(x.querySelector(".lbl").textContent));
       got.ringCard = [ringSec.querySelector(".lbl").textContent, [...ringSec.querySelectorAll("li")].map(li => [...li.querySelectorAll(".hs")].map(x => x.textContent))];
       w.eval("delete window.__rb");
+      // A, the limpet reminder (the author, 2026-10-18): off by default, its box turns it on; the mining alerts' switches
+      // sit in Settings → Mining's own table, not Settings → Alerts
+      got.limpetsOff = feed(`{kind: "limpets", what: "none"}`);
+      const lb = d.getElementById("miningLimpets");
+      got.limpetBox = lb.checked;
+      lb.checked = true; lb.dispatchEvent(new w.Event("change", {bubbles: true}));
+      got.limpetsOn = [feed(`{kind: "limpets", what: "none"}`), w.eval(`localStorage.getItem("mining")`), w.eval("lastAlert.title")];
+      got.tables = [[...d.querySelectorAll("#miningAlertOpts [data-aspeak]")].map(x => x.dataset.aspeak).join(),
+                    !!d.querySelector('#alertOpts [data-aspeak="ring"], #alertOpts [data-aspeak="limpets"]'),
+                    !!d.querySelector('#alertOpts [data-aspeak="hull"]'), d.querySelectorAll("#miningAlertOpts [data-acrew]").length];
       got.caps = w.eval(`fillLine("{ring} at {body}. So: {types} rings. {types}!", {ring: "a metallic ring", body: "A 3", types: "icy"})`);
       w.eval(`localStorage.setItem("miningRings", JSON.stringify({types: ["Rocky", "Bogus"], pristine: false})); drawMiningRings()`);
       got.ui = [[...d.querySelectorAll("#miningRings [data-ring]")].filter(b => b.checked).map(b => b.dataset.ring), d.getElementById("ringPristine").checked,
                 w.eval("JSON.stringify(miningRings())")];
     } finally {
       w.eval(`const k = window.__rg; data = k.data; speak = k.speak; [speechOn, isSpeaker] = k.flags; hushState = k.hush; lastAlert = k.alert;
-        alertSpeak.ring = k.aspeak; if (k.store === null) localStorage.removeItem("miningRings"); else localStorage.setItem("miningRings", k.store);
+        alertSpeak.ring = k.aspeak; alertSpeak.limpets = k.lspeak;
+        if (k.store === null) localStorage.removeItem("miningRings"); else localStorage.setItem("miningRings", k.store);
+        if (k.mstore === null) localStorage.removeItem("mining"); else localStorage.setItem("mining", k.mstore);
         drawMiningRings(); delete window.__rg; delete window.__spoken; delete window.__ring; delete window.__feed;`);
       await releasePayloads();
     }
@@ -9380,6 +9393,9 @@ const releasePayloads = async () => {
       caps: "A metallic ring at A 3. So: icy rings. Icy!",
       tip: [false, "Metallic rings", ["Painite", "✔", "✔"], ["Gold", "✔", ""], ["Rhodplumsite", "", "✔"], false, "Icy,Rocky,Metallic,Metal Rich", 4],
       tipGone: true,
+      limpetsOff: [], limpetBox: false,
+      limpetsOn: [[["No limpets aboard. Turn back for some before we head out.", "limpets"]], JSON.stringify({limpetWarn: true}), "No limpets aboard"],
+      tables: ["limpets,ring", false, true, 2],
       ringCell: ["1🗺/3", "2 rings, 1 mapped (🗺), 3 hotspots · Pristine reserves\nA Ring · Metallic: Platinum 2, Painite 1\nB Ring · Icy: not mapped", "",
                  '2<div class="sub2 unk">1🗺/3</div>', "2🗺/3", "2", ""],
       ringCard: ["Rings · Pristine reserves", [["Platinum ×2", "Painite ×1"], ["not mapped"]]],

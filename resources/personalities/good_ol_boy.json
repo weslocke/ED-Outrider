@@ -1848,6 +1848,46 @@
     "{bodies} have {types} rings. Sweeter than pecan pie and worth a damn detour."
    ]
   },
+  "limpets_none": {
+   "good_ol_boy": [
+    "Hold on, partner. We undocked without a single limpet aboard. Let's turn back and buy some.",
+    "{name}, the limpet racks are empty. Swing back in and stock up before we head out.",
+    "Whoa there, buddy. No limpets in the hold. Can't go fishin' with an empty tackle box.",
+    "Dadgum, we left without limpets. Back to the pad, pal, and grab us a few.",
+    "Grandpa never went fishin' without bait, {name}. We got no limpets. Let's go buy some.",
+    "Mining Officer here. Zero limpets aboard, chief. Turn her around and fill the racks.",
+    "Shoot, friend, the controllers are fitted but there ain't a limpet in the hold. Back inside we go.",
+    "Hold your horses. No limpets in {ship}. Let's pop back in and pick some up.",
+    "Partner, that's like goin' to a cookout without the charcoal. No limpets. Turn back.",
+    "{name}, I count zero limpets. Best dock again and buy some before we go rock huntin'.",
+    "Uh oh, buddy. Empty limpet bay. The station's right behind us, so let's grab some.",
+    "Heck, we forgot the limpets, pal. Ease on back and stock up.",
+    "No limpets, friend. My prospectors got nothin' to fly. Let's turn back.",
+    "Well, I'll be. We're headed out to mine with no limpets aboard. Back we go, chief.",
+    "Before we get far, {name}, no limpets in the hold. Go on back and buy a rack full.",
+    "Mama'd say you forgot your lunch. No limpets aboard, partner. Let's turn around.",
+    "Gosh darn it, the hold's bare of limpets, buddy. Let's fix that before we leave."
+   ],
+   "good_ol_boy_profane": [
+    "Hold the damn phone, partner. We ain't got a single limpet aboard. Turn back.",
+    "{name}, we undocked with no limpets. Hell, let's go buy some before we get far.",
+    "Shit, buddy, the limpet bay's empty. Back to the pad.",
+    "Well, damn. Mining rig, no limpets. That's a pickup with no tires, pal. Turn around.",
+    "Grandpa'd tan my hide. We left without limpets, {name}. Go on back and buy some, damn it.",
+    "Mining Officer here, and I'm cussin' like hell. Zero limpets aboard, chief. Back inside.",
+    "Hell's bells, friend, no limpets in the hold. Swing back and stock the racks.",
+    "Crap on a cracker, we forgot the limpets. Let's go back before the station's a speck.",
+    "No limpets in {ship}, partner. Can't mine a damn thing like that. Turn her around.",
+    "Fuck me, buddy, the limpet racks are bare. Back to the station.",
+    "{name}, goin' fishin' with no bait is a hell of a way to waste a day. No limpets. Let's turn back.",
+    "Damn it all, pal, the controllers are fitted and the hold's got zero limpets. Back we go.",
+    "Well, kiss my grits, we ain't got a limpet to our name. Dock up and buy some, friend. Damn.",
+    "Holy hell, chief, no limpets. Turn around before we fly all the way out there for nothin'.",
+    "Son of a biscuit, partner, empty limpet bay. Hell, the station's right there. Let's grab some.",
+    "Ain't no limpets aboard, {name}, and I ain't throwin' rocks by hand. Turn the damn ship around.",
+    "Shoot, that's a damn shame. No limpets, buddy. Back to the pad and stock up."
+   ]
+  },
   "surface_site": {
    "good_ol_boy": [
     "Lord have mercy, {name}. {what}.",

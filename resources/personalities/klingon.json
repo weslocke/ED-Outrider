@@ -1845,6 +1845,44 @@
     "{bodies}! {types} rings! Crap, I do not know where to point the laser first!"
    ]
   },
+  "limpets_none": {
+   "klingon": [
+    "{name}! We undocked with no limpets! Turn back and buy some!",
+    "Mining Officer here. The hold has no limpets! A hunter without hounds! Go back to the pad!",
+    "No limpets aboard, {name}! We cannot hunt rocks with empty controllers!",
+    "Hold! The limpet bay is empty! Return to the station before we fly out for nothing!",
+    "What is this? Not one limpet in the hold! Turn around, {name}!",
+    "We carry the controllers but no limpets. A batleth with no blade! Go back and buy them!",
+    "{name}, the limpets! We have none! Back to the station, and quickly!",
+    "Zero limpets aboard {ship}! A warrior checks the armoury before battle. Turn back!",
+    "No prospectors, no collectors, nothing! The hold is empty of limpets, {name}!",
+    "Turn {ship} around! We forgot the limpets, and the rings will laugh at us!",
+    "Mining Officer reporting! The controllers are hungry and the hold has no limpets to feed them!",
+    "{name}! Would you charge into battle without weapons? We have no limpets! Return and buy!",
+    "Empty limpet stores! The station is still behind us. Go back!",
+    "No limpets in the hold! Without them, the hunt is only sightseeing. Turn back, {name}!",
+    "Stop! Before we reach the ring, buy limpets! We have none!",
+    "A mining ship with no limpets is a shame to its crew, {name}! Back to the pad!"
+   ],
+   "klingon_profane": [
+    "{name}! No limpets in the hold! Turn this damn ship around!",
+    "Mining Officer here. Not one bloody limpet aboard! Back to the pad!",
+    "What the hell? We are a mining ship with no limpets! Turn back, {name}!",
+    "Empty limpet bay! Do you want the rocks to laugh at us, damn it? Go back and buy some!",
+    "No limpets! Only a damned fool rides into a ring empty handed! Back to the station!",
+    "Shit, {name}! The controllers are fitted, the hold is empty! Buy limpets!",
+    "We left without limpets, like a drunken targ leaving without its legs! Turn around, damn it!",
+    "Zero limpets aboard {ship}! Hell, even a Ferengi remembers his tools! Go back!",
+    "{name}, the limpet bay is as empty as a coward's heart! Buy some, damn it!",
+    "No prospectors, no collectors, no bloody limpets! Return to the pad!",
+    "Damn it, {name}! You would bring a batleth with no blade? We have no limpets!",
+    "Turn back! A mining run with no limpets is a damn joke, and I will not be the punchline!",
+    "Not one limpet! By Kahless, what the hell were we thinking? Back to the station!",
+    "The hold has no limpets, {name}! Fix it now, before the station is out of sight, damn it!",
+    "Hell, no limpets! The ring will wait. Our shame will not. Turn back!",
+    "Mining Officer to the bridge: we forgot the bloody limpets! Go back and buy them!"
+   ]
+  },
   "surface_site": {
    "klingon": [
     "{name}! {what}! My blood stirs!",

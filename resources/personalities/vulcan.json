@@ -954,6 +954,27 @@
     "{bodies} have {types} rings. You asked to be told. I am telling you."
    ]
   },
+  "limpets_none": {
+   "vulcan": [
+    "{name}, the hold contains no limpets. A mining expedition without them would be illogical.",
+    "No limpets aboard. I recommend we return to the pad and purchase some.",
+    "The limpet controllers are fitted. The limpets are not. I suggest we turn back.",
+    "{name}. Zero limpets in the hold. The collectors cannot collect and the prospectors cannot prospect.",
+    "We have departed with no limpets, {name}. Returning to dock is the logical course.",
+    "Limpet count: zero. Please reconsider leaving the station.",
+    "I must point out that we carry no limpets. The mining equipment is, at present, decorative.",
+    "{ship} has undocked without limpets. A brief return to the station would correct this.",
+    "No limpets in the cargo hold. I recommend turning back before we reach the ring.",
+    "{name}, the limpet controllers have nothing to control. Purchase limpets before departure.",
+    "Observation. We are a mining ship with no limpets. I suggest docking again.",
+    "The hold has no limpets, {name}. Mining by hand is not an option I would recommend.",
+    "Limpets: none. Logic dictates we buy some before going further.",
+    "I believe humans say we forgot something. We did. The limpets.",
+    "{name}, we left the limpets behind. More precisely, we never bought them. Turn back.",
+    "No limpets aboard. The station is still close. It will not remain so if we continue.",
+    "A reminder, {name}. The prospectors require limpets. We have none. Dock and purchase them."
+   ]
+  },
   "surface_site": {
    "vulcan": [
     "Fascinating. {what}.",

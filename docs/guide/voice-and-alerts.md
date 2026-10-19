@@ -63,6 +63,10 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
   scanned together in one line ("3 bodies with rings you're watching for: A 3, A 5 and B 1"). Off until you tick a type.
   Hover a type (or tap it on a touch screen) for a table of what lasers and cores give in that ring (laser counting
   abrasion blasting and sub-surface deposits; from the Elite Dangerous Wiki)
+- **no limpets aboard** as you undock in a mining ship (a refinery, or a collector or prospector limpet controller)
+  with none in the hold, while you can still turn back: **Remind me to take limpets** in Settings → Mining, off by
+  default. Mining's alerts have their sound, notification, voice and crew switches in Settings → Mining's own table,
+  not under Alerts
 - an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again: a card at the top of
   the page and a notification, never spoken (see [Uploads](uploads.md#status))
 
@@ -90,7 +94,7 @@ browser starts with.
 | Fuel alerts under N jumps | off | Warns once when jumps left at your pace fall under N; also sets the top-up level. |
 | Core modules | 80% | A core module under this shows under hull and is said in the status report. |
 | Surface map | 1,000 m / 500 m / 50 m / 3,500 m | Altitude it shows below, narrowest view, rig spacing ring (0 = none), rig leash warning. |
-| Mining | none ticked | The ring types said when a scanned body has one (Icy, Rocky, Metallic, Metal Rich), and pristine only. |
+| Mining | none ticked, off | The ring types said when a scanned body has one (Icy, Rocky, Metallic, Metal Rich), and pristine only; the limpet reminder on undocking. |
 
 **Export settings** and **Import settings** move them to another browser profile (both are a browser's: the Android app opens no file picker and saves no file the page makes). **Use these for new
 browsers** keeps a copy on the server (`data/browser_defaults.json`, included in backups), so a tablet running
@@ -228,7 +232,7 @@ the sentence ends:
 | Quartermaster | sales, unsold data, your carrier and its trips, losses |
 | Comms Officer | the game's start and exit, someone scanning your firsts, docking pads and refusals, other players' chat (read aloud, below) |
 | Tactical | every danger line (while Danger lines always in Tactical's voice is on) |
-| Mining Officer | the Rhino's rigs, rings to mine |
+| Mining Officer | the Rhino's rigs, rings to mine, limpets |
 
 - **The table.** A row per crew member: an optional **Name** (shown in Settings and the voice lab, and said when another
   crew member mentions it: see Crew lines below), its

@@ -1848,6 +1848,46 @@
     "Oh my stars, {bodies} have {types} rings. Like Christmas mornin', only with more damn rocks."
    ]
   },
+  "limpets_none": {
+   "southern_belle": [
+    "Sugar, we've got limpet controllers and not a single limpet. Turn us around and go buy some.",
+    "Hold on now, {name}. There's not one limpet in the hold. Let's fetch some before we go.",
+    "Lord have mercy, we left without limpets. Back to the pad, honey.",
+    "Darlin', going out to mine with no limpets is like going to a fish fry without the fish.",
+    "No limpets aboard, sweetie. Grandmama never went to market without her basket.",
+    "{name}, the hold's empty of limpets. Pop back in and pick some up, if you please.",
+    "Now, sugar, I hate to fuss, but we've got zero limpets. Let's turn back.",
+    "Heavens, honey, not a limpet to our name. Best go back and buy a few.",
+    "Darlin', those controllers are mighty lonely. No limpets aboard. Back we go.",
+    "Well, I never. Mining without limpets? Turn {ship} around, sugar.",
+    "{name}, we forgot the limpets. That's like baking a pie and forgetting the crust.",
+    "Shoot, honey, no limpets in the hold. Let's go back before we get too far out.",
+    "Sweetie, a mining ship with no limpets is all hat and no cattle. Let's go buy some.",
+    "Gracious me, the limpet rack's bare. Turn back and stock up, darlin'.",
+    "A note from your mining officer, {name}: no limpets. Let's not waste the trip.",
+    "Hold your horses, sugar. No limpets aboard. Back to the station for a few.",
+    "Dang it, honey, we came out with no limpets. Let's mosey back and buy some."
+   ],
+   "southern_belle_profane": [
+    "Well, shit, sugar. Not one limpet aboard. Turn us around.",
+    "{name}, where the hell are our limpets? Back to the pad, honey.",
+    "Damn it, darlin', we're fixin' to go mining with an empty limpet rack.",
+    "Honey, no limpets. Them controllers ain't worth a damn without 'em.",
+    "Lord have mercy, we flew off without the damn limpets. Back we go.",
+    "Sweetie, a mining run with no limpets is a fish fry with no fish, and that's a damn shame.",
+    "Hell's bells, {name}, the hold's bare of limpets. Go buy some.",
+    "Turn {ship} around, sugar. We ain't got a single damn limpet.",
+    "Bless your heart, you left without limpets. Back you go, damn it.",
+    "Holy shit, darlin', zero limpets. Grandmama'd never leave the house without her basket.",
+    "Honey, I'm not digging rocks out with my bare hands. Go buy some damn limpets.",
+    "No limpets, {name}. All hat and no cattle, and I'll be damned if we fly out like that.",
+    "Well, crap on a cracker. Empty limpet rack. Let's turn back, sugar.",
+    "Darlin', we ain't got limpets. Prettiest damn mining ship with nothing to mine with.",
+    "Hold up, sweetie. Limpets, zero. Get your ass back to the pad and buy some.",
+    "Goddamn, honey, did we forget the limpets? We surely did. Back to the station.",
+    "{name}, no limpets aboard. That's a hell of a way to start a mining trip."
+   ]
+  },
   "surface_site": {
    "southern_belle": [
     "Well, I never, {name}. {what}.",

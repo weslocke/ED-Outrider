@@ -496,7 +496,7 @@ BROWSER_SETTINGS = ("alerts", "alertSound", "alertSpeak", "speech", "speechStyle
                     "sayMapped", "honkAnnounce", "sound", "unsoldCfg", "highlightCfg", "bioMinCfg", "maxBonus", "codexNewCounts",
                     "highG", "streakCfg", "skipFloor", "sort", "sorts", "showVisited", "showExplored", "oneJump", "map",
                     "log", "lbRadius", "fShowLost", "fWithin", "mHeld", "bioSort", "bState", "bDays", "hDays", "routineQuiet", "fuelJumps",
-                    "surfaceCfg", "moduleWarn", "tilesCollapsed", "highway", "miningRings")
+                    "surfaceCfg", "moduleWarn", "tilesCollapsed", "highway", "miningRings", "mining")
 BROWSER_DEFAULTS_MAX = 64 * 1024   # bytes
 BROWSER_DEFAULTS_FILE = "browser_defaults.json"   # next to the database
 # Spoken alerts' wording: the lines file, and the personalities a browser starts with (see outrider/speech.py).
@@ -2123,6 +2123,9 @@ JOURNAL_PLANETS = {
     "Helium rich gas giant": "Helium-rich gas giant",
 }
 
+# the modules that make a mining ship (Loadout items, lower case): the limpet reminder (Settings → Mining)
+MINING_KIT = ("int_refinery", "int_dronecontrol_collection", "int_dronecontrol_prospector", "int_multidronecontrol_mining",
+              "int_multidronecontrol_universal")
 # a ringed body's reserves (Scan's ReserveLevel): said with its rings for mining (Settings → Mining)
 RESERVE_LEVELS = {"PristineResources": "Pristine", "MajorResources": "Major", "CommonResources": "Common",
                   "LowResources": "Low", "DepletedResources": "Depleted"}
@@ -3834,16 +3837,35 @@ class Journals:
             meta_set(self.db, "docking", None)
             self.moment("docking", ts, what="clear")
 
-    def docking_computer(self):
-        """Whether the ship flown now has a docking computer fitted (#12), from its latest Loadout kept whole in
-        fleet_loadouts; False when that is not known (no Loadout kept: the pad is said at once)."""
+    def ship_items(self):
+        """The module items of the ship flown now (lower case), from its latest Loadout kept whole in fleet_loadouts;
+        [] when that is not known."""
         sid = (self.ship or {}).get("ship_id")
         row = self.db.execute("SELECT loadout FROM fleet_loadouts WHERE ship_id=?", (sid,)).fetchone() if sid is not None else None
         try:
             mods = json.loads(row[0]).get("Modules") or [] if row and row[0] else []
         except (TypeError, ValueError, AttributeError):
-            return False
-        return any(str(m.get("Item") or "").lower().startswith("int_dockingcomputer") for m in mods if isinstance(m, dict))
+            return []
+        return [str(m.get("Item") or "").lower() for m in mods if isinstance(m, dict)]
+
+    def docking_computer(self):
+        """Whether the ship flown now has a docking computer fitted (#12); False when that is not known (no Loadout
+        kept: the pad is said at once)."""
+        return any(i.startswith("int_dockingcomputer") for i in self.ship_items())
+
+    def mining_ship(self):
+        """Whether the ship flown now is fitted for mining (MINING_KIT: a refinery, a collector or prospector limpet
+        controller); False when its loadout is not known."""
+        return any(i.startswith(MINING_KIT) for i in self.ship_items())
+
+    def limpet_check(self, ts):
+        """Undocking a mining ship with no limpets in the hold: a "limpets" moment (what: none) the page says when
+        Settings → Mining's reminder is on. Live only, and only with the hold known (a Cargo snapshot read)."""
+        sc = self.ship_cargo
+        if not live_event(ts) or not sc.get("snap_ts") or ((sc.get("lines") or {}).get("drones") or {}).get("count"):
+            return
+        if self.mining_ship():
+            self.moment("limpets", ts, what="none")
 
     def handle_body(self, name, ev, ts):
         """ApproachBody (orbital cruise begins: the approach briefing, once per body per session), LeaveBody
@@ -4513,6 +4535,7 @@ class Journals:
         if name in ("Docked", "Undocked"):
             if name == "Undocked" and not ev.get("Taxi") and not ev.get("Multicrew"):
                 self.trade_left_stop(ev, ts)   # a trade stop left with part of its trades made
+                self.limpet_check(ts)          # a mining ship leaving without limpets (Settings → Mining)
             at = ev.get("MarketID") if name == "Docked" and not ev.get("Taxi") and not ev.get("Multicrew") else None
             # an older dock read late (a legacy folder imported after the live one) must not move it back
             if self.fresh("cargo_dock", ts) and at != self.cargo_dock:
