@@ -9411,6 +9411,24 @@ const releasePayloads = async () => {
                    warn(ml({free: 0, full_min: 0})), warn(ml({start: "s2", limpets: 3, full_min: 1})), warn(ml({start: "s2", limpets: 3, full_min: 1}))];
       w.eval("linePlain = false");
       w.eval(`data = Object.assign({}, data, {mining_live: ${JSON.stringify(ml())}}); renderNow()`);
+      // "Hold full"'s where to sell (the author, 2026-10-19): the best price within 100 ly; none there, the nearest buyer
+      // within 500, 2,500, 10,000 ly, carriers reported in the last 7 days among them; your own carrier never a sell
+      // location, but named within your laden jump range
+      got.sell = [];
+      for (const [label, rows, carrier] of [
+          ["near100", {"100": [{station: "Hub", system: "Sys", distance: 34.4, price: 182000, carrier: false}]}, {callsign: "K7Q-1HT", distance: 500}],
+          ["wider", {"100": [{station: "K7Q-1HT", system: "Here", distance: 0, price: 300000, carrier: true, age_s: 60}], "500": [],
+                     "2500": [{station: "Old Carrier", system: "Far", distance: 900, price: 400000, carrier: true, age_s: 10 * 86400},
+                              {station: "Jaques Station", system: "Colonia", distance: 1320, price: 175000, carrier: false}]}, {callsign: "K7Q-1HT", distance: 12}],
+          ["nothing", {}, {callsign: "K7Q-1HT", distance: 500}],
+          ["ownHere", {}, {callsign: "K7Q-1HT", distance: 0}]]) {
+        const asked = [];
+        w.__rows = rows; w.__asked = asked;
+        w.eval(`data = Object.assign({}, data, {carrier: ${JSON.stringify(carrier)}, jump_range_now: 40}); __spoken.length = 0`);
+        await w.eval(`holdFullSell({held: [["platinum", "Platinum", 200]]}, async (within, sort, carriers) => { __asked.push([within, sort, carriers]); return __rows[String(within)] || []; })`);
+        got.sell.push([label, JSON.parse(w.eval("JSON.stringify(__spoken.splice(0))")), asked]);
+      }
+      delete w.__rows; delete w.__asked;
       got.nowMine = d.querySelector("#nowBody .now-mine") ? d.querySelector("#nowBody .now-mine").textContent : null;
       got.caps = w.eval(`fillLine("{ring} at {body}. So: {types} rings. {types}!", {ring: "a metallic ring", body: "A 3", types: "icy"})`);
       w.eval(`localStorage.setItem("miningRings", JSON.stringify({types: ["Rocky", "Bogus"], pristine: false})); drawMiningRings()`);
@@ -9446,6 +9464,11 @@ const releasePayloads = async () => {
       warns: [[], [["5 limpets left.", "limpets"]], [], [["Hold full in about 4 minutes.", "limpets"]], [], [["The hold is full. Time to sell.", "limpets"]],
               [["3 limpets left.", "limpets"]], []],
       nowMine: "⛏ 4 B Ring · Platinum · 60 t/h",
+      sell: [["near100", [["Best price for Platinum within 100 light-years: Hub in Sys, 34 light-years, 182k credits a ton.", "limpets"]], [[100, "price", false]]],
+             ["wider", [["Nearest buyer for Platinum: Jaques Station in Colonia, 1,320 light-years, 175k credits a ton. Or your carrier, 12 light-years: somewhere to unload.", "limpets"]],
+              [[100, "price", false], [500, "near", true], [2500, "near", true]]],
+             ["nothing", [], [[100, "price", false], [500, "near", true], [2500, "near", true], [10000, "near", true]]],
+             ["ownHere", [["Your carrier, here in the system: somewhere to unload.", "limpets"]], [[100, "price", false], [500, "near", true], [2500, "near", true], [10000, "near", true]]]],
       hTable: [["2", "50 %", "40 Digger", "6.0M*", "80 t"], ["1", "", "", "", "0 t"]],
       ringCell: ["1🗺/3", "2 rings, 1 mapped (🗺), 3 hotspots · Pristine reserves\nA Ring · Metallic: Platinum 2, Painite 1\nB Ring · Icy: not mapped", "",
                  '2<div class="sub2 unk">1🗺/3</div>', "2🗺/3", "2", ""],

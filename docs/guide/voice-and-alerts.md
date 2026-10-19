@@ -75,7 +75,10 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
 - **while mining in a ring** (a mining ship, in normal space): Now and the overlay's system strip show the mining line
   (the ring and hotspot, tons an hour, the hold and what it holds, limpets, minutes to full), and the Mining Officer
   says, once a stint: **limpets low** (at the number in Settings → Mining, 5 to start), **hold nearly full** (about 5
-  minutes at your rate) and **hold full**, then the best price within 100 ly for the most you carry (the Sell lookup)
+  minutes at your rate) and **hold full**, then where to sell the most you carry (the Sell lookup): the best price
+  within 100 ly; out in the black, with none that close, the nearest buyer within 500, 2,500 or 10,000 ly (fleet
+  carriers reported in the last week among them). Your own carrier is never named as a place to sell (it pays you
+  nothing), but when it is within your laden jump range it is named as somewhere to unload
 - an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again: a card at the top of
   the page and a notification, never spoken (see [Uploads](uploads.md#status))
 

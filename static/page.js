@@ -2280,7 +2280,7 @@ const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has rep
   ["loss", "your ship was destroyed with data aboard (or samples died with you): what was lost, and the nearest system to rescan", "danger"],
   ["rigs", "Rhino mining rigs: the co-pilot button's confirmation (rig placed, picked up, six out) and what a rig collected", null],
   ["rigleash", "a Rhino mining rig too far from you (over the rig warning distance, again at 4.5 km; the game destroys it at 5 km)", "danger"],
-  ["limpets", "limpets and the hold: undocking a mining ship (a refinery, a collector or prospector controller) with no limpets aboard, when Remind me to take limpets is ticked above; while mining in a ring, limpets low (the number above), the hold nearly full (about 5 minutes at your rate) and full, with the best price nearby for what you carry: each once a stint", "alert"],
+  ["limpets", "limpets and the hold: undocking a mining ship (a refinery, a collector or prospector controller) with no limpets aboard, when Remind me to take limpets is ticked above; while mining in a ring, limpets low (the number above), the hold nearly full (about 5 minutes at your rate) and full, with where to sell what you carry (the best price within 100 ly, else the nearest buyer; your carrier to unload when in jump range): each once a stint", "alert"],
   ["prospect", "the prospector call-out: a rock (not mined before) with your threshold of the minerals ticked above, and motherlodes; duds stay silent", null],
   ["ring", "a body just scanned has a ring of a type ticked in Settings → Mining (pristine ones only, if ticked there): once per body and visit, bodies scanned together in one line; nothing until a type is ticked", "find"],
   ["rigsout", "docking the Rhino with rigs still marked out on the body, and which are probably full (Outrider's own record: a rig picked up without a tap still counts until you mark it on the surface map)", null],
@@ -3219,17 +3219,53 @@ function miningWarn(m) {
     holdFullSell(m);
   }
 }
-// the best price within 100 ly for the most you carry, said and shown after "Hold full" (GET api/cargo/lookup)
-async function holdFullSell(m) {
+// After "Hold full" (the author, 2026-10-19): where to sell the most you carry. The best price within 100 ly (stations);
+// none there (out in the black), the nearest buyer within 500, then 2,500, then 10,000 ly, fleet carriers reported in
+// the last 7 days among them (they move, their markets go stale). Your own carrier is never a place to sell (it pays
+// you nothing: Earnings leaves those sales out), but within your laden jump range it is named as somewhere to unload.
+// ask(within, sort, carriers): the Sell lookup's rows (GET api/cargo/lookup), [] or null on an error; a test passes its own
+const HOLD_SELL_WIDER = [500, 2500, 10000];
+const CARRIER_FRESH_S = 7 * 86400;
+async function holdSellAsk(commodity, tons, within, sort, carriers) {
+  try {
+    const r = await apiJson(`api/cargo/lookup?${new URLSearchParams({commodity, mode: "sell", tons: String(tons), from: "ship", sort,
+      within: String(within), age: within > 100 ? "90" : "30", carriers: carriers ? "1" : "0"})}`);
+    return r && !r.error ? r.rows || [] : null;
+  } catch { return null; }
+}
+async function holdFullSell(m, ask = null) {
   const top = (m.held || [])[0];
   if (!top) return;
-  let r;
-  try { r = await apiJson(`api/cargo/lookup?${new URLSearchParams({commodity: top[0], mode: "sell", tons: String(top[2]), from: "ship", sort: "price", within: "100", age: "30"})}`); } catch { return; }
-  const best = r && !r.error && (r.rows || [])[0];
-  if (!best) return;
-  const where = `${best.station} in ${best.system}`, ly = best.distance != null ? `, ${Math.round(best.distance)} light-years` : "";
-  alertOut("limpets", `Sell ${top[1]}: ${best.station}, ${best.system}`, `${credits(best.price)} cr/t${ly ? ` · ${Math.round(best.distance)} ly` : ""}`,
-           {tag: "hold_full_sell", say: `Best price for ${top[1]} within 100 light-years: ${where}${ly}, ${credits(best.price)} credits a ton.`});
+  const [id, name, tons] = top;
+  ask = ask || ((within, sort, carriers) => holdSellAsk(id, tons, within, sort, carriers));
+  const own = data && data.carrier;
+  const ownNames = own ? [own.callsign, own.name].filter(Boolean).map(x => String(x).trim().toUpperCase()) : [];
+  const usable = rows => (rows || []).filter(r => !ownNames.includes(String(r.station || "").trim().toUpperCase()))   // never your own carrier
+    .filter(r => !r.carrier || (r.age_s != null && r.age_s <= CARRIER_FRESH_S));
+  let best = usable(await ask(100, "price", false))[0], near = false;
+  if (!best) for (const w of HOLD_SELL_WIDER) {
+    best = usable(await ask(w, "near", true))[0];
+    if (best) { near = true; break; }
+  }
+  const range = plainRange();
+  const ownNear = own && own.distance != null && range && own.distance <= range ? own : null;
+  if (!best && !ownNear) return;
+  const ly = d => `${Math.round(d).toLocaleString()} light-years`;
+  const said = [], shown = [];
+  if (best) {
+    const at = `${best.station} in ${best.system}${best.distance != null ? `, ${ly(best.distance)}` : ""}`;
+    said.push(near ? `Nearest buyer for ${name}: ${at}, ${credits(best.price)} credits a ton.`
+                   : `Best price for ${name} within 100 light-years: ${at}, ${credits(best.price)} credits a ton.`);
+    shown.push(`${near ? "nearest buyer" : "best within 100 ly"}: ${best.station}, ${best.system}` +
+               `${best.distance != null ? ` · ${Math.round(best.distance).toLocaleString()} ly` : ""} · ${credits(best.price)} cr/t`);
+  }
+  if (ownNear) {
+    const where = own.distance < 0.5 ? "here in the system" : ly(own.distance);
+    said.push(`${best ? "Or your" : "Your"} carrier, ${where}: somewhere to unload.`);
+    shown.push(`your carrier ${own.distance < 0.5 ? "here" : `${Math.round(own.distance)} ly`}: somewhere to unload (it pays nothing)`);
+  }
+  alertOut("limpets", best ? `Sell ${name}: ${best.station}, ${best.system}` : `Unload ${name}: your carrier`, shown.join(" · "),
+           {tag: "hold_full_sell", say: said.join(" ")});
 }
 // mining C: a prospected rock said when worth it (prospectHit), a motherlode always (its own box), a rock already mined
 // never; High material content (engineering materials) only when its box is ticked. A newer call-out replaces one still

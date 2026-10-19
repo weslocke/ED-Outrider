@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · Hold full out in the black: the nearest buyer, never your own carrier
+- After "Hold full", the best price within 100 ly found nothing 1,500 ly from the bubble and said nothing (the
+  author). Now (`holdFullSell`): the best price within 100 ly (stations); with none, the nearest buyer within 500,
+  2,500, then 10,000 ly (`HOLD_SELL_WIDER`, sort near, markets up to 90 days old), fleet carriers among them only if
+  reported in the last 7 days (`CARRIER_FRESH_S`).
+- Your own carrier (its callsign or name) is never a place to sell in either search (it pays nothing: Earnings
+  leaves those sales out); within your laden jump range it is named as somewhere to unload ("Or your carrier, 12
+  light-years").
+
 ## 2026-10-19 · Mining D: the mining line and its warnings
 - **The mining line** (the author): `State.mining_live()` while you mine in a ring (an open stint, normal space,
   Status.json live, a mining ship): the ring and hotspot, the stint's t/h (from 5 minutes on), the hold (its lines,
