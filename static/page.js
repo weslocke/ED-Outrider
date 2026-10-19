@@ -2302,7 +2302,7 @@ const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has rep
   ["loss", "your ship was destroyed with data aboard (or samples died with you): what was lost, and the nearest system to rescan", "danger"],
   ["rigs", "Rhino mining rigs: the co-pilot button's confirmation (rig placed, picked up, six out) and what a rig collected", null],
   ["rigleash", "a Rhino mining rig too far from you (over the rig warning distance, again at 4.5 km; the game destroys it at 5 km)", "danger"],
-  ["limpets", "limpets and the hold: undocking a mining ship (a refinery, a collector or prospector controller) with no limpets aboard, when Remind me to take limpets is ticked above; while mining in a ring, limpets low (the number above), the hold nearly full (about 5 minutes at your rate) and full, with where to sell what you carry (the best price within 100 ly, else the nearest buyer; your carrier to unload when in jump range): each once a stint", "alert"],
+  ["limpets", "limpets and the hold: no limpets as you undock a mining ship (when ticked above); while mining, limpets low, the hold nearly full and full, then where to sell (each once a stint)", "alert"],
   ["prospect", "the prospector call-out: a rock (not mined before) with your threshold of the minerals ticked above, and motherlodes; duds stay silent", null],
   ["ring", "a body just scanned has a ring of a type ticked in Settings → Mining (pristine ones only, if ticked there): once per body and visit, bodies scanned together in one line; nothing until a type is ticked", "find"],
   ["rigsout", "docking the Rhino with rigs still marked out on the body, and which are probably full (Outrider's own record: a rig picked up without a tap still counts until you mark it on the surface map)", null],
