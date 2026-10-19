@@ -16947,7 +16947,7 @@ class State:
         r = rows[nx]
         if r["id64"] is None:
             return None, f"{r['system']} has no id64 to check the target against"
-        return {"name": r["system"], "id64": r["id64"], "here": pos["id64"], "route": hw.get("id"), "index": nx}, None
+        return {"name": r["system"], "id64": r["id64"], "here": pos["id64"], "route": hw.get("id"), "index": nx, "neutron": True}, None
 
     def carrier_target(self):
         """({name, id64, here, route: None}, None) for 🎯 beside your fleet carrier (the author, 2026-10-11): the system it
@@ -17060,7 +17060,8 @@ class State:
             return None, f"{r['system']} has no id64 to check the target against"
         if r["id64"] == pos["id64"]:
             return None, f"you are in {r['system']} already"
-        return {"name": r["system"], "id64": r["id64"], "here": pos["id64"], "route": meta.get("id"), "index": index}, None
+        return {"name": r["system"], "id64": r["id64"], "here": pos["id64"], "route": meta.get("id"), "index": index,
+                "neutron": route == "highway"}, None   # the Highway's own wording ("neutron jump target") only for it
 
     def game_target(self):
         """The system the game aims its jumps at (outrider.target.game_target, F3): Status.json's Destination, the end
@@ -17573,9 +17574,11 @@ class State:
                                  text=(f"{name} was not found. That is probably the end of the boxel." if end
                                        else f"Not targeting {name}: Elite is not the active window. Click into the game."
                                        if res.get("code") == "window"
-                                       else (f"Targeted {name}." if tgt.get("boxel") else f"Successfully targeted neutron jump target {name}") if ok
+                                       # "neutron jump target" only for the Highway's (a 🎯 on Nearby, a bookmark, your
+                                       # carrier, a survey route said it too: the author, 2026-10-19)
+                                       else (f"Successfully targeted neutron jump target {name}" if tgt.get("neutron") else f"Targeted {name}.") if ok
                                        else f"Targeted the wrong system: {wrong}. Check before you jump." if wrong
-                                       else f"Failed to target {'' if tgt.get('boxel') else 'neutron jump target '}{name}"))
+                                       else f"Failed to target {'neutron jump target ' if tgt.get('neutron') else ''}{name}"))
         self.bump()
 
     async def highway_suggest(self, q):

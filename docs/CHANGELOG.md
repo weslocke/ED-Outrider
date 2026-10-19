@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · "Neutron jump target" only for the Highway
+- 🎯 on a Nearby row said "Successfully targeted neutron jump target Smojoo DL-Y d8" (the author): every target but a
+  boxel's took the Highway's wording. Now only the Highway's (Target next, the auto-target after a supercharge, 🎯 on a
+  Highway row: the target's `neutron`); Nearby, bookmarks, your carrier, a survey or trade route and the auto-target test say "Targeted X.".
+
 ## 2026-10-19 · Lines for alerts Outrider does not know: one short line
 - A lines file newer than the running Outrider (after an update, before a restart) listed every unknown alert with
   the names of all 150 known ones, once each (the author's Settings → Voice). Now one line: "3 lines are for alerts

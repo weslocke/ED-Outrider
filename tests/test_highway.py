@@ -2469,7 +2469,7 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(out["started"], (200, {"system": "Bridge B", "in": 0.05, "seq": 1, "dry_run": False, "kind": "test", "front": False}))
         self.assertEqual(out["busy"], 409)
         self.assertEqual((out["test"]["state"], out["test"]["system"]), ("done", "Bridge B"))
-        self.assertEqual(self.moments(), [(True, "Successfully targeted neutron jump target Bridge B")])
+        self.assertEqual(self.moments(), [(True, "Targeted Bridge B.")])   # the test's system: a plain jump
         self.assertEqual(self.honker.owners, {"target"})   # the test's hold on the keyboard was let go
         self.assertEqual(out["toggle"], (200, True))
         self.assertEqual(out["bad"], [400, 400, 400, 400])
@@ -2856,6 +2856,8 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(out["bad"], [400, 400, 400, 400])
         self.assertEqual((out["started"][0], out["started"][1]["system"]), (200, "Bridge B"))
         self.assertEqual((out["last"]["done"], out["last"]["system"]), (True, "Bridge B"))
+        # a survey route's system is no neutron jump: said plainly (only the Highway's says "neutron jump target")
+        self.assertEqual(self.moments()[-1], (True, "Targeted Bridge B."))
         # a run aimed at the survey route stops when that route is cleared (the Highway's clear would not touch it)
         self.state.autotarget_test_countdown = 0.2
         self.status["destination"] = None
