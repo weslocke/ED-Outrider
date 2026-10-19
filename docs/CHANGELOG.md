@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · Pre-Odyssey: Spansh dates as YYYY-MM-DD
+- Here's header, Now's line, the 🪦 and old data hovers and the briefing's card write the date Spansh last heard of
+  the system as YYYY-MM-DD ("Spansh: pre-Odyssey, 2019-02-14"; the author: "Feb 2019" read like the cutoff). The
+  voice still says "February 2019" (`spanshDay`, `spanshMonth`).
+
 ## 2026-10-19 · Pre-Odyssey Spansh data called out (Kurbo26, discussion #11)
 - A system whose Spansh records all predate the legacy split (`LEGACY_CUTOFF`, 29 Nov 2022: thin-atmosphere worlds
   marked not landable, life never reported) is "pre-Odyssey" (`spansh_date`, `spansh_old`; in the Spansh summaries,
@@ -10,13 +15,13 @@ Newest first, one entry per commit.
 - **Nearby:** "🪦 pre-Odyssey" in the Status column beside "fully scanned", in the warning colour (🪦 when narrow;
   `spanshOldBadge`; first in Notable, too quiet there: the author missed it in the mockup). Its hover: when, and the
   thin-atmosphere worlds that may hold life by name (`stale_bio_summary`'s `names`), what the rules allow, about what
-  one genus each pays. **Here:** the header says when Spansh last heard ("Spansh: pre-Odyssey, Feb 2019", or the
+  one genus each pays. **Here:** the header says when Spansh last heard ("Spansh: pre-Odyssey, 2019-02-14", or the
   plain date). **The overlay's system strip:** "Spansh ✓ (pre-Odyssey)".
 - **Never routine** (`isRoutine`) until your own scans have every body; **the arrival briefing** ends with the clause
   ("Spansh's data here is from February 2019, before Odyssey: worth a rescan." and the worlds that may hold life), a
   line of its own (`old_data`, 15 a list, under the briefing's row). **Now:** a 🪦 line until every body is yours, and
   "Next: rescan in the FSS" in place of "nothing worth staying for" (Spansh knowing every body left nothing "to find").
-  The 🪦 line reads "Spansh data pre-Odyssey (Feb2019): Rescan for Bio" (the author: one line in Now's type).
+  The 🪦 line reads "Spansh data pre-Odyssey (2019-02-14): Rescan for Bio" (the author: one line in Now's type).
 
 ## 2026-10-19 · Hold full out in the black: the nearest buyer, never your own carrier
 - After "Hold full", the best price within 100 ly found nothing 1,500 ly from the bubble and said nothing (the

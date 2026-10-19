@@ -15,8 +15,8 @@ alone when the pane is narrow) marks a system whose Spansh data was all reported
 legacy split of 29 November 2022): its thin-atmosphere worlds were marked not landable and its life never reported, so
 "fully scanned" there may still hide bio and first footfalls. Hover it for when, and the thin-atmosphere worlds that
 may hold life: their names, what the exobiology rules allow there and about what one genus each would pay. A dashed <i>old data</i> mark flags such bodies in a system with newer data too. Here's
-header says when Spansh's data was last reported ("Spansh: pre-Odyssey, Feb 2019"), and Now says "Spansh data
-pre-Odyssey (Feb2019): Rescan for Bio" until your own scans have every body. Click a row to see that system
+header says when Spansh's data was last reported ("Spansh: pre-Odyssey, 2019-02-14"), and Now says "Spansh data
+pre-Odyssey (2019-02-14): Rescan for Bio" until your own scans have every body. Click a row to see that system
 body by body beside the list (click it again to close it); its name copies it, ☆ bookmarks it, and where auto-target
 can work (the game PC, see [Plot Route](plot-route.md)) the target button (the galaxy map's destination marker) left of the name, in a column of its own, targets it in
 the galaxy map (not on your own system's row). ⛏ N counts planetary mining

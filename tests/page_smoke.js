@@ -2798,7 +2798,7 @@ const releasePayloads = async () => {
     const txt = h => { const el = d.createElement("div"); el.innerHTML = h; el.querySelectorAll(".sf, .sf1, .sf2").forEach(e => e.remove()); return el.textContent; };
     const old = {bodies: 3, genera_top: ["Bacterium", "Stratum"], up_to: 4200000, reported: "2019-06-01"};
     got.near = txt(w.eval(`oldDataTag(${JSON.stringify(old)})`));
-    got.nearTitle = /Last reported 2019 by a pre-Odyssey client/.test(w.eval(`oldDataTag(${JSON.stringify(old)})`));
+    got.nearTitle = /Last reported 2019-\d\d-\d\d by a pre-Odyssey client/.test(w.eval(`oldDataTag(${JSON.stringify(old)})`));
     got.none = w.eval("oldDataTag(null)");
     got.pop = /landable\? \(old data\)/.test(w.eval(`bodyPopHtml({name: "A 3", type: "Planet", landable: false, stale_bio: true, updated: "2019-06-01", bio: 0, genera: [], organics: [], codex: []}, null)`));
     got.popPlain = /not landable/.test(w.eval(`bodyPopHtml({name: "A 4", type: "Planet", landable: false, stale_bio: false, bio: 0, genera: [], organics: [], codex: []}, null)`));
@@ -9505,7 +9505,7 @@ const releasePayloads = async () => {
         hereData.bodies = [{name: "A 3", type: "Planet", stale_bio: true, ring_details: []}]`);
       got.now = d.querySelector("#nowBody .now-old") ? d.querySelector("#nowBody .now-old").textContent : null;
       got.nowNext = [/Next: rescan in the FSS/.test(d.getElementById("nowBody").textContent), /nothing worth staying for/.test(d.getElementById("nowBody").textContent)];
-      got.head = d.getElementById("hereHead").textContent.includes("Spansh: pre-Odyssey, Feb 2019");
+      got.head = d.getElementById("hereHead").textContent.includes("Spansh: pre-Odyssey, 2019-02-12");
       w.eval(`hereData = Object.assign({}, hereData, {leaving: {all_found: true, honked: true, unscanned: 0, bio_pending: [], unmapped: []}}); renderNow()`);
       got.nowGone = [!d.querySelector("#nowBody .now-old"), /nothing worth staying for/.test(d.getElementById("nowBody").textContent)];
     } finally {
@@ -9516,8 +9516,8 @@ const releasePayloads = async () => {
     }
     const want = {pill: [true, true, "", false], routine: [false, true, true],
       brief: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
-      card: "Known. 5 bodies. Scoopable K star. Spansh's data here is from February 2019, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
-      now: "🪦 Spansh data pre-Odyssey (Feb2019): Rescan for Bio", head: true, nowGone: [true, true], nowNext: [true, false]};
+      card: "Known. 5 bodies. Scoopable K star. Spansh's data here is from 2019-02-12, before Odyssey: worth a rescan. 2 thin-atmosphere worlds may hold life.",
+      now: "🪦 Spansh data pre-Odyssey (2019-02-12): Rescan for Bio", head: true, nowGone: [true, true], nowNext: [true, false]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodPO = !bad.length && errors.length === before;
     allOk = allOk && goodPO;

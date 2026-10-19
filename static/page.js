@@ -238,7 +238,7 @@ function notable(s) {
 // pre-Odyssey Spansh data (stale_bio {bodies, genera_top, up_to, reported}): thin-atmosphere worlds marked not
 // landable and bio never reported. A mark only: no value counts it, and nothing is spoken.
 function oldDataTitle(o) {
-  return `Last reported ${esc((o.reported || "").slice(0, 4))} by a pre-Odyssey client: thin-atmosphere worlds were marked not landable and bio was not reported. May hold unsampled life; footfall unknown.` +
+  return `Last reported ${esc((o.reported || "").slice(0, 10))} by a pre-Odyssey client: thin-atmosphere worlds were marked not landable and bio was not reported. May hold unsampled life; footfall unknown.` +
     ((o.genera_top || []).length ? `&#10;The rules allow: ${o.genera_top.map(esc).join(", ")}` : "") +
     (o.up_to ? `&#10;One genus per body at the median: about ${credits(o.up_to)} cr` : "");
 }
@@ -250,10 +250,12 @@ const bioUnknownTag = n => !n ? "" : `<span class="nb" title="${n} bod${n === 1 
 // "Spansh: pre-Odyssey", with its worlds that may hold life ("· 2 may have life"); 🪦 in a narrow pane. Otherwise the
 // old data tag of its stale bodies (some Spansh records newer, some old)
 const SPANSH_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+// a Spansh date as written (the author: YYYY-MM-DD everywhere it is shown), and as the voice says it ("February 2019")
+const spanshDay = d => String(d || "").slice(0, 10);
 const spanshMonth = (d, long = false) => d ? `${(SPANSH_MONTHS[+String(d).slice(5, 7) - 1] || "").slice(0, long ? 9 : 3)} ${String(d).slice(0, 4)}`.trim() : "";
 // its hover: when, what that means, and the thin-atmosphere worlds that may hold life (their names, what the rules
 // allow there, about what one genus each would pay)
-const spanshOldTitle = (date, stale) => `Spansh's data here was last reported ${spanshMonth(date)}, before Odyssey's surface data (the legacy split of 29 Nov 2022): ` +
+const spanshOldTitle = (date, stale) => `Spansh's data here was last reported ${spanshDay(date)}, before Odyssey's surface data (the legacy split of 29 Nov 2022): ` +
   `thin-atmosphere worlds were marked not landable and life was not reported, so bio and first footfalls may be waiting. Worth a rescan.` +
   (stale && stale.bodies ? `&#10;&#10;Thin-atmosphere worlds that may hold life: ${(stale.names || []).length ? stale.names.map(esc).join(", ") : stale.bodies}` +
     ((stale.genera_top || []).length ? `&#10;The rules allow: ${stale.genera_top.map(esc).join(", ")}` : "") +
@@ -261,9 +263,9 @@ const spanshOldTitle = (date, stale) => `Spansh's data here was last reported ${
 // Nearby's Status column: "🪦 pre-Odyssey" beside "fully scanned", the warning colour (🪦 alone when narrow)
 const spanshOldBadge = s => s.spansh_old ? statusBadge("s-old", "🪦 pre-Odyssey", spanshOldTitle(s.spansh_old, s.stale_bio), "🪦") : "";
 // the briefing's clause and the Now line for a pre-Odyssey system you have not resolved yourself (#11)
-const spanshOldWords = (date, n) => `Spansh's data here is from ${spanshMonth(date, true)}, before Odyssey: worth a rescan.` +
+const spanshOldWords = (date, n, spoken = false) => `Spansh's data here is from ${spoken ? spanshMonth(date, true) : spanshDay(date)}, before Odyssey: worth a rescan.` +
   (n ? ` ${n} thin-atmosphere world${n === 1 ? "" : "s"} may hold life.` : "");
-const spanshOldNow = date => `Spansh data pre-Odyssey (${spanshMonth(date).replace(" ", "")}): Rescan for Bio`;   // Now's line
+const spanshOldNow = date => `Spansh data pre-Odyssey (${spanshDay(date)}): Rescan for Bio`;   // Now's line
 const oldDataTag = o => { if (!o || !o.bodies) return "";
   const full = `old data: ${o.bodies} bod${o.bodies === 1 ? "y" : "ies"}`;
   return `<span class="nb old" title="${oldDataTitle(o)}">${dual(full, `old ${o.bodies}`, {titleHtml: `${full}. ${oldDataTitle(o)}`})}</span>`; };
@@ -4522,7 +4524,7 @@ function renderHere() {
     `<b>${esc(h.name)}</b>` + (away != null ? ` <span class="unk">· ${away.toFixed(2)} ly away</span>` : "") +
     ` · ${h.bodies.length} bod${h.bodies.length === 1 ? "y" : "ies"} known · ` +
     // #11: when Spansh's data was last reported; pre-Odyssey marked
-    (h.spansh_date ? `<span class="${h.spansh_old ? "old" : "unk"}" title="${h.spansh_old ? esc(spanshOldTitle(h.spansh_old)) : "when Spansh's data on this system was last reported"}">Spansh: ${h.spansh_old ? "pre-Odyssey, " : ""}${spanshMonth(h.spansh_date)}</span> · ` : "") + (h.phenomena && h.phenomena.length ? phenomenaTag(h.phenomena) + " · " : "") + (h.rare_stars && h.rare_stars.length ? rareStarTag(h.rare_stars) + " · " : "") + (h.pois && h.pois.length ? poiTag(h.pois) + " · " : "") +
+    (h.spansh_date ? `<span class="${h.spansh_old ? "old" : "unk"}" title="${h.spansh_old ? esc(spanshOldTitle(h.spansh_old)) : "when Spansh's data on this system was last reported"}">Spansh: ${h.spansh_old ? "pre-Odyssey, " : ""}${spanshDay(h.spansh_date)}</span> · ` : "") + (h.phenomena && h.phenomena.length ? phenomenaTag(h.phenomena) + " · " : "") + (h.rare_stars && h.rare_stars.length ? rareStarTag(h.rare_stars) + " · " : "") + (h.pois && h.pois.length ? poiTag(h.pois) + " · " : "") +
     `<span title="what selling now would pay for data you hold from here / the most this system could pay">now <b>${credits(h.value_now || 0)} cr</b> · max <b>${credits(maxOf(h) || 0)} cr</b>${maxBonus() ? "" : ` <span class="unk" title="Max leaves out first-discovery, first-mapped and first-footfall bonuses (alerts & thresholds dialog)">no bonus</span>`}</span>` +
     ` <a class="unk" href="api/export?what=system&id=${encodeURIComponent(h.id64)}" download title="this system's bodies and values as a spreadsheet (CSV)">⬇ CSV</a>` +
     `<span class="modes">${HERE_MODES.filter(([m]) => m !== "split" || hereCtx() === "tab").map(([m, label, title]) =>
@@ -4978,7 +4980,7 @@ document.getElementById("hereSchematic").addEventListener("click", e => {
 });
 
 // a Spansh body last reported by a pre-Odyssey client (your own scan replaces it)
-const staleBodyTitle = b => `Last reported ${(b.updated || "").slice(0, 4)} by a pre-Odyssey client: thin-atmosphere worlds were marked not landable and bio was not reported. May hold unsampled life; footfall unknown. Your own scan replaces this.`;
+const staleBodyTitle = b => `Last reported ${(b.updated || "").slice(0, 10)} by a pre-Odyssey client: thin-atmosphere worlds were marked not landable and bio was not reported. May hold unsampled life; footfall unknown. Your own scan replaces this.`;
 // ---- body hover summary ----
 const fmtK = n => n == null ? "?" : Math.round(n).toLocaleString();
 // region: the region of the system the body is in (a search result may be elsewhere than Here)
@@ -9445,7 +9447,7 @@ function onData() {
         if (card) alertOut("brief", `${m.system_name || "Arrived"}: ${card.split(". ")[0].replace(/\.$/, "")}`, card,
                            hum ? {sound: "routine", quiet: "sound only: a routine system"}
                                : {tag: "arrival_brief", say: () => [text && line("arrival_brief", {text}, text),
-                                   old && line("old_data", {year: String(m.spansh_old).slice(0, 4)}, old.replace(lifeWords, "")) + lifeWords].filter(Boolean).join(" ")});
+                                   old && line("old_data", {year: String(m.spansh_old).slice(0, 4)}, spanshOldWords(m.spansh_old, 0, true)) + lifeWords].filter(Boolean).join(" ")});
       }
       else if (m.kind === "fss_done" && m.leaving) {   // every body found in the FSS: go here, or move on
         const count = m.count || m.leaving.body_count, text = worthSaying(m.leaving);
