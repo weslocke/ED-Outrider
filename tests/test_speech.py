@@ -244,7 +244,11 @@ class Speech(unittest.TestCase):
         probs = " ".join(outrider.speech.check(bad))
         self.assertIn("{body}", probs)
         self.assertIn('"pirate"', probs)
-        self.assertIn('"nope"', probs)
+        self.assertIn("does not know yet: nope.", probs)
+        # several unknown alerts (a lines file newer than the running Outrider): one short line, not the whole list each
+        probs = outrider.speech.check({"styles": {"business": "B"}, "lines": {"nope": {}, "never": {}, "hull": {"business": ["Hull."]}}})
+        self.assertEqual(probs, ["2 lines are for alerts this Outrider does not know yet: nope, never. Restart Outrider after an "
+                                 "update; otherwise check the names (the voice lab lists every alert)."])
 
     def test_fill_and_spoken_text(self):
         import random

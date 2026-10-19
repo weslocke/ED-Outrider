@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-19 · Lines for alerts Outrider does not know: one short line
+- A lines file newer than the running Outrider (after an update, before a restart) listed every unknown alert with
+  the names of all 150 known ones, once each (the author's Settings → Voice). Now one line: "3 lines are for alerts
+  this Outrider does not know yet: old_data, limpets_low, hold_nearly_full. Restart Outrider after an update;
+  otherwise check the names" (`outrider.speech.check`).
+
 ## 2026-10-19 · Pre-Odyssey: Spansh dates as YYYY-MM-DD
 - Here's header, Now's line, the 🪦 and old data hovers and the briefing's card write the date Spansh last heard of
   the system as YYYY-MM-DD ("Spansh: pre-Odyssey, 2019-02-14"; the author: "Feb 2019" read like the cutoff). The

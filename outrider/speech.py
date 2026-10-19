@@ -265,9 +265,10 @@ def check(doc):
     if not isinstance(lines, dict):
         return problems + ['"lines" must map each alert to its versions']
     known_lists = set(styles) | {s + "_profane" for s in styles}
+    unknown = []   # one short line for all of them (they used to repeat every known alert's name each: the author)
     for key, entry in lines.items():
         if key not in KEYS:
-            problems.append(f'"{key}" is not an alert Outrider speaks (known: {", ".join(KEYS)})')
+            unknown.append(key)
             continue
         if not isinstance(entry, dict):
             problems.append(f'"{key}" must be an object of personality lists')
@@ -292,6 +293,11 @@ def check(doc):
             if versions and all(crew_named(v) for v in versions):
                 problems.append(f'"{key}" / "{style}": every line names a crew member, so with the crew off this alert has '
                                 f'none: keep lines without one too')
+    if unknown:
+        n = len(unknown)
+        problems.append(f'{n} line{"s are" if n > 1 else " is"} for {"alerts" if n > 1 else "an alert"} this Outrider does not know '
+                        f'yet: {", ".join(unknown)}. Restart Outrider after an update; otherwise check the '
+                        f'name{"s" if n > 1 else ""} (the voice lab lists every alert).')
     return problems
 
 
