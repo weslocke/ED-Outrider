@@ -11,6 +11,65 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## 2026.10.27 · 20 October 2026 · bug fix release
+
+**Systems whose Spansh data predates Odyssey called out, the geology a body could show, the Anaconda Mk II, and 31
+fixes from a full code review.**
+
+> [!IMPORTANT]
+> **The first start re-reads your journals once** (mining income, your fleet's places): a few seconds, or a few
+> minutes for years of journals. Outrider **backs up your database first**, and the page shows how far it has got.
+> Your bookmarks, pins, routes and settings are kept.
+
+### 🪦 Spansh data from before Odyssey
+
+A system whose Spansh data was all reported before Odyssey's surface data (the legacy split of 29 November 2022) may
+read "fully scanned" while its thin-atmosphere worlds were never landable then and their life never reported: bio and
+first footfalls may be waiting. (Thanks to Kurbo26, [discussion #11](https://github.com/weslocke/ED-Outrider/discussions/11).)
+
+- **Nearby:** 🪦 pre-Odyssey in the Status column, in the warning colour; hover it for when, and the worlds that may
+  hold life with what the rules allow and about what they would pay.
+- **Here:** the header says "Spansh: pre-Odyssey, 2019-02-14"; such bodies in a system with newer data too get a
+  dashed *old data* mark.
+- **Now:** "Spansh data pre-Odyssey (2019-02-14): Rescan for Bio" until your own scans have every body, and "Next:
+  rescan in the FSS" instead of "nothing worth staying for". The arrival briefing says it too, and the overlay's
+  system strip reads "Spansh ✓ (pre-Odyssey)".
+
+### 🔭 And more
+
+- **The geology a body could show:** its card and details name the kinds its volcanism allows, each new to your codex
+  marked ✪ (anywhere) or ✦ (this region), and how one is logged.
+- **🎯 on Search's results**, as on Bookmarks and Nearby.
+- **The Anaconda Mk II** is known: its name, and a large pad for the nearest-place-to-dock filter (its picture in CMDR
+  → Inventory comes later).
+- **Limpets bought, sold and launched** now move your hold (the game does not always rewrite Cargo.json after
+  buying them).
+- 🎯 from Nearby says "Targeted X." ("neutron jump target" is for the Highway's targets only).
+- A lines file newer than the running Outrider says so in one short line: restart after an update.
+
+### 🔧 Fixes from a full code review
+
+- **Windows:** with EDMC installed and not running, Outrider could fail to start on a non-English Windows.
+- **Uploads** keep their order: saving or checking a key during a retry no longer sends newer data first, nor
+  inside Inara's "slow down" hour.
+- **The target's jump** on Now and the overlay is measured from you, not from the system Nearby is set around.
+- **The "away 3 days" greeting** at login is back.
+- **The voice lab** no longer freezes Outrider for a moment when you pick one of a voice's people.
+- **Mining income:** cargo moved between the ship and the SRV, and tritium put in your carrier's depot, no longer
+  count as mined ore.
+- **Your fleet:** a ship stored at your carrier after it jumped is in its new system; a ship on its way no longer
+  stays "in transit" after arriving.
+- **The overlay** clears its panels when Outrider has a problem, instead of showing the last system; its panels
+  follow Spansh's fuller record when it arrives.
+- **Now** names the new target ("checking…") while it is looked up, never the previous one.
+- **Pins:** one made from the map's legend lands on the right system; Here's 📍 marks and other windows follow
+  changes at once.
+- **And smaller ones:** "1 million credits" (not "1000 thousand"), a self-made voice for a personality, the spoken
+  lines banner clears once the file is fixed, History's "Since your last sale" after jumps, the header's route line
+  follows Plot Route's switch, a stop is never turned into a restart, beta-branch journals stay out of Unsold.
+
+---
+
 ## 2026.10.26 · 18 October 2026 · The Release with Personality
 
 **Eight new personalities and over 70,000 spoken lines, a crew that talks among itself in quiet moments, other
