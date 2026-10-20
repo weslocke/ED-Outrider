@@ -330,10 +330,12 @@ class MinedStock(unittest.TestCase):
                          ([], None, None, None))
 
     def test_the_newer_ships_pads(self):
-        """The Lynx Highliner (medium: the author checked) and the Kestrel Mk II (small: Frontier's ship page)."""
+        """The Lynx Highliner (medium: the author checked), the Kestrel Mk II (small: Frontier's ship page) and the
+        Anaconda Mk II (large: a huge hardpoint; `anacondamkii` in EDDN's shipyards, 2026-10-20)."""
         import outrider.cargo
-        self.assertEqual((outrider.cargo.SHIP_PAD["mediumtransport01"], outrider.cargo.SHIP_PAD["smallcombat01_nx"]),
-                         (outrider.cargo.MEDIUM, outrider.cargo.SMALL))
+        self.assertEqual((outrider.cargo.SHIP_PAD["mediumtransport01"], outrider.cargo.SHIP_PAD["smallcombat01_nx"],
+                          outrider.cargo.SHIP_PAD.get("anacondamkii")),
+                         (outrider.cargo.MEDIUM, outrider.cargo.SMALL, outrider.cargo.LARGE))
 
 
 if __name__ == "__main__":

@@ -339,12 +339,14 @@ const SHIP_NAMES = {sidewinder: "Sidewinder", eagle: "Eagle", hauler: "Hauler", 
   belugaliner: "Beluga Liner", type9_military: "Type-10 Defender", anaconda: "Anaconda", federation_corvette: "Federal Corvette",
   cutter: "Imperial Cutter", mandalay: "Mandalay", type8: "Type-8 Transporter", cobramkv: "Cobra Mk V", corsair: "Corsair",
   panthermkii: "Panther Clipper Mk II", explorer_nx: "Caspian Explorer", lakonminer: "Type-11 Prospector", smallcombat01_nx: "Kestrel Mk II",
-  mediumtransport01: "Lynx Highliner"};
+  mediumtransport01: "Lynx Highliner", anacondamkii: "Anaconda Mk II"};
+// hulls Almanac has no illustration of yet (no picture until scripts/build_ship_images.py can render one)
+const SHIP_NO_PICTURE = new Set(["anacondamkii"]);
 const shipName = t => SHIP_NAMES[(t || "").toLowerCase()] || (t || "").replace(/_/g, " ");
 // A ship type's picture (the CMDR tab's Inventory, 2026-10-15): static/ships/<symbol>.webp, one per SHIP_NAMES key
 // (test_tablet checks both ways), Frontier's ship rendered from Elite Dangerous Almanac's illustration by
 // scripts/build_ship_images.py (static/ships/CREDITS.txt); a type not in the table (a hull newer than it) has none
-const shipPicture = t => { const k = String(t || "").toLowerCase(); return Object.prototype.hasOwnProperty.call(SHIP_NAMES, k) ? `static/ships/${k}.webp` : null; };
+const shipPicture = t => { const k = String(t || "").toLowerCase(); return Object.prototype.hasOwnProperty.call(SHIP_NAMES, k) && !SHIP_NO_PICTURE.has(k) ? `static/ships/${k}.webp` : null; };
 const SHIP_CARD_MS = 2000;   // a hover this long on an Inventory ship row shows its picture
 const SC = {timer: null, key: null};   // the ship card: the hover's pending timer, the ship shown ("symbol|name") or null
 // what to call a ship: its own name, or its type's proper name when it has none (the journal gives an unnamed

@@ -409,6 +409,10 @@ class Tablet(unittest.TestCase):
             table = re.search(r"const SHIP_NAMES = \{(.*?)\};", f.read(), re.S).group(1)
         names = set(re.findall(r"(\w+): \"", table))
         self.assertGreaterEqual(len(names), 48)
+        with open(os.path.join(ed_outrider.STATIC_DIR, "page.js"), encoding="utf-8") as f:
+            later = set(re.findall(r'"(\w+)"', re.search(r"const SHIP_NO_PICTURE = new Set\(\[(.*?)\]\)", f.read()).group(1)))
+        self.assertLessEqual(later, names)
+        names -= later   # no illustration to render yet (the Anaconda Mk II, 2026-10-20)
         pictures = {f[:-len(".webp")] for f in os.listdir(folder) if f.endswith(".webp")}
         self.assertEqual(sorted(pictures - names), [], "a picture of a type SHIP_NAMES does not name")
         self.assertEqual(sorted(names - pictures), [], "a type in SHIP_NAMES with no picture: run scripts/build_ship_images.py")

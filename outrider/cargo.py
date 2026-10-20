@@ -34,7 +34,8 @@ LARGE, MEDIUM, SMALL = "L", "M", "S"
 # Loadout's Ship (lowercase) -> the landing pad it needs. Unknown ships (a new one) give None: no pad filter.
 SHIP_PAD = {
     **dict.fromkeys(("anaconda", "belugaliner", "cutter", "federation_corvette", "type7", "type9", "type9_military",
-                     "panthermkii", "empire_trader", "orca", "explorer_nx"), LARGE),
+                     "panthermkii", "empire_trader", "orca", "explorer_nx",
+                     "anacondamkii"), LARGE),   # Anaconda Mk II: its symbol from EDDN's shipyards on its day, 2026-10-20
     "mediumtransport01": MEDIUM,   # Lynx Highliner (the author checked, 2026-10-14)
     **dict.fromkeys(("python", "python_nx", "krait_mkii", "krait_light", "mandalay", "corsair", "typex", "typex_2",
                      "typex_3", "federation_gunship", "federation_dropship", "federation_dropship_mkii", "ferdelance",

@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-20 · The Anaconda Mk II
+- Out today (4.4.2.0): its journal symbol `anacondamkii` (EDDN's shipyards, 19 of 94 in five minutes) is named
+  "Anaconda Mk II" and needs a large pad (the dock finder's filter; a huge hardpoint). Almanac has no illustration of
+  it yet, so the CMDR tab's Inventory shows no picture for it (`SHIP_NO_PICTURE`) until one can be built.
+
 ## 2026-10-19 · No limpet reminder while the hold is not known
 - The reminder fired on undocking with 200 limpets aboard (the author): the hold had none on record. Besides limpets
   now being followed (the entry below), it stays quiet when the game's latest count is more than the hold's known lines (a

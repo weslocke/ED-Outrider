@@ -8776,7 +8776,8 @@ const releasePayloads = async () => {
       ptr(row("Krait Phantom"), "pointerenter"); await sleep(2300);
       d.querySelector('[name=cmdrTab][value="profile"]').click(); await settle(400);
       got.otherTab = card().hidden;
-      got.pure = w.eval(`[shipPicture("Krait_Light"), shipPicture("new_hull_x"), shipPicture("constructor")]`);
+      got.pure = w.eval(`[shipPicture("Krait_Light"), shipPicture("new_hull_x"), shipPicture("constructor"),
+        shipPicture("AnacondaMkII"), shipName("AnacondaMkII")]`);
     } finally {
       w.eval(`apiJson = __scKeep.api; data.commander_version = __scKeep.ver; shipCardHide();
         CM.data = {}; CM.key = {}; CM.tab = "profile"; store.set("cmdrTab", "profile");`);
@@ -8790,7 +8791,7 @@ const releasePayloads = async () => {
       left: true, unknown: true, touch: true,
       krait: ["static/ships/krait_light.webp", "Krait Phantom", "lazy", "300", "200", "Krait Phantom", true],
       escape: true, otherTab: true,
-      pure: ["static/ships/krait_light.webp", null, null],
+      pure: ["static/ships/krait_light.webp", null, null, null, "Anaconda Mk II"],   // named, no picture yet (2026-10-20)
     };
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodSC = !bad.length && errors.length === before;

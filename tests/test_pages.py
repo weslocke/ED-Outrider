@@ -604,5 +604,6 @@ class ShipNames(unittest.TestCase):
                              ("smallcombat01_nx", "Kestrel Mk II"), ("explorer_nx", "Caspian Explorer"),
                              ("panthermkii", "Panther Clipper Mk II"), ("python_nx", "Python Mk II"),
                              ("cobramkv", "Cobra Mk V"), ("mandalay", "Mandalay"), ("corsair", "Corsair"),
-                             ("type8", "Type-8 Transporter"), ("type9_military", "Type-10 Defender")):
+                             ("type8", "Type-8 Transporter"), ("type9_military", "Type-10 Defender"),
+                             ("anacondamkii", "Anaconda Mk II")):
             self.assertEqual(names.get(symbol), name, symbol)
