@@ -67,6 +67,17 @@ class Pins(unittest.TestCase):
         self.j.status_json = {"live": True}
         self.assertEqual(self.state.pins_post({"action": "here"})[1], 400)
 
+    def test_review_fixes(self):
+        """Review 2026-10-20: L13, every change moves pins.v (another window notices a pin on another system's body);
+        L21, a Unicode digit or a 30-digit system id is a 400 (not a 500), and a body name stays capped at 200."""
+        v = self.state.pins_summary()["v"]
+        self.post(action="add", system="99", sysname="Far", body="Far A 1", lat=0.0, lon=0.0)   # another system
+        self.assertEqual(self.state.pins_summary()["v"], v + 1)
+        for sid in ("²", "9" * 30):
+            self.assertEqual(self.state.pins_post({"action": "add", "system": sid, "body": "X 1", "lat": 0, "lon": 0})[1], 400, sid)
+        self.post(action="add", system="1", sysname="Sys", body="B" * 100000, lat=0.0, lon=0.0)
+        self.assertEqual(max(len(p["body"]) for p in self.state.pins_list()["pins"]), 200)
+
     def test_guided_said_and_arrived(self):
         self.post(action="add", system="1", sysname="Sys", body="Sys B 7", name="Wreck", lat=0.0, lon=lon_for(12000))
         self.post(action="add", system="1", sysname="Sys", body="Sys B 7", name="Beacon", lat=0.0, lon=-lon_for(3000))

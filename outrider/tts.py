@@ -475,8 +475,14 @@ class Speaker:
             self.chosen_speakers.pop(name, None)
         else:
             self.chosen_speakers[name] = sid
-        with self._lock:
-            self._cache.clear()
+        # only to free memory (each line's key names its speaker, so an old person's clip is never served): skipped
+        # while a line is being made, never waited for; this runs on the event loop (review 2026-10-20 M5: the whole
+        # server stalled for the rest of the synthesis)
+        if self._lock.acquire(blocking=False):
+            try:
+                self._cache.clear()
+            finally:
+                self._lock.release()
         self.on_speaker(dict(self.chosen_speakers))
         self.on_change()
         return True

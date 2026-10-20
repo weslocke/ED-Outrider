@@ -52,6 +52,7 @@ class SearchAround(unittest.TestCase):
         self.assertEqual(self.state.search_origin("destination"), (None, "no system is targeted in game"))
         self.assertEqual(self.state.search_origin("somewhere"), (None, ed_outrider.AROUND_BAD))
         self.assertEqual(self.state.search_origin(77), (None, ed_outrider.AROUND_BAD))   # an id64 comes as a string
+        self.assertEqual(self.state.search_origin("²"), (None, ed_outrider.AROUND_BAD))   # a Unicode digit (review L20)
         self.assertIn("doesn't know where", self.state.search_origin("123456")[1])
         o, _ = self.state.search_origin("77")
         self.assertEqual((o["id64"], o["name"], o["x"], o["around"]), (77, "Far Water", 1000.0, "system"))

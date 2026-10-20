@@ -3,6 +3,7 @@
 Run all: python3 -m unittest discover tests (or scripts/verify.sh).
 """
 import unittest
+import unittest.mock
 
 from support import (  # also puts the repository root on sys.path
     MANDALAY, MANDALAY_JUMPS,
@@ -178,6 +179,21 @@ class BatchDFuel(unittest.TestCase):
         self.assertEqual(self.state.target_hop(t)["reach"], False)
         self.j.boost = {"value": 4.0, "ts": "x"}                         # a neutron charge reaches it
         self.assertTrue(self.state.target_hop(t)["reach"])
+
+    def test_target_hop_from_you_while_nearby_is_elsewhere(self):
+        """Review 2026-10-20 M1: with Nearby Around another system, a targeted row's distance is from that centre; the
+        hop (Now's target line, the overlay's Target panel) must be from you: a 190 ly jump read as a reachable 10 ly."""
+        self.j.pos = {"id64": 9, "name": "Here", "x": 0, "y": 0, "z": 0, "ts": "2026-01-01T00:00:00Z"}
+        self.state.systems[77] = {"id64": 77, "name": "Next", "distance": 10.0, "xyz": (190.0, 0.0, 0.0)}
+        self.j.target = {"id64": 77, "name": "Next", "ts": "2026-01-01T00:00:01Z"}
+        self.j.ship = dict(self.MANDALAY, fuel_main=32.0)
+        self.j.fuel_hist = [list(x) for x in self.MANDALAY_JUMPS]
+        self.j.status_json = {"live": True, "fuel_main": 32.0, "cargo": 0}
+        with unittest.mock.patch.object(self.state, "near_pinned", return_value=True):
+            h = self.state.target_hop({"id64": 77, "name": "Next"})
+            self.assertEqual((h["ly"], h["reach"]), (190.0, False))
+            self.assertEqual(self.state.overlay_target_info(self.j.pos)["distance"], 190.0)
+        self.assertEqual(self.state.target_hop({"id64": 77, "name": "Next"})["ly"], 10.0)   # around you: the row's own
 
     def test_fuel_run_and_window(self):   # the fuel plan's groundwork (S1): hop by hop, then a grid of starting levels
         m = ed_outrider.fuel_model(self.MANDALAY, self.MANDALAY_JUMPS)

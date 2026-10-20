@@ -98,6 +98,8 @@ class Phrases(unittest.TestCase):
             self.assertEqual(go("next_jump"), "Next highway stop: Neu, 40.0 light years. 1 jump left.")
         self.assertEqual([ask.words_cr(x) for x in (0, 950, 12_400, 1_000_000, 2_350_000_000)],
                          ["0", "950", "12 thousand", "1 million", "2.4 billion"])
+        # at the unit boundaries (review 2026-10-20 L6: "1000 thousand", "1000 million")
+        self.assertEqual([ask.words_cr(x) for x in (999_499, 999_999, 999_950_000)], ["999 thousand", "1 million", "1 billion"])
 
     def test_fsd_injection(self):
         """S14: the three injections picked by group and grade (never by a recipe's name: S15's learned recipes), the

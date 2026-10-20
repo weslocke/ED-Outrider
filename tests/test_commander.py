@@ -109,6 +109,24 @@ class Inventory(unittest.TestCase):
         p = state.commander_profile()["profile"]
         self.assertEqual((p["assets"]["ships"], p["assets"]["fleet"]), (3, 160000000 + 100 + 32000))
 
+    def test_a_shipyard_list_during_a_transfer_keeps_its_arrival(self):
+        """Review 2026-10-20 L5: a StoredShips written while a ship is on its way (opening any shipyard) says InTransit
+        with no time; the fold's transfer knew when it arrives, and without it the ship stayed "in transit" for good."""
+        stored = lambda ts, transit: ev(ts, "StoredShips", StationName="Lave Station", MarketID=55, StarSystem="Lave",
+                                        ShipsHere=[], ShipsRemote=[{"ShipID": 6, "ShipType": "sidewinder", "Value": 32000, "Hot": False,
+                                                                    **({"InTransit": True} if transit else {"StarSystem": "Sol"})}])
+        j, _ = setup(self, [
+            ev(T("09:10:00"), "Location", StarSystem="Lave", SystemAddress=1, StarPos=[1.0, 2.0, 3.0], Docked=True,
+               StationName="Lave Station", StationType="Orbis", MarketID=55),
+            stored(T("09:11:00"), False),
+            ev(T("09:14:00"), "ShipyardTransfer", ShipType="sidewinder", ShipID=6, System="Sol", ShipMarketID=1, Distance=99.0,
+               TransferPrice=1000, TransferTime=600, MarketID=55),
+            stored(T("09:14:30"), True)])
+        at = lambda when: [(s["in_transit"], s["system"]) for s in
+                           C.ships(j.cmdr_view["stored_ships"], now=ed_outrider.ts_seconds(when))["ships"] if s["id"] == 6]
+        self.assertEqual(at(T("09:15:00")), [(True, "Lave")])    # on its way here
+        self.assertEqual(at(T("10:00:00")), [(False, "Lave")])   # arrived: not "in transit" until the next list
+
     def test_modules_locker_and_suits(self):
         _, state = setup(self, INVENTORY)
         inv = state.commander_inventory()
@@ -682,7 +700,8 @@ class Reader(unittest.TestCase):
         self.assertEqual(j.last_play_ts, T("08:10:00"))
         for name, kw in (("Missions", {"Active": [], "Failed": [], "Complete": []}), ("Reputation", {"Empire": 1.0}),
                          ("EngineerProgress", {"Engineers": []}), ("Powerplay", {"Power": "X", "Rank": 1}),
-                         ("SquadronStartup", {"SquadronName": "S"}), ("ShipLocker", {"Items": []})):
+                         ("SquadronStartup", {"SquadronName": "S"}), ("ShipLocker", {"Items": []}),
+                         ("Music", {"MusicTrack": "MainMenu"})):   # the menu's track at every launch (review M2)
             j.handle(ev(T("12:00:00"), name, **kw))
             self.assertEqual(j.last_play_ts, T("08:10:00"), name)
             self.assertIn(name, ed_outrider.LOGIN_EVENTS)
@@ -722,6 +741,20 @@ class Reader(unittest.TestCase):
         for e in lines:
             again.handle(e)
         self.assertEqual(got(again), want)
+
+    def test_a_ship_stored_at_your_carrier_after_it_jumped(self):
+        """Review 2026-10-20 L1: aboard your carrier when it jumps, a ship swapped there afterwards was stored in the
+        carrier's previous system (the dock's system was only followed by Docked / Undocked / Location)."""
+        j, _ = setup(self, [
+            ev(T("08:00:00"), "LoadGame", Commander="Tester", Ship="krait_light", ShipID=7),
+            ev(T("08:00:05"), "Location", StarSystem="Sol", SystemAddress=10477373803, StarPos=[0, 0, 0], Docked=True,
+               StationName="XYZ-123", StationType="FleetCarrier", MarketID=3700000000),
+            ev(T("08:30:00"), "CarrierJump", Docked=True, StationName="XYZ-123", StationType="FleetCarrier",
+               MarketID=3700000000, StarSystem="Alpha Centauri", SystemAddress=1, StarPos=[3, 0, 0]),
+            ev(T("08:40:00"), "ShipyardSwap", ShipType="anaconda", ShipID=5, StoreOldShip="krait_light", StoreShipID=7,
+               MarketID=3700000000)])
+        ship = j.cmdr_view["stored_ships"]["ships"]["7"]
+        self.assertEqual((ship["system"], ship["station"]), ("Alpha Centauri", "XYZ-123"))
 
     def test_other_handlers_still_see_shared_lines(self):
         """A line both the Commander view and another handler read (a MissionCompleted's materials, a Died) still

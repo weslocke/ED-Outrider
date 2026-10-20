@@ -361,7 +361,8 @@ def journal_files(dirs):
         if not os.path.isdir(d):
             print(f"warning: not a directory, skipping: {d}", file=sys.stderr)
             continue
-        files.extend(glob(os.path.join(glob_escape(d), "Journal*.log")))
+        # Journal.*.log only, as everything else reads: not the beta / alpha branches' JournalBeta.* (review L4)
+        files.extend(glob(os.path.join(glob_escape(d), "Journal.*.log")))
     return files
 
 
@@ -414,7 +415,7 @@ def read_events(dirs):
     sorted by timestamp, de-duplicated across directories."""
     files = journal_files(dirs)
     if not files:
-        raise FileNotFoundError("no Journal*.log files found in: " + (", ".join(dirs) or "(no journal directory)"))
+        raise FileNotFoundError("no Journal.*.log files found in: " + (", ".join(dirs) or "(no journal directory)"))
 
     events = []
     seen = set()

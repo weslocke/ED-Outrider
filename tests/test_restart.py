@@ -138,6 +138,18 @@ class Route(unittest.TestCase):
         self.state.restart, self.state.stop_event = {"can": True, "how": "python"}, None   # no server running
         self.assertEqual(self.post(stop=False)[:2], (503, {"error": "Outrider is not serving from here", "code": "cannot_restart"}))
 
+    def test_not_once_a_stop_has_begun(self):
+        """Review 2026-10-20 L17, L18: a Restart (or a "back up now") asked for while Outrider was already stopping
+        (a signal, the quit backup being waited on) turned the stop into a restart (and left a zip never recorded)."""
+        async def go():
+            self.state.stop_event = asyncio.Event()
+            self.state.stop_event.set()
+            self.state.db_path = "x.sqlite"
+            return self.state.request_restart(), self.state.start_backup(), self.state.restart_wanted
+        restart, backup, wanted = asyncio.run(go())
+        self.assertEqual((restart[1], restart[0]["code"], wanted), (409, "stopping", False))
+        self.assertEqual(backup, ({"error": "Outrider is stopping"}, 409))
+
     def test_docker_waits_until_it_counts_as_started(self):
         """Docker applies its restart policy only to a container that ran 10 s: a restart sooner would just stop it."""
         self.state.restart = {"can": True, "how": "docker"}

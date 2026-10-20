@@ -1064,7 +1064,7 @@ def pad_panel(d, pal, size="normal", pid="radar"):
 
 # supercruise seconds from the arrival star on the page's community curve (page.js scSeconds): a rough guide
 SC_KNEE = 7.5 * math.log(2000) - 20
-TARGET_WORDS = {"unreported": ("never reported", "good"), "no bodies": ("no scan data", "warn"),
+TARGET_WORDS = {"checking": ("checking…", "muted"), "unreported": ("never reported", "good"), "no bodies": ("no scan data", "warn"),
                 "partial": ("partly scanned", "warn"), "explored": ("fully scanned", "muted"), "visited": ("visited", "muted")}
 ARRIVAL_SECONDS = 20   # the arrival verdict stays this long after the jump, as on Now
 NOW_W = 520

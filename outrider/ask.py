@@ -176,9 +176,11 @@ def hush_words(text):
 def words_cr(n):
     """Credits as said aloud: 1234567 -> "1.2 million"."""
     n = n or 0
-    if n >= 1e9:
+    # the thresholds are where the unit below would round up to 1000 of itself (review 2026-10-20 L6: "1000 thousand",
+    # "1000 million"), as riches.money
+    if n >= 999_950_000:
         return f"{n / 1e9:.1f} billion".replace(".0 ", " ")
-    if n >= 1e6:
+    if n >= 999_500:
         return f"{n / 1e6:.1f} million".replace(".0 ", " ")
     if n >= 1e3:
         return f"{round(n / 1e3)} thousand"

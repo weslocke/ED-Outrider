@@ -330,18 +330,23 @@ class Feed:
         self._stop = threading.Event()
         self._lock = threading.Lock()
 
+    def _failed(self, why):
+        with self._lock:
+            if self.error != why:
+                log.warning("overlay: %s", why)
+            self.error = why
+            if self.data is not None:   # Outrider gone or failing: nothing stale stays on screen
+                self.data, self.seq = None, self.seq + 1
+
     def fetch_once(self):
         try:
             got = self.client.view(self.data["version"] if self.data else None, self.track, self.height)
         except (OSError, RuntimeError, ValueError, urllib.error.URLError, http.client.HTTPException) as e:
             # HTTPException: a connection cut mid-answer (IncompleteRead, BadStatusLine) is none of the others
-            with self._lock:
-                if self.error != str(e):
-                    log.warning("overlay: %s", e)
-                self.error = str(e)
-                if self.data is not None:   # Outrider gone: nothing stale stays on screen
-                    self.data, self.seq = None, self.seq + 1
-            return
+            return self._failed(str(e))
+        if not isinstance(got, dict) or (not got.get("same") and not isinstance(got.get("panels"), list)):
+            # an error answer (a panel that failed to build: its JSON 500) kept the last system drawn (review M8)
+            return self._failed(str(got.get("error") if isinstance(got, dict) and got.get("error") else "no panels in the answer"))
         with self._lock:
             if self.error:
                 log.info("overlay: connected to %s", self.client.url)

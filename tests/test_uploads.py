@@ -1493,6 +1493,53 @@ class LogMarks(unittest.TestCase):
         self.assertEqual(b["rows"][0]["up"], [{"service": "eddn", "state": "queued", "why": "waiting to be sent"}])
 
 
+class RetriedRowsKeepTheirPlace(unittest.TestCase):
+    """Review 2026-10-20 M0: a wake during a backoff (a Save or Check of the key, Try again) sent rows queued since ahead
+    of the batch waiting to be retried (EDSM's events out of order), and Inara's slow-down hour was cut short."""
+
+    def setUp(self):
+        LoopFixes.setUp(self)
+
+    def test_newer_rows_wait_behind_a_retry(self):
+        first = U.due(self.db, "eddn", 1000.0)[0]["id"]
+        U.settle(self.db, first, "queued", "503 busy", 1000.0, retry_in=60)
+        self.assertEqual(U.due(self.db, "eddn", 1010.0), [])            # woken early: nothing overtakes the retry
+        self.assertEqual([r["id"] for r in U.due(self.db, "eddn", 1061.0)][0], first)   # then the oldest goes first
+
+    def test_a_save_or_check_without_a_hold_keeps_the_wait(self):
+        import asyncio
+        st = ed_outrider.State(self.db, ed_outrider.Journals(self.db), None, 25)
+        st.upload_wake["inara"] = asyncio.Event()
+        st.upload_status["inara"] = {"error": "Inara: too many requests, slow down"}
+        self.assertFalse(st.clear_key_hold("inara"))
+        self.assertFalse(st.upload_wake["inara"].is_set())
+        self.assertEqual(st.upload_status["inara"]["error"], "Inara: too many requests, slow down")
+        st.upload_status["inara"] = {"held": "203 refused"}
+        self.assertTrue(st.clear_key_hold("inara"))
+        self.assertTrue(st.upload_wake["inara"].is_set())
+        self.assertNotIn("inara", st.upload_status)
+
+
+class EdmcOnWindows(unittest.TestCase):
+    """Review 2026-10-20 H1: tasklist writes the OEM code page; read as text, a German "keine Aufgaben ... ausgeführt"
+    (ü = 0x81, no cp1252 byte) raised UnicodeDecodeError out of edmc_running, crashing Outrider's start-up on a game PC
+    with EDMC installed and not running."""
+
+    def run_with(self, stdout):
+        import subprocess
+        done = subprocess.CompletedProcess(["tasklist"], 0, stdout=stdout, stderr=b"")
+        with unittest.mock.patch("subprocess.run", return_value=done) as run:
+            got = U.edmc_running("win32")
+        self.assertNotIn("text", run.call_args.kwargs)   # bytes, never decoded
+        return got
+
+    def test_localized_no_tasks_message(self):
+        self.assertFalse(self.run_with(b"INFORMATION: Es werden keine Aufgaben mit den angegebenen Kriterien ausgef\x81hrt.\r\n"))
+
+    def test_running(self):
+        self.assertTrue(self.run_with(b"EDMarketConnector.exe        4242 Console    1    81.200 K\r\n"))
+
+
 def asyncio_run(coro):
     import asyncio
     return asyncio.run(coro)

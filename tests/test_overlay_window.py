@@ -519,6 +519,30 @@ class ClientAndFeed(unittest.TestCase):
         self.assertEqual((feed.data, feed.seq), (None, 4))
         self.assertIsNotNone(feed.error)
 
+    def test_feed_drops_the_panels_on_an_error_answer(self):
+        """Review 2026-10-20 M8: a JSON error answer (a panel builder raising: json_errors' 500) neither cleared the
+        panels nor set the error, so the last system stayed drawn after you jumped on, and nothing was logged."""
+        import io
+        op = FakeOpener()
+        feed = W.Feed(W.Client("http://127.0.0.1:8025", opener=op))
+        feed.fetch_once()
+        self.assertEqual(feed.seq, 1)
+
+        class Failing:
+            def open(self, req, timeout=None):
+                raise urllib.error.HTTPError(req.full_url, 500, "Internal Server Error", {},
+                                             io.BytesIO(b'{"error": "KeyError: x", "code": "server_error"}'))
+        feed.client.opener = Failing()
+        logging.getLogger("outrider.overlay_window").disabled = True
+        try:
+            feed.fetch_once()
+        finally:
+            logging.getLogger("outrider.overlay_window").disabled = False
+        self.assertEqual((feed.data, feed.seq, feed.error), (None, 2, "KeyError: x"))
+        feed.client.opener = op
+        feed.fetch_once()
+        self.assertEqual((feed.data["version"], feed.seq, feed.error), ("v1", 3, None))   # back once it answers
+
     def test_config_url(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "c.toml")

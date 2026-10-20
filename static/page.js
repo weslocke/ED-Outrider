@@ -1311,7 +1311,7 @@ function renderNow() {
     lines.push(`<div class="now-card ${a.undiscovered ? "yes" : "no"}">${a.undiscovered ? "🏁 Undiscovered — first discovery is yours" : "Already discovered"}</div>`);
   if (t) {
     const label = {"unreported": "never reported — new discovery!", "no bodies": "no scan data", "partial": "partly scanned",
-      "explored": "fully scanned", "visited": "you've been here"}[t.status] || t.status;
+      "explored": "fully scanned", "visited": "you've been here", "checking": "checking…"}[t.status] || t.status;
     const hz = hazardNote(t.star_class);
     lines.push(`<div class="now-line">➜ <b>${esc(t.name)}</b> <span class="t-${t.status.replace(" ", "")}">${esc(label)}</span>${targetCounts(t)}` +
       (t.star_class ? ` <span class="${/^[OBAFGKM](_|$)/.test(t.star_class) ? "ok" : "noscoop"}">${esc(t.star_class)}${/^[OBAFGKM](_|$)/.test(t.star_class) ? " ⛽" : " ✕"}</span>` : "") +
@@ -1734,7 +1734,7 @@ function pinLineHtml() {
 const pinMarkFor = (sys, short) => sys != null && String(sys) === String(posId()) ? pinMark(short) : "";
 const pinMark = short => { const n = data && data.pins && data.pins.counts && data.pins.counts[short];
   return n ? ` <span class="pinmark" title="${n} pin${n === 1 ? "" : "s"} on this body">📍</span>` : ""; };
-const PINS = {list: null, sig: null};
+const PINS = {list: null, sig: null, counts: null};
 async function loadPins() {
   try { const r = await apiJson("api/pins"); if (!r.error) PINS.list = r.pins || []; } catch {}
   refreshPinsUi();
@@ -1800,7 +1800,8 @@ function pinLegendClick(e) {
   if (go) {
     const [lat, lon] = go.dataset.pingo.split(",").map(Number), pos = data && data.position, body = data && data.pins && data.pins.here && data.pins.here.body;
     if (!pos || !body) { toast("Pin: no body here"); return true; }
-    pinsPost({action: "add", system: String(pos.id64), sysname: pos.name, body, name: go.dataset.pinname, lat, lon, active: true});
+    pinsPost({action: "add", system: posId(), sysname: pos.name, body,   // the exact id (id64 rounds above 2^53: review M7)
+              name: go.dataset.pinname, lat, lon, active: true});
     return true;
   }
   if (e.target.closest("[data-pinhere]")) { const n = prompt("Name this pin (where you are now):", ""); if (n !== null) pinsPost({action: "here", name: n}); return true; }
@@ -1822,10 +1823,15 @@ function drawBmPins() {
 document.getElementById("bmPins").addEventListener("click", e => {
   const rm = e.target.closest("[data-pinrm]"); if (rm && confirm("Delete this pin?")) pinsPost({action: "delete", id: Number(rm.dataset.pinrm)});
 });
-// the payload's counts changed (a pin added or deleted, in this window or another): the list is asked for again
+// a pin added, deleted or changed, in this window or another, in any system (pins.v; review 2026-10-20 L13: a pin on
+// another system's body went unnoticed): the list is asked for again; Here's 📍 marks follow the counts (L12)
 function pinsTick() {
-  const sig = JSON.stringify(data && data.pins && data.pins.counts) + "|" + ((data && data.pins && data.pins.here && data.pins.here.pins) || []).map(p => `${p.id}${p.reached ? "r" : ""}`).join();
-  if (sig !== PINS.sig) { PINS.sig = sig; loadPins(); }
+  const p = data && data.pins, counts = JSON.stringify(p && p.counts);
+  const sig = `${p && p.v}|${counts}|` + ((p && p.here && p.here.pins) || []).map(x => `${x.id}${x.reached ? "r" : ""}`).join();
+  if (sig === PINS.sig) return;
+  const recount = PINS.sig !== null && counts !== PINS.counts;
+  PINS.sig = sig; PINS.counts = counts; loadPins();
+  if (recount && hereData) renderHere();
 }
 
 // How Now fits its map on the screen (pure, so the tests can check it). vw, vh: the window; width: Now's content width;
@@ -3893,7 +3899,7 @@ function render() {
   else {
     const label = {"unreported": "never reported — new discovery!", "no bodies": "no scan data",
       "partial": "partly scanned", "explored": "fully scanned", "visited": "you've been here",
-      "lookup failed": "Spansh lookup failed"}[t.status] || t.status;
+      "lookup failed": "Spansh lookup failed", "checking": "checking…"}[t.status] || t.status;
     const row = data.systems.find(s => sysId(s) === sysId(t));
     const sc = t.star_class ? ` · <span class="mono">${esc(t.star_class)}</span>` +
       (/^[OBAFGKM](_|$)/.test(t.star_class) ? ` <span class="scoop" title="scoopable">⛽</span>`
@@ -4386,7 +4392,9 @@ if (!TABLET) document.querySelectorAll(".views [data-view]").forEach(b => {
 if (viewWindow) document.getElementById("viewWinBack").onclick = () => document.querySelector(`.views [data-view="${viewWindow}"]`).click();
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = ev => {
   if (ev && ev.target && ev.target.closest && ev.target.closest("[data-popview]")) { popView(b.dataset.view); return; }
-  if (b.dataset.view !== view && pinnedSystem) { pinnedSystem = null; if (selectedBody) closeBody(); }  // a pin belongs to the view it was made in
+  // a pin belongs to the view it was made in; its Here data goes with it, or it is drawn as the system you are in until
+  // the fetch lands (review 2026-10-20 L14)
+  if (b.dataset.view !== view && pinnedSystem) { pinnedSystem = null; forgetOtherHere(); if (selectedBody) closeBody(); }
   if (b.dataset.view === "now" && view !== "now") viewBeforeNow = view;
   if (b.dataset.view === "hist" && view !== "hist") histKey = null;   // fresh numbers each time the tab opens
   if (b.dataset.view === "hwy" && view !== "hwy") H.key = null;   // the fleet, ship and cargo afresh (review F3)
@@ -7926,7 +7934,8 @@ const routeKindHtml = kind => `<div class="seg hwykind" role="radiogroup" aria-l
     `<label><input type="radio" name="hwyKind" value="${k}"${k === kind ? " checked" : ""}>${t}</label>`).join("") + `</div>`;
 hEl("hwyHead").addEventListener("change", e => {
   if (e.target.name !== "hwyKind") return;
-  store.set("hwyShow", e.target.value); HM.auto = true; renderHwy();
+  // the header's route line reads the same choice (review 2026-10-20 L16: it kept the other route until a payload)
+  store.set("hwyShow", e.target.value); HM.auto = true; renderHwy(); renderHwyLine();
 });
 function richHeadHtml(d) {
   if (d.route.kind === "trade") return tradeHeadHtml(d);
@@ -12996,10 +13005,14 @@ if (!TABLET) {
 const SRV_SET_OPEN = {};   // which config sections are open in this window
 let srvFocus = null;       // the id of the field openServerSettings(section, key) asked for, focused once drawn
 const DOCKER_NO_JOURNALS = "no journals in /journals: is the game PC's journal folder mounted? (JOURNALS in .env)";
+// only the newest load draws (review 2026-10-20 L15: opened from a notice, two loads ran and the second threw away the
+// field the first had focused for the notice)
+const SRV_LOAD = {gen: 0};
 async function loadServerSettings() {
-  const box = document.getElementById("serverSettingsBody");
+  const box = document.getElementById("serverSettingsBody"), gen = ++SRV_LOAD.gen;
   let c;
   try { c = await apiJson("api/config"); } catch { c = {error: "Outrider not reachable"}; }
+  if (gen !== SRV_LOAD.gen) return;
   if (!c || c.error) { box.innerHTML = `<div class="hint warnc">Cannot read the server's settings: ${esc((c && c.error) || "?")}</div>`; return; }
   const human = k => k.replace(/_/g, " ").replace(/^./, x => x.toUpperCase());
   const field = (sec, k) => {
@@ -13788,7 +13801,7 @@ function tabAutoView() {
   const shown = surfaceShows(data.surface) || !!(data.docking && data.docking.pad != null);
   if (shown && !TB.mapWas) {
     TB.beforeMap = view !== "now" ? view : null;
-    if (view !== "now") { pinnedSystem = null; view = "now"; saveView(); }
+    if (view !== "now") { pinnedSystem = null; forgetOtherHere(); view = "now"; saveView(); }
   } else if (!shown && TB.mapWas) {
     if (view === "now" && TB.beforeMap) { view = TB.beforeMap; saveView(); }
     TB.beforeMap = null;

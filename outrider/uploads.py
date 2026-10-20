@@ -294,7 +294,12 @@ def release(db, service):
 
 
 def due(db, service, now, limit=50):
-    """Rows of `service` to send now, oldest first."""
+    """Rows of `service` to send now, oldest first. None while a row already tried waits out its retry: newer rows never
+    overtake it (EDSM takes a commander's events in order; Inara's "slow down" hour holds for all), whatever ends the
+    sender's wait early (review 2026-10-20 M0)."""
+    if db.execute("SELECT 1 FROM upload_queue WHERE service=? AND state='queued' AND attempts > 0 AND next_try > ? LIMIT 1",
+                  (service, now)).fetchone():
+        return []
     return [dict(r) if isinstance(r, sqlite3.Row) else r for r in db.execute(
         "SELECT * FROM upload_queue WHERE service=? AND state='queued' AND next_try <= ? ORDER BY id LIMIT ?",
         (service, now, limit))]
@@ -1084,12 +1089,12 @@ def edmc_running(platform):
     """Whether an EDMarketConnector process runs on this computer (Linux: /proc; Windows: tasklist)."""
     if platform == "win32":
         import subprocess
-        try:
+        try:   # bytes: tasklist writes the OEM code page (a German "ausgeführt" is no cp1252), the name is ASCII
             out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq EDMarketConnector.exe", "/NH"], capture_output=True,
-                                 text=True, timeout=5).stdout
-        except (OSError, subprocess.SubprocessError):
+                                 timeout=5).stdout
+        except (OSError, ValueError, subprocess.SubprocessError):
             return False
-        return "EDMarketConnector" in out
+        return b"EDMarketConnector" in (out or b"")
     try:
         pids = [p for p in os.listdir("/proc") if p.isdigit()]
     except OSError:

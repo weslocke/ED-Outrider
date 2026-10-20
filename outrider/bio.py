@@ -1216,7 +1216,7 @@ def backtest(dirs, verbose=False, since=None):
         return
     scans, systems, analysed, genera = {}, {}, [], collections.defaultdict(set)
     for d in dirs:
-        for path in sorted(glob(os.path.join(glob_escape(d), "Journal*.log"))):
+        for path in sorted(glob(os.path.join(glob_escape(d), "Journal.*.log"))):
             with open(path, encoding="utf-8", errors="replace") as fh:
                 for line in fh:
                     if '"event":"Scan"' in line:

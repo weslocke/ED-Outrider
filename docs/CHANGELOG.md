@@ -2,6 +2,59 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-20 · Review fixes (3): the smaller ones
+From the full Fable review of 2026-10-20.
+- **Unsold reads only Journal.*.log (L4):** a beta or alpha branch's JournalBeta.* files in the folder fed their scans,
+  sales and deaths into the estimate.
+- **"1 million credits", not "1000 thousand" (L6):** the spoken answers' credits carry at unit boundaries (as the
+  routes' already did).
+- **A self-made voice for a personality (L7):** a voice installed under its own name was accepted, then silently
+  dropped; it is kept now, as the main voice and the crew take it.
+- **The speech file's banner follows the file (L8):** it was set once at start, so it stayed after a fix and never
+  came for a file that broke later.
+- **"Since your last sale" after jumps (L9):** History's row stayed as it was across jumps without a scan.
+- **A stop stays a stop (L17, L18):** a Restart asked for while Outrider was already stopping turned the stop into a
+  restart; a "back up now" then made a zip never recorded. Both are refused once stopping (the quit backup still runs).
+- **Odd numbers in requests (L19, L20):** `fuel: Infinity` in a carrier trip and a Unicode digit in Search's
+  `around` are a 400, not a 500.
+
+## 2026-10-20 · Review fixes (2): pins, the overlay, Now's target, the page
+From the full Fable review of 2026-10-20.
+- **A pin from the map's legend on the right system (M7):** it sent the system's id64 as a JSON number, which loses
+  digits above 2^53, so in such a system the pin never matched its body again; now the exact id.
+- **The overlay drops its panels when Outrider answers errors (M8):** an error answer (a panel failing to build) kept
+  the last system drawn after you jumped on, and the window logged nothing.
+- **Now never names the previous target (L10):** while a new target's lookup ran, Now (and its overlay panel) still
+  showed the old target and its verdict; it now names the new one, "checking…" (`current_target`).
+- **The overlay's panels follow a newer Spansh record (L11):** the full dump after the search's brief one (same status)
+  was missed until your next scan.
+- **Pins (L12, L13, L21):** Here's 📍 marks redraw when a pin is added or deleted; a pin changed on another system's
+  body (from another window) is noticed (the payload's `pins.v`); a pin's body name stays capped at 200 characters, and
+  an odd system id is a 400, not a 500.
+- **The page (L14, L15, L16):** another tab while a system is pinned no longer draws it as the one you are in for a
+  moment; Server settings opened from a notice keep the field it focused (only the newest load draws); the header's
+  route line follows Plot Route's Highway / Riches switch at once.
+
+## 2026-10-20 · Review fixes (1): Windows start-up, uploads, the target hop, the greeting, mining income
+From the full Fable review of 2026-10-20 (project/REVIEW-full-2026-10-20.md). PARSER_VERSION 55: one re-read.
+- **Windows start-up (H1):** with EDMC installed and not running, a non-English `tasklist` message (German
+  "ausgeführt") raised UnicodeDecodeError out of `edmc_running` and Outrider never started. Its output is now read as
+  bytes.
+- **Uploads keep their order (M0):** a Save or Check of a key (or Try again) during a backoff woke the sender, and rows
+  queued since went before the batch waiting to be retried (EDSM's events out of order; Inara sent to inside its
+  "slow down" hour, its status cleared). Nothing newer goes while a tried row waits (`uploads.due`), and the key's Save
+  or Check only wakes the sender when it lifted a hold.
+- **The target hop is from you (M1):** with Nearby Around another system, Now's target line and the overlay's Target
+  panel measured the hop (ly, fuel, jumps left, reach) from that centre: a 190 ly jump could read as a reachable 10 ly.
+- **"Away 3 days" again (M2):** the main menu's Music line (read since #12) counted as play, so the login's time away
+  was minutes and the greeting the plain one.
+- **The voice lab no longer freezes the server (M5):** picking a voice's person waited on the line being made, on the
+  event loop.
+- **Mining income (M6, L2):** a cargo transfer between the ship and the SRV on a planet was taken as ore back from your
+  carrier, and tritium put in the depot stayed counted as mined ore aboard; both inflated mining income later.
+- **Your fleet (L1, L5):** a ship stored at your carrier after it jumped was put in its previous system; a ship on its
+  way stayed "in transit" after arriving when a shipyard list was written meanwhile.
+
 ## 2026-10-20 · The Anaconda Mk II
 - Out today (4.4.2.0): its journal symbol `anacondamkii` (EDDN's shipyards, 19 of 94 in five minutes) is named
   "Anaconda Mk II" and needs a large pad (the dock finder's filter; a huge hardpoint). Almanac has no illustration of

@@ -221,9 +221,10 @@ class MinedStock(unittest.TestCase):
         about half his mining income went through the carrier); bought ore taken from the carrier is not."""
         j, state = setup(self, [ev(T("08:00:00"), "LoadGame", Commander="Tester", Ship="python"), loadout(T("08:00:05"), 7)]
                          + [refined(T("08:01:0%d" % i)) for i in range(4)] + [
+            docked(T("08:09:00"), name="ABC-123", market=CARRIER, kind="FleetCarrier"),
             ev(T("08:10:00"), "CargoTransfer", Transfers=[{"Type": "painite", "Count": 4, "Direction": "tocarrier"}]),
             ev(T("09:00:00"), "CargoTransfer", Transfers=[{"Type": "painite", "Count": 6, "Direction": "toship"}]),
-            docked(T("09:30:00")), sell(T("09:31:00"), "painite", 6, 1200000)])
+            undocked(T("09:05:00"), "ABC-123", CARRIER), docked(T("09:30:00")), sell(T("09:31:00"), "painite", 6, 1200000)])
         self.assertEqual((self.stock(j), self.kept(j)), ({}, {}))
         self.assertEqual([(s[0], s[1], s[2], s[5]) for s in self.sales(j)], [("painite", 6, 4, 800000)])   # 4 of the 6 t mined
         self.assertEqual(state.commander_sessions(now=NOW)["sessions"][0]["mining"]["sold"], 800000)
@@ -246,8 +247,28 @@ class MinedStock(unittest.TestCase):
         self.assertEqual(run(3), (3, {}))                  # others bought 7: 3 left, all of them mined, all taken back
         self.assertEqual(run(8), (5, {"painite": 3}))      # others bought 2: 8 held, 5 back aboard
 
+    def test_ship_and_srv_transfers_leave_the_carrier_alone(self):
+        """Review 2026-10-20 M6: a CargoTransfer between the ship and the SRV on a planet (toship / tosrv) was taken as
+        ore back from your carrier: its mined stock drained aboard, and bought ore sold later counted as mining."""
+        j, _ = setup(self, [refined(T("08:01:%02d" % i), "platinum") for i in range(10)] + [
+            docked(T("08:09:00"), name="ABC-123", market=CARRIER, kind="FleetCarrier"),
+            ev(T("08:10:00"), "CargoTransfer", Transfers=[{"Type": "platinum", "Count": 10, "Direction": "tocarrier"}]),
+            undocked(T("08:20:00"), "ABC-123", CARRIER),
+            ev(T("09:00:00"), "LaunchSRV", SRVType="mev_rhino", ID=1, PlayerControlled=True),
+            ev(T("09:01:00"), "CargoTransfer", Transfers=[{"Type": "platinum", "Count": 4, "Direction": "tosrv"}]),
+            ev(T("09:02:00"), "CargoTransfer", Transfers=[{"Type": "platinum", "Count": 4, "Direction": "toship"}])])
+        self.assertEqual((self.stock(j), self.kept(j)), ({}, {"platinum": 10}))
+
+    def test_tritium_into_the_depot_leaves_the_mined_stock(self):
+        """Review 2026-10-20 L2: mined tritium deposited in your carrier's depot stayed counted as mined ore aboard."""
+        j, _ = setup(self, [refined(T("08:01:%02d" % i), "tritium") for i in range(20)] + [
+            docked(T("08:09:00"), name="ABC-123", market=CARRIER, kind="FleetCarrier"),
+            ev(T("08:10:00"), "CarrierDepositFuel", CarrierID=CARRIER, Amount=15, Total=515)])
+        self.assertEqual(self.stock(j), {"tritium": 5})
+
     def test_part_kept_on_the_carrier(self):
         j, _ = setup(self, [refined(T("08:01:0%d" % i)) for i in range(5)] + [
+            docked(T("08:09:00"), name="ABC-123", market=CARRIER, kind="FleetCarrier"),
             ev(T("08:10:00"), "CargoTransfer", Transfers=[{"Type": "painite", "Count": 5, "Direction": "tocarrier"}]),
             ev(T("09:00:00"), "CargoTransfer", Transfers=[{"Type": "painite", "Count": 2, "Direction": "toship"}])])
         self.assertEqual((self.stock(j), self.kept(j)), ({"painite": 2}, {"painite": 3}))

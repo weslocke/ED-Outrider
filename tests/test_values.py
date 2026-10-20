@@ -22,6 +22,15 @@ import outrider.unsold  # noqa: E402
 
 
 class UnsoldEstimate(unittest.TestCase):
+    def test_beta_journals_are_not_read(self):
+        """Review 2026-10-20 L4: the Unsold estimate globbed Journal*.log, so a beta or alpha branch's JournalBeta.*
+        files in the folder fed their scans, sales and deaths into it; everything else reads Journal.*.log."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("Journal.2026-10-01T100000.01.log", "JournalBeta.2026-09-01T100000.01.log", "JournalAlpha.2026-09-02T100000.01.log"):
+                open(os.path.join(d, name), "w").close()
+            self.assertEqual([os.path.basename(f) for f in outrider.unsold.journal_files([d])], ["Journal.2026-10-01T100000.01.log"])
+
     def test_partial_sale_keeps_unsold_systems(self):
         ev = [scan("2026-01-01T00:00:00Z", "A", 1, 0, "A", star=True), scan("2026-01-01T00:00:00Z", "B", 2, 0, "B", star=True),
               sale("2026-01-02T00:00:00Z", ["A"])]
@@ -800,6 +809,11 @@ class Batch4Ledger(unittest.TestCase):
         self.assertEqual(L["losses"][0]["bodies"], 1)              # S2's star died with the ship; S1's was sold
         self.assertGreater(L["losses"][0]["value"], 0)
         self.assertEqual(L["since_last_sale"]["jumps"], 1)
+        # jumps with no scan (review 2026-10-20 L9: the cached row stayed at 1 until the next scan or sale)
+        self.jump("2026-01-05T00:00:00Z", 3, 20)
+        self.jump("2026-01-05T00:10:00Z", 4, 30)
+        self.db.commit()
+        self.assertEqual(self.state.ledger()["since_last_sale"]["jumps"], 3)
 
     def test_ranks_named(self):
         self.j.handle({"event": "LoadGame", "timestamp": "2026-01-01T00:00:00Z", "Commander": "J", "Credits": 1})

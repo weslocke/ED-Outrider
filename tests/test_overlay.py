@@ -1389,6 +1389,30 @@ class Server(unittest.TestCase):
         st["destination"] = {"System": 77, "Body": 9, "Name": "Test Sector AB-C d1-2 A 3"}
         self.assertEqual((info()["destination"], info()["destination_ls"]), ("A 3", 900))
 
+    def test_now_never_names_the_previous_target(self):
+        """Review 2026-10-20 L10: while a new target's lookup ran, Now (its overlay panel and the page's line) named the
+        previous target with its verdict; the Target panel already showed the new one as checking."""
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Here",
+                                    "SystemAddress": 77, "StarPos": [0, 0, 0]})
+        self.state.target = {"id64": 5, "name": "Old Target", "ts": ed_outrider.iso_ts(1001), "status": "unreported"}
+        self.state.journals.target = {"id64": 6, "name": "New Target", "ts": ed_outrider.iso_ts(1005), "star_class": "K"}
+        t = self.state.overlay_now_info(self.state.journals.pos, 1010)["target"]
+        self.assertEqual((t["name"], t["status"], t["star_class"]), ("New Target", "checking", "K"))
+        self.assertEqual((self.state.payload()["target"]["name"], self.state.payload()["target"]["status"]), ("New Target", "checking"))
+        self.state.target = {"id64": 6, "name": "New Target", "ts": ed_outrider.iso_ts(1005), "status": "partial"}
+        self.assertEqual(self.state.overlay_now_info(self.state.journals.pos, 1010)["target"]["status"], "partial")   # landed
+
+    def test_overlay_detail_follows_a_new_spansh_record(self):
+        """Review 2026-10-20 L11: a newer Spansh record with the same status (the full dump after the search's brief
+        one, a refresh) was missed by the panels' cache until your next own scan."""
+        built = []
+        self.state.system_detail = lambda id64: built.append(id64) or {"n": len(built)}
+        self.state.bases[77] = {"records": []}
+        self.assertEqual(self.state.overlay_detail(77), {"n": 1})
+        self.assertEqual(self.state.overlay_detail(77), {"n": 1})   # cached
+        self.state.bases[77] = {"records": [{"name": "A 1"}]}       # replaced, same status
+        self.assertEqual(self.state.overlay_detail(77), {"n": 2})
+
     def test_analysis_only_panels(self):
         """D2a: a panel marked analysis only shows in your ship only with the HUD in analysis mode; in the SRV, on foot,
         over the galaxy map and for the test panels the mark is ignored."""

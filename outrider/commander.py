@@ -172,6 +172,11 @@ def fleet_apply(state, ev, here=None):
                     "station": ev.get("StationName") if local else None, "value": s.get("Value"), "value_ts": ts,
                     "hot": bool(s.get("Hot")), "transfer_cost": None if local else s.get("TransferPrice"),
                     "transfer_s": None if local else s.get("TransferTime"), "in_transit": bool(s.get("InTransit")), "arrive_ts": None}
+                was = old.get(str(s["ShipID"])) or {}
+                if s.get("InTransit") and was.get("arrive_ts"):
+                    # the list says in transit only: the fold's transfer knows where to and when (as StoredModules;
+                    # review 2026-10-20 L5: else it stayed "on its way" until another shipyard was opened)
+                    ships[str(s["ShipID"])].update({k: was.get(k) for k in ("system", "station", "arrive_ts")})
                 hot[str(s["ShipID"])] = bool(s.get("Hot"))
     elif name in ("ShipyardBuy", "ShipyardSwap", "ShipyardSell", "SellShipOnRebuy"):
         if ev.get("StoreShipID") is not None:

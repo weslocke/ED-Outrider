@@ -1330,7 +1330,9 @@ DATA_EVENTS = ("MultiSellExplorationData", "SellExplorationData", "SellOrganicDa
 CMDR_EVENTS = ("LoadGame", "Commander", "Rank", "Progress", "Promotion", "Statistics")
 # written while the game loads (at the main menu, before LoadGame, and the snapshots just after it: missions,
 # reputation, engineers, Powerplay, squadron, ship locker): not play, so not where a session ended
-LOGIN_EVENTS = frozenset(CMDR_EVENTS) | {"Fileheader", "Materials"} | frozenset(outrider.commander.LOGIN_SNAPSHOTS)
+# Music too: read since #12, and the main menu's track is written at every launch before LoadGame (review 2026-10-20 M2:
+# it made the time away minutes, so the "away 3 days" greeting never came)
+LOGIN_EVENTS = frozenset(CMDR_EVENTS) | {"Fileheader", "Materials", "Music"} | frozenset(outrider.commander.LOGIN_SNAPSHOTS)
 RANK_KEYS = ("Combat", "Trade", "Explore", "Soldier", "Exobiologist", "Empire", "Federation", "CQC")
 RANK_NAMES = {   # the two ranks an explorer cares about
     "Explore": ["Aimless", "Mostly Aimless", "Scout", "Surveyor", "Trailblazer", "Pathfinder", "Ranger", "Pioneer",
@@ -1397,7 +1399,7 @@ CARRIER_CARGO_EVENTS = ("CarrierStats", "CarrierTradeOrder", "CargoTransfer", "M
 # off, a death empties it, a transfer to your carrier moves it to the carrier's own mined stock (meta mined_carrier) and
 # one back to the ship moves it back, and a MarketSell counts as mining up to what it holds (mining_sales; the rest of
 # the sale is trade)
-SALE_DOCK_EVENTS = ("Docked", "Undocked", "Location")
+SALE_DOCK_EVENTS = ("Docked", "Undocked", "Location", "CarrierJump")
 # Chat read aloud by Comms (NEXT-VERSION #17, the author 2026-10-17): other players' messages, live only (never a catch-up
 # or a re-read), never the NPCs'. Kept in memory only (Journals.chat, CHAT_KEEP): never in the database, outrider.log
 # or the voice's cache; the page decides what to say (the channels ticked, mutes, the rate)
@@ -1405,7 +1407,7 @@ CHAT_EVENTS = ("ReceiveText",)
 CHAT_KEEP = 32               # messages the payload carries (a burst between two polls loses none)
 CHAT_CHANNELS = ("squadron", "wing", "player", "friend", "local", "starsystem", "voicechat")
 CHAT_MAX = 300               # characters of a message kept (the page says "and more" past it)
-MINED_EVENTS = ("MiningRefined", "CargoTransfer", "EjectCargo", "Died", "MarketSell", "CarrierBuy")
+MINED_EVENTS = ("MiningRefined", "CargoTransfer", "EjectCargo", "Died", "MarketSell", "CarrierBuy", "CarrierDepositFuel")
 # Mining stints (Journals.handle_mining): a drop into a ring opens one, these fill it, MINING_CLOSE ends it
 MINING_FILL = ("ProspectedAsteroid", "MiningRefined", "AsteroidCracked", "LaunchDrone")
 MINING_CLOSE = ("SupercruiseEntry", "FSDJump", "CarrierJump", "Docked", "Shutdown", "Died", "LoadGame")
@@ -1443,7 +1445,10 @@ WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + 
 # 43: a system's population (system_population) and own_firsts.bio_x5: no x5 bio bonus in populated systems.
 # 55: a body record's reserve (Scan's ReserveLevel: a ringed body's Pristine...), for Here's rings (mining).
 # 56: mining stints (mining_stints: each drop into a ring with what was prospected and refined there).
-PARSER_VERSION = 56
+# 57: main's 55 (the review of 2026-10-20): a ship<->SRV cargo transfer and tritium into the carrier's depot no longer
+#     move the mined stock (mining income), a ship stored at your carrier after it jumped is in its new system, a ship
+#     on its way keeps its arrival time through a shipyard list
+PARSER_VERSION = 57
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1469,6 +1474,8 @@ PARSER_VERSION = 56
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    57: "mining income no longer counts ore moved between the ship and the SRV or tritium put in your carrier's depot, "
+        "and ships stored at your carrier or on their way show where they really are (the Commander tab)",
     56: "each stretch of mining in a ring is kept: what you prospected and refined there (CMDR → Sessions' Hotspots)",
     55: "each ringed body keeps its reserves (pristine, major...), shown with its rings in Here",
     54: "ore you mined still counts as mined after a trip through your carrier (the Commander tab's Earnings)",
@@ -4441,6 +4448,12 @@ class Journals:
         as cargo_dock is. A dock by Apex shuttle counts (you are there, and can sell your data there)."""
         if not self.fresh("sale_dock", ts, (self.sale_dock or {}).get("ts")):
             return   # an older dock or undock read late (a legacy folder) does not move it back
+        if name == "CarrierJump":   # aboard a carrier that jumped: the same dock, in its new system (review 2026-10-20 L1)
+            d = self.sale_dock or {}
+            if ev.get("Docked") and d.get("station") is not None and ev.get("MarketID") == d.get("market_id"):
+                self.sale_dock = dict(d, system=ev.get("StarSystem"), ts=ts)
+                meta_set(self.db, "sale_dock", self.sale_dock)
+            return
         here = name == "Docked" or (name == "Location" and ev.get("Docked"))
         self.sale_dock = {"station": ev.get("StationName") if here else None, "market_id": ev.get("MarketID") if here else None,
                           "type": ev.get("StationType") if here else None, "system": ev.get("StarSystem") if here else None,
@@ -4499,7 +4512,9 @@ class Journals:
                 if t.get("Direction") == "tocarrier":
                     moved = min(n, stock.get(k, 0))
                     stock[k], kept[k] = stock.get(k, 0) - moved, kept.get(k, 0) + moved
-                elif t.get("Direction") in ("toship", "tosrv"):
+                elif t.get("Direction") == "toship" and self.cargo_dock is not None:
+                    # from your carrier only while docked (transfers happen at your own carrier alone): the same event
+                    # moves cargo between the ship and the SRV on a planet (toship / tosrv), one stock here (review M6)
                     if kept.get(k):   # never more than the carrier holds of it (ore others bought is not journaled)
                         held = self.carrier_holding(k, ts)
                         if held is not None:
@@ -4510,6 +4525,9 @@ class Journals:
             k = cid(ev.get("Type"))
             if k in stock:
                 stock[k] = max(0, stock[k] - count(ev))
+        elif name == "CarrierDepositFuel":   # tritium from the hold into the depot, mined tons first (review L2)
+            amount = ev.get("Amount") if isinstance(ev.get("Amount"), int) and ev.get("Amount") > 0 else 0
+            stock["tritium"] = max(0, stock.get("tritium", 0) - amount)
         else:   # MarketSell
             k, tons, total = cid(ev.get("Type")), count(ev), ev.get("TotalSale")
             mined = min(tons, stock.get(k, 0))
@@ -7439,6 +7457,7 @@ class State:
         self.riches_task = None
         self.carrier_trip_plotting = None   # #19: {state, from, to, started, error} of the last carrier trip plot
         self._pin_seen = None   # #16: (the active pin's id, the distance band said last)
+        self.pins_version = 0   # every pin change, anywhere (the payload's pins.v: other windows ask for the list again)
         self._pin_key = None    # #16: the guidance last sent (the page hears of a change)
         self.carrier_trip_task = None
         self.dock_cache = {}   # the Nearest finder's last Spansh search and permit check (DOCK_CACHE_S)
@@ -7545,7 +7564,7 @@ class State:
             "voice_memory": self.voice_memory(),  # the voices besides the main one in use, their memory and how many are kept
             "sound_files": self.sounds.info() if self.sounds and self.sounds.own_dir else None,   # your own sounds (S16)
             "player": self.player.info() if self.player else None,
-            "speech": self.speech.info() if self.speech else None,
+            "speech": self.speech_status(),
             "autohonk": self.autohonk_info(),
             "autotarget": self.autotarget_info(), "rail": self.rail_info(),   # the tablet's game buttons
             # boxel exploration: the page fetches api/boxel when this changes (a jump, a scan, Spansh's answer, a pick)
@@ -7596,8 +7615,8 @@ class State:
             # the range with the fuel and cargo aboard now (the fuel model), None without the Loadout's mass
             "jump_range_now": self.range_now(),
             "systems": list(self.systems.values()),
-            "target": dict(with_id(self.target), leaving=self.leaving_summary(pos["id64"]), hop=self.target_hop(self.target))
-                      if self.target and pos else with_id(self.target),
+            "target": dict(with_id(self.current_target()), leaving=self.leaving_summary(pos["id64"]),
+                           hop=self.target_hop(self.current_target())) if self.current_target() and pos else with_id(self.current_target()),
             "arrival": self.arrival,
             "scan_version": self.scan_version, "history_version": self.history_version,
             "cargo_version": f"{self.journals.cargo_version}.{self.counts_version}",   # the Materials tab's Cargo
@@ -8416,6 +8435,8 @@ class State:
             return {"error": f"Outrider cannot restart itself: {r.get('why')}", "code": "cannot_restart"}, 409
         if self.stop_event is None:
             return {"error": "Outrider is not serving from here", "code": "cannot_restart"}, 503
+        if self.stop_event.is_set():   # told to stop (a signal, the game PC shutting down): not turned into a restart (L17)
+            return {"error": "Outrider is stopping", "code": "stopping"}, 409
         up = (time.monotonic() if now is None else now) - STARTED
         if r.get("how") == "docker" and up < RESTART_MIN_UPTIME_S:
             return {"error": f"Outrider started {up:.0f} s ago: Docker starts a container again only once it has run "
@@ -8607,6 +8628,10 @@ class State:
             return {"error": "no database path"}, 500
         if self.backup_task and not self.backup_task.done():
             return {"running": True}, 200
+        if not auto and self.stop_event is not None and self.stop_event.is_set():
+            # stopping: one asked for now is never waited for, its zip never recorded (review L18); the quit
+            # backup at a stop (finish_backup) is automatic and still runs
+            return {"error": "Outrider is stopping"}, 409
         if self.backup_done_at is not None and time.monotonic() - self.backup_done_at < BACKUP_MIN_GAP:
             return {"error": f"the last backup finished under {BACKUP_MIN_GAP} s ago; try again in a minute"}, 429
         self.backup_task = asyncio.create_task(self.backup(auto))
@@ -8800,13 +8825,15 @@ class State:
 
     def overlay_detail(self, id64):
         """system_detail for the overlay's panels, kept until your scans or what is known of the system change (the
-        window asks once a second)."""
-        key = (id64, self.scan_version, id64 in self.bases, (self.systems.get(id64) or {}).get("status"))
+        window asks once a second). The Spansh record itself is part of the key (by identity: a refresh or the full dump
+        after the search's brief one replaces it, often with the same status; review 2026-10-20 L11)."""
+        key = (id64, self.scan_version, (self.systems.get(id64) or {}).get("status"))
+        base = self.bases.get(id64)
         cached = getattr(self, "_overlay_detail", None)
-        if cached and cached[0] == key:
+        if cached and cached[0] == key and cached[2] is base:
             return cached[1]
         detail = self.system_detail(id64)
-        self._overlay_detail = (key, detail)
+        self._overlay_detail = (key, detail, base)
         return detail
 
     def overlay_strip_info(self, pos):
@@ -8849,7 +8876,7 @@ class State:
         # a body of this system by its id, as the page's Now view finds it: a targeted station or mining site is none
         dest = dest and next((b for b in bodies.values() if b.get("body_id") == dest["body_id"]), None)
         a = self.arrival if self.arrival and self.arrival.get("id64") == str(pos["id64"]) else None
-        t = self.target
+        t = self.current_target()
         return {"name": pos.get("name"), "now": now, "arrival": a,
                 "target": t and {k: t.get(k) for k in ("name", "status", "known", "count", "star_class")},
                 "route": self.overlay_route(), "boxel": self.overlay_boxel(),
@@ -8877,7 +8904,7 @@ class State:
         vp = row.get("value_parts") or {}
         return {"name": jt["name"], "star_class": jt.get("star_class"), "remaining": jt.get("remaining"),
                 "status": t.get("status"), "source": t.get("source"), "known": t.get("known"), "count": t.get("count"),
-                "edsm": t.get("edsm"), "hop": self.target_hop(jt) if pos else None, "distance": row.get("distance"),
+                "edsm": t.get("edsm"), "hop": self.target_hop(jt) if pos else None, "distance": self.near_from_you(row),
                 "value": {"carto": (vp.get("carto_now") or 0) + (vp.get("carto_left") or 0), "bio": vp.get("bio_left") or 0},
                 "notable": row.get("notable") or {},
                 "route_check": ((self.overlay_route() or {}).get("summary") or {}).get("target_check")}   # S11
@@ -9812,8 +9839,9 @@ class State:
         if not t or not pos or pos.get("x") is None:
             return None
         row = self.systems.get(t["id64"])
-        if row and row.get("distance") is not None:
-            d = row["distance"]
+        near = self.near_from_you(row) if row else None   # from you, not from Nearby's centre when it is elsewhere (M1)
+        if near is not None:
+            d = near
         else:
             where = self.locate(t["id64"])
             if not where or where[1] is None:
@@ -11302,8 +11330,11 @@ class State:
     def ledger(self):
         """The turn-back numbers: since your last sale, each sale-to-sale trip with what it actually paid,
         what each ship loss cost, the game's own career statistics and your most valuable finds."""
+        # the jumps and the clock too: "since your last sale" counts jumps, light years and days, and the trip its hours
+        # (review 2026-10-20 L9: it stayed as it was across jumps without a scan)
         key = (self.scan_version, self.db.execute("SELECT count(*) FROM sale_events").fetchone()[0],
-               self.db.execute("SELECT count(*) FROM sale_estimates").fetchone()[0])
+               self.db.execute("SELECT count(*) FROM sale_estimates").fetchone()[0],
+               self.db.execute("SELECT count(*) FROM jumps").fetchone()[0], int(time.time() // 600))
         if getattr(self, "_ledger_key", None) == key:
             return self._ledger
         now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -12182,6 +12213,16 @@ class State:
             return False
         self.row_failed.discard(id64)
         return True
+
+    def current_target(self):
+        """self.target while it is the journal's current FSD target; while a new target's lookup runs, a stand-in that
+        names it (status "checking") so Now, its overlay panel and the header never name the previous one (review
+        2026-10-20 L10). None with no target, and before the first lookup lands."""
+        t, jt = self.target, self.journals.target
+        if not t or not jt or (t.get("id64"), t.get("ts")) == (jt.get("id64"), jt.get("ts")):
+            return t
+        return {"id64": jt["id64"], "name": jt.get("name"), "ts": jt.get("ts"), "star_class": jt.get("star_class"),
+                "status": "checking"}
 
     def maybe_classify_target(self):
         t = self.journals.target
@@ -13100,11 +13141,15 @@ class State:
 
     def clear_key_hold(self, service):
         """A key EDSM or Inara refused: send again now (a new key, Settings' Try again; S16, S45 later). The hold stops
-        the sending only (what is played meanwhile waits in the outbox), and it lasts until this. True when it held."""
-        held = bool((self.upload_status.pop(service, None) or {}).get("held"))
+        the sending only (what is played meanwhile waits in the outbox), and it lasts until this. True when it held.
+        Nothing else is touched: a Save or Check with no hold keeps a backoff's or Inara's slow-down wait and its words
+        (review 2026-10-20 M0)."""
+        if not (self.upload_status.get(service) or {}).get("held"):
+            return False
+        self.upload_status.pop(service, None)
         if service in self.upload_wake:
             self.upload_wake[service].set()   # the sender's wait ends at once
-        return held
+        return True
 
     def retry_upload(self, service, schema=None):
         """POST /api/uploads/retry: EDDN's schema on hold sent again (new messages only: its refused ones were dropped),
@@ -14708,13 +14753,43 @@ class State:
     # re-read leaves it). Every browser and the tablet speak each personality so: a pick wins over speech.json's own
     # voice and speaker, which win over the main voice. The page sends the voice and speaker with each line; the server
     # never downloads a voice for it (a pick whose voice was deleted is spoken in the main voice).
+    def speech_status(self):
+        """The lines file's state for the payload (SpeechLines.info: re-read when the files change), its banner kept in
+        step: set for an error or problems, cleared once fixed (review 2026-10-20 L8: set once at start, it stayed after
+        a fix and never came for a file that broke later)."""
+        sp = self.speech.info() if self.speech else None
+        if sp:
+            self.speech_notice(sp)
+        return sp
+
+    def speech_notice(self, sp):
+        if not sp["version"]:
+            self.notices.set("speech", f"Spoken alerts: {sp['error']}", action="open:log")
+        elif sp["problems"]:
+            n = len(sp["problems"])
+            self.notices.set("speech", f"The spoken lines file {sp['file']} has {n}{'+' if n >= 20 else ''} problem"
+                             f"{'' if n == 1 else 's'}: {sp['problems'][0]}" + (" (the others in the log)" if n > 1 else ""),
+                             action="open:log")
+        else:
+            self.notices.clear("speech")
+
     def style_picks(self):
-        """{style: {voice, speaker}} as kept, the malformed left out (speaker None: the voice's own pick)."""
+        """{style: {voice, speaker}} as kept, the malformed left out (speaker None: the voice's own pick). A voice is a
+        Piper-style name, or one installed under another name (a self-made voice, as the main voice and the crew take;
+        review 2026-10-20 L7: kept, then silently dropped here); the folder is only listed when a pick needs it."""
         raw = meta_get(self.db, "style_picks")
+        installed = None
+
+        def ok(name):
+            nonlocal installed
+            if outrider.speech.VOICE_NAME.fullmatch(name):
+                return True
+            if installed is None:
+                installed = set(self.speaker.installed()) if self.speaker else set()
+            return name in installed
         return {k: {"voice": v["voice"], "speaker": outrider.speech.speaker_number(v.get("speaker"))}
                 for k, v in (raw.items() if isinstance(raw, dict) else ())
-                if isinstance(k, str) and isinstance(v, dict) and isinstance(v.get("voice"), str)
-                and outrider.speech.VOICE_NAME.fullmatch(v["voice"])}
+                if isinstance(k, str) and isinstance(v, dict) and isinstance(v.get("voice"), str) and ok(v["voice"])}
 
     def set_style_pick(self, style, voice, speaker=None):
         """A personality's voice (and speaker) from now on; voice None: speech.json's or the main voice again. The
@@ -16559,7 +16634,7 @@ class State:
         """The payload's pins: counts per body of this system (short names: the 📍 in Here and Overview), and on a body
         with a position (from orbit down), its pins with where each is, the active one marked."""
         pos, h = self.journals.pos, self.surface_here()
-        out = {"counts": {}, "here": None}
+        out = {"counts": {}, "here": None, "v": self.pins_version}   # v: any pin changed, in any system (review L13)
         if pos:
             for r in self.db.execute("SELECT body, count(*) AS n FROM surface_pins WHERE system=? GROUP BY body", (pos["id64"],)):
                 out["counts"][short_name(pos.get("name") or "", r["body"])] = r["n"]
@@ -16597,11 +16672,13 @@ class State:
                 system, bname, lat, lon = h["system"], h["name"], h["lat"], h["lon"]
                 sysname = (self.journals.pos or {}).get("name")
             else:
-                sid, bname = str(body.get("system") or ""), name_of(body.get("body") or "")[:200] if isinstance(body.get("body"), str) else ""
-                if not sid.isdigit() or not bname:
+                # the body's whole name (not cut to a pin name's length), at most 200 characters; an id64 in ASCII
+                # digits under 2^63 (review 2026-10-20 L21: "²" or 30 digits raised, and the cap was undone)
+                sid = str(body.get("system") or "")
+                bname = " ".join(body["body"].split())[:200] if isinstance(body.get("body"), str) else ""
+                if not (sid.isascii() and sid.isdigit()) or int(sid) >= 2 ** 63 or not bname:
                     return {"error": "give the system (its id64) and the body's full name"}, 400
                 system, sysname = int(sid), name_of(body.get("sysname") or "") or None
-                bname = " ".join(body["body"].split())
                 try:
                     lat, lon = coord("lat", 90), coord("lon", 180)
                 except ValueError as e:
@@ -16647,6 +16724,7 @@ class State:
                 return {"error": "action must be add, here, delete, reset, activate, rename or move"}, 400
         self.db.commit()
         self._pin_seen = None   # a change: the active pin is said again ("set")
+        self.pins_version += 1
         self.bump()
         return {"ok": True, "pins": [{"id": p["id"], "name": p["name"], "lat": p["lat"], "lon": p["lon"], "reached": bool(p["reached_ts"])}
                                      for p in self.pins_body(system, bname)]}, 200
@@ -16722,7 +16800,9 @@ class State:
             v = body.get(k, default)
             if v is None or v == "":
                 v = default
-            if isinstance(v, bool) or not isinstance(v, (int, float)) or v != int(v) or not lo <= v <= hi:
+            # finite first: int() of Infinity raises OverflowError, not the 400 (review 2026-10-20 L19)
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v != int(v) \
+                    or not lo <= v <= hi:
                 raise ValueError(f"{k} must be a whole number from {lo:,} to {hi:,}")
             return int(v)
         try:
@@ -17009,7 +17089,7 @@ class State:
             id64 = (meta_get(self.db, "next_stop") or {}).get("id64")
             if id64 is None:
                 return None, "no next stop is set"
-        elif isinstance(around, str) and around.isdigit() and int(around) < 2 ** 63:
+        elif isinstance(around, str) and around.isascii() and around.isdigit() and int(around) < 2 ** 63:   # "²": L20
             id64, around = int(around), "system"
         else:
             return None, AROUND_BAD
@@ -21241,14 +21321,9 @@ async def run(args, st):
     state.speech =outrider.speech.SpeechLines(st["speech_file"])
     sp = state.speech.info()
     print(f"spoken alerts: lines from {sp['file']}" if sp["version"] else f"spoken alerts: {sp['error']}")
-    if not sp["version"]:
-        notices.set("speech", f"Spoken alerts: {sp['error']}", action="open:log")
     for msg in sp["problems"]:
         print(f"  {sp['file']}: {msg}", file=sys.stderr)
-    if sp["version"] and sp["problems"]:
-        n = len(sp["problems"])
-        notices.set("speech", f"The spoken lines file {sp['file']} has {n}{'+' if n >= 20 else ''} problem{'' if n == 1 else 's'}: "
-                    f"{sp['problems'][0]}" + (" (the others in the log)" if n > 1 else ""), action="open:log")
+    state.speech_notice(sp)
     if st["voices_preload"]:   # the journals are read: the voices in use load now, one at a time, behind the main one
         state.speaker.preload(state.voices_in_use())
     rules_task = asyncio.create_task(check_bio_rules(state)) if outrider.bio else None
