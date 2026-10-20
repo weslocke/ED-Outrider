@@ -3247,6 +3247,14 @@ function ringRecord(b, sys) {
 // or under Settings → Mining's number, the hold full in about 5 minutes at your rate (2 at least: "1 minutes"), and
 // the hold full, then the best price within 100 ly for the most you carry (the Sell lookup, once)
 const MW = {start: null, low: false, near: false, full: false};
+// a page opened, reloaded or woken mid-stint: what is already true is not news (the first payload's rule, as the fuel
+// latches; review 2026-10-20 M4: "The hold is full" and a sell lookup again in every new window)
+function miningBaseline(m) {
+  if (!m) return;
+  const full = m.free === 0;
+  Object.assign(MW, {start: m.start, low: m.limpets <= miningCfg().limpetsLow, full,
+                     near: full || (m.full_min != null && m.full_min <= 5)});
+}
 function miningWarn(m) {
   if (!m) return;
   if (MW.start !== m.start) Object.assign(MW, {start: m.start, low: false, near: false, full: false});
@@ -9290,6 +9298,7 @@ function onData() {
     lastPosId = posId(); lastLowFlag = !!(data.fuel && data.fuel.low_flag);
     lastUnderJumps = !!(data.fuel && data.fuel.live && fuelUnderJumps(data.fuel));
     hullLatch = hullBand(data.hull);
+    miningBaseline(data.mining_live);
     clearAnnounced = data.sampling && data.sampling.clear ? `${data.sampling.species}|${data.sampling.samples}` : null;
     { const sm0 = data.sampling, t0 = sm0 && sm0.tag;   // a tag already near when the page opens: not news
       tagAnnounced = t0 && t0.dist <= 100 ? {species: sm0.species, said: new Set([`${t0.lat}|${t0.lon}`])} : null; }

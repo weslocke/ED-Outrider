@@ -1408,9 +1408,12 @@ CHAT_KEEP = 32               # messages the payload carries (a burst between two
 CHAT_CHANNELS = ("squadron", "wing", "player", "friend", "local", "starsystem", "voicechat")
 CHAT_MAX = 300               # characters of a message kept (the page says "and more" past it)
 MINED_EVENTS = ("MiningRefined", "CargoTransfer", "EjectCargo", "Died", "MarketSell", "CarrierBuy", "CarrierDepositFuel")
-# Mining stints (Journals.handle_mining): a drop into a ring opens one, these fill it, MINING_CLOSE ends it
+# Mining stints (Journals.handle_mining): a drop into a ring opens one, these fill it, MINING_CLOSE ends it. Not a logout
+# or LoadGame: the login's Location says whether you are still in the ring (review 2026-10-20 M3: the LoadGame written
+# before it closed the stint, so a relog to respawn the rocks split it and lost its hotspot)
 MINING_FILL = ("ProspectedAsteroid", "MiningRefined", "AsteroidCracked", "LaunchDrone")
-MINING_CLOSE = ("SupercruiseEntry", "FSDJump", "CarrierJump", "Docked", "Shutdown", "Died", "LoadGame")
+MINING_CLOSE = ("SupercruiseEntry", "FSDJump", "CarrierJump", "Docked", "Died")
+MINING_RELOG_GAP_S = 15 * 60   # back in the same ring after longer than this: a new stint (its hotspot kept)
 MINING_EVENTS = frozenset(MINING_FILL + MINING_CLOSE + ("SupercruiseExit", "Location"))
 # a hotspot's Destination name ("$SAA_RingHotspot:#type=$Alexandrite_name;;"): its mineral
 RING_HOTSPOT = re.compile(r"RingHotspot:#type=\$(\w+?)_name", re.I)
@@ -1447,7 +1450,8 @@ WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + 
 # 56: mining stints (mining_stints: each drop into a ring with what was prospected and refined there).
 # 57: main's 55 (the review of 2026-10-20): a ship<->SRV cargo transfer and tritium into the carrier's depot no longer
 #     move the mined stock (mining income), a ship stored at your carrier after it jumped is in its new system, a ship
-#     on its way keeps its arrival time through a shipyard list
+#     on its way keeps its arrival time through a shipyard list; and a mining stint lasts through a relog in its ring
+#     (one after a long break keeps its hotspot), a legacy folder's stints are not today's ship's
 PARSER_VERSION = 57
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
@@ -1475,7 +1479,8 @@ PARSER_VERSION = 57
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
     57: "mining income no longer counts ore moved between the ship and the SRV or tritium put in your carrier's depot, "
-        "and ships stored at your carrier or on their way show where they really are (the Commander tab)",
+        "and ships stored at your carrier or on their way show where they really are (the Commander tab); a relog in a "
+        "ring no longer splits your mining there (CMDR → Sessions' Hotspots)",
     56: "each stretch of mining in a ring is kept: what you prospected and refined there (CMDR → Sessions' Hotspots)",
     55: "each ringed body keeps its reserves (pristine, major...), shown with its rings in Here",
     54: "ore you mined still counts as mined after a trip through your carrier (the Commander tab's Earnings)",
@@ -4595,13 +4600,21 @@ class Journals:
             return   # older than the open stint (a legacy folder read late)
         ring = name in ("SupercruiseExit", "Location") and ev.get("BodyType") == "PlanetaryRing"
         if name in MINING_CLOSE or name in ("SupercruiseExit", "Location"):
-            if row and not (name == "Location" and ring and ev.get("Body") == row["ring"]):   # a relog in the same ring: kept
+            relog = bool(row and name == "Location" and ring and ev.get("Body") == row["ring"])
+            if relog and ts_seconds(ts) - ts_seconds(row["last_ts"] or row["start_ts"]) <= MINING_RELOG_GAP_S:
+                return   # a relog in the same ring (the rocks respawned): the same stint
+            drop = relog and db.execute("SELECT hotspot FROM mining_hotspot_drops WHERE system=? AND body_id=? AND start_ts=?",
+                                        (row["system"], row["body_id"], row["start_ts"])).fetchone()
+            if row:
                 self.mining_close(row, ts)
                 row = None
-            if not ring or row:
+            if not ring:
                 return
             system = ev.get("SystemAddress")
-            ship = self.ship or {}
+            ship = self.ship if ts >= (self.ship or {}).get("ts", "") else {}   # a legacy line older than it: not known (L3)
+            ship = ship or {}
+            if drop:   # back in the same ring after a long break: still the hotspot you dropped on
+                db.execute("INSERT OR REPLACE INTO mining_hotspot_drops VALUES (?, ?, ?, ?)", (system, ev.get("BodyID"), ts, drop[0]))
             db.execute("INSERT OR REPLACE INTO mining_stints VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, '[]', '{}', 0, 0, 0, 0, 1)",
                        (ts, system, ev.get("StarSystem"), ev.get("Body"), ev.get("BodyID"), ship.get("ship_id"),
                         ship.get("name"), ship.get("type"), ts))

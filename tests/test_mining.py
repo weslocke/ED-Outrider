@@ -163,12 +163,20 @@ class Stints(unittest.TestCase):
         self.leave(0, ts="2020-01-01T00:10:00Z")
         self.assertEqual({k: g["tons"] for k, g in self.groups().items()}, {("4 B Ring", ""): 1, ("4 B Ring", None): 1})
 
+    def relog(self, s, ring="Sys 4 B Ring"):
+        """A relog as the game writes it: Shutdown (to the desktop) or not, then LoadGame, then the login's Location."""
+        self.j.handle({"event": "Shutdown", "timestamp": self.at(s)})
+        self.j.handle({"event": "LoadGame", "timestamp": self.at(s + 20), "Commander": "Tester", "Ship": "python", "ShipID": 7})
+        self.j.handle({"event": "Location", "timestamp": self.at(s + 25), "StarSystem": "Sys", "SystemAddress": 9, "Body": ring,
+                       "BodyID": 18, "BodyType": "PlanetaryRing", "StarPos": [0, 0, 0]})
+
     def test_relog_in_the_ring_and_a_reread(self):
+        """Review 2026-10-20 M3: the LoadGame the game writes before the login's Location closed the stint, so a relog to
+        respawn the rocks split it and filed the rest under an unknown hotspot (the test had sent the Location alone)."""
         hot = {"System": 9, "Body": 18, "Name": "$SAA_RingHotspot:#type=$Platinum_name;;"}
         self.drop(0, dest=hot)
         self.refine(10, "platinum")
-        self.j.handle({"event": "Location", "timestamp": self.at(60), "StarSystem": "Sys", "SystemAddress": 9, "Body": "Sys 4 B Ring",
-                       "BodyID": 18, "BodyType": "PlanetaryRing", "StarPos": [0, 0, 0]})
+        self.relog(35)
         self.refine(70, "platinum")
         g = self.groups()[("4 B Ring", "platinum")]
         self.assertEqual((g["stints"], g["tons"], g["open"]), (1, 2, True))   # still the same stint, still open
@@ -176,6 +184,31 @@ class Stints(unittest.TestCase):
         self.db.executescript(ed_outrider.RESET_JOURNAL_DATA)
         self.assertEqual(self.db.execute("SELECT count(*) FROM mining_stints").fetchone()[0], 0)
         self.assertEqual(self.db.execute("SELECT hotspot FROM mining_hotspot_drops").fetchall()[0][0], "platinum")
+
+    def test_back_in_the_ring_after_a_long_break(self):
+        """Over MINING_RELOG_GAP_S away (logged out for the night in the ring): a new stint, still the hotspot you
+        dropped on; logging in elsewhere ends it at its last ton."""
+        self.drop(0, dest={"System": 9, "Body": 18, "Name": "$SAA_RingHotspot:#type=$Platinum_name;;"})
+        self.refine(10, "platinum")
+        self.relog(10 + ed_outrider.MINING_RELOG_GAP_S + 60)
+        self.refine(ed_outrider.MINING_RELOG_GAP_S + 200, "platinum")
+        g = self.groups()[("4 B Ring", "platinum")]
+        self.assertEqual((g["stints"], g["tons"]), (2, 2))
+        self.j.handle({"event": "LoadGame", "timestamp": self.at(ed_outrider.MINING_RELOG_GAP_S + 300), "Commander": "Tester"})
+        self.j.handle({"event": "Location", "timestamp": self.at(ed_outrider.MINING_RELOG_GAP_S + 305), "StarSystem": "Sys",
+                       "SystemAddress": 9, "Body": "Sys", "BodyID": 0, "BodyType": "Star", "StarPos": [0, 0, 0]})   # elsewhere
+        self.assertEqual(self.db.execute("SELECT count(*), max(end_ts) FROM mining_stints WHERE open = 0").fetchone()[:],
+                         (2, self.at(ed_outrider.MINING_RELOG_GAP_S + 200)))   # ended at its last ton
+
+    def test_a_legacy_stint_is_not_todays_ship(self):
+        """Review 2026-10-20 L3: a stint from a legacy folder read after the live one was credited to the ship flown now
+        (self.ship), where the rest of the reader takes a line older than the Loadout as an unknown ship."""
+        old = "2024-03-01T09:00:00Z"
+        self.drop(0, ts=old)
+        self.refine(0, "platinum", ts="2024-03-01T09:01:00Z")
+        self.leave(0, ts="2024-03-01T09:30:00Z")
+        row = self.db.execute("SELECT ship_id, ship FROM mining_stints WHERE start_ts=?", (old,)).fetchone()
+        self.assertEqual(tuple(row), (None, None))
 
     def test_the_mining_strip(self):
         """D: while you mine in a ring (an open stint, normal space, a mining ship): the ring and hotspot, t/h, the hold,

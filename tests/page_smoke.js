@@ -9456,6 +9456,10 @@ const releasePayloads = async () => {
       got.warns = [warn(ml()), warn(ml({limpets: 5})), warn(ml({limpets: 4})), warn(ml({full_min: 4})), warn(ml({full_min: 3})),
                    warn(ml({free: 0, full_min: 0})), warn(ml({start: "s2", limpets: 3, full_min: 1})), warn(ml({start: "s2", limpets: 3, full_min: 1}))];
       w.eval("linePlain = false");
+      // a page opened mid-stint (review 2026-10-20 M4): the first payload baselines the warnings, the next says nothing old
+      w.eval(`data = Object.assign({}, data, {mining_live: ${JSON.stringify(ml({start: "s3", limpets: 2, free: 0, full_min: 0}))}});
+        window.__rid = runId; runId = "not this run"; onData(); onData(); runId = window.__rid; delete window.__rid`);
+      got.reopen = JSON.parse(w.eval(`JSON.stringify(__spoken.splice(0).filter(x => /hold|limpet/i.test(JSON.stringify(x))))`));
       w.eval(`data = Object.assign({}, data, {mining_live: ${JSON.stringify(ml())}}); renderNow()`);
       // "Hold full"'s where to sell (the author, 2026-10-19): the best price within 100 ly; none there, the nearest buyer
       // within 500, 2,500, 10,000 ly, carriers reported in the last 7 days among them; your own carrier never a sell
@@ -9509,6 +9513,7 @@ const releasePayloads = async () => {
       hCard: ["you, Alexandrite: 2 stints · 40 t/h · 50 % hits", "you, no hotspot: 1 stint"],
       warns: [[], [["5 limpets left.", "limpets"]], [], [["Hold full in about 4 minutes.", "limpets"]], [], [["The hold is full. Time to sell.", "limpets"]],
               [["3 limpets left.", "limpets"]], []],
+      reopen: [],
       nowMine: "⛏ 4 B Ring · Platinum · 60 t/h",
       sell: [["near100", [["Best price for Platinum within 100 light-years: Hub in Sys, 34 light-years, 182k credits a ton.", "limpets"]], [[100, "price", false]]],
              ["wider", [["Nearest buyer for Platinum: Jaques Station in Colonia, 1,320 light-years, 175k credits a ton. Or your carrier, 12 light-years: somewhere to unload.", "limpets"]],

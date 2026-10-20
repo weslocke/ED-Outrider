@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-20 · Review fixes (4, mining): a relog in the ring, warnings on a new page, legacy stints
+From the full Fable review of 2026-10-20; the mining branch's own. PARSER_VERSION 57 (main's 55 folded in): one re-read.
+- **A relog in the ring keeps the stint (M3):** the LoadGame the game writes before the login's Location closed it, so
+  relogging to respawn the rocks split the stint and filed the rest under an unknown hotspot. A logout no longer ends
+  a stint; the login's Location does (anywhere else). Back in the same ring after more than 15 minutes
+  (`MINING_RELOG_GAP_S`) is a new stint, still on the hotspot you dropped on.
+- **No old warnings in a new window (M4):** a page opened, reloaded or woken mid-stint said "The hold is full" (with a
+  fresh where-to-sell) and "Limpets: N left" again; the first payload now baselines them, as the fuel warnings.
+- **A legacy stint is not today's ship (L3):** a legacy folder read after the live one credited its old stints to the
+  ship you fly now.
+
 ## 2026-10-20 · Review fixes (3): the smaller ones
 From the full Fable review of 2026-10-20.
 - **Unsold reads only Journal.*.log (L4):** a beta or alpha branch's JournalBeta.* files in the folder fed their scans,
