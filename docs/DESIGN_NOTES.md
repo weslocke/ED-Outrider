@@ -177,8 +177,20 @@ upstream project's choices, not rules of the game.
   body re-entered without a new Scan (already resolved in an earlier visit, no AutoScan) is not said: there is no event
   to say it on. Belts are left out (they hold no hotspots). The ringed bodies of one payload are one line (a nav beacon
   resolves a system at once); FSS resolves come seconds apart and are said one by one. The reserves are said only when
-  pristine or depleted (they matter for laser mining; major, common and low are on the card). Hotspots (the DSS's map
-  of a ring) are the Mining section's next feature, not this one.
+  pristine or depleted (they matter for laser mining; major, common and low are on the card). Hotspots have their own
+  record (the mining stints, below).
+- **Mining stints and their hotspots** (mining B-D, 2026-10-19; the review of 2026-10-20). A stint runs from a drop
+  into a ring (`SupercruiseExit` or a login's `Location` with `BodyType: PlanetaryRing`) to leaving it: `MINING_CLOSE`
+  is SupercruiseEntry, FSDJump, CarrierJump, Docked and Died, **not a logout or LoadGame**: the login's Location says
+  whether you are still in the ring (miners relog to respawn the rocks). Back in the same ring after more than
+  `MINING_RELOG_GAP_S` (15 min) is a new stint that keeps the hotspot. `mining_stints` is journal-derived;
+  `mining_hotspot_drops` (the hotspot a live drop was aimed at, from Status.json's Destination, which no journal line
+  names) is live-only and joined by (system, ring, the stint's start). A stint from a legacy folder read late has no
+  ship (not today's). A mining ship is a refinery, a prospector controller or a mining / universal multi-limpet
+  controller, never a collector alone (explorers carry one). The page's first payload baselines the mining warnings
+  (`miningBaseline`): a new window never repeats "the hold is full". Hold-full's "where to sell" never names your own
+  carrier as a place to sell. The limpet reminder stays quiet while the hold's contents are not known (a count-only
+  Cargo with more aboard than the lines known).
 - **Boxels: what can and cannot be known** (2026-10-11, `outrider/boxel.py`). A procedural name's boxel, its centre and
   any of its systems' id64 are computed from a known system's position (checked: 2,763 of 2,763 of the author's
   standard-sector systems), so auto-target checks a never-visited system by id64. A boxel's size (how many systems)
@@ -1415,6 +1427,10 @@ upstream project's choices, not rules of the game.
 
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
 confirmed while playing. Treat reports about them as likely real.
+
+- Ring mining (branch `mining`): a stint on a live drop with its hotspot from Status.json's Destination, the
+  prospector call-out, the ⛏ line and its warnings' timing (limpets low, hold nearly full, hold full with where to
+  sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone).
 
 
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen

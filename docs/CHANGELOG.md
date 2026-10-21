@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-20 · Docs: the mining branch's own
+- The mining branch's docs after the sweep: Now's ⛏ line and the Rings cell's hover (views), Settings → Mining's full
+  row and the Mining Officer's (voice), mining's alert switches (overlay), hold-full's lookup (cargo), ring mining's
+  journal facts, the stint decisions and its "not yet tried" entry (journal reference, design notes), the mining code
+  map, tables and line counts (agent guide), and a Ring mining row in the README.
+
 ## 2026-10-20 · Docs brought up to date
 - **The guides:** Plot Route (🎯 on Search's results, 🪨 terraformable routes on the route line, Plot here's Exact for
   Trade or Carrier, the carrier trip kept apart, every docking warning), Cargo (limpets followed, stale last-seen lines

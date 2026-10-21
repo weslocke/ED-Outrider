@@ -106,7 +106,7 @@ browser starts with.
 | Fuel alerts under N jumps | off | Warns once when jumps left at your pace fall under N; also sets the top-up level. |
 | Core modules | 80% | A core module under this shows under hull and is said in the status report. |
 | Surface map | 1,000 m / 500 m / 50 m / 3,500 m | Altitude it shows below, narrowest view, rig spacing ring (0 = none), rig leash warning. |
-| Mining | none ticked, off | The ring types said when a scanned body has one (Icy, Rocky, Metallic, Metal Rich), and pristine only; the limpet reminder on undocking. |
+| Mining | none ticked, off; 30 %; 5 | The ring types said when a scanned body has one (Icy, Rocky, Metallic, Metal Rich), and pristine only; the limpet reminder on undocking; the prospector call-out's minerals, threshold, combined, motherlodes (on) and High material content (off); limpets low at (2 to 50). |
 
 **Export settings** and **Import settings** move them to another browser profile (both are a browser's: the Android app opens no file picker and saves no file the page makes). **Use these for new
 browsers** keeps a copy on the server (`data/browser_defaults.json`, included in backups), so a tablet running
@@ -244,7 +244,7 @@ the sentence ends:
 | Quartermaster | sales, unsold data, your carrier and its trips, losses |
 | Comms Officer | the game's start and exit, someone scanning your firsts, docking pads and refusals, other players' chat (read aloud, below) |
 | Tactical | every danger line (while Danger lines always in Tactical's voice is on) |
-| Mining Officer | the Rhino's rigs, rings to mine, limpets |
+| Mining Officer | the Rhino's rigs, rings to mine, limpets and the hold (nearly full, full, where to sell), the prospector call-out and motherlodes |
 
 - **The table.** A row per crew member: an optional **Name** (shown in Settings and the voice lab, and said when another
   crew member mentions it: see Crew lines below), its

@@ -35,8 +35,8 @@ DSS the genera each bio signal could be. Hover a body for a summary, click it fo
 it drawn from its scan data (an impression: class colours, bands, clouds, atmosphere, rings, size). ⛏ gives a
 community survey's mineral odds for that ground (odds, not contents) and what your SRV mined there before.
 Rings shows the count and, once one is mapped, "1🗺/5": rings mapped and the hotspots in them ("2🗺/20" alone when
-every ring is mapped); hover it (or the
-body) for each ring's hotspots under it, with its width, density and the body's reserves (pristine, major...).
+every ring is mapped); hover it for each ring's type and hotspots under it, the body's reserves (pristine, major...) and
+your record there; the body's own hover card adds each ring's width and density.
 The to-do line ticks itself off as you honk, map and sample, in a suggested order with supercruise time and
 credits per minute ("~2 min · 450k/min"; "skip?" when not worth the trip). Bio nobody has set foot on is
 valued with the ×5 first-footfall bonus, except in a populated system: Vista Genomics never pays it there.
@@ -218,6 +218,8 @@ with different reporters. While a new target is looked up it says "checking…",
   unsold"), only once that is over your amber level or rebuy multiple; a ship bought with Arx (its hull has no credit
   value) gets no rebuy multiple. Docked where your data sells it says what
   selling here pays ("💰 sell here: 380M"); on a high-g approach it shows that approach's stakes instead.
+- **While mining in a ring** (a mining ship, in normal space): a ⛏ line with the ring and hotspot, tons an hour, the
+  hold and what it holds most, limpets and minutes to full ([Voice and alerts](voice-and-alerts.md) has its warnings).
 - **This session** since your login: "2 h 14 · 74 jumps · 612 ly · 6 new systems · 11 mapped · 4 samples ·
   ~38.0M found" (the unsold estimate's change plus what you sold). After you quit, the last session.
 - **Captions** show the last three lines said; tap one to hear it again. A corner bar has 🗣, hush 30 min,

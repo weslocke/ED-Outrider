@@ -62,6 +62,7 @@ also run 24/7 on a home server in Docker.
 | 🧑‍🚀 **Your CMDR** | The CMDR tab: ranks with the way to the next, credits and assets, every ship (its build one click from EDSY or Coriolis) and stored module, engineering blueprints against your materials, the missions you hold, how your combat and mining sessions went, and what exploration, exobiology and mining earned you, month by month. |
 | 📈 **The long view** | Each trip from sale to sale with what it actually paid, what each ship loss cost, your best finds, ranks and career statistics. |
 | 🗣 **A voice with personality** | A natural neural voice, down to business, sarcastic or sweet, briefing you on arrival and warning before you leave something unfinished. |
+| ⛏️ **Ring mining** | Rings worth mining called out, a limpet reminder on undocking, prospector call-outs for the minerals you pick, the hold's minutes to full on Now and the overlay, and every hotspot's record in CMDR → Sessions. |
 | ⛏️ **Rhino mining** | A heading-up surface map on Now with your rigs, sample points and ship, and every collection kept per body. |
 | 📱 **A tablet in the cockpit** | Every page in a touch layout with eleven themes, alerts as banners, game buttons on a control rail, and the voice on the tablet if you like. |
 | 🎙️ **Ask out loud** | "Hey Vespa, status report": answered in the voice from what Outrider knows, with an optional AI for anything else; Settings lists every command it knows. |

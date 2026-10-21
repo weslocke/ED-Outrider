@@ -75,7 +75,8 @@ players last reported, so the newer the data, the safer the trip.
   are often years old). Each station shows how far it is (and how far from its star), the price, demand or supply,
   what your load earns and the profit over what you paid. Opened, it lists what else it buys from your hold and its
   services (and whether it buys exploration data and samples too), with Copy, Bookmark and **Plot route here**.
-  **Buy something else** looks up any commodity.
+  **Buy something else** looks up any commodity. While mining, a full hold runs this lookup for the most you carry and
+  says where to sell it ([Voice and alerts](voice-and-alerts.md)).
 - **One shipload or all of it:** when a line is more than your ship's hold (its size, not what is free), the bar
   switches between "All 16,000 t" and "One shipload 720 t" ("≈ 23 shiploads for all of it"); a shipload asks for
   stations that take (or have) that much: "Sell 720 t of 16,000 t". Not shown before the game has written your ship's

@@ -173,6 +173,13 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   it too: left out of the bodies' records (no SRV out), counted in the mined stock (mining income).
 - Nothing in a sale says whether its tons were mined: the mined stock (refined, minus moved to your carrier,
   deposited in the carrier's depot, ejected or lost in a death) decides, so ore bought and sold with mined ore of the same kind is trade for the part over it.
+- **Ring mining** (branch `mining`): a `SupercruiseExit` (or a login's `Location`) with `BodyType: PlanetaryRing`
+  opens a stint. `ProspectedAsteroid` has `Materials[{Name, Proportion}]`, `Content` (engineering materials, not the
+  commodity), `Remaining` (under 100: already mined) and `MotherlodeMaterial`, **no position**; `AsteroidCracked` and
+  `LaunchDrone` (`Type` Prospector / Collection) fill it. **No journal line names the hotspot**: only a live Status.json
+  `Destination` does (`$SAA_RingHotspot:#type=$Alexandrite_name;;`, `Body` = the ring's BodyID; `RING_HOTSPOT`), so a
+  hotspot is a ring and a mineral (five of one mineral in a ring cannot be told apart). Status.json in a ring has no
+  Latitude / Longitude / Altitude. The SRV's `MiningRefined` stays out of a ring's stint.
 - The game logs nothing when a Rhino mining rig is deployed, picked up or targeted (preparing one only opens a
   panel: `GuiFocus` 2). Outrider therefore marks rigs with the co-pilot button (`State.mark_rig`). Frontier
   usually adds journal events some weeks after a feature ships, so rig events are expected eventually: route

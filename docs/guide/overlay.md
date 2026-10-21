@@ -94,7 +94,7 @@ before.
   would hear or see as a notification ("B 1: Earth-like world", "Fuel low", "Interdicted"), its title and a line or two
   of its text, newest first, three at most. Each stays 8 seconds; danger (hull, heat, interdiction, fuel, a rig too far,
   the ship lost, the carrier leaving without you) stays 15 seconds, in red with a red frame. It shows every alert
-  switched on in **Settings → Alerts** in the browser that saw it (any of notify, sound or speak ticked), even while
+  switched on in **Settings → Alerts** (mining's in **Settings → Mining**) in the browser that saw it (any of notify, sound or speak ticked), even while
   the voice is off or hushed. The alerts are worded by Outrider's page, so a page must be open somewhere (a browser
   window, the second screen or the tablet): with none open, the panel stays empty. Several windows open count once.
 
