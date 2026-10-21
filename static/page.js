@@ -11729,6 +11729,16 @@ function cmdrMissionsHtml(d) {
       : `<div class="unk">Missions you accept are listed here with where they go, what they ask and when they run out.</div>`);
 }
 
+// a mining session's Where (the author, 2026-10-20): the place it mined the most (the ring, or the body your SRV was on)
+// with 🎯 for its system, "+N" for the others (named in its hover)
+function cmPlacesHtml(places) {
+  const ps = places || [];
+  if (!ps.length) return "";
+  const name = p => [p.system, p.body].filter(Boolean).join(" ");
+  const top = ps[0], more = ps.slice(1);
+  return `${esc(top.system || "")}${top.body ? ` <b>${esc(top.body)}</b>` : ""}${sysAimBtn(top.system, top.id64)}` +
+    (more.length ? ` <span class="unk" title="${esc(more.map(p => `${name(p)}${p.tons ? `: ${p.tons} t` : ""}`).join("\n"))}">+${more.length}</span>` : "");
+}
 // Sessions: the totals, then each combat and each mining session (per login; the SRV's refinery apart from the
 // ship's mining: its tons are not in t/h). Pure.
 function cmdrSessionsHtml(d) {
@@ -11739,6 +11749,7 @@ function cmdrSessionsHtml(d) {
     `<td class="num"><b>${cmNum(c.kills)}</b></td><td class="c2hide">${list(c.by_ship)}</td><td class="num">${cmCrS(c.bounties)}</td><td class="num">${cmCrS(c.bonds)}</td>` +
     `<td class="num">${cmNum(c.per_hour)}</td><td class="num">${cmSpanDual(c.seconds)}</td><td class="num">${c.deaths ? `<span class="short">${cmNum(c.deaths)}</span>` : ""}</td></tr>`; });
   const mining = all.filter(s => s.mining).map(s => { const m = s.mining; return `<tr><td>${cmWhenDual(s.start)}</td><td>${esc(s.ship || "")}</td>` +
+    `<td>${cmPlacesHtml(m.places)}</td>` +
     `<td class="num">${cmRefined(m.tons, m.srv_tons)}</td><td class="c2hide">${list(m.refined)}${m.srv_tons ? `${m.tons ? " · " : ""}<span class="unk">SRV:</span> ${list(m.srv_refined)}` : ""}</td>` +
     `<td class="num">${cmNum(m.per_hour)}</td>` +
     `<td>${cmNum(m.prospected)}${m.prospected ? ` <span class="unk c1hide">${list(m.content)}${m.motherlodes ? ` · ${cmNum(m.motherlodes)} core${m.motherlodes === 1 ? "" : "s"}` : ""}</span>` : ""}</td>` +
@@ -11753,7 +11764,7 @@ function cmdrSessionsHtml(d) {
     `<h3 class="subhead">Mining ${latest}</h3>` +
     (mining.length ? `<div class="cmfigs">${cmTile("Sessions", cmNum(m.sessions))}${cmTile("Refined", m.tons || !m.srv_tons ? `${cmNum(m.tons)} t` : "")}` +
       `${cmTile("SRV refined", m.srv_tons ? `${cmNum(m.srv_tons)} t` : "", "the SRV's refinery: surface mining")}${cmTile("Asteroids prospected", cmNum(m.prospected))}${cmTile("Sold", cmCr(m.sold))}</div>` +
-      cmTable([["Session"], ["Ship"], ["Refined", 1], ["What", 0, "c2hide"], ["t/h", 1], ["Prospected"], ["Limpets", 1, "c2hide"], ["Mining", 1], ["Sold", 1]], mining, "cmMining")
+      cmTable([["Session"], ["Ship"], ["Where"], ["Refined", 1], ["What", 0, "c2hide"], ["t/h", 1], ["Prospected"], ["Limpets", 1, "c2hide"], ["Mining", 1], ["Sold", 1]], mining, "cmMining")
       : `<div class="unk">No mining in the last ${cmNum(days)} days.</div>`) + hotspotsHtml(d.hotspots || MINING.d);
 }
 // Sessions' Hotspots (mining B): every ring you mined, by hotspot (all time), best first by the chosen figure: the

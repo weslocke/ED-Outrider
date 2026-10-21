@@ -613,17 +613,19 @@ def _mining_counts():
     """A login's mining counts before its first mining line (play_activity's mining)."""
     return {"n": 0, "refined": {}, "srv": {}, "prospected": 0, "content": {}, "motherlodes": 0, "cracked": 0,
             "prospectors": 0, "collectors": 0, "sold": 0, "first": None, "last": None,
-            "srv_first": None, "srv_last": None, "seen": None}
+            "srv_first": None, "srv_last": None, "seen": None, "places": {}}
 
 
-def activity_apply(acts, ev, srv=False, mined=None):
+def activity_apply(acts, ev, srv=False, mined=None, place=None):
     """One fighting or mining line into a login's counts (play_activity's combat and mining, created when first
     needed): acts {combat, mining}, changed in place; True if it counted. srv: you are in an SRV (Journals.vehicle),
     whose refinery is kept apart from the ship's (`srv`; the Rhino's surface mining). first / last (and srv_first /
     srv_last) are the earliest and latest such line, so a line read out of order still counts once at its place.
     mined: a MarketSell's mining income, as the reader's mined stock worked it out (Journals.note_mined, the rule
     mining_sales follows: the tons you mined still aboard, whenever you mined them; nothing at your own carrier): it is
-    the sale's "sold", in the login the sale was made in, which may have no mining line of its own."""
+    the sale's "sold", in the login the sale was made in, which may have no mining line of its own. place: where a
+    mining line happened ({id64, system, body}: the ring, the SRV's body; Journals.mining_place), its tons and lines
+    kept per place (the Sessions table's Where, the author 2026-10-20)."""
     name, ts = ev["event"], ev["timestamp"]
     if name in _KILLS + ("Died", "Interdicted", "RedeemVoucher"):
         if name == "RedeemVoucher" and ev.get("Type") not in ("bounty", "CombatBond"):
@@ -668,6 +670,13 @@ def activity_apply(acts, ev, srv=False, mined=None):
         m["prospectors" if ev["Type"] == "Prospector" else "collectors"] += 1
         return True
     m["n"] += 1
+    if place and place.get("id64"):
+        key = f"{place['id64']}|{place.get('body') or ''}"
+        p = m.setdefault("places", {}).setdefault(key, {"id64": place["id64"], "system": place.get("system"),
+                                                        "body": place.get("body"), "tons": 0, "n": 0})
+        p["n"] += 1
+        p["tons"] += name == "MiningRefined"
+        p["system"] = p["system"] or place.get("system")
     if name == "MiningRefined":
         what = _text(ev, "Type") or "?"
         into = m["srv"] if srv else m["refined"]
@@ -710,7 +719,10 @@ def session(row):
                   "prospected": m["prospected"], "content": m["content"], "motherlodes": m["motherlodes"],
                   "cracked": m["cracked"], "prospectors": m["prospectors"], "collectors": m["collectors"], "sold": m["sold"],
                   "seconds": secs, "per_hour": round(tons * 3600 / secs, 1) if secs and tons > 1 else None,
-                  "srv_seconds": _span(m["srv_first"], m["srv_last"])}
+                  "srv_seconds": _span(m["srv_first"], m["srv_last"]),
+                  # where: the most tons first (then the most lines: prospected only)
+                  "places": sorted(({k: p[k] for k in ("id64", "system", "body", "tons")} for p in (m.get("places") or {}).values()),
+                                   key=lambda p: -p["tons"])}
     end = max(x["seen"] for x in (row.get("combat"), row.get("mining")) if x and x.get("seen"))
     return {"start": row["login_ts"], "end": end, "commander": row.get("commander"), "ship": row.get("ship"),
             "combat": combat, "mining": mining}

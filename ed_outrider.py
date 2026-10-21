@@ -1452,7 +1452,8 @@ WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + 
 #     move the mined stock (mining income), a ship stored at your carrier after it jumped is in its new system, a ship
 #     on its way keeps its arrival time through a shipyard list; and a mining stint lasts through a relog in its ring
 #     (one after a long break keeps its hotspot), a legacy folder's stints are not today's ship's
-PARSER_VERSION = 57
+# 58: each mining session keeps where it mined (play_activity's mining places: the ring, the SRV's body): Sessions' Where
+PARSER_VERSION = 58
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1478,6 +1479,7 @@ PARSER_VERSION = 57
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    58: "each mining session keeps where you mined: the ring, or the body your SRV was on (CMDR → Sessions)",
     57: "mining income no longer counts ore moved between the ship and the SRV or tritium put in your carrier's depot, "
         "and ships stored at your carrier or on their way show where they really are (the Commander tab); a relog in a "
         "ring no longer splits your mining there (CMDR → Sessions' Hotspots)",
@@ -4359,10 +4361,34 @@ class Journals:
             return
         acts = {k: json.loads(row[k]) if row[k] else None for k in ("combat", "mining")}
         srv = bool(self.vehicle) and ts >= (self.vehicle.get("ts") or "")
-        if outrider.commander.activity_apply(acts, ev, srv, mined):
+        place = self.mining_place(ts, srv) if ev.get("event") in outrider.commander._MINING else None
+        if outrider.commander.activity_apply(acts, ev, srv, mined, place):
             self.db.execute("UPDATE play_activity SET combat=?, mining=? WHERE login_ts=?",
                             (acts["combat"] and json.dumps(acts["combat"]), acts["mining"] and json.dumps(acts["mining"]),
                              row["login_ts"]))
+
+    def mining_place(self, ts, srv):
+        """Where a mining line happened ({id64, system, body}, the body under its system's name): in the SRV, the body
+        it is out on (track_srv's state for this game session); in the ship, the ring of the open stint; else the
+        system you are in, no body. None for a line older than what is known (a legacy folder read late)."""
+        pos = self.pos or {}
+        here_name = lambda id64: pos.get("name") if pos.get("id64") == id64 else None
+        if srv:
+            out = (self.srv_state.get(self.session_key()) or {}).get("srv") or {}
+            if out.get("system") is not None and ts >= (out.get("ts") or ""):
+                bh = self.body_here or {}
+                body = bh.get("name") if (bh.get("system"), bh.get("body_id")) == (out["system"], out.get("body_id")) else None
+                system = here_name(out["system"])
+                return {"id64": str(out["system"]), "system": system, "body": short_name(system, body) if body else None}
+        else:
+            row = self.db.execute("SELECT system, system_name, ring FROM mining_stints WHERE open = 1 AND start_ts <= ? "
+                                  "ORDER BY start_ts DESC LIMIT 1", (ts,)).fetchone()
+            if row and row["system"] is not None:
+                return {"id64": str(row["system"]), "system": row["system_name"],
+                        "body": short_name(row["system_name"], row["ring"]) if row["ring"] else None}
+        if pos.get("id64") is not None and ts >= (pos.get("ts") or ""):
+            return {"id64": str(pos["id64"]), "system": pos.get("name"), "body": None}
+        return None
 
     def read_locker_file(self, d):
         """ShipLocker.json: the ship locker whole, rewritten at every change (the journal's ShipLocker line has the

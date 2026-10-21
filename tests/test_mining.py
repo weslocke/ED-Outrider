@@ -192,6 +192,25 @@ class Stints(unittest.TestCase):
         self.assertEqual(self.db.execute("SELECT count(*) FROM mining_stints").fetchone()[0], 0)
         self.assertEqual(self.db.execute("SELECT hotspot FROM mining_hotspot_drops").fetchall()[0][0], "platinum")
 
+    def test_sessions_say_where(self):
+        """CMDR → Sessions' Where (the author, 2026-10-20): a mining session keeps the ring it mined in (the open stint)
+        and the body the SRV mined on, the most tons first."""
+        self.j.handle({"event": "LoadGame", "timestamp": self.at(-5), "Commander": "Tester", "Ship": "python", "ShipID": 7})
+        self.j.handle({"event": "FSDJump", "timestamp": self.at(-2), "StarSystem": "Sys", "SystemAddress": 9, "StarPos": [0, 0, 0]})
+        self.drop(0)
+        self.prospect(5, platinum=20.0)
+        for s in (10, 20, 30):
+            self.refine(s, "platinum")
+        self.leave(40)
+        self.j.handle({"event": "ApproachBody", "timestamp": self.at(50), "StarSystem": "Sys", "SystemAddress": 9, "Body": "Sys A 1", "BodyID": 3})
+        self.j.handle({"event": "Touchdown", "timestamp": self.at(60), "SystemAddress": 9, "Body": "Sys A 1", "BodyID": 3,
+                       "PlayerControlled": True, "Latitude": 0, "Longitude": 0})
+        self.j.handle({"event": "LaunchSRV", "timestamp": self.at(70), "SRVType": "testbuggy", "ID": 1, "PlayerControlled": True})
+        self.refine(80, "gold")
+        s = self.state.commander_sessions(now=ed_outrider.ts_seconds(self.at(100)))["sessions"][0]["mining"]
+        self.assertEqual(s["places"], [{"id64": "9", "system": "Sys", "body": "4 B Ring", "tons": 3},
+                                       {"id64": "9", "system": "Sys", "body": "A 1", "tons": 1}])
+
     def test_back_in_the_ring_after_a_long_break(self):
         """Over MINING_RELOG_GAP_S away (logged out for the night in the ring): a new stint, still the hotspot you
         dropped on; logging in elsewhere ends it at its last ton."""

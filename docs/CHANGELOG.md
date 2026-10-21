@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-20 · Where each mining session was, in CMDR → Sessions
+- The mining table gets a **Where** column (the author): the system and the ring (or the body your SRV mined on) where
+  the session refined the most, with 🎯 for the system, and "+N" for its other places, named with their tons in its
+  hover. Each mining line keeps its place in the session's counts (`Journals.mining_place`: the SRV's body, the open
+  stint's ring, else the system; play_activity's mining `places`). PARSER_VERSION 58: one re-read fills it in for
+  your past sessions too.
+
 ## 2026-10-20 · Docs: the mining branch's own
 - The mining branch's docs after the sweep: Now's ⛏ line and the Rings cell's hover (views), Settings → Mining's full
   row and the Mining Officer's (voice), mining's alert switches (overlay), hold-full's lookup (cargo), ring mining's

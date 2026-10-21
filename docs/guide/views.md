@@ -538,7 +538,8 @@ above the list:
   delivered), the reward, and the time left, marked when under half an hour.
 - **Sessions**: your sessions of the last 30 days with fighting or mining in them (40 at most), each from one login to
   the next. Combat:
-  kills, by ship, bounties and bonds, kills an hour, deaths. Mining: tons refined and of what (what the SRV's refinery
+  kills, by ship, bounties and bonds, kills an hour, deaths. Mining: **Where** (the system and the ring, or the body your
+  SRV mined on, with 🎯; "+1" when the session mined in more places, named in its hover), tons refined and of what (what the SRV's refinery
   collected on a planet is shown apart, and is not in the tons an hour), asteroids prospected and their content,
   limpets launched, and **Sold**: what the ore you mined sold for in that login, wherever and whenever you mined it (a
   login where you only sold shows 0 t refined). Tons you bought and sold with it, and sales to your own carrier, are

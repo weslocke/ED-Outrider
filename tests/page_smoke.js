@@ -8555,7 +8555,8 @@ const releasePayloads = async () => {
             sessions: [
               {start: "2026-10-12T11:00:00Z", end: "2026-10-12T11:51:00Z", ship: "Type-9 Heavy", combat: null, mining: {tons: 6, refined: {Platinum: 5, Osmium: 1},
                 srv_tons: 3, srv_refined: {Gold: 3}, srv_seconds: 600,
-                prospected: 2, content: {High: 1, Low: 1}, motherlodes: 1, cracked: 1, prospectors: 1, collectors: 1, sold: 1500000, seconds: 1800, per_hour: 12}},
+                prospected: 2, content: {High: 1, Low: 1}, motherlodes: 1, cracked: 1, prospectors: 1, collectors: 1, sold: 1500000, seconds: 1800, per_hour: 12,
+                places: [{id64: "77", system: "Mine Sys", body: "4 B Ring", tons: 6}, {id64: "77", system: "Mine Sys", body: "A 1", tons: 3}]}},
               {start: "2026-10-12T08:00:00Z", end: "2026-10-12T09:00:00Z", ship: "Krait Mk II", mining: null, combat: {kills: 3, bounties: 400000, bonds: 60000,
                 deaths: 1, interdicted: 1, redeemed: 400000, by_ship: {Anaconda: 2}, seconds: 1800, per_hour: "<u>6</u>"}}]},
         }[s.slice("api/commander/".length)];
@@ -8645,6 +8646,13 @@ const releasePayloads = async () => {
                          shown(mt.rows[1].cells[4].querySelector(".lf")), text(mt.rows[1].cells[5].querySelector(".sf"))];
       await tab("sessions");
       got.sessions = [rows(), [...body().querySelectorAll(".cmfig")].map(text), [...body().querySelectorAll("h3.subhead")].map(text)];
+      // Where (the author, 2026-10-20): the ring mined most, 🎯 for its system, +1 naming the other
+      { const wc = d.getElementById("cmMining").rows[1].cells[2];
+        const back = aimReady();
+        got.where = [text(wc).replace(/\s+/g, " ").trim(),
+                     w.eval(`cmPlacesHtml([{id64: "77", system: "Mine Sys", body: "4 B Ring", tons: 6}]).includes("data-aim")`),
+                     (wc.querySelector(".unk[title]") || {}).title];
+        back(); }
       got.fitSessions = ["cmCombat", "cmMining"].map(id => { const t = d.getElementById(id); return [w.eval(`FIT_TABLES.includes("${id}")`), [...t.querySelectorAll("th .sf")].map(text),
                                                                                                 text(t.rows[1].cells[0].querySelector(".sf"))]; });
       // asked again only when the payload says so: an unchanged one draws from what it has, a new version asks (the
@@ -8713,6 +8721,7 @@ const releasePayloads = async () => {
       toMat: ["mat", "Arsenic", ["Arsenic"]],
       unreadable: "Blueprint table unreadable: resources/blueprints.json is missing or damaged (a fresh copy of Outrider brings it back).",
       fitMissions: [true, ["Left"], "2.5M", "Alpha Centauri", false, false, "20m"],
+      where: ["Mine Sys 4 B Ring +1", true, "Mine Sys A 1: 3 t"],
       fitSessions: [["cmCombat", [true, ["By ship", "Time"], "10-12 08:00"]], ["cmMining", [true, ["Prosp", "Time"], "10-12 11:00"]]].map(x => x[1]),
       toHist: ["hist", false],
       label: ["CMDR", "CMDR"],
@@ -8722,7 +8731,7 @@ const releasePayloads = async () => {
                  "Massacre wing redirected | Sol Workers | Sol · Old Port | Bad Lot 12 | 9.0M cr | no limit",
                  "Courier | Sol Workers | Sol |  | 100k cr | expired"], 2],
       sessions: [["2026-10-12 08:00 | Krait Mk II | 3 | Anaconda 2 | 400k cr | 60k cr | NaN | 30 min | 1",
-                  "2026-10-12 11:00 | Type-9 Heavy | 6 t + 3 t SRV | Platinum 5, Osmium 1 · SRV: Gold 3 | 12 | 2 High 1, Low 1 · 1 core | 1 / 1 | 30 min | 1.5M cr"],
+                  "2026-10-12 11:00 | Type-9 Heavy | Mine Sys 4 B Ring +1 | 6 t + 3 t SRV | Platinum 5, Osmium 1 · SRV: Gold 3 | 12 | 2 High 1, Low 1 · 1 core | 1 / 1 | 30 min | 1.5M cr"],
                  ["Sessions1", "Kills3", "Bounties400k cr", "Combat bonds60k cr", "Deaths1", "Sessions1", "Refined6 t", "SRV refined3 t", "Asteroids prospected2", "Sold1.5M cr"],
                  ["Combat your sessions of the last 30 days, 40 at most", "Mining your sessions of the last 30 days, 40 at most",
                   "Hotspots · every ring you mined, by hotspot: hit rate by the call-out's minerals (Settings → Mining)"]],
