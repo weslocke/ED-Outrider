@@ -2154,9 +2154,10 @@ JOURNAL_PLANETS = {
     "Helium rich gas giant": "Helium-rich gas giant",
 }
 
-# the modules that make a mining ship (Loadout items, lower case): the limpet reminder (Settings → Mining)
-MINING_KIT = ("int_refinery", "int_dronecontrol_collection", "int_dronecontrol_prospector", "int_multidronecontrol_mining",
-              "int_multidronecontrol_universal")
+# the modules that make a mining ship (Loadout items, lower case): the limpet reminder (Settings → Mining). Not a
+# collector controller alone: explorers carry one for materials and salvage (the author's Caspian, 2026-10-20: "no
+# limpets" on undocking); a core miner without a refinery still has its prospectors
+MINING_KIT = ("int_refinery", "int_dronecontrol_prospector", "int_multidronecontrol_mining", "int_multidronecontrol_universal")
 # a ringed body's reserves (Scan's ReserveLevel): said with its rings for mining (Settings → Mining)
 RESERVE_LEVELS = {"PristineResources": "Pristine", "MajorResources": "Major", "CommonResources": "Common",
                   "LowResources": "Low", "DepletedResources": "Depleted"}

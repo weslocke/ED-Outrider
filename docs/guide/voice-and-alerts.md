@@ -63,7 +63,7 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
   scanned together in one line ("3 bodies with rings you're watching for: A 3, A 5 and B 1"). Off until you tick a type.
   Hover a type (or tap it on a touch screen) for a table of what lasers and cores give in that ring (laser counting
   abrasion blasting and sub-surface deposits; from the Elite Dangerous Wiki)
-- **no limpets aboard** as you undock in a mining ship (a refinery, or a collector or prospector limpet controller)
+- **no limpets aboard** as you undock in a mining ship (a refinery, a prospector limpet controller, or a mining or universal multi-limpet controller; a collector alone, as explorers carry, is not one)
   with none in the hold, while you can still turn back: **Remind me to take limpets** in Settings → Mining, off by
   default. Mining's alerts have their sound, notification, voice and crew switches in Settings → Mining's own table,
   not under Alerts

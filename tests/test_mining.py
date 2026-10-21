@@ -46,8 +46,8 @@ class LimpetReminder(unittest.TestCase):
         self.assertEqual(self.said(), ["none"])
 
     def test_which_ships_count(self):
-        """A refinery, a collector or prospector controller, or a multi-limpet mining or universal one makes a mining ship;
-        a ship without them, or whose loadout or hold is not known, says nothing."""
+        """A refinery, a prospector controller, or a multi-limpet mining or universal one makes a mining ship; a ship
+        without them (a collector alone included), or whose loadout or hold is not known, says nothing."""
         for i, item in enumerate(("int_refinery_size1_class1", "int_dronecontrol_prospector_size1_class4",
                                   "int_multidronecontrol_mining_size3_class3", "int_multidronecontrol_universal_size7_class5")):
             self.j.moments.clear()
@@ -59,6 +59,13 @@ class LimpetReminder(unittest.TestCase):
         self.loadout(50, "int_fuelscoop_size5_class5", "int_dronecontrol_repair_size3_class5")
         self.cargo(51)
         self.undock(52)
+        self.assertEqual(self.said(), [])
+        # a collector controller alone is an explorer's (materials, salvage), not a miner's (the author's Caspian,
+        # 2026-10-20: repair, collector and research controllers, warned "no limpets" on undocking)
+        self.loadout(60, "int_dronecontrol_repair_size3_class2", "int_dronecontrol_collection_size1_class1",
+                     "int_dronecontrol_unkvesselresearch", ship_id=39)
+        self.cargo(61)
+        self.undock(62)
         self.assertEqual(self.said(), [])
 
     def test_hold_counted_but_not_listed(self):

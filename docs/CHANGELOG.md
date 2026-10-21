@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-20 · No limpet reminder for an explorer with a collector controller
+- Undocking the author's Caspian (repair, collector and research limpet controllers, no refinery) said "no limpets": a
+  collector controller alone counted as mining kit. Explorers carry one for materials and salvage, so a mining ship is
+  now a refinery, a prospector controller, or a mining or universal multi-limpet controller (`MINING_KIT`).
+
 ## 2026-10-20 · Version 2026.10.27, a bug fix release
 - The pre-Odyssey call-outs (#11), the geology a body could show, 🎯 on Search, the Anaconda Mk II, limpets in the
   hold, and the full Fable review's 31 fixes on main (the mining branch's own wait for the mining release). What's new
