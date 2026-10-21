@@ -257,7 +257,8 @@ Outrider backs itself up at start when the last backup is over a day old, and a 
 the game. **Back up now** in the Data tile, or in ⚙ Settings → Server → **Backups**, does it on demand.
 
 - Each backup is a dated zip in `data/backups/` holding the database, `browser_defaults.json`, the speech files,
-  your config file and your own pronunciations (`pronounce.json`). The newest 7 are kept (`backup_keep`).
+  your config file and your own pronunciations (`pronounce.json`). The newest 7 are kept (`backup_keep`). Your own
+  personality files in `data/personalities/` are not in it: copy them yourself.
 - Every journal is also copied into `data/backups/journals/` and never deleted. Under Steam/Proton an uninstall
   deletes your journals, so this copy matters.
 - Every backup is checked before it counts; a bad one never rotates a good one out.
@@ -285,8 +286,8 @@ Settings → Server → Backups gives the exact command for the zip you pick, wi
 was started with them. `--restore` refuses while Outrider is running (it holds `ed_outrider.sqlite.lock` beside the
 database, in any container or on any port), checks the zip first, and keeps the database it replaces as
 `ed_outrider.sqlite.pre-restore-<date-time>`. `--list-backups` lists the zips; add `--db` for a second database.
-`--restore` leaves `speech.json`, `speech_banned.json` and `ed_outrider.toml` alone: unzip those by hand if you need
-them (an old `speech.json` lacks newer lines).
+`--restore` leaves `speech.json`, `speech_banned.json`, `pronounce.json` and `ed_outrider.toml` alone: unzip those by
+hand if you need them (an old `speech.json` lacks newer lines).
 
 ---
 

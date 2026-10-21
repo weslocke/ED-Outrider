@@ -238,7 +238,7 @@ the sentence ends:
 |---|---|
 | XO / Co-pilot | the main voice: voice answers, the status report, the co-pilot, the hush and speech on |
 | Navigator | jumps and every route line (the Highway, survey and trade routes), fuel short of a refuel, last scoop, auto-target, wrong target, supercharges, surface pins |
-| Science Officer | arrivals, briefings, the FSS, mapped planets, leaving with work left, codex, phenomena, rare stars, signals, curiosities |
+| Science Officer | target verdicts, arrivals, the honk, briefings, the FSS, mapped planets, high-g approaches, bio bodies ahead, leaving with work left, codex, phenomena, green gas giants, rare stars, surface sites, signals, curiosities |
 | Exobiologist | valuable bodies, sampling, Exomastery routes |
 | Chief Engineer | fuel, tank full, scooping stopped, jumponium, hull and heat |
 | Quartermaster | sales, unsold data, your carrier and its trips, losses |
@@ -448,8 +448,9 @@ your model with real questions: tool calling varies, and a slow model runs into 
 An AI client you already use (Claude Code, the Claude desktop app, or any other MCP client) can ask Outrider questions
 in plain language: "what's worth landing on here?", "how much am I carrying unsold?", "what's left within 50 ly?",
 "how far to the next refuel on the highway?". Your client starts `python3 -m outrider.mcp` when it needs it (nothing
-to run or switch on in Outrider), which reads your running Outrider and answers through eleven read-only tools: current
-status, this system, nearby systems, the nearest unvisited system, the nearest place to dock, one body, unsold data,
+to run or switch on in Outrider), which reads your running Outrider and answers through twelve read-only tools: current
+status, this system, nearby systems, the nearest unvisited system, the nearest place to dock, the nearest potential
+green gas giants, one body, unsold data,
 work left behind, the Highway route, travel history and materials. It can only read: it never presses keys, plots, bookmarks or hushes
 anything. Nothing extra to install.
 

@@ -137,16 +137,13 @@ the top of the page ("EDDN unreachable for 15 min: 42 messages waiting, they dro
 min)"; for EDSM and Inara "kept until it answers") and, with notifications on, a desktop notification. It is never
 spoken. ✕ hides the card; it goes by itself when the service takes messages again, with a notification ("EDDN sending
 again after 37 min: sending the 40 waiting (2 were over an hour old and dropped)"). Its row in Settings → Alerts
-switches the notification. Inara asking Outrider to slow down (its hour's pause) is said that way.
+switches the notification. Inara asking Outrider to slow down (its hour's pause) is said that way. What waits keeps its
+order: while a batch waits to be tried again, nothing newer goes ahead of it.
 
 A developer's switch shows next to the service in Settings → Uploads: "(test schemas only)" when `OUTRIDER_EDDN_TEST`
 is set, "(dry run: nothing sent)" when `OUTRIDER_EDSM_DRYRUN` or `OUTRIDER_INARA_DRYRUN` is (the requests go to
 `data/edsm-dryrun.jsonl` / `data/inara-dryrun.jsonl`, never the key), "(development mode)" when `OUTRIDER_INARA_DEV`
 is (Inara's `isBeingDeveloped`: for a test account).
-
----
-
-[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · **Uploads** · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
 
 ## Upload marks in the Log
 
@@ -208,3 +205,7 @@ the commander (one with an EDSM key saved) and press **Import**.
   your journals say what you did. Your journals always win: an entry within a minute of a journal arrival, or from after
   your first journal, is left out (and if you add an older journal folder later, what it covers becomes the journal's).
 - Every commander whose log you import counts as you.
+
+---
+
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · **Uploads** · [Settings and good to know](settings.md) · [For the curious](for-developers.md)

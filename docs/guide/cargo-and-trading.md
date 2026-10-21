@@ -6,8 +6,10 @@
 
 The **Materials** tab starts with your **Cargo**.
 
-- **Your ship's hold** is exact (the game writes it whole). Each commodity shows what you paid: the game's own
-  average over your purchases ("Avg 45,210 cr/t (2 lots)"; mined or transferred tons have no price).
+- **Your ship's hold** is exact (the game writes it whole), and Outrider follows the changes in between, limpets
+  bought, sold and launched included (the game counts those without writing the list again). Each commodity shows
+  what you paid: the game's own average over your purchases ("Avg 45,210 cr/t (2 lots)"; mined or transferred tons
+  have no price).
 - **Your fleet carrier's hold** is not written anywhere whole, so Outrider tracks it:
   - ✓ **confirmed**: a commodity on a **sell order** at your carrier. Opening its commodity market lists every sell
     order with its stock, and that stock is the count. Put a sell order (at a price nobody will pay) on everything
@@ -15,7 +17,9 @@ The **Materials** tab starts with your **Cargo**.
     week the carrier's heading asks you to open its commodity market while docked there to refresh them.
   - ◷ **last seen**: everything else, followed from your journal (transfers, your own buying and selling there,
     orders set and cancelled). Other players' trades with your carrier are written nowhere in your journal: a buy
-    order's filled part is worked out the next time you open the market.
+    order's filled part is worked out the next time you open the market. When a market read finds the carrier holding
+    less than is tracked, a last-seen line with no news for 30 days is dropped; **Recount…** puts back one that is
+    really there.
   - ✎ **entered**: a count you typed in. **Recount…** lists the lines Outrider cannot confirm; the game's Inventory
     screen at your carrier shows them all. **+ Add a commodity** takes the names your journal has given and those
     Spansh lists; anything else (a typo) is refused with the closest names: "Not a commodity: “Titanum”. Did you mean:

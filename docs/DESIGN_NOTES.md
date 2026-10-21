@@ -60,7 +60,8 @@ upstream project's choices, not rules of the game.
   `Hot`; the page marks one with a red ⚖ (the theme's `--bad`). A mission accepted before the journals is kept by its
   name alone. The login-time snapshots (Missions, Reputation, EngineerProgress, Powerplay, SquadronStartup,
   ShipLocker) are in `LOGIN_EVENTS`: loading the game is not play, so they never move `last_play_ts` (History's
-  session end, the "away" greeting). Mining in the SRV (the reader knows the vehicle) is counted apart from the ship's.
+  session end, the "away" greeting). So is `Music` (the main menu's track, written at every launch: counted as play,
+  it made the time away minutes, review 2026-10-20 M2). Mining in the SRV (the reader knows the vehicle) is counted apart from the ship's.
   The Sessions tab goes by days like the rest (History's default): the logins of the last 30 days, 40 at most.
   Ranks and statistics are as of the last login (the game writes them then); the credits and the carrier
   are the Commander and Carrier tiles' own (one owner each). What exobiology's next rank still takes is an estimate:
@@ -103,7 +104,9 @@ upstream project's choices, not rules of the game.
   jettison takes its tons off, a death empties it. Your carrier keeps a mined stock of its own (meta `mined_carrier`,
   the author's call the same evening: on his journals about half the mined ore went through the carrier, so leaving
   it out halved the figure, 0.89B of about 1.72B): a transfer to the carrier moves the mined tons there, one back to
-  the ship moves them back aboard, mined ore sold to your own carrier joins it, a new carrier starts empty. One rule,
+  the ship moves them back aboard (only while docked: the same event moves cargo between the ship and the SRV on a
+  planet, which moves nothing, review M6), mined ore sold to your own carrier joins it, a new carrier starts empty.
+  Tritium put in the carrier's depot comes off the mined tritium first (review L2). One rule,
   two places: the Sessions tab's
   Sold reads the same figure, in the login the sale was made in. Sales of mined ore to your own carrier are left out
   (your own money changing pockets); cartographic and exobiology data sold at your carrier counts (the game pays it).
@@ -790,6 +793,9 @@ upstream project's choices, not rules of the game.
   Nothing is claimed before the others' leases are read. An Outrider from before the rule (no `wanted` in its lease)
   holds whenever another lease names the service, so it is always given way to. Before this, both held for good and
   each followed as if the other sent (Codex F1, 2026-10-09).
+- **What waits keeps its order** (review 2026-10-20 M0, `uploads.due`): while a row already tried waits out its retry,
+  nothing newer of that service is sent, on purpose, even when something wakes the sender early (a key's Save or
+  Check, Try again): EDSM takes a commander's events in order, and Inara's "slow down" hour holds for every request.
 - **The exobiology checklist's states, best first: sold, aboard, lost, logged** (outrider/checklist.py). Lost is a
   state of its own, in red (the author's choice): you found it there, and sampling it again pays. "Not here" is the
   rules' prediction and is worded as one; a species with no rules at all (BioScan does not model it) is possible,
@@ -1356,7 +1362,8 @@ upstream project's choices, not rules of the game.
   drops keys sent to an elevated window, without an error. The co-pilot button (reading a HOTAS) is still Linux
   only: Windows' simple joystick API stops at 32 buttons.
 - **Windows runs the rest** (`launch_outrider.bat`): journals found in the Windows save folder, every file read and
-  written as UTF-8, no SIGTERM handler there (Ctrl-C). Less tested than Linux: under Wine, not a real Windows.
+  written as UTF-8, no SIGTERM handler there (Ctrl-C). Less tested than Linux: players run it on Windows, the
+  author does not.
 - **Core module health is as of the last Loadout or repair;** the journal logs nothing in between, so jet-cone
   boosts since are only counted.
 - **Status.json does not update while you stand still,** so positions can be up to a reading old.
@@ -1399,8 +1406,8 @@ upstream project's choices, not rules of the game.
 - **The in-game overlay's reach:** on Linux under X11 its transparency needs a compositor (a bare window manager shows
   black around the panels); on Wayland it runs through XWayland, tried on GNOME, not with Proton's native Wayland mode
   (`PROTON_ENABLE_WAYLAND=1`: Elite becomes a Wayland window the overlay cannot find); fractional display scaling is
-  untried; Windows has the code, untried against the game. Native Wayland compositors, gamescope and exclusive
-  fullscreen are out of scope.
+  untried; KDE on Wayland was confirmed by a player (2026-10-16), and Windows by players over the game (2026-10-15).
+  Native Wayland compositors, gamescope and exclusive fullscreen are out of scope.
 - **No page open, no alerts on the overlay:** the Alerts panel shows what an open Outrider page (a browser window or
   the tablet) posts, so with none open anywhere the panel stays empty (see the decision above).
 
@@ -1476,7 +1483,7 @@ confirmed while playing. Treat reports about them as likely real.
   the lookups by name unnecessary), its rate limit over some 200-600 weeks, and an import of the author's own log.
 - EDDN: ApproachSettlement, CarrierJump and FCMaterials messages have not been seen live on EDDN's relay yet, nor a
   planetary station's Docked with its Body.
-- The in-game overlay's real panels in live play (only the test panels have been seen over the game), Arrange mode
+- The in-game overlay's real panels in live play, Arrange mode
   over the game, PyQt6 installed by the launcher and by Outrider, and the window's restart after a crash (on Windows the
   overlay itself is confirmed by two players, 2026-10-15). The overlay pill's states over a real game (and whether, under Proton and XWayland, the active window's id
   matches wmctrl's: a mismatch would show as "not the active window" while playing), DisplaySettings.xml's

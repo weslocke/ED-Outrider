@@ -7,7 +7,8 @@
 The **Plot Route** tab plots a route with [Spansh](https://spansh.co.uk), using neutron stars as boosts (or a
 Road to Riches, an Exomastery, an Earth-like, ammonia or terraformable world route, a sweep or a trade route, below), and follows it as
 you fly. Two routes are kept (following them needs no network): one Highway route (Exact or Neutron) and one survey
-route (any of the others), each until you plot another of its kind or **Clear route**.
+route (any of the others but Carrier), each until you plot another of its kind or **Clear route**; a carrier trip is
+kept apart from both.
 
 <p align="center">
   <img src="../images/highway.png" alt="The Plot Route tab: the jump list, and the route on a map of the galaxy's regions" width="900">
@@ -101,7 +102,7 @@ and Plot Route shows the route: on each arrival the voice says the next stop, an
 Spansh doesn't know yet (a fresh discovery among your lost firsts, say) is left out, and the plot's message and the
 route's heading name it. A sweep takes up to 100 systems and replaces the survey route there is.
 
-**Trade.** The last plotter: Spansh's trade planner, station-to-station hops from where you are docked, in the
+**Trade.** Spansh's trade planner: station-to-station hops from where you are docked, in the
 same place as the survey routes (one of them at a time). See [Trading](cargo-and-trading.md#-trading).
 
 **Carrier.** Your fleet carrier's trip, from Spansh's carrier router. It is planning only: the game books one carrier
@@ -120,7 +121,7 @@ trip, and the last leg ends it. The Quartermaster says "Carrier ready to jump. N
 over (the **Carrier trips** row in Settings → Alerts) and adds "Leg 3 of 6, 3 to go" to the carrier's arrival line.
 
 **The route line and 🎯.** The line under the tiles (on every tab) shows the next stop of whichever route the tab shows (🛣 the
-Highway, 💰 Road to Riches, 🧬 Exomastery, 🌍 Earth-like worlds, 🧪 ammonia worlds, 🧹 a sweep, 💱 a trade route), its
+Highway, 💰 Road to Riches, 🧬 Exomastery, 🌍 Earth-like worlds, 🧪 ammonia worlds, 🪨 terraformable worlds, 🧹 a sweep, 💱 a trade route), its
 "Next:" after the galaxy map's **waypoint** marker. The page draws the target button (🎯 in these notes and in
 notifications) as the galaxy map's own **destination** marker, in the text's colour. The
 **In-Game Route:** line above it is the game's own
@@ -137,8 +138,8 @@ supercharge** is ticked does not matter). Anywhere else there is no 🎯 at all,
 on a server, without the keyboard, or while the box below lists a missing binding (then **target next** in the box
 is greyed out too, and a failed row gets no ⟳ Retry).
 
-**🎯 and Plot route anywhere.** A 🎯 also sits beside each bookmark, the header's next stop, the Nearest finder's rows
-and the Exo-Biology checklist's "🔍 nearby" rows (never your own system), and left of each system's name in Nearby
+**🎯 and Plot route anywhere.** A 🎯 also sits beside each bookmark, the header's next stop, the Nearest finder's rows,
+Search's results and the Exo-Biology checklist's "🔍 nearby" rows (never your own system), and left of each system's name in Nearby
 (the Overview's too, in a column of their own). **Plot route** beside a bookmark or
 the next stop puts the system in To and opens the form; it plots at once when you follow no route, and with one it
 waits for your Plot (a new plot replaces the route you follow). A click on a system in the Map tab targets it the same
@@ -217,15 +218,16 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   They are remembered on this device.
 - **Each row shows** how far it is (and a rough jump count), how far from its star (far ones marked), what it has, its
   pads, its docking, and where the report came from and how old it is.
-- **Plot here** puts the system in To and plots it with the plotter chosen above (Exact when Trade is chosen). Following the route works as usual.
+- **Plot here** puts the system in To and plots it with the plotter chosen above (Exact when Trade or Carrier is chosen). Following the route works as usual.
   Where auto-target can work, a **🎯** beside it targets the system in the galaxy map.
 - **By voice** ("nearest station", "nearest Vista"...), a place further than 500 ly also gets a neutron route plotted
   there, unless you are following a route ("You're following a route, so I didn't plot one"). `[highway] voice_plot`
   switches it off, `voice_plot_ly` sets the distance (Settings → Server).
 - **Docking:**
   - "yours" for your own carrier, "open to all";
-  - a **⚠ warning** for carriers set to friends or squadron only (Outrider cannot see the owner's list), and for those
-    with no docking setting reported at all.
+  - a **⚠ warning** for carriers set to friends, squadron, or squadron and friends only (Outrider cannot see the
+    owner's list), for those closed to visitors, and for those with no docking setting reported at all; a DSSA carrier
+    last seen away from its post gets "last seen at" the system it was seen in.
 
   None of these are hidden: the warning is there so you can decide.
 - **Where the data comes from:**

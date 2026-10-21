@@ -4490,8 +4490,9 @@ class Journals:
         hold and the SRV's together). MiningRefined adds 1 t, the ship's refinery's or the SRV's; an EjectCargo takes its
         tons off (never below 0); a death empties it (the hold is lost). Your carrier keeps a mined stock of its own (meta
         mined_carrier; the author, 2026-10-14: ore stored on the carrier and sold later is still what you mined): a
-        CargoTransfer to the carrier moves the mined part of its tons there, one back to the ship or SRV moves up to what
-        the carrier's mined stock holds back aboard, first capped at what the carrier held of it then (carrier_holding:
+        CargoTransfer to the carrier moves the mined part of its tons there, one back to the ship (only while docked: on a
+        planet the same event moves cargo between the ship and the SRV) moves up to what the carrier's mined stock holds
+        back aboard, first capped at what the carrier held of it then (carrier_holding:
         ore other players bought from it is not in the journal, but its Market.json reads show the hold going down), and
         mined ore sold to your own carrier goes into its stock too; a new carrier (CarrierBuy) starts empty. A MarketSell
         counts as mining up to what the stock holds of it, min(Count, stock): when that is over 0 it gets a mining_sales

@@ -8,8 +8,10 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 ## Line format
 
 - The game writes `"event":"Name"` with no space after the colon. `Journals.read_file` only parses lines containing
-  one of the `WANTED` byte strings built from the `*_EVENTS` tuples (plus `Fixed_Event_Life` and `POI_BYTES`, the
-  FSS signals worth a detour), so **an event that is not in one of those tuples is never seen**.
+  one of the `WANTED` byte strings, built from `_OTHER_EVENTS` and `outrider.commander.EVENTS` (plus
+  `Fixed_Event_Life` and `POI_BYTES`, the FSS signals worth a detour), so **an event in neither is never seen**. The
+  narrower sets (`MINED_EVENTS`, `SALE_DOCK_EVENTS`, `LOGIN_EVENTS`...) only route lines already let through: an event
+  added to one must also be in `WANTED`.
   `outrider/unsold.py` has its own list (`INTERESTING`); `outrider/log.py` reads every line for the Log. The uploads
   (`outrider/uploads.py`) see every line of a live folder before this filter (`self.uploads.line(...)` in
   `read_file`), so EDDN, EDSM and Inara get events Outrider itself never parses.
@@ -47,13 +49,13 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 | `EngineerCraft` | Engineering that moves the jump range before the next `Loadout`. |
 | `Cargo` (`Vessel: Ship`) | Tonnes in the hold: the ship's mass for the fuel model. With `Inventory` (at login) the whole hold (`outrider.cargo.ship_snapshot`); otherwise only the count, the list being in Cargo.json. |
 | `MarketBuy`, `MarketSell` | What you paid (`BuyPrice`; `MarketSell.AvgPricePaid` is the game's own average cost, 0 when unknown). At your carrier's `MarketID`, your own trades there (`cargo_events`). At a trade route's stop, its progress. `MarketSell` has `Type` (the plain lower-case id), `Count`, `SellPrice`, `TotalSale` and `MarketID`, no station name and nothing that says whether the tons were mined or bought: it counts as mining up to what the mined stock holds of it, min(`Count`, stock), its share of `TotalSale` (`mining_sales`; at your own carrier's market flagged `own_carrier`, your own money), the rest is trade. |
-| `CargoTransfer` | `Transfers[]` of `Type`, `Count`, `Direction` (`tocarrier`, `toship`, `tosrv`). It names no carrier: it counts for yours only while docked at it (`Journals.cargo_dock`, replayed in order). A `tocarrier` transfer moves the mined part of its tons from the ship's mined stock to the carrier's (meta `mined_carrier`), `toship` / `tosrv` moves up to what the carrier's holds back aboard, capped first at what the carrier held of it (its fold up to then: other players' purchases show only in your Market.json reads): ore stored on the carrier and sold later is still mined. |
+| `CargoTransfer` | `Transfers[]` of `Type`, `Count`, `Direction` (`tocarrier`, `toship`, `tosrv`). It names no carrier: it counts for yours only while docked at it (`Journals.cargo_dock`, replayed in order). A `tocarrier` transfer moves the mined part of its tons from the ship's mined stock to the carrier's (meta `mined_carrier`); `toship`, only while docked (`cargo_dock` set), moves up to what the carrier's holds back aboard, capped first at what the carrier held of it (its fold up to then: other players' purchases show only in your Market.json reads): ore stored on the carrier and sold later is still mined. `tosrv` never moves it, and a transfer between the ship and the SRV on a planet (the same event, `toship` / `tosrv`) moves nothing: the mined stock is the ship's and the SRV's together (`note_mined`). |
 | `CarrierTradeOrder` | Your carrier's orders: `SaleOrder` n, `PurchaseOrder` n or `CancelTrade`, with `Price`; `BlackMarket` orders are left out. |
-| `CarrierDepositFuel` | Tritium from the **ship's** hold into the carrier's depot (`Amount`, `Total`: the depot after). |
+| `CarrierDepositFuel` | Tritium from the **ship's** hold into the carrier's depot (`Amount`, `Total`: the depot after). Its `Amount` also comes off the mined stock's tritium (mined tons first, `note_mined`). |
 | `CollectCargo`, `EjectCargo` | Cargo scooped or jettisoned (the ship's hold; no price). `EjectCargo` takes its tons off the mined stock, as a `Died` empties it (the hold is lost). |
 | `FuelScoop`, `RefuelAll`, `RefuelPartial` | Last refuel. |
 | `HullDamage`, `Repair`, `RepairAll`, `RepairDrone`, `AfmuRepairs`, `HeatDamage`, `Interdicted`, `JetConeBoost` | Hull and module health, danger alerts. A `Repair` lists what was repaired (`Items`; older lines `Item`): "Wear" is the ship's integrity, not the hull, so only "Hull" (or "All", or a `RepairAll`) sets the hull to 100 %. `JetConeBoost` is the FSD supercharge signal (neutron or white dwarf cone, `BoostValue` the multiplier): the next jump's range, the "supercharged" moment, and the Highway's auto-target trigger. |
-| `Docked`, `Undocked` | Docked state and services (`exploration` = Universal Cartographics, `vistagenomics`), dock/undock alerts. The sales' place too, followed line by line in meta `sale_dock` (journal-derived, replayed in order by a re-read; meta `docked` is kept through one), an Apex shuttle's dock included: you can sell your data where it took you. |
+| `Docked`, `Undocked` | Docked state and services (`exploration` = Universal Cartographics, `vistagenomics`), dock/undock alerts. The sales' place too, followed line by line in meta `sale_dock` (journal-derived, replayed in order by a re-read; meta `docked` is kept through one), an Apex shuttle's dock included: you can sell your data where it took you. A `CarrierJump` while docked aboard that carrier (its `Docked`, the same `MarketID`) keeps the dock and moves its system: a ship stored at your carrier after it jumped is in its new system. |
 | `CarrierBuy`, `CarrierDecommission`, `CarrierCancelDecommission` | A new carrier (`CarrierID`, `Callsign`, `Location`, `SystemAddress`: its state starts afresh), and giving one up (`ScrapRefund`, `ScrapTime` in epoch seconds; the scrapping writes nothing). Per Frontier's manual; not yet seen in a real journal. |
 | `CarrierStats`, `CarrierLocation`, `CarrierJumpRequest`, `CarrierJumpCancelled` | Your fleet carrier. `CarrierStats` also gives its cargo total (`SpaceUsage.Cargo`: the cargo check), the capacity in use (`TotalCapacity - FreeSpace - CargoSpaceReserved`: a buy order's reserved space weighs nothing) and the depot (`FuelLevel`): the tritium's jumps. These, `CarrierJump` (keyed by its `MarketID`) and `CarrierDepositFuel` are kept in `cargo_events` for the carrier's measured jumps (S13 B). |
 | `NavRouteClear` | The plotted route was cleared. |
@@ -61,14 +63,15 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 | `FSSSignalDiscovered`, `SupercruiseDestinationDrop` | Notable stellar phenomena (`$Fixed_Event_Life_*`): the FSS lists a system's phenomena as identical lines in one second, so a kind keeps the most one listing had (`phenomena.n`, `NSP_BURST_S`); a drop names only the kind ("a ring phenomenon"), not which site, so each drop is one site visited (`phenomena_sites`). `FSSSignalDiscovered` also gives the signals worth a detour (`poi`, `poi_kind`): a Titan (`SignalType` `Titan`), Guardian beacons, generation ships, listening posts, number stations, tourist beacons, memorials; ordinary megaships are left out. Two listening posts in one system are both "Listening Post" in the game's words (`#index=` in `SignalName` tells them apart), and some are named ("Listening Post Pollux D568"). |
 | `Materials`, `MaterialCollected`, `MaterialDiscarded`, `Synthesis`, `MaterialTrade`, `TechnologyBroker`, `ScientificResearch`, `MissionCompleted`, `EngineerContribution` | The materials inventory (`outrider.materials.apply`; each login's `Materials` is a full snapshot). `Synthesis` also teaches its recipe (`Name`, `Materials`: a list of `{Name, Count}`, in the oldest journals a `{name: count}` object), kept in the state's `recipes` (S15). Names seen: Limpet Basic, Fuel Basic and Repair Basic (the SRV's), Ammo Basic/Standard (multi-cannon), AX Remote Flak Ammo Basic. |
 | `CrewHire`, `CrewFire`, `Statistics.Crew` | `outrider/unsold.py`: an NPC crew member's cut of payouts. |
-| `StoredShips`, `ShipyardBuy`/`Sell`/`Swap`/`New`/`Transfer`, `SellShipOnRebuy`, `SetUserShipName`, `StoredModules`, `ShipLocker`, `SuitLoadout`, `CreateSuitLoadout` (and the loadouts' other changes), `EngineerProgress`, `Reputation`, `Powerplay*`, `Squadron*`, `Missions`, `MissionAccepted` and the missions' endings, `CargoDepot` | The CMDR tab (`outrider/commander.py`), checked against real journals on 2026-10-14. A `Missions` list's `Expires` is the seconds left, but a colonisation mission's is the time itself (a Unix time: `"Expires":1745159181`), its `Name` a `$...;` symbol with `Name_Localised`. `PowerplayRank` (0) comes just before `PowerplayJoin`, at the same second, and the join names only the power. `ShipLocker` lines carry the lists at login and at most changes during play, but some carry none (ShipLocker.json has them). `ShipyardSwap`'s `StoreOldShip` is the type in the journal's mixed case (`Explorer_NX`), `SellShipOnRebuy` writes `SellShipId`. Every `StoredShips` entry has `Hot`; no real `Loadout` has it (none was hot: Frontier's manual has it "if wanted at startup"). |
+| `StoredShips`, `ShipyardBuy`/`Sell`/`Swap`/`New`/`Transfer`, `SellShipOnRebuy`, `SetUserShipName`, `StoredModules`, `ShipLocker`, `SuitLoadout`, `CreateSuitLoadout` (and the loadouts' other changes), `EngineerProgress`, `Reputation`, `Powerplay*`, `Squadron*`, `Missions`, `MissionAccepted` and the missions' endings, `CargoDepot` | The CMDR tab (`outrider/commander.py`), checked against real journals on 2026-10-14. A `Missions` list's `Expires` is the seconds left, but a colonisation mission's is the time itself (a Unix time: `"Expires":1745159181`), its `Name` a `$...;` symbol with `Name_Localised`. `PowerplayRank` (0) comes just before `PowerplayJoin`, at the same second, and the join names only the power. `ShipLocker` lines carry the lists at login and at most changes during play, but some carry none (ShipLocker.json has them). `ShipyardSwap`'s `StoreOldShip` is the type in the journal's mixed case (`Explorer_NX`), `SellShipOnRebuy` writes `SellShipId`. Every `StoredShips` entry has `Hot`; no real `Loadout` has it (none was hot: Frontier's manual has it "if wanted at startup"). An `InTransit` entry names no destination or arrival time; the `ShipyardTransfer` before it does, and the fold keeps them (as for modules). |
 | `ModuleStore`, `MassModuleStore`, `ModuleBuy`, `ModuleRetrieve`, `FetchRemoteModule`, `ModuleSellRemote` | The CMDR tab's stored modules between two `StoredModules` lists (`commander.modules_apply`), checked against real journals on 2026-10-14. `ModuleStore` names the module `StoredItem` (with `Hot` and its engineering; no `StorageSlot`, no value); `ModuleBuy` has `StoredItem` when the old module was stored rather than sold (`SellItem`); `ModuleRetrieve` has `RetrievedItem` and, when the slot held one, `SwapOutItem`, which is stored, except, it seems, a module that came free with the ship (twice in the author's journals: the line does not say so); `FetchRemoteModule` names the list's `StorageSlot` and the `TransferTime`, and its `ServerId` is not a market. A module in transit is listed with `InTransit` and no place or cost. The game writes `StoredModules` again a second or two after most of these. `ModuleSell` sells from the ship, not storage. `ModuleSellRemote` (`StorageSlot`) and `MassModuleStore` (`Items`) had no real line: Frontier's manual. |
 
 ## Companion files
 
 - **Status.json** (read on mtime change, `read_status`): `Fuel.FuelMain`/`FuelReservoir`, `Flags`, `Flags2`,
   `BodyName`, `Latitude`, `Longitude`, `Altitude`, `PlanetRadius`, `Heading`, `Cargo`, `Destination`,
-  `GuiFocus`, `FireGroup`, `timestamp`. Flags used: docked (bit 0; the overlay's Now panel hides, `FLAG_DOCKED`),
+  `GuiFocus`, `FireGroup`, `SelectedWeapon` (the rail's Bio Scanner), `timestamp`. Flags used: docked (bit 0,
+  `FLAG_DOCKED`: the overlay hides the panels in `[overlay] hide_docked`, by default System, Target, Now and Bio),
   landed (1), supercruise (4, `FLAG_SUPERCRUISE`: the overlay's system panel shows only then), scooping (11), FSD
   charging (17), in your main ship (24, `FLAG_IN_MAIN_SHIP`: the overlay's Target panel shows only then, outside the galaxy map), in SRV
   (26), HUD analysis mode (27, `FLAG_HUD_ANALYSIS`: the overlay's analysis-only panels show only then), altitude from average radius (29), in the hyperspace tunnel (30, FsdJump: the jump line is said once it
@@ -77,7 +80,8 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   its Target panel; `BodyName` with `Altitude` is the Target panel's near-body zone (the point ApproachBody is written); Flags2
   bit 0 on foot, bits 3/13/14 on foot in a station, hangar or social space (counted as docked). In the SRV, the
   Nomad or a fighter (bits 25, 26), `Fuel` and `Cargo` are the vehicle's, not the ship's: the fuel tile keeps the
-  ship's last figures and shows the vehicle's separately.
+  ship's last figures and shows the vehicle's separately. `outrider/chatter.py` (where chatter may talk) and
+  `outrider/rail.py` (the rail's lights) read further flags.
 - **NavRoute.json** (`read_navroute`): `Route[]` of `StarSystem`, `SystemAddress`, `StarPos`, `StarClass`; the
   route strip, star classes and "unreported" systems. An empty route means it was cleared, unless it is older than the
   journal's last `NavRoute` line: then the game has not written the new route (late, or never). The last hop is the
@@ -138,7 +142,8 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   Dodec) and carriers have one layout each (#12, after the LandingPad plugin); a squadron carrier is a FleetCarrier with a
   four-letter name, a colonisation ship a SurfaceStation (or unknown) with one of seven MarketIDs.
 - The docking computer taking over writes `Music` with `MusicTrack` "DockingComputer", 2 to 10 s after DockingGranted
-  in the author's journals; its module is `int_dockingcomputer_advanced` (or `_standard`) in the Loadout.
+  in the author's journals; its module is `int_dockingcomputer_advanced` (or `_standard`) in the Loadout. `Music` is
+  in `LOGIN_EVENTS` too: the main menu's track is written at every launch before `LoadGame`, so it never counts as play.
 - `SendText` (your own chat) carries `To`, `Message`, `Sent`: Outrider reads only the LandingPad plugin's test
   commands from it ("!sppad 34").
 
@@ -166,8 +171,8 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 - `MiningRefined` is 1 t and names neither body nor position. The body comes from the SRV state (per game
   session, `track_srv`); the position must come from Status.json at that moment. Ship-based ring mining writes
   it too: left out of the bodies' records (no SRV out), counted in the mined stock (mining income).
-- Nothing in a sale says whether its tons were mined: the mined stock (refined, minus moved to your carrier, ejected
-  or lost in a death) decides, so ore bought and sold with mined ore of the same kind is trade for the part over it.
+- Nothing in a sale says whether its tons were mined: the mined stock (refined, minus moved to your carrier,
+  deposited in the carrier's depot, ejected or lost in a death) decides, so ore bought and sold with mined ore of the same kind is trade for the part over it.
 - The game logs nothing when a Rhino mining rig is deployed, picked up or targeted (preparing one only opens a
   panel: `GuiFocus` 2). Outrider therefore marks rigs with the co-pilot button (`State.mark_rig`). Frontier
   usually adds journal events some weeks after a feature ships, so rig events are expected eventually: route
@@ -251,7 +256,9 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 **Other**
 - `Shutdown` is written only on a clean quit; a crash writes nothing, so the last event is where a session
   ended. It also leaves Status.json saying live with the dead session's flags, and the relaunched game does not
-  rewrite it until the new session is in (hence `game_load`: the overlay waits for the `Location`).
+  rewrite it until the new session is in (hence `game_load`: the overlay waits for the `Location`). A clean quit can
+  leave it saying live too (no new file after the `Shutdown`): a reading at or before the last `Shutdown` is never live
+  (`read_status`, meta commander `shutdown_ts`, kept across restarts).
 - `CarrierLocation` is written at login and at a booked jump's departure, but only while the game runs; a
   booked jump is assumed done 300 s after departure until confirmed (`CARRIER_SETTLE`).
 - `HullDamage` also reports fighters (`PlayerPilot` false or `Fighter` true) and the SRV or Nomad you drive, whose

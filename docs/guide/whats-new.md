@@ -13,7 +13,7 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ## 2026.10.27 · 20 October 2026 · bug fix release
 
-**Systems whose Spansh data predates Odyssey called out, the geology a body could show, the Anaconda Mk II, and 31
+**Systems whose Spansh data predates Odyssey called out, the geology a body could show, the Anaconda Mk II, and 28
 fixes from a full code review.**
 
 > [!IMPORTANT]

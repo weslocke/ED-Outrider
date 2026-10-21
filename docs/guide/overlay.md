@@ -74,8 +74,9 @@ before.
   80, Painite 32) · limpets 14 · full in ~41 min" (the same line as on Now; Settings → Mining).
 - **Now (To-Do & Info)** (optional): the page's Now view in a few lines, anywhere in the system (by default not while
   docked: see [Settings](#settings)). The system (and for 20 s after the jump whether it was
-  undiscovered), the system you have targeted next (never reported, no scan data, partly or fully scanned, or visited;
-  how many bodies are known; the star with ⛽ or ✕, and ⚠ for a neutron star or white dwarf), where the next jump goes
+  undiscovered), the system you have targeted next ("checking…" while Outrider asks, then never reported, no scan
+  data, partly or fully scanned, or visited; how many bodies are known; the star with ⛽ or ✕, and ⚠ for a neutron
+  star, white dwarf or black hole), where the next jump goes
   (the next stop of the unfinished route you plotted last: the Highway, a survey or trade route;
   and a kept boxel's Next), fuel, and what the data
   aboard stands to lose once it passes your `unsold_warn` level: 🗺 and 🧬, how many times your rebuy it is ("× rebuy";

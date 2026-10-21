@@ -171,7 +171,7 @@ forward). Such a window has no tab row and leaves the main window's view as it w
 in Here in the main window while that is open (otherwise the window shows Here itself, with ↩ back). The main window
 speaks, also after it reloads (**Speak from this window** makes such a window speak instead); Now has its own ↗
 (below). The address is `http://127.0.0.1:8025/?view=bm` (bm, near, here, bio, search,
-map, hwy, hist, log, mat, firsts, overview).
+map, hwy, hist, log, mat, cmdr, firsts, overview).
 
 **Bookmarks** is its own tab: the systems you have bookmarked (☆ beside any system), each with its note and distance.
 The same ☆ sets your **next stop**, shown in the header until you get there. Where auto-target can work (the game PC) a **🎯** beside a bookmark
@@ -208,7 +208,7 @@ and the nearest unvisited system. Under the target, the jump's cost ("56.7 ly ·
 fuel, "scoopable: 9 of last 20" (amber as on the fuel tile), and at the last scoopable star before a dry stretch "⛽ last
 scoop before 3 dry" with how much to scoop. The target says how much of it is
 known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"): two databases
-with different reporters.
+with different reporters. While a new target is looked up it says "checking…", never the previous target's verdict.
 
 - **Where the next jump goes**, under the target: the route's next stop as the strip under the header says it ("🛣
   Next: Stop 38 · 4.2 ly · 38 of 120 · refuel in 3 jumps", or the Road to Riches / Exomastery one), and a kept boxel's
@@ -310,7 +310,8 @@ not count).
 **Geology** too: a landable body with geological signals and volcanism gets **✦** (✪: anywhere) when its volcanism
 could show a geological feature not in your codex for the region. One volcanism can show one of a few features (rocky
 magma: a sulphur dioxide fumarole or gas vent, a silicate magma lava spout, now and then a silicate vapour gas vent), so
-the tooltip names the new ones; the approach card says them too. Your codex's geology is its lines in your journals (a
+the tooltip names the new ones; the approach card says them too. The body's hover card and its details panel (a 🪨
+section) list every kind its volcanism allows, the new ones marked ✪ or ✦. Your codex's geology is its lines in your journals (a
 scan logs none), and combinations never seen on EDDN (water or CO2 features on a rocky body, anything on a rocky ice
 body) get no mark.
 
@@ -515,7 +516,7 @@ above the list:
   Rest the mouse on a ship for 2 seconds to see a picture of its type, with its name; it goes when you move away (or
   press Escape). On the tablet, tap the ship's name (underlined with dots) to open the picture and tap anywhere to close
   it. The pictures are Frontier's ship designs, rendered from Elite Dangerous Almanac's illustrations; a ship type newer
-  than Outrider has none yet.
+  than Outrider has none yet, nor one Almanac has no illustration of yet (the Anaconda Mk II).
   Stored modules are as outfitting last listed them, with the modules stored, taken back, sent for or sold from
   storage since (one stored since shows its value once outfitting lists it again; one sent for is in transit until
   it arrives). A red ⚖ marks a ship or module the game says is hot (wanted). The ship locker is as the game last wrote it, in the journal or in

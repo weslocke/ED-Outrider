@@ -17,6 +17,8 @@ The rules that matter most:
   included) or open real input devices (co-pilot button); use the fakes in `tests/support.py` (`FakeGame` plays
   the galaxy map for auto-target).
 - Keep the paired lists in step: `SETTINGS_KEYS` (page.js) with `BROWSER_SETTINGS` (ed_outrider.py); speech keys
-  across `resources/speech.json`, `outrider.speech.KEYS`/`SAMPLES` and page.js `LINE_SAMPLES`. Bump `PARSER_VERSION` when past
+  across `resources/speech.json`, `outrider.speech.KEYS`/`SAMPLES`, page.js `LINE_SAMPLES` and every
+  `resources/personalities/*.json` (at least 10 lines each); an alert row's `ROW_KEYS` (page.js and `outrider.speech`),
+  page.js `ROW_WORDS` and `outrider.speech.CREW_ROLES`. Bump `PARSER_VERSION` when past
   journals must be re-read (and `CACHE_VERSION` when cached Spansh records change shape), and keep live-only tables
   out of `RESET_JOURNAL_DATA`.

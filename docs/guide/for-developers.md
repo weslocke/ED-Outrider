@@ -13,16 +13,19 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | File | What it does |
 |---|---|
 | `ed_outrider.py` | The server and the journal reader |
-| `static/` | The page (HTML, CSS, JS) — edit and reload; `sounds.json` holds the alert sounds; `favicon.svg` the tab icon; `tablet.css`, `themes/`, `fonts/`, `icons/` and `emblems/` the tablet layout and the themes |
+| `static/` | The page (HTML, CSS, JS) — edit and reload; `sounds.json` holds the alert sounds; `favicon.svg` the tab icon; `tablet.css`, `themes/`, `fonts/`, `icons/` and `emblems/` the tablet layout and the themes; `ships/` the CMDR tab's ship pictures; `starting.html` the page shown while Outrider starts |
 | `outrider/` | The modules below; those with a command line run as `python3 -m outrider.<name>` from this folder |
 | `outrider/unsold.py` | The unsold-data estimate; also works on its own (`python3 -m outrider.unsold --help`) |
 | `outrider/log.py` | One-line summaries of journal events for the Log view |
 | `outrider/materials.py` | Material names, grades and caps, synthesis recipes, and the running inventory |
 | `outrider/dock.py` | The nearest place to dock: Spansh's stations and carriers, the DSSA list, your carrier, merged and filtered |
+| `outrider/pads.py` | Where your landing pad is: the pad layouts of starports and carriers (after bgol's LandingPad plugin, GPL-2+), the pad's place in words, the pad diagrams |
 | `outrider/cargo.py` | Cargo: the ship's hold and your carrier's (folded from the journal), the carrier's tritium, the Sell / Buy lookup and trade routes |
 | `outrider/tts.py` | Spoken alerts with Piper (optional), and playing lines and sounds on the PC |
 | `resources/speech.json` | The spoken lines, yours to edit (bans go in `data/speech_banned.json`) |
+| `resources/personalities/` | The shipped personality files (naval, Vulcan, Klingon...), one each in `speech.json`'s format; yours go in `data/personalities/` |
 | `outrider/speech.py` | Loads and checks `speech.json` |
+| `outrider/chatter.py` | Space chatter: idle talk in quiet supercruise or on a planet, its line keys and topics, and where you are for it |
 | `outrider/pronounce.py`, `resources/pronounce.json` | How Piper says the exobiology names: respellings turned into Piper's phonemes (English voices); yours go in `data/pronounce.json` |
 | `outrider/button.py` | The co-pilot button (Linux, optional); `--listen` |
 | `outrider/auth.py` | Sign-in for other devices: `[server] password`, session tokens, the sign-in rate limit |
@@ -52,6 +55,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/boxel.py` | Boxels: a procedural name's boxel, its place and its systems' addresses, for Boxel mode and the sector map |
 | `outrider/riches.py` | The survey routes (Road to Riches, Exomastery, Earth-like, ammonia and terraformable worlds, sweeps), one table of their kinds: Spansh's answer as route rows, what is still to do in a system, the arrival lines |
 | `outrider/commander.py` | The CMDR tab: your ranks, money and fleet, inventory, engineering blueprints against your materials, missions, and combat and mining sessions, folded from the journals as they are read and kept in the database |
+| `outrider/earnings.py` | The CMDR tab's Earnings: what exploration, exobiology and mining paid you, when, where and with which ship |
 | `outrider/shipyard_links.py` | A ship's build as an EDSY or Coriolis link (the format EDMC uses), from its latest Loadout |
 | `resources/blueprints.json` | Ship-module engineering blueprints by kind of module (materials per grade, that kind's engineers), built from EDCD's coriolis-data at a pinned commit by `scripts/build_blueprints.py` (it fetches the files itself) |
 | `outrider/uploads.py` | Uploads (opt-in, off by default): the session each journal line belongs to, the outbox, what may be sent |
@@ -75,6 +79,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `scripts/install.sh` | Sets up `.venv` with `requirements.txt` and downloads the spoken-alert voices, without starting Outrider |
 | `scripts/docker_bundle.sh` | A Docker release bundle in `dist/` (git-ignored): the built image saved with a compose file that runs it (no checkout or build on the server) |
 | `scripts/build_codex_images.py`, `scripts/build_geo_codex.py` | Rebuild `resources/codex_images.json` and `resources/geo_codex.json` from Canonn's codex reference (read only) |
+| `scripts/build_ship_images.py` | Builds `static/ships/` from Elite Dangerous Almanac's ship illustrations at a pinned commit (needs PyQt6) |
 | `scripts/riches_probe.py` | A one-off probe of Spansh's Road to Riches API that saves a real answer; not part of the tests |
 | `scripts/route_probe.py` | A one-off probe of Spansh's Earth-like / ammonia world routes and its tourist router (a sweep's), as Spansh's own pages ask them; saves the answers; not part of the tests |
 | `scripts/landmarks_probe.py` | A one-off probe of what Spansh reports about the life on a body (dumps, body search, its filters); saves the answers; not part of the tests |
