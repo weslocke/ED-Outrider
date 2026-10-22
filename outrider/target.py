@@ -53,6 +53,14 @@ ACTIONS = ("GalaxyMapOpen", "UI_Right", "UI_Left", "UI_Up", "UI_Down", "UI_Selec
            "CamYawLeft", "CamYawRight", "CamZoomIn", "CamZoomOut", "CamTranslateLeft", "CamTranslateRight",
            "CamTranslateForward", "CamTranslateBackward")
 FIXED_KEYS = {"Enter": ["KEY_ENTER"], "Paste": ["KEY_LEFTCTRL", "KEY_V"]}
+# a control or fixed key named in any case ("UI_SELECT", "ui_select") is that one: the names are the game's, and a player
+# writing them from memory should not get "no keyboard binding" (a Windows player on Reddit, 2026-10-22)
+_CANON = {n.lower(): n for n in ACTIONS + tuple(FIXED_KEYS)}
+
+
+def canon_key(name):
+    """A step's key name with a control's or fixed key's own spelling; anything else (evdev names, combos) as given."""
+    return _CANON.get(str(name).strip().lower(), name)
 # step 5: a short camera move hands the focus from the search panel back to the map (no key does; a mouse click
 # does), then UI_Select held plots the route to the system under the crosshair. The move is a zoom (found in game
 # 2026-10-03): it keeps the found system under the crosshair, where a yaw (the 2026-10-02 step) turns about a pivot
@@ -122,9 +130,9 @@ def parse_step(text):
     verb = parts[0].lower()
     try:
         if verb == "press" and len(parts) == 2:
-            return {"do": "press", "keys": parts[1]}
+            return {"do": "press", "keys": canon_key(parts[1])}
         if verb == "hold" and len(parts) == 3 and 0 < float(parts[2]) <= 10:
-            return {"do": "hold", "keys": parts[1], "secs": float(parts[2])}
+            return {"do": "hold", "keys": canon_key(parts[1]), "secs": float(parts[2])}
         if verb == "wait" and len(parts) == 2 and 0 <= float(parts[1]) <= 30:
             return {"do": "wait", "secs": float(parts[1])}
     except ValueError:
@@ -283,7 +291,8 @@ class Targeter:
     def resolve(self, name, binds=None):
         """A step's key name as (evdev names, text) or (None, why): an override first, then Enter/Paste, a control's
         binding from the preset, or evdev names typed in."""
-        over = (self.cfg.get("keys") or {}).get(name)
+        name = canon_key(name)
+        over = {canon_key(k): v for k, v in (self.cfg.get("keys") or {}).items()}.get(name)
         if over:
             keys = honk.parse_combo(over)
             return keys, " + ".join(honk.key_label(k) for k in keys) + " (autotarget_keys)"
@@ -441,7 +450,8 @@ class Targeter:
                     self._sleep(st["secs"], st, status, system, here, expect)
                 elif d == "verify":
                     self._verify(st, id64, status, system, here, expect, route_end)
-                say(f"{st['phase']} {st['label']}: done")
+                # what it did, keys included ("5 plot the route: hold Space for 1 s: done"): a log shows what was pressed
+                say(self.describe([st])[0] + ": done")
             result.update(ok=True)
         except Abort as e:
             st = e.step or cur

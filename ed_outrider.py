@@ -860,6 +860,7 @@ def _config_target_keys(v):
     names = set(outrider.target.ACTIONS) | set(outrider.target.FIXED_KEYS)
     out = {}
     for k, val in v.items():
+        k = outrider.target.canon_key(k)   # any case: the control's own spelling
         keys = outrider.honk.parse_combo(val) if isinstance(val, str) else []
         if k not in names or not keys or not all(re.fullmatch(r"KEY_[A-Z0-9_]+", x) for x in keys):
             raise ValueError(f"{k} = {val!r} (names: {', '.join(sorted(names))}; values like \"KEY_LEFTALT+KEY_T\")")
@@ -7804,16 +7805,24 @@ class State:
                 "restart": n > len(live), "live": live}, 200
 
     # config keys config_save also applies at once: Settings -> Voice's Keep loaded and Load them at start (crew batch 2)
-    LIVE_CONFIG = {("speech", "voices_loaded"), ("speech", "voices_preload"), ("speech", "pad_delay")}
+    # and the auto-target's sequence ([highway] autotarget_*): tuned by trial and error, so the next run uses it (2026-10-22)
+    LIVE_CONFIG = {("speech", "voices_loaded"), ("speech", "voices_preload"), ("speech", "pad_delay")} | \
+        {("highway", "autotarget_" + k) for k in outrider.target.DEFAULTS}
 
     def config_live(self, st, keys):
         """The LIVE_CONFIG keys among `keys` ((section, key) just written) set on the running Outrider from the saved
         settings `st`: the voices kept loaded beside the main one (the loaded ones over the new number set aside now) and
         whether they load at start (used at the next start; the payload's voice_memory says it at once), and how long
-        after a docking grant the pad is said (pad_delay: the next grant). The keys applied, as "section.key"."""
+        after a docking grant the pad is said (pad_delay: the next grant), and the auto-target's sequence (the next
+        run). The keys applied, as "section.key"."""
         done = sorted({f"{s}.{k}" for s, k in keys if (s, k) in self.LIVE_CONFIG})
         if "speech.pad_delay" in done:
             self.journals.pad_delay = st["pad_delay"]
+        at = [k.split(".", 1)[1] for k in done if k.startswith("highway.autotarget_")]
+        if at:
+            self.highway_cfg.update({k: st["highway"][k] for k in at if k in st["highway"]})
+            if self.targeter is not None:
+                self.targeter.configure(self.autotarget_cfg())
         sp = self.speaker
         if done and sp is not None:
             if "speech.voices_loaded" in done:

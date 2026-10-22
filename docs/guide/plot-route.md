@@ -183,7 +183,7 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
     Sway, Hyprland and window managers that refuse focus stealing ignore it): the 5 s countdown as before, and then
     **the keys go to whichever window has focus**: stay in the game until it is done.
 - The log gets one line per run ("highway auto-target: targeted Hwy Stop 38"); every step is printed only when it
-  fails.
+  fails, each with the key it pressed ("5 plot the route: hold Space … for 1 s: done").
 - **🎯 Target next** (in the box, and beside "Next:" in the route line under the tiles, on every tab, and on Now) does the same
   on demand, whether or not auto-target is on: the next route system, or off the route the closest one, at once when
   it brings the game to the front, else after a 5-second countdown to click back into the game. A failed run puts
@@ -191,7 +191,11 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
 - **Test now** in the box targets the nearest known system a plain jump away, the same way.
   `python3 -m outrider.target --show` prints the steps with your keys.
 - Every step can be changed under `[highway]` (`autotarget_search`, `autotarget_submit`, `autotarget_plot`…) if a
-  game update moves things; `autotarget_entry = "paste"` pastes the name instead of typing it. Pasting (also how
+  game update moves things, in Settings → Server: a change applies to the next run, no restart needed. Steps are
+  `press <key>`, `hold <key> <seconds>` or `wait <seconds>`, one per line; a key is one of the game's controls
+  (`UI_Select`, `UI_Up`, `CamZoomOut`…, in any case), `Enter`, or keyboard keys such as `KEY_LEFTALT+KEY_T`. After the
+  search the focus stays in its panel: the default plot moves the camera first (`hold CamZoomOut 0.2`), and only then
+  does holding `UI_Select` plot the route. `autotarget_entry = "paste"` pastes the name instead of typing it. Pasting (also how
   it enters a name a US keyboard layout can't type) needs the clipboard: `wl-copy` or `xclip` on Linux.
 - **Frontier's rules:** this is key-press automation like auto honk (and tools such as Auto_Neutron). Whether to
   use it is your call.

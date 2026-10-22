@@ -1944,6 +1944,43 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual([n for n, v in self.game.writes if v].count("KEY_T"), 2)   # open, close: not a third
         self.assertTrue(self.released())
 
+    def test_control_names_in_any_case(self):
+        """A Windows player on Reddit (2026-10-22) wrote UI_SELECT, UI_RIGHT, UI_DOWN: the game's names in capitals got
+        "no keyboard binding" (they were taken for evdev key names). Any case is the control now, in the steps and in
+        autotarget_keys."""
+        self.assertEqual(self.T.parse_step("hold UI_SELECT 1")["keys"], "UI_Select")
+        self.assertEqual(self.T.parse_step("press camzoomout")["keys"], "CamZoomOut")
+        self.assertEqual(self.T.parse_step("press enter")["keys"], "Enter")
+        self.assertEqual(self.T.parse_step("press KEY_LEFTALT+KEY_T")["keys"], "KEY_LEFTALT+KEY_T")   # evdev names as given
+        self.targeter.configure({"plot": ["hold CAMZOOMOUT 0.05", "hold UI_SELECT 0.55"], "keys": {"enter": "KEY_KPENTER"}})
+        steps, missing = self.targeter.plan()
+        self.assertEqual(missing, [])
+        self.assertEqual([s["names"] for s in steps if s["phase"] == 5], [["KEY_RIGHTALT", "KEY_COMPOSE", "KEY_2"], ["KEY_SPACE"]])
+        self.assertEqual([s["names"] for s in steps if s.get("keys") == "Enter"], [["KEY_KPENTER"]] * 2)
+        self.assertEqual(ed_outrider._config_target_keys({"ui_select": "KEY_SPACE"}), {"UI_Select": "KEY_SPACE"})
+
+    def test_the_log_names_each_key(self):
+        """Each step's log line says what it did, keys included, so a player's log shows what was pressed (2026-10-22)."""
+        self.fake_time()
+        log = []
+        self.targeter.log = log.append
+        r = self.run_target()
+        self.assertTrue(r["ok"], r)
+        self.assertIn("5 plot the route: hold Space (secondary binding of UI Select in HCS X56 Attempt 1) for 0.55 s: done", r["log"])
+
+    def test_the_sequence_applies_without_a_restart(self):
+        """[highway] autotarget_* saved from Settings → Server reach the running targeter (tuned by trial and error: a
+        restart each time hid every change, 2026-10-22)."""
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.state.config_path = os.path.join(tmp.name, "ed_outrider.toml")
+        self.state.targeter = self.targeter
+        out, status = self.state.config_save({"highway": {"autotarget_plot": ["hold CamZoomOut 0.3", "hold UI_Select 2"]}})
+        self.assertEqual((status, out["live"], out["restart"]), (200, ["highway.autotarget_plot"], False))
+        self.assertEqual(self.targeter.cfg["plot"], ["hold CamZoomOut 0.3", "hold UI_Select 2"])
+        self.assertEqual(self.state.highway_cfg["autotarget_plot"], ["hold CamZoomOut 0.3", "hold UI_Select 2"])
+
     def test_map_never_closes_times_out(self):
         self.fake_time()
         self.game.ignore_close = True

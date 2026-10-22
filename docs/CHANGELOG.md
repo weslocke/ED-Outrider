@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-22 · Auto-target: control names in any case, its settings without a restart, keys in the log
+- From a Windows player's report on Reddit (the map found the system, then nothing was plotted):
+  - **Control names in any case:** `UI_SELECT` or `ui_select` is `UI_Select`, in the steps and in `autotarget_keys`
+    (they were taken for keyboard key names, which have no such key: "no keyboard binding").
+  - **The `[highway] autotarget_*` settings apply at once** (`LIVE_CONFIG`): saved from Settings → Server, the next run
+    uses them. Each change waited for a restart, so trying a sequence looked like it was being ignored.
+  - **Each step's log line names its keys** ("5 plot the route: hold Space … for 1 s: done"), so a log shows what was
+    pressed.
+
 ## 2026-10-20 · Where each mining session was, in CMDR → Sessions
 - The mining table gets a **Where** column (the author): the system and the ring (or the body your SRV mined on) where
   the session refined the most, with 🎯 for the system, and "+N" for its other places, named with their tons in its
