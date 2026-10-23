@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Docs: Sessions' Where
+- The agent guide (`Journals.mining_place`, `activity_apply`'s `place` and the sessions' `places`, `cmPlacesHtml`)
+  and the design notes (what a session's Where is and why a line without a known place has none).
+
 ## 2026-10-23 · Docs: the private notes' paths
 - The agent guide and design notes name the overlay build plan and the value checks where they now are, under
   `project/done/` (the author's private notes, not in the repository).

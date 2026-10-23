@@ -190,7 +190,10 @@ upstream project's choices, not rules of the game.
   controller, never a collector alone (explorers carry one). The page's first payload baselines the mining warnings
   (`miningBaseline`): a new window never repeats "the hold is full". Hold-full's "where to sell" never names your own
   carrier as a place to sell. The limpet reminder stays quiet while the hold's contents are not known (a count-only
-  Cargo with more aboard than the lines known).
+  Cargo with more aboard than the lines known). A mining session's **Where** (CMDR → Sessions, the author,
+  2026-10-20) is the place it refined the most tons in, the others in a "+N" hover: each mining line's place is set as
+  the line is read (the SRV's body, else the open stint's ring, else the system), so it follows the session's own
+  counts, and a line older than what is known (a legacy folder read late) has none rather than a guess.
 - **Boxels: what can and cannot be known** (2026-10-11, `outrider/boxel.py`). A procedural name's boxel, its centre and
   any of its systems' id64 are computed from a known system's position (checked: 2,763 of 2,763 of the author's
   standard-sector systems), so auto-target checks a never-visited system by id64. A boxel's size (how many systems)
