@@ -8875,7 +8875,8 @@ class State:
         if not st.get("live") or not st.get("body") or not pos or st.get("lat") is None:
             return None
         flags, flags2 = st.get("flags") or 0, st.get("flags2") or 0
-        if not flags & FLAG_IN_MAIN_SHIP or flags & (FLAG_LANDED | FLAG_IN_SRV | FLAG_ALT_AVG) or flags2 & 1:
+        # docked at a planetary port is no flying low (review 2026-10-23 M2: "flying low, 0 m", a false "Clear to sample")
+        if not flags & FLAG_IN_MAIN_SHIP or flags & (FLAG_DOCKED | FLAG_LANDED | FLAG_IN_SRV | FLAG_ALT_AVG) or flags2 & 1:
             return None
         alt = st.get("alt")
         if not isinstance(alt, (int, float)) or alt >= NEAR_BODY_ALT:

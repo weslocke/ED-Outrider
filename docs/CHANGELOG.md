@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Review fixes (2): docked at a port, the codex marks
+- The Fable review of 8db87f0..454b806 (project/REVIEW-fable-2026-10-23.md):
+  - **M2: docked at a planetary port is not "flying low"** (`near_body` leaves out Docked): no "flying low, 0 m" card,
+    and no "Clear to sample" measured from the pad.
+  - **M3: a species a composition scan named keeps its ✦ / 💰** in Here: its codex line is merged into the genus row,
+    and the row now carries that line's mark.
+
 ## 2026-10-23 · Review fixes (1): auto-target and the config checks
 - The Fable review of 8db87f0..454b806 (project/REVIEW-fable-2026-10-23.md):
   - **H1: a 🎯 on a later Highway stop, or Target next off the route, is plotted again.** A stop is targeted rather

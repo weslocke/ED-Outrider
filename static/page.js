@@ -4648,7 +4648,9 @@ function renderHere() {
     if (hb.minSig && b.bio && b.bio < hb.minSig) bio.push(`<span class="unk" title="fewer than ${hb.minSig} signals: left out (Settings, Display)">${b.bio} sig</span>`);
     const guessTxt = x => !x || !x.best ? "" : x.seen
       // your codex entry on this body names it (a composition scan, the ship's too: the author, 2026-10-23): no guess
-      ? ` <span class="sp seen" title="your codex entry on this body: ${esc(x.variant || x.best)} (a composition scan)">📖 ${dual(colourName(x.variant || x.best), esc(x.best.split(" ").slice(1).join(" ")), {title: false})} <span class="unk">${credits(x.value * f)}</span></span>`
+      ? ` <span class="sp seen" title="your codex entry on this body: ${esc(x.variant || x.best)} (a composition scan)">📖 ${dual(colourName(x.variant || x.best), esc(x.best.split(" ").slice(1).join(" ")), {title: false})}` +
+        // its codex line is merged into the row: its marks with it (💰 a voucher, ✦ new: review 2026-10-23 M3)
+        `${(c => c ? (c.voucher ? " 💰" : c.new ? " ✦" : "") : "")(b.codex.find(c => c.name === x.variant))} <span class="unk">${credits(x.value * f)}</span></span>`
       : ` <span class="unk" title="likeliest by value: ${esc(x.species.join(" / ") + historyTip(x))}">(${esc(x.best.split(" ").slice(1).join(" "))}? ${credits(x.value * f)})</span>` + codexMark(x, h.region);
     // S23: the species commanders' uploads reported to Spansh here, with the colour they reported: facts, beside the guess
     const rep = b.reported || [], repShown = new Set();

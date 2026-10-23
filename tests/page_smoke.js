@@ -1069,6 +1069,15 @@ const releasePayloads = async () => {
           && cx.querySelector(".sf").textContent === "" && /✦/.test(cx.textContent);
         o.here = !!row && row.textContent.includes("1.4M") && !row.textContent.includes("Tectonicas?") && !row.textContent.includes("19.0M")
           && row.querySelectorAll("td")[3].classList.contains("noscoop");
+        // a species a composition scan named (no sample yet): its codex line merged into the row keeps its ✦ (review
+        // 2026-10-23 M3), and is not listed a second time
+        const seenB = Object.assign({}, fake, {name: "Fake 2", genera: ["Bacterium"], organics: [],
+          bio_guess: [{genus: "Bacterium", best: "Bacterium Vesicula", species: ["Bacterium Vesicula"], value: 1000000, seen: true,
+                       variants: ["Bacterium Vesicula - Red"], variant: "Bacterium Vesicula - Red"}],
+          codex: [{name: "Bacterium Vesicula - Red", new: true}]});
+        hereData = Object.assign({}, hd, {bodies: [seenB], tree: null}); renderHere();
+        const srow = document.querySelector('#hereRows tr[data-body="Fake 2"]'), seenSp = srow && srow.querySelector("td.bio .sp.seen");
+        o.seenMark = [!!seenSp && /✦/.test(seenSp.textContent), srow ? (srow.querySelector("td.bio").textContent.match(/📖/g) || []).length : -1];
         // the icon legend under the list (the author, 2026-10-10): only the icons this list shows; none, no footer
         const plain = {first_discovered: false, first_mapped: false, mapped: false, first_footfall: false, scanned: true, rings: 0,
           terraformable: false, notable: null, volcanism: null, mining: 0, mined: [], belts: [], stale_bio: false, bio_unknown: false};
@@ -1200,7 +1209,7 @@ const releasePayloads = async () => {
     w.setTimeout = realST; w.fetch = realFetch;
     w.eval("search = null; searchWant = 0; searchRefused = false; render()");
     w.speak = realSpeak; w.play = realPlay;
-    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, legend: true, noDss: true, finished: true, mat: true,
+    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1], legend: true, noDss: true, finished: true, mat: true,
                   streak: 2, nulls: ["{}", "ts"], impNull: "bioSort", saved: true, dock: "2026-01-01T01:00:00Z", hlRender: true, more: true};
     const want2 = {onbody: true, here: true, logError: null};
     const goodH = JSON.stringify(out) === JSON.stringify(want) && JSON.stringify(out2) === JSON.stringify(want2)

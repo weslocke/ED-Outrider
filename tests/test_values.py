@@ -2276,6 +2276,8 @@ class NearBody(unittest.TestCase):
         self.assertEqual(self.state.on_body()["how"], "landed")
         self.status(ed_outrider.FLAG_IN_SRV, 0)                          # the SRV: on_body's
         self.assertIsNone(self.state.near_body())
+        self.status(ship | ed_outrider.FLAG_DOCKED, 0)                  # docked at a planetary port: not flying (review M2)
+        self.assertIsNone(self.state.near_body())
 
 
 class FullScanBonus(unittest.TestCase):
