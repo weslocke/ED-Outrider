@@ -196,7 +196,8 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   this tab's), a **dry run** box (the steps logged, nothing pressed) and **your own keys** for a control whatever your
   controls preset says (`{"UI_Select": "KEY_SPACE"}`). Opening the map, entering the name, closing the map and
   checking the target are always done; the parts below are yours to change, each with **↺ default** to put Outrider's own back: **into the search field**,
-  **submit the search** and **plot the route**, with the timings and whether the name is typed or pasted: **pause
+  **submit the search** and **plot the route**, with the timings and whether the name is typed or pasted (a pasted name that finds nothing is typed once more:
+  the clipboard can come out empty): **pause
   between keys** (0.25 s) follows every key of the three parts, since the galaxy map can miss a key pressed straight
   after another, so no `wait` is needed between keys; **typing delay** is only between the name's characters when it
   is typed; the **search wait** (3 s to start) grows by a second for each 200 ly to the system, up to 7 s (the map's flight there is

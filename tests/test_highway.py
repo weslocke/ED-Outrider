@@ -2090,6 +2090,38 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(b[2], "Supercruise")
         self.assertGreater(b[1], a[1])
 
+    def test_music_now_takes_the_newest_journal_and_its_tail(self):
+        """Review 2026-10-23 C6: music_now reads the newest journal (by time written), only its last 64 KiB; C3: the folder
+        is listed again only after JOURNAL_RELIST_S, the file in between."""
+        import tempfile
+        from unittest import mock
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.state.status_dirs = [tmp.name]
+        def journal(name, lines, when):
+            path = os.path.join(tmp.name, name)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("".join(x + "\n" for x in lines))
+            os.utime(path, (when, when))
+            return path
+        now = time.time()
+        journal("Journal.2026-10-23T200000.01.log", ['{ "event":"Music", "MusicTrack":"GalaxyMap" }'], now - 100)
+        new = journal("Journal.2026-10-22T100000.01.log", ['{ "event":"Music", "MusicTrack":"Supercruise" }'], now)
+        self.assertEqual(self.state.music_now()[:3:2], (new, "Supercruise"))   # the newest written, whatever its name
+        with mock.patch.object(ed_outrider.os, "listdir", wraps=os.listdir) as listing:
+            for _ in range(5):
+                self.state.music_now()
+            self.assertEqual(listing.call_count, 0)                         # polled: the file alone
+            self.state._journal_newest = (self.state._journal_newest[0] - self.state.JOURNAL_RELIST_S, new)
+            self.state.music_now()
+            self.assertEqual(listing.call_count, 1)                         # now and then: the folder again
+        far = journal("Journal.2026-10-23T210000.01.log", ['{ "event":"Music", "MusicTrack":"Combat_Dogfight" }']
+                      + ['{ "event":"ReceiveText", "Message":"%s" }' % ("x" * 500)] * 140, now + 10)
+        self.assertGreater(os.path.getsize(far), 65536)
+        self.state._journal_newest = (0.0, None)
+        self.assertEqual(self.state.newest_journal(), far)
+        self.assertIsNone(self.state.music_now())                           # its only Music is out of the tail
+
     def test_a_run_reads_status_json_itself(self):
         """The author, 2026-10-23: a run waited 5 s for the galaxy map, which the journal shows open a second after the
         key, and gave up: the watcher's copy of Status.json was held back by a busy event loop. A run reads the file
@@ -2117,6 +2149,14 @@ class HighwayAutoTarget(unittest.TestCase):
         write('{"timestamp": "2026-10-23T19:06:0')                          # caught mid-write
         os.utime(path, (time.time() + 10, time.time() + 10))
         self.assertIs(self.state.status_now(), self.j.status_json)
+        # review C5: a newer good reading, then the file caught mid-write: that reading stands, not the older copy
+        write({"timestamp": "2026-10-23T19:06:05Z", "event": "Status", "Flags": 1 << 24, "Flags2": 0, "GuiFocus": 6,
+               "Fuel": {"FuelMain": 10}})
+        os.utime(path, (time.time() + 15, time.time() + 15))
+        self.assertEqual(self.state.status_now()["ts"], "2026-10-23T19:06:05Z")
+        write('{"timestamp": "2026-10-23T19:06:0')
+        os.utime(path, (time.time() + 20, time.time() + 20))
+        self.assertEqual(self.state.status_now()["ts"], "2026-10-23T19:06:05Z")
 
     def test_target_system_closing_the_map_itself(self):
         """The author, 2026-10-23: after Target System the map can close by itself; the close key then opened it again,
@@ -2184,12 +2224,77 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertFalse(self.state.route_one_jump(here, legs([0, None]), 1))  # a trade hop: no jumps to count
         self.assertFalse(self.state.route_one_jump(dict(here, off_route=True), legs([0, 1]), 1))
         self.assertFalse(self.state.route_one_jump({"at": None}, legs([0, 1]), 1))   # before the route's start
+        self.assertFalse(self.state.route_one_jump({"at": 2}, legs([0, 1, 1]), 1))   # a row behind (review C6)
+        self.j.pos = dict(self.j.pos, id64=999)
+        self.assertFalse(self.state.route_one_jump(here, legs([0, 1]), 1))   # `at` is not where you are
+        self.j._hw_rows = (None, [])
+        hwy_jump(self, 1, tgt["here"], "Start", 0)
+        self.assertTrue(self.state.route_target("highway", tgt["index"])[0]["one_jump"])   # back at the start: one jump
         self.db.execute("UPDATE highway_route SET jumps = 3 WHERE idx = ?", (tgt["index"],))   # a neutron plotter's row
         self.j._hw_rows = (None, [])                                     # the rows are cached per plot
-        hwy_jump(self, 1, tgt["here"], "Start", 0)
-        self.assertFalse(self.state.route_target("highway", tgt["index"])[0]["one_jump"])
+        self.assertFalse(self.state.route_target("highway", tgt["index"])[0]["one_jump"])   # the jumps alone change
         self.state.map_cache[(self.j.pos["id64"], 50)] = ({555: {"name": "Far", "x": 900, "y": 0, "z": 0}}, None)
         self.assertNotIn("one_jump", self.state.route_target("system", 555)[0])
+
+    def test_a_pasted_name_that_found_nothing_is_typed(self):
+        """Review 2026-10-23 C1 (the author's first paste of a run came out empty, the second worked): a pasted name that
+        found nothing is typed once more, when it can be typed; a failed run's log ends with what Status.json and the
+        journal said (C2)."""
+        self.fake_time()
+        self.targeter.configure({"entry": "paste"})
+        empty = []
+        def copy(t):   # the clipboard's first copy never reaches the game
+            self.copied.append(t)
+            if empty:
+                self.game.clipboard = t
+            empty.append(t)
+            return True
+        self.targeter.copy = copy
+        r = self.run_target()
+        self.assertTrue(r["ok"], r)
+        self.assertIn("pasted nothing: typed it", r["log"])
+        self.assertIn("KEY_B", [n for n, _v in self.game.writes])          # typed the second time
+        self.assertEqual(self.copied, ["Bridge B"])
+        # a name a US keyboard cannot type: no second try, and the log says what both sources said
+        self.game.systems["Pégase"] = 777
+        self.game.clipboard, self.status["destination"], self.status["gui_focus"] = None, None, 0
+        empty.clear()
+        self.targeter.copy = lambda t: self.copied.append(t) or True        # never reaches the game
+        r = self.run_target("Pégase", 777, music=self.game.music_now, fsd_target=self.game.fsd_now)
+        self.assertEqual((r["ok"], r["why"]), (False, "no system was targeted"))
+        self.assertNotIn("pasted nothing: typed it", r["log"])
+        self.assertTrue(r["log"][-1].startswith("seen: Status.json GuiFocus 0, Destination none"), r["log"])
+
+    def test_focus_takes_only_this_runs_music(self):
+        """Review 2026-10-23 C6: focus() overrides Status.json's GuiFocus only with Music newer than the run's first key
+        (before the map's closing key) or than that key (after it), and logs the first override (C2)."""
+        t, said = self.targeter, []
+        music = [("j", 5, "GalaxyMap")]
+        t.run_music, t._say = lambda: music[0], said.append
+        t._music0, t._closing = ("j", 5, "GalaxyMap"), False
+        self.assertEqual(t.focus({"gui_focus": 0}), 0)                     # the map opened before the run: not now
+        music[0] = ("j", 9, "GalaxyMap")
+        self.assertEqual(t.focus({"gui_focus": 0}), 6)                     # opened by this run, Status.json lagging
+        self.assertEqual(said, ["the journal's Music 'GalaxyMap' taken over Status.json's GuiFocus 0"])
+        music[0] = ("j", 12, "Supercruise")
+        self.assertEqual(t.focus({"gui_focus": 6}), 6)                     # a track change before the closing key
+        t._closing, t._music_t = True, ("j", 12, "Supercruise")
+        self.assertEqual(t.focus({"gui_focus": 6}), 6)                     # Music from before the closing key
+        music[0] = ("Journal.2.log", 1, "Supercruise")
+        self.assertEqual(t.focus({"gui_focus": 6}), 0)                     # after it (a new journal counts as newer)
+        self.assertEqual(len(said), 1)                                      # the first override only
+        t.run_music = t._say = t._music0 = t._music_t = t._closing = None
+
+    def test_the_runs_journal_marks_are_per_thread(self):
+        """Review 2026-10-23 C4: a run's journal readers and marks are its thread's, like run_cancel."""
+        import threading
+        self.targeter._music0, seen = ("j", 1, "GalaxyMap"), []
+        th = threading.Thread(target=lambda: seen.append((self.targeter._music0, self.targeter.run_music)))
+        th.start()
+        th.join()
+        self.assertEqual(seen, [(None, None)])
+        self.assertEqual(self.targeter._music0, ("j", 1, "GalaxyMap"))
+        self.targeter._music0 = None
 
     def test_paste_entry(self):
         self.fake_time()
@@ -2534,7 +2639,8 @@ class HighwayAutoTarget(unittest.TestCase):
         r = self.run_target()
         self.assertFalse(r["ok"])
         self.assertEqual(len(lines), len(r["log"]))
-        self.assertTrue(lines[-1].startswith("auto-target: stopped at step 7"), lines[-1])
+        self.assertTrue(lines[-2].startswith("auto-target: stopped at step 7"), lines[-2])
+        self.assertTrue(lines[-1].startswith("auto-target: seen: Status.json GuiFocus 0"), lines[-1])   # review C2
 
     def test_lock_with_honk(self):
         import threading

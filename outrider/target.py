@@ -284,6 +284,20 @@ class Abort(Exception):
         self.step, self.why, self.code, self.extra = step, why, code, extra
 
 
+class _PerRun:
+    """A Targeter attribute kept per worker thread, each run's own (None until set): two runs never share or overwrite
+    one (review 2026-10-08 #1; the journal's marks too, review 2026-10-23 C4)."""
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+    def __get__(self, obj, owner=None):
+        return self if obj is None else getattr(obj._run_local, self.name, None)
+
+    def __set__(self, obj, value):
+        setattr(obj._run_local, self.name, value)
+
+
 class Targeter:
     """The step runner. It shares auto honk's Honker: its virtual keyboard (honker.ui) and its lock (one sequence at
     a time). run() blocks: call it on a worker thread."""
@@ -295,30 +309,19 @@ class Targeter:
         self.copy = copy   # copy(text) -> bool: the desktop clipboard, for the paste entry
         self.log = log
         self.cancel = threading.Event()   # set to stop any run (shutdown): checked between keys and while waiting
-        self._run_local = threading.local()   # each run's own token, per worker thread (run_cancel)
+        self._run_local = threading.local()   # each run's own state, per worker thread (_PerRun)
         # time, injectable so tests can run on a fake clock that moves only when something waits (the defaults are
         # the real ones): clock() for deadlines, wait(secs) an interruptible pause (True once cancelled), sleep(secs)
         # an uninterruptible one (the gaps between the keys of one combination, a hold that must complete)
         self.clock, self.wait, self.sleep = time.monotonic, self._wait, time.sleep
 
-    @property
-    def run_cancel(self):
-        """The running sequence's own token (auto-target switched off, the route cleared: set by its owner), kept per
-        thread: two runs never share or overwrite one (review 2026-10-08 #1)."""
-        return getattr(self._run_local, "cancel", None)
-
-    @run_cancel.setter
-    def run_cancel(self, token):
-        self._run_local.cancel = token
-
-    @property
-    def run_front(self):
-        """The running sequence's window check (run's `front`), per thread like run_cancel."""
-        return getattr(self._run_local, "front", None)
-
-    @run_front.setter
-    def run_front(self, check):
-        self._run_local.front = check
+    # the running sequence's own token (auto-target switched off, the route cleared: set by its owner), its window
+    # check (run's `front`), its journal readers (`music`, `fsd_target`), and its marks: the journal's Music and
+    # FSDTarget at its first key, the Music at the key that closes the map (focus(), _target_taken(), _reopened()),
+    # whether that key has gone, whether a Music override was logged, its log (say)
+    run_cancel, run_front, run_music, run_fsd = _PerRun(), _PerRun(), _PerRun(), _PerRun()
+    _music0, _music_t, _fsd0, _closing, _started, _overrode, _say = (_PerRun(), _PerRun(), _PerRun(), _PerRun(),
+                                                                     _PerRun(), _PerRun(), _PerRun())
 
     def cancelled(self):
         """Shutdown, or the current run's own token."""
@@ -360,10 +363,11 @@ class Targeter:
         keys = honk.parse_combo(name)
         return (keys, " + ".join(honk.key_label(k) for k in keys)) if keys else (None, f"no key {name!r}")
 
-    def plan(self, mode="plot"):
+    def plan(self, mode="plot", entry=None):
         """(steps with "codes" and "what" filled in, missing [(name, why)]): missing are the keys a step needs that
-        have no keyboard binding (or no evdev key), so nothing runs. mode: build_steps'."""
-        steps, missing, binds = build_steps(self.cfg, mode), [], None
+        have no keyboard binding (or no evdev key), so nothing runs. mode: build_steps'; entry: "type" or "paste" over
+        the configured one."""
+        steps, missing, binds = build_steps(dict(self.cfg, entry=entry) if entry else self.cfg, mode), [], None
         ev = self.honker.evdev if self.honker else None
         for st in steps:
             name = st.get("keys") or ("Paste" if st["do"] == "paste" else None)
@@ -429,29 +433,37 @@ class Targeter:
             if dry:
                 self.log(tag + line)
         self.run_cancel, self.run_front, self.run_music, self.run_fsd = cancel, front, music, fsd_target
-        # the journal's Music and FSDTarget marks: at the run's start, and the Music at the key that closes the map (the
-        # Target System key, or the close key): focus(), _target_taken(), _reopened()
-        self._music0 = self._music_t = self._fsd0 = None
-        self._closing = False
+        self._say, entry = say, None
         try:
-            self._run(result, say, name, id64, status, system, dry, origin, route_end, ly, one_jump)
+            while True:
+                self._music0 = self._music_t = self._fsd0 = None
+                self._closing = self._started = self._overrode = False
+                self._run(result, say, name, id64, status, system, dry, origin, route_end, ly, one_jump, entry)
+                # a pasted name that found nothing (the author, 2026-10-23: the first paste of a run came out empty, the
+                # second worked): once more, typing it, when it can be typed (review C1)
+                if entry or result["ok"] or dry or not result.get("pasted") or result["why"] != "no system was targeted" \
+                        or untypeable(name) or self.cancelled():
+                    break
+                say("pasted nothing: typed it")
+                entry = "type"
+                result.update(phase=None, label=None, why=None, code=None, pasted=False)
         except BaseException:
             for line in result["log"]:   # an unexpected error: the steps so far are the debugging detail
                 self.log(tag + line)
             raise
         finally:
-            self.run_cancel = self.run_front = self.run_music = self.run_fsd = None
+            self.run_cancel = self.run_front = self.run_music = self.run_fsd = self._say = None
         if not result["ok"] and not dry:
             for line in result["log"]:
                 self.log(tag + line)
         return result
 
-    def _run(self, result, say, name, id64, status, system, dry, origin, route_end, ly=None, one_jump=False):
+    def _run(self, result, say, name, id64, status, system, dry, origin, route_end, ly=None, one_jump=False, entry=None):
         mode = "target" if one_jump and self.cfg.get("route_target") else "plot"
-        steps, missing = self.plan(mode)
+        steps, missing = self.plan(mode, entry)
         if missing and mode == "target":   # the icons need UI_Right and UI_Down: plot instead where they are not bound
             say("the target steps need " + ", ".join(f"{n} ({w})" for n, w in missing) + ": plotting instead")
-            mode, (steps, missing) = "plot", self.plan("plot")
+            mode, (steps, missing) = "plot", self.plan("plot", entry)
         result["mode"] = mode
         # one jump: the system itself must be the target, never a plotted route merely ending there
         game_route, route_end = route_end, None if one_jump else route_end
@@ -492,6 +504,7 @@ class Targeter:
                 result.update(phase=0, label="check before the first key", why=not_front, code="window")
                 return
             self._music0, self._fsd0 = self._music(), self._fsd()   # before the first key: what comes after is this run's
+            self._started = True
             # the Target System key: step 5's last key (a wait after it, set by hand, then runs with the cockpit expected)
             last5 = max((i for i, s in enumerate(steps) if s["phase"] == 5 and s["do"] in ("press", "hold")), default=None)
             for i, st in enumerate(steps):
@@ -539,6 +552,7 @@ class Targeter:
                         raise Abort(st, "the name could not be put on the clipboard (wl-copy or xclip)")
                     self._sleep(0.2, st, status, system, here, expect)
                     self._tap(st["names"], TAP_S, st)
+                    result["pasted"] = True
                 elif d == "focus":
                     self._wait_focus(st, status, system, here, expect)
                     expect = {st["value"]}
@@ -563,6 +577,8 @@ class Targeter:
             result.update(phase=st["phase"] if st else 0, label=st["label"] if st else "start", why=e.why,
                           code=e.code, **e.extra)
             say(f"stopped at step {result['phase']} ({result['label']}): {e.why}")
+            if self._started:
+                say(self._seen(status))
             # close the map only if this run opened it and it is still open (pressing it otherwise would open it). Once
             # its close key went down the map is closing (Status.json lags): pressed again it would open, unless the
             # close demonstrably failed (the wait for the cockpit timed out with the map still open)
@@ -606,10 +622,32 @@ class Targeter:
         # of the map closing (A4)
         base = self._music_t if self._closing else self._music0
         if m[2] == "GalaxyMap" and g == GUI_COCKPIT and self._newer(m, base):
-            return GUI_GALAXY_MAP
-        if m[2] != "GalaxyMap" and g == GUI_GALAXY_MAP and self._closing and self._newer(m, base):
-            return GUI_COCKPIT
-        return g
+            out = GUI_GALAXY_MAP
+        elif m[2] != "GalaxyMap" and g == GUI_GALAXY_MAP and self._closing and self._newer(m, base):
+            out = GUI_COCKPIT
+        else:
+            return g
+        if not self._overrode and self._say:   # the first in a run, in its log (review C2)
+            self._overrode = True
+            self._say(f"the journal's Music {m[2]!r} taken over Status.json's GuiFocus {g}")
+        return out
+
+    def _seen(self, status):
+        """What both sources said as a run failed, its log's last line (review 2026-10-23 C2): Status.json's GuiFocus,
+        Destination and time; the journal's last Music and FSDTarget, before or since the run's first key."""
+        try:
+            s = status() or {}
+        except Exception:  # noqa: BLE001 -- a log line: whatever there is
+            s = {}
+        dest = s.get("destination")
+        dest = (dest.get("Name") or dest.get("System")) if isinstance(dest, dict) else None
+        out = f"seen: Status.json GuiFocus {s.get('gui_focus') or 0}, Destination {dest or 'none'}, at {s.get('ts') or '?'}"
+        when = lambda x, base: "since the first key" if self._newer(x, base) else "before the first key"
+        m, f = self._music(), self._fsd()
+        out += f"; the journal's Music {m[2]!r} ({when(m, self._music0)})" if m else "; no Music in the journal"
+        if f:
+            out += f", FSDTarget {f[2]} ({when(f, self._fsd0)})"
+        return out
 
     @staticmethod
     def _newer(m, base):

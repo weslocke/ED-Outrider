@@ -7386,6 +7386,7 @@ class State:
         self.autohonk = dict(AUTOHONK)
         # the live folders whose Status.json an auto-target run reads itself (status_now; run() sets them: none in tests)
         self.status_dirs, self._status_now, self._music_now = [], {}, (None, None)
+        self._journal_newest = (0.0, None)   # newest_journal's (when listed, path)
         self._honk_arrival = None  # the arrival the auto honk last looked at
         self.honk_confirm = 10.0   # s to wait for the journal's discovery scan after the press
         self.honk_test = None      # the Test button's latest run: {seq, state, what, error}, shown in the dialog
@@ -17431,8 +17432,12 @@ class State:
                     with open(p, encoding="utf-8") as f:
                         st = json.load(f)
                 except (OSError, ValueError):
-                    continue   # caught while the game writes it: the next look
-                c = self._status_now[p] = (m, self.journals.status_reading(st, prev))
+                    if not c:
+                        continue   # caught while the game writes it: the next look
+                    # its last good reading stands meanwhile (its old mtime kept: re-read at the next look), never the
+                    # watcher's older copy (review 2026-10-23 C5)
+                else:
+                    c = self._status_now[p] = (m, self.journals.status_reading(st, prev))
             if c[1] and (best is None or (c[1].get("ts") or "") > (best.get("ts") or "")):
                 best = c[1]
         if best is None or (prev and (prev.get("ts") or "") > (best.get("ts") or "")):
@@ -17450,22 +17455,35 @@ class State:
         before the map's closing Music (Targeter._target_taken; review 2026-10-23 A3)."""
         return self.journal_tail().get("fsd_target")
 
-    def journal_tail(self):
-        """{music, fsd_target} from the newest live journal's last 64 KB, re-read only when the file grew."""
+    JOURNAL_RELIST_S = 3.0   # journal_tail: how often the folders are listed for a newer journal
+
+    def newest_journal(self):
+        """The newest live journal's path (None: none): the folders listed at most every JOURNAL_RELIST_S, a run polling
+        every 50 ms stats one file between (review 2026-10-23 C3); a new journal comes only with a game start."""
+        t = time.monotonic()
+        when, p = self._journal_newest
+        if p is not None and t - when < self.JOURNAL_RELIST_S and os.path.exists(p):
+            return p
         newest = None
         for d in self.status_dirs:
             try:
                 for n in os.listdir(d):
                     if n.startswith("Journal.") and n.endswith(".log"):
-                        p = os.path.join(d, n)
-                        m = os.path.getmtime(p)
+                        q = os.path.join(d, n)
+                        m = os.path.getmtime(q)
                         if newest is None or m > newest[0]:
-                            newest = (m, p)
+                            newest = (m, q)
             except OSError:
                 continue
-        if newest is None:
+        p = newest[1] if newest else None
+        self._journal_newest = (t, p) if p else (0.0, None)
+        return p
+
+    def journal_tail(self):
+        """{music, fsd_target} from the newest live journal's last 64 KB, re-read only when the file grew."""
+        p = self.newest_journal()
+        if p is None:
             return {}
-        p = newest[1]
         try:
             size = os.path.getsize(p)
         except OSError:

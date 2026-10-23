@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Targeting check fixes (2): the empty paste, the failure log, the journal reads
+- The rest of the Fable check of the auto-target tweaks (project/REVIEW-fable-targeting-2026-10-23.md, section C):
+  - **C1: a pasted name that found nothing is typed once more** (when a US keyboard can type it), said in the log as
+    "pasted nothing: typed it": the author's first paste of a run had come out empty, the second worked.
+  - **C2: a failed run's log ends with what both sources said** (Status.json's GuiFocus, Destination and time; the
+    journal's last Music and FSDTarget, before or since the run's first key), and the first time in a run the
+    journal's Music is taken over GuiFocus is logged.
+  - **C3: the journal folder is listed every 3 s at most** while a run polls, the newest journal alone stat'ed between.
+  - **C4: a run's journal readers and marks are its own thread's**, like its cancel token.
+  - **C5: a Status.json caught half written keeps the last good reading** of that file, not the watcher's older copy.
+  - **C6: tests** for focus() ignoring Music from before the run, the newest journal and its 64 KiB tail, and
+    route_one_jump's remaining branches (a row behind, `at` not where you are; the neutron row's check now changes
+    only the jumps).
+
 ## 2026-10-23 · Targeting check fixes (1): Target System's self-closing map, the guard, the wrong system
 - The Fable check of the auto-target tweaks (project/REVIEW-fable-targeting-2026-10-23.md):
   - **A1-A5: the map Target System closes by itself.** After the Target System key the cockpit is expected (the pause
