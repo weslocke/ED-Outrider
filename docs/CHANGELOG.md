@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Auto-target trusts the journal's Music for the galaxy map
+- The author's runs, recorded beside the journal: Status.json's GuiFocus lagged the galaxy map by seconds both ways.
+  Opened after a supercharge, the journal's Music said "GalaxyMap" within a second while GuiFocus stayed the cockpit
+  for over 4 s ("the galaxy map did not open"); Target System closed the map by itself while GuiFocus said the map for
+  18 s, so the run's close key opened it again ("the galaxy map did not close"). A run now reads the live journal's
+  last Music event itself (`State.music_now`) and takes it as the map's word over GuiFocus (`Targeter.focus`), and
+  waits up to 2 s for Target System to close the map. The JOURNAL_REFERENCE says it.
+
 ## 2026-10-23 · Auto-target reads Status.json itself
 - The author: an automatic run after a supercharge pressed the galaxy map's key, the map opened (the journal's Music
   "GalaxyMap" a second later), and the run gave up 5 s on: "the galaxy map did not open". Another said it failed with

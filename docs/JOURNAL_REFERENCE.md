@@ -161,6 +161,12 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   `outrider.target.GUI_FOCUS`). `Destination.System` is the targeted system's id64 (the check that auto-target worked); when the galaxy map plots a route of several jumps it is the first hop, and NavRoute.json's last hop is the system chosen, which auto-target also accepts.
   Flags auto-target's guards read: docked (bit 0), landed (1), FSD charging (17), in danger (22), being interdicted
   (23), in SRV (26), in the hyperspace tunnel (30); Flags2 bit 0 on foot.
+- **Status.json's `GuiFocus` can lag the galaxy map by many seconds, or not come at all; the journal's `Music` does
+  not** (a recording of every Status.json change beside the journal, 2026-10-23). Opened right after a supercharge, the
+  map's `Music` `GalaxyMap` came within a second while `GuiFocus` stayed 0 for over 4 s; **Target System closes the map
+  by itself** (`FSDTarget`, then `Music` `Supercruise` a second later) while `GuiFocus` stayed 6 for 18 s, the new
+  `Destination` written meanwhile. Auto-target takes the Music since its run began as the map's word (`Targeter.focus`,
+  `State.music_now` reading the live journal's end).
 - **In danger (bit 22) is set on every jump**, no threat needed: on from the FSD charge (5-7 s before StartJump) until
   some 16-26 s after the FSDJump, any star class, nothing near (logged in game 2026-10-09: 16, 16 and 26 s). The
   same on entering supercruise (lifting off a planet: on until 16 s after the SupercruiseEntry). A guard

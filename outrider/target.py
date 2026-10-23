@@ -130,7 +130,8 @@ DEFAULTS = {"entry": "type", "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0
             "dry_run": False}
 TAP_S = 0.05        # s a tapped key stays down
 VERIFY_WAIT = 3.0   # s for Status.json to show the new Destination after the map closes
-TARGET_CLOSE_WAIT = 1.0   # s after the target steps for the map to close by itself (Target System can close it: the author, 2026-10-23)
+TARGET_CLOSE_WAIT = 2.0   # s after the target steps for the map to close by itself (Target System closes it: the journal's
+#                           Music says so about a second after its FSDTarget; Status.json may not for many seconds)
 POLL_S = 0.05       # s between Status.json looks while waiting
 LOCK_WAIT = 30.0    # s to wait for auto honk to let go of the virtual keyboard
 
@@ -396,7 +397,7 @@ class Targeter:
 
     # ---- running ----
     def run(self, name, id64, status, system, dry_run=None, cancel=None, origin=None, route_end=None, front=None, ly=None,
-            one_jump=False):
+            one_jump=False, music=None):
         """Target `name` (id64) now: status() gives Status.json's reading ({gui_focus, flags, flags2, destination,
         live}), system() the current system's id64. cancel: this run's own token (a threading.Event its owner sets:
         auto-target switched off, the route cleared or replaced); origin: the system the run was decided in (default:
@@ -408,7 +409,9 @@ class Targeter:
         search_wait: a second more for each SEARCH_WAIT_STEP_LY, up to SEARCH_WAIT_MAX); one_jump: a route's next
         stop the route makes one jump, so the system itself must end up the target (a longer route the game plotted
         there fails, code "multi", saying how to fix it), and with `route_target` on it is targeted, not plotted (the
-        plot steps after all when the target steps' keys are not bound). -> {"ok", "phase", "label", "why", "code", "log",
+        plot steps after all when the target steps' keys are not bound); music: a callable giving the journal's latest
+        Music event as (file, position, track), or None: the galaxy map's own word on whether it is open, which Status.json's
+        GuiFocus can lag behind by many seconds or never give (focus()). -> {"ok", "phase", "label", "why", "code", "log",
         "dry_run"}; code "already" (nothing to do) or "wrong" (a different system was targeted: `wrong` names it).
         The step log is printed only when the run fails, or throughout a dry run: a success is the caller's one line."""
         dry = self.cfg.get("dry_run") if dry_run is None else dry_run
@@ -419,7 +422,7 @@ class Targeter:
             result["log"].append(line)
             if dry:
                 self.log(tag + line)
-        self.run_cancel, self.run_front = cancel, front
+        self.run_cancel, self.run_front, self.run_music, self._music0 = cancel, front, music, None
         try:
             self._run(result, say, name, id64, status, system, dry, origin, route_end, ly, one_jump)
         except BaseException:
@@ -427,7 +430,7 @@ class Targeter:
                 self.log(tag + line)
             raise
         finally:
-            self.run_cancel = self.run_front = None
+            self.run_cancel = self.run_front = self.run_music = None
         if not result["ok"] and not dry:
             for line in result["log"]:
                 self.log(tag + line)
@@ -478,6 +481,7 @@ class Targeter:
             if not_front:
                 result.update(phase=0, label="check before the first key", why=not_front, code="window")
                 return
+            self._music0 = self._music()   # the journal's Music before the first key: what comes after is this run's
             for st in steps:
                 cur = st
                 if st.get("closes") and mode == "target":
@@ -544,7 +548,7 @@ class Targeter:
             # close demonstrably failed (the wait for the cockpit timed out with the map still open)
             close_failed = e.why == "the galaxy map did not close"
             # (the device is still open under our lock even when switching off set `stop`: the finally closes it after)
-            if opened and (not close_pressed or close_failed) and (status() or {}).get("gui_focus") == GUI_GALAXY_MAP \
+            if opened and (not close_pressed or close_failed) and self.focus(status()) == GUI_GALAXY_MAP \
                     and h.ui is not None:
                 close = next((s for s in steps if s.get("closes")), None)
                 try:
@@ -558,12 +562,33 @@ class Targeter:
                 h._close_now()   # close() came during the run: the device is closed now that the keys are up
             h.lock.release()
 
+    def _music(self):
+        """The journal's latest Music event (file, position, track), or None (none, or no way to read it)."""
+        try:
+            return self.run_music() if self.run_music else None
+        except Exception:  # noqa: BLE001 -- the journal is a second opinion: without it, Status.json alone
+            return None
+
+    def focus(self, s):
+        """GuiFocus as the run takes it: Status.json's, unless the journal's Music, newer than the run's start, says
+        otherwise about the galaxy map (the author's recording, 2026-10-23: the map opened, Music "GalaxyMap" at once and
+        Status.json still the cockpit; Target System closed it, Music "Supercruise" and Status.json still the map, 18 s).
+        Other screens (a panel, the system map) are Status.json's word alone."""
+        g = (s or {}).get("gui_focus") or 0
+        m, m0 = self._music(), self._music0
+        if m and (m0 is None or m[0] != m0[0] or m[1] > m0[1]):
+            if m[2] == "GalaxyMap" and g == GUI_COCKPIT:
+                return GUI_GALAXY_MAP
+            if m[2] != "GalaxyMap" and g == GUI_GALAXY_MAP:
+                return GUI_COCKPIT
+        return g
+
     def _closed_by_itself(self, st, status, system, here, expect):
         """Whether the galaxy map closed by itself within TARGET_CLOSE_WAIT (Status.json shows the cockpit)."""
         end = self.clock() + TARGET_CLOSE_WAIT
         while True:
             self._check(st, status, system, here, expect)
-            if ((status() or {}).get("gui_focus") or 0) == GUI_COCKPIT:
+            if self.focus(status()) == GUI_COCKPIT:
                 return True
             if self.clock() >= end:
                 return False
@@ -582,7 +607,7 @@ class Targeter:
             raise Abort(st, "an FSD jump started", code="jump")
         if flags & (FLAG_IN_DANGER | FLAG_INTERDICTED):
             raise Abort(st, "danger")
-        focus = s.get("gui_focus") or 0
+        focus = self.focus(s)
         if focus not in expect:
             raise Abort(st, (GUI_FOCUS.get(focus, f"GuiFocus went to {focus}") if focus else "the cockpit came back")
                         + " (unexpected)")
@@ -625,7 +650,7 @@ class Targeter:
     def _wait_focus(self, st, status, system, here, expect):
         end = self.clock() + st["timeout"]
         while True:
-            if ((status() or {}).get("gui_focus") or 0) == st["value"]:
+            if self.focus(status()) == st["value"]:
                 return
             self._check(st, status, system, here, expect)
             if self.clock() >= end:

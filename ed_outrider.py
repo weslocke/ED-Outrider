@@ -7385,7 +7385,7 @@ class State:
         self.speaker_audio_blocked = False   # the speaking window's browser holds audio back until a click (the tablet says so)
         self.autohonk = dict(AUTOHONK)
         # the live folders whose Status.json an auto-target run reads itself (status_now; run() sets them: none in tests)
-        self.status_dirs, self._status_now = [], {}
+        self.status_dirs, self._status_now, self._music_now = [], {}, (None, None)
         self._honk_arrival = None  # the arrival the auto honk last looked at
         self.honk_confirm = 10.0   # s to wait for the journal's discovery scan after the press
         self.honk_test = None      # the Test button's latest run: {seq, state, what, error}, shown in the dialog
@@ -17439,6 +17439,48 @@ class State:
             return prev
         return best
 
+    def music_now(self):
+        """The journal's latest Music event as (file, position, track), read from the newest live journal's end: an
+        auto-target run's second word on the galaxy map (Targeter.focus), Status.json's GuiFocus lagging it by many
+        seconds (the author's recording, 2026-10-23). Re-read only when the file grew; None without one (tests, a server)."""
+        newest = None
+        for d in self.status_dirs:
+            try:
+                for n in os.listdir(d):
+                    if n.startswith("Journal.") and n.endswith(".log"):
+                        p = os.path.join(d, n)
+                        m = os.path.getmtime(p)
+                        if newest is None or m > newest[0]:
+                            newest = (m, p)
+            except OSError:
+                continue
+        if newest is None:
+            return None
+        p = newest[1]
+        try:
+            size = os.path.getsize(p)
+        except OSError:
+            return None
+        key, cached = self._music_now
+        if key == (p, size):
+            return cached
+        out = None
+        try:
+            with open(p, "rb") as f:
+                start = max(0, size - 65536)
+                f.seek(start)
+                data = f.read(size - start)
+            i = data.rfind(b'"event":"Music"')
+            if i >= 0:
+                a, b = data.rfind(b"\n", 0, i) + 1, data.find(b"\n", i)
+                b = len(data) if b < 0 else b
+                track = json.loads(data[a:b].decode("utf-8")).get("MusicTrack")
+                out = (p, start + b, track)
+        except (OSError, ValueError):
+            return None   # a line still being written: the next look
+        self._music_now = ((p, size), out)
+        return out
+
     def autotarget_ly(self, tgt):
         """How far a run's system is from you (the Targeter's longer search wait for a far one), None when unknown."""
         pos, where = self.journals.pos or {}, self.locate(tgt["id64"]) or self.listed_system(tgt["id64"])
@@ -17818,7 +17860,7 @@ class State:
                 self.targeter.run, tgt["name"], tgt["id64"], self.status_now,
                 lambda: (self.journals.pos or {}).get("id64"), cancel=cancel, origin=tgt["here"],
                 route_end=lambda: self.journals.navroute_end, front=front, ly=self.autotarget_ly(tgt),
-                one_jump=bool(tgt.get("one_jump"))))
+                one_jump=bool(tgt.get("one_jump")), music=self.music_now))
         except Exception as e:  # noqa: BLE001 -- say so on the page rather than lose it in a task
             res = {"ok": False, "phase": 0, "label": "run", "why": f"{type(e).__name__}: {e}"}
         finally:

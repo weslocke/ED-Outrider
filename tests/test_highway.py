@@ -1970,6 +1970,55 @@ class HighwayAutoTarget(unittest.TestCase):
         r = self.run_target()
         self.assertEqual((r["ok"], r["mode"]), (True, "plot"))
 
+    def test_the_journals_music_says_where_the_map_is(self):
+        """The author's recording, 2026-10-23: Status.json's GuiFocus lagged the galaxy map by many seconds (open: still
+        the cockpit; closed by Target System: still the map, 18 s), where the journal's Music said it at once. A run takes
+        the Music since its start as the map's word: it goes on with the map open, and does not press the close key (which
+        reopened the map) once Target System closed it."""
+        self.fake_time()
+        g = self.game
+        g.status_lag, g.screen, g.target_closes = True, 0, True       # Status.json says the cockpit throughout
+        r = self.run_target(one_jump=True, music=g.music_now)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual((g.screen, self.status["destination"]["System"]), (0, 102))
+        self.assertEqual(len([n for n, v in g.writes if n == "KEY_T" and v]), 1)   # opened once, no close key
+        self.assertTrue(any("closed by itself" in x for x in r["log"]), r["log"])
+        g.screen, g.music, self.status["destination"] = 0, [], None
+        self.assertEqual(self.run_target(one_jump=True)["why"], "the galaxy map did not open")   # Status.json alone
+        # the other way: Status.json still says the map after Target System closed it
+        g.status_lag, g.screen, g.music, self.status["gui_focus"], self.status["destination"] = False, 0, [], 0, None
+        g.writes.clear()
+        def stick(game):
+            game.status_lag = True                                     # from here on Status.json keeps GuiFocus 6
+        g.on_type = stick
+        r = self.run_target(one_jump=True, music=g.music_now)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual((g.screen, self.status["gui_focus"]), (0, 6))
+        self.assertEqual(len([n for n, v in g.writes if n == "KEY_T" and v]), 1)
+
+    def test_music_now_reads_the_journals_end(self):
+        """State.music_now: the newest live journal's last Music event, its position growing with each new one."""
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.assertIsNone(self.state.music_now())                         # no folders: none
+        self.state.status_dirs = [tmp.name]
+        path = os.path.join(tmp.name, "Journal.2026-10-23T110707.01.log")
+        def add(line):
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(line + "\n")
+        add('{ "timestamp":"2026-10-23T19:22:06Z", "event":"JetConeBoost", "BoostValue":6.000000 }')
+        self.assertIsNone(self.state.music_now())
+        add('{ "timestamp":"2026-10-23T19:22:12Z", "event":"Music", "MusicTrack":"GalaxyMap" }')
+        a = self.state.music_now()
+        self.assertEqual((a[0], a[2]), (path, "GalaxyMap"))
+        add('{ "timestamp":"2026-10-23T19:22:24Z", "event":"FSDTarget", "Name":"X", "SystemAddress":1, "StarClass":"K" }')
+        self.assertEqual(self.state.music_now(), a)                          # no new Music: the same
+        add('{ "timestamp":"2026-10-23T19:22:25Z", "event":"Music", "MusicTrack":"Supercruise" }')
+        b = self.state.music_now()
+        self.assertEqual(b[2], "Supercruise")
+        self.assertGreater(b[1], a[1])
+
     def test_a_run_reads_status_json_itself(self):
         """The author, 2026-10-23: a run waited 5 s for the galaxy map, which the journal shows open a second after the
         key, and gave up: the watcher's copy of Status.json was held back by a busy event loop. A run reads the file

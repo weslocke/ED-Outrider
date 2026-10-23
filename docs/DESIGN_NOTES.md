@@ -586,9 +586,13 @@ upstream project's choices, not rules of the game.
   can close the galaxy map by itself (the author, 2026-10-23: not every time): after the target steps the run waits up
   to `TARGET_CLOSE_WAIT` (1 s) for the cockpit and then presses no close key, which would open the map again (it did,
   and the run said it failed with the target set); where the map stays open it is closed as before.
-  **A run reads Status.json itself** (`State.status_now`, the author's run of 2026-10-23): the watcher's copy changes
-  only at its next pass on the event loop, which an arrival or a supercharge holds back for seconds, and a run polling
-  it from its own thread saw the galaxy map open (and the target set) only after giving up.
+  **A run reads Status.json itself** (`State.status_now`, the author's run of 2026-10-23), and **the journal's Music
+  is the galaxy map's word**: a recording of every Status.json change beside the journal showed GuiFocus lagging the
+  map by seconds both ways (open: still 0 for 4 s; closed by Target System: still 6 for 18 s) where Music came within a
+  second. The run reads the live journal's last Music event itself (`State.music_now`) and, once one has come since it
+  began, lets it override GuiFocus's 0 or 6 (`Targeter.focus`); other screens stay Status.json's. (A first guess, the
+  watcher's copy held back by a busy event loop, did not survive profiling: a replay of the jump and the supercharge
+  on a copy of the database had no loop step over 0.25 s.)
 - **Settings → Server lists only the keys with no section of their own** (the author, 2026-10-23; project plan
   PLAN-settings-cleanup). It had 112 keys, most set in other sections, and some contradicted them: auto honk's and
   auto-target's switches live in the database (meta `autohonk_enabled`, `autotarget`), so the file's value it showed

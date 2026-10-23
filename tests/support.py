@@ -373,6 +373,22 @@ class FakeGame:
         self.clock = time.time   # a FakeClock in the tests that run on fake time
         self.plot_to = None   # plot this id64 instead of the one found
         self.target_closes = False   # Target System closes the map by itself
+        # the galaxy map's GuiFocus can lag in Status.json, or not come at all, where the journal's Music says it at once
+        # (the author's recording, 2026-10-23): with status_lag the screen changes (`screen`) and Status.json does not;
+        # `music` is the journal's Music tracks, one per opening and closing (`music_now`, the run's view of them)
+        self.status_lag, self.screen, self.music = False, None, []
+
+    def screen_focus(self):
+        return self.screen if self.status_lag else self.status.get("gui_focus")
+
+    def set_focus(self, v):
+        self.screen = v
+        if not self.status_lag:
+            self.status["gui_focus"] = v
+        self.music.append("GalaxyMap" if v == 6 else "Supercruise")
+
+    def music_now(self):
+        return ("Journal.fake.log", len(self.music), self.music[-1]) if self.music else None
 
     def write(self, _type, code, value):
         if self.closed:
@@ -390,18 +406,18 @@ class FakeGame:
                     self.status["destination"] = {"System": self.plot_to or self.found[1], "Body": 0, "Name": self.found[0]}
 
     def key(self, name):
-        st = self.status
         alts = {"KEY_LEFTALT", "KEY_RIGHTALT"} <= self.down
         if name == "KEY_T" and alts:
-            if st.get("gui_focus") == 6 and not self.ignore_close:
-                st["gui_focus"] = 0
+            if self.screen_focus() == 6 and not self.ignore_close:
+                self.set_focus(0)
                 if self.on_close:
                     self.on_close(self)
-            elif not st.get("gui_focus") and not self.ignore_open:
-                st["gui_focus"], self.tab, self.focused, self.text, self.found = 6, 0, False, "", None
+            elif not self.screen_focus() and not self.ignore_open:
+                self.set_focus(6)
+                self.tab, self.focused, self.text, self.found = 0, False, "", None
                 self.search_lit, self.lit, self.panel, self.icon = False, None, 0, 0
             return
-        if st.get("gui_focus") != 6 or name.endswith(("ALT", "SHIFT", "CTRL")) or name == "KEY_COMPOSE":   # modifiers
+        if self.screen_focus() != 6 or name.endswith(("ALT", "SHIFT", "CTRL")) or name == "KEY_COMPOSE":   # modifiers
             return
         if self.lit is not None:   # a result highlighted: Space picks it (the map flies there; the focus stays in the panel)
             if name == "KEY_SPACE":
@@ -443,7 +459,7 @@ class FakeGame:
                 if self.icon == self.TARGET_ICON:
                     self.status["destination"] = {"System": self.found[1], "Body": 0, "Name": self.found[0]}
                     if self.target_closes:   # the game may close the map once the system is targeted (2026-10-23)
-                        self.status["gui_focus"] = 0
+                        self.set_focus(0)
                         if self.on_close:
                             self.on_close(self)
                 return
