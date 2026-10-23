@@ -332,7 +332,7 @@ def _fake_evdev():
     import outrider.target
     names = {"KEY_" + c for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"} | {k for k, _ in outrider.target.US_KEYMAP.values()}
     names |= {"KEY_LEFTALT", "KEY_RIGHTALT", "KEY_LEFTCTRL", "KEY_RIGHTCTRL", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
-              "KEY_ENTER", "KEY_KPENTER", "KEY_BACKSPACE", "KEY_SPACE", "KEY_HOME", "KEY_ESC", "KEY_COMPOSE"}
+              "KEY_ENTER", "KEY_KPENTER", "KEY_BACKSPACE", "KEY_SPACE", "KEY_HOME", "KEY_ESC", "KEY_COMPOSE", "KEY_DOWN"}
     codes = {n: i + 1 for i, n in enumerate(sorted(names))}
     return types.SimpleNamespace(ecodes=types.SimpleNamespace(EV_KEY=1, ecodes=codes))
 
@@ -341,8 +341,11 @@ class FakeGame:
     """Stands in for the virtual keyboard's device (honker.ui) AND the game behind it: it records every key event
     and reacts like the galaxy map as far as the auto-target steps need (Alt+Alt+T toggles the map, which opens on
     its map; W highlights "Search the Galaxy" and Space then puts the cursor in it, while Space alone opens the
-    current system and A/D move along the tab column; once in the box, typed keys and Ctrl+V fill it, its suggestion shows SUGGEST_S after the last change and Enter
-    selects it (an Enter before then does nothing), Space held 0.5 s plots the route
+    current system and A/D move along the tab column; once in the box, typed keys and Ctrl+V fill it (a key bound to a
+    control is a letter there too), its results list SUGGEST_S after the last change; Enter then selects the one
+    result, but with several (every system whose name starts with the text: "Sol", "Solati") only leaves the box
+    (found in game 2026-10-23); the down arrow highlights the first result (the whole name's system first) and Space
+    then picks it (an Enter or arrow before then does nothing), Space held 0.5 s plots the route
     to the system found), writing Status.json's fields into `status`. Nothing reaches a real device."""
     REVERSE = None
     SUGGEST_S = 0.15   # s after the name changes before the search lists its suggestion (Enter selects nothing sooner)
@@ -356,7 +359,7 @@ class FakeGame:
         self.systems = systems or {}
         self.down, self.writes, self.closed = set(), [], False
         self.tab, self.focused, self.text, self.found, self.select_at = 0, False, "", None, None
-        self.search_lit, self.map_focus = False, False
+        self.search_lit, self.map_focus, self.lit = False, False, None
         self.clipboard, self.text_at = None, 0.0
         # misbehaviours for the abort paths
         self.ignore_open = self.ignore_close = self.no_plot = False
@@ -390,16 +393,24 @@ class FakeGame:
                     self.on_close(self)
             elif not st.get("gui_focus") and not self.ignore_open:
                 st["gui_focus"], self.tab, self.focused, self.text, self.found = 6, 0, False, "", None
-                self.search_lit = False
+                self.search_lit, self.lit = False, None
             return
         if st.get("gui_focus") != 6 or name.endswith(("ALT", "SHIFT", "CTRL")) or name == "KEY_COMPOSE":   # modifiers
             return
+        if self.lit is not None:   # a result highlighted: Space picks it (the map flies there; the focus stays in the panel)
+            if name == "KEY_SPACE":
+                self.found, self.lit, self.map_focus = (self.lit, self.systems[self.lit]), None, False
+            return
         if self.focused:
-            if name == "KEY_ENTER":   # selects the suggestion, once listed; the focus stays in the search panel
+            results = sorted((s for s in self.systems if s.lower().startswith(self.text.lower())), key=lambda s: (s != self.text, s))
+            if name == "KEY_ENTER":   # selects the one result, once listed; the focus stays in the search panel
                 if self.clock() - self.text_at < self.SUGGEST_S:
                     return
                 self.focused, self.map_focus = False, False
-                self.found = (self.text, self.systems.get(self.text)) if self.text in self.systems else None
+                self.found = (self.text, self.systems.get(self.text)) if self.text in self.systems and len(results) == 1 else None
+            elif name == "KEY_DOWN":   # into the results list, its first one highlighted
+                if self.clock() - self.text_at >= self.SUGGEST_S and results:
+                    self.focused, self.lit = False, results[0]
             elif name == "KEY_V" and {"KEY_LEFTCTRL"} <= self.down:
                 self.text, self.text_at = self.text + (self.clipboard or ""), self.clock()
             else:

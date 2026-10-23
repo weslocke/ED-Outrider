@@ -1285,7 +1285,7 @@ class HighwayH1(unittest.TestCase):
               "autotarget_search_wait": 2.0, "autotarget_key_delay": 0.05, "autotarget_keys": {},
               "autotarget_plot": ["hold CamZoomOut 0.2", "hold UI_Select 1"],
               "autotarget_search": ["hold CamYawRight 0.3", "press UI_Up", "press UI_Select"],
-              "autotarget_submit": ["wait 1.5", "press Enter", "wait 0.5", "press Enter"], "autotarget_dry_run": False,
+              "autotarget_submit": ["wait 1.5", "press KEY_DOWN", "press UI_Select"], "autotarget_dry_run": False,
               "voice_plot": True, "voice_plot_ly": 500.0}
         self.assertEqual(st["highway"], dict({"clipboard": True, "autotarget": False, "autotarget_delay": 5.0, "efficiency": 60}, **bg))
         back = tomllib.loads(ed_outrider.config_text(st))["highway"]
@@ -1749,8 +1749,8 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertIn("hold Space (secondary binding of UI Select in HCS X56 Attempt 1) for 0.55 s", words[12])
         # the default plot step and the other reads: UI_Back Backspace, CycleNextPanel Alt+Alt+W, the arrows WASD
         # (zoom, not yaw: a yaw there can swing the camera onto a neighbouring star and plot to it, 2026-10-03)
-        self.assertEqual(self.T.build_steps()[11], {"do": "hold", "keys": "CamZoomOut", "secs": 0.2, "phase": 5, "label": "plot the route"})
-        self.assertEqual(self.T.build_steps()[12], {"do": "hold", "keys": "UI_Select", "secs": 1.0, "phase": 5, "label": "plot the route"})
+        self.assertEqual(self.T.build_steps()[10], {"do": "hold", "keys": "CamZoomOut", "secs": 0.2, "phase": 5, "label": "plot the route"})
+        self.assertEqual(self.T.build_steps()[11], {"do": "hold", "keys": "UI_Select", "secs": 1.0, "phase": 5, "label": "plot the route"})
         # step 2 is configurable too ([highway] autotarget_search): the older layout's UI_Right, then select
         self.assertEqual([x.get("keys") for x in self.T.build_steps({"search": ["press UI_Right", "press UI_Select"]}) if x["phase"] == 2],
                          ["UI_Right", "UI_Select"])
@@ -1868,9 +1868,30 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertFalse(r["ok"], r)
         self.assertIsNone(self.game.found)
         self.assertIsNone(self.status.get("destination"))
-        self.assertEqual(self.T.DEFAULT_SUBMIT, ("wait 1.5", "press Enter", "wait 0.5", "press Enter"))
         self.targeter.configure({"submit": ["wait 0.2", "press Enter"]})
         self.assertTrue(self.run_target()["ok"])
+
+    def test_default_submit_with_several_results(self):
+        """Discussion #12 (Kurbo26; the author's checks in game, 2026-10-23): a name with several results ("Sol" lists
+        Sol, Solati...) defeats Enter, which only leaves the box; a letter-bound control typed there is a letter in the
+        name. The default submit steps, the arrow key by name and UI_Select, pick the first result: the system itself."""
+        self.fake_time()
+        self.game.systems.update({"Sol": 10477373803, "Solati": 7})
+        self.targeter.configure({"submit": ["wait 0.2", "press Enter", "wait 0.05", "press Enter"]})   # the old default
+        self.assertFalse(self.run_target("Sol", 10477373803)["ok"])
+        self.assertIsNone(self.game.found)
+        self.assertEqual(self.T.DEFAULT_SUBMIT, ("wait 1.5", "press KEY_DOWN", "press UI_Select"))
+        self.targeter.configure({"submit": ["wait 0.2", "press KEY_DOWN", "press UI_Select"]})   # the new one, quicker
+        self.status["gui_focus"], self.status["destination"] = 0, None
+        r = self.run_target("Sol", 10477373803)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(self.status["destination"]["System"], 10477373803)
+        self.status["gui_focus"], self.status["destination"] = 0, None
+        self.assertTrue(self.run_target()["ok"])                          # one result: the same steps
+        self.targeter.configure({"submit": ["wait 0.2", "press UI_Down", "press UI_Select"]})   # UI_Down bound to S: typed
+        self.status["gui_focus"], self.status["destination"] = 0, None
+        self.assertFalse(self.run_target("Sol", 10477373803)["ok"])
+        self.assertTrue(self.game.text.startswith("Sols"), self.game.text)   # as in game: "SDD ]2"
 
     def test_paste_entry(self):
         self.fake_time()
@@ -3014,6 +3035,11 @@ class HighwayAutoTarget(unittest.TestCase):
                 out["started"] = await post({"route": "system", "id": "102", "countdown": 0})
                 await self.state.autotarget_test_task
                 out["last"] = dict(self.state.autotarget_last)
+                # Settings -> Auto-target's ▶ test now against a typed system: that system, kept and logged as a test
+                self.status["destination"], self.status["gui_focus"] = None, 0
+                out["test"] = await post({"route": "system", "id": "555", "countdown": 0, "test": True})
+                await self.state.autotarget_test_task
+                out["testLast"] = dict(self.state.autotarget_last)
             return out
         out = asyncio.run(go())
         self.assertEqual([b[0] for b in out["bad"]], [400] * 4)
@@ -3021,6 +3047,8 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual((out["big"][0], out["big"][1]["system"]), (200, "Far Out"))
         self.assertEqual((out["started"][0], out["started"][1]["system"]), (200, "Bridge B"))
         self.assertEqual((out["last"]["done"], out["last"]["system"]), (True, "Bridge B"))
+        self.assertEqual((out["test"][0], out["test"][1]["system"], out["test"][1]["kind"]), (200, "Col 285 Sector AB-C d13-5", "test"))
+        self.assertEqual((out["testLast"]["system"], out["testLast"]["test"], out["testLast"]["kind"]), ("Col 285 Sector AB-C d13-5", True, "test"))
 
     def test_copilot_button_falls_back_to_the_next_stop(self):
         """S31: after the survey route, the Highway and the boxel, the co-pilot button targets the header's next stop (a

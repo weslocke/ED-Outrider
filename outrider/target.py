@@ -76,7 +76,11 @@ DEFAULT_SEARCH = ("hold CamYawRight 0.3", "press UI_Up", "press UI_Select")
 # (found in game 2026-10-02); a second Enter in case the first only highlighted it
 # 2026-10-03: with the name pasted, the single suggestion lists about a second later; an Enter at 0.5 s selected while
 # the search was still running and the wrong system was plotted. 1.5 s
-DEFAULT_SUBMIT = ("wait 1.5", "press Enter", "wait 0.5", "press Enter")
+# 2026-10-23 (discussion #12, Kurbo26; checked in game by the author): a name with several results (Sol, Solati...)
+# defeats Enter, which only moves the focus out of the box to the panel's icons; and in the box a control bound to a
+# letter (UI_Down on S) types it. The arrow key by name types nothing and moves into the list; UI_Select then picks
+# the first result, the system itself when the name is whole, and flies there. One result or several alike.
+DEFAULT_SUBMIT = ("wait 1.5", "press KEY_DOWN", "press UI_Select")
 DEFAULTS = {"entry": "type", "map_wait": 5.0, "search_wait": 2.0, "key_delay": 0.05, "keys": {}, "plot": list(DEFAULT_PLOT),
             "search": list(DEFAULT_SEARCH), "submit": list(DEFAULT_SUBMIT),
             "dry_run": False}

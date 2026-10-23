@@ -212,8 +212,8 @@
 #                                          # box: the map reopens on the panel it last showed, and a short camera
 #                                          # turn hands the focus back to the map; UI_Up highlights "Search the
 #                                          # Galaxy", UI_Select puts the cursor in it
-# autotarget_submit = ["wait 1.5", "press Enter", "wait 0.5", "press Enter"]   # select the suggestion: the search
-#                                          # lists it a moment after the name goes in, and an earlier Enter selects nothing
+# autotarget_submit = ["wait 1.5", "press KEY_DOWN", "press UI_Select"]   # pick the first result: the search lists
+#                                          # it a moment after the name goes in; the arrow key types nothing in the box
 # autotarget_plot = ["hold CamZoomOut 0.2", "hold UI_Select 1"]   # the plot-route step after the search: a short
 #                                          # zoom gives the focus back to the map (a turn could swing the cursor onto
 #                                          # a neighbouring star), then UI_Select held plots it;

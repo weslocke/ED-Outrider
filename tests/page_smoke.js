@@ -4222,7 +4222,7 @@ const releasePayloads = async () => {
         JSON.stringify(seq.plot), "", ""],
       empty: ["Not saved: each part needs at least one step (↺ default puts back Outrider's own)", 2],
       test: ["test", "cannot test: the galaxy map is open (the cockpit must have focus)"],
-      testSys: [["find Sol", {route: "system", id: "10477373803"}], "cannot test: auto-target is already running"],
+      testSys: [["find Sol", {route: "system", id: "10477373803", test: true}], "cannot test: auto-target is already running"],
       testNone: [["find Nowhere Xyz"], "cannot test: No system called 'Nowhere Xyz' is known here, to EDSM or to Spansh."]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodAS = !bad.length && errors.length === before;

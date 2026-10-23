@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Auto-target picks the first search result: a name with several results works
+- **The default submit steps are `wait 1.5`, `press KEY_DOWN`, `press UI_Select`** (they were Enter, Enter), from
+  Kurbo26's discussion #12 and the author's checks in game: a name with several results (Sol, Solati…) defeated
+  Enter, which only moves the focus out of the search box, and a control bound to a letter (UI_Down on S) is typed
+  into the box. The arrow key by name types nothing and moves into the results list; UI_Select picks the first, which
+  is the system itself, and flies there. Checked in game with one result and with several. If you never changed the
+  submit steps you have it already; if you did, **↺ default** puts it in.
+- **▶ test now against a typed system is logged and kept as a test**, not as "target next".
+
 ## 2026-10-23 · Settings → Auto-target: ▶ test now against a system you type
 - A box beside **▶ test now** (the author, testing discussion #12 in game): type a system and the test runs against it,
   found by name as the Search tab does, then run as a 🎯 on it; empty, it is the nearest known system a plain jump

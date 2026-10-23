@@ -201,8 +201,10 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   system typed beside it (a short name such as `Sol` lists several systems: a good test of the submit steps; a far one
   plots a route there, so clear it afterwards) or, left empty, the nearest known system a plain jump away.
   - While the cursor is in the search box, a control bound to a letter key types that letter into the box (UI_Down on
-    **S** types "S"). The submit steps run there, so they need keys that type nothing: `Enter`, or arrow keys by name
-    (`press KEY_DOWN` moves into the results list; then `press UI_Select` picks the highlighted one).
+    **S** types "S"). The submit steps run there, so they need keys that type nothing. The default is `wait 1.5`,
+    `press KEY_DOWN` (the arrow key by name: into the results list, the first one highlighted) and `press UI_Select`
+    (picks it and flies there); it works for a name with one result and for one with several (Sol, Solati…), where
+    Enter only moves the focus out of the box.
   - Steps are `press <key>`, `hold <key> <seconds>` or `wait <seconds>`, one per line; a key is one of the game's
     controls (`UI_Select`, `UI_Up`, `CamZoomOut`…, in any case), `Enter`, `Paste`, or keyboard keys such as
     `KEY_LEFTALT+KEY_T`.

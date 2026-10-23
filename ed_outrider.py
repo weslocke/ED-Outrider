@@ -17566,7 +17566,7 @@ class State:
             return {"error": (h.status if h else "not started")}, 400
         if self.autotarget_busy():
             return {"error": "auto-target is already running"}, 409
-        tgt, why = (self.autotarget_test_target() if kind == "test" else self.route_target(*aim) if aim
+        tgt, why = (self.route_target(*aim) if aim else self.autotarget_test_target() if kind == "test"
                     else self.autotarget_target(manual=True))
         if not tgt:
             return {"error": why}, 400
@@ -19557,7 +19557,9 @@ def make_app(state, hosts=None):
             if aim[0] not in ("highway", "survey") or isinstance(aim[1], bool) or not isinstance(aim[1], int):
                 return web.json_response({"error": "route must be highway, survey, carrier, boxel or system, index a whole number"},
                                          status=400)
-        out, status = state.start_autotarget_run("next", cd, aim)
+        # test: Settings -> Auto-target's ▶ test now against a typed system (its id64 as a 🎯): logged and kept as a test
+        kind = "test" if body.get("test") is True and aim and aim[0] == "system" else "next"
+        out, status = state.start_autotarget_run(kind, cd, aim)
         return web.json_response(out, status=status)
 
     async def highway_background_view(_):

@@ -7980,7 +7980,7 @@ async function atTestRun() {
   let d;
   try { d = await apiJson(`api/find?name=${encodeURIComponent(name)}`); } catch (err) { d = {error: err.message}; }
   if (!d || d.error || !d.id) { hwyRun = {seq: null, kind: "test", done: true, msg: `cannot test: ${(d && d.error) || "no answer"}`}; drawAtSet(); return; }
-  hwyAutoStart("test", {route: "system", id: String(d.id)});
+  hwyAutoStart("test", {route: "system", id: String(d.id), test: true});
 }
 hEl("atTest").onclick = atTestRun;
 // Target next, on the line, in the box and as a row's Retry: before the page's other click handlers (the line opens
