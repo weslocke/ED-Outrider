@@ -53,9 +53,11 @@ update Outrider.
   nothing extra for the first three). It is built from
   source, so it needs your distribution's Python development headers.
 
-Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste) need **`wl-copy`**
-(the `wl-clipboard` package, for Wayland) or **`xclip`** (for X11), from your distribution, e.g.
-`sudo apt install wl-clipboard` or `sudo apt install xclip`. Without either, nothing is copied and everything else works
+Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste) need **`xclip`**
+(used wherever there is an X display: X11, and Wayland desktops with XWayland, which the game runs under) or
+**`wl-copy`** (the `wl-clipboard` package, for Wayland without one), from your distribution, e.g. `sudo apt install
+xclip`. On GNOME's Wayland `xclip` matters: `wl-copy` there takes the keyboard focus for a moment to copy, which can
+leave a pasted name empty in the game. Without either, nothing is copied and everything else works
 (the start-up log says which one it found). `launch_outrider.sh` checks your desktop session (Wayland or X11) at
 every start and, while the one it needs is missing, prints a block with the command for your package manager (apt,
 dnf, pacman or zypper) and the one that installs both. Windows needs nothing. On Linux the [in-game overlay](overlay.md) finds

@@ -156,9 +156,9 @@ class Packaging(unittest.TestCase):
 
     def test_launch_script_clipboard_hint(self):
         """launch_outrider.sh's clipboard_hint (the author, 2026-10-11): on a Linux desktop session without the clipboard
-        program Outrider would use (wl-copy under Wayland, xclip with an X display), a block naming the right one with
-        this system's package-manager command and the both-at-once option; nothing when one is there or without a
-        session. Run in a PATH of fakes only, so this machine's own programs never decide it."""
+        program Outrider would use (xclip with an X display, X11 or XWayland; wl-copy under Wayland without one), a block
+        naming the right one with this system's package-manager command and the both-at-once option; nothing when one is
+        there or without a session. Run in a PATH of fakes only, so this machine's own programs never decide it."""
         import re as re_
         import shutil
         import subprocess
@@ -181,12 +181,15 @@ class Packaging(unittest.TestCase):
                 return r.stdout
         wayland, x11 = {"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"}, {"DISPLAY": ":0", "XDG_SESSION_TYPE": "x11"}
         out = hint(wayland, ["apt-get"])
-        self.assertIn("install wl-copy", out)
-        self.assertIn("sudo apt install wl-clipboard\n", out)
+        self.assertIn("install xclip", out)                               # XWayland beside Wayland: xclip (2026-10-23)
+        self.assertIn("sudo apt install xclip\n", out)
         self.assertIn("sudo apt install wl-clipboard xclip", out)           # or both
         self.assertNotIn("\033", out)                                     # no colours into a pipe
-        self.assertIn("wl-copy (the wl-clipboard package) in Wayland sessions and with xclip in X11 sessions", out)   # why each
+        self.assertIn("xclip where there is an X display (X11, or XWayland, which the game runs under)", out)   # why each
         self.assertIn("auto-target cannot paste the system name (by default it types the name", out)
+        out = hint({"WAYLAND_DISPLAY": "wayland-0"}, ["apt-get"])          # Wayland without an X display: wl-copy
+        self.assertIn("install wl-copy", out)
+        self.assertIn("sudo apt install wl-clipboard\n", out)
         out = hint(x11, ["dnf"])
         self.assertIn("install xclip", out)
         self.assertIn("sudo dnf install xclip\n", out)

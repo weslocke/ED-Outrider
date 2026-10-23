@@ -574,11 +574,19 @@ class HighwayH1(unittest.TestCase):
             ran.append((argv, kw))
             return types_ns(returncode=0)
         which = lambda name: "/usr/bin/" + name
+        # Wayland with XWayland beside it (the author's GNOME): xclip, the X11 clipboard the game (Proton) reads; wl-copy
+        # there takes the keyboard focus to set the clipboard, and the game's paste came out empty (2026-10-23)
         cb = ed_outrider.Clipboard(True, which=which, run=run, env={"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"})
-        self.assertEqual((cb.tool, cb.argv), ("wl-copy", ["wl-copy"]))
+        self.assertEqual((cb.tool, cb.argv), ("xclip", ["xclip", "-selection", "clipboard"]))
         self.assertTrue(cb.copy("Neu A"))
         argv, kw = ran[0]
-        self.assertEqual((argv, kw["input"], kw.get("shell", False), kw["timeout"]), (["wl-copy"], b"Neu A", False, 5))
+        self.assertEqual((argv, kw["input"], kw.get("shell", False), kw["timeout"]),
+                         (["xclip", "-selection", "clipboard"], b"Neu A", False, 5))
+        wl = ed_outrider.Clipboard(True, which=lambda n: n == "wl-copy" and "/usr/bin/wl-copy", run=run,
+                                   env={"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"})
+        self.assertEqual(wl.argv, ["wl-copy"])                           # no xclip: wl-copy, as before
+        self.assertEqual(ed_outrider.Clipboard(True, which=which, run=run, env={"WAYLAND_DISPLAY": "wayland-0"}).argv,
+                         ["wl-copy"])                                    # Wayland without an X display
         x11 = ed_outrider.Clipboard(True, which=lambda n: n == "xclip" and "/usr/bin/xclip", run=run, env={"DISPLAY": ":0"})
         self.assertEqual(x11.argv, ["xclip", "-selection", "clipboard"])
         none = ed_outrider.Clipboard(True, which=which, run=run, env={})
@@ -605,8 +613,10 @@ class HighwayH1(unittest.TestCase):
             ran.append((argv, kw))
             return types_ns(returncode=out["rc"], stdout=out["stdout"] if isinstance(out["stdout"], bytes) else out["stdout"].encode())
         which = lambda name: "/usr/bin/" + name
+        wl = ed_outrider.Clipboard(True, which=which, run=run, env={"WAYLAND_DISPLAY": "wayland-0"})
+        self.assertEqual((wl.read_tool, wl.read_argv), ("wl-paste", ["wl-paste", "--no-newline", "--type", "text"]))
         cb = ed_outrider.Clipboard(True, which=which, run=run, env={"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"})
-        self.assertEqual((cb.read_tool, cb.read_argv), ("wl-paste", ["wl-paste", "--no-newline", "--type", "text"]))
+        self.assertEqual((cb.read_tool, cb.read_argv), ("xclip", ["xclip", "-selection", "clipboard", "-o"]))   # as copying
         self.assertEqual(cb.paste(), {"text": "Smojooe GW-W c1-4"})
         argv, kw = ran[0]
         self.assertEqual((kw.get("shell", False), kw["timeout"], "input" in kw), (False, 3, False))
@@ -617,7 +627,7 @@ class HighwayH1(unittest.TestCase):
                            ("https://spansh.co.uk/system/1", "not_a_name"), (b"\x89PNG\r\n\x1a\n\xff", "not_a_name")]:
             out["stdout"] = text
             self.assertEqual(cb.paste()["code"], code, text)
-        out.update(rc=1, stdout="")   # wl-paste on an empty clipboard: "Nothing is copied", exit 1
+        out.update(rc=1, stdout="")   # an empty clipboard: xclip -o and wl-paste exit 1 ("Nothing is copied")
         self.assertEqual(cb.paste()["code"], "empty")
         out.update(rc=0, stdout="2MASS J05325612+0453185 / Smith's Reach")
         self.assertEqual(cb.paste(), {"text": "2MASS J05325612+0453185 / Smith's Reach"})

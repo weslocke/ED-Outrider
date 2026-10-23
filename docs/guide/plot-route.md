@@ -25,7 +25,7 @@ kept apart from both.
   clipboard (copied from EDSM, Spansh or anywhere), for a window that never takes focus (a touchscreen beside the game)
   or the Android app, where typing is awkward. It only fills: nothing is plotted until you press Plot. Shown in the game
   PC's own browser and the Android app only (not in other browsers on your network), and only for one short line of
-  text (a paragraph or a link is refused). Linux needs `wl-paste` (Wayland) or `xclip` (X11), the same packages that
+  text (a paragraph or a link is refused). Linux needs `xclip` (X11 or XWayland) or `wl-paste` (Wayland), the same packages that
   copy the next system; Search's Find a system by name and the Nearby Focus/Lock, Search and Nearest "a system…"
   boxes have one too.
 - **Conservative range** (off by default): jumps a margin (5 ly) shorter than the ship's range, leaving room for a
@@ -232,8 +232,8 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   - After the search the focus stays in its panel: the default plot moves the camera first (`hold CamZoomOut 0.2`),
     and only then does holding `UI_Select` plot the route. For a system in jump range that route is one jump, so the
     system is simply your target; for one further away the game plots a route of several jumps ending there.
-  - Pasting the name (also how it enters a name a US keyboard layout can't type) needs the clipboard: `wl-copy` or
-    `xclip` on Linux.
+  - Pasting the name (also how it enters a name a US keyboard layout can't type) needs the clipboard: `xclip` (used first,
+    where there is an X display) or `wl-copy` on Linux.
 - **Frontier's rules:** this is key-press automation like auto honk (and tools such as Auto_Neutron). Whether to
   use it is your call.
 

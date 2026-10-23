@@ -2,8 +2,8 @@
 # Start ED Outrider, setting it up first when needed: makes the virtual environment (.venv) and installs
 # requirements.txt on the first run, again whenever requirements.txt has changed (after a git pull), and if the
 # environment is broken; otherwise it starts at once. With the in-game overlay on ([overlay] enabled = true), it also
-# installs PyQt6 when missing. On a Linux desktop without the clipboard program it needs (wl-copy under Wayland,
-# xclip under X11) it says how to install it, at every start until it is there. Any arguments go to Outrider
+# installs PyQt6 when missing. On a Linux desktop without the clipboard program it needs (xclip with an X display,
+# X11 or XWayland; wl-copy under Wayland without one) it says how to install it, at every start until it is there. Any arguments go to Outrider
 # (./launch_outrider.sh --port 8026).
 # PYTHON=/path/to/python3.x picks the Python that makes the environment (3.11 or newer).
 set -euo pipefail
@@ -107,9 +107,10 @@ fi
 # Outrider from starting). Run in the caller's folder like Outrider, so a relative --config is the same file.
 (cd "$CALLER" && PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}" "$HERE/$VENV/bin/python" -m outrider.overlay_runner --setup "$@") || true
 
-# Plot Route's clipboard copy (and auto-target's paste) on Linux needs a system program, not pip's: wl-copy under
-# Wayland, xclip under X11 (outrider/highway.py Clipboard: wl-copy when WAYLAND_DISPLAY is set, else xclip when DISPLAY
-# is). Said in a block at every start while the desktop session has neither it can use, with the command for this
+# Plot Route's clipboard copy (and auto-target's paste) on Linux needs a system program, not pip's: xclip where there is
+# an X display (X11, or XWayland beside Wayland: the game reads the X11 clipboard, and on GNOME wl-copy takes the keyboard
+# focus to copy), else wl-copy under Wayland (outrider/highway.py Clipboard: xclip when DISPLAY is set, else wl-copy
+# when WAYLAND_DISPLAY is). Said in a block at every start while the desktop session has neither it can use, with the command for this
 # system's package manager (the author, 2026-10-11). Nothing on macOS or without a desktop session (a server).
 clipboard_hint() {
     [ "$(uname)" = "Darwin" ] && return 0
@@ -124,7 +125,7 @@ clipboard_hint() {
     if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null 2>&1; then return 0; fi
     if [ -n "${DISPLAY:-}" ] && command -v xclip >/dev/null 2>&1; then return 0; fi
     local tool pkg pm=""
-    if [ "$session" = Wayland ]; then tool=wl-copy; pkg=wl-clipboard; else tool=xclip; pkg=xclip; fi
+    if [ -n "${DISPLAY:-}" ] || [ "$session" = X11 ]; then tool=xclip; pkg=xclip; else tool=wl-copy; pkg=wl-clipboard; fi
     if command -v apt-get >/dev/null 2>&1; then pm="sudo apt install"
     elif command -v dnf >/dev/null 2>&1; then pm="sudo dnf install"
     elif command -v pacman >/dev/null 2>&1; then pm="sudo pacman -S"
@@ -136,7 +137,8 @@ clipboard_hint() {
     echo "${on}${bar}"
     echo "  OPTIONAL: install $tool for Plot Route's clipboard copy (and auto-target's paste)"
     echo "${bar}${off}"
-    echo "  Outrider copies with wl-copy (the wl-clipboard package) in Wayland sessions and with xclip in X11 sessions."
+    echo "  Outrider copies with xclip where there is an X display (X11, or XWayland, which the game runs under) and"
+    echo "  with wl-copy (the wl-clipboard package) in a Wayland session without one."
     echo "  Your desktop session is $session, and $tool is not installed."
     if [ -n "$pm" ]; then
         echo "  Install it with:"

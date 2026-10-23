@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · The clipboard: xclip first where there is an X display
+- The author's auto-target paste came out empty, and the retry by typing then found Elite no longer the active window.
+  GNOME's Wayland has no data-control protocol, so `wl-copy` sets the clipboard by opening a surface of its own that
+  takes the keyboard focus for a moment. The game (Proton) is an X11 client reading the X11 clipboard: Outrider now
+  copies (and reads, for the 📋 buttons) with `xclip` wherever there is an X display (X11, or XWayland beside Wayland),
+  and with `wl-copy` / `wl-paste` only without one. The launcher's hint suggests `xclip` likewise; the install guide,
+  Plot Route and AGENT_GUIDE say so, and its test checks both cases.
+
 ## 2026-10-23 · Docs: the auto-target run's journal reads, the Music rule and the failure log
 - DESIGN_NOTES: when the journal's Music overrides GuiFocus (a GalaxyMap since the run's first key; another track only
   after the key that closes the map), the journal read every 3 s at most, the half-written Status.json, the "seen:"

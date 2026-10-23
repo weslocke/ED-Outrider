@@ -182,14 +182,17 @@ def paste_name(text):
 
 
 class Clipboard:
-    """The desktop clipboard. Linux: wl-copy under Wayland, xclip under X11, whichever is installed for the session
-    there is, run as a plain subprocess (no shell) with the text on its stdin; both fork to serve the selection, so
-    the call returns at once. Windows: the clipboard API itself (outrider.winkeys.set_clipboard). Reading it (`paste`,
+    """The desktop clipboard. Linux: xclip where there is an X display (an X11 session, or XWayland beside Wayland),
+    else wl-copy under Wayland, whichever is installed, run as a plain subprocess (no shell) with the text on its stdin;
+    both fork to serve the selection, so the call returns at once. xclip first: the game (Proton) is an X11 client
+    reading the X11 clipboard, and where the compositor has no data-control protocol (GNOME) wl-copy sets the clipboard
+    by opening a surface of its own that takes the keyboard focus, which the game then misses: the author's auto-target
+    paste came out empty, and its retry found Elite no longer the active window (2026-10-23). Windows: the clipboard API itself (outrider.winkeys.set_clipboard). Reading it (`paste`,
     the page's 📋 buttons): wl-paste or xclip -o, Windows' get_clipboard. Tests pass fakes for `which`, `run`, `env`,
     `platform`, `win_set` and `win_get`: nothing is ever copied or read from a test."""
-    TOOLS = (("wl-copy", "WAYLAND_DISPLAY", ("wl-copy",)), ("xclip", "DISPLAY", ("xclip", "-selection", "clipboard")))
-    READ_TOOLS = (("wl-paste", "WAYLAND_DISPLAY", ("wl-paste", "--no-newline", "--type", "text")),
-                  ("xclip", "DISPLAY", ("xclip", "-selection", "clipboard", "-o")))
+    TOOLS = (("xclip", "DISPLAY", ("xclip", "-selection", "clipboard")), ("wl-copy", "WAYLAND_DISPLAY", ("wl-copy",)))
+    READ_TOOLS = (("xclip", "DISPLAY", ("xclip", "-selection", "clipboard", "-o")),
+                  ("wl-paste", "WAYLAND_DISPLAY", ("wl-paste", "--no-newline", "--type", "text")))
 
     def __init__(self, enabled=True, which=None, run=None, env=None, platform=None, win_set=None, win_get=None):
         import shutil
@@ -217,7 +220,7 @@ class Clipboard:
         self.last = None   # {text, ok, ts, error}: the latest copy, for the Plot Route tab
 
     def info(self):
-        why = None if self.tool else "neither wl-copy (Wayland) nor xclip (X11) was found for this desktop session"
+        why = None if self.tool else "neither xclip (X11, XWayland) nor wl-copy (Wayland) was found for this desktop session"
         return {"enabled": self.enabled, "available": bool(self.tool), "tool": self.tool, "why": why, "last": self.last}
 
     def copy(self, text, force=False):
@@ -245,7 +248,7 @@ class Clipboard:
     def paste_why(self):
         """Why the clipboard cannot be read on this desktop, or None when it can."""
         return None if self.read_tool else \
-            "neither wl-paste (Wayland) nor xclip (X11) was found for Outrider's desktop session"
+            "neither xclip (X11, XWayland) nor wl-paste (Wayland) was found for Outrider's desktop session"
 
     def paste(self):
         """The clipboard's text as a name to paste (paste_name): {text} or {error, code} (no_tool, failed, empty,
