@@ -1970,6 +1970,24 @@ class HighwayAutoTarget(unittest.TestCase):
         r = self.run_target()
         self.assertEqual((r["ok"], r["mode"]), (True, "plot"))
 
+    def test_target_system_closing_the_map_itself(self):
+        """The author, 2026-10-23: after Target System the map can close by itself; the close key then opened it again,
+        the run waited for the cockpit and said it failed, the target set. Now it waits a moment for the map to close
+        and presses no close key then; where the map stays open it is closed as before."""
+        self.fake_time()
+        self.game.target_closes = True
+        r = self.run_target(one_jump=True)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual((self.status["gui_focus"], self.status["destination"]["System"]), (0, 102))
+        opens = [n for n, v in self.game.writes if n == "KEY_T" and v]   # GalaxyMapOpen (Alt+Alt+T): opened once, never again
+        self.assertEqual(len(opens), 1)
+        self.assertTrue(any("closed by itself" in x for x in r["log"]), r["log"])
+        self.game.target_closes, self.status["gui_focus"], self.status["destination"] = False, 0, None
+        self.game.writes.clear()
+        r = self.run_target(one_jump=True)                                  # the map stays open: closed by its key
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(len([n for n, v in self.game.writes if n == "KEY_T" and v]), 2)
+
     def test_a_one_jump_stop_must_be_the_target_itself(self):
         """The stricter check (discussion #12): plotted (route_target off), a one-jump stop the game routed through
         another system fails, saying the fix; any other 🎯 still takes a plotted route ending at the system."""

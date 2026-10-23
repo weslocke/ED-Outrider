@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Auto-target: Target System closing the galaxy map by itself
+- The author: a route stop targeted correctly, but the run said it failed and the galaxy map opened again. Selecting
+  **Target System** can close the map by itself; the run's close key then opened it again (or it met the cockpit it
+  did not expect) and called the run failed, the target set. After the target steps it now waits up to a second for
+  the map to close by itself, and then presses no close key ("the galaxy map closed by itself" in the log); where the
+  map stays open, it is closed as before.
+
 ## 2026-10-23 · Auto-target's search wait grows with the distance
 - The author's rule: the **search wait** (3 s to start, was 2) is the map's flight to the system after the search, so
   it grows by a second for each 200 ly to the system, up to 7 s: a close jump no longer waits 5 s, a far one still gets

@@ -372,6 +372,7 @@ class FakeGame:
         self.on_close = None  # called when the map closes (a target showing up late, say)
         self.clock = time.time   # a FakeClock in the tests that run on fake time
         self.plot_to = None   # plot this id64 instead of the one found
+        self.target_closes = False   # Target System closes the map by itself
 
     def write(self, _type, code, value):
         if self.closed:
@@ -441,6 +442,10 @@ class FakeGame:
             if name == "KEY_SPACE" and self.panel == 2:
                 if self.icon == self.TARGET_ICON:
                     self.status["destination"] = {"System": self.found[1], "Body": 0, "Name": self.found[0]}
+                    if self.target_closes:   # the game may close the map once the system is targeted (2026-10-23)
+                        self.status["gui_focus"] = 0
+                        if self.on_close:
+                            self.on_close(self)
                 return
         if name in ("KEY_D", "KEY_A"):   # into / along the tab column (Trade Routes, Bookmarks...): not the search box
             self.tab, self.search_lit = 1, False

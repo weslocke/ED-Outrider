@@ -219,7 +219,8 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
     Boost off in the galaxy map's Route Settings it ignores your supercharge**: six jumps where the supercharged one
     would do. If you switch targeting off, tick Use Jet-Cone Boost. Either way a one-jump stop must end up the target
     itself: a longer route there fails, saying so, rather than "targeted". Where UI_Right or UI_Down has no keyboard
-    key, the stop is plotted.
+    key, the stop is plotted. Targeting can close the galaxy map by itself: Outrider waits a moment for that and then
+    leaves the map alone.
   - **Macro cheatsheet ↗** at the top of the section opens, in a new tab, everything the boxes take: the commands, each
     game control with what it does in the galaxy map and (on the game PC) the key it is bound to, `Enter` and `Paste`,
     every keyboard key by name and the short forms (`KEY_` optional, any case, `alt`, `ctrl`, `shift`, `+` for keys

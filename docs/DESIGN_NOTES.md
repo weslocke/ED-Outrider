@@ -582,7 +582,10 @@ upstream project's choices, not rules of the game.
   cannot jump to), never a trade hop (no jumps), never any other 🎯 (a far bookmark needs a route; even supercharged).
   On by default: it does not depend on the player's Route Settings. Two guards: a one-jump stop must end up the
   target itself (no NavRoute-end shortcut, in the "already" check too), so a miscounted icon or a multi-jump plot
-  fails with its fix said; and without UI_Right / UI_Down on keyboard keys the stop is plotted after all.
+  fails with its fix said; and without UI_Right / UI_Down on keyboard keys the stop is plotted after all. Target System
+  can close the galaxy map by itself (the author, 2026-10-23: not every time): after the target steps the run waits up
+  to `TARGET_CLOSE_WAIT` (1 s) for the cockpit and then presses no close key, which would open the map again (it did,
+  and the run said it failed with the target set); where the map stays open it is closed as before.
 - **Settings → Server lists only the keys with no section of their own** (the author, 2026-10-23; project plan
   PLAN-settings-cleanup). It had 112 keys, most set in other sections, and some contradicted them: auto honk's and
   auto-target's switches live in the database (meta `autohonk_enabled`, `autotarget`), so the file's value it showed

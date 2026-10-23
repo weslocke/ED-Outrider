@@ -130,6 +130,7 @@ DEFAULTS = {"entry": "type", "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0
             "dry_run": False}
 TAP_S = 0.05        # s a tapped key stays down
 VERIFY_WAIT = 3.0   # s for Status.json to show the new Destination after the map closes
+TARGET_CLOSE_WAIT = 1.0   # s after the target steps for the map to close by itself (Target System can close it: the author, 2026-10-23)
 POLL_S = 0.05       # s between Status.json looks while waiting
 LOCK_WAIT = 30.0    # s to wait for auto honk to let go of the virtual keyboard
 
@@ -479,6 +480,14 @@ class Targeter:
                 return
             for st in steps:
                 cur = st
+                if st.get("closes") and mode == "target":
+                    # Target System can close the map itself (the author, 2026-10-23: the close key then opened it
+                    # again and the run said it failed, the target set): a moment for it, then no close key
+                    expect = expect | {GUI_COCKPIT}
+                    if self._closed_by_itself(st, status, system, here, expect):
+                        expect, close_pressed = {GUI_GALAXY_MAP, GUI_COCKPIT}, True
+                        say(f"{st['phase']} {st['label']}: the galaxy map closed by itself: done")
+                        continue
                 self._check(st, status, system, here, expect)
                 d = st["do"]
                 if d in ("press", "hold"):
@@ -548,6 +557,17 @@ class Targeter:
             if h.stop.is_set() and not h.owners:
                 h._close_now()   # close() came during the run: the device is closed now that the keys are up
             h.lock.release()
+
+    def _closed_by_itself(self, st, status, system, here, expect):
+        """Whether the galaxy map closed by itself within TARGET_CLOSE_WAIT (Status.json shows the cockpit)."""
+        end = self.clock() + TARGET_CLOSE_WAIT
+        while True:
+            self._check(st, status, system, here, expect)
+            if ((status() or {}).get("gui_focus") or 0) == GUI_COCKPIT:
+                return True
+            if self.clock() >= end:
+                return False
+            self.wait(POLL_S)
 
     def _check(self, st, status, system, here, expect):
         if self.cancelled() or self.honker.stop.is_set():
