@@ -778,11 +778,12 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="hint">One step per line: <code>press UI_Select</code>, <code>hold UI_Select 1</code> (seconds, up to 10) or
         <code>wait 0.5</code> (up to 30). A key is a control from your controls preset (UI_Up, UI_Down, UI_Select,
         CamZoomOut…, in any case), <code>Enter</code>, <code>Paste</code>, or keyboard keys such as <code>KEY_LEFTALT+KEY_T</code>.</div>
-      <div data-find="highway.autotarget_entry highway.autotarget_map_wait highway.autotarget_search_wait highway.autotarget_key_delay" class="mod inlineopts">
+      <div data-find="highway.autotarget_entry highway.autotarget_map_wait highway.autotarget_search_wait highway.autotarget_key_delay highway.autotarget_step_pause" class="mod inlineopts">
         <label title="type the name on the virtual keyboard (US layout), or paste it (the clipboard, then Ctrl+V)">the name <select id="atEntry"><option value="type">typed</option><option value="paste">pasted</option></select></label>
         <label title="seconds to wait for the galaxy map to open (and close) before giving up (1 to 30)">map wait <input type="number" id="atMapWait" min="1" max="30" step="any" inputmode="decimal"> s</label>
-        <label title="seconds after submitting the search for the map to fly to the system (0 to 30)">search wait <input type="number" id="atSearchWait" min="0" max="30" step="any" inputmode="decimal"> s</label>
-        <label title="seconds between typed characters (0 to 1)">key delay <input type="number" id="atKeyDelay" min="0" max="1" step="any" inputmode="decimal"> s</label></div>
+        <label title="seconds after submitting the search for the map to fly to the system (0 to 30; at least 5 for a system over 300 ly away, a longer flight)">search wait <input type="number" id="atSearchWait" min="0" max="30" step="any" inputmode="decimal"> s</label>
+        <label title="seconds between the name's characters when it is typed (0 to 1; not used when it is pasted)">typing delay <input type="number" id="atKeyDelay" min="0" max="1" step="any" inputmode="decimal"> s</label>
+        <label title="seconds after each key of the three parts above (0 to 2): the galaxy map can miss a key pressed straight after another">pause between keys <input type="number" id="atStepPause" min="0" max="2" step="any" inputmode="decimal"> s</label></div>
       <div class="btns"><button type="button" id="atSave" class="primary">Save the steps</button><span id="atMsg" class="hint" role="status"></span></div>
       <div id="atMissing" class="warnc" hidden></div>
       <details id="atStepsBox"><summary>the whole sequence, with your keys</summary><ul id="atSteps"></ul></details>

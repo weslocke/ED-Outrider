@@ -7913,7 +7913,7 @@ hEl("hwyAutoStepsLink").onclick = e => { e.preventDefault(); openSettingsSection
 // next run uses them). Filled from data.autotarget's `sequence`, ↺ default from its `defaults` (outrider.target's own);
 // a field the player changed keeps what they typed until it is saved, and after a refusal too
 const AT_FIELDS = {search: "atSearch", submit: "atSubmit", plot: "atPlot", entry: "atEntry", map_wait: "atMapWait",
-                   search_wait: "atSearchWait", key_delay: "atKeyDelay"};
+                   search_wait: "atSearchWait", key_delay: "atKeyDelay", step_pause: "atStepPause"};
 const AT_LISTS = ["search", "submit", "plot"];
 const atText = (k, v) => AT_LISTS.includes(k) ? (v || []).join("\n") : String(v ?? "");
 function drawAtSet() {
@@ -7933,7 +7933,7 @@ function drawAtSet() {
   hEl("atTestMsg").textContent = hwyRun && hwyRun.kind === "test" ? hwyRun.msg : "";
 }
 for (const id of Object.values(AT_FIELDS)) hEl(id).addEventListener("input", e => { e.target.dataset.dirty = "1"; });
-for (const id of ["atEntry", "atMapWait", "atSearchWait", "atKeyDelay"]) hEl(id).addEventListener("change", e => { e.target.dataset.dirty = "1"; });
+for (const id of ["atEntry", "atMapWait", "atSearchWait", "atKeyDelay", "atStepPause"]) hEl(id).addEventListener("change", e => { e.target.dataset.dirty = "1"; });
 document.querySelectorAll("[data-atdef]").forEach(b => b.onclick = () => {
   const k = b.dataset.atdef, d = data && data.autotarget && data.autotarget.defaults, el = hEl(AT_FIELDS[k]);
   if (!d) return;

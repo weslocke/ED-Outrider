@@ -1282,7 +1282,7 @@ class HighwayH1(unittest.TestCase):
         st = ed_outrider.settings_from({}, args, None, ([], []))
         bg = {"background_image": "", "background_extent": [-45000.0, 45000.0, -20000.0, 70000.0], "background_opacity": 0.6,
               "conservative": False, "conservative_ly": 5.0, "autotarget_entry": "type", "autotarget_map_wait": 5.0,
-              "autotarget_search_wait": 2.0, "autotarget_key_delay": 0.05, "autotarget_keys": {},
+              "autotarget_search_wait": 2.0, "autotarget_key_delay": 0.05, "autotarget_step_pause": 0.25, "autotarget_keys": {},
               "autotarget_plot": ["hold CamZoomOut 0.2", "hold UI_Select 1"],
               "autotarget_search": ["hold CamYawRight 0.3", "press UI_Up", "press UI_Select"],
               "autotarget_submit": ["wait 1.5", "press KEY_DOWN", "press UI_Select"], "autotarget_dry_run": False,
@@ -1706,7 +1706,7 @@ class HighwayAutoTarget(unittest.TestCase):
         self.honker.evdev, self.honker.ui = self.evdev, self.game   # never open(): there is no UInput here at all
         self.honker.owners = {"target"}
         self.here = 101
-        self.cfg = {"map_wait": 0.4, "search_wait": 0.02, "key_delay": 0.0, "plot": ["hold CamZoomOut 0.05", "hold UI_Select 0.55"],
+        self.cfg = {"map_wait": 0.4, "search_wait": 0.02, "key_delay": 0.0, "step_pause": 0.0, "plot": ["hold CamZoomOut 0.05", "hold UI_Select 0.55"],
                     "submit": ["wait 0.2", "press Enter", "wait 0.05", "press Enter"]}
         self.copied = []
         self.targeter = outrider.target.Targeter(self.honker, [self.journals], self.cfg, log=lambda line: None,
@@ -1893,6 +1893,42 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertFalse(self.run_target("Sol", 10477373803)["ok"])
         self.assertTrue(self.game.text.startswith("Sols"), self.game.text)   # as in game: "SDD ]2"
 
+    def test_pause_between_keys(self):
+        """Discussion #12 (the author's runs, 2026-10-23): pressed back to back, the galaxy map missed some of eight
+        UI_Downs; step_pause (0.25 s to start) follows each key of the three editable parts, so none needs a wait."""
+        self.fake_time()
+        self.assertEqual(self.T.DEFAULTS["step_pause"], 0.25)
+        calls, tap, sleep = [], self.targeter._tap, self.targeter._sleep
+        self.targeter._tap = lambda names, secs, st, **kw: (calls.append(("tap", st["phase"])), tap(names, secs, st, **kw))[1]
+        self.targeter._sleep = lambda secs, st, *a: (calls.append(("sleep", secs)), sleep(secs, st, *a))[1]
+        self.targeter.configure({"step_pause": 0.25})
+        self.assertTrue(self.run_target()["ok"])
+        # every key of the search, submit and plot parts is followed straight away by the pause; the map's opening and
+        # closing keys and the typing are not
+        after = [calls[i + 1] for i, c in enumerate(calls[:-1]) if c[0] == "tap" and c[1] in (2, 4, 5)]
+        self.assertEqual(len(after), 7)   # 3 search, 2 submit (this test's Enters), 2 plot
+        self.assertEqual(set(after), {("sleep", 0.25)})
+        self.assertNotIn(("sleep", 0.25), [calls[i + 1] for i, c in enumerate(calls[:-1]) if c[0] == "tap" and c[1] in (1, 3, 6)])
+
+    def test_far_system_waits_longer_for_the_search(self):
+        """The author, 2026-10-23: Sol from 5,000 ly needed a 5 s search wait (the map's flight is longer): over
+        FAR_SEARCH_LY the wait is at least FAR_SEARCH_WAIT, a near system keeps the configured one."""
+        self.fake_time()
+        wait_line = lambda r: next(x for x in r["log"] if "wait for the map to find the system" in x)
+        r = self.run_target(ly=120)
+        self.assertTrue(r["ok"], r)
+        self.assertIn("wait 0.02 s", wait_line(r))
+        self.status["gui_focus"], self.status["destination"] = 0, None
+        r = self.run_target(ly=self.T.FAR_SEARCH_LY + 1)
+        self.assertTrue(r["ok"], r)
+        self.assertIn(f"wait {self.T.FAR_SEARCH_WAIT:g} s", wait_line(r))
+        # the server's distance: from where you are to the system, None when either is unknown
+        hwy_jump(self, 1, 101, "Neu A", 50)
+        self.state.map_cache[(101, 50)] = ({102: {"name": "Bridge B", "x": 400, "y": 0, "z": 0}}, None)
+        p = self.j.pos
+        self.assertAlmostEqual(self.state.autotarget_ly({"id64": 102}), math.dist((p["x"], p["y"], p["z"]), (400, 0, 0)))
+        self.assertIsNone(self.state.autotarget_ly({"id64": 999}))
+
     def test_paste_entry(self):
         self.fake_time()
         self.targeter.configure({"entry": "paste"})
@@ -2012,7 +2048,7 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(info["status"], "not started")
         self.assertEqual(info["sequence"], {"search": list(self.T.DEFAULT_SEARCH), "submit": list(self.T.DEFAULT_SUBMIT),
                                             "plot": ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Select"],
-                                            "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0.05, "entry": "type"})
+                                            "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0.05, "step_pause": 0.25, "entry": "type"})
         self.assertEqual((info["defaults"]["search"], info["defaults"]["submit"], info["defaults"]["plot"]),
                          (list(self.T.DEFAULT_SEARCH), list(self.T.DEFAULT_SUBMIT), list(self.T.DEFAULT_PLOT)))
         info["defaults"]["plot"].append("press Enter")   # a copy: the module's defaults stay as they are

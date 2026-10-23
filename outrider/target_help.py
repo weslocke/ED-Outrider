@@ -95,6 +95,9 @@ def cheatsheet_html(binds=None):
            "<tr><td><code>hold &lt;key&gt; &lt;seconds&gt;</code></td><td>holds it down, more than 0 and up to 10 s "
            "(<code>hold UI_Select 1</code>)</td></tr>",
            "<tr><td><code>wait &lt;seconds&gt;</code></td><td>waits, 0 to 30 s (<code>wait 1.5</code>)</td></tr></table>",
+           "<p>After each <code>press</code> and <code>hold</code>, Outrider pauses for <b>pause between keys</b> (0.25 s "
+           "to start): the galaxy map can miss a key pressed straight after another, so no <code>wait</code> is needed "
+           "between keys. The search wait is at least 5 s for a system over 300 ly away.</p>"
            "<p>A <code>&lt;key&gt;</code> is a game control below (pressed with the keyboard key it is bound to in your "
            "controls), <code>Enter</code> or <code>Paste</code>, or keyboard keys by name.</p>",
            "<h2>The three boxes</h2><div class=\"boxes\">"]

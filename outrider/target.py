@@ -101,7 +101,14 @@ DEFAULT_SEARCH = ("hold CamYawRight 0.3", "press UI_Up", "press UI_Select")
 # letter (UI_Down on S) types it. The arrow key by name types nothing and moves into the list; UI_Select then picks
 # the first result, the system itself when the name is whole, and flies there. One result or several alike.
 DEFAULT_SUBMIT = ("wait 1.5", "press KEY_DOWN", "press UI_Select")
-DEFAULTS = {"entry": "type", "map_wait": 5.0, "search_wait": 2.0, "key_delay": 0.05, "keys": {}, "plot": list(DEFAULT_PLOT),
+# a pause after each key of the three editable parts: back to back, the galaxy map can miss a press (eight UI_Downs
+# down the system panel's icons lost some; 0.25 s each worked: the author, 2026-10-23, discussion #12)
+STEP_PAUSE = 0.25
+# a far system takes the map longer to fly to after the search: at least this long over FAR_SEARCH_LY (the author:
+# 2 s was too short for Sol from 5,000 ly; 5 s worked)
+FAR_SEARCH_LY, FAR_SEARCH_WAIT = 300.0, 5.0
+DEFAULTS = {"entry": "type", "map_wait": 5.0, "search_wait": 2.0, "key_delay": 0.05, "step_pause": STEP_PAUSE, "keys": {},
+            "plot": list(DEFAULT_PLOT),
             "search": list(DEFAULT_SEARCH), "submit": list(DEFAULT_SUBMIT),
             "dry_run": False}
 TAP_S = 0.05        # s a tapped key stays down
@@ -173,7 +180,7 @@ def build_steps(cfg=None):
          *[dict(parse_step(t), phase=2, label="focus the search field") for t in (c["search"] or DEFAULT_SEARCH)],
          {"do": "paste" if c["entry"] == "paste" else "type", "phase": 3, "label": "enter the system name"},
          *[dict(parse_step(t), phase=4, label="submit the search") for t in (c["submit"] or DEFAULT_SUBMIT)],
-         {"do": "wait", "secs": c["search_wait"], "phase": 4, "label": "wait for the map to find the system"}]
+         {"do": "wait", "secs": c["search_wait"], "phase": 4, "label": "wait for the map to find the system", "search": True}]
     for t in c["plot"] or DEFAULT_PLOT:
         s.append(dict(parse_step(t), phase=5, label="plot the route"))
     s += [{"do": "press", "keys": "GalaxyMapOpen", "phase": 6, "label": "close the galaxy map", "closes": True},
@@ -368,7 +375,7 @@ class Targeter:
         return out
 
     # ---- running ----
-    def run(self, name, id64, status, system, dry_run=None, cancel=None, origin=None, route_end=None, front=None):
+    def run(self, name, id64, status, system, dry_run=None, cancel=None, origin=None, route_end=None, front=None, ly=None):
         """Target `name` (id64) now: status() gives Status.json's reading ({gui_focus, flags, flags2, destination,
         live}), system() the current system's id64. cancel: this run's own token (a threading.Event its owner sets:
         auto-target switched off, the route cleared or replaced); origin: the system the run was decided in (default:
@@ -376,7 +383,8 @@ class Targeter:
         baseline; route_end: a callable giving the last hop of the route the game plotted (NavRoute.json), so a waypoint
         several jumps away counts as targeted; front: a callable giving None while Elite's window is the one in front,
         else why not, asked before every key (the first one too): a no stops the run, code "window" (None: nothing to
-        check with, every key goes to whichever window has focus). -> {"ok", "phase", "label", "why", "code", "log",
+        check with, every key goes to whichever window has focus); ly: how far the system is, when known (over
+        FAR_SEARCH_LY the search wait is at least FAR_SEARCH_WAIT: the map's flight is longer). -> {"ok", "phase", "label", "why", "code", "log",
         "dry_run"}; code "already" (nothing to do) or "wrong" (a different system was targeted: `wrong` names it).
         The step log is printed only when the run fails, or throughout a dry run: a success is the caller's one line."""
         dry = self.cfg.get("dry_run") if dry_run is None else dry_run
@@ -389,7 +397,7 @@ class Targeter:
                 self.log(tag + line)
         self.run_cancel, self.run_front = cancel, front
         try:
-            self._run(result, say, name, id64, status, system, dry, origin, route_end)
+            self._run(result, say, name, id64, status, system, dry, origin, route_end, ly)
         except BaseException:
             for line in result["log"]:   # an unexpected error: the steps so far are the debugging detail
                 self.log(tag + line)
@@ -401,7 +409,7 @@ class Targeter:
                 self.log(tag + line)
         return result
 
-    def _run(self, result, say, name, id64, status, system, dry, origin, route_end):
+    def _run(self, result, say, name, id64, status, system, dry, origin, route_end, ly=None):
         steps, missing = self.plan()
         if missing:
             result.update(phase=0, label="read the bindings",
@@ -449,6 +457,8 @@ class Targeter:
                     elif st.get("closes"):
                         expect, close_pressed = {GUI_GALAXY_MAP, GUI_COCKPIT}, True
                     self._tap(st["names"], st.get("secs", TAP_S), st)
+                    if st["phase"] in (2, 4, 5) and self.cfg.get("step_pause"):   # the editable parts' keys, one at a time
+                        self._sleep(self.cfg["step_pause"], st, status, system, here, expect)
                 elif d == "type" and untypeable(name):
                     if not (self.copy and st.get("paste_names")):
                         raise Abort(st, f"cannot type {''.join(untypeable(name))!r} on a US keyboard "
@@ -471,6 +481,8 @@ class Targeter:
                     self._wait_focus(st, status, system, here, expect)
                     expect = {st["value"]}
                 elif d == "wait":
+                    if st.get("search") and ly is not None and ly > FAR_SEARCH_LY:   # a far system: a longer flight
+                        cur = st = dict(st, secs=max(st["secs"], FAR_SEARCH_WAIT))
                     self._sleep(st["secs"], st, status, system, here, expect)
                 elif d == "verify":
                     self._verify(st, id64, status, system, here, expect, route_end)

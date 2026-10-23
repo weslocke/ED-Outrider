@@ -563,6 +563,13 @@ upstream project's choices, not rules of the game.
   name is matched to the game's control names whatever its case (`canon_key`): `UI_SELECT` was taken for a keyboard
   key that does not exist ("no keyboard binding"). Each step's log line names the keys it pressed, so a log sent in
   shows what happened without `--show`.
+  **A pause after every key of the editable parts, and a longer search wait for a far system** (the author's runs,
+  2026-10-23): eight UI_Downs pressed back to back lost some (one run pressed the wrong icon and left the map), so
+  `step_pause` (0.25 s) follows each key of the search, submit and plot steps rather than relying on `wait` lines; a
+  run is about a second slower, a lost key is worse. The map's flight to a system 5,000 ly away outlasted the 2 s
+  search wait: over 300 ly it is at least 5 s, from the distance Outrider knows before the run starts. "key delay"
+  became "typing delay": it is only ever between typed characters, and a player who pastes had set it to 1 s
+  expecting it to pace the steps.
   **The steps have their own Settings section, not a place in Plot Route** (discussion #12, the author, 2026-10-23):
   one sequence serves every 🎯 (bookmarks, Nearby, Search, the Map, the co-pilot button) as well as the Highway, so
   editing it in the Highway's box would read as Highway-only. One shared sequence, not one per use, until a test in game

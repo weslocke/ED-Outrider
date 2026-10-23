@@ -313,7 +313,7 @@ HIGHWAY = {"clipboard": True, "autotarget": False, "autotarget_delay": 5.0, "eff
            # auto-target's key sequence (outrider/target.py): how the name goes in, the waits, per-step key overrides,
            # the search, submit and plot-route steps (found in game 2026-10-02) and a dry run that only logs
            "autotarget_entry": "type", "autotarget_map_wait": 5.0, "autotarget_search_wait": 2.0,
-           "autotarget_key_delay": 0.05, "autotarget_keys": {}, "autotarget_plot": list(outrider.target.DEFAULT_PLOT),
+           "autotarget_key_delay": 0.05, "autotarget_step_pause": outrider.target.STEP_PAUSE, "autotarget_keys": {}, "autotarget_plot": list(outrider.target.DEFAULT_PLOT),
            "autotarget_search": list(outrider.target.DEFAULT_SEARCH), "autotarget_submit": list(outrider.target.DEFAULT_SUBMIT),
            "autotarget_dry_run": False,
            # D4: the voice's "nearest ..." plots a neutron route to a place further than voice_plot_ly
@@ -1109,6 +1109,8 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
                                                                      HIGHWAY["autotarget_search_wait"]))),
                     "autotarget_key_delay": min(1.0, max(0.0, num("highway", hw, "autotarget_key_delay", float,
                                                                   HIGHWAY["autotarget_key_delay"]))),
+                    "autotarget_step_pause": min(2.0, max(0.0, num("highway", hw, "autotarget_step_pause", float,
+                                                                   HIGHWAY["autotarget_step_pause"]))),
                     "autotarget_keys": num("highway", hw, "autotarget_keys", _config_target_keys, {}),
                     "autotarget_plot": num("highway", hw, "autotarget_plot", _config_plot_steps,
                                            list(HIGHWAY["autotarget_plot"])),
@@ -1241,7 +1243,8 @@ autotarget_delay = {n(st["highway"]["autotarget_delay"])}   # seconds after the 
 autotarget_entry = {q(st["highway"]["autotarget_entry"])}   # "type" the name on the virtual keyboard (US layout), or "paste" it (wl-copy/xclip, then Ctrl+V)
 autotarget_map_wait = {n(st["highway"]["autotarget_map_wait"])}   # seconds to wait for the galaxy map to open (and close) before giving up
 autotarget_search_wait = {n(st["highway"]["autotarget_search_wait"])}   # seconds after submitting the search for the map to fly to the system
-autotarget_key_delay = {n(st["highway"]["autotarget_key_delay"])}   # seconds between typed characters
+autotarget_key_delay = {n(st["highway"]["autotarget_key_delay"])}   # typing delay: seconds between the name's characters when typed (not when pasted)
+autotarget_step_pause = {n(st["highway"]["autotarget_step_pause"])}   # seconds after each key of the search, submit and plot steps (the map can miss a key pressed straight after another)
 autotarget_keys = {{{", ".join(f"{k} = {q(v)}" for k, v in st["highway"]["autotarget_keys"].items())}}}   # override a step's keys, e.g. {{ GalaxyMapOpen = "KEY_LEFTALT+KEY_RIGHTALT+KEY_T", Enter = "KEY_KPENTER" }}; otherwise read from your controls preset
 autotarget_search = {lst(st["highway"]["autotarget_search"])}   # from the opened galaxy map into its search field (a camera turn first: the map reopens on its last panel)
 autotarget_submit = {lst(st["highway"]["autotarget_submit"])}   # select the search's suggestion once the name is in (it lists it after a moment)
@@ -17303,12 +17306,19 @@ class State:
         return {k[len("autotarget_"):]: v for k, v in self.highway_cfg.items()
                 if k.startswith("autotarget_") and k[len("autotarget_"):] in outrider.target.DEFAULTS}
 
+    def autotarget_ly(self, tgt):
+        """How far a run's system is from you (the Targeter's longer search wait for a far one), None when unknown."""
+        pos, where = self.journals.pos or {}, self.locate(tgt["id64"]) or self.listed_system(tgt["id64"])
+        if not where or None in where[1:] or None in (pos.get("x"), pos.get("y"), pos.get("z")):
+            return None
+        return math.dist((pos["x"], pos["y"], pos["z"]), where[1:])
+
     def autotarget_info(self):
         """The Plot Route tab's auto-target block (in the payload, so the result shows as it comes). sequence: the
         galaxy map's steps and timings as configured, and defaults: outrider.target's own (Settings -> Auto-target, its
         ↺ default), whether or not the targeter can run here."""
         cfg, t, h = self.highway_cfg, self.targeter, self.honker
-        keys = ("search", "submit", "plot", "map_wait", "search_wait", "key_delay", "entry")
+        keys = ("search", "submit", "plot", "map_wait", "search_wait", "key_delay", "step_pause", "entry")
         own = lambda v: list(v) if isinstance(v, list) else v   # copies: the payload never shares the module's lists
         info = {"sequence": {k: own(cfg.get("autotarget_" + k, outrider.target.DEFAULTS[k])) for k in keys},
                 "defaults": {k: own(outrider.target.DEFAULTS[k]) for k in keys},
@@ -17673,7 +17683,7 @@ class State:
             res = await asyncio.get_running_loop().run_in_executor(None, functools.partial(
                 self.targeter.run, tgt["name"], tgt["id64"], lambda: self.journals.status_json,
                 lambda: (self.journals.pos or {}).get("id64"), cancel=cancel, origin=tgt["here"],
-                route_end=lambda: self.journals.navroute_end, front=front))
+                route_end=lambda: self.journals.navroute_end, front=front, ly=self.autotarget_ly(tgt)))
         except Exception as e:  # noqa: BLE001 -- say so on the page rather than lose it in a task
             res = {"ok": False, "phase": 0, "label": "run", "why": f"{type(e).__name__}: {e}"}
         finally:

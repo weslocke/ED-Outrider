@@ -4161,7 +4161,7 @@ const releasePayloads = async () => {
     const w = dom.window, before = errors.length, realFetch = w.fetch, posts = [], got = {};
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
     const seq = {search: ["hold CamYawRight 0.3", "press UI_Up", "press UI_Select"], submit: ["wait 1.5", "press Enter", "wait 0.5", "press Enter"],
-      plot: ["hold CamZoomOut 0.2", "hold UI_Select 1"], map_wait: 5, search_wait: 2, key_delay: 0.05, entry: "type"};
+      plot: ["hold CamZoomOut 0.2", "hold UI_Select 1"], map_wait: 5, search_wait: 2, key_delay: 0.05, step_pause: 0.25, entry: "type"};
     const at = {enabled: false, delay: 5, available: true, status: "off", running: false, test: null, last: null, missing: [],
       steps: ["1 open the galaxy map: press Left Alt + Right Alt + T", "5 plot the route: hold Space for 1 s", "7 check the target: Status.json Destination must be the next system"],
       sequence: Object.assign({}, seq, {plot: ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Select"]}), defaults: seq};
@@ -4179,6 +4179,9 @@ const releasePayloads = async () => {
     w.eval(`data.autotarget = ${JSON.stringify(at)}; drawAtSet()`);
     const val = id => d.getElementById(id).value, txt = id => d.getElementById(id).textContent.replace(/\s+/g, " ").trim();
     const type = (id, v) => { const el = d.getElementById(id); el.value = v; el.dispatchEvent(new w.Event("input")); };
+    // the pause between keys (discussion #12) drawn and saved like the other timings; the typing delay says what it is
+    got.pause = [val("atStepPause"), /^typing delay/.test(d.getElementById("atKeyDelay").parentElement.textContent.trim()),
+      /pause between keys/.test(d.getElementById("atStepPause").parentElement.textContent)];
     got.drawn = [val("atSearch"), val("atPlot"), val("atMapWait"), val("atEntry"), d.querySelectorAll("#atSteps li").length,
       d.getElementById("atSettings").classList.contains("pcOnly"), /every target button/.test(d.querySelector("#atSettings > summary").textContent)];
     d.getElementById("atSave").click(); await sleep(100);
@@ -4226,6 +4229,7 @@ const releasePayloads = async () => {
       test: ["test", "cannot test: the galaxy map is open (the cockpit must have focus)"],
       testSys: [["find Sol", {route: "system", id: "10477373803", test: true}], "cannot test: auto-target is already running"],
       cheat: ["help/autotarget", "_blank", "noopener", true],
+      pause: ["0.25", true, true],
       testNone: [["find Nowhere Xyz"], "cannot test: No system called 'Nowhere Xyz' is known here, to EDSM or to Spansh."]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodAS = !bad.length && errors.length === before;

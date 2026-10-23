@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Auto-target: a pause between keys, a longer search wait for far systems
+- From the author's in-game runs for discussion #12 (targeting a Highway stop through the system panel's icons):
+  - **Pause between keys** (Settings → Auto-target, `[highway] autotarget_step_pause`, 0.25 s): after every key of
+    the search, submit and plot steps. Pressed back to back the galaxy map lost some of eight UI_Downs and once
+    pressed the wrong icon; no `wait` lines are needed between keys now.
+  - **The search wait is at least 5 s for a system over 300 ly away**: the map's flight to Sol from 5,000 ly took
+    longer than the 2 s wait.
+  - **"key delay" is now "typing delay"**, and says it only paces the name's characters when typed (never when pasted).
+- The Macro cheatsheet says both.
+
 ## 2026-10-23 · Docs checked after the day's changes
 - **README:** the sample countdown while flying, eleven personalities, every 🎯 and its editable steps.
 - **The guides:** For the curious lists the cheatsheet's module; the tablet's alert sheet in the same groups.
