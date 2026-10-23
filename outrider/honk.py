@@ -319,7 +319,7 @@ class Honker:
             bad = [k for k in keys if key_code(self.evdev, k) is None] if keys and self.evdev else []
             if bad:
                 return None, (f"no {KEYS_WORD} equivalent for {', '.join(bad)} (Primary Fire's keyboard binding): "
-                              "bind it to another key, or set [autohonk] key")
+                              "bind it to another key, or give the key in Settings -> Auto honk")
             return keys, what
         keys = parse_combo(self.key)
         bad = [k for k in keys if key_code(self.evdev, k) is None] if self.evdev else []
@@ -543,7 +543,7 @@ def readiness(backend, combo, platform=None, uinput=UINPUT, exists=os.path.exist
     keys, what = combo()
     check("binding", keys, f"Primary Fire: {' + '.join(key_label(k) for k in keys)}" if keys else f"Primary Fire: {what}",
           "give Primary Fire a keyboard key in Elite's controls (as its second binding, keeping your trigger as the "
-          "first), in a custom preset; or set [autohonk] key")
+          "first), in a custom preset; or give the key in Settings -> Auto honk")
     return {"ready": all(c["ok"] for c in checks), "checks": checks}
 
 

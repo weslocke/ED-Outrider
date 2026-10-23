@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Auto honk's readiness points at its new key field
+- Auto honk's "Not ready" fix now says "give the key in Settings -> Auto honk" (it said to set `[autohonk] key` in the
+  file); the co-pilot button's heading is short, its explanation under it (the Elite theme wrote it all in capitals).
+
 ## 2026-10-23 · A composition scan's codex entry names the species at once
 - The author: a Bacterium scanned with the composition scanner from the ship showed its codex entry ("📖 Bacterium
   Vesicula - Red"), but the genus line still guessed Verrata with its colours until a sample on foot. The codex entry

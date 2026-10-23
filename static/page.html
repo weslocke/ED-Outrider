@@ -852,7 +852,8 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <label title="seconds after arriving before the press (the jump tunnel ignores input); used from the next honk">wait after arriving <input type="number" id="ahDelay" class="hcfg" data-sec="autohonk" data-key="delay" min="0" max="30" step="any" inputmode="decimal"> s</label>
         <label title="seconds to hold the trigger (the scanner fires once charged)">hold <input type="number" id="ahHold" class="hcfg" data-sec="autohonk" data-key="hold" min="0.5" max="15" step="any" inputmode="decimal"> s</label>
         <label title="systems you have already honked are left alone; used from the next honk"><input type="checkbox" id="ahSkip" class="hcfg" data-sec="autohonk" data-key="skip_honked"> leave systems already honked alone</label></div>
-      <h4 class="hchead">The co-pilot button <span class="hint">(Linux: one HOTAS or keyboard button, read only: a tap targets the next route system, a double tap gives a status report, a hold hushes the voice)</span></h4>
+      <h4 class="hchead">The co-pilot button</h4>
+      <div class="hint">Linux: one HOTAS or keyboard button, read only: a tap targets the next route system, a double tap gives a status report, a hold hushes the voice.</div>
       <div class="mod inlineopts" data-find="copilot.enabled copilot.device copilot.button copilot.hold_ms copilot.double_ms">
         <label><input type="checkbox" id="cpOn" class="hcfg" data-sec="copilot" data-key="enabled"> use it</label>
         <label title="a part of the device's name, or a /dev/input/by-id/... path">device <input type="text" id="cpDevice" class="hcfg" data-sec="copilot" data-key="device" spellcheck="false" autocapitalize="off" size="18"></label>

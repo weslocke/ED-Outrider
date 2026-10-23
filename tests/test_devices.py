@@ -97,7 +97,7 @@ class HonkReadiness(unittest.TestCase):
         self.assertIn("input group", w["fix"])
         r = self.ready(keys=())
         self.assertEqual(r["checks"][-1]["label"], "Primary Fire: Primary Fire has no keyboard binding in My X56: give it a keyboard key")
-        self.assertIn("[autohonk] key", r["checks"][-1]["fix"])
+        self.assertIn("give the key in Settings -> Auto honk", r["checks"][-1]["fix"])   # its own field now (2026-10-23)
 
     def test_windows_and_elsewhere(self):
         def no_look(p):
