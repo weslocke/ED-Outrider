@@ -533,6 +533,12 @@ upstream project's choices, not rules of the game.
   unchecked; the box says why. On Windows, SetForegroundWindow from a background process needs the usual
   workaround: attaching to the input of the thread in front, not the other usual one, an Alt tap, which would be a
   key into the window in front. Untried there.
+  **Its settings apply to the next run, and the controls are named in any case** (a Windows player's report on
+  Reddit, 2026-10-22). Every `[highway] autotarget_*` key is in `State.LIVE_CONFIG`: a sequence is tuned by trial and
+  error, and a saved change that waited for a restart looked as if it were ignored. A step's or `autotarget_keys`'
+  name is matched to the game's control names whatever its case (`canon_key`): `UI_SELECT` was taken for a keyboard
+  key that does not exist ("no keyboard binding"). Each step's log line names the keys it pressed, so a log sent in
+  shows what happened without `--show`.
 - **ExploData's colour tables are downloaded, never shipped** (the author, 2026-10-10). EDMC-ExploData's repository
   carries the GPL v2 text without "or later", so its tables are kept out of the repository and the Docker image, and
   Outrider's own licence does not depend on them: `resources/bio_colours.json` is fetched on the first start (and refreshed with the
