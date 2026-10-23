@@ -1894,6 +1894,24 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertFalse(self.run_target("Sol", 10477373803)["ok"])
         self.assertTrue(self.game.text.startswith("Sols"), self.game.text)   # as in game: "SDD ]2"
 
+    def test_dry_run_off_opens_the_keyboard(self):
+        """Review 2026-10-23 M1: auto-target switched on under a dry run leaves the keyboard closed; unticking the dry run
+        (a live key) opens it, ticking it again closes it, so the next automatic run finds it open."""
+        import types
+        calls = []
+        self.state.honker = types.SimpleNamespace(available=True, open=lambda o: calls.append(("open", o)),
+                                                  close=lambda o: calls.append(("close", o)))
+        self.state.highway_cfg.update(autotarget=True, autotarget_dry_run=True)
+        st = {"highway": dict(self.state.highway_cfg, autotarget_dry_run=False)}
+        self.state.config_live(st, [("highway", "autotarget_dry_run")])
+        st["highway"]["autotarget_dry_run"] = True
+        self.state.config_live(st, [("highway", "autotarget_dry_run")])
+        self.assertEqual(calls, [("open", "target"), ("close", "target")])
+        self.state.highway_cfg["autotarget"] = False                     # auto-target off: the keyboard is not its to open
+        st["highway"]["autotarget_dry_run"] = False
+        self.state.config_live(st, [("highway", "autotarget_dry_run")])
+        self.assertEqual(len(calls), 2)
+
     def test_pause_between_keys(self):
         """Discussion #12 (the author's runs, 2026-10-23): pressed back to back, the galaxy map missed some of eight
         UI_Downs; step_pause (0.25 s to start) follows each key of the three editable parts, so none needs a wait."""
@@ -1982,8 +2000,22 @@ class HighwayAutoTarget(unittest.TestCase):
         hwy_plot_exact(self)
         tgt, _ = self.state.autotarget_target(manual=True)
         self.assertTrue(tgt["one_jump"])
+        # review 2026-10-23 H1: one jump from where you are, never the row's own leg alone (the exact plotter's are all 1)
+        self.assertTrue(self.state.route_target("highway", tgt["index"])[0]["one_jump"])
+        far = len(self.state.highway_state()[1]) - 1
+        self.assertGreater(far, tgt["index"])
+        self.assertFalse(self.state.route_target("highway", far)[0]["one_jump"])   # 🎯 on a stop further on: plotted
+        legs = lambda js: [{"id64": 100 + i, "jumps": j} for i, j in enumerate(js)]
+        here = {"at": 0}
+        self.j.pos = dict(self.j.pos, id64=100)
+        self.assertTrue(self.state.route_one_jump(here, legs([0, 1, 1]), 1))
+        self.assertFalse(self.state.route_one_jump(here, legs([0, 1, 1]), 2))   # past a finished stop: two legs
+        self.assertFalse(self.state.route_one_jump(here, legs([0, None]), 1))  # a trade hop: no jumps to count
+        self.assertFalse(self.state.route_one_jump(dict(here, off_route=True), legs([0, 1]), 1))
+        self.assertFalse(self.state.route_one_jump({"at": None}, legs([0, 1]), 1))   # before the route's start
         self.db.execute("UPDATE highway_route SET jumps = 3 WHERE idx = ?", (tgt["index"],))   # a neutron plotter's row
         self.j._hw_rows = (None, [])                                     # the rows are cached per plot
+        hwy_jump(self, 1, tgt["here"], "Start", 0)
         self.assertFalse(self.state.route_target("highway", tgt["index"])[0]["one_jump"])
         self.state.map_cache[(self.j.pos["id64"], 50)] = ({555: {"name": "Far", "x": 900, "y": 0, "z": 0}}, None)
         self.assertNotIn("one_jump", self.state.route_target("system", 555)[0])
@@ -2127,6 +2159,14 @@ class HighwayAutoTarget(unittest.TestCase):
                                        "\"hold UI_Select 1\" or \"wait 0.5\")")
         out, status = self.state.config_save({"highway": {"autotarget_plot": "\n  \n"}})
         self.assertEqual((status, out["error"]), (400, "[highway] autotarget_plot needs at least one step"))
+        # the target steps and the key overrides too, each in its own words (review 2026-10-23 L1)
+        out, status = self.state.config_save({"highway": {"autotarget_target": "hold CamZoomOut 0.2\npres UI_Down"}})
+        self.assertEqual((status, out["error"]), (400, "[highway] autotarget_target 'pres UI_Down' is not a step (use "
+                                                       "\"press UI_Select\", \"hold UI_Select 1\" or \"wait 0.5\")"))
+        out, status = self.state.config_save({"highway": {"autotarget_keys": '{"Nope": "KEY_A"}'}})
+        self.assertEqual(status, 400)
+        self.assertIn("names: ", out["error"])                          # the names it may be, not "not valid here"
+        self.assertNotIn("not valid here", out["error"])
         self.assertFalse(os.path.exists(path))
         out, status = self.state.config_save({"highway": {"autotarget_submit": "wait 1.5\npress Enter\nwait 0.5\npress UI_Down\npress UI_SELECT"}})
         self.assertEqual((status, out["live"]), (200, ["highway.autotarget_submit"]))

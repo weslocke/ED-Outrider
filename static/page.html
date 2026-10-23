@@ -850,7 +850,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="mod inlineopts" data-find="autohonk.key autohonk.delay autohonk.hold autohonk.skip_honked">
         <label title="auto: Primary Fire's keyboard binding from your controls preset; or keys by name, e.g. KEY_KP0 or alt+k (the Macro cheatsheet's names)">key <input type="text" id="ahKey" class="hcfg" data-sec="autohonk" data-key="key" placeholder="auto" spellcheck="false" autocapitalize="off" size="14"></label>
         <label title="seconds after arriving before the press (the jump tunnel ignores input); used from the next honk">wait after arriving <input type="number" id="ahDelay" class="hcfg" data-sec="autohonk" data-key="delay" min="0" max="30" step="any" inputmode="decimal"> s</label>
-        <label title="seconds to hold the trigger (the scanner fires once charged)">hold <input type="number" id="ahHold" class="hcfg" data-sec="autohonk" data-key="hold" min="0.5" max="15" step="any" inputmode="decimal"> s</label>
+        <label title="seconds to hold the trigger (the scanner fires once charged)">hold <input type="number" id="ahHold" class="hcfg" data-sec="autohonk" data-key="hold" min="0.5" max="20" step="any" inputmode="decimal"> s</label>
         <label title="systems you have already honked are left alone; used from the next honk"><input type="checkbox" id="ahSkip" class="hcfg" data-sec="autohonk" data-key="skip_honked"> leave systems already honked alone</label></div>
       <h4 class="hchead">The co-pilot button</h4>
       <div class="hint">Linux: one HOTAS or keyboard button, read only: a tap targets the next route system, a double tap gives a status report, a hold hushes the voice.</div>
@@ -858,8 +858,8 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <label><input type="checkbox" id="cpOn" class="hcfg" data-sec="copilot" data-key="enabled"> use it</label>
         <label title="a part of the device's name, or a /dev/input/by-id/... path">device <input type="text" id="cpDevice" class="hcfg" data-sec="copilot" data-key="device" spellcheck="false" autocapitalize="off" size="18"></label>
         <label title="the button's evdev name (e.g. BTN_TRIGGER_HAPPY5) or its code number">button <input type="text" id="cpButton" class="hcfg" data-sec="copilot" data-key="button" spellcheck="false" autocapitalize="off" size="16"></label>
-        <label title="held this long (or more): a hold">hold <input type="number" id="cpHold" class="hcfg" data-sec="copilot" data-key="hold_ms" min="100" max="5000" step="1"> ms</label>
-        <label title="a press this soon after a tap's release: a double tap">double tap <input type="number" id="cpDouble" class="hcfg" data-sec="copilot" data-key="double_ms" min="100" max="2000" step="1"> ms</label></div>
+        <label title="held this long (or more): a hold">hold <input type="number" id="cpHold" class="hcfg" data-sec="copilot" data-key="hold_ms" min="200" max="3000" step="1"> ms</label>
+        <label title="a press this soon after a tap's release: a double tap">double tap <input type="number" id="cpDouble" class="hcfg" data-sec="copilot" data-key="double_ms" min="100" max="1000" step="1"> ms</label></div>
       <div class="hint">To find the device and button: <code>python3 -m outrider.button --listen</code> in the Outrider folder, then press the button.</div>
       <div class="hint" id="copilotLine" hidden></div>
       <div class="btns"><button type="button" id="hcSave" class="primary">Save</button><span id="hcMsg" class="hint" role="status"></span></div>

@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Review fixes (1): auto-target and the config checks
+- The Fable review of 8db87f0..454b806 (project/REVIEW-fable-2026-10-23.md):
+  - **H1: a 🎯 on a later Highway stop, or Target next off the route, is plotted again.** A stop is targeted rather
+    than plotted only when it is one jump from where you are by the route's rows (`State.route_one_jump`: you are at
+    the row before it, the legs between come to one); the stop's own leg alone made every exact-plotter row "one
+    jump", so those runs used the Target System icon on a system out of range and failed.
+  - **M1: unticking "dry run" with auto-target on opens the virtual keyboard** (and ticking it closes it), so the next
+    automatic run no longer fails "the virtual keyboard is not open".
+  - **L1: a bad target step or key override is refused in its own words** ("'pres UI_Down' is not a step", the key
+    names it may be), not "not valid here, using [12 steps]".
+  - **L5: auto honk's and the co-pilot button's times outside their range are refused** ("must be 200 to 3000 ms"),
+    not saved and then clamped silently; the fields' limits match.
+
 ## 2026-10-23 · Settings → Alerts: the Crew column without wrapping on a wide screen
 - On a wide screen (Alerts full width), the Crew column takes the room it needs: the crew member's whole name in its
   list (it was cut at 10em) and "spoken by Tactical (danger)" on one line (the author).

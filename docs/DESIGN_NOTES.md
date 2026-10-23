@@ -575,8 +575,9 @@ upstream project's choices, not rules of the game.
   ignored the supercharge and gave six jumps to a stop the supercharged jump reaches (on: one); Kurbo26 saw a stop
   added with it on. There is no key for "target": the system panel's Target System icon is reached by keys (two
   UI_Rights, one can stop at the system's details; eight UI_Downs), so it is its own box and its own default. Which
-  stops: the ones the route's own row makes one jump (`jumps` == 1: every exact-plotter row, a neutron-plotter or
-  survey row of one), never by a range Outrider would estimate (at the edge of the range a wrong guess is a target you
+  stops: the ones one jump from where you are by the route's own rows (`route_one_jump`: you are at row `at`, and the
+  legs from there to the stop, each row's `jumps`, come to one; review 2026-10-23 H1: the stop's own leg alone made a
+  🎯 five stops ahead, or the closest row off the route, "one jump"), never by a range Outrider would estimate (at the edge of the range a wrong guess is a target you
   cannot jump to), never a trade hop (no jumps), never any other 🎯 (a far bookmark needs a route; even supercharged).
   On by default: it does not depend on the player's Route Settings. Two guards: a one-jump stop must end up the
   target itself (no NavRoute-end shortcut, in the "already" check too), so a miscounted icon or a multi-jump plot

@@ -881,9 +881,23 @@ def _config_plot_steps(v):
     return [" ".join(x.split()) for x in v]
 
 
-# keys config_save checks as they are saved, saying why in the converter's own words (a bad step: parse_step's), where
-# settings_from would only say "not valid here" (Settings -> Auto-target, discussion #12)
-CONFIG_CHECKS = {("highway", "autotarget_" + k): _config_plot_steps for k in ("search", "submit", "plot")}
+def _config_range(lo, hi, unit):
+    """A check for a number Settings saves: refused outside lo..hi in words, rather than written and then clamped
+    silently by settings_from (the field would come back with a number the player never typed: review 2026-10-23 L5)."""
+    def check(v):
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not lo <= v <= hi:
+            raise ValueError(f"must be {lo:g} to {hi:g} {unit}")
+        return v
+    return check
+
+
+# keys config_save checks as they are saved, saying why in the converter's own words (a bad step: parse_step's; a key
+# name: the names it may be), where settings_from would only say "not valid here" or clamp (Settings -> Auto-target,
+# discussion #12; Settings -> Auto honk; review 2026-10-23 L1, L5)
+CONFIG_CHECKS = {**{("highway", "autotarget_" + k): _config_plot_steps for k in ("search", "submit", "plot", "target")},
+                 ("highway", "autotarget_keys"): _config_target_keys,
+                 ("autohonk", "delay"): _config_range(0, 30, "s"), ("autohonk", "hold"): _config_range(0.5, 20, "s"),
+                 ("copilot", "hold_ms"): _config_range(200, 3000, "ms"), ("copilot", "double_ms"): _config_range(100, 1000, "ms")}
 
 
 def _config_button(v):
@@ -7871,6 +7885,11 @@ class State:
             self.highway_cfg.update({k: st["highway"][k] for k in at if k in st["highway"]})
             if self.targeter is not None:
                 self.targeter.configure(self.autotarget_cfg())
+            # a dry run keeps the keyboard closed (set_autotarget): auto-target on, it opens or closes with the dry run now
+            # (review 2026-10-23 M1: unticked, the next automatic run found it closed)
+            if "highway.autotarget_dry_run" in done and self.highway_cfg.get("autotarget") and self.honker \
+                    and self.honker.available:
+                (self.honker.close if self.highway_cfg["autotarget_dry_run"] else self.honker.open)("target")
         sp = self.speaker
         if done and sp is not None:
             if "speech.voices_loaded" in done:
@@ -17156,7 +17175,7 @@ class State:
         if r["id64"] is None:
             return None, f"{r['system']} has no id64 to check the target against"
         return {"name": r["system"], "id64": r["id64"], "here": pos["id64"], "route": hw.get("id"), "index": nx, "neutron": True,
-                "one_jump": r.get("jumps") == 1}, None
+                "one_jump": self.route_one_jump(hw, rows, nx)}, None
 
     def carrier_target(self):
         """({name, id64, here, route: None}, None) for 🎯 beside your fleet carrier (the author, 2026-10-11): the system it
@@ -17240,6 +17259,20 @@ class State:
             return None, f"you are in {where[0]} already"
         return {"name": where[0], "id64": id64, "here": pos["id64"], "route": None}, None
 
+    def route_one_jump(self, meta, rows, index):
+        """Whether route row `index` is one jump from where you are (a route's next stop is then targeted, not plotted:
+        discussion #12): you are at a row of the route (meta's `at`, the system you are in) and the legs from there to it
+        (each row's `jumps`, from the row before) come to one. Off the route, before its start, a row behind or a leg of
+        no jumps (a trade hop) is never one jump (review 2026-10-23 H1: the row's own leg alone made a 🎯 five stops
+        ahead, or the closest row off the route, "one jump")."""
+        pos = self.journals.pos or {}
+        at = meta.get("at") if meta else None
+        if at is None or meta.get("off_route") or not 0 <= at < index < len(rows) or rows[at].get("id64") is None \
+                or rows[at]["id64"] != pos.get("id64"):
+            return False
+        legs = [rows[k].get("jumps") for k in range(at + 1, index + 1)]
+        return None not in legs and sum(legs) == 1
+
     def route_target(self, route, index):
         """({name, id64, here, route, index}, None) for 🎯 on a system of a route ("highway" or "survey": Road to Riches /
         Exomastery), or (None, why not): a row of the route plotted now, not the system you are in, with an id64 (the
@@ -17272,7 +17305,7 @@ class State:
         # one_jump: the route makes it one jump (a Highway row's jumps, a survey route's; a trade hop has none): targeted,
         # not plotted (route_target), and the system itself must end up the target (discussion #12)
         return {"name": r["system"], "id64": r["id64"], "here": pos["id64"], "route": meta.get("id"), "index": index,
-                "neutron": route == "highway", "one_jump": r.get("jumps") == 1}, None   # "neutron jump target": the Highway's wording
+                "neutron": route == "highway", "one_jump": self.route_one_jump(meta, rows, index)}, None   # "neutron jump target": the Highway's wording
 
     def game_target(self):
         """The system the game aims its jumps at (outrider.target.game_target, F3): Status.json's Destination, the end

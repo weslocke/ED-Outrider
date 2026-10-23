@@ -357,6 +357,16 @@ class HomedKeys(TempConfig):
         self.assertEqual((status, out["restart"]), (200, True))         # the Honker and the button are built at start
         homed = {(x["section"], k["key"]): k["value"] for x in s.config_info()["homed"] for k in x["keys"]}
         self.assertEqual((homed["autohonk", "hold"], homed["copilot", "device"], homed["copilot", "enabled"]), (4.0, "X56", True))
+        # review 2026-10-23 L5: out of range is refused in words, not written and then clamped silently
+        with open(self.path, encoding="utf-8") as f:
+            before = f.read()
+        for change, why in (({"copilot": {"hold_ms": 100}}, "[copilot] hold_ms must be 200 to 3000 ms"),
+                            ({"copilot": {"double_ms": 2000}}, "[copilot] double_ms must be 100 to 1000 ms"),
+                            ({"autohonk": {"hold": 25.0}}, "[autohonk] hold must be 0.5 to 20 s"),
+                            ({"autohonk": {"delay": 45.0}}, "[autohonk] delay must be 0 to 30 s")):
+            self.assertEqual(s.config_save(change), ({"error": why}, 400))
+        with open(self.path, encoding="utf-8") as f:
+            self.assertEqual(f.read(), before)
 
     def test_overlay_system_seconds_and_radar_range(self):
         s = self.state
