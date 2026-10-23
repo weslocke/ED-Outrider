@@ -5399,6 +5399,26 @@ def with_logged_variants(groups, logged):
             for g in groups]
 
 
+def with_codex_species(groups, seen):
+    """Groups with the species your codex entry on this body names in place of the guess (the author, 2026-10-23: a
+    composition scan from the ship logs the codex entry, "Bacterium Vesicula - Red", long before a sample says it, and
+    the guess still named another species and colour): that species alone, its value, its colour; `seen` marks it.
+    `seen`: {genus: (species name, codex entry name)} (State.codex_species_seen's, for one body); a genus you sampled
+    there is the caller's to leave out (its run says the species already)."""
+    out = []
+    for g in groups:
+        hit = seen.get(g["genus"]) if seen else None
+        if not hit:
+            out.append(g)
+            continue
+        name, entry = hit
+        v = outrider.bio.species_value(name) if outrider.bio else None
+        cand = [c for c in g.get("species") or [] if (c.get("name") or "").lower() == name.lower()] or [{"name": name, "value": v}]
+        out.append(dict(g, best=cand[0]["name"], value=v or g.get("value"), min_value=v or g.get("min_value"), species=cand,
+                        variants=[entry], variant=entry, seen=True, unruled=False))
+    return out
+
+
 SALE_SESSION_S = 300   # s: Vista Genomics sales this close together are one visit (you sold in several goes)
 
 
@@ -9507,6 +9527,17 @@ class State:
                 "spansh_old": spansh_old((base or {}).get("records") or []),
                 "base": base is not None, "base_known": base_known(base, source), "ctx": bio_context(name, records, where[1], where[2], where[3], star, count)}
 
+    def codex_species_seen(self, id64):
+        """{body_id: {genus: (species, codex entry name)}}: the species your organic codex entries in system id64 name,
+        per body (with_codex_species); the latest entry of a genus on a body wins."""
+        out = {}
+        for r in self.db.execute("SELECT body_id, name FROM codex WHERE system=? AND body_id IS NOT NULL AND "
+                                 "lower(subcategory) LIKE '%organic%' ORDER BY ts", (id64,)):
+            sp = outrider.bio.species_by_name((r["name"] or "").split(" - ")[0]) if outrider.bio else None
+            if sp and sp.get("genus"):
+                out.setdefault(r["body_id"], {})[sp["genus"]] = (sp["name"], r["name"])
+        return out
+
     def body_bio(self, id64, body_id):
         """One body's exobiology, for the sampling lines: runs under way ({genus: samples}), the DSS's genera
         not started (each with what it could pay, bonus-free), signals no DSS has identified, and the x5
@@ -9529,6 +9560,7 @@ class State:
                 partial[r["genus_name"]] = r["samples"]
         left = sorted(genera - done - set(partial))
         _, groups = bio_guess(rec, mr["star"], left, mr["ctx"]) if left else (None, [])
+        groups = with_codex_species(groups, self.codex_species_seen(id64).get(body_id))   # a composition scan's species
         value = {g["genus"]: g.get("value") for g in groups}
         f = self.db.execute("SELECT 1 - bio_x5 AS was_footfalled FROM own_firsts WHERE system=? AND body_id=?", (id64, body_id)).fetchone()
         return {"body": short, "partial": partial, "untouched": [{"genus": g, "value": value.get(g)} for g in left],
@@ -10868,7 +10900,7 @@ class State:
         # what the suggested order shows beside each bio body, to decide on the landing before the supercruise
         extra = lambda bid, rec: {"factor": 5 if footfalled.get(bid) == 0 else 1,
                                   "gravity": rec.get("gravity"), "atmosphere": rec.get("atmosphere")}
-        bio_pending = []
+        bio_pending, seen_codex = [], self.codex_species_seen(id64)
         for bid, rec in bodies.items():
             n_sig = bio_signals.get(rec["name"], 0)
             if not n_sig and bid not in genera:
@@ -10886,12 +10918,15 @@ class State:
                 groups = bio_left_groups(dict(rec, bio=n_sig), star, None, ctx, done_set | set(partial))
                 if partial:
                     groups = bio_guess(rec, star, sorted(partial), ctx)[1] + groups
+                groups = with_codex_species(groups, seen_codex.get(bid))   # a composition scan's species, exactly
                 val = sum((g.get("value") or 0) for g in groups) or None
                 bio_pending.append({"body": name_of(bid), "signals": n_left, "genera": None, "partial": partial, "potential": val,
                                     "codex_new": codex_new(bid, groups), "codex_galaxy": codex_galaxy(bid, groups),
                                     "dist_ls": rec.get("dist_ls"), **extra(bid, rec)})
             elif left or partial:
                 left_val, left_groups = bio_guess(rec, star, sorted(left), ctx) if left else (None, [])
+                left_groups = with_codex_species(left_groups, seen_codex.get(bid))
+                left_val = sum((g.get("value") or 0) for g in left_groups) or left_val
                 bio_pending.append({"body": name_of(bid), "signals": n_sig, "genera": sorted(left),
                                     "partial": partial, "potential": left_val, "codex_new": codex_new(bid, left_groups),
                                     "codex_galaxy": codex_galaxy(bid, left_groups),
@@ -11003,6 +11038,7 @@ class State:
         known_codex, known_all = codex_species(self.db, region), codex_species_all(self.db)
         history = self.species_history() if outrider.bio else None   # S24: your runs on bodies like each one
         judge = pickup_judge(self.db, name)
+        seen_codex = self.codex_species_seen(id64)   # the species your composition scans logged, per body
         # your latest scan of each body: data re-collected after a loss or a sale counts again
         latest = {r["body_id"]: r["ts"] for r in self.db.execute("SELECT body_id, ts FROM own_bodies WHERE system=?", (id64,))}
         out = []
@@ -11012,6 +11048,10 @@ class State:
             bio_val, bio_groups = bio_guess(r, star, known_genera or None, ctx) if (r.get("bio") or known_genera) else (None, [])
             # a genus you have sampled here shows the colour the journal logged, not the guess
             bio_groups = with_logged_variants(bio_groups, {o["genus"]: o["variant"] for o in organics.get(bid, []) if o["variant"]})
+            # a genus you have not sampled but your codex entry here names (a composition scan, from the ship too): that species
+            sampled = {o["genus"] for o in organics.get(bid, [])}
+            seen = {g: s for g, s in seen_codex.get(bid, {}).items() if g not in sampled}
+            bio_groups = with_codex_species(bio_groups, seen)
             shape = outrider.bio.history_shape(r.get("subtype"), r.get("atmosphere"), r.get("temperature")) if history and bio_groups else None
             f = firsts.get(bid) if bid is not None else None
             first_disc = bool(f and f["was_discovered"] == 0)
@@ -11026,7 +11066,7 @@ class State:
             # on board: samples not yet sold (sold ones are banked, like sold cartographics)
             bio_now = sum((o.get("value") or 0) for o in held if o["state"] == "aboard") * bio_factor
             got = {o["genus"] for o in held if o["done"] and not o["lost"]}   # sold ones are done too
-            left_groups = bio_left_groups(r, star, known_genera, ctx, got) if (r.get("bio") or known_genera) else []
+            left_groups = with_codex_species(bio_left_groups(r, star, known_genera, ctx, got) if (r.get("bio") or known_genera) else [], seen)
             bio_left = sum((g.get("value") or 0) for g in left_groups) * bio_factor
             carto_now, carto_left = cv["now"], cv["left"]
             # Max without any bonus: no first-discovery / first-mapped multipliers, bio at x1
@@ -11066,6 +11106,8 @@ class State:
                                # S24: which of its species your completed runs found on bodies like this (the hover)
                                "history": history.rank(g["genus"], shape, region) if shape else None,
                                "unruled": bool(g.get("unruled")),
+                               # the species your codex entry on this body names (a composition scan): no guess
+                               "seen": bool(g.get("seen")),
                                # the colour candidates of the likeliest species ([] when it cannot be told)
                                "variants": g.get("variants") or [], "variant": g.get("variant"),
                                # the likeliest species (its colour variant, when settled) has no codex entry of

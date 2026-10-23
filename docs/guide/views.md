@@ -51,7 +51,7 @@ to Spansh on that body, with the colour they reported ("👥 Bacterium Vesicula 
 Hover a genus's guess for its candidates and, once you have finished runs of that genus on bodies like it (the same
 class and atmosphere, within the same 25 K, in the same region once you have 5 such runs there), which species yours
 were: "yours on bodies like this (Icy body, thin N2, 75–100 K, Inner Orion Spur): Informem 11 of 14, Acies 3 of 14".
-The guess itself stays the likeliest by value. Flying low over a body in your ship (under 5 km), the
+The guess itself stays the likeliest by value, until you know better: a composition scan of a plant, from the ship as well as on foot, logs it in your codex ("📖 Bacterium Vesicula - Red"), and that species, its colour and what it pays replace the guess at once. Flying low over a body in your ship (under 5 km), the
 on-body strip already shows its bio card. While you sample, the strip says what the run pays from the first sample on
 ("🧬 Bacterium Aurasus · 1.0M (×5: 5.0M) · sample 1/3 · 500 m to go": the species' value, and with the first-footfall
 bonus). The distance counts down on foot, in the SRV or Nomad, and in your ship flying low to the next spot (measured

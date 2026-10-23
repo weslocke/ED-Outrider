@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · A composition scan's codex entry names the species at once
+- The author: a Bacterium scanned with the composition scanner from the ship showed its codex entry ("📖 Bacterium
+  Vesicula - Red"), but the genus line still guessed Verrata with its colours until a sample on foot. The codex entry
+  on the body now replaces the guess for that genus: the species, its colour and what it pays ("Bacterium 0/3
+  📖 Vesicula 1.0M"), in Here, the on-body card's values and the leaving warning's total (`with_codex_species`,
+  `State.codex_species_seen`). Its codex line is not listed again under the body.
+
 ## 2026-10-23 · Settings: 15 sections, related ones together
 - **What is said** is now a block of **Voice** ("What the voice says": signals, routine systems, hazards, mapped
   planets), and **Sounds** (the ▶ buttons) sits under the **Alerts** table. **Voice** comes right after Alerts.

@@ -2407,6 +2407,27 @@ class BatchBState(unittest.TestCase):
         with unittest.mock.patch.object(outrider.bio, "predict", return_value=self.CANDS):
             self.assertIsNone(self.state.arrival_facts(1)["bio"])
 
+    def test_a_composition_scans_codex_entry_names_the_species(self):
+        """The author, 2026-10-23: a composition scan from the ship logged "Bacterium Vesicula - Red" in the codex, and
+        the body's Bacterium still showed the guess (Aurasus) and its colours until a sample on foot. The codex entry on
+        the body names the species: that, its value and its colour replace the guess, in Here and the leaving summary."""
+        if not outrider.bio or not outrider.bio.species_by_name("Bacterium Vesicula"):
+            self.skipTest("no bio_rules.json")
+        voice_sampling_body(self)                                      # A 4: Stratum and Bacterium, no samples
+        guess = lambda: {x["genus"]: x for x in next(b for b in self.state.system_detail(1)["bodies"] if b["name"] == "A 4")["bio_guess"]}
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=self.CANDS):
+            self.assertEqual((guess()["Bacterium"]["best"], guess()["Bacterium"]["seen"]), ("Bacterium Aurasus", False))
+            self.db.execute("INSERT INTO codex (ts, entry_id, name, category, subcategory, system, body_id) VALUES "
+                            "('2026-01-01T00:03:00Z', 2310901, 'Bacterium Vesicula - Red', '$Codex_Category_Biology;', "
+                            "'$Codex_SubCategory_Organic_Structures;', 1, 4)")
+            self.db.commit()
+            g = guess()["Bacterium"]
+            v = outrider.bio.species_value("Bacterium Vesicula")
+            self.assertEqual((g["best"], g["seen"], g["variants"], g["value"]), ("Bacterium Vesicula", True, ["Bacterium Vesicula - Red"], v))
+            self.assertEqual(guess()["Stratum"]["best"], "Stratum Tectonicas")   # another genus keeps its guess
+            pot = next(p for p in self.state.leaving_summary(1)["bio_pending"] if p["body"] == "A 4")["potential"]
+            self.assertEqual(pot, v + next(c["value"] for c in self.CANDS if c["genus"] == "Stratum"))
+
     def test_codex_new_per_variant_in_the_summaries(self):   # P11
         region = outrider.bio.region_name(0, 0, 0)
         if not region:

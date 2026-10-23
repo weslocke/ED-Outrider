@@ -4646,7 +4646,10 @@ function renderHere() {
     const bio = [], f = bioFactor(b), atm = b.type === "Planet" && b.atmosphere && b.atmosphere !== "None" ? b.atmosphere : "";
     const guessOf = g => (b.bio_guess || []).find(x => x.genus === g), hb = hereBio();
     if (hb.minSig && b.bio && b.bio < hb.minSig) bio.push(`<span class="unk" title="fewer than ${hb.minSig} signals: left out (Settings, Display)">${b.bio} sig</span>`);
-    const guessTxt = x => !x || !x.best ? "" : ` <span class="unk" title="likeliest by value: ${esc(x.species.join(" / ") + historyTip(x))}">(${esc(x.best.split(" ").slice(1).join(" "))}? ${credits(x.value * f)})</span>` + codexMark(x, h.region);
+    const guessTxt = x => !x || !x.best ? "" : x.seen
+      // your codex entry on this body names it (a composition scan, the ship's too: the author, 2026-10-23): no guess
+      ? ` <span class="sp seen" title="your codex entry on this body: ${esc(x.variant || x.best)} (a composition scan)">📖 ${dual(colourName(x.variant || x.best), esc(x.best.split(" ").slice(1).join(" ")), {title: false})} <span class="unk">${credits(x.value * f)}</span></span>`
+      : ` <span class="unk" title="likeliest by value: ${esc(x.species.join(" / ") + historyTip(x))}">(${esc(x.best.split(" ").slice(1).join(" "))}? ${credits(x.value * f)})</span>` + codexMark(x, h.region);
     // S23: the species commanders' uploads reported to Spansh here, with the colour they reported: facts, beside the guess
     const rep = b.reported || [], repShown = new Set();
     const repTxt = g => rep.filter(x => g === null ? !repShown.has(x) : x.genus === g).map(x => { repShown.add(x);
@@ -4673,6 +4676,8 @@ function renderHere() {
                    // the panel; the predictor's guess is only for a lost run or one whose species has no price
                    (o.lost || (!o.done && !o.value) ? guessTxt(guessOf(g)) : "") + repTxt(g)
                  : `<span class="sp"${ct(g)}>${esc(g)} 0/3</span>` + guessTxt(guessOf(g)) + repTxt(g));
+      { const x = !o && guessOf(g), c = x && x.seen && b.codex.find(c => c.name === x.variant);
+        if (c) merged.add(c); }   // its codex line is the row's already
     }
     // reported species of a genus not named here yet (before the DSS): a line of their own
     const repRest = hb.minSig && b.bio && b.bio < hb.minSig ? "" : repTxt(null);
