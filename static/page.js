@@ -13015,15 +13015,15 @@ function showAlertSection(i, remember = true) {
   alertDialog.style.scrollPaddingTop = head ? `${head.offsetHeight}px` : "";
   s.scrollIntoView({block: "start"});
   alertChips.querySelectorAll("button").forEach(b => b.classList.toggle("on", Number(b.dataset.sec) === i));
-  if (remember) store.set("alertSection", i);
+  if (remember) store.set("alertSection", s.dataset.chip);   // by name: a reorder never opens another (review 2026-10-23 L4)
 }
 alertChips.addEventListener("click", e => { const b = e.target.closest("[data-sec]"); if (b) showAlertSection(Number(b.dataset.sec)); });
 document.getElementById("alertsBtn").onclick = () => {
   sfClear();
   setSecsRestore();
   drawSpeechStyles(); fillThresholds(); alertDialog.showModal(); drawSpeechLog(); loadAskLog();
-  const last = Number(store.get("alertSection", 0));
-  if (last > 0) showAlertSection(last, false);
+  const last = store.get("alertSection", ""), li = alertSections.findIndex(s => s.dataset.chip === last);
+  if (li > 0) showAlertSection(li, false);   // a number stored before (a position) names no section: ignored
 };
 drawAlertsBtn();
 // ---- Find a setting (S39): a word typed at the top of Settings leaves only what matches it, in every section: a row

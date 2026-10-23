@@ -8471,8 +8471,19 @@ const releasePayloads = async () => {
   {
     const w = dom.window, d = w.document, before = errors.length, realFetch = w.fetch, got = {};
     if (!w.HTMLDialogElement.prototype.showModal) w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+    // the last section is remembered by name (review 2026-10-23 L4): a number from before the reshuffle opens none
+    const chipOn = () => (d.querySelector("#alertChips button.on") || {}).textContent || "";
+    w.localStorage.setItem("alertSection", "12");
+    w.eval(`alertChips.querySelectorAll("button").forEach(b => b.classList.remove("on")); document.getElementById("alertsBtn").click()`);
+    await sleep(200);
+    got.remembered = [chipOn()];
+    w.eval(`const dl0 = document.getElementById("alertDialog"); if (dl0.close) dl0.close(); else dl0.removeAttribute("open");
+            showAlertSection(alertSections.findIndex(s => s.dataset.chip === "Mining"))`);
+    got.remembered.push(JSON.parse(w.localStorage.getItem("alertSection")));
+    w.eval(`const dl1 = document.getElementById("alertDialog"); if (dl1.close) dl1.close(); else dl1.removeAttribute("open")`);
     w.eval(`document.getElementById("alertsBtn").click(); renderOverlay();`);
     await settle(1500);
+    got.remembered.push(chipOn());
     const c = JSON.parse(await w.eval(`apiJson("api/config").then(x => JSON.stringify(x))`));
     const named = new Set([...d.querySelectorAll("#alertDialog [data-find]")].flatMap(el => el.dataset.find.split(/\s+/)));
     const homed = (c.homed || []).flatMap(s => s.keys.map(k => `${s.section}.${k.key}`));
@@ -8493,7 +8504,7 @@ const releasePayloads = async () => {
     w.fetch = realFetch;
     w.eval(`loadHonkCfg(); const dls = document.getElementById("alertDialog"); if (dls.close) dls.close(); else dls.removeAttribute("open")`);
     await sleep(200);
-    const want = {findable: [true, []], drawn: [true, "checkbox"], saved: [{autohonk: {delay: 3.5}}, "Saved 1 setting: in use now."]};
+    const want = {remembered: ["", "Mining", "Mining"], findable: [true, []], drawn: [true, "checkbox"], saved: [{autohonk: {delay: 3.5}}, "Saved 1 setting: in use now."]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const good = !bad.length && errors.length === before;
     allOk = allOk && good;
@@ -8518,9 +8529,12 @@ const releasePayloads = async () => {
         fuel: [(td("fuel").querySelector(".aname") || {}).textContent, (td("fuel").querySelector(".adesc") || {}).title === ALERT_DETAILS.fuel, !(td("scoop").querySelector(".adesc") || {}).title],
         short: Object.keys(ALERT_NAMES).every(k => ALERT_SHORT[k] === ALERT_NAMES[k]) && ALERT_SHORT.manual === "Asked for",
         oneLine: ALERTS.every(([, label]) => label.length <= 120),
+        // Mining's table styled as Alerts' (review 2026-10-23 L2): the fine print's hover cue, the group's colour
+        miningStyled: (() => { const el = document.querySelector("#miningAlertOpts .adesc[title]"), th = document.querySelector("#miningAlertOpts tr.agroup th");
+          return !!el && getComputedStyle(el).cursor === "help" && !!th && getComputedStyle(th).fontWeight === "600"; })(),
         mining: ["ring", "limpets", "prospect", "rigs", "rigleash", "rigsout"].every(k => document.querySelector('#miningAlertOpts [data-alert="' + k + '"]') && !document.querySelector('#alertOpts [data-alert="' + k + '"]'))});
     })()`));
-    const want = {heads: true, first: true, named: true, fuel: ["Fuel", true, true], short: true, oneLine: true, mining: true};
+    const want = {heads: true, first: true, named: true, fuel: ["Fuel", true, true], short: true, oneLine: true, mining: true, miningStyled: true};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const good = !bad.length && errors.length === before;
     allOk = allOk && good;

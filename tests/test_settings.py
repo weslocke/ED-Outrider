@@ -332,8 +332,9 @@ class DialogLayout(unittest.TestCase):
         for sid in wide:
             self.assertRegex(html, r'<details[^>]*class="[^"]*setsec[^"]*"[^>]*id="%s"|<details id="%s"[^>]*setsec' % (sid, sid), sid)
         # the author, 2026-10-23: there the Alerts table's Crew column does not wrap (the member's name, the danger note)
-        wide_crew = re.search(r"@media \(min-width: 1280px\) \{\s*#alertDialog \.alerttable td\.acrew \{([^}]*)\}\s*"
-                              r"#alertDialog \.alerttable td\.acrew select \{([^}]*)\}", css)
+        # ...under the layout's own condition, Alerts' table only (review 2026-10-23 L3)
+        wide_crew = re.search(r"@media \(min-width: 1280px\) and \(min-height: 700px\) \{\s*#alertDialog #alertsSettings \.alerttable td\.acrew \{([^}]*)\}\s*"
+                              r"#alertDialog #alertsSettings \.alerttable td\.acrew select \{([^}]*)\}", css)
         self.assertTrue(wide_crew, "the wide Crew column's rule")
         self.assertIn("white-space: nowrap", wide_crew.group(1))
         self.assertIn("max-width: none", wide_crew.group(2))

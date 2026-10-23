@@ -1045,10 +1045,11 @@ body.nowmode header, body.nowmode main { display: none; }
 #alertDialog .alerttable td.acrew select { max-width: 10em; font-size: 12px; }
 .alerttable .crewdanger { display: block; font-weight: 400; font-size: 11px; }
 /* a wide screen (Alerts spans the whole dialog there): the Crew column takes the room it needs, the member's whole name
-   and "spoken by Tactical (danger)" each on one line (the author, 2026-10-23) */
-@media (min-width: 1280px) {
-  #alertDialog .alerttable td.acrew { width: auto; white-space: nowrap; }
-  #alertDialog .alerttable td.acrew select { max-width: none; }
+   and "spoken by Tactical (danger)" each on one line (the author, 2026-10-23). The layout's own condition, and Alerts'
+   table only (review 2026-10-23 L3: a wide but short window has the narrow dialog; Mining's table is not full width) */
+@media (min-width: 1280px) and (min-height: 700px) {
+  #alertDialog #alertsSettings .alerttable td.acrew { width: auto; white-space: nowrap; }
+  #alertDialog #alertsSettings .alerttable td.acrew select { max-width: none; }
 }
 @media (max-width: 700px) { .crewtable thead { display: none; } .crewtable tr { grid-template-columns: 1fr 1fr; }
   .crewtable td.crole, .crewtable td.cfor { grid-column: 1 / -1; grid-row: auto; } }
@@ -1479,10 +1480,11 @@ table.ovlay tbody th { text-transform: none; letter-spacing: 0; font-size: 13px;
 table.ovlay select { font-size: 12px; padding-left: 2px; padding-right: 0; }
 table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; } table.ovlay th { white-space: nowrap; }
 /* Settings → Alerts: a heading over a group of alerts (the discoveries) */
-#alertOpts tr.agroup th { text-align: left; padding-top: .9em; font-weight: 600; color: var(--accent); border-bottom-color: var(--accent); }
-#alertOpts .aname { white-space: nowrap; margin-right: .3em; }
-#alertOpts .adesc { color: var(--muted); }
-#alertOpts .adesc[title] { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }   /* the fine print in its hover */
+/* both alert tables: Settings -> Alerts' and Settings -> Mining's (review 2026-10-23 L2: Mining's were unstyled) */
+:is(#alertOpts, #miningAlertOpts) tr.agroup th { text-align: left; padding-top: .9em; font-weight: 600; color: var(--accent); border-bottom-color: var(--accent); }
+:is(#alertOpts, #miningAlertOpts) .aname { white-space: nowrap; margin-right: .3em; }
+:is(#alertOpts, #miningAlertOpts) .adesc { color: var(--muted); }
+:is(#alertOpts, #miningAlertOpts) .adesc[title] { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }   /* the fine print in its hover */
 .pronbox { margin-top: 8px; } .pronbox input { width: 12em; } #pronList a { color: var(--accent); }
 .pronsectors { display: flex; flex-wrap: wrap; gap: 2px 14px; max-height: 9.5em; overflow-y: auto; }
 .pronsectors a { color: var(--accent); } .pronsec { white-space: nowrap; }

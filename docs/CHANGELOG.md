@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Review fixes (3): the Settings page
+- The Fable review of 8db87f0..454b806 (project/REVIEW-fable-2026-10-23.md):
+  - **L2: Settings → Mining's alerts table is styled as Alerts'**: its group headings, the names, the muted lines and
+    the dotted hover cue for the fine print.
+  - **L3: the wide Crew column only where Alerts is full width**: the layout's own condition (a wide but short
+    window keeps the narrow dialog without a sideways scroll) and Alerts' table only.
+  - **L4: Settings remembers its last section by name**, so a reorder never opens another one (after this update, a
+    browser that last had Voice open opened Server once).
+
 ## 2026-10-23 · Review fixes (2): docked at a port, the codex marks
 - The Fable review of 8db87f0..454b806 (project/REVIEW-fable-2026-10-23.md):
   - **M2: docked at a planetary port is not "flying low"** (`near_body` leaves out Docked): no "flying low, 0 m" card,
