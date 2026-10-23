@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Settings: Alerts and Questions asked full width
+- On a big screen, where Settings runs in columns, **Alerts** and **Questions asked** now span the whole width (the
+  author), as Voice, Server and Spoken lines do: their tables read better wide.
+
 ## 2026-10-23 · Auto honk's readiness points at its new key field
 - Auto honk's "Not ready" fix now says "give the key in Settings -> Auto honk" (it said to set `[autohonk] key` in the
   file); the co-pilot button's heading is short, its explanation under it (the Elite theme wrote it all in capitals).

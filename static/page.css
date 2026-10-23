@@ -930,8 +930,10 @@ body.nowmode header, body.nowmode main { display: none; }
   #alertDialog { width: max(80vw, min(1560px, calc(100vw - 64px))); max-height: calc(100vh - 48px); }
   #alertDialog .setbody { columns: 2 560px; column-gap: 28px; }
   #alertDialog .setsec { break-inside: avoid; }
-  /* full width: Voice too (the author, 2026-10-16: its crew and voice tables need the room) */
-  #alertDialog #serverSettings, #alertDialog #speechLogBox, #alertDialog #voiceSettings { column-span: all; }
+  /* full width: Voice too (the author, 2026-10-16: its crew and voice tables need the room), and Alerts and Questions
+     asked (2026-10-23: their tables read better wide) */
+  #alertDialog #serverSettings, #alertDialog #speechLogBox, #alertDialog #voiceSettings, #alertDialog #alertsSettings,
+  #alertDialog #askLogBox { column-span: all; }
 }
 /* three columns only on a 4K screen (the author, 2026-10-15: two on a 2560 px one) */
 @media (min-width: 3200px) { #alertDialog .setbody { columns: 3 520px; } }
