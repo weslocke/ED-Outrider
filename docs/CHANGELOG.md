@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Settings → Auto-target: the galaxy map's steps, editable, with ↺ default
+- From Kurbo26's discussion #12 (his own steps for a name with several matches, and for targeting without plotting):
+  - **A Settings section of its own, Auto-target** (game PC only): the three parts of the galaxy map sequence (into the
+    search field, submit the search, plot the route), one step per line and each with **↺ default**, the timings and
+    typed or pasted. It says plainly that **every 🎯 uses these steps** (bookmarks, Nearby, Search, the Map, checklist
+    finds, the header's next stop, the boxel's Next, the co-pilot button) as well as the Highway's auto-target.
+  - **Save the steps** writes `[highway] autotarget_*` (the next run uses them); only the parts you changed are sent.
+    Below: the whole sequence with your keys and **▶ test now**.
+  - **A bad step is refused in its own words** ("'pres UI_Down' is not a step (use …)"), in Server settings too, and
+    an empty list ("needs at least one step"); what you typed stays to be corrected. It said "nothing written: … is
+    not valid here".
+  - Plot Route's auto-target box keeps the Highway's switch, delay, test and Target next, and links to the section.
+
 ## 2026-10-23 · Docs: the private notes' paths
 - The agent guide and design notes name the overlay build plan and the value checks where they now are, under
   `project/done/` (the author's private notes, not in the repository).

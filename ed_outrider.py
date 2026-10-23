@@ -870,11 +870,18 @@ def _config_target_keys(v):
 
 def _config_plot_steps(v):
     """[highway] autotarget_plot: a list of steps ("press UI_Select", "hold UI_Select 1", "wait 0.5")."""
-    if not isinstance(v, list) or not v or not all(isinstance(x, str) for x in v):
+    if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
         raise TypeError("not a list of steps")
+    if not v:
+        raise ValueError("needs at least one step")
     for x in v:
         outrider.target.parse_step(x)
     return [" ".join(x.split()) for x in v]
+
+
+# keys config_save checks as they are saved, saying why in the converter's own words (a bad step: parse_step's), where
+# settings_from would only say "not valid here" (Settings -> Auto-target, discussion #12)
+CONFIG_CHECKS = {("highway", "autotarget_" + k): _config_plot_steps for k in ("search", "submit", "plot")}
 
 
 def _config_button(v):
@@ -7562,8 +7569,11 @@ class State:
                 if kind is None:
                     return {"error": f"[{sec}] {key} is not a setting"}, 400
                 try:
-                    text = outrider.config_edit.set_key(text, sec, key, outrider.config_edit.coerce(kind, value, choices))
-                except ValueError as e:
+                    v = outrider.config_edit.coerce(kind, value, choices)
+                    if (sec, key) in CONFIG_CHECKS:
+                        CONFIG_CHECKS[sec, key](v)
+                    text = outrider.config_edit.set_key(text, sec, key, v)
+                except (TypeError, ValueError) as e:
                     return {"error": f"[{sec}] {key} {e}"}, 400
                 n += 1
         try:
@@ -16992,9 +17002,15 @@ class State:
                 if k.startswith("autotarget_") and k[len("autotarget_"):] in outrider.target.DEFAULTS}
 
     def autotarget_info(self):
-        """The Plot Route tab's auto-target block (in the payload, so the result shows as it comes)."""
+        """The Plot Route tab's auto-target block (in the payload, so the result shows as it comes). sequence: the
+        galaxy map's steps and timings as configured, and defaults: outrider.target's own (Settings -> Auto-target, its
+        ↺ default), whether or not the targeter can run here."""
         cfg, t, h = self.highway_cfg, self.targeter, self.honker
-        info = {"enabled": bool(cfg["autotarget"]), "delay": cfg["autotarget_delay"], "entry": cfg.get("autotarget_entry"),
+        keys = ("search", "submit", "plot", "map_wait", "search_wait", "key_delay", "entry")
+        own = lambda v: list(v) if isinstance(v, list) else v   # copies: the payload never shares the module's lists
+        info = {"sequence": {k: own(cfg.get("autotarget_" + k, outrider.target.DEFAULTS[k])) for k in keys},
+                "defaults": {k: own(outrider.target.DEFAULTS[k]) for k in keys},
+                "enabled": bool(cfg["autotarget"]), "delay": cfg["autotarget_delay"], "entry": cfg.get("autotarget_entry"),
                 "dry_run": bool(cfg.get("autotarget_dry_run")), "available": bool(t and t.available),
                 "last": self.autotarget_last, "test": self.autotarget_test, "running": self.autotarget_running is not None,
                 "missing": [], "steps": [], "countdown": self.autotarget_test_countdown,

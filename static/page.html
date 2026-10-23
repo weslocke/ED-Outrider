@@ -430,9 +430,9 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="hint">The keys go to the window that has focus: Outrider brings the game to the front first where it can
         (wmctrl on Linux) and then presses no key unless Elite is the active window (the line above says whether it can). Stay in the game until it is done. It opens the galaxy map,
         searches for the next system, plots the route, closes the map and checks the target in Status.json; it stops if
-        anything else opens, a step takes too long or you jump. The plot-route keys must be confirmed in game
-        ([highway] autotarget_plot). Results are spoken under "Auto-target" in Settings.</div>
-      <details id="hwyAutoStepsBox"><summary>the steps, with your keys</summary><ul id="hwyAutoSteps"></ul></details>
+        anything else opens, a step takes too long or you jump. Its galaxy map steps, with your keys, are in
+        <a href="#" id="hwyAutoStepsLink">Settings → Auto-target</a> (every target button <span class="mk mk-destination mkg" aria-hidden="true"></span> uses them). Results are spoken under
+        "Auto-target" in Settings → Alerts.</div>
     </details>
     <div id="hwyMapBox">
       <div id="hwyMapWrap"><canvas id="hwyCanvas" aria-label="the route on the galaxy, top down: X across, Z up (towards the galactic core)"></canvas>
@@ -731,6 +731,34 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="hint" id="autoHonkGroups" hidden><span id="autoHonkGroupsText"></span>
         <a href="#" id="autoHonkForget" title="clear what auto honk learned about this ship's fire groups">forget</a></div>
       <div class="hint" id="copilotLine" hidden></div>
+    </details>
+    <details class="setsec pcOnly" data-sec-key="autotarget" data-chip="Auto-target" id="atSettings"><summary>Auto-target <span class="sum-note">the galaxy map keys every target button presses</span></summary>
+      <div class="hint">Every target button <span class="mk mk-destination mkg" aria-hidden="true"></span> uses these steps (a bookmark's, Nearby's, Search's, the Map's, a checklist find's, the header's
+        next stop and the boxel's Next), and so do the co-pilot button's tap and the Highway's auto-target after a
+        supercharge (its switch and delay are in Plot Route). Opening the galaxy map, entering the name, closing the map
+        and checking the target are always done; the three parts below are yours to change. A saved change is used by the
+        next run: no restart needed.</div>
+      <div class="atsteps mod" data-find="highway.autotarget_search highway.autotarget_submit highway.autotarget_plot">
+    <label class="atstep"><span>2 · into the search field <button type="button" class="mini" data-atdef="search" title="put back Outrider's own steps (used once you save)">↺ default</button></span>
+      <textarea id="atSearch" data-at="search" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="one step per line"></textarea></label>
+    <label class="atstep"><span>4 · submit the search <button type="button" class="mini" data-atdef="submit" title="put back Outrider's own steps (used once you save)">↺ default</button></span>
+      <textarea id="atSubmit" data-at="submit" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="one step per line"></textarea></label>
+    <label class="atstep"><span>5 · plot the route <button type="button" class="mini" data-atdef="plot" title="put back Outrider's own steps (used once you save)">↺ default</button></span>
+      <textarea id="atPlot" data-at="plot" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="one step per line"></textarea></label>
+      </div>
+      <div class="hint">One step per line: <code>press UI_Select</code>, <code>hold UI_Select 1</code> (seconds, up to 10) or
+        <code>wait 0.5</code> (up to 30). A key is a control from your controls preset (UI_Up, UI_Down, UI_Select,
+        CamZoomOut…, in any case), <code>Enter</code>, <code>Paste</code>, or keyboard keys such as <code>KEY_LEFTALT+KEY_T</code>.</div>
+      <div data-find="highway.autotarget_entry highway.autotarget_map_wait highway.autotarget_search_wait highway.autotarget_key_delay" class="mod inlineopts">
+        <label title="type the name on the virtual keyboard (US layout), or paste it (the clipboard, then Ctrl+V)">the name <select id="atEntry"><option value="type">typed</option><option value="paste">pasted</option></select></label>
+        <label title="seconds to wait for the galaxy map to open (and close) before giving up (1 to 30)">map wait <input type="number" id="atMapWait" min="1" max="30" step="any" inputmode="decimal"> s</label>
+        <label title="seconds after submitting the search for the map to fly to the system (0 to 30)">search wait <input type="number" id="atSearchWait" min="0" max="30" step="any" inputmode="decimal"> s</label>
+        <label title="seconds between typed characters (0 to 1)">key delay <input type="number" id="atKeyDelay" min="0" max="1" step="any" inputmode="decimal"> s</label></div>
+      <div class="btns"><button type="button" id="atSave" class="primary">Save the steps</button><span id="atMsg" class="hint" role="status"></span></div>
+      <div id="atMissing" class="warnc" hidden></div>
+      <details id="atStepsBox"><summary>the whole sequence, with your keys</summary><ul id="atSteps"></ul></details>
+      <div class="srow"><button type="button" class="try" id="atTest" title="one run against the nearest known system a plain jump away (no route needed): Outrider brings the game to the front where it can, else 5 seconds from now: click into the game meanwhile">▶ test now</button>
+        <span id="atTestMsg" role="status"></span></div>
     </details>
     <details class="setsec" data-sec-key="uploads" data-chip="Uploads"><summary>Uploads <span class="sum-note">EDDN, EDSM and Inara: send what you find, keep your profiles current (off by default)</span></summary>
       <div id="uploadsBox"></div>

@@ -4110,7 +4110,7 @@ const releasePayloads = async () => {
     got.off = [d.getElementById("hwyAutoOn").checked, d.getElementById("hwyAutoDelay").value, txt("hwyAutoState")];
     got.last = txt("hwyAutoLast");
     got.missing = [d.getElementById("hwyAutoMissing").hidden, txt("hwyAutoMissing")];
-    got.steps = d.querySelectorAll("#hwyAutoSteps li").length;
+    got.steps = [d.querySelectorAll("#atSteps li").length, !d.getElementById("hwyAutoSteps"), !!d.getElementById("hwyAutoStepsLink")];   // the steps: in Settings now
     got.hint = /keys go to the window that has focus: Outrider brings the game to the front first/.test(txt("hwyAuto"));
     const on = d.getElementById("hwyAutoOn");
     on.checked = true; on.dispatchEvent(new w.Event("change")); await sleep(150);
@@ -4135,7 +4135,7 @@ const releasePayloads = async () => {
     if (JSON.stringify(got.off) !== JSON.stringify([false, "5", "· off"])) bad.push("off");
     if (!/^Last: failed at step 1 \(open the galaxy map\): the galaxy map did not open · Hwy Stop 38 · \d\d:\d\d$/.test(got.last)) bad.push("last");
     if (!(got.missing[0] === false && /UI_Right: UI Right has no keyboard binding/.test(got.missing[1]))) bad.push("missing");
-    if (got.steps !== 2 || !got.hint) bad.push("steps");
+    if (JSON.stringify(got.steps) !== "[2,true,true]" || !got.hint) bad.push("steps");
     if (JSON.stringify(got.posts) !== JSON.stringify(['{"enabled":true}', '{"delay":7.5}'])) bad.push("posts");
     if (JSON.stringify(got.onNow) !== JSON.stringify([true, 7.5])) bad.push("onNow");
     if (got.refused !== "cannot test: the galaxy map is open (the cockpit must have focus)") bad.push("refused");
@@ -4146,6 +4146,70 @@ const releasePayloads = async () => {
     allOk = allOk && goodAT;
     console.log(goodAT ? "OK" : "FAIL", "| highway auto-target box |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "toggle and delay posted (a bad delay refused here), test refused in its words, countdown, done, last result, missing bindings, steps", errors.slice(before));
+    await releasePayloads();
+  }
+  // Settings -> Auto-target (discussion #12): the galaxy map's steps and timings drawn from data.autotarget.sequence, ↺ default
+  // from its defaults, Save sends only the changed keys to POST api/config, a refusal shows the server's words and keeps
+  // what was typed (a payload meanwhile does not overwrite it), an empty part is refused here, ▶ test now starts the
+  // same test as Plot Route's. Every request is answered here: nothing reaches the server
+  {
+    holdPayloads();
+    const w = dom.window, before = errors.length, realFetch = w.fetch, posts = [], got = {};
+    const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
+    const seq = {search: ["hold CamYawRight 0.3", "press UI_Up", "press UI_Select"], submit: ["wait 1.5", "press Enter", "wait 0.5", "press Enter"],
+      plot: ["hold CamZoomOut 0.2", "hold UI_Select 1"], map_wait: 5, search_wait: 2, key_delay: 0.05, entry: "type"};
+    const at = {enabled: false, delay: 5, available: true, status: "off", running: false, test: null, last: null, missing: [],
+      steps: ["1 open the galaxy map: press Left Alt + Right Alt + T", "5 plot the route: hold Space for 1 s", "7 check the target: Status.json Destination must be the next system"],
+      sequence: Object.assign({}, seq, {plot: ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Select"]}), defaults: seq};
+    let answer = () => json({error: "[highway] autotarget_submit 'pres UI_Down' is not a step (use \"press UI_Select\", \"hold UI_Select 1\" or \"wait 0.5\")"}, 400);
+    w.fetch = (u, o) => {
+      const url = String(u);
+      if (url === "api/config" && o && o.method === "POST") { posts.push(JSON.parse(o.body)); return answer(); }
+      if (url === "api/highway/autotarget/test") { posts.push("test"); return json({error: "the galaxy map is open (the cockpit must have focus)"}, 400); }
+      return realFetch(u, o);
+    };
+    const saved = w.eval("JSON.stringify(data.autotarget || null)");
+    w.eval(`data.autotarget = ${JSON.stringify(at)}; drawAtSet()`);
+    const val = id => d.getElementById(id).value, txt = id => d.getElementById(id).textContent.replace(/\s+/g, " ").trim();
+    const type = (id, v) => { const el = d.getElementById(id); el.value = v; el.dispatchEvent(new w.Event("input")); };
+    got.drawn = [val("atSearch"), val("atPlot"), val("atMapWait"), val("atEntry"), d.querySelectorAll("#atSteps li").length,
+      d.getElementById("atSettings").classList.contains("pcOnly"), /every target button/.test(d.querySelector("#atSettings > summary").textContent)];
+    d.getElementById("atSave").click(); await sleep(100);
+    got.nothing = [txt("atMsg"), posts.length];
+    type("atSubmit", "wait 1.5\npress Enter\npres UI_Down");
+    d.getElementById("atSave").click(); await sleep(150);
+    w.eval(`data.autotarget = Object.assign({}, data.autotarget); drawAtSet()`);   // a payload meanwhile
+    got.refused = [txt("atMsg"), val("atSubmit"), JSON.stringify(posts[0])];
+    answer = () => json({ok: true, changed: 2, restart: false, live: ["highway.autotarget_plot", "highway.autotarget_submit"]});
+    d.querySelector('[data-atdef="plot"]').click();
+    type("atSubmit", "wait 1.5\n press Enter \n\nwait 0.5\npress UI_Down\npress UI_Select");
+    d.getElementById("atSave").click(); await sleep(150);
+    got.saved = [txt("atMsg"), JSON.stringify(posts[1]), w.eval("JSON.stringify(data.autotarget.sequence.plot)"),
+      d.getElementById("atPlot").dataset.dirty || "", d.getElementById("atSubmit").dataset.dirty || ""];
+    type("atSearch", "  \n ");
+    d.getElementById("atSave").click(); await sleep(100);
+    got.empty = [txt("atMsg"), posts.length];
+    type("atSearch", seq.search.join("\n"));
+    d.getElementById("atTest").click(); await sleep(150);
+    got.test = [posts[posts.length - 1], txt("atTestMsg")];
+    w.fetch = realFetch;
+    for (const id of ["atSearch", "atSubmit", "atPlot"]) d.getElementById(id).dataset.dirty = "";
+    w.eval(`data.autotarget = ${saved}; hwyRun = null`);
+    const want = {
+      drawn: [seq.search.join("\n"), "hold CamZoomOut 0.2\npress UI_Right\npress UI_Select", "5", "type", 3, true, true],
+      nothing: ["nothing changed", 0],
+      refused: ["Not saved: [highway] autotarget_submit 'pres UI_Down' is not a step (use \"press UI_Select\", \"hold UI_Select 1\" or \"wait 0.5\")",
+        "wait 1.5\npress Enter\npres UI_Down", JSON.stringify({highway: {autotarget_submit: "wait 1.5\npress Enter\npres UI_Down"}})],
+      saved: ["Saved in the config file ([highway] autotarget_*): the next run uses it",
+        JSON.stringify({highway: {autotarget_submit: "wait 1.5\n press Enter \n\nwait 0.5\npress UI_Down\npress UI_Select", autotarget_plot: "hold CamZoomOut 0.2\nhold UI_Select 1"}}),
+        JSON.stringify(seq.plot), "", ""],
+      empty: ["Not saved: each part needs at least one step (↺ default puts back Outrider's own)", 2],
+      test: ["test", "cannot test: the galaxy map is open (the cockpit must have focus)"]};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const goodAS = !bad.length && errors.length === before;
+    allOk = allOk && goodAS;
+    console.log(goodAS ? "OK" : "FAIL", "| settings auto-target |", goodAS ? "steps and timings drawn, ↺ default, only changes saved, a refusal in the server's words keeps the text, an empty part refused, test now" :
+      `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`, errors.slice(before));
     await releasePayloads();
   }
   // review batch 6 on the page: Here follows the in-game target without a scan (F4); the fuel tile when the first
@@ -4406,7 +4470,7 @@ const releasePayloads = async () => {
     const want = {colony: [500, null, " · 1,000 m"], sortTh: ["dist", "grav", "now", "max"], sortCycle: ["dist", "-dist rev", "max"],
       nearCycle: ["value", "-value", "distance"], treeSort: "max", halves: [true, true, true], halvesOff: false, matRow: true, link: ["linked", "linked"],
       nogame: ["linked · no game", "linked"], stale: ["unlinked · retrying", "stale"], none: ["unlinked · retrying", "none"], pill: true,
-      chips: ["Alerts", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Auto honk", "Uploads", "In-game overlay", "Display", "Sharing", "Voice", "Server", "Spoken lines", "Questions asked"],
+      chips: ["Alerts", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Auto honk", "Auto-target", "Uploads", "In-game overlay", "Display", "Sharing", "Voice", "Server", "Spoken lines", "Questions asked"],
       autoSmall: true, autoBig: false, line: true, cut: true};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodB12 = !bad.length && errors.length === before;
@@ -5159,10 +5223,10 @@ const releasePayloads = async () => {
     await sleep(100);
     got.push(w.eval(`JSON.stringify(Object.values(JSON.parse(localStorage.getItem("settingsOpen"))).some(Boolean))`));
     w.eval(`document.getElementById("alertDialog").close ? document.getElementById("alertDialog").close() : document.getElementById("alertDialog").removeAttribute("open")`);
-    const want = ["Settings", true, 15, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, autohonk: {enabled: true}}), "false"];
+    const want = ["Settings", true, 16, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, autohonk: {enabled: true}}), "false"];
     const goodS = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodS;
-    console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "12 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
+    console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "16 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
   }
   // Plot Route: Clear route while a survey or trade plot runs into an empty slot stops that plot (it cleared the Highway)
   {

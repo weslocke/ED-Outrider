@@ -1309,6 +1309,12 @@ body.app #hwyPanes.noroute #hwyAuto { grid-row: 3; align-self: start; }
 #srvRestartMsg.warnc { color: var(--warn); } .updline .try { margin-left: 6px; font-weight: 400; }
 /* Settings -> Auto honk's readiness (S69): each check ✓ or ✗, a failed one's fix with its commands and Copy */
 .honkready { margin: 4px 0 8px; font-size: 13px; }
+/* Settings -> Auto-target: the three step lists side by side, one under another on a narrow screen */
+.atsteps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin: 6px 0; }
+.atstep { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.atstep textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; resize: vertical; }
+#atSettings .inlineopts input[type=number] { width: 4.5em; }
+#atSteps { margin: 4px 0; padding-left: 18px; font-size: 12px; }
 .honkready .hrhead { font-weight: 600; } .honkready .hrhead.ok { color: var(--good); } .honkready .hrhead.no { color: var(--warn); }
 .honkready .hrok { color: var(--good); } .honkready .hrno { color: var(--warn); }
 .honkready .hrfix { margin: 4px 0 0 12px; color: var(--muted); }

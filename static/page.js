@@ -7516,14 +7516,13 @@ function drawHwyAuto() {
   const miss = hEl("hwyAutoMissing"), m = a.missing || [];
   miss.hidden = !m.length;
   miss.textContent = m.length ? "Missing keyboard bindings (auto-target will not run): " + m.map(x => `${x.key}: ${x.why}`).join("; ") : "";
-  const steps = (a.steps || []).map(x => `<li>${esc(x)}</li>`).join("");   // "5 plot the route: hold …": the step numbers results use
-  if (hEl("hwyAutoSteps").innerHTML !== steps) hEl("hwyAutoSteps").innerHTML = steps;
   const fr = a.front, frEl = hEl("hwyAutoFront");
   frEl.textContent = !fr ? "" : fr.front ? "Brings the game to the front itself: no countdown, and no key unless Elite is the active window."
     : `Does not bring the game to the front (${fr.why || "?"}): click into the game during the countdown.`;
   frEl.className = fr && !fr.front ? "warnc" : "unk";
   hwyRunTrack();
   hEl("hwyAutoTestMsg").textContent = hwyRun ? hwyRun.msg : "";
+  drawAtSet();   // Settings -> Auto-target's steps and its test follow the same run
 }
 // the outcome of this page's run comes back in the payload (every render: the line's button follows it too)
 function hwyRunTrack() {
@@ -7582,6 +7581,70 @@ hEl("hwyAutoDelay").onchange = () => {
   hwyAutoSet({delay: v});
 };
 hEl("hwyAutoTest").onclick = () => hwyAutoStart("test");
+hEl("hwyAutoStepsLink").onclick = e => { e.preventDefault(); openSettingsSection("autotarget"); };
+// ---- Settings -> Auto-target (discussion #12, Kurbo26): the galaxy map's steps every 🎯 presses, [highway]
+// autotarget_search / _submit / _plot and the timings, saved into the config file (POST api/config; LIVE_CONFIG: the
+// next run uses them). Filled from data.autotarget's `sequence`, ↺ default from its `defaults` (outrider.target's own);
+// a field the player changed keeps what they typed until it is saved, and after a refusal too
+const AT_FIELDS = {search: "atSearch", submit: "atSubmit", plot: "atPlot", entry: "atEntry", map_wait: "atMapWait",
+                   search_wait: "atSearchWait", key_delay: "atKeyDelay"};
+const AT_LISTS = ["search", "submit", "plot"];
+const atText = (k, v) => AT_LISTS.includes(k) ? (v || []).join("\n") : String(v ?? "");
+function drawAtSet() {
+  const a = data && data.autotarget, seq = a && a.sequence;
+  if (!a) return;
+  for (const [k, id] of Object.entries(AT_FIELDS)) {
+    const el = hEl(id);
+    if (seq && !el.dataset.dirty && document.activeElement !== el) el.value = atText(k, seq[k]);
+  }
+  const steps = (a.steps || []).map(x => `<li>${esc(x)}</li>`).join("");   // "5 plot the route: hold …": the step numbers results use
+  if (hEl("atSteps").innerHTML !== steps) hEl("atSteps").innerHTML = steps;
+  hEl("atStepsBox").hidden = !steps;   // nothing to show where the keyboard cannot be used
+  const m = a.missing || [], miss = hEl("atMissing");
+  miss.hidden = !m.length;
+  miss.textContent = m.length ? "Missing keyboard bindings (nothing will be pressed): " + m.map(x => `${x.key}: ${x.why}`).join("; ") : "";
+  hEl("atTest").disabled = !a.available || !!a.running || !!(a.test && ["counting", "running"].includes(a.test.state));
+  hEl("atTestMsg").textContent = hwyRun && hwyRun.kind === "test" ? hwyRun.msg : "";
+}
+for (const id of Object.values(AT_FIELDS)) hEl(id).addEventListener("input", e => { e.target.dataset.dirty = "1"; });
+for (const id of ["atEntry", "atMapWait", "atSearchWait", "atKeyDelay"]) hEl(id).addEventListener("change", e => { e.target.dataset.dirty = "1"; });
+document.querySelectorAll("[data-atdef]").forEach(b => b.onclick = () => {
+  const k = b.dataset.atdef, d = data && data.autotarget && data.autotarget.defaults, el = hEl(AT_FIELDS[k]);
+  if (!d) return;
+  el.value = atText(k, d[k]); el.dataset.dirty = "1";
+  hEl("atMsg").textContent = "Outrider's own steps put back: Save the steps to use them"; hEl("atMsg").className = "hint";
+});
+async function atSave() {
+  const a = data && data.autotarget, seq = a && a.sequence, msg = hEl("atMsg"), out = {}, sent = {};
+  const say = (t, bad) => { msg.textContent = t; msg.className = bad ? "hint warnc" : "hint"; };
+  if (!seq) return;
+  for (const [k, id] of Object.entries(AT_FIELDS)) {
+    const el = hEl(id);
+    if (!el.dataset.dirty) continue;
+    let v = el.value;
+    if (AT_LISTS.includes(k)) {
+      const lines = v.split("\n").map(x => x.trim()).filter(Boolean);
+      if (!lines.length) { say("Not saved: each part needs at least one step (↺ default puts back Outrider's own)", true); return; }
+      sent[k] = lines;
+    } else if (k !== "entry") {
+      v = Number(v);
+      if (el.value.trim() === "" || !isFinite(v)) { say("Not saved: the waits are numbers of seconds", true); return; }
+      sent[k] = v;
+    } else sent[k] = v;
+    out["autotarget_" + k] = v;
+  }
+  if (!Object.keys(out).length) { say("nothing changed"); return; }
+  let r;
+  try { r = await apiJson("api/config", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({highway: out})}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  r = r || {error: "?"};
+  if (r.error) { say(`Not saved: ${r.error}`, true); return; }   // what was typed stays, to be corrected
+  for (const k of Object.keys(sent)) { hEl(AT_FIELDS[k]).dataset.dirty = ""; seq[k] = sent[k]; }
+  say("Saved in the config file ([highway] autotarget_*): the next run uses it");
+  drawAtSet();   // the steps with your keys follow in the next payload
+}
+hEl("atSave").onclick = atSave;
+hEl("atTest").onclick = () => hwyAutoStart("test");
 // Target next, on the line, in the box and as a row's Retry: before the page's other click handlers (the line opens
 // the tab, a row's name copies)
 document.addEventListener("click", e => {
@@ -9935,6 +9998,7 @@ function drawTts() {
   if (crewUi) { drawCrew(); drawVoiceMemory(); }
   drawSpeechBtn();
   drawHonk();
+  drawAtSet();
 }
 drawSpeechBtn();
 document.getElementById("ttsVoice").onchange = e => apiJson("api/voice", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({voice: e.target.value})});
