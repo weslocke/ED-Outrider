@@ -1283,6 +1283,7 @@ class HighwayH1(unittest.TestCase):
         bg = {"background_image": "", "background_extent": [-45000.0, 45000.0, -20000.0, 70000.0], "background_opacity": 0.6,
               "conservative": False, "conservative_ly": 5.0, "autotarget_entry": "type", "autotarget_map_wait": 5.0,
               "autotarget_search_wait": 2.0, "autotarget_key_delay": 0.05, "autotarget_step_pause": 0.25, "autotarget_keys": {},
+              "autotarget_target": list(outrider.target.DEFAULT_TARGET), "autotarget_route_target": True,
               "autotarget_plot": ["hold CamZoomOut 0.2", "hold UI_Select 1"],
               "autotarget_search": ["hold CamYawRight 0.3", "press UI_Up", "press UI_Select"],
               "autotarget_submit": ["wait 1.5", "press KEY_DOWN", "press UI_Select"], "autotarget_dry_run": False,
@@ -1929,6 +1930,64 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertAlmostEqual(self.state.autotarget_ly({"id64": 102}), math.dist((p["x"], p["y"], p["z"]), (400, 0, 0)))
         self.assertIsNone(self.state.autotarget_ly({"id64": 999}))
 
+    def test_a_one_jump_route_stop_is_targeted(self):
+        """Discussion #12: a route's next stop the route makes one jump is made the target through the system panel's
+        Target System icon (two UI_Rights, eight UI_Downs, UI_Select: checked in game by the author), not plotted: a
+        route the game's planner plots there can be several jumps (Use Jet-Cone Boost off: six for one supercharged)."""
+        self.fake_time()
+        self.assertEqual(self.T.DEFAULT_TARGET[1:3], ("press UI_Right", "press UI_Right"))
+        self.assertEqual(self.T.DEFAULT_TARGET.count("press UI_Down"), self.game.TARGET_ICON)
+        self.game.no_plot = True                                         # only the icon can do it
+        r = self.run_target(one_jump=True)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual((r["mode"], self.status["destination"]["System"]), ("target", 102))
+        self.assertTrue(any("5 target the system: press D" in x for x in r["log"]), r["log"])
+        # any other 🎯 (not one jump): plotted, as before
+        self.status["gui_focus"], self.status["destination"], self.game.no_plot = 0, None, False
+        r = self.run_target()
+        self.assertEqual((r["ok"], r["mode"]), (True, "plot"))
+
+    def test_a_one_jump_stop_must_be_the_target_itself(self):
+        """The stricter check (discussion #12): plotted (route_target off), a one-jump stop the game routed through
+        another system fails, saying the fix; any other 🎯 still takes a plotted route ending at the system."""
+        self.fake_time()
+        self.targeter.configure({"route_target": False})
+        self.game.plot_to = 777                                          # the game's route: its first hop is elsewhere
+        route_end = lambda: 102                                          # and NavRoute.json ends at the stop
+        r = self.run_target(one_jump=True, route_end=route_end)
+        self.assertEqual((r["ok"], r["code"], r["mode"]), (False, "multi", "plot"))
+        self.assertIn("tick Use Jet-Cone Boost in the galaxy map's Route Settings", r["why"])
+        self.assertIn("Bridge B", r["why"])
+        self.status["gui_focus"], self.status["destination"] = 0, None
+        r2 = self.run_target(route_end=route_end)                       # a far 🎯: a route there counts, as before
+        self.assertEqual(r2["code"], "already")
+        # a route already plotted there is not "already the target" for a one-jump stop
+        self.status["gui_focus"], self.status["destination"] = 0, {"System": 777, "Name": "Hop", "Body": 0}
+        self.targeter.configure({"route_target": True})
+        r = self.run_target(one_jump=True, route_end=route_end)
+        self.assertEqual((r["ok"], r["code"], self.status["destination"]["System"]), (True, None, 102))
+
+    def test_target_steps_without_their_keys_plot_instead(self):
+        """The Target System icon needs UI_Right and UI_Down on keys: where a target step's control is not bound, the
+        one-jump stop is plotted after all (said in the log) rather than nothing being done."""
+        self.fake_time()
+        self.targeter.configure({"target": ["press CamTranslateLeft", "press UI_Select"]})   # not bound in this preset
+        r = self.run_target(one_jump=True)
+        self.assertEqual((r["ok"], r["mode"]), (True, "plot"))
+        self.assertTrue(any("CamTranslateLeft" in x and "plotting instead" in x for x in r["log"]), r["log"])
+
+    def test_which_route_stops_are_one_jump(self):
+        """The route's own row decides (never a range Outrider works out): a Highway row of one jump (the exact
+        plotter's every row) is one jump, a neutron plotter's row of several is not; a system's 🎯 never is."""
+        hwy_plot_exact(self)
+        tgt, _ = self.state.autotarget_target(manual=True)
+        self.assertTrue(tgt["one_jump"])
+        self.db.execute("UPDATE highway_route SET jumps = 3 WHERE idx = ?", (tgt["index"],))   # a neutron plotter's row
+        self.j._hw_rows = (None, [])                                     # the rows are cached per plot
+        self.assertFalse(self.state.route_target("highway", tgt["index"])[0]["one_jump"])
+        self.state.map_cache[(self.j.pos["id64"], 50)] = ({555: {"name": "Far", "x": 900, "y": 0, "z": 0}}, None)
+        self.assertNotIn("one_jump", self.state.route_target("system", 555)[0])
+
     def test_paste_entry(self):
         self.fake_time()
         self.targeter.configure({"entry": "paste"})
@@ -2048,7 +2107,7 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(info["status"], "not started")
         self.assertEqual(info["sequence"], {"search": list(self.T.DEFAULT_SEARCH), "submit": list(self.T.DEFAULT_SUBMIT),
                                             "plot": ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Select"],
-                                            "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0.05, "step_pause": 0.25, "entry": "type"})
+                                            "target": list(self.T.DEFAULT_TARGET), "route_target": True, "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0.05, "step_pause": 0.25, "entry": "type"})
         self.assertEqual((info["defaults"]["search"], info["defaults"]["submit"], info["defaults"]["plot"]),
                          (list(self.T.DEFAULT_SEARCH), list(self.T.DEFAULT_SUBMIT), list(self.T.DEFAULT_PLOT)))
         info["defaults"]["plot"].append("press Enter")   # a copy: the module's defaults stay as they are
@@ -2342,8 +2401,8 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual((last["system"], last["done"]), ("Bridge B", True))
         self.assertEqual(self.moments(), [(True, "Successfully targeted neutron jump target Bridge B")])
         self.assertEqual(self.status["destination"]["System"], 102)
-        # a failure says so (the plot keys did nothing)
-        self.game.no_plot, self.status["destination"] = True, None
+        # a failure says so (neither the plot nor the Target System icon did anything: the stop is one jump, so targeted)
+        self.game.no_plot, self.game.TARGET_ICON, self.status["destination"] = True, 99, None
 
         async def again():
             self.j.handle({"event": "JetConeBoost", "timestamp": self.ts(3), "BoostValue": 4})

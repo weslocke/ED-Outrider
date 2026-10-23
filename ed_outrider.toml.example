@@ -218,6 +218,12 @@
 #                                          # zoom gives the focus back to the map (a turn could swing the cursor onto
 #                                          # a neighbouring star), then UI_Select held plots it;
 #                           # "press <key>", "hold <key> <seconds>", "wait <seconds>"
+# autotarget_target = ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Right", "press UI_Down", ...8 in all, "press UI_Select"]
+#                           # instead of plotting: the system panel's Target System icon (two Rights reach the
+#                           # icon column, eight Downs reach the icon), for a route's next stop one jump away
+# autotarget_route_target = true   # target a route's next stop the route makes one jump instead of plotting a route
+#                           # to it (a plotted route ignores the supercharge with Use Jet-Cone Boost off)
+# autotarget_step_pause = 0.25   # seconds after each key of the steps (the map can miss a key pressed straight after another)
 # autotarget_dry_run = false   # only log the steps it would take (nothing is pressed)
 # efficiency = 60           # the neutron plotter's efficiency (%, 1 to 100): lower goes further out of its way
 #                           # for neutron stars

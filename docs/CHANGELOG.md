@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Auto-target: a route's next stop is targeted, not plotted
+- From discussion #12 (Kurbo26) and the author's checks in game: plotting leaves the route to the game's planner,
+  and with **Use Jet-Cone Boost** off in its Route Settings it ignores the supercharge (six jumps to a Highway stop
+  the supercharged jump reaches; one with it on).
+  - **Target a route's next stop instead of plotting a route to it** (Settings → Auto-target, on to start;
+    `[highway] autotarget_route_target`): when the route makes the stop one jump (the Highway's, Road to Riches',
+    Exomastery's, a sweep's), it is made the target with the system panel's **Target System** icon, in its own box,
+    **5 · target the system** (`autotarget_target`: two UI_Rights, eight UI_Downs, UI_Select, with the pause
+    between keys). Every other 🎯 plots as before: a far system needs a route.
+  - **A one-jump stop must end up the target itself**: a longer route the game plotted there fails, saying "tick Use
+    Jet-Cone Boost in the galaxy map's Route Settings", where it used to count as targeted.
+  - Without UI_Right or UI_Down on a keyboard key, the stop is plotted after all.
+- The Macro cheatsheet has the fourth box; the Plot Route guide the Jet-Cone Boost tip.
+
 ## 2026-10-23 · Auto-target: a pause between keys, a longer search wait for far systems
 - From the author's in-game runs for discussion #12 (targeting a Highway stop through the system panel's icons):
   - **Pause between keys** (Settings → Auto-target, `[highway] autotarget_step_pause`, 0.25 s): after every key of

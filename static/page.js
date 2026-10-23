@@ -7912,16 +7912,18 @@ hEl("hwyAutoStepsLink").onclick = e => { e.preventDefault(); openSettingsSection
 // autotarget_search / _submit / _plot and the timings, saved into the config file (POST api/config; LIVE_CONFIG: the
 // next run uses them). Filled from data.autotarget's `sequence`, ↺ default from its `defaults` (outrider.target's own);
 // a field the player changed keeps what they typed until it is saved, and after a refusal too
-const AT_FIELDS = {search: "atSearch", submit: "atSubmit", plot: "atPlot", entry: "atEntry", map_wait: "atMapWait",
+const AT_FIELDS = {search: "atSearch", submit: "atSubmit", plot: "atPlot", target: "atTarget", route_target: "atRouteTarget", entry: "atEntry", map_wait: "atMapWait",
                    search_wait: "atSearchWait", key_delay: "atKeyDelay", step_pause: "atStepPause"};
-const AT_LISTS = ["search", "submit", "plot"];
+const AT_LISTS = ["search", "submit", "plot", "target"];
 const atText = (k, v) => AT_LISTS.includes(k) ? (v || []).join("\n") : String(v ?? "");
 function drawAtSet() {
   const a = data && data.autotarget, seq = a && a.sequence;
   if (!a) return;
   for (const [k, id] of Object.entries(AT_FIELDS)) {
     const el = hEl(id);
-    if (seq && !el.dataset.dirty && document.activeElement !== el) el.value = atText(k, seq[k]);
+    if (seq && !el.dataset.dirty && document.activeElement !== el) {
+      if (el.type === "checkbox") el.checked = !!seq[k]; else el.value = atText(k, seq[k]);
+    }
   }
   const steps = (a.steps || []).map(x => `<li>${esc(x)}</li>`).join("");   // "5 plot the route: hold …": the step numbers results use
   if (hEl("atSteps").innerHTML !== steps) hEl("atSteps").innerHTML = steps;
@@ -7933,7 +7935,7 @@ function drawAtSet() {
   hEl("atTestMsg").textContent = hwyRun && hwyRun.kind === "test" ? hwyRun.msg : "";
 }
 for (const id of Object.values(AT_FIELDS)) hEl(id).addEventListener("input", e => { e.target.dataset.dirty = "1"; });
-for (const id of ["atEntry", "atMapWait", "atSearchWait", "atKeyDelay", "atStepPause"]) hEl(id).addEventListener("change", e => { e.target.dataset.dirty = "1"; });
+for (const id of ["atEntry", "atMapWait", "atSearchWait", "atKeyDelay", "atStepPause", "atRouteTarget"]) hEl(id).addEventListener("change", e => { e.target.dataset.dirty = "1"; });
 document.querySelectorAll("[data-atdef]").forEach(b => b.onclick = () => {
   const k = b.dataset.atdef, d = data && data.autotarget && data.autotarget.defaults, el = hEl(AT_FIELDS[k]);
   if (!d) return;
@@ -7952,6 +7954,8 @@ async function atSave() {
       const lines = v.split("\n").map(x => x.trim()).filter(Boolean);
       if (!lines.length) { say("Not saved: each part needs at least one step (↺ default puts back Outrider's own)", true); return; }
       sent[k] = lines;
+    } else if (el.type === "checkbox") {
+      v = el.checked; sent[k] = v;
     } else if (k !== "entry") {
       v = Number(v);
       if (el.value.trim() === "" || !isFinite(v)) { say("Not saved: the waits are numbers of seconds", true); return; }

@@ -20,7 +20,7 @@ class Cheatsheet(unittest.TestCase):
                                   "UI_Down": (None, "UI Down has no keyboard binding")})
         for name in T.ACTIONS + tuple(T.FIXED_KEYS):
             self.assertIn(f"<code>{name}</code>", page)
-        for step in T.DEFAULT_SEARCH + T.DEFAULT_SUBMIT + T.DEFAULT_PLOT:        # each box's default, as ↺ puts it
+        for step in T.DEFAULT_SEARCH + T.DEFAULT_SUBMIT + T.DEFAULT_PLOT + T.DEFAULT_TARGET:        # each box's default, as ↺ puts it
             self.assertIn(step, page)
         self.assertIn("<th>Your key</th>", page)
         self.assertIn("<td>Space</td>", page)

@@ -39,7 +39,12 @@ BOXES = (
      "list a moment after the name goes in: wait first."),
     ("plot", 5, "plot the route",
      "The map has flown to the system, but the focus is still in the search panel: a short camera move gives it back "
-     "to the map, then UI_Select held plots the route."),
+     "to the map, then UI_Select held plots the route. Used for every 🎯, and for a route's next stop when "
+     "\"Target a route's next stop\" is off."),
+    ("target", 5, "target the system",
+     "Instead of plotting, for a route's next stop the route makes one jump (with \"Target a route's next stop\" on): "
+     "from the map, two UI_Rights reach the system panel's icon column (one can stop at the system's details), "
+     "Target System is eight UI_Downs from its top."),
 )
 
 CSS = """
@@ -82,12 +87,13 @@ def key_names():
 
 
 def cheatsheet_html(binds=None):
-    defaults = {"search": target.DEFAULT_SEARCH, "submit": target.DEFAULT_SUBMIT, "plot": target.DEFAULT_PLOT}
+    defaults = {"search": target.DEFAULT_SEARCH, "submit": target.DEFAULT_SUBMIT, "plot": target.DEFAULT_PLOT,
+                "target": target.DEFAULT_TARGET}
     out = ["<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
            "<title>Auto-target steps: cheatsheet</title><style>", CSS, "</style></head><body>",
            "<h1>Auto-target steps: cheatsheet</h1>",
-           "<p class=\"muted\">What the three boxes of ⚙ Settings → Auto-target may say. Every 🎯 button, Target next, the "
+           "<p class=\"muted\">What the four boxes of ⚙ Settings → Auto-target may say. Every 🎯 button, Target next, the "
            "co-pilot button and the Highway's auto-target press these steps in the galaxy map. Opening the map, entering "
            "the name, closing the map and checking the target are always done by Outrider.</p>",
            "<h2>A step</h2><p>One per line, words in any case:</p><table><tr><th>Step</th><th>Does</th></tr>",
@@ -100,7 +106,7 @@ def cheatsheet_html(binds=None):
            "between keys. The search wait is at least 5 s for a system over 300 ly away.</p>"
            "<p>A <code>&lt;key&gt;</code> is a game control below (pressed with the keyboard key it is bound to in your "
            "controls), <code>Enter</code> or <code>Paste</code>, or keyboard keys by name.</p>",
-           "<h2>The three boxes</h2><div class=\"boxes\">"]
+           "<h2>The four boxes</h2><div class=\"boxes\">"]
     for key, phase, title, where in BOXES:
         out.append(f"<div class=\"box\"><h3>{phase} · {_e(title)}</h3><p>{where}</p><div class=\"muted\">Outrider's own "
                    f"(↺ default):</div><pre>{_e(chr(10).join(defaults[key]))}</pre></div>")

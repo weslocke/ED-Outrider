@@ -570,6 +570,17 @@ upstream project's choices, not rules of the game.
   search wait: over 300 ly it is at least 5 s, from the distance Outrider knows before the run starts. "key delay"
   became "typing delay": it is only ever between typed characters, and a player who pastes had set it to 1 s
   expecting it to pace the steps.
+  **A route's next stop one jump away is targeted, not plotted** (discussion #12, the author's checks in game,
+  2026-10-23). Plotting hands the route to the game's planner: with Use Jet-Cone Boost off in its Route Settings it
+  ignored the supercharge and gave six jumps to a stop the supercharged jump reaches (on: one); Kurbo26 saw a stop
+  added with it on. There is no key for "target": the system panel's Target System icon is reached by keys (two
+  UI_Rights, one can stop at the system's details; eight UI_Downs), so it is its own box and its own default. Which
+  stops: the ones the route's own row makes one jump (`jumps` == 1: every exact-plotter row, a neutron-plotter or
+  survey row of one), never by a range Outrider would estimate (at the edge of the range a wrong guess is a target you
+  cannot jump to), never a trade hop (no jumps), never any other 🎯 (a far bookmark needs a route; even supercharged).
+  On by default: it does not depend on the player's Route Settings. Two guards: a one-jump stop must end up the
+  target itself (no NavRoute-end shortcut, in the "already" check too), so a miscounted icon or a multi-jump plot
+  fails with its fix said; and without UI_Right / UI_Down on keyboard keys the stop is plotted after all.
   **The steps have their own Settings section, not a place in Plot Route** (discussion #12, the author, 2026-10-23):
   one sequence serves every 🎯 (bookmarks, Nearby, Search, the Map, the co-pilot button) as well as the Highway, so
   editing it in the Highway's box would read as Highway-only. One shared sequence, not one per use, until a test in game

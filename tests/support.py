@@ -345,9 +345,13 @@ class FakeGame:
     control is a letter there too), its results list SUGGEST_S after the last change; Enter then selects the one
     result, but with several (every system whose name starts with the text: "Sol", "Solati") only leaves the box
     (found in game 2026-10-23); the down arrow highlights the first result (the whole name's system first) and Space
-    then picks it (an Enter or arrow before then does nothing), Space held 0.5 s plots the route
+    then picks it (an Enter or arrow before then does nothing), Space held 0.5 s plots the route; or, the map's
+    focus back after a found system, D (UI_Right) twice reaches the system panel's icon column (once: its details),
+    S (UI_Down) goes down it, and Space on the ninth icon, Target System, makes the found system the target
+    (discussion #12, the author's checks in game)
     to the system found), writing Status.json's fields into `status`. Nothing reaches a real device."""
     REVERSE = None
+    TARGET_ICON = 8   # Target System: eight UI_Downs from the top of the icon column
     SUGGEST_S = 0.15   # s after the name changes before the search lists its suggestion (Enter selects nothing sooner)
 
     def __init__(self, evdev, status, systems=None):
@@ -360,6 +364,7 @@ class FakeGame:
         self.down, self.writes, self.closed = set(), [], False
         self.tab, self.focused, self.text, self.found, self.select_at = 0, False, "", None, None
         self.search_lit, self.map_focus, self.lit = False, False, None
+        self.panel, self.icon = 0, 0   # the system panel: 0 the map, 1 its details, 2 its icon column (icon: from the top)
         self.clipboard, self.text_at = None, 0.0
         # misbehaviours for the abort paths
         self.ignore_open = self.ignore_close = self.no_plot = False
@@ -393,7 +398,7 @@ class FakeGame:
                     self.on_close(self)
             elif not st.get("gui_focus") and not self.ignore_open:
                 st["gui_focus"], self.tab, self.focused, self.text, self.found = 6, 0, False, "", None
-                self.search_lit, self.lit = False, None
+                self.search_lit, self.lit, self.panel, self.icon = False, None, 0, 0
             return
         if st.get("gui_focus") != 6 or name.endswith(("ALT", "SHIFT", "CTRL")) or name == "KEY_COMPOSE":   # modifiers
             return
@@ -419,11 +424,24 @@ class FakeGame:
                     self.on_type(self)
             return
         if name == "KEY_X" and {"KEY_LEFTALT", "KEY_RIGHTSHIFT"} <= self.down:   # the camera turns: focus to the map
-            self.map_focus = True
+            self.map_focus, self.panel = True, 0
             return
         if name == "KEY_2" and {"KEY_RIGHTALT", "KEY_COMPOSE"} <= self.down:   # the camera zooms: focus to the map too
-            self.map_focus = True
+            self.map_focus, self.panel = True, 0
             return
+        if self.found is not None and (self.map_focus or self.panel):   # the system panel of the found system
+            if name == "KEY_D":   # the column is entered at its top; a Right there does nothing
+                if self.panel == 1:
+                    self.icon = 0
+                self.panel, self.map_focus = min(2, self.panel + 1), False
+                return
+            if name == "KEY_S" and self.panel == 2:
+                self.icon = min(12, self.icon + 1)
+                return
+            if name == "KEY_SPACE" and self.panel == 2:
+                if self.icon == self.TARGET_ICON:
+                    self.status["destination"] = {"System": self.found[1], "Body": 0, "Name": self.found[0]}
+                return
         if name in ("KEY_D", "KEY_A"):   # into / along the tab column (Trade Routes, Bookmarks...): not the search box
             self.tab, self.search_lit = 1, False
         elif name == "KEY_W":            # straight after opening: highlights "Search the Galaxy"

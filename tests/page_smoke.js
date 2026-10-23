@@ -4161,7 +4161,8 @@ const releasePayloads = async () => {
     const w = dom.window, before = errors.length, realFetch = w.fetch, posts = [], got = {};
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
     const seq = {search: ["hold CamYawRight 0.3", "press UI_Up", "press UI_Select"], submit: ["wait 1.5", "press Enter", "wait 0.5", "press Enter"],
-      plot: ["hold CamZoomOut 0.2", "hold UI_Select 1"], map_wait: 5, search_wait: 2, key_delay: 0.05, step_pause: 0.25, entry: "type"};
+      plot: ["hold CamZoomOut 0.2", "hold UI_Select 1"], target: ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Right", "press UI_Select"],
+      route_target: true, map_wait: 5, search_wait: 2, key_delay: 0.05, step_pause: 0.25, entry: "type"};
     const at = {enabled: false, delay: 5, available: true, status: "off", running: false, test: null, last: null, missing: [],
       steps: ["1 open the galaxy map: press Left Alt + Right Alt + T", "5 plot the route: hold Space for 1 s", "7 check the target: Status.json Destination must be the next system"],
       sequence: Object.assign({}, seq, {plot: ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Select"]}), defaults: seq};
@@ -4199,6 +4200,13 @@ const releasePayloads = async () => {
     type("atSearch", "  \n ");
     d.getElementById("atSave").click(); await sleep(100);
     got.empty = [txt("atMsg"), posts.length];
+    // discussion #12: the target box and the route-stop switch, drawn from the payload and saved like the rest
+    const rt = d.getElementById("atRouteTarget");
+    got.routeTarget = [val("atTarget").split("\n").length, rt.checked];
+    type("atSearch", seq.search.join("\n")); d.getElementById("atSearch").dataset.dirty = "";
+    rt.checked = false; rt.dispatchEvent(new w.Event("change"));
+    d.getElementById("atSave").click(); await sleep(150);
+    got.routeTarget.push(JSON.stringify(posts[posts.length - 1]));
     type("atSearch", seq.search.join("\n"));
     d.getElementById("atTest").click(); await sleep(150);
     got.test = [posts[posts.length - 1], txt("atTestMsg")];
@@ -4226,6 +4234,7 @@ const releasePayloads = async () => {
         JSON.stringify({highway: {autotarget_submit: "wait 1.5\n press Enter \n\nwait 0.5\npress UI_Down\npress UI_Select", autotarget_plot: "hold CamZoomOut 0.2\nhold UI_Select 1"}}),
         JSON.stringify(seq.plot), "", ""],
       empty: ["Not saved: each part needs at least one step (↺ default puts back Outrider's own)", 2],
+      routeTarget: [4, true, JSON.stringify({highway: {autotarget_route_target: false}})],
       test: ["test", "cannot test: the galaxy map is open (the cockpit must have focus)"],
       testSys: [["find Sol", {route: "system", id: "10477373803", test: true}], "cannot test: auto-target is already running"],
       cheat: ["help/autotarget", "_blank", "noopener", true],

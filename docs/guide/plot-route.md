@@ -208,6 +208,15 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
     `press KEY_DOWN` (the arrow key by name: into the results list, the first one highlighted) and `press UI_Select`
     (picks it and flies there); it works for a name with one result and for one with several (Sol, Solati…), where
     Enter only moves the focus out of the box.
+  - **A route's next stop is targeted, not plotted** (**Target a route's next stop instead of plotting a route to it**,
+    on to start), when the route makes it one jump: the Neutron Highway's (after a supercharge too), Road to Riches',
+    Exomastery's and a sweep's; never a trade route's hops, and never any other 🎯 (a far system needs a route). Its own
+    box, **5 · target the system**, presses the system panel's **Target System** icon: two UI_Rights reach the icon
+    column, eight UI_Downs reach the icon. Plotting leaves the route to the game's planner, and **with Use Jet-Cone
+    Boost off in the galaxy map's Route Settings it ignores your supercharge**: six jumps where the supercharged one
+    would do. If you switch targeting off, tick Use Jet-Cone Boost. Either way a one-jump stop must end up the target
+    itself: a longer route there fails, saying so, rather than "targeted". Where UI_Right or UI_Down has no keyboard
+    key, the stop is plotted.
   - **Macro cheatsheet ↗** at the top of the section opens, in a new tab, everything the boxes take: the commands, each
     game control with what it does in the galaxy map and (on the game PC) the key it is bound to, `Enter` and `Paste`,
     every keyboard key by name and the short forms (`KEY_` optional, any case, `alt`, `ctrl`, `shift`, `+` for keys

@@ -764,17 +764,25 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="hint">Every target button <span class="mk mk-destination mkg" aria-hidden="true"></span> uses these steps (a bookmark's, Nearby's, Search's, the Map's, a checklist find's, the header's
         next stop and the boxel's Next), and so do the co-pilot button's tap and the Highway's auto-target after a
         supercharge (its switch and delay are in Plot Route). Opening the galaxy map, entering the name, closing the map
-        and checking the target are always done; the three parts below are yours to change. A saved change is used by the
+        and checking the target are always done; the parts below are yours to change (a route's next stop one jump away is targeted rather than plotted: the switch under them). A saved change is used by the
         next run: no restart needed. <a id="atCheat" href="help/autotarget" target="_blank" rel="noopener"
         title="every command, game control, key name and alias the boxes take, with your own key for each control (a new tab)">Macro cheatsheet ↗</a></div>
-      <div class="atsteps mod" data-find="highway.autotarget_search highway.autotarget_submit highway.autotarget_plot">
+      <div class="atsteps mod" data-find="highway.autotarget_search highway.autotarget_submit highway.autotarget_plot highway.autotarget_target">
     <label class="atstep"><span>2 · into the search field <button type="button" class="mini" data-atdef="search" title="put back Outrider's own steps (used once you save)">↺ default</button></span>
       <textarea id="atSearch" data-at="search" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="one step per line"></textarea></label>
     <label class="atstep"><span>4 · submit the search <button type="button" class="mini" data-atdef="submit" title="put back Outrider's own steps (used once you save)">↺ default</button></span>
       <textarea id="atSubmit" data-at="submit" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="one step per line"></textarea></label>
     <label class="atstep"><span>5 · plot the route <button type="button" class="mini" data-atdef="plot" title="put back Outrider's own steps (used once you save)">↺ default</button></span>
       <textarea id="atPlot" data-at="plot" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="one step per line"></textarea></label>
+    <label class="atstep"><span>5 · target the system <button type="button" class="mini" data-atdef="target" title="put back Outrider's own steps (used once you save)">↺ default</button></span>
+      <textarea id="atTarget" data-at="target" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="one step per line"></textarea></label>
       </div>
+      <label class="mod" data-find="highway.autotarget_route_target"><input type="checkbox" id="atRouteTarget"> Target a route's next stop instead of plotting a route to it
+        <span class="hint">when the route makes it one jump (the Neutron Highway's, Road to Riches', Exomastery's: not a trade
+        route's hops). A plotted route is the game's own, and with Use Jet-Cone Boost off in its Route Settings it ignores
+        the supercharge (six jumps where one would do). Every other target button plots: a far system needs a route. Either way a
+        one-jump stop must end up the target itself, or the run says so. Uses UI_Right and UI_Down (plots instead where
+        they have no keyboard key)</span></label>
       <div class="hint">One step per line: <code>press UI_Select</code>, <code>hold UI_Select 1</code> (seconds, up to 10) or
         <code>wait 0.5</code> (up to 30). A key is a control from your controls preset (UI_Up, UI_Down, UI_Select,
         CamZoomOut…, in any case), <code>Enter</code>, <code>Paste</code>, or keyboard keys such as <code>KEY_LEFTALT+KEY_T</code>.</div>
@@ -783,7 +791,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <label title="seconds to wait for the galaxy map to open (and close) before giving up (1 to 30)">map wait <input type="number" id="atMapWait" min="1" max="30" step="any" inputmode="decimal"> s</label>
         <label title="seconds after submitting the search for the map to fly to the system (0 to 30; at least 5 for a system over 300 ly away, a longer flight)">search wait <input type="number" id="atSearchWait" min="0" max="30" step="any" inputmode="decimal"> s</label>
         <label title="seconds between the name's characters when it is typed (0 to 1; not used when it is pasted)">typing delay <input type="number" id="atKeyDelay" min="0" max="1" step="any" inputmode="decimal"> s</label>
-        <label title="seconds after each key of the three parts above (0 to 2): the galaxy map can miss a key pressed straight after another">pause between keys <input type="number" id="atStepPause" min="0" max="2" step="any" inputmode="decimal"> s</label></div>
+        <label title="seconds after each key of the parts above (0 to 2): the galaxy map can miss a key pressed straight after another">pause between keys <input type="number" id="atStepPause" min="0" max="2" step="any" inputmode="decimal"> s</label></div>
       <div class="btns"><button type="button" id="atSave" class="primary">Save the steps</button><span id="atMsg" class="hint" role="status"></span></div>
       <div id="atMissing" class="warnc" hidden></div>
       <details id="atStepsBox"><summary>the whole sequence, with your keys</summary><ul id="atSteps"></ul></details>

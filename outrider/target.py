@@ -86,6 +86,13 @@ def canon_key(name):
 # 2026-10-03): it keeps the found system under the crosshair, where a yaw (the 2026-10-02 step) turns about a pivot
 # and once swung it onto a close neighbour, which was then plotted.
 DEFAULT_PLOT = ("hold CamZoomOut 0.2", "hold UI_Select 1")
+# step 5 for a route's next stop the route makes one jump (the Highway's after a supercharge, a survey route's): make it
+# the target rather than plot a route to it. A plotted route is the game's planner's, and with "Use Jet-Cone Boost"
+# off in its Route Settings it ignores the supercharge: 6 jumps to a stop the supercharged jump reaches (the author,
+# 2026-10-23; Kurbo26 saw a stop added with it on). The system panel's icons: two UI_Rights reach the column from the
+# system's details (one stopped short for Sol), "Target System" is eight UI_Downs from its top (Kurbo26's steps,
+# checked in game by the author, a pause between keys: STEP_PAUSE). Discussion #12.
+DEFAULT_TARGET = ("hold CamZoomOut 0.2", "press UI_Right", "press UI_Right") + ("press UI_Down",) * 8 + ("press UI_Select",)
 # step 2: from the opened galaxy map into its search field. Found in game (2026-10-02): UI_Up straight after the map
 # opens highlights "Search the Galaxy" and UI_Select puts the cursor in it; UI_Select alone opens the current system's
 # details, and UI_Right (Auto_Neutron's older sequence) moves along the tab column (Trade Routes, Bookmarks...).
@@ -108,7 +115,7 @@ STEP_PAUSE = 0.25
 # 2 s was too short for Sol from 5,000 ly; 5 s worked)
 FAR_SEARCH_LY, FAR_SEARCH_WAIT = 300.0, 5.0
 DEFAULTS = {"entry": "type", "map_wait": 5.0, "search_wait": 2.0, "key_delay": 0.05, "step_pause": STEP_PAUSE, "keys": {},
-            "plot": list(DEFAULT_PLOT),
+            "plot": list(DEFAULT_PLOT), "target": list(DEFAULT_TARGET), "route_target": True,
             "search": list(DEFAULT_SEARCH), "submit": list(DEFAULT_SUBMIT),
             "dry_run": False}
 TAP_S = 0.05        # s a tapped key stays down
@@ -171,9 +178,10 @@ def parse_step(text):
     raise ValueError(f"{text!r} is not a step (use \"press UI_Select\", \"hold UI_Select 1\" or \"wait 0.5\")")
 
 
-def build_steps(cfg=None):
+def build_steps(cfg=None, mode="plot"):
     """The sequence as steps: {"do", "phase", "label", ...}. do: press/hold (keys: a name to resolve), type, paste,
-    focus (value, timeout), wait (secs), verify."""
+    focus (value, timeout), wait (secs), verify. mode "target": step 5 makes the system the target (cfg's `target`)
+    instead of plotting a route to it (`plot`)."""
     c = dict(DEFAULTS, **(cfg or {}))
     s = [{"do": "press", "keys": "GalaxyMapOpen", "phase": 1, "label": "open the galaxy map", "opens": True},
          {"do": "focus", "value": GUI_GALAXY_MAP, "timeout": c["map_wait"], "phase": 1, "label": "wait for the galaxy map"},
@@ -181,8 +189,9 @@ def build_steps(cfg=None):
          {"do": "paste" if c["entry"] == "paste" else "type", "phase": 3, "label": "enter the system name"},
          *[dict(parse_step(t), phase=4, label="submit the search") for t in (c["submit"] or DEFAULT_SUBMIT)],
          {"do": "wait", "secs": c["search_wait"], "phase": 4, "label": "wait for the map to find the system", "search": True}]
-    for t in c["plot"] or DEFAULT_PLOT:
-        s.append(dict(parse_step(t), phase=5, label="plot the route"))
+    five = (c["target"] or DEFAULT_TARGET, "target the system") if mode == "target" else (c["plot"] or DEFAULT_PLOT, "plot the route")
+    for t in five[0]:
+        s.append(dict(parse_step(t), phase=5, label=five[1]))
     s += [{"do": "press", "keys": "GalaxyMapOpen", "phase": 6, "label": "close the galaxy map", "closes": True},
           {"do": "focus", "value": GUI_COCKPIT, "timeout": c["map_wait"], "phase": 6, "label": "wait for the cockpit"},
           {"do": "verify", "phase": 7, "label": "check the target"}]
@@ -334,10 +343,10 @@ class Targeter:
         keys = honk.parse_combo(name)
         return (keys, " + ".join(honk.key_label(k) for k in keys)) if keys else (None, f"no key {name!r}")
 
-    def plan(self):
+    def plan(self, mode="plot"):
         """(steps with "codes" and "what" filled in, missing [(name, why)]): missing are the keys a step needs that
-        have no keyboard binding (or no evdev key), so nothing runs."""
-        steps, missing, binds = build_steps(self.cfg), [], None
+        have no keyboard binding (or no evdev key), so nothing runs. mode: build_steps'."""
+        steps, missing, binds = build_steps(self.cfg, mode), [], None
         ev = self.honker.evdev if self.honker else None
         for st in steps:
             name = st.get("keys") or ("Paste" if st["do"] == "paste" else None)
@@ -375,7 +384,8 @@ class Targeter:
         return out
 
     # ---- running ----
-    def run(self, name, id64, status, system, dry_run=None, cancel=None, origin=None, route_end=None, front=None, ly=None):
+    def run(self, name, id64, status, system, dry_run=None, cancel=None, origin=None, route_end=None, front=None, ly=None,
+            one_jump=False):
         """Target `name` (id64) now: status() gives Status.json's reading ({gui_focus, flags, flags2, destination,
         live}), system() the current system's id64. cancel: this run's own token (a threading.Event its owner sets:
         auto-target switched off, the route cleared or replaced); origin: the system the run was decided in (default:
@@ -384,7 +394,10 @@ class Targeter:
         several jumps away counts as targeted; front: a callable giving None while Elite's window is the one in front,
         else why not, asked before every key (the first one too): a no stops the run, code "window" (None: nothing to
         check with, every key goes to whichever window has focus); ly: how far the system is, when known (over
-        FAR_SEARCH_LY the search wait is at least FAR_SEARCH_WAIT: the map's flight is longer). -> {"ok", "phase", "label", "why", "code", "log",
+        FAR_SEARCH_LY the search wait is at least FAR_SEARCH_WAIT: the map's flight is longer); one_jump: a route's next
+        stop the route makes one jump, so the system itself must end up the target (a longer route the game plotted
+        there fails, code "multi", saying how to fix it), and with `route_target` on it is targeted, not plotted (the
+        plot steps after all when the target steps' keys are not bound). -> {"ok", "phase", "label", "why", "code", "log",
         "dry_run"}; code "already" (nothing to do) or "wrong" (a different system was targeted: `wrong` names it).
         The step log is printed only when the run fails, or throughout a dry run: a success is the caller's one line."""
         dry = self.cfg.get("dry_run") if dry_run is None else dry_run
@@ -397,7 +410,7 @@ class Targeter:
                 self.log(tag + line)
         self.run_cancel, self.run_front = cancel, front
         try:
-            self._run(result, say, name, id64, status, system, dry, origin, route_end, ly)
+            self._run(result, say, name, id64, status, system, dry, origin, route_end, ly, one_jump)
         except BaseException:
             for line in result["log"]:   # an unexpected error: the steps so far are the debugging detail
                 self.log(tag + line)
@@ -409,8 +422,15 @@ class Targeter:
                 self.log(tag + line)
         return result
 
-    def _run(self, result, say, name, id64, status, system, dry, origin, route_end, ly=None):
-        steps, missing = self.plan()
+    def _run(self, result, say, name, id64, status, system, dry, origin, route_end, ly=None, one_jump=False):
+        mode = "target" if one_jump and self.cfg.get("route_target") else "plot"
+        steps, missing = self.plan(mode)
+        if missing and mode == "target":   # the icons need UI_Right and UI_Down: plot instead where they are not bound
+            say("the target steps need " + ", ".join(f"{n} ({w})" for n, w in missing) + ": plotting instead")
+            mode, (steps, missing) = "plot", self.plan("plot")
+        result["mode"] = mode
+        # one jump: the system itself must be the target, never a plotted route merely ending there
+        game_route, route_end = route_end, None if one_jump else route_end
         if missing:
             result.update(phase=0, label="read the bindings",
                           why="no keyboard binding for " + ", ".join(f"{n} ({w})" for n, w in missing))
@@ -485,7 +505,7 @@ class Targeter:
                         cur = st = dict(st, secs=max(st["secs"], FAR_SEARCH_WAIT))
                     self._sleep(st["secs"], st, status, system, here, expect)
                 elif d == "verify":
-                    self._verify(st, id64, status, system, here, expect, route_end)
+                    self._verify(st, id64, status, system, here, expect, route_end, name if one_jump else None, game_route)
                 # what it did, keys included ("5 plot the route: hold Space for 1 s: done"): a log shows what was pressed
                 say(self.describe([st])[0] + ": done")
             result.update(ok=True)
@@ -583,13 +603,18 @@ class Targeter:
                             else "the galaxy map did not close")
             self.wait(POLL_S)
 
-    def _verify(self, st, id64, status, system, here, expect, route_end=None):
+    def _verify(self, st, id64, status, system, here, expect, route_end=None, one_jump=None, game_route=None):
+        """one_jump: the stop's name when the route makes it one jump: a route the game plotted to it (game_route's
+        last hop) is then the failure it is, said with its fix."""
         end = self.clock() + VERIFY_WAIT
         while True:
             if targeted(status(), id64, route_end):   # the next system, or a plotted route ending there (review F2)
                 return
             self._check(st, status, system, here, expect)
             if self.clock() >= end:
+                if one_jump and game_route and game_route() == id64:
+                    raise Abort(st, f"the game plotted more than one jump to {one_jump}, which the route makes in one: "
+                                    "tick Use Jet-Cone Boost in the galaxy map's Route Settings", code="multi")
                 dest = (status() or {}).get("destination")
                 if isinstance(dest, dict) and dest.get("System") is not None:
                     got = dest.get("Name") or str(dest.get("System"))
