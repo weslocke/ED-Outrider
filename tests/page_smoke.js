@@ -4170,6 +4170,9 @@ const releasePayloads = async () => {
       const url = String(u);
       if (url === "api/config" && o && o.method === "POST") { posts.push(JSON.parse(o.body)); return answer(); }
       if (url === "api/highway/autotarget/test") { posts.push("test"); return json({error: "the galaxy map is open (the cockpit must have focus)"}, 400); }
+      if (url.startsWith("api/find?name=")) { const n = decodeURIComponent(url.split("=")[1]); posts.push("find " + n);
+        return n === "Sol" ? json({id: 10477373803, name: "Sol"}) : json({error: `No system called '${n}' is known here, to EDSM or to Spansh.`}, 404); }
+      if (url === "api/highway/target") { posts.push(JSON.parse(o.body)); return json({error: "auto-target is already running"}, 409); }
       return realFetch(u, o);
     };
     const saved = w.eval("JSON.stringify(data.autotarget || null)");
@@ -4196,6 +4199,16 @@ const releasePayloads = async () => {
     type("atSearch", seq.search.join("\n"));
     d.getElementById("atTest").click(); await sleep(150);
     got.test = [posts[posts.length - 1], txt("atTestMsg")];
+    // a system typed beside it: found by name, then run as a 🎯 on it (its id64), reported as the test; an unknown name
+    // says so and runs nothing
+    d.getElementById("atTestSys").value = " Sol ";
+    d.getElementById("atTest").click(); await sleep(200);
+    got.testSys = [posts.slice(-2), txt("atTestMsg")];
+    d.getElementById("atTestSys").value = "Nowhere Xyz";
+    const n0 = posts.length;
+    d.getElementById("atTest").click(); await sleep(200);
+    got.testNone = [posts.slice(n0), txt("atTestMsg")];
+    d.getElementById("atTestSys").value = "";
     w.fetch = realFetch;
     for (const id of ["atSearch", "atSubmit", "atPlot"]) d.getElementById(id).dataset.dirty = "";
     w.eval(`data.autotarget = ${saved}; hwyRun = null`);
@@ -4208,7 +4221,9 @@ const releasePayloads = async () => {
         JSON.stringify({highway: {autotarget_submit: "wait 1.5\n press Enter \n\nwait 0.5\npress UI_Down\npress UI_Select", autotarget_plot: "hold CamZoomOut 0.2\nhold UI_Select 1"}}),
         JSON.stringify(seq.plot), "", ""],
       empty: ["Not saved: each part needs at least one step (↺ default puts back Outrider's own)", 2],
-      test: ["test", "cannot test: the galaxy map is open (the cockpit must have focus)"]};
+      test: ["test", "cannot test: the galaxy map is open (the cockpit must have focus)"],
+      testSys: [["find Sol", {route: "system", id: "10477373803"}], "cannot test: auto-target is already running"],
+      testNone: [["find Nowhere Xyz"], "cannot test: No system called 'Nowhere Xyz' is known here, to EDSM or to Spansh."]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodAS = !bad.length && errors.length === before;
     allOk = allOk && goodAS;

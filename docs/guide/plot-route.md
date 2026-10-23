@@ -197,7 +197,12 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   **submit the search** and **plot the route**, with the timings and whether the name is typed or pasted. **Save the
   steps** writes them into the config file (`[highway] autotarget_search`, `autotarget_submit`, `autotarget_plot`…,
   also in Settings → Server) and the next run uses them, no restart needed; a step it cannot read is refused in words
-  and your text stays to be corrected. Below them: the whole sequence with your keys, and **▶ test now**.
+  and your text stays to be corrected. Below them: the whole sequence with your keys, and **▶ test now**, against the
+  system typed beside it (a short name such as `Sol` lists several systems: a good test of the submit steps; a far one
+  plots a route there, so clear it afterwards) or, left empty, the nearest known system a plain jump away.
+  - While the cursor is in the search box, a control bound to a letter key types that letter into the box (UI_Down on
+    **S** types "S"). The submit steps run there, so they need keys that type nothing: `Enter`, or arrow keys by name
+    (`press KEY_DOWN` moves into the results list; then `press UI_Select` picks the highlighted one).
   - Steps are `press <key>`, `hold <key> <seconds>` or `wait <seconds>`, one per line; a key is one of the game's
     controls (`UI_Select`, `UI_Up`, `CamZoomOut`…, in any case), `Enter`, `Paste`, or keyboard keys such as
     `KEY_LEFTALT+KEY_T`.

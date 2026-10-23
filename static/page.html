@@ -785,7 +785,9 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="btns"><button type="button" id="atSave" class="primary">Save the steps</button><span id="atMsg" class="hint" role="status"></span></div>
       <div id="atMissing" class="warnc" hidden></div>
       <details id="atStepsBox"><summary>the whole sequence, with your keys</summary><ul id="atSteps"></ul></details>
-      <div class="srow"><button type="button" class="try" id="atTest" title="one run against the nearest known system a plain jump away (no route needed): Outrider brings the game to the front where it can, else 5 seconds from now: click into the game meanwhile">▶ test now</button>
+      <div class="srow"><button type="button" class="try" id="atTest" title="one run against the system typed beside it, or with none typed the nearest known system a plain jump away (no route needed): Outrider brings the game to the front where it can, else 5 seconds from now: click into the game meanwhile">▶ test now</button>
+        <label>against <input type="search" id="atTestSys" placeholder="the nearest system" maxlength="100" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+          title="a system to test the steps on, by its full name (a short one such as Sol lists several systems: a good test of the submit steps); empty: the nearest known system a plain jump away. A far one plots a route there: clear it in game afterwards"></label>
         <span id="atTestMsg" role="status"></span></div>
     </details>
     <details class="setsec" data-sec-key="uploads" data-chip="Uploads"><summary>Uploads <span class="sum-note">EDDN, EDSM and Inara: send what you find, keep your profiles current (off by default)</span></summary>

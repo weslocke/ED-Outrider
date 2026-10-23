@@ -7868,9 +7868,10 @@ function hwyRunTrack() {
   r.msg = t.state === "done" ? `${w} done: ${t.why === "already the target" ? `${t.system} was already the target` : `targeted ${t.system}`}`
     : `${w} failed: ${t.why || "?"}`;
 }
-// start a run: "test now" (kind test) or Target next / Retry (kind next), then count down to it on the page
+// start a run: "test now" (kind test) or Target next / Retry (kind next), then count down to it on the page; a test
+// with `aim` (Settings -> Auto-target's typed system) runs as a 🎯 on it, reported as the test
 async function hwyAutoStart(kind, aim = null) {
-  const url = kind === "test" ? "api/highway/autotarget/test" : "api/highway/target", w = kind === "test" ? "test" : "target";
+  const url = kind === "test" && !aim ? "api/highway/autotarget/test" : "api/highway/target", w = kind === "test" ? "test" : "target";
   const show = msg => { hwyRun = {seq: null, kind, done: true, msg}; drawHwyAuto(); renderHwyLine(); if (kind !== "test") toast(msg); };
   let r, j;
   // no countdown from the tablet: the game keeps the keyboard focus (the desktop page's click took it)
@@ -7969,7 +7970,19 @@ async function atSave() {
   drawAtSet();   // the steps with your keys follow in the next payload
 }
 hEl("atSave").onclick = atSave;
-hEl("atTest").onclick = () => hwyAutoStart("test");
+// ▶ test now against the system typed beside it (the author, 2026-10-23: "Sol" lists several systems, the case the
+// submit steps must handle), found by name as the Search tab does (api/find keeps it, so the 🎯 run knows it); empty:
+// the nearest known system a plain jump away, as before
+async function atTestRun() {
+  const name = hEl("atTestSys").value.trim();
+  if (!name) { hwyAutoStart("test"); return; }
+  hwyRun = {seq: null, kind: "test", done: true, msg: `finding ${name}…`}; drawAtSet();
+  let d;
+  try { d = await apiJson(`api/find?name=${encodeURIComponent(name)}`); } catch (err) { d = {error: err.message}; }
+  if (!d || d.error || !d.id) { hwyRun = {seq: null, kind: "test", done: true, msg: `cannot test: ${(d && d.error) || "no answer"}`}; drawAtSet(); return; }
+  hwyAutoStart("test", {route: "system", id: String(d.id)});
+}
+hEl("atTest").onclick = atTestRun;
 // Target next, on the line, in the box and as a row's Retry: before the page's other click handlers (the line opens
 // the tab, a row's name copies)
 document.addEventListener("click", e => {

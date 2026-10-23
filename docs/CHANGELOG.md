@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Settings → Auto-target: ▶ test now against a system you type
+- A box beside **▶ test now** (the author, testing discussion #12 in game): type a system and the test runs against it,
+  found by name as the Search tab does, then run as a 🎯 on it; empty, it is the nearest known system a plain jump
+  away, as before. A short name such as Sol lists several systems, the case the submit steps must handle.
+- Plot Route's guide says what the in-game test found: in the search box a control bound to a letter types it, so the
+  submit steps need `Enter` or arrow keys by name (`press KEY_DOWN`, then `press UI_Select`).
+
 ## 2026-10-23 · Clear to sample while flying the ship
 - From Offshorepred on discussion #3: flying the ship to the next sample's spot said nothing until you landed. The
   sample spacing only counted on foot, landed or in an SRV (the Nomad is one, so it always worked there). Now it also
