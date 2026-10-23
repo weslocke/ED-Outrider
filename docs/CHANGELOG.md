@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Docs: the auto-target run's journal reads, the Music rule and the failure log
+- DESIGN_NOTES: when the journal's Music overrides GuiFocus (a GalaxyMap since the run's first key; another track only
+  after the key that closes the map), the journal read every 3 s at most, the half-written Status.json, the "seen:"
+  line. AGENT_GUIDE: `outrider/target.py`'s journal readers, `focus()`, the paste retry, `_PerRun`.
+
 ## 2026-10-23 · Targeting check fixes (2): the empty paste, the failure log, the journal reads
 - The rest of the Fable check of the auto-target tweaks (project/REVIEW-fable-targeting-2026-10-23.md, section C):
   - **C1: a pasted name that found nothing is typed once more** (when a US keyboard can type it), said in the log as

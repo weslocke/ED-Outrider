@@ -593,8 +593,14 @@ upstream project's choices, not rules of the game.
   **A run reads Status.json itself** (`State.status_now`, the author's run of 2026-10-23), and **the journal's Music
   is the galaxy map's word**: a recording of every Status.json change beside the journal showed GuiFocus lagging the
   map by seconds both ways (open: still 0 for 4 s; closed by Target System: still 6 for 18 s) where Music came within a
-  second. The run reads the live journal's last Music event itself (`State.music_now`) and, once one has come since it
-  began, lets it override GuiFocus's 0 or 6 (`Targeter.focus`); other screens stay Status.json's. (A first guess, the
+  second. The run reads the live journal's last Music event itself (`State.music_now`; the folder listed every 3 s at
+  most, the newest journal's last 64 KiB read only when it grew) and lets it override GuiFocus (`Targeter.focus`): a
+  GalaxyMap since the run's first key makes a 0 the map; another track makes a 6 the cockpit only when written after the
+  key that closes the map (Target System's or the close key), so neither the opening's GalaxyMap nor an ambient track
+  while the map is open misleads it; other screens stay Status.json's. A Status.json caught half written keeps that
+  file's last good reading. A failed run's log ends with a "seen:" line (Status.json's GuiFocus, Destination and time;
+  the journal's last Music and FSDTarget, before or since the first key), and the first override in a run is logged,
+  so the next odd failure is read from the log (review C2). (A first guess, the
   watcher's copy held back by a busy event loop, did not survive profiling: a replay of the jump and the supercharge
   on a copy of the database had no loop step over 0.25 s.)
 - **Settings → Server lists only the keys with no section of their own** (the author, 2026-10-23; project plan
