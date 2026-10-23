@@ -375,8 +375,10 @@ class FakeGame:
         self.target_closes = False   # Target System closes the map by itself
         # the galaxy map's GuiFocus can lag in Status.json, or not come at all, where the journal's Music says it at once
         # (the author's recording, 2026-10-23): with status_lag the screen changes (`screen`) and Status.json does not;
-        # `music` is the journal's Music tracks, one per opening and closing (`music_now`, the run's view of them)
-        self.status_lag, self.screen, self.music = False, None, []
+        # `music` is the journal's Music tracks, one per opening and closing, as (track, when written): a closing's comes
+        # music_delay s late, as the game's trailed Target System by 1-3 s; `fsd` the FSDTarget ids, written at once
+        # (`music_now`, `fsd_now`: the run's view of them, what is written by now)
+        self.status_lag, self.screen, self.music, self.music_delay, self.fsd = False, None, [], 0.0, []
 
     def screen_focus(self):
         return self.screen if self.status_lag else self.status.get("gui_focus")
@@ -385,10 +387,18 @@ class FakeGame:
         self.screen = v
         if not self.status_lag:
             self.status["gui_focus"] = v
-        self.music.append("GalaxyMap" if v == 6 else "Supercruise")
+        self.music.append(("GalaxyMap", self.clock()) if v == 6 else ("Supercruise", self.clock() + self.music_delay))
 
     def music_now(self):
-        return ("Journal.fake.log", len(self.music), self.music[-1]) if self.music else None
+        now = self.clock()
+        seen = [m for m in self.music if (m[1] if isinstance(m, tuple) else 0) <= now]
+        if not seen:
+            return None
+        last = seen[-1]
+        return ("Journal.fake.log", len(seen), last[0] if isinstance(last, tuple) else last)
+
+    def fsd_now(self):
+        return ("Journal.fake.log", len(self.fsd), self.fsd[-1]) if self.fsd else None
 
     def write(self, _type, code, value):
         if self.closed:
@@ -458,6 +468,7 @@ class FakeGame:
             if name == "KEY_SPACE" and self.panel == 2:
                 if self.icon == self.TARGET_ICON:
                     self.status["destination"] = {"System": self.found[1], "Body": 0, "Name": self.found[0]}
+                    self.fsd.append(self.found[1])
                     if self.target_closes:   # the game may close the map once the system is targeted (2026-10-23)
                         self.set_focus(0)
                         if self.on_close:

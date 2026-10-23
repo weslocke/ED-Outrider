@@ -17440,9 +17440,18 @@ class State:
         return best
 
     def music_now(self):
-        """The journal's latest Music event as (file, position, track), read from the newest live journal's end: an
-        auto-target run's second word on the galaxy map (Targeter.focus), Status.json's GuiFocus lagging it by many
-        seconds (the author's recording, 2026-10-23). Re-read only when the file grew; None without one (tests, a server)."""
+        """The journal's latest Music event as (file, position, track): an auto-target run's word on the galaxy map
+        (Targeter.focus), Status.json's GuiFocus lagging it by many seconds (the author's recording, 2026-10-23). None
+        without a live journal (tests, a server)."""
+        return self.journal_tail().get("music")
+
+    def fsd_target_now(self):
+        """The journal's latest FSDTarget as (file, position, id64): written the moment Target System (or a plot) takes,
+        before the map's closing Music (Targeter._target_taken; review 2026-10-23 A3)."""
+        return self.journal_tail().get("fsd_target")
+
+    def journal_tail(self):
+        """{music, fsd_target} from the newest live journal's last 64 KB, re-read only when the file grew."""
         newest = None
         for d in self.status_dirs:
             try:
@@ -17455,29 +17464,35 @@ class State:
             except OSError:
                 continue
         if newest is None:
-            return None
+            return {}
         p = newest[1]
         try:
             size = os.path.getsize(p)
         except OSError:
-            return None
+            return {}
         key, cached = self._music_now
         if key == (p, size):
             return cached
-        out = None
+        out = {}
         try:
             with open(p, "rb") as f:
                 start = max(0, size - 65536)
                 f.seek(start)
                 data = f.read(size - start)
-            i = data.rfind(b'"event":"Music"')
-            if i >= 0:
-                a, b = data.rfind(b"\n", 0, i) + 1, data.find(b"\n", i)
-                b = len(data) if b < 0 else b
-                track = json.loads(data[a:b].decode("utf-8")).get("MusicTrack")
-                out = (p, start + b, track)
-        except (OSError, ValueError):
-            return None   # a line still being written: the next look
+        except OSError:
+            return {}
+        for name, tag in (("music", b'"event":"Music"'), ("fsd_target", b'"event":"FSDTarget"')):
+            i = data.rfind(tag)
+            if i < 0:
+                continue
+            a, b = data.rfind(b"\n", 0, i) + 1, data.find(b"\n", i)
+            if b < 0:
+                return {}   # a line still being written: the next look
+            try:
+                ev = json.loads(data[a:b].decode("utf-8"))
+            except ValueError:
+                return {}
+            out[name] = (p, start + b, ev.get("MusicTrack") if name == "music" else ev.get("SystemAddress"))
         self._music_now = ((p, size), out)
         return out
 
@@ -17760,10 +17775,12 @@ class State:
         _steps, missing = t.plan()
         if missing:
             return {"error": "no keyboard binding for " + ", ".join(f"{n} ({w})" for n, w in missing)}, 400
-        st, end = self.journals.status_json, lambda: self.journals.navroute_end
-        g = outrider.target.guard(st, tgt["id64"], end)
+        # the run's own reading of Status.json and the journal (Status.json's GuiFocus can stay 6 for seconds after the
+        # map closed: review 2026-10-23 B2)
+        st, end, mu = self.status_now() or {}, lambda: self.journals.navroute_end, self.music_now()
+        g = outrider.target.guard(st, tgt["id64"], end, mu)
         if g and g[0] == "danger" and self.arrival_danger_until():   # the arrival's own flag: the run waits it out,
-            g = outrider.target.guard(dict(st, flags=st["flags"] & ~outrider.target.FLAG_IN_DANGER), tgt["id64"], end)
+            g = outrider.target.guard(dict(st, flags=st["flags"] & ~outrider.target.FLAG_IN_DANGER), tgt["id64"], end, mu)
         if g and g[0] != "already":   # already the target: the run says so (and costs no key)
             return {"error": g[1]}, 400
         dry = bool(self.highway_cfg.get("autotarget_dry_run"))
@@ -17860,7 +17877,7 @@ class State:
                 self.targeter.run, tgt["name"], tgt["id64"], self.status_now,
                 lambda: (self.journals.pos or {}).get("id64"), cancel=cancel, origin=tgt["here"],
                 route_end=lambda: self.journals.navroute_end, front=front, ly=self.autotarget_ly(tgt),
-                one_jump=bool(tgt.get("one_jump")), music=self.music_now))
+                one_jump=bool(tgt.get("one_jump")), music=self.music_now, fsd_target=self.fsd_target_now))
         except Exception as e:  # noqa: BLE001 -- say so on the page rather than lose it in a task
             res = {"ok": False, "phase": 0, "label": "run", "why": f"{type(e).__name__}: {e}"}
         finally:

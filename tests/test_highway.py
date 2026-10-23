@@ -1696,7 +1696,7 @@ class HighwayAutoTarget(unittest.TestCase):
             f.write(AUTHOR_BINDS)
         outrider.honk._bindings_cache.clear()
         # quick timings for tests (the defaults are for the game)
-        for k, v in (("TAP_S", 0.002), ("VERIFY_WAIT", 0.4), ("POLL_S", 0.01), ("LOCK_WAIT", 2.0)):
+        for k, v in (("TAP_S", 0.002), ("VERIFY_WAIT", 0.4), ("POLL_S", 0.01), ("LOCK_WAIT", 2.0), ("TARGET_CLOSE_WAIT", 0.05)):
             p = unittest.mock.patch.object(outrider.target, k, v)
             p.start()
             self.addCleanup(p.stop)
@@ -1995,6 +1995,77 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertTrue(r["ok"], r)
         self.assertEqual((g.screen, self.status["gui_focus"]), (0, 6))
         self.assertEqual(len([n for n, v in g.writes if n == "KEY_T" and v]), 1)
+
+    def test_target_system_review_cases(self):
+        """The Fable check of 2026-10-23 (project/REVIEW-fable-targeting-2026-10-23.md), each on the fake game:
+        A1 the map closing inside the pause after the Target System key; A3 its Music trailing past TARGET_CLOSE_WAIT
+        (the target seen taken, by the journal's FSDTarget or the Destination, gives it the map wait; with Status.json
+        alone the close key reopens it); A2 a jump right after the target, with Status.json stuck on the map: done, and no key reopens the
+        map; A4 a track change while the map is open says nothing of it closing; A5 a plot whose closing Music never
+        comes; B1 a body here already targeted is no "wrong system"."""
+        self.fake_time()
+        g, T = self.game, self.T
+        keys_t = lambda: len([n for n, v in g.writes if n == "KEY_T" and v])
+        def reset(**kw):
+            g.writes.clear()
+            g.status_lag, g.screen, g.music, g.fsd, g.on_type, g.on_close = False, 0, [], [], None, None
+            g.target_closes, g.music_delay, g.TARGET_ICON = True, 0.0, T.DEFAULT_TARGET.count("press UI_Down")
+            self.status.update(gui_focus=0, destination=None, flags=1 << 4)
+            self.targeter.configure(dict({"step_pause": 0.0, "route_target": True}, **kw))
+        def stick(game):
+            game.status_lag = True                                     # Status.json keeps GuiFocus 6 from here on
+        # A1: the map closes at once, within the 0.25 s pause after the Target System key
+        reset(step_pause=0.25)
+        r = self.run_target(one_jump=True, music=g.music_now, fsd_target=g.fsd_now)
+        self.assertEqual((r["ok"], keys_t()), (True, 1), r)
+        # A3: Status.json stuck on the map, the closing Music 0.3 s late (TARGET_CLOSE_WAIT is 0.05 here, the map wait 0.4)
+        reset()
+        g.on_type, g.music_delay = stick, 0.3
+        r = self.run_target(one_jump=True, music=g.music_now, fsd_target=g.fsd_now)
+        self.assertEqual((r["ok"], keys_t()), (True, 1), r)
+        self.assertTrue(any("closed by itself" in x for x in r["log"]), r["log"])
+        reset()
+        g.on_type, g.music_delay = stick, 0.3
+        r = self.run_target(one_jump=True, music=g.music_now)            # no FSDTarget: the Destination says it taken
+        self.assertEqual((r["ok"], keys_t()), (True, 1), r)
+        reset()
+        g.on_type, g.music_delay = stick, 0.3
+        r = self.run_target(one_jump=True)                               # neither: Status.json alone, as before the fix
+        self.assertEqual(keys_t(), 2)                                     # the close key, which reopened the map
+        # A2: the FSD charges as the map closes, Status.json stuck on the map, the Music not yet written
+        reset()
+        g.on_type, g.music_delay = stick, 5.0
+        def charge(game):
+            game.status["flags"] |= 1 << 17
+        g.on_close = charge
+        r = self.run_target(one_jump=True, music=g.music_now, fsd_target=g.fsd_now)
+        self.assertEqual((r["ok"], keys_t(), g.screen), (True, 1, 0), r)  # done, and the map not opened again
+        # A4: an ambient track while the map is open (typing the name)
+        reset()
+        def ambient(game):
+            game.music.append(("Exploration", game.clock()))
+        g.on_type = ambient
+        r = self.run_target(one_jump=True, music=g.music_now, fsd_target=g.fsd_now)
+        self.assertTrue(r["ok"], r)
+        # A5: a plot; the map closes, Status.json says so, and its Music never comes
+        reset(route_target=False)
+        g.target_closes, g.music_delay = False, 1e9
+        r = self.run_target(music=g.music_now, fsd_target=g.fsd_now)
+        self.assertEqual((r["ok"], keys_t()), (True, 2), r)
+        # B1: the neutron star here targeted before the run, the run's target never taken
+        reset()
+        g.TARGET_ICON, g.target_closes = 99, False
+        self.status["destination"] = {"System": self.here, "Body": 1, "Name": "Here A"}
+        r = self.run_target(one_jump=True, music=g.music_now, fsd_target=g.fsd_now)
+        self.assertEqual((r["ok"], r["why"], r["code"]), (False, "no system was targeted", None))
+
+    def test_guard_takes_the_journals_word_on_a_stale_map(self):
+        """Review B2: Status.json kept GuiFocus 6 for 18 s after Target System closed the map: with the journal's last
+        Music another track, a run may start (Target next, the co-pilot's tap); with GalaxyMap last, it may not."""
+        st = {"live": True, "flags": 1 << 24, "flags2": 0, "gui_focus": 6, "destination": None}
+        self.assertIsNone(self.T.guard(st, 102, None, ("j", 3, "Supercruise")))
+        self.assertEqual(self.T.guard(st, 102, None, ("j", 3, "GalaxyMap"))[0], "focus")
+        self.assertEqual(self.T.guard(st, 102)[0], "focus")                # Status.json alone, as before
 
     def test_music_now_reads_the_journals_end(self):
         """State.music_now: the newest live journal's last Music event, its position growing with each new one."""

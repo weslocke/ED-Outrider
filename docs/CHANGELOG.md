@@ -2,6 +2,21 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Targeting check fixes (1): Target System's self-closing map, the guard, the wrong system
+- The Fable check of the auto-target tweaks (project/REVIEW-fable-targeting-2026-10-23.md):
+  - **A1-A5: the map Target System closes by itself.** After the Target System key the cockpit is expected (the pause
+    after it no longer fails the run); the journal's **FSDTarget** (written at once) or the Destination shows the
+    target taken, and the run then waits up to the map wait for the map to close, pressing the close key only if it is
+    still open; a jump right after the target is a success, and the clean-up never presses the key that would reopen
+    the map unless the journal shows it reopened; only Music after the key that closes the map counts as its closing
+    (a track change while it is open says nothing; the opening's own GalaxyMap no longer holds a closed map open).
+  - **B1: a body of your own system already targeted is not "the wrong system"** (a failed run says "no system was
+    targeted", not "check before you jump").
+  - **B2: Target next and the co-pilot's tap are no longer refused "the galaxy map is open"** while Status.json lags:
+    the pre-run check reads Status.json itself and takes the journal's last Music into account.
+  - The tests: the fake game's closing Music can trail, it logs FSDTarget, and the test setup shortens
+    TARGET_CLOSE_WAIT (the auto-target tests had grown from 40 s to 74 s).
+
 ## 2026-10-23 · Auto-target trusts the journal's Music for the galaxy map
 - The author's runs, recorded beside the journal: Status.json's GuiFocus lagged the galaxy map by seconds both ways.
   Opened after a supercharge, the journal's Music said "GalaxyMap" within a second while GuiFocus stayed the cockpit

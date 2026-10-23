@@ -166,7 +166,9 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   map's `Music` `GalaxyMap` came within a second while `GuiFocus` stayed 0 for over 4 s; **Target System closes the map
   by itself** (`FSDTarget`, then `Music` `Supercruise` a second later) while `GuiFocus` stayed 6 for 18 s, the new
   `Destination` written meanwhile. Auto-target takes the Music since its run began as the map's word (`Targeter.focus`,
-  `State.music_now` reading the live journal's end).
+  `State.music_now` reading the live journal's end), and **`FSDTarget`, written the moment Target System takes**, as
+  the sign the map is about to close by itself (`State.fsd_target_now`); a Music track change while the map stays
+  open says nothing, so only the Music after the key that closes the map counts as its closing.
 - **In danger (bit 22) is set on every jump**, no threat needed: on from the FSD charge (5-7 s before StartJump) until
   some 16-26 s after the FSDJump, any star class, nothing near (logged in game 2026-10-09: 16, 16 and 26 s). The
   same on entering supercruise (lifting off a planet: on until 16 s after the SupercruiseEntry). A guard

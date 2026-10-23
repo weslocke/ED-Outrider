@@ -583,9 +583,13 @@ upstream project's choices, not rules of the game.
   On by default: it does not depend on the player's Route Settings. Two guards: a one-jump stop must end up the
   target itself (no NavRoute-end shortcut, in the "already" check too), so a miscounted icon or a multi-jump plot
   fails with its fix said; and without UI_Right / UI_Down on keyboard keys the stop is plotted after all. Target System
-  can close the galaxy map by itself (the author, 2026-10-23: not every time): after the target steps the run waits up
-  to `TARGET_CLOSE_WAIT` (1 s) for the cockpit and then presses no close key, which would open the map again (it did,
-  and the run said it failed with the target set); where the map stays open it is closed as before.
+  closes the galaxy map by itself (the author's recordings, 2026-10-23: its Music 1-3 s after the journal's FSDTarget).
+  After the Target System key the cockpit is expected (no abort in the pause after it); once the target is seen taken
+  (FSDTarget, written at once, or the Destination) the run waits up to the map wait for the map to close, else
+  `TARGET_CLOSE_WAIT` (2 s), and presses the close key only if the map is still open then; a jump or a move after the
+  key with the target set is a success; the clean-up after a failure closes the map only if the journal shows it
+  opened again since that key (the key would otherwise open it, during an FSD charge too). Review of 2026-10-23
+  (project/REVIEW-fable-targeting-2026-10-23.md) A1-A5.
   **A run reads Status.json itself** (`State.status_now`, the author's run of 2026-10-23), and **the journal's Music
   is the galaxy map's word**: a recording of every Status.json change beside the journal showed GuiFocus lagging the
   map by seconds both ways (open: still 0 for 4 s; closed by Target System: still 6 for 18 s) where Music came within a
