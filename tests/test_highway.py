@@ -1981,6 +1981,42 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(self.targeter.cfg["plot"], ["hold CamZoomOut 0.3", "hold UI_Select 2"])
         self.assertEqual(self.state.highway_cfg["autotarget_plot"], ["hold CamZoomOut 0.3", "hold UI_Select 2"])
 
+    def test_settings_section_sequence_and_defaults(self):
+        """Settings -> Auto-target (discussion #12): the payload's autotarget carries the galaxy map's steps and timings
+        as configured and outrider.target's own defaults (its ↺ default), copies of them, with no targeter too."""
+        self.state.highway_cfg["autotarget_plot"] = ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Select"]
+        self.state.highway_cfg["autotarget_search_wait"] = 3.0
+        self.state.targeter = None
+        info = self.state.autotarget_info()
+        self.assertEqual(info["status"], "not started")
+        self.assertEqual(info["sequence"], {"search": list(self.T.DEFAULT_SEARCH), "submit": list(self.T.DEFAULT_SUBMIT),
+                                            "plot": ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Select"],
+                                            "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0.05, "entry": "type"})
+        self.assertEqual((info["defaults"]["search"], info["defaults"]["submit"], info["defaults"]["plot"]),
+                         (list(self.T.DEFAULT_SEARCH), list(self.T.DEFAULT_SUBMIT), list(self.T.DEFAULT_PLOT)))
+        info["defaults"]["plot"].append("press Enter")   # a copy: the module's defaults stay as they are
+        self.assertEqual(self.T.DEFAULTS["plot"], list(self.T.DEFAULT_PLOT))
+
+    def test_a_bad_step_is_refused_in_its_own_words(self):
+        """A step list saved through POST /api/config (Settings -> Auto-target, Server settings) is checked as it is
+        saved: a bad step is refused with parse_step's words (it only said "nothing written: ... not valid here"), an
+        empty list too, and the file is left as it was."""
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.state.config_path = path = os.path.join(tmp.name, "ed_outrider.toml")
+        out, status = self.state.config_save({"highway": {"autotarget_submit": "wait 1.5\npress Enter\npres UI_Down"}})
+        self.assertEqual(status, 400)
+        self.assertEqual(out["error"], "[highway] autotarget_submit 'pres UI_Down' is not a step (use \"press UI_Select\", "
+                                       "\"hold UI_Select 1\" or \"wait 0.5\")")
+        out, status = self.state.config_save({"highway": {"autotarget_plot": "\n  \n"}})
+        self.assertEqual((status, out["error"]), (400, "[highway] autotarget_plot needs at least one step"))
+        self.assertFalse(os.path.exists(path))
+        out, status = self.state.config_save({"highway": {"autotarget_submit": "wait 1.5\npress Enter\nwait 0.5\npress UI_Down\npress UI_SELECT"}})
+        self.assertEqual((status, out["live"]), (200, ["highway.autotarget_submit"]))
+        self.assertEqual(self.state.highway_cfg["autotarget_submit"],
+                         ["wait 1.5", "press Enter", "wait 0.5", "press UI_Down", "press UI_SELECT"])
+
     def test_map_never_closes_times_out(self):
         self.fake_time()
         self.game.ignore_close = True

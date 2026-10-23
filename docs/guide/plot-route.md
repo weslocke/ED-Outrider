@@ -118,7 +118,7 @@ paste in the carrier map (only when you click it); after a jump the line counts 
 **ready** (or **ready?** when you are away: only the booked jump says the carrier moved, and a busy system can delay
 it). A jump onto a later leg skips ahead; one anywhere else says "off the trip", with **re-plot from here**; ✕ ends the
 trip, and the last leg ends it. The Quartermaster says "Carrier ready to jump. Next leg: …" when the cooldown should be
-over (the **Carrier trips** row in Settings → Alerts) and adds "Leg 3 of 6, 3 to go" to the carrier's arrival line.
+over (the **Carrier trip** row in Settings → Alerts) and adds "Leg 3 of 6, 3 to go" to the carrier's arrival line.
 
 **The route line and 🎯.** The line under the tiles (on every tab) shows the next stop of whichever route the tab shows (🛣 the
 Highway, 💰 Road to Riches, 🧬 Exomastery, 🌍 Earth-like worlds, 🧪 ammonia worlds, 🪨 terraformable worlds, 🧹 a sweep, 💱 a trade route), its
@@ -149,7 +149,7 @@ way when auto-target can work on this PC, else copies its name (see [the Map](vi
 targeted against the next stop: "✓ targeted"; "⚠ targeted Ossia, not the next stop Pru Aim XY-Z d1"; or, for a later
 stop of the same route (on purpose, say to skip one), "↷ targeted Ossia, 2 stops ahead". A route plotted in the galaxy
 map counts by where it ends. A wrong target is said once ("You've targeted Ossia. The next stop is Pru Aim XY-Z d1.")
-under its own alerts row, **Wrong target** (spoken, no notification by default), after you close the galaxy map; never
+under its own alerts row, **Not the next stop targeted** (spoken, no notification by default), after you close the galaxy map; never
 while you are off the route, for a later stop, or for a body or station in the system you are in. The overlay's Target
 panel shows the same check.
 
@@ -159,7 +159,7 @@ map, searches for the system, plots the route, closes the map and checks the tar
 targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own alerts row.
 
 - **Keyboard bindings:** Galaxy Map Open, UI Up, UI Select and the galaxy map's Camera Yaw Right and Camera Zoom
-  Out need one (the box lists any missing; a built-in preset can't be read). It shares auto honk's virtual keyboard;
+  Out need one (the box and Settings → Auto-target list any missing; a built-in preset can't be read). It shares auto honk's virtual keyboard;
   honk goes first.
 - Switching it off, clearing the route or plotting a new one stops a run at once, even mid-way. If the game targets
   a different system it says so by name ("Targeted the wrong system: …. Check before you jump."). A waypoint the
@@ -190,13 +190,22 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   **⟳ Retry** on its route row.
 - **Test now** in the box targets the nearest known system a plain jump away, the same way.
   `python3 -m outrider.target --show` prints the steps with your keys.
-- Every step can be changed under `[highway]` (`autotarget_search`, `autotarget_submit`, `autotarget_plot`…) if a
-  game update moves things, in Settings → Server: a change applies to the next run, no restart needed. Steps are
-  `press <key>`, `hold <key> <seconds>` or `wait <seconds>`, one per line; a key is one of the game's controls
-  (`UI_Select`, `UI_Up`, `CamZoomOut`…, in any case), `Enter`, or keyboard keys such as `KEY_LEFTALT+KEY_T`. After the
-  search the focus stays in its panel: the default plot moves the camera first (`hold CamZoomOut 0.2`), and only then
-  does holding `UI_Select` plot the route. `autotarget_entry = "paste"` pastes the name instead of typing it. Pasting (also how
-  it enters a name a US keyboard layout can't type) needs the clipboard: `wl-copy` or `xclip` on Linux.
+- **Settings → Auto-target** holds the galaxy map's steps, and **every 🎯 uses them**, not only the Highway: a
+  bookmark's, Nearby's, Search's, the Map's, a checklist find's, the header's next stop, the boxel's Next and the
+  co-pilot button's tap. Opening the map, entering the name, closing the map and checking the target are always done;
+  three parts are yours to change, each with **↺ default** to put Outrider's own back: **into the search field**,
+  **submit the search** and **plot the route**, with the timings and whether the name is typed or pasted. **Save the
+  steps** writes them into the config file (`[highway] autotarget_search`, `autotarget_submit`, `autotarget_plot`…,
+  also in Settings → Server) and the next run uses them, no restart needed; a step it cannot read is refused in words
+  and your text stays to be corrected. Below them: the whole sequence with your keys, and **▶ test now**.
+  - Steps are `press <key>`, `hold <key> <seconds>` or `wait <seconds>`, one per line; a key is one of the game's
+    controls (`UI_Select`, `UI_Up`, `CamZoomOut`…, in any case), `Enter`, `Paste`, or keyboard keys such as
+    `KEY_LEFTALT+KEY_T`.
+  - After the search the focus stays in its panel: the default plot moves the camera first (`hold CamZoomOut 0.2`),
+    and only then does holding `UI_Select` plot the route. For a system in jump range that route is one jump, so the
+    system is simply your target; for one further away the game plots a route of several jumps ending there.
+  - Pasting the name (also how it enters a name a US keyboard layout can't type) needs the clipboard: `wl-copy` or
+    `xclip` on Linux.
 - **Frontier's rules:** this is key-press automation like auto honk (and tools such as Auto_Neutron). Whether to
   use it is your call.
 

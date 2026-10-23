@@ -9,7 +9,7 @@
 <br>
 
 **⚙ Settings** (top right) holds everything, in folding sections: Alerts, Voice, What is said, Sounds, Values, Risk
-& warnings, Surface map, Mining, Auto honk, Uploads, In-game overlay, Display, Sharing, **Server**, Spoken lines and Questions asked.
+& warnings, Surface map, Mining, Auto honk, Auto-target, Uploads, In-game overlay, Display, Sharing, **Server**, Spoken lines and Questions asked.
 **Find a setting…** at the top leaves only what matches the words typed (a setting's name, its help or its config key,
 `speech_speed` finds the Speed slider too), in every section at once, Server's keys included; clear it and every
 section is back as it was. A section's name shows all of it, and so does a block's heading inside one: "crew" shows the
@@ -23,7 +23,8 @@ comments stay, and the previous file is kept as `ed_outrider.toml.bak`), and Out
 **Restart now** beside "Saved" does that at once. A few keys take effect at once instead: `[speech] voices_loaded` and
 `voices_preload` (Settings → Voice writes them too: **Keep loaded** and **Load them at start** under Voices kept
 loaded, shown whenever a voice besides the main one is in use), `[speech] pad_delay` (the next docking grant) and
-every `[highway] autotarget_*` key (auto-target's next run, so a sequence can be tried without restarting). **Find a setting** finds them by those words, by
+every `[highway] autotarget_*` key (auto-target's next run, so a sequence can be tried without restarting; the
+galaxy map's steps and timings have their own section, **Auto-target**: see [Plot Route](plot-route.md)). **Find a setting** finds them by those words, by
 "memory" or by their keys, and the crew by "crew" (all of it), "xo" or a role's name ("navigator").
 The passwords (`[server]`'s and `[mcp]`'s) and the AI key are never shown, only whether they are set.
 

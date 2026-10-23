@@ -563,6 +563,11 @@ upstream project's choices, not rules of the game.
   name is matched to the game's control names whatever its case (`canon_key`): `UI_SELECT` was taken for a keyboard
   key that does not exist ("no keyboard binding"). Each step's log line names the keys it pressed, so a log sent in
   shows what happened without `--show`.
+  **The steps have their own Settings section, not a place in Plot Route** (discussion #12, the author, 2026-10-23):
+  one sequence serves every 🎯 (bookmarks, Nearby, Search, the Map, the co-pilot button) as well as the Highway, so
+  editing it in the Highway's box would read as Highway-only. One shared sequence, not one per use, until a test in game
+  shows a use that needs other steps. The section writes the same `[highway]` keys as Server settings (no second store),
+  and a step list is checked as it is saved (`CONFIG_CHECKS`) so the refusal names the bad step.
 - **ExploData's colour tables are downloaded, never shipped** (the author, 2026-10-10). EDMC-ExploData's repository
   carries the GPL v2 text without "or later", so its tables are kept out of the repository and the Docker image, and
   Outrider's own licence does not depend on them: `resources/bio_colours.json` is fetched on the first start (and refreshed with the

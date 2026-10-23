@@ -1808,7 +1808,7 @@ const releasePayloads = async () => {
       onData();
       o.said = said.map(x => x[1]);
       o.row = ALERTS.some(a => a[0] === "docking") && alertCfgBase().docking === false && alertSpeakBase().docking === true &&
-        !!ALERT_SHORT.docking && !!TAB_ALERT_NAMES.docking && SPEECH_SYS_BOUND.has("docking") && speechPrio("docking") === 1 &&
+        !!ALERT_SHORT.docking && !!ALERT_NAMES.docking && SPEECH_SYS_BOUND.has("docking") && speechPrio("docking") === 1 &&
         !!document.querySelector('#alertOpts [data-aspeak="docking"]') && !!LINE_SAMPLES.docking_granted && !!LINE_SAMPLES.docking_denied &&
         JSON.stringify(ROW_KEYS.docking) === JSON.stringify(["docking_granted", "docking_denied"]);
       speak = realSpeak; notify = realNotify; speechLib = lib;
@@ -3448,7 +3448,7 @@ const releasePayloads = async () => {
     got.gridBefore = grid.checked;
     got.mutes = [...w.document.querySelectorAll("#speechTally [data-mute]")].map(b => b.dataset.mute).sort().join();
     w.document.querySelector('#speechTally [data-mute="jump"]').click();
-    got.muted = [w.eval("alertSpeak.jump"), grid.checked, JSON.parse(w.localStorage.getItem("alertSpeak")).jump, /FSD charge 2 muted undo/.test(tally())];
+    got.muted = [w.eval("alertSpeak.jump"), grid.checked, JSON.parse(w.localStorage.getItem("alertSpeak")).jump, /FSD charging 2 muted undo/.test(tally())];
     w.document.querySelector('#speechTally [data-unmute="jump"]').click();
     got.undone = [w.eval("alertSpeak.jump"), grid.checked, !!w.document.querySelector('#speechTally [data-mute="jump"]')];
     w.eval('document.getElementById("speechLogBox").open = false; const dl2 = document.getElementById("alertDialog"); if (dl2.close) dl2.close(); else dl2.removeAttribute("open")');
@@ -3469,7 +3469,7 @@ const releasePayloads = async () => {
       mappedRow: [true, false, true, false], mappedOff: false, mappedOn: "mapped",
       q5: ["Next: map A 5 (771k/2.2M)", "A 2 mapped efficiently, 3.4 million. Next: map A 5, 771 thousand, 2.2 million with bonuses.",
            "Next: map A 5 (771k)", "map A 5 (High metal content body · 771k/2.2M)", "map A 5 (High metal content body, +5.0M)"],
-      tally: "This session: FSD charge 2 🔇 · Codex 1 🔇 · Asked for 1", gridBefore: true, mutes: "codex,jump",
+      tally: "This session: FSD charging 2 🔇 · New codex entry 1 🔇 · Asked for 1", gridBefore: true, mutes: "codex,jump",
       muted: [false, false, false, true], undone: [true, true, true]};
     for (const k of Object.keys(want)) if (JSON.stringify(got[k]) !== JSON.stringify(want[k])) bad.push(k);
     const goodD = !bad.length && errors.length === before;
@@ -4111,7 +4111,7 @@ const releasePayloads = async () => {
     got.off = [d.getElementById("hwyAutoOn").checked, d.getElementById("hwyAutoDelay").value, txt("hwyAutoState")];
     got.last = txt("hwyAutoLast");
     got.missing = [d.getElementById("hwyAutoMissing").hidden, txt("hwyAutoMissing")];
-    got.steps = d.querySelectorAll("#hwyAutoSteps li").length;
+    got.steps = [d.querySelectorAll("#atSteps li").length, !d.getElementById("hwyAutoSteps"), !!d.getElementById("hwyAutoStepsLink")];   // the steps: in Settings now
     got.hint = /keys go to the window that has focus: Outrider brings the game to the front first/.test(txt("hwyAuto"));
     const on = d.getElementById("hwyAutoOn");
     on.checked = true; on.dispatchEvent(new w.Event("change")); await sleep(150);
@@ -4136,7 +4136,7 @@ const releasePayloads = async () => {
     if (JSON.stringify(got.off) !== JSON.stringify([false, "5", "· off"])) bad.push("off");
     if (!/^Last: failed at step 1 \(open the galaxy map\): the galaxy map did not open · Hwy Stop 38 · \d\d:\d\d$/.test(got.last)) bad.push("last");
     if (!(got.missing[0] === false && /UI_Right: UI Right has no keyboard binding/.test(got.missing[1]))) bad.push("missing");
-    if (got.steps !== 2 || !got.hint) bad.push("steps");
+    if (JSON.stringify(got.steps) !== "[2,true,true]" || !got.hint) bad.push("steps");
     if (JSON.stringify(got.posts) !== JSON.stringify(['{"enabled":true}', '{"delay":7.5}'])) bad.push("posts");
     if (JSON.stringify(got.onNow) !== JSON.stringify([true, 7.5])) bad.push("onNow");
     if (got.refused !== "cannot test: the galaxy map is open (the cockpit must have focus)") bad.push("refused");
@@ -4147,6 +4147,70 @@ const releasePayloads = async () => {
     allOk = allOk && goodAT;
     console.log(goodAT ? "OK" : "FAIL", "| highway auto-target box |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "toggle and delay posted (a bad delay refused here), test refused in its words, countdown, done, last result, missing bindings, steps", errors.slice(before));
+    await releasePayloads();
+  }
+  // Settings -> Auto-target (discussion #12): the galaxy map's steps and timings drawn from data.autotarget.sequence, ↺ default
+  // from its defaults, Save sends only the changed keys to POST api/config, a refusal shows the server's words and keeps
+  // what was typed (a payload meanwhile does not overwrite it), an empty part is refused here, ▶ test now starts the
+  // same test as Plot Route's. Every request is answered here: nothing reaches the server
+  {
+    holdPayloads();
+    const w = dom.window, before = errors.length, realFetch = w.fetch, posts = [], got = {};
+    const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
+    const seq = {search: ["hold CamYawRight 0.3", "press UI_Up", "press UI_Select"], submit: ["wait 1.5", "press Enter", "wait 0.5", "press Enter"],
+      plot: ["hold CamZoomOut 0.2", "hold UI_Select 1"], map_wait: 5, search_wait: 2, key_delay: 0.05, entry: "type"};
+    const at = {enabled: false, delay: 5, available: true, status: "off", running: false, test: null, last: null, missing: [],
+      steps: ["1 open the galaxy map: press Left Alt + Right Alt + T", "5 plot the route: hold Space for 1 s", "7 check the target: Status.json Destination must be the next system"],
+      sequence: Object.assign({}, seq, {plot: ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Select"]}), defaults: seq};
+    let answer = () => json({error: "[highway] autotarget_submit 'pres UI_Down' is not a step (use \"press UI_Select\", \"hold UI_Select 1\" or \"wait 0.5\")"}, 400);
+    w.fetch = (u, o) => {
+      const url = String(u);
+      if (url === "api/config" && o && o.method === "POST") { posts.push(JSON.parse(o.body)); return answer(); }
+      if (url === "api/highway/autotarget/test") { posts.push("test"); return json({error: "the galaxy map is open (the cockpit must have focus)"}, 400); }
+      return realFetch(u, o);
+    };
+    const saved = w.eval("JSON.stringify(data.autotarget || null)");
+    w.eval(`data.autotarget = ${JSON.stringify(at)}; drawAtSet()`);
+    const val = id => d.getElementById(id).value, txt = id => d.getElementById(id).textContent.replace(/\s+/g, " ").trim();
+    const type = (id, v) => { const el = d.getElementById(id); el.value = v; el.dispatchEvent(new w.Event("input")); };
+    got.drawn = [val("atSearch"), val("atPlot"), val("atMapWait"), val("atEntry"), d.querySelectorAll("#atSteps li").length,
+      d.getElementById("atSettings").classList.contains("pcOnly"), /every target button/.test(d.querySelector("#atSettings > summary").textContent)];
+    d.getElementById("atSave").click(); await sleep(100);
+    got.nothing = [txt("atMsg"), posts.length];
+    type("atSubmit", "wait 1.5\npress Enter\npres UI_Down");
+    d.getElementById("atSave").click(); await sleep(150);
+    w.eval(`data.autotarget = Object.assign({}, data.autotarget); drawAtSet()`);   // a payload meanwhile
+    got.refused = [txt("atMsg"), val("atSubmit"), JSON.stringify(posts[0])];
+    answer = () => json({ok: true, changed: 2, restart: false, live: ["highway.autotarget_plot", "highway.autotarget_submit"]});
+    d.querySelector('[data-atdef="plot"]').click();
+    type("atSubmit", "wait 1.5\n press Enter \n\nwait 0.5\npress UI_Down\npress UI_Select");
+    d.getElementById("atSave").click(); await sleep(150);
+    got.saved = [txt("atMsg"), JSON.stringify(posts[1]), w.eval("JSON.stringify(data.autotarget.sequence.plot)"),
+      d.getElementById("atPlot").dataset.dirty || "", d.getElementById("atSubmit").dataset.dirty || ""];
+    type("atSearch", "  \n ");
+    d.getElementById("atSave").click(); await sleep(100);
+    got.empty = [txt("atMsg"), posts.length];
+    type("atSearch", seq.search.join("\n"));
+    d.getElementById("atTest").click(); await sleep(150);
+    got.test = [posts[posts.length - 1], txt("atTestMsg")];
+    w.fetch = realFetch;
+    for (const id of ["atSearch", "atSubmit", "atPlot"]) d.getElementById(id).dataset.dirty = "";
+    w.eval(`data.autotarget = ${saved}; hwyRun = null`);
+    const want = {
+      drawn: [seq.search.join("\n"), "hold CamZoomOut 0.2\npress UI_Right\npress UI_Select", "5", "type", 3, true, true],
+      nothing: ["nothing changed", 0],
+      refused: ["Not saved: [highway] autotarget_submit 'pres UI_Down' is not a step (use \"press UI_Select\", \"hold UI_Select 1\" or \"wait 0.5\")",
+        "wait 1.5\npress Enter\npres UI_Down", JSON.stringify({highway: {autotarget_submit: "wait 1.5\npress Enter\npres UI_Down"}})],
+      saved: ["Saved in the config file ([highway] autotarget_*): the next run uses it",
+        JSON.stringify({highway: {autotarget_submit: "wait 1.5\n press Enter \n\nwait 0.5\npress UI_Down\npress UI_Select", autotarget_plot: "hold CamZoomOut 0.2\nhold UI_Select 1"}}),
+        JSON.stringify(seq.plot), "", ""],
+      empty: ["Not saved: each part needs at least one step (↺ default puts back Outrider's own)", 2],
+      test: ["test", "cannot test: the galaxy map is open (the cockpit must have focus)"]};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const goodAS = !bad.length && errors.length === before;
+    allOk = allOk && goodAS;
+    console.log(goodAS ? "OK" : "FAIL", "| settings auto-target |", goodAS ? "steps and timings drawn, ↺ default, only changes saved, a refusal in the server's words keeps the text, an empty part refused, test now" :
+      `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`, errors.slice(before));
     await releasePayloads();
   }
   // review batch 6 on the page: Here follows the in-game target without a scan (F4); the fuel tile when the first
@@ -4407,7 +4471,7 @@ const releasePayloads = async () => {
     const want = {colony: [500, null, " · 1,000 m"], sortTh: ["dist", "grav", "now", "max"], sortCycle: ["dist", "-dist rev", "max"],
       nearCycle: ["value", "-value", "distance"], treeSort: "max", halves: [true, true, true], halvesOff: false, matRow: true, link: ["linked", "linked"],
       nogame: ["linked · no game", "linked"], stale: ["unlinked · retrying", "stale"], none: ["unlinked · retrying", "none"], pill: true,
-      chips: ["Alerts", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Mining", "Auto honk", "Uploads", "In-game overlay", "Display", "Sharing", "Voice", "Server", "Spoken lines", "Questions asked"],
+      chips: ["Alerts", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Mining", "Auto honk", "Auto-target", "Uploads", "In-game overlay", "Display", "Sharing", "Voice", "Server", "Spoken lines", "Questions asked"],
       autoSmall: true, autoBig: false, line: true, cut: true};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodB12 = !bad.length && errors.length === before;
@@ -5039,7 +5103,7 @@ const releasePayloads = async () => {
       const fuelVoice = td.querySelector('#tabAlertList [data-tspeak="fuel"]');
       ta.push([td.getElementById("tabAlerts").hasAttribute("open"), rows.length === tw.eval("ALERTS.length"),
                !td.querySelector('#tabAlertList [data-tspeak="discovery"]'), !!td.querySelector('#tabAlertList [data-tsound="discovery"]'),
-               fuelVoice.checked]);
+               fuelVoice.checked, td.querySelectorAll("#tabAlertList .tb-alertgroup").length === tw.eval("Object.keys(ALERT_GROUPS).length")]);
       fuelVoice.checked = false; fuelVoice.dispatchEvent(new tw.Event("change", {bubbles: true}));
       ta.push(tw.eval("JSON.stringify([alertSpeak.fuel, JSON.parse(localStorage.getItem('alertSpeak')).fuel])"));
       fuelVoice.checked = true; fuelVoice.dispatchEvent(new tw.Event("change", {bubbles: true}));
@@ -5118,7 +5182,7 @@ const releasePayloads = async () => {
       settings: [true, true, "a browser (no app)", true], signOut: [true, false], emblem: [false, true, true, true, "false", false],
       railShown: [true, false, true, "false", true, false, false, "true"],
       appScreens: [true, false, [false, false, true], "ED Outrider for Android 1.2.0", ["voice"], false],
-      tabletAudio: ["[false,false]", false, '[true,true,"always","true"]', false, [true, true, true, true, true], "[false,false]", ["A line here."], "🔇 Tap anywhere to let Outrider speak here",
+      tabletAudio: ["[false,false]", false, '[true,true,"always","true"]', false, [true, true, true, true, true, true], "[false,false]", ["A line here."], "🔇 Tap anywhere to let Outrider speak here",
                     '[false,false,"false"]'], prefs: ["lcars", true, "true", null, "here"],
       voiceCmds: [true, true, false, true, true, true, true, "auto"], tabEarn: ["cmdr", false, 5, true, 5, "8px"],
       tabShip: [1, "pointer", ["static/ships/mediumtransport01.webp", "Lynx Highliner", "auto"], true, true, true]};
@@ -5160,10 +5224,10 @@ const releasePayloads = async () => {
     await sleep(100);
     got.push(w.eval(`JSON.stringify(Object.values(JSON.parse(localStorage.getItem("settingsOpen"))).some(Boolean))`));
     w.eval(`document.getElementById("alertDialog").close ? document.getElementById("alertDialog").close() : document.getElementById("alertDialog").removeAttribute("open")`);
-    const want = ["Settings", true, 16, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, autohonk: {enabled: true}}), "false"];
+    const want = ["Settings", true, 17, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, autohonk: {enabled: true}}), "false"];
     const goodS = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodS;
-    console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "12 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
+    console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "17 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
   }
   // Plot Route: Clear route while a survey or trade plot runs into an empty slot stops that plot (it cleared the Highway)
   {
@@ -5218,7 +5282,7 @@ const releasePayloads = async () => {
       const st = document.createElement("div"); st.innerHTML = siteTags({guardian: 2, anomaly: 1});
       const nb = document.createElement("div"); nb.innerHTML = sitesTag([{body: "10 b", sites: {guardian: 2, thargoid: 1}}]);
       const pt = poiText([{kind: "titan", name: "Titan Cocijo"}, {kind: "tourist", name: "A"}, {kind: "tourist", name: "B"}, {kind: "listening_post", name: "Listening Post"}]);
-      return JSON.stringify([s.textContent, s.title, head.length === 1 && /^Discoveries/.test(head[0]), rows,
+      return JSON.stringify([s.textContent, s.title, head.includes("Discoveries"), rows,
                              st.textContent, nb.firstChild.textContent, nb.firstChild.title, pt]); })()`));
     // #13: a Titan has the game's Titan marker in place of 📍 (Here's and Nearby's tag, Now's line); the other signals
     // keep 📍; the tag still says what it holds in its title
@@ -5723,7 +5787,7 @@ const releasePayloads = async () => {
       r.ticks = alertSpeak.jump === !was;
       store.set("alertSpeak", {...alertSpeak, jump: was}); window.dispatchEvent(Object.assign(new Event("storage"), {key: "alertSpeak"}));
       r.chip = src(showAlertSection).includes("scrollPaddingTop");
-      r.names = ["exo", "riches", "trade"].every(k => ALERT_SHORT[k] && TAB_ALERT_NAMES[k]);
+      r.names = ["exo", "riches", "trade"].every(k => ALERT_SHORT[k] && ALERT_NAMES[k]);
       tabVoiceLabel();
       r.voice = document.querySelector("#tabFoot .tb-voice").textContent;
       r.voiceSet = src(tabSetAudio).includes("tabVoiceLabel()");
@@ -6194,7 +6258,7 @@ const releasePayloads = async () => {
       speak = realSpeak; notify = realNotify; data.moments = m0;
       [speechOn, isSpeaker, alertSpeak.firstsseen] = flags; lastMomentSeq = flags[4];
       o.told = told; o.said = said.length;
-      o.row = ALERTS.some(a => a[0] === "firstsseen") && alertCfg.firstsseen === true && !!ALERT_SHORT.firstsseen && !!TAB_ALERT_NAMES.firstsseen &&
+      o.row = ALERTS.some(a => a[0] === "firstsseen") && alertCfg.firstsseen === true && !!ALERT_SHORT.firstsseen && !!ALERT_NAMES.firstsseen &&
         !UNSPOKEN.has("firstsseen") && !SPEECH_SYS_BOUND.has("firstsseen") && !!document.querySelector('#alertOpts [data-aspeak="firstsseen"]');
       return JSON.stringify(o); })()`));
     const want = {told: [["firstsseen", "👁 Someone else scanned your unsold Drojau LL-O b26-3", "3 bodies reached Spansh 12 days after you (your scan 15 days ago) · 14.2M cr at stake · see My firsts"],
@@ -6232,7 +6296,7 @@ const releasePayloads = async () => {
       o.key = said.length ? said[0][2] : null; o.told = told; o.said = said.map(x => [x[1], x[0]]);
       speak = realSpeak; notify = realNotify; data.moments = m0; speechLib = lib;
       [speechOn, isSpeaker, alertSpeak.refuelshort] = flags; lastMomentSeq = flags[3];
-      o.row = ALERTS.some(a => a[0] === "refuelshort") && alertCfg.refuelshort === true && !!ALERT_SHORT.refuelshort && !!TAB_ALERT_NAMES.refuelshort &&
+      o.row = ALERTS.some(a => a[0] === "refuelshort") && alertCfg.refuelshort === true && !!ALERT_SHORT.refuelshort && !!ALERT_NAMES.refuelshort &&
         SPEECH_SYS_BOUND.has("refuelshort") && DANGER.has("fuel_short") && speechPrio("refuelshort", "fuel_short") === 0 &&
         !!document.querySelector('#alertOpts [data-aspeak="refuelshort"]') && !!LINE_SAMPLES.fuel_short;
       // S19: Now shows the jump's cost and the scoopable share with the header's and the tile's own words
@@ -6282,7 +6346,7 @@ const releasePayloads = async () => {
       data.moments = [at(1, {}), at(2, {count: 1, next: null}), at(3, {count: 40, full: true, need_t: null})];
       onData();
       o.key = said.length ? said[0][0] : null; o.told = told.slice(); o.said = said.map(x => x[1]);
-      o.row = ALERTS.some(a => a[0] === "lastscoop") && alertCfg.lastscoop === true && !!ALERT_SHORT.lastscoop && !!TAB_ALERT_NAMES.lastscoop &&
+      o.row = ALERTS.some(a => a[0] === "lastscoop") && alertCfg.lastscoop === true && !!ALERT_SHORT.lastscoop && !!ALERT_NAMES.lastscoop &&
         SPEECH_SYS_BOUND.has("lastscoop") && DANGER.has("fuel_last_scoop") && speechPrio("lastscoop", "fuel_last_scoop") === 0 &&
         !!document.querySelector('#alertOpts [data-aspeak="lastscoop"]') && !!LINE_SAMPLES.fuel_last_scoop;
       // the strip's bit: on the In-Game Route strip, else on the route line; Now under the fuel
@@ -6371,7 +6435,7 @@ const releasePayloads = async () => {
       onData();
       o.told = told; o.said = said;
       o.row = ALERTS.some(a => a[0] === "wrongtarget") && alertCfgBase().wrongtarget === false && alertSpeakBase().wrongtarget === true &&
-        !!ALERT_SHORT.wrongtarget && !!TAB_ALERT_NAMES.wrongtarget && SPEECH_SYS_BOUND.has("wrongtarget") &&
+        !!ALERT_SHORT.wrongtarget && !!ALERT_NAMES.wrongtarget && SPEECH_SYS_BOUND.has("wrongtarget") &&
         !!document.querySelector('#alertOpts [data-aspeak="wrongtarget"]') && !!LINE_SAMPLES.wrong_target;
       speak = realSpeak; notify = realNotify; speechLib = lib;
       [speechOn, isSpeaker, alertSpeak.wrongtarget] = flags; lastMomentSeq = flags[3];
@@ -6890,7 +6954,7 @@ const releasePayloads = async () => {
                 "At start " + hm(t0 - 7200) + ": nothing missed"];
       o.buttons = [...box.querySelectorAll("[data-uretry]")].map(b => b.dataset.uretry + (b.dataset.schema ? ":" + b.dataset.schema : ""));
       o.noLastError = !/last error/.test(box.textContent);
-      o.row = ALERTS.some(a => a[0] === "uploads") && alertCfg.uploads === true && UNSPOKEN.has("uploads") && !!ALERT_SHORT.uploads && !!TAB_ALERT_NAMES.uploads
+      o.row = ALERTS.some(a => a[0] === "uploads") && alertCfg.uploads === true && UNSPOKEN.has("uploads") && !!ALERT_SHORT.uploads && !!ALERT_NAMES.uploads
         && !document.querySelector('#alertOpts [data-aspeak="uploads"]') && !!document.querySelector('#alertOpts [data-alert="uploads"]');
       // the moments: notified, never said (speech on, this window the speaker)
       const said = [], told = [], realSpeak = speak, realNotify = notify, flags = [speechOn, isSpeaker, alertSpeak.uploads, lastMomentSeq], m0 = data.moments;
@@ -8320,6 +8384,10 @@ const releasePayloads = async () => {
     await find("inara");
     got.inara = JSON.parse(w.eval(`(() => { const b = document.querySelector('#uploadsBox [data-find-block="Inara"]');
       return JSON.stringify(!!b && !b.closest(".sfhide") && [...b.children].every(c => !c.classList.contains("sfhide"))); })()`));
+    await find("lengths");   // a word only in an alert row's fine print, its hover (ALERT_DETAILS): the arrival's row, marked
+    const arrTr = `document.querySelector('#alertOpts [data-alert="arrival"]').closest("tr")`;
+    got.fine = [vis('#alertOpts [data-alert="arrival"]'), w.eval(`${arrTr}.classList.contains("sfmark")`), w.eval(`/lengths/.test(${arrTr}.textContent)`),
+      w.eval(`document.querySelector('#alertOpts [data-alert="jump"]').closest("tr").classList.contains("sfmark")`)];
     await find("zzqxw");
     got.none = [msg(), secs().length, w.eval(`[...document.querySelectorAll("#alertChips [data-sec]")].every(b => b.classList.contains("sfhide"))`)];
     got.every = JSON.parse(w.eval(`(() => {
@@ -8340,13 +8408,40 @@ const releasePayloads = async () => {
     w.eval(`const dls = document.getElementById("alertDialog"); if (dls.close) dls.close(); else dls.removeAttribute("open")`);
     const want = {speed: [true, false, false, true, true], password: [true, false, true, false, true],
       key: [true, false, true, w.eval(`[...new Set(["server", "values"])].sort().join()`)], two: [true, true],
-      backups: [true, true, true, false, true], zips: [true, true], inara: true,
+      backups: [true, true, true, false, true], zips: [true, true], inara: true, fine: [true, true, false, false],
       none: ["Nothing matches", 0, true], cleared: [0, true, "", true, true, 0]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     if (got.every.length < 12 || !got.every.every(e => e[1] && e[2])) bad.push("every");
     const good = !bad.length && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| S39 find a setting |", good ? `speed, a server key, a config key alone, two words, a block's heading (Backups, Inara), nothing; all ${got.every.length} sections found by a word and by name; cleared as before` :
+      `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
+  }
+  // Settings -> Alerts in groups (the author, 2026-10-23): each group's heading at its first row, in ALERT_GROUPS' order
+  // and covering every row; every row named (ALERT_NAMES) before its line; the fine print in the line's hover; the
+  // Spoken lines tally says the rows' own names
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      // Settings -> Alerts, then Settings -> Mining's own table (ring and Rhino: MINING_ALERTS)
+      const trs = [...document.querySelectorAll("#alertOpts tr"), ...document.querySelectorAll("#miningAlertOpts tr")];
+      const heads = trs.filter(r => r.classList.contains("agroup")).map(r => r.textContent);
+      const firsts = trs.map((r, i) => r.classList.contains("agroup") ? (trs[i + 1].querySelector("[data-alert]") || {}).dataset.alert : null).filter(Boolean);
+      const td = k => document.querySelector('#alertDialog [data-alert="' + k + '"]').closest("tr").cells[0];
+      return JSON.stringify({
+        heads: JSON.stringify(heads) === JSON.stringify(Object.values(ALERT_GROUPS)) && JSON.stringify(firsts) === JSON.stringify(Object.keys(ALERT_GROUPS)),
+        first: trs[0].classList.contains("agroup"),
+        named: ALERTS.every(([k]) => ALERT_NAMES[k] && (td(k).querySelector(".aname") || {}).textContent === ALERT_NAMES[k]),
+        fuel: [(td("fuel").querySelector(".aname") || {}).textContent, (td("fuel").querySelector(".adesc") || {}).title === ALERT_DETAILS.fuel, !(td("scoop").querySelector(".adesc") || {}).title],
+        short: Object.keys(ALERT_NAMES).every(k => ALERT_SHORT[k] === ALERT_NAMES[k]) && ALERT_SHORT.manual === "Asked for",
+        oneLine: ALERTS.every(([, label]) => label.length <= 120),
+        mining: ["ring", "limpets", "prospect", "rigs", "rigleash", "rigsout"].every(k => document.querySelector('#miningAlertOpts [data-alert="' + k + '"]') && !document.querySelector('#alertOpts [data-alert="' + k + '"]'))});
+    })()`));
+    const want = {heads: true, first: true, named: true, fuel: ["Fuel", true, true], short: true, oneLine: true, mining: true};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const good = !bad.length && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| alerts in groups |", good ? "every row named and in a group, the headings in order, the fine print in the hover, the tally's names the rows'" :
       `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
   }
   // S53: Import… beside Bookmarks' Export: a picked CSV file goes to the scratch server, which merges it ("2 added, 0
@@ -9513,7 +9608,7 @@ const releasePayloads = async () => {
       tipGone: true,
       limpetsOff: [], limpetBox: false,
       limpetsOn: [[["No limpets aboard. Turn back for some before we head out.", "limpets"]], JSON.stringify({limpetWarn: true}), "No limpets aboard"],
-      tables: ["limpets,prospect,ring", false, true, 3],
+      tables: ["ring,limpets,prospect,rigs,rigleash,rigsout", false, true, 6],
       pNone: [], pLode: [["Motherlode: Void Opal.", "prospect"]],
       pCfg: JSON.stringify({limpetWarn: true, minerals: ["platinum", "gold"], pct: 30, combined: false, motherlode: true, rawHigh: false, limpetsLow: 5}),
       pHits: [[["Platinum, 34 percent.", "prospect"]], [], [], []],

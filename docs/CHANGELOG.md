@@ -2,6 +2,34 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · One branch: main and mining merged; the Rhino's alerts in Settings → Mining
+- The mining work and main are one line of work now. In the merge, Settings → Mining's alerts table takes the
+  regrouped rows: **Ring mining** (rings to mine, limpets and the hold, the prospector) and **Rhino mining** (mining
+  rigs, rig too far, rigs still out, moved there from Settings → Alerts), each named with its one line like the rest.
+  Settings has both new sections, Mining and Auto-target.
+
+## 2026-10-23 · Settings → Alerts in groups, each alert named
+- **The Alerts table is in groups** (the author: "a jumbled and confusing mess"): Jumps and arrivals, Exploring a
+  system, Discoveries, Exobiology and the surface, Fuel, Routes and targeting, Docking and selling, Danger and risk, Your
+  carrier / the game / comms, Rhino mining. The tablet's alert sheet has the same headings.
+- **Each row is its name in bold and one line of when it fires**; the fine print (levels, exceptions, where it is
+  switched on) moved into the line's hover, marked with a dotted underline, and Find a setting still finds it.
+- **One set of names** (`ALERT_NAMES`) for the table, the tablet and the Spoken lines tally, so a kind muted from the
+  tally is found in the table by the same name. Surface pins, Carrier trip and Players' chat now have a name on the
+  tablet (it showed their keys). Nothing else changes: the keys, defaults and your choices stay as they were.
+## 2026-10-23 · Settings → Auto-target: the galaxy map's steps, editable, with ↺ default
+- From Kurbo26's discussion #12 (his own steps for a name with several matches, and for targeting without plotting):
+  - **A Settings section of its own, Auto-target** (game PC only): the three parts of the galaxy map sequence (into the
+    search field, submit the search, plot the route), one step per line and each with **↺ default**, the timings and
+    typed or pasted. It says plainly that **every 🎯 uses these steps** (bookmarks, Nearby, Search, the Map, checklist
+    finds, the header's next stop, the boxel's Next, the co-pilot button) as well as the Highway's auto-target.
+  - **Save the steps** writes `[highway] autotarget_*` (the next run uses them); only the parts you changed are sent.
+    Below: the whole sequence with your keys and **▶ test now**.
+  - **A bad step is refused in its own words** ("'pres UI_Down' is not a step (use …)"), in Server settings too, and
+    an empty list ("needs at least one step"); what you typed stays to be corrected. It said "nothing written: … is
+    not valid here".
+  - Plot Route's auto-target box keeps the Highway's switch, delay, test and Target next, and links to the section.
+
 ## 2026-10-23 · Docs: Sessions' Where
 - The agent guide (`Journals.mining_place`, `activity_apply`'s `place` and the sessions' `places`, `cmPlacesHtml`)
   and the design notes (what a session's Where is and why a line without a known place has none).

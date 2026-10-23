@@ -274,6 +274,7 @@ body.tablet.tb-norail #tabRail { display: none !important; }
 .tb-alertrow { display: flex; align-items: center; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .tb-alertname { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tb-alertname .tb-note { font-size: 13px; }
+.tb-alertgroup { margin: 18px 0 2px; color: var(--accent); font-size: 15px; }
 .tb-alerttogs { display: flex; gap: 10px; flex-shrink: 0; }
 .tb-tog { min-height: var(--tb-touch); min-width: 128px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px;
   border: 1px solid var(--line); border-radius: 999px; font-size: 17px; cursor: pointer; }
