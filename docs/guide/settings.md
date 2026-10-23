@@ -20,9 +20,10 @@ own (Sharing exports them or makes them the defaults for new browsers). **Server
 itself, every key of it but the upload switches (`[eddn]`, `[edsm]`, `[inara]`: Settings → Uploads): the network and the client password, the journal folders, paths, backups, Spansh, the
 Highway, the voice's AI layer and more. Saving there writes `ed_outrider.toml` (only the keys you changed; its
 comments stay, and the previous file is kept as `ed_outrider.toml.bak`), and Outrider uses them from its next start:
-**Restart now** beside "Saved" does that at once. Two keys take effect at once instead, and Settings → Voice writes
-them too: `[speech] voices_loaded` and `voices_preload` (**Keep loaded** and **Load them at start** under Voices kept
-loaded, shown whenever a voice besides the main one is in use). **Find a setting** finds them by those words, by
+**Restart now** beside "Saved" does that at once. A few keys take effect at once instead: `[speech] voices_loaded` and
+`voices_preload` (Settings → Voice writes them too: **Keep loaded** and **Load them at start** under Voices kept
+loaded, shown whenever a voice besides the main one is in use), `[speech] pad_delay` (the next docking grant) and
+every `[highway] autotarget_*` key (auto-target's next run, so a sequence can be tried without restarting). **Find a setting** finds them by those words, by
 "memory" or by their keys, and the crew by "crew" (all of it), "xo" or a role's name ("navigator").
 The passwords (`[server]`'s and `[mcp]`'s) and the AI key are never shown, only whether they are set.
 

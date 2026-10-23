@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Docs: auto-target's settings and control names
+- **Settings and good to know:** the keys that apply without a restart are named in full (`[speech] pad_delay` and
+  every `[highway] autotarget_*` besides the two voice keys; it said "two keys").
+- **The agent guide and design notes:** `LIVE_CONFIG`'s auto-target keys, `canon_key`, the step log's keys
+  (`Targeter.describe`), and why the sequence applies to the next run.
+
 ## 2026-10-22 · Auto-target: control names in any case, its settings without a restart, keys in the log
 - From a Windows player's report on Reddit (the map found the system, then nothing was plotted):
   - **Control names in any case:** `UI_SELECT` or `ui_select` is `UI_Select`, in the steps and in `autotarget_keys`
