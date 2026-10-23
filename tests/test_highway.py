@@ -1970,6 +1970,34 @@ class HighwayAutoTarget(unittest.TestCase):
         r = self.run_target()
         self.assertEqual((r["ok"], r["mode"]), (True, "plot"))
 
+    def test_a_run_reads_status_json_itself(self):
+        """The author, 2026-10-23: a run waited 5 s for the galaxy map, which the journal shows open a second after the
+        key, and gave up: the watcher's copy of Status.json was held back by a busy event loop. A run reads the file
+        itself (State.status_now): newer than the copy, it wins; older, or half written, the copy stands; no folder
+        (tests, a server): the copy."""
+        import tempfile, json as _json
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = os.path.join(tmp.name, "Status.json")
+        def write(doc):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(doc if isinstance(doc, str) else _json.dumps(doc))
+        self.j.status_json = {"live": True, "ts": "2026-10-23T19:06:03Z", "flags": 1 << 24, "flags2": 0, "gui_focus": 0,
+                              "fuel_main": 10}
+        self.assertIs(self.state.status_now(), self.j.status_json)          # no folders: the watcher's copy
+        self.state.status_dirs = [tmp.name]
+        write({"timestamp": "2026-10-23T19:06:04Z", "event": "Status", "Flags": 1 << 24, "Flags2": 0, "GuiFocus": 6,
+               "Fuel": {"FuelMain": 10, "FuelReservoir": 0.5}})
+        self.assertEqual(self.state.status_now()["gui_focus"], 6)           # the map open, before the watcher looks
+        self.assertEqual(self.j.status_json["gui_focus"], 0)                 # the shared copy untouched
+        write({"timestamp": "2026-10-23T19:06:01Z", "event": "Status", "Flags": 1 << 24, "Flags2": 0, "GuiFocus": 6,
+               "Fuel": {"FuelMain": 10}})
+        os.utime(path, (time.time() + 5, time.time() + 5))
+        self.assertIs(self.state.status_now(), self.j.status_json)          # older than the copy: the copy
+        write('{"timestamp": "2026-10-23T19:06:0')                          # caught mid-write
+        os.utime(path, (time.time() + 10, time.time() + 10))
+        self.assertIs(self.state.status_now(), self.j.status_json)
+
     def test_target_system_closing_the_map_itself(self):
         """The author, 2026-10-23: after Target System the map can close by itself; the close key then opened it again,
         the run waited for the cockpit and said it failed, the target set. Now it waits a moment for the map to close

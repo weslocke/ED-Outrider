@@ -5252,9 +5252,15 @@ class Journals:
         old = (self.status_json or {}).get("ts")
         if isinstance(st.get("timestamp"), str) and isinstance(old, str) and st["timestamp"] < old:
             return
+        self.status_json = self.status_reading(st, self.status_json)
+
+    def status_reading(self, st, prev_json):
+        """A Status.json document as status_json keeps it (prev_json: the reading before, for what the file leaves out),
+        pure: read_status's, and the auto-target run's own reads (State.status_now)."""
         fuel = st.get("Fuel") or {}
+        out = prev_json
         if "FuelMain" in fuel or st.get("Flags2") is not None:   # on foot there is no Fuel block, but the game is live
-            prev = self.status_json or {}
+            prev = prev_json or {}
             flags = st.get("Flags") if isinstance(st.get("Flags"), int) else 0
             # in the SRV (the Nomad counts as one) or a fighter, Fuel and Cargo are the vehicle's: keep the ship's
             away = "SRV" if flags & FLAG_IN_SRV else "fighter" if flags & FLAG_IN_FIGHTER else None
@@ -5262,7 +5268,7 @@ class Journals:
             if away:   # the vehicle's own tank (an SRV's fuel is all in its reservoir)
                 vehicle_fuel = round((fuel.get("FuelMain") or 0) + (fuel.get("FuelReservoir") or 0), 2) if fuel else None
                 fuel = {}
-            self.status_json = {"fuel_main": fuel.get("FuelMain", prev.get("fuel_main")),
+            out = {"fuel_main": fuel.get("FuelMain", prev.get("fuel_main")),
                                 "fuel_reservoir": fuel.get("FuelReservoir", prev.get("fuel_reservoir")), "away": away,
                                 "vehicle_fuel": vehicle_fuel,
                                 "ts": st.get("timestamp"), "flags": st.get("Flags"), "flags2": st.get("Flags2"),
@@ -5279,11 +5285,12 @@ class Journals:
             # is not live (kept across restarts in meta commander shutdown_ts)
             sd = (self.commander or {}).get("shutdown_ts")
             if sd and isinstance(st.get("timestamp"), str) and st["timestamp"] <= sd:
-                self.status_json["live"] = False
-        elif self.status_json:  # game closed or at the menu: keep the last reading, mark it stale
-            self.status_json = dict(self.status_json, live=False)
+                out["live"] = False
+        elif prev_json:  # game closed or at the menu: keep the last reading, mark it stale
+            out = dict(prev_json, live=False)
         else:
-            self.status_json = {"live": False, "ts": st.get("timestamp")}
+            out = {"live": False, "ts": st.get("timestamp")}
+        return out
 
     def read_navroute(self, d):
         path = os.path.join(d, "NavRoute.json")
@@ -7377,6 +7384,8 @@ class State:
         self.speaker_seen = None
         self.speaker_audio_blocked = False   # the speaking window's browser holds audio back until a click (the tablet says so)
         self.autohonk = dict(AUTOHONK)
+        # the live folders whose Status.json an auto-target run reads itself (status_now; run() sets them: none in tests)
+        self.status_dirs, self._status_now = [], {}
         self._honk_arrival = None  # the arrival the auto honk last looked at
         self.honk_confirm = 10.0   # s to wait for the journal's discovery scan after the press
         self.honk_test = None      # the Test button's latest run: {seq, state, what, error}, shown in the dialog
@@ -17402,6 +17411,34 @@ class State:
         return {k[len("autotarget_"):]: v for k, v in self.highway_cfg.items()
                 if k.startswith("autotarget_") and k[len("autotarget_"):] in outrider.target.DEFAULTS}
 
+    def status_now(self):
+        """Status.json as it is now, read from the file: an auto-target run's every look, from its own thread. The
+        watcher's copy (journals.status_json) only changes at its next pass on the event loop, which a busy moment (an
+        arrival, a supercharge) holds back for seconds: a run waited 5 s for the galaxy map that opened a second after
+        its key, and gave up; another checked a target that was set and said it failed (the author, 2026-10-23). Re-read
+        only when the file changed; never older than the watcher's copy, which stands in where there is no file (tests,
+        a server)."""
+        prev, best = self.journals.status_json, None
+        for d in self.status_dirs:
+            p = os.path.join(d, "Status.json")
+            try:
+                m = os.path.getmtime(p)
+            except OSError:
+                continue
+            c = self._status_now.get(p)
+            if not c or c[0] != m:
+                try:
+                    with open(p, encoding="utf-8") as f:
+                        st = json.load(f)
+                except (OSError, ValueError):
+                    continue   # caught while the game writes it: the next look
+                c = self._status_now[p] = (m, self.journals.status_reading(st, prev))
+            if c[1] and (best is None or (c[1].get("ts") or "") > (best.get("ts") or "")):
+                best = c[1]
+        if best is None or (prev and (prev.get("ts") or "") > (best.get("ts") or "")):
+            return prev
+        return best
+
     def autotarget_ly(self, tgt):
         """How far a run's system is from you (the Targeter's longer search wait for a far one), None when unknown."""
         pos, where = self.journals.pos or {}, self.locate(tgt["id64"]) or self.listed_system(tgt["id64"])
@@ -17778,7 +17815,7 @@ class State:
         self.bump()
         try:
             res = await asyncio.get_running_loop().run_in_executor(None, functools.partial(
-                self.targeter.run, tgt["name"], tgt["id64"], lambda: self.journals.status_json,
+                self.targeter.run, tgt["name"], tgt["id64"], self.status_now,
                 lambda: (self.journals.pos or {}).get("id64"), cancel=cancel, origin=tgt["here"],
                 route_end=lambda: self.journals.navroute_end, front=front, ly=self.autotarget_ly(tgt),
                 one_jump=bool(tgt.get("one_jump"))))
@@ -21476,6 +21513,7 @@ async def run(args, st):
     print("co-pilot button: " + (f"{st['copilot']['button'] or '?'} on {st['copilot']['device'] or '?'}"
                                  if st["copilot"]["enabled"] else "off ([copilot] enabled)"))
     state.highway_cfg = dict(st["highway"])
+    state.status_dirs = list(LIVE_DIRS)   # an auto-target run reads Status.json itself (status_now)
     state.overlay_cfg = dict(st["overlay"])
     state.upload_cfg = json.loads(json.dumps(st["uploads"]))   # [eddn]/[edsm] enabled, as Settings -> Uploads wrote them
     state.edsm_dry_path = os.path.join(outrider.DATA_DIR, "edsm-dryrun.jsonl")   # OUTRIDER_EDSM_DRYRUN's log

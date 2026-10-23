@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Auto-target reads Status.json itself
+- The author: an automatic run after a supercharge pressed the galaxy map's key, the map opened (the journal's Music
+  "GalaxyMap" a second later), and the run gave up 5 s on: "the galaxy map did not open". Another said it failed with
+  the target set. A run read the watcher's copy of Status.json, which only changes at the watcher's next pass on the
+  event loop, held back for seconds when a supercharge or an arrival keeps it busy. A run now reads the file itself
+  (`State.status_now`: re-read when it changes, never older than the watcher's copy, which stands in without one).
+
 ## 2026-10-23 · Auto-target: Target System closing the galaxy map by itself
 - The author: a route stop targeted correctly, but the run said it failed and the galaxy map opened again. Selecting
   **Target System** can close the map by itself; the run's close key then opened it again (or it met the cockpit it

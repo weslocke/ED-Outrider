@@ -586,6 +586,9 @@ upstream project's choices, not rules of the game.
   can close the galaxy map by itself (the author, 2026-10-23: not every time): after the target steps the run waits up
   to `TARGET_CLOSE_WAIT` (1 s) for the cockpit and then presses no close key, which would open the map again (it did,
   and the run said it failed with the target set); where the map stays open it is closed as before.
+  **A run reads Status.json itself** (`State.status_now`, the author's run of 2026-10-23): the watcher's copy changes
+  only at its next pass on the event loop, which an arrival or a supercharge holds back for seconds, and a run polling
+  it from its own thread saw the galaxy map open (and the target set) only after giving up.
 - **Settings → Server lists only the keys with no section of their own** (the author, 2026-10-23; project plan
   PLAN-settings-cleanup). It had 112 keys, most set in other sections, and some contradicted them: auto honk's and
   auto-target's switches live in the database (meta `autohonk_enabled`, `autotarget`), so the file's value it showed
