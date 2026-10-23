@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Docs: the private notes' paths
+- The agent guide and design notes name the overlay build plan and the value checks where they now are, under
+  `project/done/` (the author's private notes, not in the repository).
+
 ## 2026-10-23 · Docs: auto-target's settings and control names
 - **Settings and good to know:** the keys that apply without a restart are named in full (`[speech] pad_delay` and
   every `[highway] autotarget_*` besides the two voice keys; it said "two keys").

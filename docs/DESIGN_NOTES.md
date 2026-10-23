@@ -548,7 +548,7 @@ upstream project's choices, not rules of the game.
   `colours_available()`, never by the file, and a failed fetch no longer writes one with no colours in it. BioScan's rules (GPL v2 or later) and the region map (MIT) still ship. The colony distances
   are the game's (the Genetic Sampler shows them), kept in `outrider/bio.py`.
 - **The in-game overlay is our own window** (the author, 2026-10-08 and 2026-10-10; the author's plan,
-  project/PLAN-overlay-build-2026-10-10.md, is private and git-ignored).
+  project/done/plans/PLAN-overlay-build-2026-10-10.md, is private and git-ignored).
   EDMC will not be running, so Modern Overlay (an EDMC plugin) is not used; its code for finding Elite's window,
   following it, letting clicks through and its window flags is adapted instead (`outrider/overlay_tracking.py`,
   parts of `outrider/overlay_window.py`), which made ED Outrider GPL-3.0-or-later. Outrider builds the panels as draw
@@ -992,7 +992,7 @@ upstream project's choices, not rules of the game.
   already are: Radicoida Unicus (119,037 cr there) is the one known case. Its Vista Genomics price is unconfirmed: no
   sale of it in the author's journals (checked 2026-10-09). Add it to `ORGANIC_VALUES` once a SellOrganicData shows it.
 - **No x5 in a populated system** (BioScan's rule; plugin gaps C). The author's Vista sales say so: 0 of 8 runs in a
-  populated system paid it, 208 of 208 elsewhere (`project/value-checks/RESULTS-2026-10-08.md`). A system's
+  populated system paid it, 208 of 208 elsewhere (`project/done/value-checks/RESULTS-2026-10-08.md`). A system's
   Population comes from its FSDJump / Location / CarrierJump (`system_population`); `own_firsts.bio_x5` holds the
   verdict per body, so every x5 reads one flag. Pioneer's other value rules were checked the same way and left
   out where the sales did not support them (full-map bonus, honk value, terraformable ranges).
