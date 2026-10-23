@@ -2279,58 +2279,108 @@ function fitSoon() {
   }
   if (!ro) window.addEventListener("resize", fitSoon);
 }
-// Alert kinds: [key, what triggers it, its sound]. Each can notify, play its sound and be spoken, chosen
-// per kind in Settings. Everything here fires for something out of the ordinary, never routine.
-const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has reported it (upbeat or thud if it is known)", "fanfare"],
-  ["arrival", "arriving somewhere undiscovered (first visit), and a run of new or fully known systems in a row (the streak thresholds below); the first jump into a galactic region this session, when the briefing (which opens with it) is not spoken; the sound only corrects a targeting call that was wrong", null],
-  ["game", "loading into the game and quitting it", null],
-  ["jump", "the frame shift drive charging for a jump (and whether the star there is scoopable)", null],
-  ["honk", "the auto honk's result (when it is on; unspoken while the arrival briefing is)", null],
-  ["brief", "a one-sentence briefing on arriving: discovered or not, bodies, the star, the best unmapped planet and bio (after the honk, or 12 s after arriving without one)", null],
-  ["fss", "the FSS finished (what is worth mapping, or nothing worth staying for), or closed with bodies still hidden", null],
-  ["mapped", "a planet mapped with the DSS: what its data pays, whether the efficiency bonus landed, and the next suggested stop (only with \"Say when a planet is mapped\" ticked below)", null],
-  ["leaving", "leaving a system with work worth coming back for", "alert"], ["fuel", "fuel low where you cannot scoop, or a top-up worth taking before scoopable stars run scarce", "alert"],
+// Alert kinds: [key, when it fires, its sound], in Settings → Alerts' order: grouped (ALERT_GROUPS heads each group at its
+// first row), each row its name (ALERT_NAMES) and this line, the fine print in its hover (ALERT_DETAILS; the author,
+// 2026-10-23: the long descriptions were a jumble). Each can notify, play its sound and be spoken, chosen per kind in
+// Settings. Everything here fires for something out of the ordinary, never routine.
+const ALERTS = [["discovery", "a fanfare when you target a system nobody has reported, else a softer sound", "fanfare"],
+  ["jump", "the FSD charging for a jump, and whether the star ahead can be scooped", null],
+  ["arrival", "an undiscovered system, a run of new or known systems in a row, your first jump into a region this session", null],
+  ["brief", "one sentence on arrival: discovered or not, the bodies, the star, the best planet and bio", null],
+  ["honk", "the honk's result, when auto honk is on", null],
+  ["supercharge", "the FSD supercharged in a neutron star or white dwarf cone", null],
+  ["fss", "what is worth mapping, or nothing worth staying for, or closed with bodies still hidden", null],
+  ["find", "a body just scanned is over your highlight levels", "find"],
+  ["mapped", "its value, whether the efficiency bonus landed, and the next stop (needs \"Say when a planet is mapped\")", null],
+  ["jumponium", "a landable body has a material you are short of for FSD injections", "find"],
+  ["leaving", "leaving with bodies still worth mapping or sampling", "alert"],
+  ["phenomena", "life in clouds or rings, in a system where you have none on record", "find"],
+  ["rare_star", "a black hole, Wolf-Rayet, carbon, O-type, Herbig Ae/Be, supergiant or rare white dwarf", "find"],
+  ["ggg", "one of your scans fits the community's model: a guess, check the system map", "find"],
+  ["surface_site", "Guardian or Thargoid sites (once mapped), or an unknown planetary anomaly", "find"],
+  ["signal_poi", "a Titan, a Guardian beacon, a generation ship, a listening post", "find"],
+  ["curious", "rare planet classes, odd orbits, ringed landables: once per system", "chime"],
+  ["codex", "a new entry in your codex", "chime"],
+  ["sampling", "leaving a body with biology unsampled, a species completed, near a tagged plant", "alert"],
+  ["bodybrief", "what a body's biological signals could be (the FSS already said they are there)", null],
+  ["pins", "a pin set, then at 10 km, 1 km and 100 m, and on arrival", null],
+  ["fuel", "fuel low where you cannot scoop, or a top-up worth taking before scoopable stars run out", "alert"],
   ["scoop", "fuel scooping filled the tank", null],
-  ["scoopstop", "fuel scooping stopped early (not above 90%, nor when you jump)", null],
-  ["supercharge", "the frame shift drive supercharged in a neutron star or white dwarf cone", null],
-  ["exo", "Expressway to Exomastery (a route plotted in Plot Route): on arriving at a route system, the species still to sample there and the best of them, and once they are sampled the next stop, and route complete", null],
-  ["riches", "Road to Riches and the Earth-like, ammonia and terraformable world routes (plotted in Plot Route), and a sweep (plotted from ticks in Left behind, My firsts or Bookmarks): on arriving at a route system, the bodies still worth scanning or mapping there (a sweep: none) and the next stop, and route complete", null],
-  ["trade", "a trade route (plotted in Plot Route): on arriving at a stop, what to sell and buy there; once that is done, the hop's profit and the next stop; and route complete", null],
-  ["highway", "the Neutron Highway (a route plotted in Plot Route): the next stop on arriving at a route system (with the boost and refuel stops), off route, back on the highway, and highway complete", null],
-  ["refuelshort", "a Highway route plotted with the exact plotter: the fuel aboard won't reach the next refuel stop (once per system; at a refuel stop itself the route's line only shows how much to scoop)", "alert"],
-  ["lastscoop", "any route Outrider follows (the game's plotted route, the Highway, a survey route's legs): at the last scoopable star before stars you can't scoop, when the fuel aboard won't cover them (once per stretch, not while scooping)", "alert"],
-  ["autotarget", "auto-target (after a supercharge when it is on, a test, Target next, a target button, the co-pilot button's tap): whether the system was targeted, and nothing to target when the button found none", null],
-  ["wrongtarget", "a route you follow (the Highway, a survey or trade route): the system targeted in game is not its next stop (once per target, after the galaxy map closes; never off the route, nor for a later stop of the route, which the line shows as stops ahead)", "alert"],
-  ["find", "a valuable body just scanned (over your highlight levels); one someone else mapped is not named, but said once per system (\"already mapped, still worth mapping\")", "find"],
-  ["jumponium", "a landable body just scanned has a material your FSD injections are short of (premium or standard at 2 or fewer): said with the FSS debrief, or alone when the FSS never completes", "find"],
-  ["sampling", "leaving a body with exobiology unfinished (untouched genera only if you landed there); a species completed; within 100 m of a plant you tagged where the next sample would count", "alert"],
-  ["approach", "approaching a landable body at or over your high-gravity level with unsold data over the amber level or rebuy multiple", "alert"],
-  ["bodybrief", "approaching a body with biological signals: what they could be (the FSS already said so, so off by default)", null],
-  ["pins", "surface pins: the pin you fly to, said when it is set, at 10 km, 1 km and 100 m, and on arrival (then the next one)", null],
-  ["carriertrip", "carrier trips (Plot Route → Carrier): the carrier ready for its next leg, said once its cooldown should be over (the leg itself is said with its arrival)", null],
-  ["chat", "chat: other players' messages read aloud by Comms (Settings → Voice → Chat: off by default; squadron, wing and direct ticked), never an NPC's", null],
-  ["docking", "docking: the pad the station gave you (said every time, shown big on Now and in the overlay's Surface radar place), and why one refused when it is not obvious (no pad free, ship too big, access restricted, hostile, your offences, a fighter out)", null],
+  ["scoopstop", "scooping stopped below 90%, not counting a jump", null],
+  ["lastscoop", "on a route, the last one before stars you cannot scoop, when your fuel won't cover them", "alert"],
+  ["refuelshort", "on an exact Highway route, your fuel won't reach the next refuel stop", "alert"],
+  ["highway", "the next stop on each arrival, off route, back on, and route complete", null],
+  ["exo", "the species to sample at each stop, then the next stop", null],
+  ["riches", "the bodies worth scanning at each stop, then the next stop", null],
+  ["trade", "what to sell and buy at each stop, then the hop's profit", null],
+  ["carriertrip", "your carrier is ready for its next leg", null],
+  ["autotarget", "whether a 🎯, Target next or the co-pilot button targeted the system, or found nothing to target", null],
+  ["wrongtarget", "on a route, the game's target is not the route's next stop", "alert"],
+  ["docking", "your pad, and why docking was refused when it is not obvious", null],
   ["sell", "docked where you can sell, and what you banked", "cash"],
-  ["saleleft", "a sale left data aboard: Universal Cartographics sells 50 systems a page, so a sale that stops after one page leaves the rest unsold (said once the pages stop and the estimate has caught up); likewise completed samples still unsold after a Vista Genomics sale", "alert"],
-  ["unsold", "unsold data crosses a threshold", "cash"],
-  ["firstsseen", "someone else's scans of a system holding your unsold first discoveries reached Spansh (the firsts watch): a card and a notification each time, spoken at most once in 30 minutes", "alert"],
-  ["hull", "hull damage, heat damage, interdiction", "danger"],
-  ["carrier", "your carrier arrives somewhere", "chime"], ["codex", "a new codex entry", "chime"],
-  ["phenomena", "notable stellar phenomena (life in clouds or rings) the FSS finds in a system where you have none on record: how many", "find"],
-  ["ggg", "a potential green gas giant: one of your own scans fits the community's seven-layer ladder model (a guess: check it in the system map)", "find"],
-  ["rare_star", "a rare star resolved (a black hole, Wolf-Rayet, carbon, O-type, Herbig Ae/Be, a supergiant, a rare white dwarf...)", "find"],
-  ["surface_site", "surface sites on a body: Guardian or Thargoid sites (once the DSS has mapped it) or an unknown planetary anomaly (the FSS)", "find"],
-  ["signal_poi", "an FSS signal worth a detour, new to the system: a Titan, a Guardian beacon, a generation ship, a listening post (tourist beacons, number stations and memorials are shown, not said)", "find"],
-  ["curious", "a system with curiosities (🔭: rare planet classes, odd orbits, ringed landables...), once per system: one line to check your panels, not the list", "chime"],
-  ["loss", "your ship was destroyed with data aboard (or samples died with you): what was lost, and the nearest system to rescan", "danger"],
-  ["rigs", "Rhino mining rigs: the co-pilot button's confirmation (rig placed, picked up, six out) and what a rig collected", null],
-  ["rigleash", "a Rhino mining rig too far from you (over the rig warning distance, again at 4.5 km; the game destroys it at 5 km)", "danger"],
-  ["rigsout", "docking the Rhino with rigs still marked out on the body, and which are probably full (Outrider's own record: a rig picked up without a tap still counts until you mark it on the surface map)", null],
-  ["uploads", "an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again after it: a card at the top of the page too, never spoken", null]];
+  ["saleleft", "a sale stopped after a page of 50 systems and left the rest aboard; samples unsold after Vista Genomics", "alert"],
+  ["unsold", "your unsold data crosses the amber or red level", "cash"],
+  ["firstsseen", "someone else's scans of your unsold first discoveries reached Spansh", "alert"],
+  ["hull", "hull damage, heat damage, an interdiction", "danger"],
+  ["approach", "approaching a high-gravity landable body with a lot of unsold data aboard", "alert"],
+  ["loss", "what was lost with your ship, and the nearest system to rescan", "danger"],
+  ["carrier", "your carrier departing and arriving", "chime"],
+  ["game", "loading into the game and quitting it", null],
+  ["chat", "other players' messages read aloud (channels in Settings → Voice → Chat), never an NPC's", null],
+  ["uploads", "EDDN, EDSM or Inara failing for 15 minutes, and sending again", null],
+  ["rigs", "the co-pilot button's rig confirmations, and what a rig collected", null],
+  ["rigleash", "past your rig warning distance, again at 4.5 km (the game destroys a rig at 5 km)", "danger"],
+  ["rigsout", "docking the Rhino with rigs still out, and which are probably full", null]];
 // never spoken, and why: a target's verdict (the arrival is what gets spoken); an upload outage (the card and the
 // notification say it: the author's choice, S3)
 const UNSPOKEN_WHY = {discovery: "the arrival is", uploads: "a card and a notification only"};
 const UNSPOKEN = new Set(Object.keys(UNSPOKEN_WHY));
+// each alert row's name: Settings → Alerts, the tablet's list and the Spoken lines tally (ALERT_SHORT)
+const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arrival: "Arriving somewhere new", brief: "Arrival briefing",
+  honk: "Auto honk", supercharge: "Supercharged", fss: "FSS finished", find: "Valuable body", mapped: "Planet mapped",
+  jumponium: "Jumponium materials", leaving: "Leaving work behind", phenomena: "Stellar phenomena", rare_star: "Rare star",
+  ggg: "Green gas giant?", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities",
+  codex: "New codex entry", sampling: "Exobiology unfinished", bodybrief: "Bio signals on approach", pins: "Surface pins",
+  fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped early", lastscoop: "Last scoopable star",
+  refuelshort: "Fuel short of the refuel stop", highway: "Highway next stop", exo: "Exomastery route",
+  riches: "Road to Riches, worlds, sweeps", trade: "Trade route", carriertrip: "Carrier trip", autotarget: "Auto-target",
+  wrongtarget: "Not the next stop targeted", docking: "Docking pad and refusals", sell: "Selling", saleleft: "Data left after a sale",
+  unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction", approach: "High gravity",
+  loss: "Ship lost", carrier: "Carrier", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing",
+  rigs: "Mining rigs", rigleash: "Rig too far", rigsout: "Rigs still out"};
+// a row's fine print, in the hover of its line (and found by Find a setting): what the line leaves out
+const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, a thud if it is visited or fully scanned. Never spoken: the arrival is.",
+  arrival: "The streak lengths are under Risk and warnings. The region is said only when the arrival briefing, which opens with it, is not. The sound plays only to correct a targeting call that was wrong.",
+  brief: "Said after the honk, or 12 s after arriving without one.",
+  honk: "Not spoken while the arrival briefing is.",
+  find: "A body someone else has mapped is not named, but said once per system (\"already mapped, still worth mapping\").",
+  mapped: "\"A 2 mapped efficiently, 3.4M. Next: biology on C 2.\" Switched on in What is said → Say when a planet is mapped.",
+  jumponium: "Premium or standard injections you could make 2 or fewer of. Said with the FSS debrief, or alone when the FSS never completes. Off until you tick it.",
+  sampling: "Untouched genera count only on a body you landed on. The plant: within 100 m of one you tagged, where the next sample would count.",
+  fuel: "The levels are under Risk and warnings → Fuel alerts.",
+  lastscoop: "Any route Outrider follows: the game's plotted route, the Highway, a survey route's legs. Once per stretch, never while scooping.",
+  refuelshort: "Once per system. At a refuel stop the route's line shows how much to scoop instead.",
+  highway: "The Neutron Highway, plotted in Plot Route, with its boost and refuel stops.",
+  exo: "Expressway to Exomastery, plotted in Plot Route; and route complete.",
+  riches: "Road to Riches and the Earth-like, ammonia and terraformable world routes (Plot Route), and sweeps (plotted from ticks in Left behind, My firsts or Bookmarks: a sweep names no bodies); and route complete.",
+  trade: "A trade route plotted in Plot Route; and route complete.",
+  carriertrip: "Plot Route → Carrier: said once its cooldown should be over. The leg itself is said with its arrival.",
+  autotarget: "After a supercharge when auto-target is on, ▶ test now, Target next, a 🎯, the co-pilot button's tap.",
+  wrongtarget: "The Highway, a survey or trade route: once per target, after the galaxy map closes. Never off the route, nor for a later stop of the route (the line shows it as stops ahead).",
+  docking: "The pad is said every time and shown big on Now and in the overlay. A refusal is explained: no pad free, ship too big, access restricted, hostile, your offences, a fighter out.",
+  saleleft: "Universal Cartographics sells 50 systems a page: said once the pages stop and the estimate has caught up.",
+  unsold: "The levels are under Risk and warnings → Unsold data on board.",
+  firstsseen: "The firsts watch: a card and a notification each time, spoken at most once in 30 minutes.",
+  approach: "The gravity and unsold levels are under Risk and warnings → Approach warning (unsold over the amber level or the rebuy multiple).",
+  loss: "Samples that died with you count too.",
+  chat: "Off until switched on in Settings → Voice → Chat (squadron, wing and direct ticked there).",
+  uploads: "A card at the top of the page too. Never spoken.",
+  rigs: "Placed, picked up, six out.",
+  rigsout: "Outrider's own record: a rig picked up without a tap still counts until you mark it on the surface map."};
+// a heading over each group of rows, at its first row (Settings → Alerts and the tablet's list)
+const ALERT_GROUPS = {discovery: "Jumps and arrivals", fss: "Exploring a system", phenomena: "Discoveries", sampling: "Exobiology and the surface",
+  fuel: "Fuel", highway: "Routes and targeting", docking: "Docking and selling", hull: "Danger and risk",
+  carrier: "Your carrier, the game, comms", rigs: "Rhino mining"};
 // the defaults, as functions: another window's import that resets a setting rebuilds from them (ALERT_STORES)
 const alertCfgBase = () => Object.assign({enabled: false}, Object.fromEntries(ALERTS.map(([k]) => [k, true])),
   // a notification on every jump (or scoop, or FSS) would be noise: these are spoken by default, not notified
@@ -9554,13 +9604,8 @@ function fateGroup(f) {   // hoisted: setFate counts by it
 const hms = t => new Date(t).toTimeString().slice(0, 8);
 const speechLogFacts = e => [e.kind + (e.tag ? "/" + e.tag : ""), e.crew, e.style, e.voice, e.engine,
   e.waited != null ? `waited ${(e.waited / 1000).toFixed(1)} s` : "", e.took != null && /^said/.test(e.fate || "") ? `${(e.took / 1000).toFixed(1)} s long` : ""].filter(Boolean);
-// the tally's short names (the alerts table has only the long descriptions)
-const ALERT_SHORT = {arrival: "Arrival", game: "Game start and quit", jump: "FSD charge", honk: "Honk", brief: "Arrival brief", fss: "FSS",
-  leaving: "Leaving", fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped", supercharge: "Supercharge", find: "Find",
-  jumponium: "Jumponium", sampling: "Sampling", approach: "High-g approach", bodybrief: "Body brief", docking: "Docking", sell: "Selling", saleleft: "Sale left data",
-  unsold: "Unsold", firstsseen: "Firsts scanned by others", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
-  rigsout: "Rigs out", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", refuelshort: "Short of the refuel stop", lastscoop: "Last scoopable star", autotarget: "Auto-target", wrongtarget: "Wrong target", manual: "Asked for",
-  exo: "Exomastery route", riches: "Survey routes", trade: "Trade route", uploads: "Uploads failing"};
+// the tally's names: the alert rows' own, so a muted kind is found in the table by name; and the kinds with no row
+const ALERT_SHORT = Object.assign({signals: "Signals", manual: "Asked for"}, ALERT_NAMES);
 const speechMuted = new Set();   // kinds turned off from the tally this session (each shows an undo)
 // "This session: Arrival brief 42 🔇 · FSD charge 40 (3 dropped) 🔇 · …": every kind that was said or queued (not the
 // silent ones: a kind already off would only inflate), noisiest first. 🔇 turns that alert's speech off (its 🗣 tick
@@ -9723,11 +9768,12 @@ async function drawVoiceCmds(el) {
 document.getElementById("voiceCmds").addEventListener("toggle", e => { if (e.target.open) drawVoiceCmds(document.getElementById("voiceCmdList")); });
 // ---- alert settings ----
 const alertDialog = document.getElementById("alertDialog");
-// a heading over a group of alerts in the list, before its first one: the discoveries together, each still its own row
-const ALERT_GROUPS = {phenomena: "Discoveries: the rare and curious things the FSS finds, said with delight (each has its own switches)"};
+// a row: its name and line, the fine print in the line's hover (searched too: data-find), its group's heading first
+const alertWhatHtml = (k, label) => `<b class="aname">${esc(ALERT_NAMES[k] || k)}</b> ` + (ALERT_DETAILS[k]
+  ? `<span class="adesc" title="${esc(ALERT_DETAILS[k])}" data-find="${esc(ALERT_DETAILS[k])}">${esc(label)}</span>` : `<span class="adesc">${esc(label)}</span>`);
 document.getElementById("alertOpts").innerHTML = ALERTS.map(([k, label, snd]) =>
   (ALERT_GROUPS[k] ? `<tr class="agroup"><th colspan="5">${esc(ALERT_GROUPS[k])}</th></tr>` : "") +
-  `<tr><td>${esc(label)}</td><td><input type="checkbox" data-alert="${k}" aria-label="notify"></td>` +
+  `<tr><td>${alertWhatHtml(k, label)}</td><td><input type="checkbox" data-alert="${k}" aria-label="notify"></td>` +
   `<td>${snd || k === "arrival" ? `<input type="checkbox" data-asound="${k}" aria-label="sound">` : `<span class="unk" title="${k === "discovery" ? "the target sound" : "no sound"}">·</span>`}</td>` +
   `<td>${UNSPOKEN.has(k) ? `<span class="unk" title="not spoken: ${esc(UNSPOKEN_WHY[k])}">·</span>` : `<input type="checkbox" data-aspeak="${k}" aria-label="speak">`}</td>` +
   `<td class="acrew" data-acrew="${k}" hidden></td></tr>`).join("");
@@ -10446,7 +10492,7 @@ drawChatRead();
 // audition. Each change is one POST to api/voice/crew (data.crew comes back), checked by the server against the lines
 // file and the voices installed. The XO row is the main voice (its voice select switches it) and the main personality.
 // an alert row in a few words, for a crew member's "Speaks for" and the messages (test_crew keeps it in step with ALERTS;
-// the Spoken lines tally has its own capitalised names, ALERT_SHORT)
+// the rows' own names are ALERT_NAMES)
 const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "other players' chat", discovery: "target verdicts", arrival: "arrivals", game: "start and exit", jump: "jumps", honk: "the honk",
   brief: "arrival briefings", fss: "the FSS", mapped: "mapped planets", leaving: "leaving with work left", fuel: "fuel",
   scoop: "tank full", scoopstop: "scooping stopped", supercharge: "supercharges", exo: "Exomastery routes", riches: "survey routes",
@@ -13654,20 +13700,11 @@ function tabSetAudio(on) {
 // ---- which alerts this tablet says and plays (the author, 2026-10-04): the same per-device choices as the PC's
 // Settings table (alertSpeak / alertSound, in this tablet's own storage; until changed here they come from the PC's
 // saved defaults, then Outrider's), as big toggles with a short name per alert
-const TAB_ALERT_NAMES = {discovery: "Targeting a system", arrival: "Arriving somewhere new", game: "Game start and quit",
-  docking: "Docking pad and refusals",
-  exo: "Exomastery route", riches: "Road to Riches, worlds, sweeps", trade: "Trade route",
-  jump: "FSD charging", honk: "Auto honk", brief: "Arrival briefing", fss: "FSS finished", mapped: "Planet mapped",
-  leaving: "Leaving work behind", fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped early",
-  supercharge: "Supercharged", highway: "Highway next stop", refuelshort: "Fuel short of the refuel stop", lastscoop: "Last scoopable star", autotarget: "Auto-target", wrongtarget: "Not the next stop targeted", find: "Valuable body",
-  jumponium: "Jumponium materials", sampling: "Exobiology unfinished", approach: "High gravity", bodybrief: "Bio signals on approach",
-  sell: "Selling", saleleft: "Data left after a sale", unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction",
-  carrier: "Carrier arrived", codex: "New codex entry", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
-  rigsout: "Rigs still out", uploads: "Uploads failing"};
 function tabDrawAlerts() {
   const tog = (attr, k, on, what) => `<label class="tb-tog"><input type="checkbox" data-${attr}="${esc(k)}"${on ? " checked" : ""}> ${what}</label>`;
   document.getElementById("tabAlertList").innerHTML = ALERTS.map(([k, label, snd]) =>
-    `<div class="tb-alertrow"><div class="tb-alertname"><b>${esc(TAB_ALERT_NAMES[k] || k)}</b><span class="tb-note">${esc(label)}</span></div>` +
+    (ALERT_GROUPS[k] ? `<h4 class="tb-alertgroup">${esc(ALERT_GROUPS[k])}</h4>` : "") +
+    `<div class="tb-alertrow"><div class="tb-alertname"><b>${esc(ALERT_NAMES[k] || k)}</b><span class="tb-note">${esc(label)}</span></div>` +
     `<div class="tb-alerttogs">${UNSPOKEN.has(k) ? "" : tog("tspeak", k, alertSpeak[k], "🗣 Voice")}` +
     `${snd || k === "arrival" ? tog("tsound", k, alertSound[k], "🔊 Sound") : ""}</div></div>`).join("");
   const sd = serverSettings();

@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Settings → Alerts in groups, each alert named
+- **The Alerts table is in groups** (the author: "a jumbled and confusing mess"): Jumps and arrivals, Exploring a
+  system, Discoveries, Exobiology and the surface, Fuel, Routes and targeting, Docking and selling, Danger and risk, Your
+  carrier / the game / comms, Rhino mining. The tablet's alert sheet has the same headings.
+- **Each row is its name in bold and one line of when it fires**; the fine print (levels, exceptions, where it is
+  switched on) moved into the line's hover, marked with a dotted underline, and Find a setting still finds it.
+- **One set of names** (`ALERT_NAMES`) for the table, the tablet and the Spoken lines tally, so a kind muted from the
+  tally is found in the table by the same name. Surface pins, Carrier trip and Players' chat now have a name on the
+  tablet (it showed their keys). Nothing else changes: the keys, defaults and your choices stay as they were.
 ## 2026-10-23 · Settings → Auto-target: the galaxy map's steps, editable, with ↺ default
 - From Kurbo26's discussion #12 (his own steps for a name with several matches, and for targeting without plotting):
   - **A Settings section of its own, Auto-target** (game PC only): the three parts of the galaxy map sequence (into the

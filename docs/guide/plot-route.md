@@ -118,7 +118,7 @@ paste in the carrier map (only when you click it); after a jump the line counts 
 **ready** (or **ready?** when you are away: only the booked jump says the carrier moved, and a busy system can delay
 it). A jump onto a later leg skips ahead; one anywhere else says "off the trip", with **re-plot from here**; ✕ ends the
 trip, and the last leg ends it. The Quartermaster says "Carrier ready to jump. Next leg: …" when the cooldown should be
-over (the **Carrier trips** row in Settings → Alerts) and adds "Leg 3 of 6, 3 to go" to the carrier's arrival line.
+over (the **Carrier trip** row in Settings → Alerts) and adds "Leg 3 of 6, 3 to go" to the carrier's arrival line.
 
 **The route line and 🎯.** The line under the tiles (on every tab) shows the next stop of whichever route the tab shows (🛣 the
 Highway, 💰 Road to Riches, 🧬 Exomastery, 🌍 Earth-like worlds, 🧪 ammonia worlds, 🪨 terraformable worlds, 🧹 a sweep, 💱 a trade route), its
@@ -149,7 +149,7 @@ way when auto-target can work on this PC, else copies its name (see [the Map](vi
 targeted against the next stop: "✓ targeted"; "⚠ targeted Ossia, not the next stop Pru Aim XY-Z d1"; or, for a later
 stop of the same route (on purpose, say to skip one), "↷ targeted Ossia, 2 stops ahead". A route plotted in the galaxy
 map counts by where it ends. A wrong target is said once ("You've targeted Ossia. The next stop is Pru Aim XY-Z d1.")
-under its own alerts row, **Wrong target** (spoken, no notification by default), after you close the galaxy map; never
+under its own alerts row, **Not the next stop targeted** (spoken, no notification by default), after you close the galaxy map; never
 while you are off the route, for a later stop, or for a body or station in the system you are in. The overlay's Target
 panel shows the same check.
 

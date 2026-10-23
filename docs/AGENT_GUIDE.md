@@ -509,7 +509,10 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
    it must not fire on a re-read).
 2. If it needs pricing or names, add them in `State.moments_summary()` / `moment_extra()`.
 3. In `onData()` (page.js), a branch for `m.kind === "my_kind"` calling `alertOut(...)`; reuse an `ALERTS` row
-   or add one (its id is the per-alert sound/notify/speak switch).
+   or add one (its id is the per-alert sound/notify/speak switch): in its group's place in `ALERTS` (`ALERT_GROUPS`
+   heads each group at its first row), its line one short sentence of when it fires, its name in `ALERT_NAMES` (the
+   table, the tablet's list and the Spoken lines tally's `ALERT_SHORT`), the fine print in `ALERT_DETAILS` (the line's
+   hover, found by Find a setting). The "alerts in groups" smoke block checks every row is named and grouped.
 4. A spoken line: see below. Tests: a unit test for the moment, a smoke check for the page's reaction.
 
 **A new column.** Add it to the `CREATE TABLE` in `SCHEMA`; `open_db` adds missing columns to old databases.

@@ -5,8 +5,11 @@
 ## 🔔 Alerts
 
 Alerts fire only for something out of the ordinary. Each can play a sound (🔊), show a desktop
-notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts**. On the game PC the
-[in-game overlay](overlay.md)'s Alerts panel can show them over the game too, for a few seconds each:
+notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts**. The table is in groups (jumps and
+arrivals, exploring a system, discoveries, exobiology and the surface, fuel, routes and targeting, docking and selling,
+danger and risk, your carrier, the game and comms, Rhino mining); each row gives the alert's name and when it fires, and
+a dotted line has more in its hover. On the game PC the [in-game overlay](overlay.md)'s Alerts panel can show them over
+the game too, for a few seconds each:
 
 - a new discovery targeted, or arriving somewhere nobody has been
 - leaving with mapping or bio over your levels undone, or a first-discovered Earth-like, water, ammonia or
@@ -14,7 +17,7 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
 - a valuable body the moment the FSS resolves it, and a new codex entry. A body someone else has already mapped is
   never pointed out (nor warned about when you leave): the first one in a system gets one line instead, "Already
   mapped, but there are still valuable bodies to map if you want to jump on the train"
-- **discoveries**, grouped together in Settings → Alerts, each with its own switches, said with delight in every
+- **discoveries**, their own group in Settings → Alerts, each with its own switches, said with delight in every
   personality (the sarcastic and profane ones included: the co-pilot likes new things):
   - notable stellar phenomena the FSS finds in a system where you have none on record ("three notable stellar
     phenomena, all in rings")
@@ -30,13 +33,13 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
   - curiosities (the 🔭 marks: rare planet classes, odd orbits, ringed landables...; planets sharing a centre are not one) in the system you are in, once per
     system: one line to check your panels ("You might be interested in some curious things I found here"), not the list
 - low fuel where you cannot scoop, and a top-up worth taking before a dry stretch
-- on a Neutron Highway route from the exact plotter, fuel that won't reach the next refuel stop (its own row, **Short
-  of the refuel stop**; see [Plot Route](plot-route.md))
+- on a Neutron Highway route from the exact plotter, fuel that won't reach the next refuel stop (its own row, **Fuel
+  short of the refuel stop**; see [Plot Route](plot-route.md))
 - on any route Outrider follows, the last scoopable star before stars you can't scoop that the fuel won't cover (its
   own row, **Last scoopable star**)
-- on a route you follow in Outrider, a system targeted in game that is not the next stop (its own row, **Wrong target**;
+- on a route you follow in Outrider, a system targeted in game that is not the next stop (its own row, **Not the next stop targeted**;
   spoken once per target, no notification by default; see [Plot Route](plot-route.md))
-- **docking** (its own row, **Docking**, spoken by Comms): the pad the station gave you, said every time, even while
+- **docking** (its own row, **Docking pad and refusals**, spoken by Comms): the pad the station gave you, said every time, even while
   hushed ("Pad 34."), 5 seconds after the grant so it doesn't talk over the station's own voice (**Settings → Voice → Say your landing pad … s after docking is granted**, 0 to 20: `[speech] pad_delay`, for a chattier station), and why it refused when that isn't obvious: no pad free, ship too big, access restricted, hostile,
   your offences, a fighter still out (too far away is not said). No notification by default. The pad also shows large on
   Now and in the overlay (where the Surface radar goes). At a starport or carrier the pad's place follows: "Pad 34. At the back, up on
@@ -365,7 +368,7 @@ messages to you: squadron, wing and direct messages by default, local and voice 
   them (your profanity setting is about Outrider's own lines). Up to about 300 characters, then "and more".
 - **When:** after any alert, never while hushed; only what arrives while the page is open (never a backlog).
 - **🔇 in Spoken lines** beside a chat line mutes that commander; the Chat line lists the muted ones with ✕ to undo.
-- It is the **Chat** row of ⚙ Settings → Alerts (speak only, by default): the overlay's Alerts panel shows it there.
+- It is the **Players' chat** row of ⚙ Settings → Alerts (speak only, by default): the overlay's Alerts panel shows it there.
 - **Private:** other players' words are never written to Outrider's log or its database, and never kept in the
   voice's cache.
 

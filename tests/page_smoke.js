@@ -1807,7 +1807,7 @@ const releasePayloads = async () => {
       onData();
       o.said = said.map(x => x[1]);
       o.row = ALERTS.some(a => a[0] === "docking") && alertCfgBase().docking === false && alertSpeakBase().docking === true &&
-        !!ALERT_SHORT.docking && !!TAB_ALERT_NAMES.docking && SPEECH_SYS_BOUND.has("docking") && speechPrio("docking") === 1 &&
+        !!ALERT_SHORT.docking && !!ALERT_NAMES.docking && SPEECH_SYS_BOUND.has("docking") && speechPrio("docking") === 1 &&
         !!document.querySelector('#alertOpts [data-aspeak="docking"]') && !!LINE_SAMPLES.docking_granted && !!LINE_SAMPLES.docking_denied &&
         JSON.stringify(ROW_KEYS.docking) === JSON.stringify(["docking_granted", "docking_denied"]);
       speak = realSpeak; notify = realNotify; speechLib = lib;
@@ -3447,7 +3447,7 @@ const releasePayloads = async () => {
     got.gridBefore = grid.checked;
     got.mutes = [...w.document.querySelectorAll("#speechTally [data-mute]")].map(b => b.dataset.mute).sort().join();
     w.document.querySelector('#speechTally [data-mute="jump"]').click();
-    got.muted = [w.eval("alertSpeak.jump"), grid.checked, JSON.parse(w.localStorage.getItem("alertSpeak")).jump, /FSD charge 2 muted undo/.test(tally())];
+    got.muted = [w.eval("alertSpeak.jump"), grid.checked, JSON.parse(w.localStorage.getItem("alertSpeak")).jump, /FSD charging 2 muted undo/.test(tally())];
     w.document.querySelector('#speechTally [data-unmute="jump"]').click();
     got.undone = [w.eval("alertSpeak.jump"), grid.checked, !!w.document.querySelector('#speechTally [data-mute="jump"]')];
     w.eval('document.getElementById("speechLogBox").open = false; const dl2 = document.getElementById("alertDialog"); if (dl2.close) dl2.close(); else dl2.removeAttribute("open")');
@@ -3468,7 +3468,7 @@ const releasePayloads = async () => {
       mappedRow: [true, false, true, false], mappedOff: false, mappedOn: "mapped",
       q5: ["Next: map A 5 (771k/2.2M)", "A 2 mapped efficiently, 3.4 million. Next: map A 5, 771 thousand, 2.2 million with bonuses.",
            "Next: map A 5 (771k)", "map A 5 (High metal content body · 771k/2.2M)", "map A 5 (High metal content body, +5.0M)"],
-      tally: "This session: FSD charge 2 🔇 · Codex 1 🔇 · Asked for 1", gridBefore: true, mutes: "codex,jump",
+      tally: "This session: FSD charging 2 🔇 · New codex entry 1 🔇 · Asked for 1", gridBefore: true, mutes: "codex,jump",
       muted: [false, false, false, true], undone: [true, true, true]};
     for (const k of Object.keys(want)) if (JSON.stringify(got[k]) !== JSON.stringify(want[k])) bad.push(k);
     const goodD = !bad.length && errors.length === before;
@@ -5102,7 +5102,7 @@ const releasePayloads = async () => {
       const fuelVoice = td.querySelector('#tabAlertList [data-tspeak="fuel"]');
       ta.push([td.getElementById("tabAlerts").hasAttribute("open"), rows.length === tw.eval("ALERTS.length"),
                !td.querySelector('#tabAlertList [data-tspeak="discovery"]'), !!td.querySelector('#tabAlertList [data-tsound="discovery"]'),
-               fuelVoice.checked]);
+               fuelVoice.checked, td.querySelectorAll("#tabAlertList .tb-alertgroup").length === tw.eval("Object.keys(ALERT_GROUPS).length")]);
       fuelVoice.checked = false; fuelVoice.dispatchEvent(new tw.Event("change", {bubbles: true}));
       ta.push(tw.eval("JSON.stringify([alertSpeak.fuel, JSON.parse(localStorage.getItem('alertSpeak')).fuel])"));
       fuelVoice.checked = true; fuelVoice.dispatchEvent(new tw.Event("change", {bubbles: true}));
@@ -5181,7 +5181,7 @@ const releasePayloads = async () => {
       settings: [true, true, "a browser (no app)", true], signOut: [true, false], emblem: [false, true, true, true, "false", false],
       railShown: [true, false, true, "false", true, false, false, "true"],
       appScreens: [true, false, [false, false, true], "ED Outrider for Android 1.2.0", ["voice"], false],
-      tabletAudio: ["[false,false]", false, '[true,true,"always","true"]', false, [true, true, true, true, true], "[false,false]", ["A line here."], "🔇 Tap anywhere to let Outrider speak here",
+      tabletAudio: ["[false,false]", false, '[true,true,"always","true"]', false, [true, true, true, true, true, true], "[false,false]", ["A line here."], "🔇 Tap anywhere to let Outrider speak here",
                     '[false,false,"false"]'], prefs: ["lcars", true, "true", null, "here"],
       voiceCmds: [true, true, false, true, true, true, true, "auto"], tabEarn: ["cmdr", false, 5, true, 5, "8px"],
       tabShip: [1, "pointer", ["static/ships/mediumtransport01.webp", "Lynx Highliner", "auto"], true, true, true]};
@@ -5281,7 +5281,7 @@ const releasePayloads = async () => {
       const st = document.createElement("div"); st.innerHTML = siteTags({guardian: 2, anomaly: 1});
       const nb = document.createElement("div"); nb.innerHTML = sitesTag([{body: "10 b", sites: {guardian: 2, thargoid: 1}}]);
       const pt = poiText([{kind: "titan", name: "Titan Cocijo"}, {kind: "tourist", name: "A"}, {kind: "tourist", name: "B"}, {kind: "listening_post", name: "Listening Post"}]);
-      return JSON.stringify([s.textContent, s.title, head.length === 1 && /^Discoveries/.test(head[0]), rows,
+      return JSON.stringify([s.textContent, s.title, head.includes("Discoveries"), rows,
                              st.textContent, nb.firstChild.textContent, nb.firstChild.title, pt]); })()`));
     // #13: a Titan has the game's Titan marker in place of 📍 (Here's and Nearby's tag, Now's line); the other signals
     // keep 📍; the tag still says what it holds in its title
@@ -5786,7 +5786,7 @@ const releasePayloads = async () => {
       r.ticks = alertSpeak.jump === !was;
       store.set("alertSpeak", {...alertSpeak, jump: was}); window.dispatchEvent(Object.assign(new Event("storage"), {key: "alertSpeak"}));
       r.chip = src(showAlertSection).includes("scrollPaddingTop");
-      r.names = ["exo", "riches", "trade"].every(k => ALERT_SHORT[k] && TAB_ALERT_NAMES[k]);
+      r.names = ["exo", "riches", "trade"].every(k => ALERT_SHORT[k] && ALERT_NAMES[k]);
       tabVoiceLabel();
       r.voice = document.querySelector("#tabFoot .tb-voice").textContent;
       r.voiceSet = src(tabSetAudio).includes("tabVoiceLabel()");
@@ -6257,7 +6257,7 @@ const releasePayloads = async () => {
       speak = realSpeak; notify = realNotify; data.moments = m0;
       [speechOn, isSpeaker, alertSpeak.firstsseen] = flags; lastMomentSeq = flags[4];
       o.told = told; o.said = said.length;
-      o.row = ALERTS.some(a => a[0] === "firstsseen") && alertCfg.firstsseen === true && !!ALERT_SHORT.firstsseen && !!TAB_ALERT_NAMES.firstsseen &&
+      o.row = ALERTS.some(a => a[0] === "firstsseen") && alertCfg.firstsseen === true && !!ALERT_SHORT.firstsseen && !!ALERT_NAMES.firstsseen &&
         !UNSPOKEN.has("firstsseen") && !SPEECH_SYS_BOUND.has("firstsseen") && !!document.querySelector('#alertOpts [data-aspeak="firstsseen"]');
       return JSON.stringify(o); })()`));
     const want = {told: [["firstsseen", "👁 Someone else scanned your unsold Drojau LL-O b26-3", "3 bodies reached Spansh 12 days after you (your scan 15 days ago) · 14.2M cr at stake · see My firsts"],
@@ -6295,7 +6295,7 @@ const releasePayloads = async () => {
       o.key = said.length ? said[0][2] : null; o.told = told; o.said = said.map(x => [x[1], x[0]]);
       speak = realSpeak; notify = realNotify; data.moments = m0; speechLib = lib;
       [speechOn, isSpeaker, alertSpeak.refuelshort] = flags; lastMomentSeq = flags[3];
-      o.row = ALERTS.some(a => a[0] === "refuelshort") && alertCfg.refuelshort === true && !!ALERT_SHORT.refuelshort && !!TAB_ALERT_NAMES.refuelshort &&
+      o.row = ALERTS.some(a => a[0] === "refuelshort") && alertCfg.refuelshort === true && !!ALERT_SHORT.refuelshort && !!ALERT_NAMES.refuelshort &&
         SPEECH_SYS_BOUND.has("refuelshort") && DANGER.has("fuel_short") && speechPrio("refuelshort", "fuel_short") === 0 &&
         !!document.querySelector('#alertOpts [data-aspeak="refuelshort"]') && !!LINE_SAMPLES.fuel_short;
       // S19: Now shows the jump's cost and the scoopable share with the header's and the tile's own words
@@ -6345,7 +6345,7 @@ const releasePayloads = async () => {
       data.moments = [at(1, {}), at(2, {count: 1, next: null}), at(3, {count: 40, full: true, need_t: null})];
       onData();
       o.key = said.length ? said[0][0] : null; o.told = told.slice(); o.said = said.map(x => x[1]);
-      o.row = ALERTS.some(a => a[0] === "lastscoop") && alertCfg.lastscoop === true && !!ALERT_SHORT.lastscoop && !!TAB_ALERT_NAMES.lastscoop &&
+      o.row = ALERTS.some(a => a[0] === "lastscoop") && alertCfg.lastscoop === true && !!ALERT_SHORT.lastscoop && !!ALERT_NAMES.lastscoop &&
         SPEECH_SYS_BOUND.has("lastscoop") && DANGER.has("fuel_last_scoop") && speechPrio("lastscoop", "fuel_last_scoop") === 0 &&
         !!document.querySelector('#alertOpts [data-aspeak="lastscoop"]') && !!LINE_SAMPLES.fuel_last_scoop;
       // the strip's bit: on the In-Game Route strip, else on the route line; Now under the fuel
@@ -6434,7 +6434,7 @@ const releasePayloads = async () => {
       onData();
       o.told = told; o.said = said;
       o.row = ALERTS.some(a => a[0] === "wrongtarget") && alertCfgBase().wrongtarget === false && alertSpeakBase().wrongtarget === true &&
-        !!ALERT_SHORT.wrongtarget && !!TAB_ALERT_NAMES.wrongtarget && SPEECH_SYS_BOUND.has("wrongtarget") &&
+        !!ALERT_SHORT.wrongtarget && !!ALERT_NAMES.wrongtarget && SPEECH_SYS_BOUND.has("wrongtarget") &&
         !!document.querySelector('#alertOpts [data-aspeak="wrongtarget"]') && !!LINE_SAMPLES.wrong_target;
       speak = realSpeak; notify = realNotify; speechLib = lib;
       [speechOn, isSpeaker, alertSpeak.wrongtarget] = flags; lastMomentSeq = flags[3];
@@ -6953,7 +6953,7 @@ const releasePayloads = async () => {
                 "At start " + hm(t0 - 7200) + ": nothing missed"];
       o.buttons = [...box.querySelectorAll("[data-uretry]")].map(b => b.dataset.uretry + (b.dataset.schema ? ":" + b.dataset.schema : ""));
       o.noLastError = !/last error/.test(box.textContent);
-      o.row = ALERTS.some(a => a[0] === "uploads") && alertCfg.uploads === true && UNSPOKEN.has("uploads") && !!ALERT_SHORT.uploads && !!TAB_ALERT_NAMES.uploads
+      o.row = ALERTS.some(a => a[0] === "uploads") && alertCfg.uploads === true && UNSPOKEN.has("uploads") && !!ALERT_SHORT.uploads && !!ALERT_NAMES.uploads
         && !document.querySelector('#alertOpts [data-aspeak="uploads"]') && !!document.querySelector('#alertOpts [data-alert="uploads"]');
       // the moments: notified, never said (speech on, this window the speaker)
       const said = [], told = [], realSpeak = speak, realNotify = notify, flags = [speechOn, isSpeaker, alertSpeak.uploads, lastMomentSeq], m0 = data.moments;
@@ -8383,6 +8383,10 @@ const releasePayloads = async () => {
     await find("inara");
     got.inara = JSON.parse(w.eval(`(() => { const b = document.querySelector('#uploadsBox [data-find-block="Inara"]');
       return JSON.stringify(!!b && !b.closest(".sfhide") && [...b.children].every(c => !c.classList.contains("sfhide"))); })()`));
+    await find("lengths");   // a word only in an alert row's fine print, its hover (ALERT_DETAILS): the arrival's row, marked
+    const arrTr = `document.querySelector('#alertOpts [data-alert="arrival"]').closest("tr")`;
+    got.fine = [vis('#alertOpts [data-alert="arrival"]'), w.eval(`${arrTr}.classList.contains("sfmark")`), w.eval(`/lengths/.test(${arrTr}.textContent)`),
+      w.eval(`document.querySelector('#alertOpts [data-alert="jump"]').closest("tr").classList.contains("sfmark")`)];
     await find("zzqxw");
     got.none = [msg(), secs().length, w.eval(`[...document.querySelectorAll("#alertChips [data-sec]")].every(b => b.classList.contains("sfhide"))`)];
     got.every = JSON.parse(w.eval(`(() => {
@@ -8403,13 +8407,38 @@ const releasePayloads = async () => {
     w.eval(`const dls = document.getElementById("alertDialog"); if (dls.close) dls.close(); else dls.removeAttribute("open")`);
     const want = {speed: [true, false, false, true, true], password: [true, false, true, false, true],
       key: [true, false, true, w.eval(`[...new Set(["server", "values"])].sort().join()`)], two: [true, true],
-      backups: [true, true, true, false, true], zips: [true, true], inara: true,
+      backups: [true, true, true, false, true], zips: [true, true], inara: true, fine: [true, true, false, false],
       none: ["Nothing matches", 0, true], cleared: [0, true, "", true, true, 0]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     if (got.every.length < 12 || !got.every.every(e => e[1] && e[2])) bad.push("every");
     const good = !bad.length && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| S39 find a setting |", good ? `speed, a server key, a config key alone, two words, a block's heading (Backups, Inara), nothing; all ${got.every.length} sections found by a word and by name; cleared as before` :
+      `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
+  }
+  // Settings -> Alerts in groups (the author, 2026-10-23): each group's heading at its first row, in ALERT_GROUPS' order
+  // and covering every row; every row named (ALERT_NAMES) before its line; the fine print in the line's hover; the
+  // Spoken lines tally says the rows' own names
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      const trs = [...document.querySelectorAll("#alertOpts tr")];
+      const heads = trs.filter(r => r.classList.contains("agroup")).map(r => r.textContent);
+      const firsts = trs.map((r, i) => r.classList.contains("agroup") ? (trs[i + 1].querySelector("[data-alert]") || {}).dataset.alert : null).filter(Boolean);
+      const td = k => document.querySelector('#alertOpts [data-alert="' + k + '"]').closest("tr").cells[0];
+      return JSON.stringify({
+        heads: JSON.stringify(heads) === JSON.stringify(Object.values(ALERT_GROUPS)) && JSON.stringify(firsts) === JSON.stringify(Object.keys(ALERT_GROUPS)),
+        first: trs[0].classList.contains("agroup"),
+        named: ALERTS.every(([k]) => ALERT_NAMES[k] && (td(k).querySelector(".aname") || {}).textContent === ALERT_NAMES[k]),
+        fuel: [(td("fuel").querySelector(".aname") || {}).textContent, (td("fuel").querySelector(".adesc") || {}).title === ALERT_DETAILS.fuel, !(td("scoop").querySelector(".adesc") || {}).title],
+        short: Object.keys(ALERT_NAMES).every(k => ALERT_SHORT[k] === ALERT_NAMES[k]) && ALERT_SHORT.manual === "Asked for",
+        oneLine: ALERTS.every(([, label]) => label.length <= 120)});
+    })()`));
+    const want = {heads: true, first: true, named: true, fuel: ["Fuel", true, true], short: true, oneLine: true};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const good = !bad.length && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| alerts in groups |", good ? "every row named and in a group, the headings in order, the fine print in the hover, the tally's names the rows'" :
       `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
   }
   // S53: Import… beside Bookmarks' Export: a picked CSV file goes to the scratch server, which merges it ("2 added, 0
