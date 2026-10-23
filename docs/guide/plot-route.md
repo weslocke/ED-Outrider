@@ -205,6 +205,10 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
     `press KEY_DOWN` (the arrow key by name: into the results list, the first one highlighted) and `press UI_Select`
     (picks it and flies there); it works for a name with one result and for one with several (Sol, Solati…), where
     Enter only moves the focus out of the box.
+  - **Macro cheatsheet ↗** at the top of the section opens, in a new tab, everything the boxes take: the commands, each
+    game control with what it does in the galaxy map and (on the game PC) the key it is bound to, `Enter` and `Paste`,
+    every keyboard key by name and the short forms (`KEY_` optional, any case, `alt`, `ctrl`, `shift`, `+` for keys
+    pressed together).
   - Steps are `press <key>`, `hold <key> <seconds>` or `wait <seconds>`, one per line; a key is one of the game's
     controls (`UI_Select`, `UI_Up`, `CamZoomOut`…, in any case), `Enter`, `Paste`, or keyboard keys such as
     `KEY_LEFTALT+KEY_T`.

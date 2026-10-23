@@ -9,11 +9,13 @@ map) and, at the end, Destination.System, which must be the next system's id64.
 The default sequence (each key can be overridden with [highway] autotarget_keys, the plot step with autotarget_plot):
 
     1 open the galaxy map        GalaxyMapOpen, then wait for GuiFocus 6 (autotarget_map_wait s)
-    2 go to the search field     UI_Up (highlights "Search the Galaxy"), UI_Select (cursor in it); autotarget_search
+    2 go to the search field     hold CamYawRight 0.3 s (closes a side panel), UI_Up (highlights "Search the Galaxy"),
+                                 UI_Select (cursor in it); autotarget_search
     3 enter the system name      typed with a US keymap (or pasted: autotarget_entry = "paste")
-    4 submit                     wait 0.5 s, Enter, wait 0.5 s, Enter (autotarget_submit), then wait
-                                 autotarget_search_wait s for the map to fly there
-    5 plot the route             hold CamYawRight 0.3 s (gives the focus back to the map), hold UI_Select 1 s
+    4 submit                     wait 1.5 s, the down arrow (KEY_DOWN: the first result), UI_Select (picks it, the map
+                                 flies there; autotarget_submit), then wait autotarget_search_wait s
+    5 plot the route             hold CamZoomOut 0.2 s (gives the focus back to the map), hold UI_Select 1 s
+                                 (autotarget_plot)
     6 close the galaxy map       GalaxyMapOpen, then wait for GuiFocus 0
     7 check                      Status.json Destination.System is the next system
 
@@ -53,6 +55,24 @@ ACTIONS = ("GalaxyMapOpen", "UI_Right", "UI_Left", "UI_Up", "UI_Down", "UI_Selec
            "CamYawLeft", "CamYawRight", "CamZoomIn", "CamZoomOut", "CamTranslateLeft", "CamTranslateRight",
            "CamTranslateForward", "CamTranslateBackward")
 FIXED_KEYS = {"Enter": ["KEY_ENTER"], "Paste": ["KEY_LEFTCTRL", "KEY_V"]}
+# what each control and fixed key does in the galaxy map, for the steps' cheatsheet (outrider/target_help.py; a test
+# keeps it in step with ACTIONS and FIXED_KEYS)
+KEY_HELP = {"GalaxyMapOpen": "opens and closes the galaxy map (Outrider does both itself: steps 1 and 6)",
+            "UI_Up": "moves the highlight up: straight after the map opens, onto \"Search the Galaxy\"",
+            "UI_Down": "moves the highlight down a panel or list (in the search box, a letter key types itself)",
+            "UI_Left": "moves the highlight left, along the panel's tabs and icons",
+            "UI_Right": "moves the highlight right, along the panel's tabs and icons",
+            "UI_Select": "selects what is highlighted; held on the map with a system under the crosshair, plots the route",
+            "UI_Back": "backs out of a panel or the search",
+            "CycleNextPanel": "the next tab of the open panel",
+            "CamYawLeft": "turns the camera left; any camera move gives the focus back to the map",
+            "CamYawRight": "turns the camera right (the default's first step: it closes a side panel the map reopened on)",
+            "CamZoomIn": "zooms the camera in; gives the focus back to the map",
+            "CamZoomOut": "zooms the camera out, keeping the found system under the crosshair (the default plot's first step)",
+            "CamTranslateLeft": "moves the camera left", "CamTranslateRight": "moves the camera right",
+            "CamTranslateForward": "moves the camera forward", "CamTranslateBackward": "moves the camera back",
+            "Enter": "the Enter key, always (not a control: needs no binding)",
+            "Paste": "Left Ctrl + V, always: pastes the clipboard"}
 # a control or fixed key named in any case ("UI_SELECT", "ui_select") is that one: the names are the game's, and a player
 # writing them from memory should not get "no keyboard binding" (a Windows player on Reddit, 2026-10-22)
 _CANON = {n.lower(): n for n in ACTIONS + tuple(FIXED_KEYS)}

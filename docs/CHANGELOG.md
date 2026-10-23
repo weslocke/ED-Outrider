@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Settings → Auto-target: a Macro cheatsheet
+- **Macro cheatsheet ↗** at the top of the section (the author) opens a page in a new tab with everything the three
+  boxes take: the commands and their limits, where each box starts (and why letter keys type themselves in the
+  search box), each box's default, every game control with what it does in the galaxy map and the key it is bound to
+  in your controls, `Enter` and `Paste`, every keyboard key by name (the ones that work on Windows and Linux alike),
+  and the short forms: `KEY_` optional, any case, `alt` / `ctrl` / `control` / `shift`, `+` for keys together, and
+  `[highway] autotarget_keys` to give a control its own key. It is built from the code that reads the steps, so it
+  lists exactly what they accept.
+
 ## 2026-10-23 · Auto-target picks the first search result: a name with several results works
 - **The default submit steps are `wait 1.5`, `press KEY_DOWN`, `press UI_Select`** (they were Enter, Enter), from
   Kurbo26's discussion #12 and the author's checks in game: a name with several results (Sol, Solati…) defeated

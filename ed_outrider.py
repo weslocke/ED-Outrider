@@ -226,6 +226,7 @@ import outrider.codex_geo  # geology as codex entries: what a body's volcanism c
 import outrider.service    # Install as a service (S70): a systemd user unit on Linux, a Startup .cmd on Windows
 import outrider.health     # what kind of failure a call to an outside service met (dns, offline, timeout, http5xx...)
 import outrider.tls        # the one TLS context of every outgoing HTTPS connection: the system store plus certifi's
+import outrider.target_help   # the auto-target steps' cheatsheet page (GET /help/autotarget)
 from outrider.core import iso_ts, ts_seconds   # journal timestamps
 from outrider.fsd import (   # the frame shift drive's maths: range, fuel per jump, the fuel model, fleet figures
     FSD_RANGE_MODS, GUARDIAN_BOOST, conservative_optimal_mass, conservative_range, fleet_figures, fleet_range, fsd_range,
@@ -19232,8 +19233,19 @@ def make_app(state, hosts=None):
             raise web.HTTPNotFound()
         return web.FileResponse(path, headers={"Cache-Control": "max-age=86400"})
 
+    async def autotarget_help(_):
+        """GET /help/autotarget: the auto-target steps' cheatsheet (Settings -> Auto-target links it, a new tab): what a
+        step may say, from outrider.target itself; on the game PC each control with the key it is bound to (the
+        controls preset read off the loop), elsewhere without that column."""
+        t = state.targeter
+        binds = None
+        if t is not None and t.available:
+            binds = await asyncio.get_running_loop().run_in_executor(None, t.bindings)
+        return web.Response(text=outrider.target_help.cheatsheet_html(binds), content_type="text/html")
+
     app.router.add_get("/", index)
     app.router.add_get("/tablet", index)
+    app.router.add_get("/help/autotarget", autotarget_help)
     app.router.add_get("/userfonts/{name}", user_font)
     app.router.add_static("/static/", STATIC_DIR, show_index=False)
     async def bookmark(request):

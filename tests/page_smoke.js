@@ -4208,6 +4208,8 @@ const releasePayloads = async () => {
     const n0 = posts.length;
     d.getElementById("atTest").click(); await sleep(200);
     got.testNone = [posts.slice(n0), txt("atTestMsg")];
+    const ch = d.getElementById("atCheat");   // the Macro cheatsheet: the server's page, in a new tab
+    got.cheat = [ch.getAttribute("href"), ch.target, ch.rel, d.querySelector("#atSettings > .hint").contains(ch)];
     d.getElementById("atTestSys").value = "";
     w.fetch = realFetch;
     for (const id of ["atSearch", "atSubmit", "atPlot"]) d.getElementById(id).dataset.dirty = "";
@@ -4223,6 +4225,7 @@ const releasePayloads = async () => {
       empty: ["Not saved: each part needs at least one step (↺ default puts back Outrider's own)", 2],
       test: ["test", "cannot test: the galaxy map is open (the cockpit must have focus)"],
       testSys: [["find Sol", {route: "system", id: "10477373803", test: true}], "cannot test: auto-target is already running"],
+      cheat: ["help/autotarget", "_blank", "noopener", true],
       testNone: [["find Nowhere Xyz"], "cannot test: No system called 'Nowhere Xyz' is known here, to EDSM or to Spansh."]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodAS = !bad.length && errors.length === before;
