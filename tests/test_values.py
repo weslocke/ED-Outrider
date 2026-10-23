@@ -545,6 +545,27 @@ class SampleSpacing(unittest.TestCase):
         self.organic("2026-01-01T00:20:00Z", "Analyse")
         self.assertIsNone(self.state.sampling_summary())                  # run complete
 
+    def test_in_flight(self):
+        """Flying the ship to the next sample's spot counts down too (Offshorepred, discussion #3): below NEAR_BODY_ALT
+        over the body, measured from the point under the ship. The Nomad (Status.json's SRV flag) always did; high up,
+        or with only the rough altitude, nothing is said."""
+        self.at("2026-01-01T00:10:00Z", 0.0, 0.0)
+        self.organic("2026-01-01T00:10:00Z", "Log")
+        def fly(lat, lon, flags=ed_outrider.FLAG_IN_MAIN_SHIP, alt=300):
+            self.j.status_json = {"live": True, "ts": "2026-01-01T00:11:00Z", "fuel_main": 10, "flags": flags, "flags2": 0,
+                                  "body": "Sys 4", "lat": lat, "lon": lon, "alt": alt, "planet_radius": 1_000_000}
+        fly(0.0, 0.009)                                                  # lifted off, 157 m away: 43 m to go
+        s = self.state.sampling_summary()
+        self.assertEqual((s["nearest"], s["to_go"], s["clear"]), (157, 43, False))
+        fly(0.0, 0.012)
+        self.assertTrue(self.state.sampling_summary()["clear"])
+        fly(0.0, 0.012, ed_outrider.FLAG_IN_SRV, 0)                     # the Nomad (or any SRV): as before
+        self.assertTrue(self.state.sampling_summary()["clear"])
+        fly(0.0, 0.012, alt=6000)                                        # too high to be flying to a sample
+        self.assertIsNone(self.state.sampling_summary())
+        fly(0.0, 0.012, ed_outrider.FLAG_IN_MAIN_SHIP | ed_outrider.FLAG_ALT_AVG, 2000)   # orbital cruise: rough altitude
+        self.assertIsNone(self.state.sampling_summary())
+
     def codex(self, ts, variant="$Codex_Ent_Tussocks_01_A_Name;", name="Tussock Pennata - Teal", lat=None, lon=None):
         ev = {"event": "CodexEntry", "timestamp": ts, "EntryID": 2310101, "Name": variant, "Name_Localised": name,
               "Category": "$Codex_Category_Biology;", "SubCategory": "$Codex_SubCategory_Organic_Structures;",

@@ -54,7 +54,8 @@ were: "yours on bodies like this (Icy body, thin N2, 75–100 K, Inner Orion Spu
 The guess itself stays the likeliest by value. Flying low over a body in your ship (under 5 km), the
 on-body strip already shows its bio card. While you sample, the strip says what the run pays from the first sample on
 ("🧬 Bacterium Aurasus · 1.0M (×5: 5.0M) · sample 1/3 · 500 m to go": the species' value, and with the first-footfall
-bonus). A star's panel says its kind in words ("main sequence", "white dwarf (hydrogen-rich)"), a biology codex entry links to
+bonus). The distance counts down on foot, in the SRV or Nomad, and in your ship flying low to the next spot (measured
+from the point under the ship), and "Clear to sample" is said as soon as you are far enough, before you land. A star's panel says its kind in words ("main sequence", "white dwarf (hydrogen-rich)"), a biology codex entry links to
 Canonn's Bioforge (where it grows, and in what conditions), and **⬇ CSV** in the heading saves the system's bodies
 and values as a spreadsheet.
 <br><br><img src="../images/here.png" alt="The current system">

@@ -2497,7 +2497,10 @@ const releasePayloads = async () => {
         systems: [{id64: 99, name: "Drojau LL-O b26-3", distance: 6.43, visited: false, source: "spansh"}]});
       const a = statusReportText();
       data = Object.assign({}, data, {on_body: {body: "A 1"}, sampling: {species: "Stratum Tectonicas", samples: 2, to_go: 80, clear: false}});
-      const b = statusReportText(); data = d; hereData = hd; return [a, b]; })()`);
+      const b = statusReportText();
+      // over the body in the ship, flying to the next sample's spot (discussion #3): the sampling too
+      data = Object.assign({}, data, {on_body: null, near_body: {body: "A 1", how: "flying low", alt: 300}, sampling: {species: "Stratum Tectonicas", samples: 2, to_go: 0, clear: true}});
+      const c = statusReportText(); data = d; hereData = hd; return [a, b, c]; })()`);
     // a 👎 on a spoken line bans it: posted with its alert and wording, and never picked again
     const posted = [];
     w.fetch = (u, o) => {
@@ -2543,7 +2546,7 @@ const releasePayloads = async () => {
     const want = {hushed: true, hush: ["said", "silent: hushed", "said"], label: "hushed till the jump", afterJump: false, back: "said",
       server: ["10m", true], serverOff: true, copilot: [1, false, true], again: 2, copilotPiperOnly: [true, false],
       status: ["Fuel 64 percent, 8 jumps. 412.0M aboard, 3.2 rebuys. Nearest unvisited: Drojau LL-O b26-3, 6.4 light-years.",
-               "Stratum Tectonicas, sample 2 of 3, 80 metres still to go."],
+               "Stratum Tectonicas, sample 2 of 3, 80 metres still to go.", "Stratum Tectonicas, sample 2 of 3, clear to take the next."],
       ban: {thumb: true, posted: [["api/speech/ban", "hull", true]], picks: true, banned: true, review: true},
       routine: [true, false, true, false, false, false, false], hum: ["routine", "sound only: a routine system"]};
     for (const k of Object.keys(want)) if (JSON.stringify(got[k]) !== JSON.stringify(want[k])) bad.push(k);

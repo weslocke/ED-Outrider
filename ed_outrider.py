@@ -8735,13 +8735,15 @@ class State:
         return self._since_sale
 
     def sampling_summary(self):
-        """While you are on a body with a sample run in progress: how far you are from the samples you have
-        taken, against the genus's colony distance. None otherwise (or when positions are unknown).
+        """While you are on a body with a sample run in progress, or over it in your ship below NEAR_BODY_ALT (near_body:
+        flying to the next sample's spot, Offshorepred on discussion #3, 2026-10-23; the SRV and the Nomad were always
+        on_body's): how far you are from the samples you have taken, against the genus's colony distance (in the air,
+        from the point under the ship). None otherwise (or when positions are unknown).
         On a body while the run in progress is on another body (in this system or any other): {"elsewhere":
         {species, genus, samples, body, system, value}}, since the first Log of a new species here discards it
         (the page shows it at 2 of 3, or when the run is worth your bio threshold)."""
         st, pos = self.journals.status_json or {}, self.journals.pos
-        ob = self.on_body()
+        ob = self.on_body() or self.near_body()
         if not ob or not outrider.bio:
             return None
         run = self.db.execute("SELECT system, body_id, species, genus_name, species_name, samples FROM own_organic "

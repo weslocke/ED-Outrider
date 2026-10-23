@@ -3605,7 +3605,7 @@ function hwySpoken(s) {
 // after the fuel.
 function statusReportText() {
   const sm = data && data.sampling, pin = pinSpokenNow();   // #16: the pin you fly to, first
-  if (data && data.on_body && sm && sm.species)
+  if (obNow() && sm && sm.species)   // on the body, or over it in the ship (flying to the next sample's spot)
     return (pin ? pin + ". " : "") + `${sm.species}, sample ${sm.samples} of 3` + (sm.clear ? ", clear to take the next." : sm.to_go ? `, ${sm.to_go} metres still to go.` : ".");
   const parts = pin ? [pin] : [], f = data && data.fuel;
   const hd = hereData && !hereData.error && hereData.id64 === posId() ? hereData : null;

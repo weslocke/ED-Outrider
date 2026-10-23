@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Clear to sample while flying the ship
+- From Offshorepred on discussion #3: flying the ship to the next sample's spot said nothing until you landed. The
+  sample spacing only counted on foot, landed or in an SRV (the Nomad is one, so it always worked there). Now it also
+  counts in the ship below 5 km over the body (`sampling_summary` takes `near_body`, measured from the point under the
+  ship): the strip's metres to go, the overlay's line, "Clear to sample …" and the tagged-plant call-out, and the
+  co-pilot's status report says the sample run there too.
+
 ## 2026-10-23 · One branch: main and mining merged; the Rhino's alerts in Settings → Mining
 - The mining work and main are one line of work now. In the merge, Settings → Mining's alerts table takes the
   regrouped rows: **Ring mining** (rings to mine, limpets and the hold, the prospector) and **Rhino mining** (mining
