@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Settings → Alerts: the Crew column without wrapping on a wide screen
+- On a wide screen (Alerts full width), the Crew column takes the room it needs: the crew member's whole name in its
+  list (it was cut at 10em) and "spoken by Tactical (danger)" on one line (the author).
+
 ## 2026-10-23 · Settings: Alerts and Questions asked full width
 - On a big screen, where Settings runs in columns, **Alerts** and **Questions asked** now span the whole width (the
   author), as Voice, Server and Spoken lines do: their tables read better wide.

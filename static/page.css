@@ -1044,6 +1044,12 @@ body.nowmode header, body.nowmode main { display: none; }
 #alertDialog .alerttable td.acrew { text-align: left; width: 1%; }
 #alertDialog .alerttable td.acrew select { max-width: 10em; font-size: 12px; }
 .alerttable .crewdanger { display: block; font-weight: 400; font-size: 11px; }
+/* a wide screen (Alerts spans the whole dialog there): the Crew column takes the room it needs, the member's whole name
+   and "spoken by Tactical (danger)" each on one line (the author, 2026-10-23) */
+@media (min-width: 1280px) {
+  #alertDialog .alerttable td.acrew { width: auto; white-space: nowrap; }
+  #alertDialog .alerttable td.acrew select { max-width: none; }
+}
 @media (max-width: 700px) { .crewtable thead { display: none; } .crewtable tr { grid-template-columns: 1fr 1fr; }
   .crewtable td.crole, .crewtable td.cfor { grid-column: 1 / -1; grid-row: auto; } }
 #alertDialog .chips { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px; }
