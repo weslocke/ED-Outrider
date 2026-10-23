@@ -634,21 +634,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <th title="its sound (when 🔊 is on)">sound</th><th title="spoken (when 🗣 is on)">speak</th>
         <th class="acrew" hidden title="the crew member who says it (Settings → Voice → Crew)">crew</th></tr></thead><tbody id="alertOpts"></tbody></table>
       <div class="hint">Alerts only fire for something out of the ordinary. The tab title also carries the current state, so a background tab still tells you something.</div>
-    </details>
-    <details class="setsec" data-sec-key="said" data-chip="What is said"><summary>What is said <span class="sum-note">signals, routine systems, hazards, mapping</span></summary>
-      <div data-find="defaults.speak_bio_signals defaults.speak_geo_signals" class="mod inlineopts">Say signals as the FSS finds them:
-        <label><input type="checkbox" id="sayBio"> biological</label>
-        <label><input type="checkbox" id="sayGeo"> geological</label>
-        <span class="hint">"2 Biological and 1 Geological Signals found on body A 3" (when 🗣 is on)</span></div>
-      <label class="mod"><input type="checkbox" id="routineQuiet"> Routine systems: sound only
-        <span class="hint">arriving somewhere known with every body already found, a scoopable star, and nothing over your body or bio levels: a soft two-note sound instead of the arrival briefing (and of "nothing worth staying for" after the FSS); the card stays</span></label>
-      <label class="mod"><input type="checkbox" id="sayHazard"> Say the hazard when the FSD charges for a neutron star, white dwarf or black hole
-        <span class="hint">"… Neutron star ahead: throttle down on arrival, mind the jet cone" (part of the jump line)</span></label>
-      <label data-find="defaults.speak_mapped" class="mod"><input type="checkbox" id="sayMapped"> Say when a planet is mapped
-        <span class="hint">"A 2 mapped efficiently, 3.4M. Next: biology on C 2, up to 19M." after each DSS mapping (or "2 probes over target, no efficiency bonus"; or "Nothing else here over your levels"); its row in the table above chooses the card, notification and voice. Off by default ([defaults] speak_mapped)</span></label>
-    </details>
-    <details class="setsec" data-sec-key="sounds" data-chip="Sounds"><summary>Sounds <span class="sum-note">try each alert sound</span></summary>
-      <div data-find="defaults.sounds" class="opts inline">Try them:
+      <div data-find="defaults.sounds" class="opts inline">Try the alert sounds:
         <button type="button" class="try" data-try="fanfare" title="a brand-new discovery">▶ new</button>
         <button type="button" class="try" data-try="upbeat" title="known but not fully scanned">▶ unscanned</button>
         <button type="button" class="try" data-try="thud" title="visited or fully scanned">▶ known</button>
@@ -661,7 +647,110 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <button type="button" class="try" id="trySpeak" title="spoken alerts">▶ voice</button>
       </div>
     </details>
-    <details class="setsec" data-sec-key="values" data-chip="Values"><summary>What is worth stopping for <span class="sum-note">these also drive the header colours and the leaving warning</span></summary>
+    <details class="setsec" data-sec-key="voice" data-chip="Voice" id="voiceSettings"><summary>Voice <span id="ttsEngine" class="unk"></span> <span class="sum-note">what it says; the voice, its personality, pace and volume, which screen speaks</span></summary>
+      <div class="mainrow">
+        <label data-find="defaults.voice defaults.voice_fallback">Main voice<b id="ttsXo" hidden> = XO</b> <select id="ttsVoice"></select>
+          <span id="ttsSpkWrap" hidden>speaker <select id="ttsSpk" aria-label="speaker"></select></span>
+          <span id="ttsStatus" class="hint"></span></label>
+        <label data-find="defaults.speech_styles">Main personality<b id="ttsXoP" hidden> = XO</b>
+          <select id="speechMain" aria-label="main personality"></select></label>
+      </div>
+      <div class="hint" id="mainHint"></div>
+      <div class="hint" id="ttsHint"></div>
+      <div class="mod"><button type="button" class="try" id="labOpen">🎙 Voice lab…</button>
+        <span class="hint">hear voices, their speakers and every alert's lines before you choose; download more voices</span></div>
+      <div id="speechMixBox" class="mod" hidden>
+        <div class="inlineopts">In the mix: <span id="speechStyles" class="sstyles"></span></div>
+        <label><input type="checkbox" id="speechShift"> One personality per system
+          <span class="hint">the personality (and its own voice) changes at each arrival and at game start, not at every line; with one personality ticked it changes nothing</span></label>
+      </div>
+      <div data-find="defaults.speech_profanity defaults.speech_profanity_pct" class="mod inlineopts">
+        <span class="profrow"><label><input type="checkbox" id="speechProfanity"> with profanity <span id="speechProfanityWho" class="unk"></span></label>
+        <label title="how often a line comes from the swearing versions instead of the clean ones"><input type="number" id="speechProfanityPct" min="0" max="100" step="5" style="width:4.5em">% of the time</label></span></div>
+      <div class="vsaid" data-find-block="what the voice says">
+        <h4 class="vmhead">What the voice says</h4>
+        <div data-find="defaults.speak_bio_signals defaults.speak_geo_signals" class="mod inlineopts">Say signals as the FSS finds them:
+          <label><input type="checkbox" id="sayBio"> biological</label>
+          <label><input type="checkbox" id="sayGeo"> geological</label>
+          <span class="hint">"2 Biological and 1 Geological Signals found on body A 3" (when 🗣 is on)</span></div>
+        <label class="mod"><input type="checkbox" id="routineQuiet"> Routine systems: sound only
+          <span class="hint">arriving somewhere known with every body already found, a scoopable star, and nothing over your body or bio levels: a soft two-note sound instead of the arrival briefing (and of "nothing worth staying for" after the FSS); the card stays</span></label>
+        <label class="mod"><input type="checkbox" id="sayHazard"> Say the hazard when the FSD charges for a neutron star, white dwarf or black hole
+          <span class="hint">"… Neutron star ahead: throttle down on arrival, mind the jet cone" (part of the jump line)</span></label>
+        <label data-find="defaults.speak_mapped" class="mod"><input type="checkbox" id="sayMapped"> Say when a planet is mapped
+          <span class="hint">"A 2 mapped efficiently, 3.4M. Next: biology on C 2, up to 19M." after each DSS mapping (or "2 probes over target, no efficiency bonus"; or "Nothing else here over your levels"); its row in the table above chooses the card, notification and voice. Off by default ([defaults] speak_mapped)</span></label>
+      </div>
+      <div id="vmBox" class="vmbox" data-find-block="voices kept loaded" hidden>
+        <h4 class="vmhead">Voices kept loaded</h4>
+        <div id="vmNote" class="vmnote" role="status"></div>
+        <div data-find="speech.voices_loaded" class="mod inlineopts vmkeep">Keep loaded <select id="vmKeep" aria-label="voices kept loaded"></select>
+          <span id="vmKeepOf"></span> <span id="vmCost" class="hint"></span></div>
+        <label data-find="speech.voices_preload" class="vmpre"><input type="checkbox" id="vmPreload"> Load them at start
+          <span class="hint">(off: each loads the first time it speaks, about a second)</span></label>
+        <span id="vmMsg" class="hint" role="status"></span>
+      </div>
+      <label data-find="speech.pad_delay" class="mod">Say your landing pad
+        <input type="number" id="padDelay" min="0" max="20" step="1" style="width:4em" aria-label="seconds after docking is granted"> s after docking is granted
+        <span class="hint">after the station's own voice (some talk longer); with a docking computer fitted, 12 s unless it takes over</span>
+        <span id="padDelayMsg" class="hint" role="status"></span></label>
+      <div id="chatBox" class="mod" data-find-block="space chatter">
+        <h4 class="vmhead">Space chatter</h4>
+        <div class="inlineopts chatrow"><label><input type="checkbox" id="chatOn"> Talk in quiet moments</label>
+          <label>How often <select id="chatLevel" aria-label="how often"><option value="rare">Rare: every 15 to 30 min</option>
+            <option value="occasional">Occasional: every 10 to 20 min</option><option value="normal">Normal: every 7 to 14 min</option>
+            <option value="chatty">Chatty: every 4 to 8 min</option><option value="nonstop">Non-stop: every 2 to 4 min</option></select></label>
+          <label><input type="checkbox" id="chatNames"> Name the speaker in captions</label>
+          <button type="button" class="try" id="chatTry">▶ Try chatter</button> <span id="chatMsg" class="hint" role="status"></span></div>
+        <div class="hint">In supercruise, or on foot or in the SRV on a planet, once no alert has come for a while; never in danger,
+          during a jump, or with a map, the FSS or the DSS open. With the crew on, its stations talk among themselves (the Crew
+          table's Chatter column picks which).</div>
+      </div>
+      <div id="chatReadBox" class="mod inlineopts" data-find-block="chat read aloud squadron wing">
+        <b>Chat</b>&nbsp; <label title="other players' messages (never NPCs'), read aloud by Comms after any alert, never while hushed; off by default"><input type="checkbox" id="chatRead"> Read aloud</label>
+        <span id="chatChans"></span>
+        <label>as <select id="chatHeader" aria-label="how a message starts"><option value="name">&lt;CommanderName&gt;: …</option>
+          <option value="full">Commander &lt;CommanderName&gt; on &lt;Channel&gt;: …</option><option value="none">the message only</option></select></label>
+        <span id="chatMutedList" class="hint"></span>
+      </div>
+      <div id="crewBox" class="crewbox" data-find-block="crew">
+        <h4 class="crewhead">Crew</h4>
+        <div class="mod inlineopts crewsw"><label><input type="checkbox" id="crewOn"> <b>Split the alerts among a crew</b></label>
+          <label id="crewDangerWrap" hidden><input type="checkbox" id="crewDanger"> Danger lines always in Tactical's voice</label>
+          <button type="button" class="try" id="crewAudition" hidden title="each crew member says one of its own lines in its own voice and personality (here, in this browser)">▶ Audition: by crew</button>
+          <button type="button" class="try" id="crewLinesAudition" hidden title="one line naming another crew member for each alert that has them, in each personality, with the names given here (made-up ones for a member without); here, in this browser">▶ Audition: crew lines</button>
+          <span class="hint">each alert said by a crew member in its own personality and voice, so you know who is talking (and what about) before the sentence ends; who says which alert is in Settings → Alerts; off: one voice for everything</span></div>
+        <table id="crewTable" class="crewtable" hidden><thead><tr><th>Role</th><th>Name</th><th>Personality</th><th>Voice</th><th>Speaker</th><th title="takes part in space chatter (Space chatter, above)">Chatter</th><th class="cfor">Speaks for</th><th></th><th></th></tr></thead><tbody></tbody></table>
+        <div id="crewXoNote" class="crewnote" hidden>The XO is your main voice: every crew member left "as the XO" speaks in it, and the XO steps in for any crew member whose voice cannot speak (not installed, failed to load), so no line is ever lost. A name is said when another crew member mentions that member ("ask Mira"); without one, its role ("ask the Engineer").</div>
+        <span id="crewMsg" class="hint" role="status"></span>
+      </div>
+      <div class="mod" id="styleVoicesRow" data-find-block="personality voices" hidden>Personality voices <span id="styleVoicesCrew" class="hint" hidden>(used by crew members whose voice is "as the personality")</span>
+        <span class="hint">each personality in a voice of its own, or as another person of a several-person voice (the voice lab's Give to this personality does the same); Outrider keeps them for every browser and the tablet</span>
+        <table id="styleVoices" class="stylevoices"><thead><tr><th>Personality</th><th>Voice</th><th>Speaker</th><th></th><th></th></tr></thead><tbody></tbody></table>
+        <span id="styleVoicesMsg" class="hint" role="status"></span></div>
+      <label data-find="defaults.speech_danger_business" class="mod"><input type="checkbox" id="speechDangerBusiness"> Danger alerts always down to business
+        <span class="hint">hull, heat, interdiction, low fuel or an unscoopable star, your carrier leaving without you, the ship-loss debrief: only the business lines, never swearing</span></label>
+      <div class="mod inlineopts">This screen speaks: <select id="speakMode">
+          <option value="auto">auto: one window at a time</option><option value="always">always</option><option value="never">never</option></select>
+        <span id="speakerStatus" class="hint"></span> <button type="button" class="try" id="speakerClaim" hidden>speak from this window</button>
+        <div class="hint">With the page open in several windows (a second screen at ?mode=now), auto lets only one of them speak and play the alert sounds; every window still shows the alerts. Remembered per browser: always makes every window of it speak, never keeps this browser quiet. The ▶ try buttons always work.</div></div>
+      <label data-find="speech.server_player" class="mod pcOnly"><input type="checkbox" id="serverPlay"> Play speech and sounds on this PC <span id="serverPlayStatus" class="unk"></span>
+        <span class="hint">the PC running Outrider plays the spoken lines (Piper) and the alert sounds through its own player, so the page needs no click to allow audio; a page must still be open, since it chooses what to say. Whatever the PC cannot play, this browser plays instead. Per browser; Linux only</span></label>
+      <label data-find="defaults.speech_speed" class="mod">Speed <input type="range" id="speechSpeed" min="0.5" max="2" step="0.05" style="width:12em;vertical-align:middle">
+        <span id="speechSpeedOut"></span><span class="reset" data-reset="speechSpeed">reset</span>
+        <span class="hint">1× is the voice's own pace; reset goes back to the config file's speech_speed</span></label>
+      <div data-find="speech.sound_dir" class="hint" id="soundFiles"></div>
+      <label class="mod">Volume <input type="range" id="speechVolume" min="0" max="100" step="5" style="width:12em;vertical-align:middle">
+        <span id="speechVolumeOut"></span>
+        <span class="hint">Outrider's own voice and alert sounds, on this device (or on the PC when it plays them); the game's sound is its own</span></label>
+      <label data-find="defaults.speech_names" class="mod">Call me <input type="text" id="speechNames" style="width:18em" placeholder="Boss, Hefay, Sir">
+        <span class="hint">comma separated; each line uses one at random, in place of your commander name (which a voice often cannot say); empty goes back to the default</span></label>
+      <details class="srvbk" id="voiceCmds" data-find-block="voice commands phrases questions"><summary>Voice commands <span class="sum-note">what you can ask by voice without the AI, and the phrases that ask it</span></summary>
+        <div id="voiceCmdList" class="vclist"></div>
+      </details>
+      <div class="hint" id="speechHint"></div>
+      <div class="hint" id="speechTried"></div>
+    </details>
+    <details class="setsec" data-sec-key="values" data-chip="Worth stopping for"><summary>What is worth stopping for <span class="sum-note">these also drive the header colours and the leaving warning</span></summary>
       <label data-find="defaults.bio_min" class="mod">Exobiology: only count a body as unfinished if it could pay over
         <input type="number" id="bioMin" min="0" step="1000000" style="width:9em"> cr<span class="reset" data-reset="bioMin">reset</span>
         <span class="hint">straight Vista Genomics payout, no first-log bonus; sampling you have already started always counts; a body the rules cannot price always counts</span></label>
@@ -822,12 +911,6 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
           title="a system to test the steps on, by its full name (a short one such as Sol lists several systems: a good test of the submit steps); empty: the nearest known system a plain jump away. A far one plots a route there: clear it in game afterwards"></label>
         <span id="atTestMsg" role="status"></span></div>
     </details>
-    <details class="setsec" data-sec-key="uploads" data-chip="Uploads"><summary>Uploads <span class="sum-note">EDDN, EDSM and Inara: send what you find, keep your profiles current (off by default)</span></summary>
-      <div id="uploadsBox"></div>
-      <div class="hint">Only one Outrider (or EDMC) should send each: two would send everything twice. Outrider leaves a note
-        in your journal folder (<code>.outrider/</code>) so another Outrider can see it; EDMC on this PC is checked too.
-        See the guide's Uploads page.</div>
-    </details>
     <details class="setsec pcOnly" data-sec-key="overlay" data-chip="In-game overlay"><summary>In-game overlay <span class="sum-note">panels drawn over the game: what they show, where they go</span></summary>
       <div id="overlayBox"></div>
       <ul class="hint ovhelp">
@@ -841,6 +924,12 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
           seconds, danger longer and in red. The alerts are worded by this page: with no Outrider page open anywhere
           (a browser or the tablet), the panel stays empty.</li>
       </ul>
+    </details>
+    <details class="setsec" data-sec-key="uploads" data-chip="Uploads"><summary>Uploads <span class="sum-note">EDDN, EDSM and Inara: send what you find, keep your profiles current (off by default)</span></summary>
+      <div id="uploadsBox"></div>
+      <div class="hint">Only one Outrider (or EDMC) should send each: two would send everything twice. Outrider leaves a note
+        in your journal folder (<code>.outrider/</code>) so another Outrider can see it; EDMC on this PC is checked too.
+        See the guide's Uploads page.</div>
     </details>
     <details class="setsec" data-sec-key="display" data-chip="Display"><summary>Display <span class="sum-note">this device: theme, header tiles</span></summary>
       <label class="mod">Theme on this browser <select id="deskTheme"><option value="">Default - Outrider</option></select>
@@ -872,96 +961,6 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="hint" id="settingsHint">Thresholds, alert choices, personalities, "Call me" names, speed, sorts and filters live in this browser.
         Export them to a file (Import on another browser or after clearing the cache), or save them on the server so a new browser (a tablet running Now) starts with them.
         The view, layouts, the search form and which screen speaks stay per device. The voice (and each personality's) is kept by the server already.</div>
-    </details>
-    <details class="setsec" data-sec-key="voice" data-chip="Voice" id="voiceSettings"><summary>Voice <span id="ttsEngine" class="unk"></span> <span class="sum-note">the voice, its personality, pace and volume, which screen speaks</span></summary>
-      <div class="mainrow">
-        <label data-find="defaults.voice defaults.voice_fallback">Main voice<b id="ttsXo" hidden> = XO</b> <select id="ttsVoice"></select>
-          <span id="ttsSpkWrap" hidden>speaker <select id="ttsSpk" aria-label="speaker"></select></span>
-          <span id="ttsStatus" class="hint"></span></label>
-        <label data-find="defaults.speech_styles">Main personality<b id="ttsXoP" hidden> = XO</b>
-          <select id="speechMain" aria-label="main personality"></select></label>
-      </div>
-      <div class="hint" id="mainHint"></div>
-      <div class="hint" id="ttsHint"></div>
-      <div class="mod"><button type="button" class="try" id="labOpen">🎙 Voice lab…</button>
-        <span class="hint">hear voices, their speakers and every alert's lines before you choose; download more voices</span></div>
-      <div id="speechMixBox" class="mod" hidden>
-        <div class="inlineopts">In the mix: <span id="speechStyles" class="sstyles"></span></div>
-        <label><input type="checkbox" id="speechShift"> One personality per system
-          <span class="hint">the personality (and its own voice) changes at each arrival and at game start, not at every line; with one personality ticked it changes nothing</span></label>
-      </div>
-      <div data-find="defaults.speech_profanity defaults.speech_profanity_pct" class="mod inlineopts">
-        <span class="profrow"><label><input type="checkbox" id="speechProfanity"> with profanity <span id="speechProfanityWho" class="unk"></span></label>
-        <label title="how often a line comes from the swearing versions instead of the clean ones"><input type="number" id="speechProfanityPct" min="0" max="100" step="5" style="width:4.5em">% of the time</label></span></div>
-      <div id="vmBox" class="vmbox" data-find-block="voices kept loaded" hidden>
-        <h4 class="vmhead">Voices kept loaded</h4>
-        <div id="vmNote" class="vmnote" role="status"></div>
-        <div data-find="speech.voices_loaded" class="mod inlineopts vmkeep">Keep loaded <select id="vmKeep" aria-label="voices kept loaded"></select>
-          <span id="vmKeepOf"></span> <span id="vmCost" class="hint"></span></div>
-        <label data-find="speech.voices_preload" class="vmpre"><input type="checkbox" id="vmPreload"> Load them at start
-          <span class="hint">(off: each loads the first time it speaks, about a second)</span></label>
-        <span id="vmMsg" class="hint" role="status"></span>
-      </div>
-      <label data-find="speech.pad_delay" class="mod">Say your landing pad
-        <input type="number" id="padDelay" min="0" max="20" step="1" style="width:4em" aria-label="seconds after docking is granted"> s after docking is granted
-        <span class="hint">after the station's own voice (some talk longer); with a docking computer fitted, 12 s unless it takes over</span>
-        <span id="padDelayMsg" class="hint" role="status"></span></label>
-      <div id="chatBox" class="mod" data-find-block="space chatter">
-        <h4 class="vmhead">Space chatter</h4>
-        <div class="inlineopts chatrow"><label><input type="checkbox" id="chatOn"> Talk in quiet moments</label>
-          <label>How often <select id="chatLevel" aria-label="how often"><option value="rare">Rare: every 15 to 30 min</option>
-            <option value="occasional">Occasional: every 10 to 20 min</option><option value="normal">Normal: every 7 to 14 min</option>
-            <option value="chatty">Chatty: every 4 to 8 min</option><option value="nonstop">Non-stop: every 2 to 4 min</option></select></label>
-          <label><input type="checkbox" id="chatNames"> Name the speaker in captions</label>
-          <button type="button" class="try" id="chatTry">▶ Try chatter</button> <span id="chatMsg" class="hint" role="status"></span></div>
-        <div class="hint">In supercruise, or on foot or in the SRV on a planet, once no alert has come for a while; never in danger,
-          during a jump, or with a map, the FSS or the DSS open. With the crew on, its stations talk among themselves (the Crew
-          table's Chatter column picks which).</div>
-      </div>
-      <div id="chatReadBox" class="mod inlineopts" data-find-block="chat read aloud squadron wing">
-        <b>Chat</b>&nbsp; <label title="other players' messages (never NPCs'), read aloud by Comms after any alert, never while hushed; off by default"><input type="checkbox" id="chatRead"> Read aloud</label>
-        <span id="chatChans"></span>
-        <label>as <select id="chatHeader" aria-label="how a message starts"><option value="name">&lt;CommanderName&gt;: …</option>
-          <option value="full">Commander &lt;CommanderName&gt; on &lt;Channel&gt;: …</option><option value="none">the message only</option></select></label>
-        <span id="chatMutedList" class="hint"></span>
-      </div>
-      <div id="crewBox" class="crewbox" data-find-block="crew">
-        <h4 class="crewhead">Crew</h4>
-        <div class="mod inlineopts crewsw"><label><input type="checkbox" id="crewOn"> <b>Split the alerts among a crew</b></label>
-          <label id="crewDangerWrap" hidden><input type="checkbox" id="crewDanger"> Danger lines always in Tactical's voice</label>
-          <button type="button" class="try" id="crewAudition" hidden title="each crew member says one of its own lines in its own voice and personality (here, in this browser)">▶ Audition: by crew</button>
-          <button type="button" class="try" id="crewLinesAudition" hidden title="one line naming another crew member for each alert that has them, in each personality, with the names given here (made-up ones for a member without); here, in this browser">▶ Audition: crew lines</button>
-          <span class="hint">each alert said by a crew member in its own personality and voice, so you know who is talking (and what about) before the sentence ends; who says which alert is in Settings → Alerts; off: one voice for everything</span></div>
-        <table id="crewTable" class="crewtable" hidden><thead><tr><th>Role</th><th>Name</th><th>Personality</th><th>Voice</th><th>Speaker</th><th title="takes part in space chatter (Space chatter, above)">Chatter</th><th class="cfor">Speaks for</th><th></th><th></th></tr></thead><tbody></tbody></table>
-        <div id="crewXoNote" class="crewnote" hidden>The XO is your main voice: every crew member left "as the XO" speaks in it, and the XO steps in for any crew member whose voice cannot speak (not installed, failed to load), so no line is ever lost. A name is said when another crew member mentions that member ("ask Mira"); without one, its role ("ask the Engineer").</div>
-        <span id="crewMsg" class="hint" role="status"></span>
-      </div>
-      <div class="mod" id="styleVoicesRow" data-find-block="personality voices" hidden>Personality voices <span id="styleVoicesCrew" class="hint" hidden>(used by crew members whose voice is "as the personality")</span>
-        <span class="hint">each personality in a voice of its own, or as another person of a several-person voice (the voice lab's Give to this personality does the same); Outrider keeps them for every browser and the tablet</span>
-        <table id="styleVoices" class="stylevoices"><thead><tr><th>Personality</th><th>Voice</th><th>Speaker</th><th></th><th></th></tr></thead><tbody></tbody></table>
-        <span id="styleVoicesMsg" class="hint" role="status"></span></div>
-      <label data-find="defaults.speech_danger_business" class="mod"><input type="checkbox" id="speechDangerBusiness"> Danger alerts always down to business
-        <span class="hint">hull, heat, interdiction, low fuel or an unscoopable star, your carrier leaving without you, the ship-loss debrief: only the business lines, never swearing</span></label>
-      <div class="mod inlineopts">This screen speaks: <select id="speakMode">
-          <option value="auto">auto: one window at a time</option><option value="always">always</option><option value="never">never</option></select>
-        <span id="speakerStatus" class="hint"></span> <button type="button" class="try" id="speakerClaim" hidden>speak from this window</button>
-        <div class="hint">With the page open in several windows (a second screen at ?mode=now), auto lets only one of them speak and play the alert sounds; every window still shows the alerts. Remembered per browser: always makes every window of it speak, never keeps this browser quiet. The ▶ try buttons always work.</div></div>
-      <label data-find="speech.server_player" class="mod pcOnly"><input type="checkbox" id="serverPlay"> Play speech and sounds on this PC <span id="serverPlayStatus" class="unk"></span>
-        <span class="hint">the PC running Outrider plays the spoken lines (Piper) and the alert sounds through its own player, so the page needs no click to allow audio; a page must still be open, since it chooses what to say. Whatever the PC cannot play, this browser plays instead. Per browser; Linux only</span></label>
-      <label data-find="defaults.speech_speed" class="mod">Speed <input type="range" id="speechSpeed" min="0.5" max="2" step="0.05" style="width:12em;vertical-align:middle">
-        <span id="speechSpeedOut"></span><span class="reset" data-reset="speechSpeed">reset</span>
-        <span class="hint">1× is the voice's own pace; reset goes back to the config file's speech_speed</span></label>
-      <div data-find="speech.sound_dir" class="hint" id="soundFiles"></div>
-      <label class="mod">Volume <input type="range" id="speechVolume" min="0" max="100" step="5" style="width:12em;vertical-align:middle">
-        <span id="speechVolumeOut"></span>
-        <span class="hint">Outrider's own voice and alert sounds, on this device (or on the PC when it plays them); the game's sound is its own</span></label>
-      <label data-find="defaults.speech_names" class="mod">Call me <input type="text" id="speechNames" style="width:18em" placeholder="Boss, Hefay, Sir">
-        <span class="hint">comma separated; each line uses one at random, in place of your commander name (which a voice often cannot say); empty goes back to the default</span></label>
-      <details class="srvbk" id="voiceCmds" data-find-block="voice commands phrases questions"><summary>Voice commands <span class="sum-note">what you can ask by voice without the AI, and the phrases that ask it</span></summary>
-        <div id="voiceCmdList" class="vclist"></div>
-      </details>
-      <div class="hint" id="speechHint"></div>
-      <div class="hint" id="speechTried"></div>
     </details>
     <details class="setsec" data-sec-key="server" data-chip="Server" id="serverSettings"><summary>Server settings <span class="sum-note">the config file: network and password, files and backups, online checks, Plot Route, the voice's AI</span></summary>
       <div class="srvtop"><b>Outrider <span id="srvVersion"></span></b> · <button type="button" id="srvLogBtn" title="what Outrider has printed in its terminal since it started (and saved beside its database)">Show log</button>

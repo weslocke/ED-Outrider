@@ -4485,6 +4485,10 @@ const releasePayloads = async () => {
       o.pill = !!document.getElementById("linkPill").textContent;
       // S43
       o.chips = [...document.querySelectorAll("#alertChips button")].map(b => b.textContent);
+      // 2026-10-23: What is said folded into Voice, the sounds to try into Alerts, Values' chip named as its heading
+      const secOf = el => el && el.closest(".setsec") && el.closest(".setsec").dataset.secKey;
+      o.moved = [secOf(document.getElementById("sayBio")), secOf(document.getElementById("sayMapped")), secOf(document.getElementById("routineQuiet")),
+                 secOf(document.querySelector('[data-try="fanfare"]')), secOf(document.getElementById("bioMin"))];
       // S44: auto folds on a small window, and ▴/▾ makes an explicit choice
       const m0 = localStorage.getItem("tilesMode"), iw = window.innerWidth, ih = window.innerHeight;
       localStorage.setItem("tilesMode", '"auto"');
@@ -4505,8 +4509,8 @@ const releasePayloads = async () => {
     const want = {colony: [500, null, " · 1,000 m"], sortTh: ["dist", "grav", "now", "max"], sortCycle: ["dist", "-dist rev", "max"],
       nearCycle: ["value", "-value", "distance"], treeSort: "max", halves: [true, true, true], halvesOff: false, matRow: true, link: ["linked", "linked"],
       nogame: ["linked · no game", "linked"], stale: ["unlinked · retrying", "stale"], none: ["unlinked · retrying", "none"], pill: true,
-      chips: ["Alerts", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Mining", "Auto honk", "Auto-target", "Uploads", "In-game overlay", "Display", "Sharing", "Voice", "Server", "Spoken lines", "Questions asked"],
-      autoSmall: true, autoBig: false, line: true, cut: true};
+      chips: ["Alerts", "Voice", "Worth stopping for", "Risk & warnings", "Surface map", "Mining", "Auto honk", "Auto-target", "In-game overlay", "Uploads", "Display", "Sharing", "Server", "Spoken lines", "Questions asked"],
+      autoSmall: true, autoBig: false, line: true, cut: true, moved: ["voice", "voice", "voice", "alerts", "values"]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodB12 = !bad.length && errors.length === before;
     allOk = allOk && goodB12;
@@ -5259,10 +5263,10 @@ const releasePayloads = async () => {
     await sleep(100);
     got.push(w.eval(`JSON.stringify(Object.values(JSON.parse(localStorage.getItem("settingsOpen"))).some(Boolean))`));
     w.eval(`document.getElementById("alertDialog").close ? document.getElementById("alertDialog").close() : document.getElementById("alertDialog").removeAttribute("open")`);
-    const want = ["Settings", true, 17, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, highway: {conservative: true}}), "false"];
+    const want = ["Settings", true, 15, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, highway: {conservative: true}}), "false"];
     const goodS = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodS;
-    console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "17 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
+    console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "15 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
   }
   // Plot Route: Clear route while a survey or trade plot runs into an empty slot stops that plot (it cleared the Highway)
   {
@@ -9838,7 +9842,7 @@ const releasePayloads = async () => {
     const want = {one: [["business", "sarcastic", "vulcan", "klingon", "__mix"], "sarcastic", true], several: ["__mix", false],
       picked: [JSON.stringify([["vulcan"], false]), true], mix: [JSON.stringify([["vulcan"], true]), false, "__mix", true, true],
       swear: "(all but Down to business, Vulcan)", swearFew: "(Sarcastic, Klingon)", hintOff: [true, true], hintOn: true,
-      row: [true, "", "loading en_GB-cori-high"], order: ["voice", "server", "log"], uploads: true};
+      row: [true, "", "loading en_GB-cori-high"], order: ["voice", "values", "risk"], uploads: true};   // Voice right after Alerts (2026-10-23)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodMP = !bad.length && errors.length === before;
     allOk = allOk && goodMP;

@@ -8,8 +8,10 @@
 <summary>Outrider needs no configuration — but everything can be changed.</summary>
 <br>
 
-**⚙ Settings** (top right) holds everything, in folding sections: Alerts, Voice, What is said, Sounds, Values, Risk
-& warnings, Surface map, Mining, Auto honk, Auto-target, Uploads, In-game overlay, Display, Sharing, **Server**, Spoken lines and Questions asked.
+**⚙ Settings** (top right) holds everything, in folding sections: Alerts (with the alert sounds to try), Voice (with
+what the voice says: signals, routine systems, hazards, mapped planets), Worth stopping for, Risk & warnings, Surface
+map, Mining, Auto honk (and the co-pilot button), Auto-target, In-game overlay, Uploads, Display, Sharing, **Server**,
+Spoken lines and Questions asked.
 **Find a setting…** at the top leaves only what matches the words typed (a setting's name, its help or its config key,
 `speech_speed` finds the Speed slider too), in every section at once, Server's keys included; clear it and every
 section is back as it was. A section's name shows all of it, and so does a block's heading inside one: "crew" shows the

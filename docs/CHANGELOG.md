@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Settings: 15 sections, related ones together
+- **What is said** is now a block of **Voice** ("What the voice says": signals, routine systems, hazards, mapped
+  planets), and **Sounds** (the ▶ buttons) sits under the **Alerts** table. **Voice** comes right after Alerts.
+- The **Values** chip is named as its heading, **Worth stopping for**; the game-PC sections (Auto honk, Auto-target, In-game
+  overlay) sit together, then Uploads. 17 chips became 15, in this order: Alerts, Voice, Worth stopping for, Risk &
+  warnings, Surface map, Mining, Auto honk, Auto-target, In-game overlay, Uploads, Display, Sharing, Server, Spoken lines,
+  Questions asked. Every setting is where Find a setting looked for it; none changed.
+
 ## 2026-10-23 · Settings → Server down to what has no other home, grouped by purpose
 - The author: "a lot of redundant settings under Server". It listed 112 keys, most set in other sections, and showed
   stale values for auto honk's and auto-target's switches (which live in the database). Now:
