@@ -581,6 +581,17 @@ upstream project's choices, not rules of the game.
   On by default: it does not depend on the player's Route Settings. Two guards: a one-jump stop must end up the
   target itself (no NavRoute-end shortcut, in the "already" check too), so a miscounted icon or a multi-jump plot
   fails with its fix said; and without UI_Right / UI_Down on keyboard keys the stop is plotted after all.
+- **Settings → Server lists only the keys with no section of their own** (the author, 2026-10-23; project plan
+  PLAN-settings-cleanup). It had 112 keys, most set in other sections, and some contradicted them: auto honk's and
+  auto-target's switches live in the database (meta `autohonk_enabled`, `autotarget`), so the file's value it showed
+  was stale (`autotarget = off` while it was on). Now `config_edit.homed` keys are left out ([defaults]: every one
+  has a browser row, and Sharing sets new browsers' defaults; [speech], [overlay], [autohonk], [copilot], [highway]
+  autotarget*), and the rest (about 45) are grouped by purpose rather than by the file's sections, each row showing
+  its [section]. Every homed key had to get a control first: auto honk's key, wait, hold and skip and the co-pilot
+  button's five in Settings → Auto honk (the wait and the skip are read on every honk: live; the rest at the next
+  start), the overlay's system-panel time and radar range, and in Settings → Auto-target the Highway's switch and
+  delay (mirroring Plot Route's), the dry run and the key overrides. The file keeps every key. Two tests keep it so:
+  every key is listed or homed (none in "Other"), and every homed key is found by Find a setting in the page.
   **The steps have their own Settings section, not a place in Plot Route** (discussion #12, the author, 2026-10-23):
   one sequence serves every 🎯 (bookmarks, Nearby, Search, the Map, the co-pilot button) as well as the Highway, so
   editing it in the Highway's box would read as Highway-only. One shared sequence, not one per use, until a test in game

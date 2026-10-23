@@ -751,14 +751,28 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <span class="hint">"System Scan Completed, 12 Bodies discovered", or "System scan complete, and all bodies were found" when the honk found everything</span></label>
       <div class="hint"><b>The Discovery Scanner must be on primary fire</b> in the fire group that is active when you jump.
         Outrider presses Primary Fire's keyboard binding from your controls preset (<b id="autoHonkKey"></b>); give Primary
-        Fire one as its second binding if it has none, keeping your trigger as the first ([autohonk] key in the config file
-        overrides it). Systems you have already honked are left alone. The keys go to whichever window has focus, so switch
+        Fire one as its second binding if it has none, keeping your trigger as the first (the key field below overrides
+        it). Systems you have already honked are left alone. The keys go to whichever window has focus, so switch
         this off before alt-tabbing away mid-jump.
         <button type="button" class="try" id="autoHonkTest" title="press Primary Fire once, 5 seconds from now">▶ test in 5 s</button>
         <span id="autoHonkTestMsg"></span></div>
       <div class="hint" id="autoHonkGroups" hidden><span id="autoHonkGroupsText"></span>
         <a href="#" id="autoHonkForget" title="clear what auto honk learned about this ship's fire groups">forget</a></div>
+      <div class="mod inlineopts" data-find="autohonk.key autohonk.delay autohonk.hold autohonk.skip_honked">
+        <label title="auto: Primary Fire's keyboard binding from your controls preset; or keys by name, e.g. KEY_KP0 or alt+k (the Macro cheatsheet's names)">key <input type="text" id="ahKey" class="hcfg" data-sec="autohonk" data-key="key" placeholder="auto" spellcheck="false" autocapitalize="off" size="14"></label>
+        <label title="seconds after arriving before the press (the jump tunnel ignores input); used from the next honk">wait after arriving <input type="number" id="ahDelay" class="hcfg" data-sec="autohonk" data-key="delay" min="0" max="30" step="any" inputmode="decimal"> s</label>
+        <label title="seconds to hold the trigger (the scanner fires once charged)">hold <input type="number" id="ahHold" class="hcfg" data-sec="autohonk" data-key="hold" min="0.5" max="15" step="any" inputmode="decimal"> s</label>
+        <label title="systems you have already honked are left alone; used from the next honk"><input type="checkbox" id="ahSkip" class="hcfg" data-sec="autohonk" data-key="skip_honked"> leave systems already honked alone</label></div>
+      <h4 class="hchead">The co-pilot button <span class="hint">(Linux: one HOTAS or keyboard button, read only: a tap targets the next route system, a double tap gives a status report, a hold hushes the voice)</span></h4>
+      <div class="mod inlineopts" data-find="copilot.enabled copilot.device copilot.button copilot.hold_ms copilot.double_ms">
+        <label><input type="checkbox" id="cpOn" class="hcfg" data-sec="copilot" data-key="enabled"> use it</label>
+        <label title="a part of the device's name, or a /dev/input/by-id/... path">device <input type="text" id="cpDevice" class="hcfg" data-sec="copilot" data-key="device" spellcheck="false" autocapitalize="off" size="18"></label>
+        <label title="the button's evdev name (e.g. BTN_TRIGGER_HAPPY5) or its code number">button <input type="text" id="cpButton" class="hcfg" data-sec="copilot" data-key="button" spellcheck="false" autocapitalize="off" size="16"></label>
+        <label title="held this long (or more): a hold">hold <input type="number" id="cpHold" class="hcfg" data-sec="copilot" data-key="hold_ms" min="100" max="5000" step="1"> ms</label>
+        <label title="a press this soon after a tap's release: a double tap">double tap <input type="number" id="cpDouble" class="hcfg" data-sec="copilot" data-key="double_ms" min="100" max="2000" step="1"> ms</label></div>
+      <div class="hint">To find the device and button: <code>python3 -m outrider.button --listen</code> in the Outrider folder, then press the button.</div>
       <div class="hint" id="copilotLine" hidden></div>
+      <div class="btns"><button type="button" id="hcSave" class="primary">Save</button><span id="hcMsg" class="hint" role="status"></span></div>
     </details>
     <details class="setsec pcOnly" data-sec-key="autotarget" data-chip="Auto-target" id="atSettings"><summary>Auto-target <span class="sum-note">the galaxy map keys every target button presses</span></summary>
       <div class="hint">Every target button <span class="mk mk-destination mkg" aria-hidden="true"></span> uses these steps (a bookmark's, Nearby's, Search's, the Map's, a checklist find's, the header's
@@ -767,6 +781,10 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         and checking the target are always done; the parts below are yours to change (a route's next stop one jump away is targeted rather than plotted: the switch under them). A saved change is used by the
         next run: no restart needed. <a id="atCheat" href="help/autotarget" target="_blank" rel="noopener"
         title="every command, game control, key name and alias the boxes take, with your own key for each control (a new tab)">Macro cheatsheet ↗</a></div>
+      <div class="mod inlineopts" data-find="highway.autotarget highway.autotarget_delay">
+        <label title="after an FSD supercharge on a Neutron Highway route, target the next route system (the same switch as Plot Route's)"><input type="checkbox" id="atAutoOn"> Auto-target after a supercharge</label>
+        <label title="seconds after the supercharge before the keys are pressed (0 to 60)">after <input type="number" id="atAutoDelay" min="0" max="60" step="any" inputmode="decimal"> s</label>
+        <span class="hint">the same switch as the Plot Route tab's</span></div>
       <div class="atsteps mod" data-find="highway.autotarget_search highway.autotarget_submit highway.autotarget_plot highway.autotarget_target">
     <label class="atstep"><span>2 · into the search field <button type="button" class="mini" data-atdef="search" title="put back Outrider's own steps (used once you save)">↺ default</button></span>
       <textarea id="atSearch" data-at="search" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="one step per line"></textarea></label>
@@ -792,6 +810,10 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <label title="seconds after submitting the search for the map to fly to the system (0 to 30; at least 5 for a system over 300 ly away, a longer flight)">search wait <input type="number" id="atSearchWait" min="0" max="30" step="any" inputmode="decimal"> s</label>
         <label title="seconds between the name's characters when it is typed (0 to 1; not used when it is pasted)">typing delay <input type="number" id="atKeyDelay" min="0" max="1" step="any" inputmode="decimal"> s</label>
         <label title="seconds after each key of the parts above (0 to 2): the galaxy map can miss a key pressed straight after another">pause between keys <input type="number" id="atStepPause" min="0" max="2" step="any" inputmode="decimal"> s</label></div>
+      <div class="mod inlineopts" data-find="highway.autotarget_dry_run highway.autotarget_keys">
+        <label title="go through the steps and log them (Settings → Server → Show log) without pressing anything"><input type="checkbox" id="atDryRun"> dry run: log the steps, press nothing</label>
+        <label class="atkeys" title="a control's own key, whatever your controls preset says, as JSON: control or Enter/Paste → keys by name (the Macro cheatsheet's names)">your own keys
+          <input type="text" id="atKeys" spellcheck="false" autocapitalize="off" autocomplete="off" size="40" placeholder='{"UI_Select": "KEY_SPACE"}'></label></div>
       <div class="btns"><button type="button" id="atSave" class="primary">Save the steps</button><span id="atMsg" class="hint" role="status"></span></div>
       <div id="atMissing" class="warnc" hidden></div>
       <details id="atStepsBox"><summary>the whole sequence, with your keys</summary><ul id="atSteps"></ul></details>
@@ -941,7 +963,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="hint" id="speechHint"></div>
       <div class="hint" id="speechTried"></div>
     </details>
-    <details class="setsec" data-sec-key="server" data-chip="Server" id="serverSettings"><summary>Server settings <span class="sum-note">the config file: network, password, paths, backups, Spansh, the Highway, the voice's AI and more</span></summary>
+    <details class="setsec" data-sec-key="server" data-chip="Server" id="serverSettings"><summary>Server settings <span class="sum-note">the config file: network and password, files and backups, online checks, Plot Route, the voice's AI</span></summary>
       <div class="srvtop"><b>Outrider <span id="srvVersion"></span></b> · <button type="button" id="srvLogBtn" title="what Outrider has printed in its terminal since it started (and saved beside its database)">Show log</button>
         · <button type="button" id="srvRestartBtn" data-restart>Restart</button> <span id="srvRestartMsg" class="hint" role="status"></span></div>
       <details class="srvbk" id="srvBackups" data-find-block="backups"><summary>Backups <span class="sum-note">the zips Outrider made, and the command that puts one back</span></summary>

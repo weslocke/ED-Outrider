@@ -5246,19 +5246,20 @@ const releasePayloads = async () => {
     await sleep(100);
     got.push(w.eval(`[...document.querySelectorAll("#alertDialog details.setsec")].every(d => d.open)`));
     await settle(2500);   // the Server section opened: its keys fetched
-    got.push(w.eval(`JSON.stringify([document.querySelectorAll("#serverSettingsBody details.srvsec").length >= 10,
-      document.querySelectorAll("#serverSettingsBody [data-key]").length >= 80, !!document.querySelector('#serverSettingsBody [data-key="password"][data-secret]'),
+    // grouped by purpose, only the keys with no section of their own (2026-10-23): six groups, under 50 keys
+    got.push(w.eval(`JSON.stringify([document.querySelectorAll("#serverSettingsBody details.srvsec").length === 6,
+      document.querySelectorAll("#serverSettingsBody [data-key]").length < 50 && document.querySelectorAll("#serverSettingsBody [data-key]").length > 30, !!document.querySelector('#serverSettingsBody [data-key="password"][data-secret]'),
       document.querySelector('#serverSettingsBody [data-key="password"]').value,
       [...document.querySelectorAll('#serverSettingsBody select[data-key="game_pc"] option')].map(o => o.value).join(" "),
       document.querySelector('#serverSettingsBody [data-sec="server"][data-key="port"]').step])`));
     got.push(w.eval(`(() => { const port = document.querySelector('#serverSettingsBody [data-sec="server"][data-key="port"]'); const was = port.value;
-      port.value = "9999"; const box = document.querySelector('#serverSettingsBody [data-sec="autohonk"][data-key="enabled"]'); box.checked = !box.checked;
+      port.value = "9999"; const box = document.querySelector('#serverSettingsBody [data-sec="highway"][data-key="conservative"]'); box.checked = !box.checked;
       const c = srvChanges(); port.value = was; box.checked = !box.checked; return JSON.stringify(c); })()`));
     w.eval(`document.getElementById("setCloseAll").click()`);
     await sleep(100);
     got.push(w.eval(`JSON.stringify(Object.values(JSON.parse(localStorage.getItem("settingsOpen"))).some(Boolean))`));
     w.eval(`document.getElementById("alertDialog").close ? document.getElementById("alertDialog").close() : document.getElementById("alertDialog").removeAttribute("open")`);
-    const want = ["Settings", true, 17, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, autohonk: {enabled: true}}), "false"];
+    const want = ["Settings", true, 17, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, highway: {conservative: true}}), "false"];
     const goodS = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodS;
     console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "17 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
@@ -7129,7 +7130,7 @@ const releasePayloads = async () => {
     await settle(2500);
     got.focus = JSON.parse(w.eval(`(() => { const a = document.activeElement;
       return JSON.stringify([document.getElementById("alertDialog").open, document.getElementById("serverSettings").open,
-        a && a.id, !!(a && a.classList.contains("srvfocus")), !!(a && a.closest('details[data-srvsec="journals"][open]'))]); })()`));
+        a && a.id, !!(a && a.classList.contains("srvfocus")), !!(a && a.closest('details[data-srvsec="files"][open]'))]); })()`));
     // review 2026-10-20 L15: two loads at once (opened from a notice with the section stored open): only the newer draws
     got.twoLoads = await w.eval(`(async () => { const real = apiJson, cfg = (p, ms) => new Promise(r => setTimeout(() => r({path: p, exists: true, sections: []}), ms));
       apiJson = u => u === "api/config" ? cfg(__n++ ? "/newer.toml" : "/older.toml", __n === 1 ? 300 : 10) : real(u); window.__n = 0;
@@ -8403,8 +8404,8 @@ const releasePayloads = async () => {
     got.speed = [vis("#speechSpeed"), vis("#bioMin"), vis("#labOpen"), secs().includes("voice"), msg() === `${secs().length} sections match` || msg() === "1 section match"];
     await find("password");
     got.password = [vis('#serverSettingsBody [data-sec="server"][data-key="password"]'), vis('#serverSettingsBody [data-sec="server"][data-key="port"]'),
-      w.eval(`document.querySelector('#serverSettingsBody details[data-srvsec="server"]').open`), vis("#speechSpeed"), secs().includes("server")];
-    await find("body_highlight_level");   // the key alone: the Values row by its data-find, and the server's own row
+      w.eval(`document.querySelector('#serverSettingsBody details[data-srvsec="network"]').open`), vis("#speechSpeed"), secs().includes("server")];
+    await find("body_highlight_level");   // the key alone: the Values row by its data-find (no Server row now: it is homed)
     got.key = [vis("#hlBody"), vis("#hlBio"), vis('#serverSettingsBody [data-key="body_highlight_level"]'), secs().sort().join()];
     await find("speak voice");   // two words, one in the section's heading
     got.two = [vis("#speechSpeed"), vis("#sayMapped")];
@@ -8441,7 +8442,7 @@ const releasePayloads = async () => {
       w.localStorage.getItem("settingsOpen") === stored0, fold("srvBackups") === backups0, d.querySelectorAll("#alertDialog .sfmark").length];
     w.eval(`const dls = document.getElementById("alertDialog"); if (dls.close) dls.close(); else dls.removeAttribute("open")`);
     const want = {speed: [true, false, false, true, true], password: [true, false, true, false, true],
-      key: [true, false, true, w.eval(`[...new Set(["server", "values"])].sort().join()`)], two: [true, true],
+      key: [true, false, false, "values"], two: [true, true],
       backups: [true, true, true, false, true], zips: [true, true], inara: true, fine: [true, true, false, false],
       none: ["Nothing matches", 0, true], cleared: [0, true, "", true, true, 0]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
@@ -8449,6 +8450,41 @@ const releasePayloads = async () => {
     const good = !bad.length && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| S39 find a setting |", good ? `speed, a server key, a config key alone, two words, a block's heading (Backups, Inara), nothing; all ${got.every.length} sections found by a word and by name; cleared as before` :
+      `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
+  }
+  // Settings made easier (the author, 2026-10-23): every key taken out of the Server list (GET api/config's `homed`) is
+  // found by Find a setting through its own section's data-find; Auto honk's and the co-pilot button's fields are drawn
+  // from it and save only what changed, like Server settings
+  {
+    const w = dom.window, d = w.document, before = errors.length, realFetch = w.fetch, got = {};
+    if (!w.HTMLDialogElement.prototype.showModal) w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+    w.eval(`document.getElementById("alertsBtn").click(); renderOverlay();`);
+    await settle(1500);
+    const c = JSON.parse(await w.eval(`apiJson("api/config").then(x => JSON.stringify(x))`));
+    const named = new Set([...d.querySelectorAll("#alertDialog [data-find]")].flatMap(el => el.dataset.find.split(/\s+/)));
+    const homed = (c.homed || []).flatMap(s => s.keys.map(k => `${s.section}.${k.key}`));
+    got.findable = [homed.length > 60, homed.filter(k => !named.has(k))];
+    const posted = [];
+    w.eval(`document.querySelector('[data-sec-key="honk"]').open = true; loadHonkCfg()`);
+    await settle(800);
+    const delay = (c.homed.find(s => s.section === "autohonk") || {keys: []}).keys.find(k => k.key === "delay");
+    got.drawn = [d.getElementById("ahDelay").value === String(delay && delay.value), d.getElementById("cpOn").type];
+    w.fetch = (u, o) => {
+      if (String(u) === "api/config" && o && o.method === "POST") { posted.push(JSON.parse(o.body));
+        return Promise.resolve(new Response(JSON.stringify({ok: true, changed: 1, restart: false, live: ["autohonk.delay"]}), {status: 200, headers: {"Content-Type": "application/json"}})); }
+      return realFetch(u, o);
+    };
+    const el = d.getElementById("ahDelay"); el.value = "3.5"; el.dispatchEvent(new w.Event("input"));
+    d.getElementById("hcSave").click(); await sleep(300);
+    got.saved = [posted[0], d.getElementById("hcMsg").textContent];
+    w.fetch = realFetch;
+    w.eval(`loadHonkCfg(); const dls = document.getElementById("alertDialog"); if (dls.close) dls.close(); else dls.removeAttribute("open")`);
+    await sleep(200);
+    const want = {findable: [true, []], drawn: [true, "checkbox"], saved: [{autohonk: {delay: 3.5}}, "Saved 1 setting: in use now."]};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const good = !bad.length && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| settings: homed keys |", good ? `${homed.length} keys set in their own sections, each found by Find a setting; Auto honk's fields drawn and saved` :
       `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
   }
   // Settings -> Alerts in groups (the author, 2026-10-23): each group's heading at its first row, in ALERT_GROUPS' order

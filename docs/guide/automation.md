@@ -26,7 +26,7 @@ Setting it up:
 - **The Discovery Scanner must be on primary fire** in the fire group active when you jump.
 - **Primary Fire needs a keyboard binding** in Elite's controls (as its second binding, if your trigger is
   the first). Outrider reads it from your active controls preset, modifiers too. A built-in preset can't be
-  read: save it as a custom preset, or set `[autohonk] key`. A binding that needs a joystick modifier can't
+  read: save it as a custom preset, or give the **key** in Settings → Auto honk (`[autohonk] key`). A binding that needs a joystick modifier can't
   be pressed.
 - **Try it first.** The dialog's *test in 5 s* button, or `python3 -m outrider.honk --test 10`, holds Primary Fire
   once. `python3 -m outrider.honk --show` prints the binding it will press.
@@ -65,11 +65,13 @@ Docker), where the HOTAS is plugged in:
 - **Hold:** hush until the next jump; hold again to end it.
 - **In the Rhino** on a planet, any press marks rigs instead (see The surface map).
 
-Set it up under `[copilot]` in `ed_outrider.toml`: `enabled = true`, the `device` (part of its name, such
-as `"X-56 Rhino Throttle"`, or a `/dev/input/by-id/…` path; of several devices that match, the one that has the
-button is used) and the `button`. Run
-`python3 -m outrider.button --listen` to find the button's name. `hold_ms` and `double_ms` tune the gestures. The
-Settings shows whether it is listening.
+Set it up in **Settings → Auto honk → The co-pilot button** (or `[copilot]` in `ed_outrider.toml`): tick **use it**,
+give the **device** (part of its name, such as `"X-56 Rhino Throttle"`, or a `/dev/input/by-id/…` path; of several
+devices that match, the one that has the button is used) and the **button**, then Save and Restart now. Run
+`python3 -m outrider.button --listen` to find the button's name. **hold** and **double tap** (ms) tune the gestures.
+The section shows whether it is listening. Auto honk's own **key**, **wait after arriving**, **hold** and **leave
+systems already honked alone** are there too (the wait and the skip are used from the next honk, the key and the hold
+from the next start).
 
 - **Unbind the button in Elite's controls.** Outrider only reads it, so the game would act on it too.
 - **X-56 users:** avoid the latching toggles and the mode wheel. They report as buttons held down, which

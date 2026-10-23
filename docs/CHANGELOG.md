@@ -2,6 +2,23 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Settings → Server down to what has no other home, grouped by purpose
+- The author: "a lot of redundant settings under Server". It listed 112 keys, most set in other sections, and showed
+  stale values for auto honk's and auto-target's switches (which live in the database). Now:
+  - **Settings → Server** lists the keys with no section of their own, about 45, in six groups: Network and access,
+    Files and backups, Online checks, Nearby, Plot Route, The voice's AI and AI clients; each row says its
+    `[section]`. The journal-folder notice still opens it at the folders.
+  - **Left out, set in their own sections** (the file keeps them all, and Find a setting finds them by key):
+    `[defaults]` (the rows new browsers start with; Sharing makes this browser's choices their defaults), `[speech]`
+    (Voice), `[overlay]` (In-game overlay), `[autohonk]` and `[copilot]` (Auto honk), `[highway] autotarget*`
+    (Auto-target).
+  - **New fields for what had none:** Settings → Auto honk has auto honk's **key**, **wait after arriving**,
+    **hold** and **leave systems already honked alone** (the wait and the skip used from the next honk), and **the
+    co-pilot button**: use it, device, button, hold and double-tap times (from the next start, with Restart now).
+    In-game overlay has **System panel stays** and **Radar range**. Settings → Auto-target has the Highway's
+    **Auto-target after a supercharge** switch and delay (Plot Route's, mirrored), a **dry run** box and **your own
+    keys** for a control.
+
 ## 2026-10-23 · Auto-target: a route's next stop is targeted, not plotted
 - From discussion #12 (Kurbo26) and the author's checks in game: plotting leaves the route to the game's planner,
   and with **Use Jet-Cone Boost** off in its Route Settings it ignores the supercharge (six jumps to a Highway stop

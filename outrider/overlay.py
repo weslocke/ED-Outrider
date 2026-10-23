@@ -59,6 +59,7 @@ DEFAULTS = {"enabled": False, "theme": "default", "text_size": "normal", "system
 # [overlay] panel_scale (a GitHub report, 2026-10-14: too large on a 4K TV): all panels' size in %, on top of each panel's
 # own; Settings -> In-game overlay's All panels, Ctrl + wheel in Arrange mode
 PANEL_SCALE_LIMITS = (20, 250)
+SYSTEM_SECONDS_LIMITS, RADAR_RANGE_LIMITS = (0, 3600), (100, 20000)   # s, m (Settings -> In-game overlay, the config)
 # where each panel starts: a corner of the game window, the offset from it as a share of the window's width (x) and
 # height (y), its size (1 = the canvas's own), its background's opacity (0: text only) and the whole panel's; its own
 # text size ("text": small, normal or large; "" as all panels, [overlay] text_size), added below
@@ -223,7 +224,7 @@ def overlay_settings(cfg):
             out[key] = v.strip().lower()
         else:
             _warn(f"{key} = {v!r} must be one of {', '.join(allowed)}; using {DEFAULTS[key]!r}")
-    for key, lo, hi in (("system_seconds", 0, 3600), ("radar_range", 100, 20000), ("panel_scale", *PANEL_SCALE_LIMITS)):
+    for key, lo, hi in (("system_seconds", *SYSTEM_SECONDS_LIMITS), ("radar_range", *RADAR_RANGE_LIMITS), ("panel_scale", *PANEL_SCALE_LIMITS)):
         v = o.get(key)
         if v is None:
             continue

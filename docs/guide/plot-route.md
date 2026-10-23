@@ -192,14 +192,16 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   `python3 -m outrider.target --show` prints the steps with your keys.
 - **Settings → Auto-target** holds the galaxy map's steps, and **every 🎯 uses them**, not only the Highway: a
   bookmark's, Nearby's, Search's, the Map's, a checklist find's, the header's next stop, the boxel's Next and the
-  co-pilot button's tap. Opening the map, entering the name, closing the map and checking the target are always done;
-  three parts are yours to change, each with **↺ default** to put Outrider's own back: **into the search field**,
+  co-pilot button's tap. It also has the Highway's **Auto-target after a supercharge** switch and delay (the same as
+  this tab's), a **dry run** box (the steps logged, nothing pressed) and **your own keys** for a control whatever your
+  controls preset says (`{"UI_Select": "KEY_SPACE"}`). Opening the map, entering the name, closing the map and
+  checking the target are always done; the parts below are yours to change, each with **↺ default** to put Outrider's own back: **into the search field**,
   **submit the search** and **plot the route**, with the timings and whether the name is typed or pasted: **pause
   between keys** (0.25 s) follows every key of the three parts, since the galaxy map can miss a key pressed straight
   after another, so no `wait` is needed between keys; **typing delay** is only between the name's characters when it
   is typed; the **search wait** is at least 5 s for a system over 300 ly away (the map's flight there is longer). **Save the
-  steps** writes them into the config file (`[highway] autotarget_search`, `autotarget_submit`, `autotarget_plot`…,
-  also in Settings → Server) and the next run uses them, no restart needed; a step it cannot read is refused in words
+  steps** writes them into the config file (`[highway] autotarget_search`, `autotarget_submit`, `autotarget_plot`…)
+  and the next run uses them, no restart needed; a step it cannot read is refused in words
   and your text stays to be corrected. Below them: the whole sequence with your keys, and **▶ test now**, against the
   system typed beside it (a short name such as `Sol` lists several systems: a good test of the submit steps; a far one
   plots a route there, so clear it afterwards) or, left empty, the nearest known system a plain jump away.

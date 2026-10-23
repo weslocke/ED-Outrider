@@ -20,6 +20,7 @@ The rules that matter most:
   across `resources/speech.json`, `outrider.speech.KEYS`/`SAMPLES`, page.js `LINE_SAMPLES` and every
   `resources/personalities/*.json` (at least 10 lines each); an alert row's `ROW_KEYS` (page.js and `outrider.speech`),
   page.js `ROW_WORDS`, `ALERT_NAMES` (and its place under an `ALERT_GROUPS` heading) and `outrider.speech.CREW_ROLES`;
-  a new auto-target control's `outrider.target.KEY_HELP` line (the Macro cheatsheet). Bump `PARSER_VERSION` when past
+  a new auto-target control's `outrider.target.KEY_HELP` line (the Macro cheatsheet); a new config key either in a
+  Server list group (`outrider.config_edit.GROUPS`) or homed with a control whose `data-find="section.key"` names it. Bump `PARSER_VERSION` when past
   journals must be re-read (and `CACHE_VERSION` when cached Spansh records change shape), and keep live-only tables
   out of `RESET_JOURNAL_DATA`.

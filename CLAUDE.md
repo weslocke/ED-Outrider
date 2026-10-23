@@ -17,5 +17,6 @@ The rules that matter most:
 - Keep `SETTINGS_KEYS`/`BROWSER_SETTINGS` and the speech keys (`resources/speech.json`, `outrider.speech.KEYS`/`SAMPLES`,
   `LINE_SAMPLES`, every `resources/personalities/*.json` with at least 10 lines each) in step, and an alert row's
   `ROW_KEYS` (page.js and `outrider.speech`), `ROW_WORDS`, `ALERT_NAMES` (under its `ALERT_GROUPS` heading) and `CREW_ROLES`,
-  and a new auto-target control's `KEY_HELP` line; bump `PARSER_VERSION` or `CACHE_VERSION` when stored data changes shape, and keep live-only tables out of
+  a new auto-target control's `KEY_HELP` line, and a new config key in a Server group (`config_edit.GROUPS`) or homed
+  with a `data-find="section.key"` control; bump `PARSER_VERSION` or `CACHE_VERSION` when stored data changes shape, and keep live-only tables out of
   `RESET_JOURNAL_DATA`.

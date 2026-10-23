@@ -7900,25 +7900,32 @@ async function hwyAutoSet(body) {
   if (r.error) toast(`could not change auto-target: ${hwyErr(r.error)}`);
   else if (data) { data.autotarget = r; drawHwyAuto(); }
 }
-hEl("hwyAutoOn").onchange = () => hwyAutoSet({enabled: hEl("hwyAutoOn").checked});
-hEl("hwyAutoDelay").onchange = () => {
-  const v = Number(hEl("hwyAutoDelay").value);
-  if (hEl("hwyAutoDelay").value.trim() === "" || !isFinite(v) || v < 0 || v > 60) { toast("the delay is 0 to 60 seconds"); drawHwyAuto(); return; }
-  hwyAutoSet({delay: v});
-};
+// the switch and delay: Plot Route's, and Settings -> Auto-target's (the author, 2026-10-23: one place to find them)
+for (const [onId, delayId] of [["hwyAutoOn", "hwyAutoDelay"], ["atAutoOn", "atAutoDelay"]]) {
+  hEl(onId).onchange = () => hwyAutoSet({enabled: hEl(onId).checked});
+  hEl(delayId).onchange = () => {
+    const v = Number(hEl(delayId).value);
+    if (hEl(delayId).value.trim() === "" || !isFinite(v) || v < 0 || v > 60) { toast("the delay is 0 to 60 seconds"); drawHwyAuto(); return; }
+    hwyAutoSet({delay: v});
+  };
+}
 hEl("hwyAutoTest").onclick = () => hwyAutoStart("test");
 hEl("hwyAutoStepsLink").onclick = e => { e.preventDefault(); openSettingsSection("autotarget"); };
 // ---- Settings -> Auto-target (discussion #12, Kurbo26): the galaxy map's steps every 🎯 presses, [highway]
 // autotarget_search / _submit / _plot and the timings, saved into the config file (POST api/config; LIVE_CONFIG: the
 // next run uses them). Filled from data.autotarget's `sequence`, ↺ default from its `defaults` (outrider.target's own);
 // a field the player changed keeps what they typed until it is saved, and after a refusal too
-const AT_FIELDS = {search: "atSearch", submit: "atSubmit", plot: "atPlot", target: "atTarget", route_target: "atRouteTarget", entry: "atEntry", map_wait: "atMapWait",
+const AT_FIELDS = {search: "atSearch", submit: "atSubmit", plot: "atPlot", target: "atTarget", route_target: "atRouteTarget",
+                   dry_run: "atDryRun", keys: "atKeys", entry: "atEntry", map_wait: "atMapWait",
                    search_wait: "atSearchWait", key_delay: "atKeyDelay", step_pause: "atStepPause"};
 const AT_LISTS = ["search", "submit", "plot", "target"];
-const atText = (k, v) => AT_LISTS.includes(k) ? (v || []).join("\n") : String(v ?? "");
+const atText = (k, v) => AT_LISTS.includes(k) ? (v || []).join("\n")
+  : k === "keys" ? (v && Object.keys(v).length ? JSON.stringify(v) : "") : String(v ?? "");
 function drawAtSet() {
   const a = data && data.autotarget, seq = a && a.sequence;
   if (!a) return;
+  hEl("atAutoOn").checked = !!a.enabled; hEl("atAutoOn").disabled = !a.available;   // Plot Route's switch and delay, here too
+  if (document.activeElement !== hEl("atAutoDelay")) hEl("atAutoDelay").value = a.delay ?? "";
   for (const [k, id] of Object.entries(AT_FIELDS)) {
     const el = hEl(id);
     if (seq && !el.dataset.dirty && document.activeElement !== el) {
@@ -7935,7 +7942,7 @@ function drawAtSet() {
   hEl("atTestMsg").textContent = hwyRun && hwyRun.kind === "test" ? hwyRun.msg : "";
 }
 for (const id of Object.values(AT_FIELDS)) hEl(id).addEventListener("input", e => { e.target.dataset.dirty = "1"; });
-for (const id of ["atEntry", "atMapWait", "atSearchWait", "atKeyDelay", "atStepPause", "atRouteTarget"]) hEl(id).addEventListener("change", e => { e.target.dataset.dirty = "1"; });
+for (const id of ["atEntry", "atMapWait", "atSearchWait", "atKeyDelay", "atStepPause", "atRouteTarget", "atDryRun"]) hEl(id).addEventListener("change", e => { e.target.dataset.dirty = "1"; });
 document.querySelectorAll("[data-atdef]").forEach(b => b.onclick = () => {
   const k = b.dataset.atdef, d = data && data.autotarget && data.autotarget.defaults, el = hEl(AT_FIELDS[k]);
   if (!d) return;
@@ -7956,6 +7963,9 @@ async function atSave() {
       sent[k] = lines;
     } else if (el.type === "checkbox") {
       v = el.checked; sent[k] = v;
+    } else if (k === "keys") {   // a JSON object, or empty for none: the server checks the names
+      try { sent[k] = v.trim() ? JSON.parse(v) : {}; } catch { say('Not saved: your own keys are JSON, e.g. {"UI_Select": "KEY_SPACE"}', true); return; }
+      v = v.trim();
     } else if (k !== "entry") {
       v = Number(v);
       if (el.value.trim() === "" || !isFinite(v)) { say("Not saved: the waits are numbers of seconds", true); return; }
@@ -12589,7 +12599,7 @@ function overlayHtml(o) {
     const docked = id === "radar" ? `<td class="ovana unk" title="the radar shows only on a body's surface">–</td>`
       : `<td class="ovana"><input type="checkbox" data-ovdocked="${id}" data-find="overlay.hide_docked"${dock.has(id) ? " checked" : ""} title="${esc(name)}: hidden while docked${id === "body" ? " (still shown over the galaxy map)" : ""}"></td>`;
     const onFoot = `<td class="ovana"><input type="checkbox" data-ovfoot="${id}" data-find="overlay.hide_on_foot"${foot.has(id) ? " checked" : ""} title="${esc(name)}: hidden on foot"></td>`;
-    return `<tr class="${on ? "" : "ovoff"}"><th><label title="${esc(what)}"><input type="checkbox" data-ovpanel="${id}"${on ? " checked" : ""}> ${esc(name)}</label></th>` +
+    return `<tr class="${on ? "" : "ovoff"}"><th><label title="${esc(what)}" data-find="overlay.${id === "radar" ? "radar" : id + "_panel"}"><input type="checkbox" data-ovpanel="${id}"${on ? " checked" : ""}> ${esc(name)}</label></th>` +
       `<td class="ovana"><input type="checkbox" data-ovanalysis="${id}" data-find="overlay.analysis_only"${ana.has(id) ? " checked" : ""} title="${esc(name)}: hidden in your ship while the HUD is in combat mode (shown only in analysis mode)"></td>${docked}${onFoot}<td><select data-ovlay="${id}" data-k="corner" title="the corner of the game window it is placed from">${opt(Object.keys(OV_CORNERS), e.corner, c => OV_CORNERS[c])}</select></td>` +
       num("x", pct(e.x || 0), 0, 95, "how far in from that corner's side, in % of the game window's width") +
       num("y", pct(e.y || 0), 0, 95, "how far in from that corner's top or bottom, in % of the game window's height") +
@@ -12599,16 +12609,16 @@ function overlayHtml(o) {
       num("alpha", pct(e.alpha ?? 1), 10, 100, "the whole panel's opacity, in %") +
       `<td><a href="#" data-ovreset="${id}" title="reset: back to where it started" aria-label="reset">↺</a></td></tr>`;
   }).join("");
-  return `<label class="mod"><input type="checkbox" data-ov="enabled"${o.enabled ? " checked" : ""}> <b>Show the overlay</b> <span class="hint">the panels below, when they have something to say</span></label>` +
+  return `<label class="mod" data-find="overlay.enabled"><input type="checkbox" data-ov="enabled"${o.enabled ? " checked" : ""}> <b>Show the overlay</b> <span class="hint">the panels below, when they have something to say</span></label>` +
     `<div class="hint">${overlayStatusHtml(o)}</div>` +
     // S25: with it on the overlay stays over the game while another window is active, unless other windows cover it
-    `<label class="mod"><input type="checkbox" data-ov="show_inactive"${o.show_inactive ? " checked" : ""}> Keep showing when Elite is not the active window ` +
+    `<label class="mod" data-find="overlay.show_inactive"><input type="checkbox" data-ov="show_inactive"${o.show_inactive ? " checked" : ""}> Keep showing when Elite is not the active window ` +
     `<span class="hint">still hidden while other windows cover the game (a native Wayland window is not seen)</span></label>` +
     // #12: the pad diagram while docking at a starport or carrier, in the Surface radar's place and on Now
     // #1 (the author, 2026-10-15): nothing over the game while it locks the mouse
-    `<label class="mod"><input type="checkbox" data-ov="hide_mouse_lock"${o.hide_mouse_lock ? " checked" : ""}> Hide the overlay on foot and in the DSS ` +
+    `<label class="mod" data-find="overlay.hide_mouse_lock"><input type="checkbox" data-ov="hide_mouse_lock"${o.hide_mouse_lock ? " checked" : ""}> Hide the overlay on foot and in the DSS ` +
     `<span class="hint">overlays can break mouse lock in these situations on some systems</span></label>` +
-    `<label class="mod"><input type="checkbox" data-ov="pad_diagram"${o.pad_diagram !== false ? " checked" : ""}> Show the pad diagram while docking ` +
+    `<label class="mod" data-find="overlay.pad_diagram"><input type="checkbox" data-ov="pad_diagram"${o.pad_diagram !== false ? " checked" : ""}> Show the pad diagram while docking ` +
     `<span class="hint">at a starport or carrier, under PAD 34 in the Surface radar's place and on Now (off: the number and where it is, in words)</span></label>` +
     // one control row (the author, 2026-10-14): "All Panels: Theme [ ] Text Size [ ] Scale [100 %]", the two buttons on
     // a line of their own under it, at its left (page.css .ovbtns)
@@ -12617,6 +12627,11 @@ function overlayHtml(o) {
     `<label title="all panels' size, in % (20 to 250), multiplied with each panel's own Size % (100 % here: each panel at its own size; 50 % here and 50 % on a panel: 25 %); Ctrl + wheel over a panel in Arrange mode">Scale <input type="number" data-ov="panel_scale" min="20" max="250" step="5" value="${o.panel_scale ?? 100}"> %</label>` +
     `<span class="ovbtns"><button type="button" class="try" data-ovact="test">${o.test ? `test panels: ${o.test} s` : "▶ Show test panels"}</button>` +
     `<button type="button" class="try" data-ovact="arrange">${o.arrange ? `✓ Done arranging (${Math.ceil(o.arrange / 60)} min left)` : "✥ Arrange panels"}</button></span></div>` +
+    // the system panel's time and the radar's range (the author, 2026-10-23: only in the config file before)
+    `<div class="mod ovctl" data-find="overlay.system_seconds overlay.radar_range"><label title="how long the System panel stays after you arrive, in seconds (0 to 3600; 0: while you are in supercruise in that system)">System panel stays ` +
+    `<input type="number" data-ov="system_seconds" min="0" max="3600" step="1" value="${o.system_seconds ?? 0}"> s</label>` +
+    `<label title="metres from the Surface radar's centre to its edge (100 to 20000; it widens to fit a colony ring)">Radar range ` +
+    `<input type="number" data-ov="radar_range" min="100" max="20000" step="50" value="${o.radar_range ?? 800}"> m</label></div>` +
     `<div class="ovwrap" data-find-block="panels"><table class="ovlay"><thead>${OV_HEADS}</thead><tbody>${rows}</tbody></table></div>` +
     (heldBy.length ? `<div class="hint ovheld">${esc(heldBy.join(", "))}: held at ${floor} px: your screen is too small to go lower</div>` : "") +
     `<div class="hint" id="overlayMsg">${esc(overlayNote)}</div>`;
@@ -12669,10 +12684,10 @@ document.getElementById("overlayBox").addEventListener("change", e => {
   const t = e.target;
   if (t.dataset.ov && t.type === "checkbox") overlayPost("api/overlay", {[t.dataset.ov]: t.checked});   // enabled, show_inactive, pad_diagram, hide_mouse_lock
   // a select keeps the focus, which holds renderOverlay off: let go, so the server's answer (its note) is drawn
-  else if (t.dataset.ov === "panel_scale") {   // all panels' size, a number (the server clamps it)
+  else if (t.dataset.ov && t.type === "number") {   // panel_scale, system_seconds, radar_range: numbers (the server clamps them)
     const v = Number(t.value);
     if (t.value === "" || !isFinite(v)) return;
-    t.blur(); overlayPost("api/overlay", {panel_scale: v});
+    t.blur(); overlayPost("api/overlay", {[t.dataset.ov]: v});
   }
   else if (t.dataset.ov) { t.blur(); overlayPost("api/overlay", {[t.dataset.ov]: t.value}); }
   else if (t.dataset.ovpanel) overlayPost("api/overlay", {panels: {[t.dataset.ovpanel]: t.checked}});
@@ -12979,7 +12994,7 @@ setSecs.forEach(d => d.addEventListener("toggle", () => {
     if (document.getElementById("srvBackups").open) loadBackups();
     if (document.getElementById("srvService").open) loadService();
   }
-  if (d.id === "honkSettings" && d.open) loadHonkCheck();
+  if (d.id === "honkSettings" && d.open) { loadHonkCheck(); loadHonkCfg(); }
 }));
 document.getElementById("setOpenAll").onclick = () => setSecs.forEach(d => { d.open = true; });
 document.getElementById("setCloseAll").onclick = () => setSecs.forEach(d => { d.open = false; });
@@ -13150,11 +13165,13 @@ if (!TABLET) {
   sel.value = TB.themes.includes(store.get("desktopTheme", "")) ? store.get("desktopTheme", "") : "";
   sel.onchange = () => deskTheme(sel.value);
 } else document.getElementById("deskTheme").closest("label").hidden = true;
-// ---- Server settings: every key of the config file (GET api/config), saved into it (POST api/config) and used from
-// Outrider's next start. Grouped by the file's sections, each folding; the password and the AI key are never shown,
-// only whether they are set. Only the keys you change are written: the file keeps its comments and other keys.
-const SRV_SET_OPEN = {};   // which config sections are open in this window
+// ---- Server settings: the config file's keys that have no section of their own (GET api/config's groups: the rest,
+// config_edit.homed, are set in their sections), saved into it (POST api/config) and used from Outrider's next start.
+// Grouped by purpose (config_edit.GROUPS), each folding, each row with its [section]; the password and the AI key are
+// never shown, only whether they are set. Only the keys you change are written: the file keeps its comments and other keys.
+const SRV_SET_OPEN = {};   // which groups are open in this window
 let srvFocus = null;       // the id of the field openServerSettings(section, key) asked for, focused once drawn
+let srvWant = null;        // {section, key}: its group opens when drawn
 const DOCKER_NO_JOURNALS = "no journals in /journals: is the game PC's journal folder mounted? (JOURNALS in .env)";
 // only the newest load draws (review 2026-10-20 L15: opened from a notice, two loads ran and the second threw away the
 // field the first had focused for the notice)
@@ -13182,18 +13199,23 @@ async function loadServerSettings() {
   box.innerHTML = (data && data.game_pc === false ? `<div class="hint warnc">This Outrider is a server, not the PC the game runs on ([server] game_pc): auto honk,
     auto-target, the tablet's rail, the co-pilot button, the clipboard and playing on this PC are off and left out of the pages.</div>` : "") +
     `<div class="hint">Saved in <code>${esc(c.path)}</code>${c.exists ? "" : " (made when you first save)"}. Outrider uses them from its next start;
-    the previous file is kept beside it as <code>.bak</code>. Paths may be relative to the Outrider folder.</div>` +
+    the previous file is kept beside it as <code>.bak</code>. Paths may be relative to the Outrider folder. The settings with a section of their
+    own (the voice, the thresholds, auto honk and the co-pilot button, auto-target, the overlay, uploads) are set there.</div>` +
     (c.problems && c.problems.length ? `<div class="hint warnc">The file has problems (defaults used): ${c.problems.map(esc).join("; ")}</div>` : "") +
-    c.sections.map(sec => `<details class="srvsec" data-srvsec="${esc(sec.section)}"${SRV_SET_OPEN[sec.section] ? " open" : ""}><summary>${esc(sec.title)} <code>[${esc(sec.section)}]</code></summary>` +
-      sec.keys.map(k => `<div class="srvrow"><label for="srv-${esc(sec.section)}-${esc(k.key)}">${esc(human(k.key))} <code>${esc(k.key)}</code>` +
-        `${k.set || k.secret ? "" : ` <span class="unk">(default)</span>`}</label><div class="srvin">${field(sec.section, k)}` +
-        `${k.help ? `<div class="hint">${esc(k.help)}</div>` : ""}</div></div>`).join("") + `</details>`).join("") +
+    (c.groups || []).map(g => {
+      const want = srvWant && g.keys.some(k => k.section === srvWant.section && (!srvWant.key || k.key === srvWant.key));
+      if (want) SRV_SET_OPEN[g.group] = true;
+      return `<details class="srvsec" data-srvsec="${esc(g.group)}"${SRV_SET_OPEN[g.group] ? " open" : ""}><summary>${esc(g.title)}</summary>` +
+        g.keys.map(k => `<div class="srvrow"><label for="srv-${esc(k.section)}-${esc(k.key)}">${esc(human(k.key))} <code>[${esc(k.section)}] ${esc(k.key)}</code>` +
+          `${k.set || k.secret ? "" : ` <span class="unk">(default)</span>`}</label><div class="srvin">${field(k.section, k)}` +
+          `${k.help ? `<div class="hint">${esc(k.help)}</div>` : ""}</div></div>`).join("") + `</details>`;
+    }).join("") +
     `<div class="btns"><button type="button" id="srvSave" class="primary">Save server settings</button><span id="srvMsg" class="hint"></span></div>`;
   box.querySelectorAll("[data-key]").forEach(el => { el.dataset.orig = srvValue(el); });
   box.querySelectorAll("details.srvsec").forEach(d => d.addEventListener("toggle", () => { if (!SF.active) SRV_SET_OPEN[d.dataset.srvsec] = d.open; }));
   document.getElementById("srvSave").onclick = saveServerConfig;
   const focus = srvFocus && document.getElementById(srvFocus);
-  srvFocus = null;
+  srvFocus = srvWant = null;
   if (focus) { focus.classList.add("srvfocus"); focus.focus(); }
 }
 // a field's value as it is sent (and compared with what it was when drawn: only changes are saved)
@@ -13223,14 +13245,61 @@ async function saveServerConfig() {
   catch { r = {error: "Outrider not reachable"}; }
   if (r.error) { msg.textContent = `Not saved: ${r.error}`; msg.className = "hint warnc"; return; }
   await loadServerSettings();
-  const m = document.getElementById("srvMsg"), rs0 = data && data.restart, them = r.changed === 1 ? "it" : "them";
-  // S10: restart from here when Outrider can start itself again; else why not
-  // a key the server applies at once (its answer's `live`: Keep loaded, Load them at start) needs no restart
-  m.innerHTML = `Saved ${r.changed} setting${r.changed === 1 ? "" : "s"}` + (r.restart === false ? ": in use now." : rs0 && rs0.can
+  const m = document.getElementById("srvMsg");
+  m.innerHTML = savedNote(r); m.className = "hint ok";
+}
+// what a save into the config file comes to: in use now (every key one the server applies at once: its answer's
+// `live`), or Restart now (S10) when Outrider can start itself again, else why not
+function savedNote(r) {
+  const rs0 = data && data.restart, them = r.changed === 1 ? "it" : "them";
+  return `Saved ${r.changed} setting${r.changed === 1 ? "" : "s"}` + (r.restart === false ? ": in use now." : rs0 && rs0.can
     ? `. <button type="button" class="try" data-restart>Restart now</button> to use ${them}.`
     : `: restart Outrider to use ${them}${rs0 && rs0.why ? ` (${esc(rs0.why)})` : ""}.`);
-  m.className = "hint ok";
 }
+// ---- Settings -> Auto honk and the co-pilot button (the author, 2026-10-23: their keys had no fields, only the config
+// file and the Server list): auto honk's key, wait, hold and skip, the co-pilot button's switch, device, button and
+// timings, read from GET api/config's `homed` keys and saved like Server settings (only what changed; the wait and the
+// skip are used from the next honk, the rest from the next start: savedNote says which)
+const HC_FIELDS = () => [...document.querySelectorAll("#honkSettings .hcfg")];
+const hcNow = el => el.type === "checkbox" ? String(el.checked) : el.value;
+async function loadHonkCfg() {
+  let c;
+  try { c = await apiJson("api/config"); } catch { c = {error: "Outrider not reachable"}; }
+  const msg = document.getElementById("hcMsg");
+  if (!c || c.error) { msg.textContent = `Cannot read the settings: ${(c && c.error) || "?"}`; msg.className = "hint warnc"; return; }
+  const vals = {};
+  for (const s of c.homed || []) for (const k of s.keys) vals[`${s.section}.${k.key}`] = k.value;
+  for (const el of HC_FIELDS()) {
+    if (el.dataset.dirty) continue;   // what you typed stays until it is saved
+    const v = vals[`${el.dataset.sec}.${el.dataset.key}`];
+    if (el.type === "checkbox") el.checked = !!v; else el.value = v ?? "";
+    el.dataset.orig = hcNow(el);
+  }
+}
+HC_FIELDS().forEach(el => el.addEventListener(el.type === "checkbox" ? "change" : "input", () => { el.dataset.dirty = "1"; }));
+async function saveHonkCfg() {
+  const msg = document.getElementById("hcMsg"), out = {};
+  const say = (t, bad) => { msg.textContent = t; msg.className = bad ? "hint warnc" : "hint"; };
+  for (const el of HC_FIELDS()) {
+    if (hcNow(el) === el.dataset.orig) continue;
+    let v = el.type === "checkbox" ? el.checked : el.value.trim();
+    if (el.type === "number") {
+      v = Number(v);
+      if (el.value.trim() === "" || !isFinite(v)) { say("Not saved: the times are numbers", true); return; }
+    } else if (el.dataset.key === "key" && !v) v = "auto";   // an empty key: Primary Fire's binding, as to start
+    (out[el.dataset.sec] = out[el.dataset.sec] || {})[el.dataset.key] = v;
+  }
+  if (!Object.keys(out).length) { say("nothing changed"); return; }
+  let r;
+  try { r = await apiJson("api/config", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(out)}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  r = r || {error: "?"};
+  if (r.error) { say(`Not saved: ${r.error}`, true); return; }   // what was typed stays, to be corrected
+  HC_FIELDS().forEach(el => { el.dataset.dirty = ""; });
+  await loadHonkCfg();
+  msg.innerHTML = savedNote(r); msg.className = "hint ok";
+}
+document.getElementById("hcSave").onclick = saveHonkCfg;
 // Settings opened on Server settings (a notice's button): `section`, a config section to unfold ("journals")
 // Settings at one of its sections (data-sec-key), opened
 function openSettingsSection(key) {
@@ -13239,7 +13308,7 @@ function openSettingsSection(key) {
   if (i >= 0) showAlertSection(i);
 }
 function openServerSettings(section, key) {
-  if (section) SRV_SET_OPEN[section] = true;
+  srvWant = section ? {section, key} : null;                  // its group opens once drawn
   srvFocus = section && key ? `srv-${section}-${key}` : null;   // that key's field gets the focus once drawn (S43)
   if (!alertDialog.open) document.getElementById("alertsBtn").click();
   const i = alertSections.findIndex(s => s.id === "serverSettings"), d = alertSections[i];

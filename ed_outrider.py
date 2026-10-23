@@ -7756,7 +7756,11 @@ class State:
             for k in sec["keys"]:
                 if (sec["section"], k["key"]) in outrider.config_edit.SECRETS:
                     k.update(secret=True, set=bool(k["value"]), value=None)
-        return {"path": path, "exists": os.path.exists(path), "sections": secs, "problems": problems}
+        # groups: the Server list (by purpose); homed: the keys set in a section of their own (config_edit.homed), as
+        # {section, title, keys} for the sections that read their values from here (Auto honk's fields)
+        homed = [dict(s, keys=[k for k in s["keys"] if outrider.config_edit.homed(s["section"], k["key"])]) for s in secs]
+        return {"path": path, "exists": os.path.exists(path), "groups": outrider.config_edit.server_groups(secs),
+                "homed": [s for s in homed if s["keys"]], "problems": problems}
 
     def config_save(self, changes, hidden=False):
         """POST /api/config {section: {key: value}}: those keys written into the config file in place (comments kept,
@@ -7827,7 +7831,8 @@ class State:
     # config keys config_save also applies at once: Settings -> Voice's Keep loaded and Load them at start (crew batch 2)
     # and the auto-target's sequence ([highway] autotarget_*): tuned by trial and error, so the next run uses it (2026-10-22)
     LIVE_CONFIG = {("speech", "voices_loaded"), ("speech", "voices_preload"), ("speech", "pad_delay")} | \
-        {("highway", "autotarget_" + k) for k in outrider.target.DEFAULTS}
+        {("highway", "autotarget_" + k) for k in outrider.target.DEFAULTS} | \
+        {("autohonk", "delay"), ("autohonk", "skip_honked")}   # read on every honk (Settings -> Auto honk, 2026-10-23)
 
     def config_live(self, st, keys):
         """The LIVE_CONFIG keys among `keys` ((section, key) just written) set on the running Outrider from the saved
@@ -7838,6 +7843,9 @@ class State:
         done = sorted({f"{s}.{k}" for s, k in keys if (s, k) in self.LIVE_CONFIG})
         if "speech.pad_delay" in done:
             self.journals.pad_delay = st["pad_delay"]
+        for k in ("delay", "skip_honked"):
+            if f"autohonk.{k}" in done:
+                self.autohonk[k] = st["autohonk"][k]
         at = [k.split(".", 1)[1] for k in done if k.startswith("highway.autotarget_")]
         if at:
             self.highway_cfg.update({k: st["highway"][k] for k in at if k in st["highway"]})
@@ -9252,6 +9260,7 @@ class State:
                 "analysis_only": list(cfg.get("analysis_only") or []), "hide_docked": list(cfg.get("hide_docked") or []),
                 "hide_on_foot": list(cfg.get("hide_on_foot") or []), "hide_mouse_lock": bool(cfg.get("hide_mouse_lock")),
                 "show_inactive": bool(cfg.get("show_inactive")), "pad_diagram": bool(cfg.get("pad_diagram", True)),
+                "system_seconds": cfg.get("system_seconds", 0), "radar_range": cfg.get("radar_range", 800),
                 "window": window, "layout": layout,
                 "test": max(0, round(self.overlay_test_until - now)), "arrange": max(0, round(self.overlay_arrange_until - now)),
                 # Outrider runs the window itself on the game PC: its state; None on a server (the window runs elsewhere)
@@ -9279,9 +9288,11 @@ class State:
                 changes["theme"] = val
             elif key == "text_size" and val in O.SIZES:
                 changes["text_size"] = val
-            elif key == "panel_scale" and isinstance(val, (int, float)) and not isinstance(val, bool) and math.isfinite(val):
-                lo, hi = O.PANEL_SCALE_LIMITS
-                changes["panel_scale"] = int(round(min(hi, max(lo, val))))
+            elif key in ("panel_scale", "system_seconds", "radar_range") and isinstance(val, (int, float)) \
+                    and not isinstance(val, bool) and math.isfinite(val):
+                lo, hi = {"panel_scale": O.PANEL_SCALE_LIMITS, "system_seconds": O.SYSTEM_SECONDS_LIMITS,
+                          "radar_range": O.RADAR_RANGE_LIMITS}[key]
+                changes[key] = int(round(min(hi, max(lo, val))))
             elif key == "panels" and isinstance(val, dict) and val and all(
                     p in O.PANELS and isinstance(v, bool) for p, v in val.items()):
                 changes.update({(f"{p}_panel" if p != "radar" else "radar"): v for p, v in val.items()})
@@ -17327,7 +17338,8 @@ class State:
         galaxy map's steps and timings as configured, and defaults: outrider.target's own (Settings -> Auto-target, its
         ↺ default), whether or not the targeter can run here."""
         cfg, t, h = self.highway_cfg, self.targeter, self.honker
-        keys = ("search", "submit", "plot", "target", "route_target", "map_wait", "search_wait", "key_delay", "step_pause", "entry")
+        keys = ("search", "submit", "plot", "target", "route_target", "dry_run", "keys", "map_wait", "search_wait", "key_delay",
+                "step_pause", "entry")
         own = lambda v: list(v) if isinstance(v, list) else v   # copies: the payload never shares the module's lists
         info = {"sequence": {k: own(cfg.get("autotarget_" + k, outrider.target.DEFAULTS[k])) for k in keys},
                 "defaults": {k: own(outrider.target.DEFAULTS[k]) for k in keys},

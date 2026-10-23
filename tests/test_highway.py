@@ -2107,7 +2107,7 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(info["status"], "not started")
         self.assertEqual(info["sequence"], {"search": list(self.T.DEFAULT_SEARCH), "submit": list(self.T.DEFAULT_SUBMIT),
                                             "plot": ["hold CamZoomOut 0.2", "press UI_Right", "press UI_Select"],
-                                            "target": list(self.T.DEFAULT_TARGET), "route_target": True, "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0.05, "step_pause": 0.25, "entry": "type"})
+                                            "target": list(self.T.DEFAULT_TARGET), "route_target": True, "dry_run": False, "keys": {}, "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0.05, "step_pause": 0.25, "entry": "type"})
         self.assertEqual((info["defaults"]["search"], info["defaults"]["submit"], info["defaults"]["plot"]),
                          (list(self.T.DEFAULT_SEARCH), list(self.T.DEFAULT_SUBMIT), list(self.T.DEFAULT_PLOT)))
         info["defaults"]["plot"].append("press Enter")   # a copy: the module's defaults stay as they are

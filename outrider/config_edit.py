@@ -19,6 +19,54 @@ SECTION_TITLES = {"journals": "Journal folders", "server": "Server: network, pas
                   "autohonk": "Auto honk", "copilot": "Co-pilot button", "highway": "Neutron Highway and auto-target",
                   "assistant": "Voice: the AI layer", "mcp": "MCP bridge (AI clients)", "overlay": "In-game overlay"}
 HIDDEN_SECTIONS = {"eddn", "edsm", "inara"}   # written by their own page sections (Settings -> Uploads), not the Server list
+# keys with a section of Settings of their own (the author, 2026-10-23: the Server list had 112 keys, most set elsewhere,
+# and the switches the page keeps in the database showed stale values there): left out of the Server list, still in
+# the file, found by Find a setting through their section's data-find="section.key" (tests/test_settings keeps every
+# one findable). [defaults]: the browser rows (Sharing -> "use these for new browsers" sets new browsers' defaults);
+# [speech]: Voice; [overlay]: In-game overlay; [autohonk], [copilot]: Auto honk; [highway] autotarget*: Auto-target
+# and Plot Route
+HOMED_SECTIONS = {"defaults", "speech", "overlay", "autohonk", "copilot"}
+
+
+def homed(section, key):
+    """Whether (section, key) is set in a section of Settings of its own rather than the Server list."""
+    return section in HOMED_SECTIONS or (section == "highway" and key.startswith("autotarget"))
+
+
+# the Server list by purpose (the author, 2026-10-23), each row showing its [section]: (id, title, [(section, key)]);
+# a listed key in no group goes to OTHER, so a new key is never lost (a test fails on it all the same)
+GROUPS = (
+    ("network", "Network and access", (("server", "host"), ("server", "port"), ("server", "allowed_hosts"),
+                                        ("server", "password"), ("server", "game_pc"))),
+    ("files", "Files and backups", (("journals", "live"), ("journals", "legacy"), ("server", "db"), ("server", "backup_dir"),
+                                     ("server", "backup_keep"), ("server", "backup_every_days"), ("server", "speech_file"))),
+    ("online", "Online checks", (("server", "update_check"), ("spansh", "watch_firsts"), ("spansh", "concurrency"),
+                                  ("spansh", "map_max_radius"), ("spansh", "map_max_pages"))),
+    ("nearby", "Nearby", (("server", "radius"), ("server", "radius_choices"))),
+    ("route", "Plot Route", (("highway", "clipboard"), ("highway", "efficiency"), ("highway", "conservative"),
+                             ("highway", "conservative_ly"), ("highway", "voice_plot"), ("highway", "voice_plot_ly"),
+                             ("highway", "background_image"), ("highway", "background_extent"),
+                             ("highway", "background_opacity"))),
+    ("ai", "The voice's AI and AI clients", (("assistant", "enabled"), ("assistant", "base_url"), ("assistant", "api_key"),
+                                             ("assistant", "model"), ("assistant", "timeout"), ("assistant", "max_rounds"),
+                                             ("mcp", "url"), ("mcp", "max_rows"), ("mcp", "password"))),
+)
+OTHER = ("other", "Other")
+
+
+def server_groups(sections):
+    """entries()'s sections as the Server list shows them: [{group, title, keys: [key dict + section]}] in GROUPS' order,
+    the homed and hidden keys left out, what no group names last under OTHER, empty groups dropped."""
+    keys = {(s["section"], k["key"]): dict(k, section=s["section"]) for s in sections if s["section"] not in HIDDEN_SECTIONS
+            for k in s["keys"] if not homed(s["section"], k["key"])}
+    out = []
+    for gid, title, members in GROUPS:
+        ks = [keys.pop(m) for m in members if m in keys]
+        if ks:
+            out.append({"group": gid, "title": title, "keys": ks})
+    if keys:
+        out.append({"group": OTHER[0], "title": OTHER[1], "keys": list(keys.values())})
+    return out
 SECRETS = {("server", "password"), ("assistant", "api_key"), ("mcp", "password")}   # never sent to the page, only "set" or not
 # keys with a fixed set of values, shown as a choice (ed_outrider.py adds [speech] server_player's, from outrider.tts)
 CHOICES = {("server", "game_pc"): ("auto", "true", "false"), ("highway", "autotarget_entry"): ("type", "paste"),

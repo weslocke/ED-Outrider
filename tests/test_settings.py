@@ -87,6 +87,27 @@ class FindASetting(unittest.TestCase):
         self.assertIn("defaults.speech_speed", named)
         self.assertIn('id="setFind"', html)
 
+    def test_server_list_by_purpose(self):
+        """The author, 2026-10-23: Settings -> Server lists only the keys with no section of their own, grouped by purpose
+        (config_edit.GROUPS); every other key is homed (its section's data-find finds it: the smoke test checks the
+        page), Uploads' are hidden. Every key the file has is one or the other, and none falls into "Other"."""
+        sections = ce.entries(ed_outrider.config_text(settings({})))
+        groups = ce.server_groups(sections)
+        listed = {(k["section"], k["key"]) for g in groups for k in g["keys"]}
+        homed = {(s["section"], k["key"]) for s in sections for k in s["keys"] if ce.homed(s["section"], k["key"])}
+        hidden = {(s["section"], k["key"]) for s in sections if s["section"] in ce.HIDDEN_SECTIONS for k in s["keys"]}
+        every = {(s["section"], k["key"]) for s in sections for k in s["keys"]}
+        self.assertEqual(listed | homed | hidden, every)
+        self.assertFalse(listed & homed)
+        self.assertNotIn(ce.OTHER[0], [g["group"] for g in groups])            # each listed key in a named group
+        self.assertEqual([g["group"] for g in groups], [g[0] for g in ce.GROUPS])
+        self.assertLess(len(listed), 50)
+        for k in (("defaults", "bio_min"), ("highway", "autotarget"), ("autohonk", "enabled"), ("overlay", "radar_range"),
+                  ("copilot", "device"), ("speech", "pad_delay")):
+            self.assertIn(k, homed)
+        for k in (("server", "port"), ("journals", "live"), ("highway", "clipboard"), ("assistant", "model")):
+            self.assertIn(k, listed)
+
 
 class TempConfig(unittest.TestCase):
     """A State whose config file is a temporary copy of the example (with a password set)."""
@@ -120,7 +141,7 @@ class Endpoint(TempConfig):
             return await r.text(), await r.json()
         text, d = self.client(go)
         self.assertNotIn("hunter2", text)
-        pw = next(k for s in d["sections"] if s["section"] == "server" for k in s["keys"] if k["key"] == "password")
+        pw = next(k for g in d["groups"] for k in g["keys"] if (k["section"], k["key"]) == ("server", "password"))
         self.assertEqual((pw["secret"], pw["set"], pw["value"], d["path"], d["exists"]), (True, True, None, self.path, True))
 
     def test_save(self):
@@ -316,6 +337,31 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class HomedKeys(TempConfig):
+    """The author, 2026-10-23: the keys taken out of the Server list got fields in their own sections. Auto honk's wait
+    and skip are read on every honk, so a save applies them at once; its key and hold, and the co-pilot button, wait for
+    the next start. The overlay's system-panel time and radar range go through POST /api/overlay like its other fields."""
+
+    def test_auto_honk_and_copilot_fields(self):
+        s = self.state
+        out, status = s.config_save({"autohonk": {"delay": 3.5, "skip_honked": False}})
+        self.assertEqual((status, out["restart"], sorted(out["live"])), (200, False, ["autohonk.delay", "autohonk.skip_honked"]))
+        self.assertEqual((s.autohonk["delay"], s.autohonk["skip_honked"]), (3.5, False))
+        out, status = s.config_save({"autohonk": {"hold": 4.0}, "copilot": {"enabled": True, "device": "X56", "button": "BTN_TRIGGER_HAPPY5"}})
+        self.assertEqual((status, out["restart"]), (200, True))         # the Honker and the button are built at start
+        homed = {(x["section"], k["key"]): k["value"] for x in s.config_info()["homed"] for k in x["keys"]}
+        self.assertEqual((homed["autohonk", "hold"], homed["copilot", "device"], homed["copilot", "enabled"]), (4.0, "X56", True))
+
+    def test_overlay_system_seconds_and_radar_range(self):
+        s = self.state
+        out, status = s.overlay_set({"system_seconds": 30, "radar_range": 50})
+        self.assertEqual(status, 200, out)
+        self.assertEqual((out["system_seconds"], out["radar_range"]), (30, 100))   # the radar's range clamped to 100..20000
+        with open(self.path, encoding="utf-8") as f:
+            self.assertIn("system_seconds = 30", f.read())
+        self.assertEqual(s.overlay_set({"radar_range": "far"})[1], 400)
+
+
 class SweepConfigFixes(TempConfig):
     """The full sweep of 2026-10-09 (the config file and Server settings)."""
 
@@ -327,7 +373,9 @@ class SweepConfigFixes(TempConfig):
         """A decimal setting whose value is whole (speech_speed 1, autohonk delay 2) takes 1.3 and stays a decimal
         after a whole value is saved (it was offered and checked as a whole number)."""
         os.remove(self.path)                                   # the file Outrider would write
-        kinds = {(s["section"], k["key"]): k["kind"] for s in self.state.config_info()["sections"] for k in s["keys"]}
+        info = self.state.config_info()   # the Server list's groups and the homed keys (Voice's speech_speed, auto honk's delay)
+        kinds = {(k["section"], k["key"]): k["kind"] for g in info["groups"] for k in g["keys"]}
+        kinds.update({(s["section"], k["key"]): k["kind"] for s in info["homed"] for k in s["keys"]})
         self.assertEqual((kinds["defaults", "speech_speed"], kinds["autohonk", "delay"], kinds["server", "port"]),
                          ("float", "float", "int"))
         self.assertEqual(self.state.config_save({"defaults": {"speech_speed": 2.0}})[1], 200)

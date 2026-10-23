@@ -327,7 +327,8 @@ class StateSwitches(unittest.TestCase):
         self.assertNotIn("eddn", ed_outrider.meta_get(self.db, "upload_marks") or {})
 
     def test_not_among_server_settings(self):
-        secs = [s["section"] for s in self.state.config_info()["sections"]]
+        info = self.state.config_info()
+        secs = [k["section"] for g in info["groups"] for k in g["keys"]] + [s["section"] for s in info["homed"]]
         self.assertNotIn("eddn", secs)
         self.assertNotIn("edsm", secs)
         out, status = self.state.config_save({"eddn": {"enabled": True}})   # POST /api/config: not this way

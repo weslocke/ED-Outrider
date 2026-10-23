@@ -16,9 +16,14 @@ section is back as it was. A section's name shows all of it, and so does a block
 whole Crew block (every member, the switches, the note on the XO), "backups" the whole Backups fold, "inara" all of
 Inara's part of Uploads. A table is never cut down to one row: when a row of it matches, the whole table shows with the
 matching rows marked ("tactical" shows every crew member, Tactical's row marked). Most are this browser's
-own (Sharing exports them or makes them the defaults for new browsers). **Server** is the config file
-itself, every key of it but the upload switches (`[eddn]`, `[edsm]`, `[inara]`: Settings → Uploads): the network and the client password, the journal folders, paths, backups, Spansh, the
-Highway, the voice's AI layer and more. Saving there writes `ed_outrider.toml` (only the keys you changed; its
+own (Sharing exports them or makes them the defaults for new browsers). **Server** is the config file's keys that have
+no section of their own, in six groups: **Network and access**, **Files and backups**, **Online checks**, **Nearby**,
+**Plot Route** and **The voice's AI and AI clients**, each row with its `[section]` in the file. The rest of the file
+is set in its own sections, and Find a setting finds it there by its key too: `[defaults]` in the rows it starts new
+browsers with (Worth stopping for, Risk and warnings, Voice, the surface map: Sharing makes this browser's choices
+every new browser's defaults), `[speech]` in Voice, `[autohonk]` and `[copilot]` in Auto honk, `[highway]
+autotarget_*` in Auto-target, `[overlay]` in In-game overlay, `[eddn]`, `[edsm]` and `[inara]` in Uploads. The file
+keeps every key, to edit by hand if you like. Saving there writes `ed_outrider.toml` (only the keys you changed; its
 comments stay, and the previous file is kept as `ed_outrider.toml.bak`), and Outrider uses them from its next start:
 **Restart now** beside "Saved" does that at once. A few keys take effect at once instead: `[speech] voices_loaded` and
 `voices_preload` (Settings → Voice writes them too: **Keep loaded** and **Load them at start** under Voices kept

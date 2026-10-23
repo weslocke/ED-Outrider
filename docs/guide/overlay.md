@@ -170,9 +170,9 @@ surface. The Target panel still shows over the galaxy map while docked, so you s
 panel on foot, anywhere (in a station or on a planet's surface); none is ticked to start with. The system, Target and radar
 panels start on; the system strip, Now, Bio signals
 and Alerts start off. The **theme** colours and frames the panels as the page's themes do (Elite's orange with
-cut corners, LCARS's bars, ...). In the config file (`[overlay]`):
-`system_seconds` keeps the system panel only that long after arriving (0: while you are in supercruise there), and
-`radar_range` is the radar's edge in metres (it widens to fit a colony ring); `analysis_only` lists the panels
+cut corners, LCARS's bars, ...). **System panel stays** keeps the system panel only that long after arriving (0: while
+you are in supercruise there), and **Radar range** is the radar's edge in metres (it widens to fit a colony ring). In
+the config file (`[overlay]`, `system_seconds` and `radar_range` for those two): `analysis_only` lists the panels
 ticked Combat (`["system", "bio"]`; the Target panel is `body`), `hide_docked` the ones ticked Docked
 (`["system", "body", "now", "bio"]` when the key is missing) and `hide_on_foot` the ones ticked Foot.
 

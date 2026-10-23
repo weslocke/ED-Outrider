@@ -135,7 +135,7 @@ def cheatsheet_html(binds=None):
                "<li>Short words: " + ", ".join(f"<code>{a}</code> is {_e(honk.key_label(k))}" for a, k in ALIASES) + ".</li>"
                "<li>A control's name always means the control: name the key instead when you want the key itself.</li>"
                "<li>A control can be given its own key, whatever the game's controls say: <code>[highway] autotarget_keys = "
-               "{ UI_Select = \"KEY_SPACE\", Enter = \"KEY_KPENTER\" }</code> (Settings → Server).</li>"
+               "{ UI_Select = \"KEY_SPACE\", Enter = \"KEY_KPENTER\" }</code> (Settings → Auto-target's <b>your own keys</b>).</li>"
                "<li>Linux takes any key name the system knows (<code>evtest</code> lists them); these work on Windows too.</li></ul>")
     names = set(key_names())
     for group, keys in KEY_GROUPS:
