@@ -1282,7 +1282,7 @@ class HighwayH1(unittest.TestCase):
         st = ed_outrider.settings_from({}, args, None, ([], []))
         bg = {"background_image": "", "background_extent": [-45000.0, 45000.0, -20000.0, 70000.0], "background_opacity": 0.6,
               "conservative": False, "conservative_ly": 5.0, "autotarget_entry": "type", "autotarget_map_wait": 5.0,
-              "autotarget_search_wait": 2.0, "autotarget_key_delay": 0.05, "autotarget_step_pause": 0.25, "autotarget_keys": {},
+              "autotarget_search_wait": 3.0, "autotarget_key_delay": 0.05, "autotarget_step_pause": 0.25, "autotarget_keys": {},
               "autotarget_target": list(outrider.target.DEFAULT_TARGET), "autotarget_route_target": True,
               "autotarget_plot": ["hold CamZoomOut 0.2", "hold UI_Select 1"],
               "autotarget_search": ["hold CamYawRight 0.3", "press UI_Up", "press UI_Select"],
@@ -1930,17 +1930,22 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertNotIn(("sleep", 0.25), [calls[i + 1] for i, c in enumerate(calls[:-1]) if c[0] == "tap" and c[1] in (1, 3, 6)])
 
     def test_far_system_waits_longer_for_the_search(self):
-        """The author, 2026-10-23: Sol from 5,000 ly needed a 5 s search wait (the map's flight is longer): over
-        FAR_SEARCH_LY the wait is at least FAR_SEARCH_WAIT, a near system keeps the configured one."""
+        """The author, 2026-10-23: the map's flight after the search is longer the further the system (Sol from 5,000 ly
+        outlasted 2 s; a close jump needs less than 5): the search wait (3 s to start) plus a second for each 200 ly,
+        up to 7 s; a wait set longer than that is kept."""
+        W = self.T.search_wait
+        self.assertEqual(self.T.DEFAULTS["search_wait"], 3.0)
+        self.assertEqual([W(3.0, ly) for ly in (8, 31.9, 199, 200, 450, 799, 1000, 5000, None)], [3, 3, 3, 4, 5, 6, 7, 7, 3])
+        self.assertEqual((W(8.0, 5000), W(0.02, 120)), (8.0, 0.02))
         self.fake_time()
         wait_line = lambda r: next(x for x in r["log"] if "wait for the map to find the system" in x)
         r = self.run_target(ly=120)
         self.assertTrue(r["ok"], r)
-        self.assertIn("wait 0.02 s", wait_line(r))
+        self.assertIn("wait 0.02 s", wait_line(r))                        # this fixture's own wait, close by
         self.status["gui_focus"], self.status["destination"] = 0, None
-        r = self.run_target(ly=self.T.FAR_SEARCH_LY + 1)
+        r = self.run_target(ly=650)
         self.assertTrue(r["ok"], r)
-        self.assertIn(f"wait {self.T.FAR_SEARCH_WAIT:g} s", wait_line(r))
+        self.assertIn("wait 3.02 s", wait_line(r))                         # three steps of 200 ly
         # the server's distance: from where you are to the system, None when either is unknown
         hwy_jump(self, 1, 101, "Neu A", 50)
         self.state.map_cache[(101, 50)] = ({102: {"name": "Bridge B", "x": 400, "y": 0, "z": 0}}, None)

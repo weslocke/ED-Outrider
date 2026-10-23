@@ -567,7 +567,8 @@ upstream project's choices, not rules of the game.
   2026-10-23): eight UI_Downs pressed back to back lost some (one run pressed the wrong icon and left the map), so
   `step_pause` (0.25 s) follows each key of the search, submit and plot steps rather than relying on `wait` lines; a
   run is about a second slower, a lost key is worse. The map's flight to a system 5,000 ly away outlasted the 2 s
-  search wait: over 300 ly it is at least 5 s, from the distance Outrider knows before the run starts. "key delay"
+  search wait, and a close jump needed less than 5 s: the wait (3 s to start) grows by a second for each 200 ly to the
+  system, up to 7 s (the author's rule), from the distance Outrider knows before the run starts. "key delay"
   became "typing delay": it is only ever between typed characters, and a player who pastes had set it to 1 s
   expecting it to pace the steps.
   **A route's next stop one jump away is targeted, not plotted** (discussion #12, the author's checks in game,

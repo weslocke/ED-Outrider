@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Auto-target's search wait grows with the distance
+- The author's rule: the **search wait** (3 s to start, was 2) is the map's flight to the system after the search, so
+  it grows by a second for each 200 ly to the system, up to 7 s: a close jump no longer waits 5 s, a far one still gets
+  its time (`outrider.target.search_wait`). It replaces "at least 5 s over 300 ly". A search wait you set longer than
+  7 s is kept as it is.
+
 ## 2026-10-23 · Review fixes (3): the Settings page
 - The Fable review of 8db87f0..454b806 (project/REVIEW-fable-2026-10-23.md):
   - **L2: Settings → Mining's alerts table is styled as Alerts'**: its group headings, the names, the muted lines and

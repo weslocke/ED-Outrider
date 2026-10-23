@@ -199,7 +199,8 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   **submit the search** and **plot the route**, with the timings and whether the name is typed or pasted: **pause
   between keys** (0.25 s) follows every key of the three parts, since the galaxy map can miss a key pressed straight
   after another, so no `wait` is needed between keys; **typing delay** is only between the name's characters when it
-  is typed; the **search wait** is at least 5 s for a system over 300 ly away (the map's flight there is longer). **Save the
+  is typed; the **search wait** (3 s to start) grows by a second for each 200 ly to the system, up to 7 s (the map's flight there is
+  longer; a close jump needs less). **Save the
   steps** writes them into the config file (`[highway] autotarget_search`, `autotarget_submit`, `autotarget_plot`…)
   and the next run uses them, no restart needed; a step it cannot read is refused in words
   and your text stays to be corrected. Below them: the whole sequence with your keys, and **▶ test now**, against the

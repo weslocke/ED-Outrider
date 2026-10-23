@@ -312,7 +312,7 @@ HIGHWAY = {"clipboard": True, "autotarget": False, "autotarget_delay": 5.0, "eff
            "conservative": False, "conservative_ly": 5.0,
            # auto-target's key sequence (outrider/target.py): how the name goes in, the waits, per-step key overrides,
            # the search, submit and plot-route steps (found in game 2026-10-02) and a dry run that only logs
-           "autotarget_entry": "type", "autotarget_map_wait": 5.0, "autotarget_search_wait": 2.0,
+           "autotarget_entry": "type", "autotarget_map_wait": 5.0, "autotarget_search_wait": outrider.target.DEFAULTS["search_wait"],
            "autotarget_key_delay": 0.05, "autotarget_step_pause": outrider.target.STEP_PAUSE, "autotarget_keys": {}, "autotarget_plot": list(outrider.target.DEFAULT_PLOT),
            "autotarget_search": list(outrider.target.DEFAULT_SEARCH), "autotarget_submit": list(outrider.target.DEFAULT_SUBMIT),
            "autotarget_target": list(outrider.target.DEFAULT_TARGET), "autotarget_route_target": True,

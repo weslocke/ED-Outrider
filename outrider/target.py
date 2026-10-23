@@ -111,10 +111,20 @@ DEFAULT_SUBMIT = ("wait 1.5", "press KEY_DOWN", "press UI_Select")
 # a pause after each key of the three editable parts: back to back, the galaxy map can miss a press (eight UI_Downs
 # down the system panel's icons lost some; 0.25 s each worked: the author, 2026-10-23, discussion #12)
 STEP_PAUSE = 0.25
-# a far system takes the map longer to fly to after the search: at least this long over FAR_SEARCH_LY (the author:
-# 2 s was too short for Sol from 5,000 ly; 5 s worked)
-FAR_SEARCH_LY, FAR_SEARCH_WAIT = 300.0, 5.0
-DEFAULTS = {"entry": "type", "map_wait": 5.0, "search_wait": 2.0, "key_delay": 0.05, "step_pause": STEP_PAUSE, "keys": {},
+# the map's flight to the system after the search takes longer the further it is (the author, 2026-10-23: Sol from 5,000
+# ly outlasted 2 s; a close jump needs less than 5): the search wait plus a second for each SEARCH_WAIT_STEP_LY to it,
+# up to SEARCH_WAIT_MAX (a search wait set longer than that is kept as it is)
+SEARCH_WAIT_STEP_LY, SEARCH_WAIT_MAX = 200.0, 7.0
+
+
+def search_wait(base, ly):
+    """Seconds to wait for the map to fly to a system `ly` away (None: not known, the base alone)."""
+    if ly is None or ly < 0:
+        return base
+    return max(base, min(SEARCH_WAIT_MAX, base + int(ly // SEARCH_WAIT_STEP_LY)))
+
+
+DEFAULTS = {"entry": "type", "map_wait": 5.0, "search_wait": 3.0, "key_delay": 0.05, "step_pause": STEP_PAUSE, "keys": {},
             "plot": list(DEFAULT_PLOT), "target": list(DEFAULT_TARGET), "route_target": True,
             "search": list(DEFAULT_SEARCH), "submit": list(DEFAULT_SUBMIT),
             "dry_run": False}
@@ -394,7 +404,7 @@ class Targeter:
         several jumps away counts as targeted; front: a callable giving None while Elite's window is the one in front,
         else why not, asked before every key (the first one too): a no stops the run, code "window" (None: nothing to
         check with, every key goes to whichever window has focus); ly: how far the system is, when known (over
-        FAR_SEARCH_LY the search wait is at least FAR_SEARCH_WAIT: the map's flight is longer); one_jump: a route's next
+        search_wait: a second more for each SEARCH_WAIT_STEP_LY, up to SEARCH_WAIT_MAX); one_jump: a route's next
         stop the route makes one jump, so the system itself must end up the target (a longer route the game plotted
         there fails, code "multi", saying how to fix it), and with `route_target` on it is targeted, not plotted (the
         plot steps after all when the target steps' keys are not bound). -> {"ok", "phase", "label", "why", "code", "log",
@@ -501,8 +511,8 @@ class Targeter:
                     self._wait_focus(st, status, system, here, expect)
                     expect = {st["value"]}
                 elif d == "wait":
-                    if st.get("search") and ly is not None and ly > FAR_SEARCH_LY:   # a far system: a longer flight
-                        cur = st = dict(st, secs=max(st["secs"], FAR_SEARCH_WAIT))
+                    if st.get("search"):   # the map's flight there: longer the further it is
+                        cur = st = dict(st, secs=search_wait(st["secs"], ly))
                     self._sleep(st["secs"], st, status, system, here, expect)
                 elif d == "verify":
                     self._verify(st, id64, status, system, here, expect, route_end, name if one_jump else None, game_route)

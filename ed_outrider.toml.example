@@ -202,7 +202,7 @@
 # autotarget_delay = 5      # seconds after the supercharge (0 to 60)
 # autotarget_entry = "type" # "type" the name (US keyboard layout) or "paste" it (wl-copy/xclip, then Ctrl+V)
 # autotarget_map_wait = 5   # seconds to wait for the galaxy map to open (and to close) before giving up
-# autotarget_search_wait = 2   # seconds after submitting the search for the map to fly to the system
+# autotarget_search_wait = 3   # seconds after submitting the search for the map to fly to the system (a second more for each 200 ly to it, up to 7)
 # autotarget_key_delay = 0.05  # seconds between typed characters
 # autotarget_keys = {}      # override a step's keys (else read from your controls preset), e.g.
 #                           # { GalaxyMapOpen = "KEY_LEFTALT+KEY_RIGHTALT+KEY_T", UI_Select = "KEY_SPACE", Enter = "KEY_KPENTER" }
