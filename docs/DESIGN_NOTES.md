@@ -1442,9 +1442,11 @@ upstream project's choices, not rules of the game.
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
 confirmed while playing. Treat reports about them as likely real.
 
-- Ring mining (branch `mining`): a stint on a live drop with its hotspot from Status.json's Destination, the
+- Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the
   prospector call-out, the ⛏ line and its warnings' timing (limpets low, hold nearly full, hold full with where to
   sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone).
+- The sample spacing while flying the ship low over the body (discussion #3, 2026-10-23): from the point under the
+  ship, with Status.json's live Latitude/Longitude in flight; tested on made-up Status.json only.
 
 
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen
@@ -1488,10 +1490,11 @@ confirmed while playing. Treat reports about them as likely real.
   warning (S2, on the game's route and the Highway), the wrong-target check (S11: Status.json's Destination and
   NavRoute.json as the game writes them when a route is plotted, retargeted from the navigation panel, or reached) and a
   conservative plot against a real route.
-- Auto-target in game: the first default sequence targeted a system end to end with "test now" (2026-10-02), and the
-  current one (a camera yaw before the search, 1.5 s before Enter, a zoom in the plot step) is what worked on
-  2026-10-03 (the author's bindings, Linux/Proton). Not yet tried: a run triggered by a real supercharge on a route,
-  Target next and Retry from the page, other keyboard layouts and presets, and both entry modes side by side; 🎯 on a
+- Auto-target in game: the first default sequence targeted a system end to end with "test now" (2026-10-02); a camera
+  yaw before the search and a zoom in the plot step worked on 2026-10-03, and the current submit (the down arrow and
+  UI_Select) on 2026-10-23, against Sol (several results) and a neighbour (one), with ▶ test now (the author's bindings,
+  Linux/Proton). Not yet tried: a run triggered by a real supercharge on a route (Kurbo26 saw the game's plot add a
+  stop on the way; his Route Settings: Fastest Routes, Jet-Cone Boost), Target next and Retry from the page, other keyboard layouts and presets, and both entry modes side by side; 🎯 on a
   bookmark, the next stop, a Nearest row, a checklist find and a Map click (S31, S72), and the co-pilot button falling
   back to the next stop.
 - The voice plotting a far "nearest ..." (D4): a neutron route to the place's system, tested with the plot faked.

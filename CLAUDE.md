@@ -16,5 +16,6 @@ The rules that matter most:
   input devices; use the fakes in `tests/support.py`. Stop any server you start by its PID.
 - Keep `SETTINGS_KEYS`/`BROWSER_SETTINGS` and the speech keys (`resources/speech.json`, `outrider.speech.KEYS`/`SAMPLES`,
   `LINE_SAMPLES`, every `resources/personalities/*.json` with at least 10 lines each) in step, and an alert row's
-  `ROW_KEYS` (page.js and `outrider.speech`), `ROW_WORDS` and `CREW_ROLES`; bump `PARSER_VERSION` or `CACHE_VERSION` when stored data changes shape, and keep live-only tables out of
+  `ROW_KEYS` (page.js and `outrider.speech`), `ROW_WORDS`, `ALERT_NAMES` (under its `ALERT_GROUPS` heading) and `CREW_ROLES`,
+  and a new auto-target control's `KEY_HELP` line; bump `PARSER_VERSION` or `CACHE_VERSION` when stored data changes shape, and keep live-only tables out of
   `RESET_JOURNAL_DATA`.

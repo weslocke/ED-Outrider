@@ -38,8 +38,8 @@ for this: see [Other devices on your network](install.md#-other-devices-on-your-
 - **The voice stays on the PC,** unless you tick **Play alerts here** in the tablet's Settings. Then the tablet speaks
   (in Piper, from Outrider) and plays the alert sounds itself, whether or not a PC browser does too: just the thing
   with a Docker server and no browser open (turn one off if you hear both). **Choose alerts…** under it picks which
-  alerts the tablet says (🗣) and plays (🔊), apart from the PC's choices; it starts from what the PC saved as defaults
-  for new browsers.
+  alerts the tablet says (🗣) and plays (🔊), apart from the PC's choices, in the same groups and with the same names as
+  Settings → Alerts; it starts from what the PC saved as defaults for new browsers.
 - **Target next** on Plot Route and every 🎯 (a route's systems, a boxel's) run at once (no countdown), since
   tapping the tablet leaves the game focused; Outrider still brings the game to the front first where it can, and
   counts down 5 s when the game is not the active window (see [auto-target](plot-route.md)). Auto honk, auto-target's switch and test, backups and the voice

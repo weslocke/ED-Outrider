@@ -49,7 +49,7 @@ also run 24/7 on a home server in Docker.
 | 🌟 **Rare finds flagged** | Rare stars, stellar phenomena, Guardian and Thargoid sites, Titans and other signals worth a detour, potential green gas giants and star or planet types new to your codex: marked in Nearby and Here, most of them said out loud when you find them. |
 | ⚠️ **Don't leave money behind** | Target onward with mapping or exobiology worth your while still undone and the page says so, out loud if you like. Ordinary systems stay quiet. |
 | 💰 **Know what's on board** | Unsold cartographics and exobiology in credits, bonuses included, and your unsold 🏁 first discoveries. Dock somewhere that buys it and it tells you to sell. |
-| 🌿 **On the ground** | What is left to sample on the body, a countdown to the next colony, and a warning when a run elsewhere would be discarded. |
+| 🌿 **On the ground** | What is left to sample on the body, a countdown to the next colony (on foot, in the SRV or flying low to the next spot), and a warning when a run elsewhere would be discarded. |
 | ⛽ **Fuel you can trust** | Jumps left at max range and at your pace, laden range, fuel per hop, how scoopable your recent stars have been, and a nudge to top up before a dry stretch. |
 | 🧭 **Decide where to go** | Unfinished systems nearby, the nearest buyers for your data, bookmarks and a next stop, stellar phenomena, and a search across Spansh. |
 | 📦 **Boxel by boxel** | Work through the boxel you are in by number: what you and Spansh know of each system, the next one to try with 🎯, the nearest boxels of each kind, and a map of the sector's boxels. |
@@ -61,12 +61,12 @@ also run 24/7 on a home server in Docker.
 | 📜 **Your logbook** | Every journal event in a searchable log, every exobiology sample and what became of it, and a schematic of the system. |
 | 🧑‍🚀 **Your CMDR** | The CMDR tab: ranks with the way to the next, credits and assets, every ship (its build one click from EDSY or Coriolis) and stored module, engineering blueprints against your materials, the missions you hold, how your combat and mining sessions went, and what exploration, exobiology and mining earned you, month by month. |
 | 📈 **The long view** | Each trip from sale to sale with what it actually paid, what each ship loss cost, your best finds, ranks and career statistics. |
-| 🗣 **A voice with personality** | A natural neural voice, down to business, sarcastic or sweet, briefing you on arrival and warning before you leave something unfinished. |
+| 🗣 **A voice with personality** | A natural neural voice in eleven personalities, from down to business, sarcastic or sweet to Vulcan, Klingon or a smuggler, briefing you on arrival and warning before you leave something unfinished. |
 | ⛏️ **Ring mining** | Rings worth mining called out, a limpet reminder on undocking, prospector call-outs for the minerals you pick, the hold's minutes to full on Now and the overlay, and every hotspot's record in CMDR → Sessions. |
 | ⛏️ **Rhino mining** | A heading-up surface map on Now with your rigs, sample points and ship, and every collection kept per body. |
 | 📱 **A tablet in the cockpit** | Every page in a touch layout with eleven themes, alerts as banners, game buttons on a control rail, and the voice on the tablet if you like. |
 | 🎙️ **Ask out loud** | "Hey Vespa, status report": answered in the voice from what Outrider knows, with an optional AI for anything else; Settings lists every command it knows. |
-| 🎯 **Automation (game PC; Linux, Windows experimental)** | Auto honk fires the Discovery Scanner on arrival, auto-target targets the next route system after a supercharge, and one HOTAS button (Linux) targets the next route system with a tap, gives a status report with a double tap and hushes with a hold. |
+| 🎯 **Automation (game PC; Linux, Windows experimental)** | Auto honk fires the Discovery Scanner on arrival, auto-target targets the next route system after a supercharge and any system from a 🎯 (its galaxy-map keys yours to change, with a cheatsheet), and one HOTAS button (Linux) targets the next route system with a tap, gives a status report with a double tap and hushes with a hold. |
 
 ## 🚀 Getting started
 

@@ -42,7 +42,8 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/mcp.py` | The MCP bridge for AI clients: `python3 -m outrider.mcp` (stdio); `--list` shows the tools |
 | `outrider/honk.py` | Auto honk (Linux; Windows experimental; optional); `--show`, `--test` |
 | `outrider/winkeys.py` | Key presses and the clipboard on Windows (`SendInput`), standing in for evdev |
-| `outrider/target.py` | The Highway's auto-target (Linux; Windows experimental; optional); `--show` |
+| `outrider/target.py` | Auto-target: the galaxy-map steps every 🎯 and the Highway press (Linux; Windows experimental; optional); `--show` |
+| `outrider/target_help.py` | The steps' Macro cheatsheet (Settings → Auto-target links it): every command, control, key name and alias, from the code |
 | `outrider/game_window.py` | Elite's window for auto-target: brought to the front before a run, checked to be in front before every key |
 | `outrider/bio.py` | The exobiology predictor; `--backtest` scores it against your journals, `--update-rules` fetches the rules by hand |
 | `resources/bio_rules.json` | Spawn rules, nebulae and regions from BioScan and klightspeed's region map; ExploData's colour variants are downloaded beside it into `bio_colours.json` on the first start, never shipped (`outrider/bio.py`) |

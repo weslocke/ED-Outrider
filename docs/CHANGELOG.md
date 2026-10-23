@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-23 · Docs checked after the day's changes
+- **README:** the sample countdown while flying, eleven personalities, every 🎯 and its editable steps.
+- **The guides:** For the curious lists the cheatsheet's module; the tablet's alert sheet in the same groups.
+- **Agent guide, design notes, journal reference, CLAUDE.md, AGENTS.md:** ring mining no longer "on branch mining";
+  `ALERT_NAMES` / `ALERT_GROUPS` and `KEY_HELP` in the keep-in-step rules; the test files as one per module (66);
+  "not yet tried in game": the submit steps confirmed on 2026-10-23, the sampling call in flight added.
+
 ## 2026-10-23 · Settings → Auto-target: a Macro cheatsheet
 - **Macro cheatsheet ↗** at the top of the section (the author) opens a page in a new tab with everything the three
   boxes take: the commands and their limits, where each box starts (and why letter keys type themselves in the
