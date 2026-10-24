@@ -9,7 +9,7 @@ upstream project's choices, not rules of the game.
 - **No keyboard shortcuts.** A deliberate upstream choice, declined more than once; clickable things are reachable with
   Tab and act on Enter/Space instead.
 - **No VoiceAttack integration.** Not used upstream; the co-pilot button and the page cover the same ground.
-- **The tick stats only the journals still changing** (2026-10-12, S18, `Journals._scan_dir(quick=True)`). Over a
+- **The tick stats only the journals still changing** (2026-10-12, S18, `Journals.scan_dir(quick=True)`). Over a
   network share every stat is a round trip, and a long history is thousands of files a second. The folder is still
   listed every tick (a new journal is read at once); a file is settled when its size was the same for
   `JOURNAL_SETTLE_STATS` stats in a row (not when it reaches its offset: a journal cut without its final newline never
@@ -338,7 +338,9 @@ upstream project's choices, not rules of the game.
   settings lists every key `config_text` knows, so nothing is left out and no second list drifts; a save edits only
   the changed keys in place (the file's comments and unknown keys stay), keeps the old file as `.bak`, and writes
   nothing unless the result reads back and settings_from finds nothing new wrong. Server settings' changes apply at
-  the next start (no live reload yet); the Settings → Uploads switches apply at once and are written into the file too. Secrets (the password, the AI key) never leave the server.
+  the next start, except the keys in `State.LIVE_CONFIG` (the speech loading keys and `pad_delay`, auto honk's delay and
+  skip, every `[highway] autotarget_*`), applied at once by `config_live` (the answer's `restart` says when a restart is
+  still needed); the Settings → Uploads switches apply at once and are written into the file too. Secrets (the password, the AI key) never leave the server.
 - **The tablet layout is the same page, not a second app** (PLAN-tablet phase 3): `/tablet` serves page.html with
   `body.tablet`, and page.js draws a shell round the views it already has (its rendering, most of some 9,000 lines, is
   not worth duplicating). Themes began on the tablet (the author, 2026-10-03); the desktop page has had its own picker

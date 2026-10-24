@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Review fixes (8): the docs
+- The full Fable review of 2026-10-23, fix batch 8 (the last): settings.md's list of keys applied at once names auto
+  honk's delay and skip (S8-B1); `--simulate`'s row (and its help) says the uploads are off too, and the flags table has
+  `--install-service` / `--uninstall-service` (S8-B2); DESIGN_NOTES names `Journals.scan_dir` (S8-B3) and no longer says
+  Server settings have "no live reload yet" (S8-B4); AGENT_GUIDE's app bridge lists `haptic(ms)` (S8-B5). All 60 bugs of
+  that review are now fixed (project/PLAN-review-fixes-2026-10-23.md).
+
 ## 2026-10-24 · Review fixes (7): CSS and themes
 - The full Fable review of 2026-10-23, fix batch 7:
   - **S5-B1 (medium): the light Default's marks read on white**: the dozen literal dark-page colours (the AW and bio

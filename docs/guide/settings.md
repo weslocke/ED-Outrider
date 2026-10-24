@@ -29,8 +29,8 @@ keeps every key, to edit by hand if you like. Saving there writes `ed_outrider.t
 comments stay, and the previous file is kept as `ed_outrider.toml.bak`), and Outrider uses them from its next start:
 **Restart now** beside "Saved" does that at once. A few keys take effect at once instead: `[speech] voices_loaded` and
 `voices_preload` (Settings → Voice writes them too: **Keep loaded** and **Load them at start** under Voices kept
-loaded, shown whenever a voice besides the main one is in use), `[speech] pad_delay` (the next docking grant) and
-every `[highway] autotarget_*` key (auto-target's next run, so a sequence can be tried without restarting; the
+loaded, shown whenever a voice besides the main one is in use), `[speech] pad_delay` (the next docking grant),
+`[autohonk] delay` and `skip_honked` (the next honk) and every `[highway] autotarget_*` key (auto-target's next run, so a sequence can be tried without restarting; the
 galaxy map's steps and timings have their own section, **Auto-target**: see [Plot Route](plot-route.md)). **Find a setting** finds them by those words, by
 "memory" or by their keys, and the crew by "crew" (all of it), "xo" or a role's name ("navigator").
 The passwords (`[server]`'s and `[mcp]`'s) and the AI key are never shown, only whether they are set.
@@ -94,7 +94,8 @@ Command-line flags override the file for a single run:
 | `--journals PATH`, `--legacy PATH` | Journal folders to follow, or older ones to import once (repeatable) |
 | `--rescan` | Rebuild from the journals, keeping the Spansh cache |
 | `--restore [ZIP]`, `--list-backups` | See Backups |
-| `--simulate` | For screenshots and demos: the panels show the last known values (fuel...) as if the game were running; auto honk, auto-target, the co-pilot button, the clipboard and the in-game overlay's window are off |
+| `--simulate` | For screenshots and demos: the panels show the last known values (fuel...) as if the game were running; auto honk, auto-target, the co-pilot button, the clipboard, the in-game overlay's window and the uploads (nothing goes to EDDN, EDSM or Inara) are off |
+| `--install-service`, `--uninstall-service` | Start Outrider with your computer, or stop doing so: see [Getting started](install.md) ("Start with your computer") |
 
 </details>
 

@@ -22092,7 +22092,7 @@ def main(argv=None):
                         "database is kept as <db>.pre-restore-<stamp>.")
     p.add_argument("--simulate", action="store_true",
                    help="For screenshots and demos: the panels show the last known values (fuel...) as if the game "
-                        "were running. Auto honk, auto-target, the co-pilot button and the clipboard are off.")
+                        "were running. Auto honk, auto-target, the co-pilot button, the clipboard and the uploads are off.")
     p.add_argument("--list-backups", action="store_true",
                    help="List this database's backup zips in backup_dir (name, size, time) and exit.")
     p.add_argument("--install-service", action="store_true",

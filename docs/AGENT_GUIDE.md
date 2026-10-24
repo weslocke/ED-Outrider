@@ -489,7 +489,7 @@ limpet, hold, `prospect_hit` and `motherlode` keys about 16, `ring_found_many` 3
   `X-Outrider-App` header), and `outrider.__version__` with each release. The app's tests depend on these shapes.
   The other way, the page calls the app's JavaScript bridge `window.OutriderApp` (bridgeVersion 1): `listen()`,
   `setTheme(name)`, `appVersion()`, and from app 1.2 `openServer()`, `openVoice()`, `openMenu()` (the tablet's
-  Settings → Tablet app). Feature-detect every call (`typeof OutriderApp.x === "function"`): an older app lacks them.
+  Settings → Tablet app), and `haptic(ms)` (a rail button's buzz, optional: `navigator.vibrate` otherwise). Feature-detect every call (`typeof OutriderApp.x === "function"`): an older app lacks them.
   The app's WebView has no file picker (and will not get one): a control that opens a `type="file"` input carries
   `data-picker` and has a `.nopicker` note beside it; `drawFilePickers()` hides the one and shows the other when
   `window.OutriderApp` exists (the smoke test expects one of each per file input). Nor can it save a file the page
