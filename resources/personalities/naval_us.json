@@ -4087,6 +4087,42 @@
     "Another commander has scanned {system}, {name}. {value} of ours is unsold there. Damn, recommend a sale."
    ]
   },
+  "upload_held": {
+   "naval_us": [
+    "Be advised: uploads to {service} are on hold. Check Settings, Uploads.",
+    "{name}, {service} uploads have stopped. Recommend a look at the uploads settings.",
+    "Report: {service} uploads on hold until further action.",
+    "Uploads to {service} are holding, {name}. Details on the card at the top of the page.",
+    "Uploads to {service} are on hold. Settings, Uploads has Try again.",
+    "Status: uploads to {service} stopped. Awaiting your action.",
+    "{name}, nothing is going out to {service}. Recommend reviewing Settings, Uploads.",
+    "Uploads to {service} on hold. Standing by.",
+    "Be advised, {name}: {service} uploads are waiting on the uploads settings.",
+    "{service} uploads are on hold. Card at the top of the page has the particulars.",
+    "Uploads to {service} have stopped and will stay stopped until you act.",
+    "Report: {service} link is holding traffic. Check Settings, Uploads at your convenience.",
+    "{name}, {service} uploads on hold. Try again is under Settings, Uploads.",
+    "Uploads to {service} are on hold. Recommend a look when the watch allows.",
+    "Bridge, {service} uploads on hold. The uploads settings need a look."
+   ],
+   "naval_us_profane": [
+    "Be advised: uploads to {service} are on hold, damn it. Check Settings, Uploads.",
+    "{name}, {service} uploads have stopped, damn it. Recommend a look at the uploads settings.",
+    "Report: {service} uploads on hold. Hell of a thing.",
+    "Uploads to {service} are holding, {name}. Card at the top of the page says why the hell.",
+    "Damn. {service} uploads on hold until you act. Settings, Uploads.",
+    "Status: uploads to {service} stopped, damn it. Awaiting your action.",
+    "{name}, nothing's going out to {service}. Hell, check Settings, Uploads.",
+    "Uploads to {service} on hold. Standing by, and bored as hell.",
+    "Be advised, {name}: {service} uploads are dead in the damn water till the uploads settings get a look.",
+    "{service} uploads on hold. Damn paperwork. Card at the top of the page has the particulars.",
+    "Uploads to {service} have stopped, and they'll stay stopped till you act. Hell.",
+    "Report: {service} traffic is holding. Check Settings, Uploads, damn it.",
+    "{name}, {service} uploads on hold. Hell, Try again is under Settings, Uploads.",
+    "Uploads to {service} on hold. Damn. Recommend a look when the watch allows.",
+    "Bridge, {service} uploads on hold. Hell, the uploads settings need a look."
+   ]
+  },
   "carrier_departs": {
    "naval_us": [
     "Be advised, {carrier} departs in {minutes} minutes. You are not aboard.",

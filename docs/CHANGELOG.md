@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Suggestions (C): uploads
+- The full Fable review's suggestions, batch C:
+  - **S3-S1: the commander you are playing, with no EDSM or Inara key saved yet, is held, not dropped**: what you play
+    waits in the outbox and goes once the key is saved (switching an upload on before adding its key lost the
+    session). Another commander with no key is still dropped; the hold ends by itself when another commander plays.
+  - **S9-S20: an upload on hold gets a card** at the top of the page (a key refused or not saved, a kind of EDDN
+    message refused), once per hold, gone when the hold ends; a new alerts row, **Upload on hold** (Comms, off until
+    ticked), adds the notification and a spoken line (new speech key `upload_held`, lines in every personality).
+  - **S7-S6: an empty backfill Preview says why**: "412 lines left out, the Legacy game (3.8): nobody takes its data"
+    (or the beta, or crew), so an empty range is not read as journals gone.
+
 ## 2026-10-24 · Suggestions (B): speed
 - The full Fable review's suggestions, batch B:
   - **S2-S2: History's counts use indexes** on the time columns they count over (about 4 s on the event loop for

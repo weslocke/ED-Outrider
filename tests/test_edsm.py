@@ -247,6 +247,31 @@ class Sender(unittest.TestCase):
         self.state.upload_report("edsm", {"error": None, "at": 1, "results": out})
         self.assertEqual(self.state.uploads_summary()["edsm"]["error"], out[0][2])   # the page says why
 
+    def test_no_account_for_the_playing_commander_holds(self):
+        # S3-S1: EDSM switched on before the key is added: the session waits in the outbox instead of being dropped
+        self.state.upload_cfg["edsm"]["enabled"] = True
+        self.j.commander = {"name": "Briadin"}
+        self.state.upload_session = _Http([])
+        out = asyncio.run(self.state.edsm_send(self.rows()))
+        self.assertEqual({st for _, st, _, _ in out}, {"held"})
+        self.assertIn("no EDSM account for CMDR Briadin", out[0][2])
+        self.state.upload_report("edsm", {"error": None, "at": 1, "results": out})
+        self.assertFalse(self.state.upload_on("edsm"))
+        self.state.set_edsm_account("Briadin", "Briadin", KEY)   # saving the key releases them
+        self.assertTrue(self.state.upload_on("edsm"))
+
+    def test_a_no_key_hold_ends_when_another_commander_plays(self):
+        self.state.upload_cfg["edsm"]["enabled"] = True
+        self.j.commander = {"name": "Briadin"}
+        self.state.upload_session = _Http([])
+        out = asyncio.run(self.state.edsm_send(self.rows()))
+        self.state.upload_report("edsm", {"error": None, "at": 1, "results": out})
+        self.assertFalse(self.state.upload_on("edsm"))
+        self.j.commander = {"name": "Alt"}
+        self.assertTrue(self.state.upload_on("edsm"))   # the queue goes on: Briadin's rows are dropped as before
+        out = asyncio.run(self.state.edsm_send(self.rows()))
+        self.assertEqual({st for _, st, _, _ in out}, {"dropped"})
+
     def test_refused_key_holds(self):
         self.state.set_edsm_account("Briadin", "Briadin", KEY)
         self.state.upload_cfg["edsm"]["enabled"] = True
@@ -257,6 +282,24 @@ class Sender(unittest.TestCase):
         self.assertFalse(self.state.upload_on("edsm"))                  # until the key changes
         self.state.set_edsm_account("Briadin", "Briadin", KEY)
         self.assertTrue(self.state.upload_on("edsm"))
+
+    def test_a_hold_gets_a_card_and_a_moment_once(self):
+        """S9-S20: a refused key stops EDSM until the player acts: a card on the banner and an upload_held moment, once
+        per hold (the next held round says nothing more); the card goes with the hold."""
+        self.state.set_edsm_account("Briadin", "Briadin", KEY)
+        self.state.upload_cfg["edsm"]["enabled"] = True
+        for _ in range(2):
+            self.state.upload_session = _Http([(200, {"msgnum": 203, "msg": "Commander name/API Key not found"})])
+            with unittest.mock.patch.dict(os.environ, {S.DRY_ENV: ""}), unittest.mock.patch("sys.stderr"):
+                out = asyncio.run(self.state.edsm_send(self.rows()))
+                self.state.upload_report("edsm", {"error": None, "at": 1, "results": out})
+        cards = [n for n in self.state.notices.active() if n["key"] == "upload_held:edsm"]
+        self.assertEqual(len(cards), 1)
+        self.assertIn("EDSM uploads on hold", cards[0]["text"])
+        held = [m for m in self.j.moments if m["kind"] == "upload_held"]
+        self.assertEqual([(m["service"], m["name"]) for m in held], [("edsm", "EDSM")])
+        self.state.retry_upload("edsm")                                 # Try again: the card goes
+        self.assertFalse([n for n in self.state.notices.active() if n["key"] == "upload_held:edsm"])
 
     def test_http_failure_backs_off(self):
         self.state.set_edsm_account("Briadin", "Briadin", KEY)

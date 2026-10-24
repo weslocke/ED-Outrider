@@ -114,6 +114,8 @@ KEYS = {
     "firsts_seen": "the firsts watch found, for the first time, that someone else's scans of a system holding your unsold "
                    "first discoveries reached Spansh (said at most once in 30 minutes; never 'stolen'): {system} (its name), "
                    "{value} (its unsold cartographic value, e.g. '14.2M')",
+    "upload_held": "an upload went on hold and stays stopped until you act (a card at the top of the page says why; "
+                   "Settings -> Uploads has Try again): {service} (EDDN, EDSM or Inara)",
     "carrier_departs": "your carrier leaves in under five minutes without you: {minutes}, {carrier}",
     "carrier_arrived": "your carrier arrived: {carrier}, {system}",
     "autotarget_nothing": "the co-pilot button asked to target the next route system with none to target: {why} (e.g. "
@@ -653,6 +655,7 @@ SAMPLES = {
     "sold": {"sold": "12.6M cr cartographics and 4.1M cr exobiology", "still": ""},
     "unsold_warn": {"value": "52.0M"}, "unsold_urgent": {"value": "251.3M"},
     "firsts_seen": {"system": "Drojau LL-O b26-3", "value": "14.2M"},
+    "upload_held": {"service": "EDSM"},
     "carrier_departs": {"minutes": 4, "carrier": "Out Of The Blue"},
     "autotarget_nothing": {"why": "no route is plotted"},
     "wrong_target": {"system": "Smojooe AR-E b25-8", "next": "Pru Aim XY-Z d1"},
@@ -695,7 +698,7 @@ CREW_ROLES = (
     ("exobiologist", "Exobiologist", "Exobiologist", ("exo", "find", "sampling")),
     ("engineer", "Chief Engineer", "Engineer", ("fuel", "scoop", "scoopstop", "jumponium", "hull")),
     ("quartermaster", "Quartermaster", "Quartermaster", ("sell", "saleleft", "unsold", "carrier", "carriertrip", "loss")),
-    ("comms", "Comms Officer", "Comms", ("uploads", "firstsseen", "game", "docking", "chat")),
+    ("comms", "Comms Officer", "Comms", ("uploads", "uploadheld", "firstsseen", "game", "docking", "chat")),
     ("tactical", "Tactical", "Tactical", ()),
     ("mining", "Mining Officer", "Mining Officer", ("rigs", "rigleash", "rigsout", "ring", "limpets", "prospect")),
 )
@@ -719,6 +722,7 @@ ROW_KEYS = {
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
     "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none", "limpets_low", "hold_nearly_full", "hold_full"), "prospect": ("prospect_hit", "motherlode"),
+    "uploadheld": ("upload_held",),
 }
 DANGER = ("hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop",
           "carrier_departs", "ship_lost", "rig_leash")

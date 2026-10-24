@@ -125,6 +125,17 @@ class Rebuild(unittest.TestCase):
         theirs, _ = BF.rebuild([self.live], T0, T0 + 300 * 60, "Someone Else")
         self.assertEqual([r["message"]["StarSystem"] for r in theirs if r["event"] == "FSDJump"], ["Theirs"])
 
+    def test_left_out_lines_are_counted(self):
+        """S7-S6: a range of the Legacy game (3.8) rebuilds to nothing; the lines EDSM would have had are counted per
+        reason, so the Preview can say why it is empty (Music, on the discard list, is not counted)."""
+        self.write(self.live, "Journal.2026-10-01T120000.01.log",
+                   [header(0, version="3.8.0.406"), loadgame(1), jump(30, "Old", 2),
+                    {"timestamp": at(31), "event": "Music", "MusicTrack": "Exploration"}, jump(40, "Older", 3)])
+        left = {}
+        rows, _ = BF.rebuild([self.live], T0, T0 + 100 * 60, "Sample Pilot", left_out=left)
+        self.assertEqual((rows, left), ([], {"legacy": 3}))   # LoadGame and the two jumps
+        self.assertEqual(BF.rebuild([self.live], T0, T0 + 100 * 60, "Sample Pilot")[0], [])   # left_out is optional
+
     def test_summary_groups_requests_as_the_sender(self):
         rows = [{"event": "FSDJump", "ts": at(i), "cmdr": "A", "gameversion": "4.2" if i < 3 else "4.3", "gamebuild": "r1"}
                 for i in range(5)]
@@ -273,6 +284,7 @@ class Server(unittest.TestCase):
         self.assertEqual((s2, j2["preview"]["summary"]["events"], j2["preview"]["summary"]["jumps"]), (200, 2, 2))
         self.assertEqual(j2["preview"]["start"], "2026-10-01T12:20:00Z")
         self.assertNotIn("rows", j2["preview"])                  # the events themselves stay on the server
+        self.assertEqual(j2["preview"]["summary"]["left_out"], [])   # S7-S6: nothing left out (a Legacy range lists its lines)
         [(status, j)] = self.post([(200, self.logs(("Beta", "2026-10-01 12:40:00")))], dict(self.range(), action="send"))
         self.assertEqual(status, 202)
         self.assertEqual(self.state.edsm_bf_job["state"], "failed")

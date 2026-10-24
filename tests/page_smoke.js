@@ -6319,6 +6319,22 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| firsts scanned by others |", good ? "a card and a notification each time, days from the timestamps, so far today, spoken once" : JSON.stringify({got, want}), errors.slice(before));
   }
+  // S9-S20: an upload on hold gets its own alerts row, off until ticked (the card comes from the server either way),
+  // said by Comms; S7-S6: an empty backfill Preview says why ("412 lines left out, the Legacy game ...")
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => JSON.stringify({
+      row: ALERTS.some(a => a[0] === "uploadheld") && !!ALERT_NAMES.uploadheld && !!ROW_WORDS.uploadheld && !UNSPOKEN.has("uploadheld"),
+      off: [alertCfgBase().uploadheld, alertSpeakBase().uploadheld, alertSoundBase().uploadheld],
+      keys: ROW_KEYS.uploadheld, sample: !!LINE_SAMPLES.upload_held,
+      left: bfLeftOut({left_out: [[412, "the Legacy game (3.8): nobody takes its data"], [1, "crew in another commander's ship"]]}),
+      none: bfLeftOut({left_out: []})}))()`));
+    const want = {row: true, off: [false, false, false], keys: ["upload_held"], sample: true,
+                  left: ": 412 lines left out, the Legacy game (3.8): nobody takes its data; 1 line left out, crew in another commander's ship", none: ""};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| upload on hold, empty Preview |", good ? "its own row, off until ticked; the Preview's left-out lines worded" : JSON.stringify({got, want}), errors.slice(before));
+  }
   // Batch 23: S1, one fuel window on an exact-plotter route (the line, its spoken clause, the overlay's copy of the words,
   // its own alerts row and speech key, said in business as danger, silent at a refuel stop); S19, the target's jump cost
   // and the scoopable share on Now, the same helpers as the header and the fuel tile

@@ -93,10 +93,12 @@ def _feed_file(session, path, upto=None):
                 session.feed(ev, os.path.basename(path))
 
 
-def rebuild(dirs, start, end, commander, discard=edsm.DISCARD, skip=frozenset()):
+def rebuild(dirs, start, end, commander, discard=edsm.DISCARD, skip=frozenset(), left_out=None):
     """The EDSM rows for journal time [start, end) of `commander`: ([{source, ts, event, cmdr, gameversion, gamebuild,
     message}] in journal order, files read). `skip`: sources already in the outbox for EDSM's live stream (never sent
-    twice). Lines of a beta, a Legacy client or a crew session are left out, as the live uploader leaves them."""
+    twice). Lines of a beta, a Legacy client or a crew session are left out, as the live uploader leaves them; a dict
+    `left_out` gets their count per reason (uploads.Session.blocked: legacy, beta, crew, ...), so an empty Preview can
+    say why (S7-S6)."""
     files = journal_files(dirs)
     chosen = files_for(files, start, end)
     lo, hi = iso_ts(start), iso_ts(end)
@@ -128,7 +130,12 @@ def rebuild(dirs, start, end, commander, discard=edsm.DISCARD, skip=frozenset())
                 continue
             session.feed(ev, b)
             ts = ev.get("timestamp")
-            if not isinstance(ts, str) or not lo <= ts < hi or session.cmdr != commander or session.blocked():
+            if not isinstance(ts, str) or not lo <= ts < hi or session.cmdr != commander:
+                continue
+            why = session.blocked()
+            if why:
+                if left_out is not None and edsm.build(ev, session, discard):   # a line EDSM would have had
+                    left_out[why] = left_out.get(why, 0) + 1
                 continue
             for i, (name, message) in enumerate(edsm.build(ev, session, discard)):
                 source = f"{b}:{here}" + (f"#{i}" if i else "")

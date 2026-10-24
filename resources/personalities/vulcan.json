@@ -2126,6 +2126,25 @@
     "Someone else has scanned {system}. Unsold discoveries are, by definition, unsecured."
    ]
   },
+  "upload_held": {
+   "vulcan": [
+    "Uploads to {service} are on hold. Settings, Uploads requires your attention.",
+    "{name}, uploads to {service} have stopped. They will not resume without you.",
+    "Noted. {service} uploads are on hold. The card at the top of the page states the reason.",
+    "Uploads to {service} are suspended. I suggest consulting the uploads settings.",
+    "{name}. {service} is receiving nothing from us. Settings, Uploads offers a Try again button.",
+    "Uploads to {service} are waiting. Waiting is not, in itself, a solution.",
+    "{service} uploads are on hold. The explanation is displayed at the top of the page. I recommend reading it.",
+    "Uploads to {service} have ceased, {name}. The matter requires a human hand. Yours.",
+    "Status: uploads to {service}, on hold. Settings, Uploads.",
+    "{service} uploads are paused. Logic suggests a visit to the uploads settings.",
+    "Uploads to {service} remain stopped until you act. I have verified this.",
+    "{name}, uploads to {service} are on hold. It is a minor matter, which is no reason to ignore it.",
+    "{service} uploads are held. The uploads settings contain what you need.",
+    "Uploads to {service} are on hold. I would correct it myself, were I permitted to.",
+    "Uploads to {service} have stopped. Humans say the ball is in your court. There is no ball. The meaning stands."
+   ]
+  },
   "carrier_departs": {
    "vulcan": [
     "Carrier jump in {minutes} minutes. You are not aboard.",

@@ -654,6 +654,12 @@ class SenderAndPipeline(unittest.TestCase):
             self.assertEqual(asyncio.run(self.state.eddn_send([rows[0]]))[0][1], "dropped")
         self.assertEqual(asyncio.run(self.state.eddn_send([rows[1]]))[0][1], "dropped")
         self.assertEqual(len(self.state.upload_session.posts), 1)
+        # S9-S20: the hold's card and moment, once; Try again takes the card away
+        cards = lambda: [n for n in self.state.notices.active() if n["key"] == "upload_held:eddn:journal"]
+        self.assertEqual(len(cards()), 1)
+        self.assertEqual([m["service"] for m in self.j.moments if m["kind"] == "upload_held"], ["eddn"])
+        self.state.retry_upload("eddn", "journal")
+        self.assertEqual(cards(), [])
 
     def test_hour_old_rows_are_not_sent(self):
         """Any EDDN message an hour late (an outage, switched off and on) is dropped, not sent as current."""

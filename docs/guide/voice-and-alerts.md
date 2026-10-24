@@ -84,6 +84,8 @@ the game too, for a few seconds each:
   nothing), but when it is within your laden jump range it is named as somewhere to unload
 - an upload (EDDN, EDSM, Inara) failing for 15 minutes with messages waiting, and sending again: a card at the top of
   the page and a notification, never spoken (see [Uploads](uploads.md#status))
+- an upload going on hold until you act (a key refused or not saved, a kind of EDDN message refused): the card at the
+  top of the page always; the notification and a spoken line (Comms) only once you tick its row, **Upload on hold**
 
 Spoken but not notified unless you tick it: the arrival briefing, the FSS debrief, leaving a body with
 sampling unfinished, each species completed, tank full, a high-gravity approach with a lot aboard, the

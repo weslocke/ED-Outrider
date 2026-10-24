@@ -4123,6 +4123,42 @@
     "{system} has visitors, {name}. Selling soon would settle it."
    ]
   },
+  "upload_held": {
+   "southern_belle": [
+    "Sugar, uploads to {service} are on hold. Would you look at Settings, Uploads?",
+    "{name}, our {service} uploads have stopped, darlin'. The uploads settings need a look.",
+    "Well, I never. {service} uploads are just sittin' there waitin' on you.",
+    "Honey, uploads to {service} are on hold. There's a little card up top of the page says why.",
+    "Lord have mercy, {service} uploads have stopped. Settings, Uploads has a Try again button.",
+    "Darlin', Grandmama always said a letter unsent is a promise unkept. Uploads to {service} are on hold.",
+    "{name}, nothing's goin' to {service} just now. Might take a peek at the uploads settings.",
+    "Uploads to {service} are on hold, sugar. Nothing to fret over, it just wants your eye.",
+    "Honey, the {service} uploads are waitin' on you like supper on the table.",
+    "Dang it, {service} uploads stopped. The uploads settings will tell you why, darlin'.",
+    "{name}, uploads to {service} are on hold until you see to them.",
+    "Sugar, {service} uploads are restin' for now. Settings, Uploads, when you have a minute.",
+    "Just so you know, darlin', {service} isn't gettin' our uploads. The card up top explains.",
+    "Uploads to {service} are on hold, honey. I'm sure you'll set it right.",
+    "{name}, bless it, the {service} uploads have stopped. Settings, Uploads, please."
+   ],
+   "southern_belle_profane": [
+    "Sugar, uploads to {service} are on hold, damn it. Would you look at Settings, Uploads?",
+    "{name}, our {service} uploads have stopped, darlin'. The damn uploads settings need a look.",
+    "Well, hell. {service} uploads are just sittin' there waitin' on you.",
+    "Honey, uploads to {service} are on hold. There's a card up top of the page says why, damn it.",
+    "Oh, hell. {service} uploads have stopped. Settings, Uploads has a Try again button.",
+    "Darlin', Grandmama always said a letter unsent is a damn promise unkept. Uploads to {service} are on hold.",
+    "{name}, not a damn thing's goin' to {service} just now. Take a peek at the uploads settings.",
+    "Uploads to {service} are on hold, sugar. Nothing to fret over, it just wants your eye, dammit.",
+    "Honey, the {service} uploads are waitin' on you like supper goin' cold. Hell.",
+    "Damn it, {service} uploads stopped. The uploads settings will tell you why, darlin'.",
+    "{name}, uploads to {service} are on hold till you see to them, and that's the damn truth.",
+    "Well, shit, sugar. {service} uploads are stuck. Settings, Uploads, when you have a minute.",
+    "Bless its heart, {service} isn't gettin' our uploads, darlin'. The damn card up top explains.",
+    "Uploads to {service} are on hold, honey. Bless its damn heart.",
+    "{name}, for hell's sake, the {service} uploads have stopped. Settings, Uploads, please."
+   ]
+  },
   "carrier_departs": {
    "southern_belle": [
     "{name}, {carrier} jumps in {minutes} minutes and we're not aboard. Let's hurry home.",

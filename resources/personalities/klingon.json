@@ -4122,6 +4122,42 @@
     "{system} was scanned by another! Our names must be first, {name}!"
    ]
   },
+  "upload_held": {
+   "klingon": [
+    "{name}! Uploads to {service} are on hold! Go to Settings, Uploads!",
+    "Our messages to {service} have stopped! They wait for your command!",
+    "Uploads to {service} are on hold. The card at the top of the page tells the tale. Read it!",
+    "{service} uploads have halted, {name}. Settings, Uploads has a Try again. Use it!",
+    "Bah! Uploads to {service} are on hold. Even a warrior must tend to the paperwork.",
+    "{service} receives nothing from us! The uploads settings demand your attention!",
+    "Uploads to {service} stand idle, {name}. A blade left in its sheath. Draw it, in Settings, Uploads!",
+    "Hear me! {service} uploads are on hold until you act!",
+    "Uploads to {service} have stopped. It is not battle, but it must be done.",
+    "{name}, our reports to {service} are waiting! The uploads settings, now!",
+    "{service} uploads are on hold. Our deeds go unsung! See to Settings, Uploads!",
+    "Uploads to {service} are stopped. The card at the top of the page explains. Then we fight on!",
+    "{service} uploads wait like hounds at the gate. Release them, {name}, in the uploads settings!",
+    "Uploads to {service} on hold! Tedious! Settings, Uploads!",
+    "Kapla can wait a moment. Uploads to {service} are on hold. Check the uploads settings!"
+   ],
+   "klingon_profane": [
+    "{name}! Uploads to {service} are on hold! Go to Settings, Uploads, damn it!",
+    "Our messages to {service} have stopped, damn them! They wait for your command!",
+    "Uploads to {service} are on hold. The card at the top of the page tells the tale. Read the bloody thing!",
+    "{service} uploads have halted, {name}. Settings, Uploads has a Try again. Use the damn thing!",
+    "Bah! Uploads to {service} are on hold. Even a warrior must tend to the bloody paperwork.",
+    "{service} receives nothing from us! Hell, the uploads settings demand your attention!",
+    "Uploads to {service} stand idle, {name}, like a damn blade left in its sheath. Draw it, in Settings, Uploads!",
+    "Hear me! {service} uploads are on hold until you act! Damn this son of a targ of a machine!",
+    "Uploads to {service} have stopped. Hell, it is not battle, but it must be done.",
+    "{name}, our reports to {service} are waiting, damn it! The uploads settings, now!",
+    "{service} uploads are on hold. Our deeds go unsung! Damn it, see to Settings, Uploads!",
+    "Uploads to {service} are stopped, the bloody cowards. The card at the top of the page explains. Then we fight on!",
+    "{service} uploads wait like hounds at the damn gate. Release them, {name}, in the uploads settings!",
+    "Uploads to {service} on hold! Tedious as a damn Ferengi ledger! Settings, Uploads!",
+    "Kapla can wait a moment. Uploads to {service} are on hold. Check the bloody uploads settings!"
+   ]
+  },
   "carrier_departs": {
    "klingon": [
     "{carrier} jumps in {minutes} minutes, {name}, and we are not aboard! Return now!",

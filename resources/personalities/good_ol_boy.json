@@ -4139,6 +4139,42 @@
     "Dang it, {system}. Somebody else's scans. {value} of ours unsold."
    ]
   },
+  "upload_held": {
+   "good_ol_boy": [
+    "Well, shoot. Uploads to {service} are on hold, partner. Check Settings, Uploads.",
+    "{name}, our {service} uploads done stopped. The uploads settings need a look-see.",
+    "Heads up, buddy. {service} uploads are sittin' there waitin' on you.",
+    "Dang it. Uploads to {service} on hold. There's a card up top of the page sayin' why.",
+    "Hey you, {service} uploads are parked. Settings, Uploads has a Try again button.",
+    "Uploads to {service} are on hold, pal. Grandpa always said a letter don't mail itself.",
+    "{name}, nothin's goin' to {service} right now. Might take a peek at the uploads settings.",
+    "Well, I'll be. {service} uploads stopped. No fuss, just needs a look.",
+    "Uploads to {service} are waitin' like a dog on the porch, buddy. Settings, Uploads.",
+    "Partner, {service} uploads are on hold till you get to 'em.",
+    "Dadgum, {service} uploads quit on us. The uploads settings'll tell you why.",
+    "{name}, uploads to {service} are on hold. Ain't nothin' a look won't sort.",
+    "Just so you know, pal, {service} uploads are stopped. Card up top of the page has the story.",
+    "Uploads to {service} on hold, buddy. Take your time, they ain't goin' nowhere.",
+    "Hey, {name}, {service} uploads are waitin'. Settings, Uploads, when you get a minute."
+   ],
+   "good_ol_boy_profane": [
+    "Well, damn. Uploads to {service} are on hold, partner. Check Settings, Uploads.",
+    "{name}, our {service} uploads done stopped, dammit. The uploads settings need a look-see.",
+    "Heads up, buddy. {service} uploads are sittin' there waitin' on you like a damn mule.",
+    "Hell. Uploads to {service} on hold. There's a card up top of the page sayin' why.",
+    "Hey you, {service} uploads are parked, dammit. Settings, Uploads has a Try again button.",
+    "Uploads to {service} are on hold, pal. Grandpa always said a letter don't mail itself, dammit.",
+    "{name}, nothin's goin' to {service} right now. Hell, take a peek at the uploads settings.",
+    "Well, hell. {service} uploads stopped. No fuss, just needs a look.",
+    "Uploads to {service} are waitin' like a hound on the porch, buddy. Damn. Settings, Uploads.",
+    "Partner, {service} uploads are on hold till you get to 'em. Damn shame.",
+    "Aw, hell, {service} uploads quit on us. The uploads settings'll tell you why.",
+    "{name}, uploads to {service} are on hold. Ain't nothin' a damn look won't sort.",
+    "Just so you know, pal, {service} uploads are stopped. Card up top has the whole damn story.",
+    "Uploads to {service} on hold, buddy. Hell, take your time, they ain't goin' nowhere.",
+    "Hey, {name}, {service} uploads are waitin'. Settings, Uploads, when you get a damn minute."
+   ]
+  },
   "carrier_departs": {
    "good_ol_boy": [
     "{name}, {carrier} jumps in {minutes} minutes, and we ain't aboard. Let's head on back.",

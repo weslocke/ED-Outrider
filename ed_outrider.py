@@ -7786,6 +7786,8 @@ class State:
         # the outages already said (service -> its start), and each sender's wake (Try again on a held key)
         self.upload_recent = outrider.uploads.Recent()
         self.upload_down_said, self.upload_wake = {}, {}
+        self.upload_no_key = {}   # service -> the playing commander whose rows are held for want of a key (S3-S1)
+        self.upload_held_said = {}   # a hold's card key (a service, or eddn:<schema>) -> the words said (S9-S20)
         # what each commander's Inara profile already has (meta inara_sent, live-only: a re-read must not send it again)
         self.inara_sent = outrider.inara.Sent(meta_get(db, "inara_sent") if isinstance(meta_get(db, "inara_sent"), dict) else {},
                                               save=lambda data: meta_set(self.db, "inara_sent", data))
@@ -13362,7 +13364,13 @@ class State:
     def upload_on(self, service):
         """Whether `service` uploads now: wanted (the page's switch, else the config), never in --simulate, not while
         another uploader has it (upload_conflict), not while it waits on the player (a key EDSM refused)."""
-        if not self.upload_wanted(service) or (self.upload_status.get(service) or {}).get("held"):
+        if not self.upload_wanted(service):
+            return False
+        waiting = self.upload_no_key.get(service)
+        if waiting and waiting != (self.journals.commander or {}).get("name"):
+            self.upload_no_key.pop(service, None)
+            self.clear_key_hold(service)   # held for a commander who no longer plays: the queue goes on (theirs dropped)
+        if (self.upload_status.get(service) or {}).get("held"):
             return False
         return self.upload_conflict(service) is None
 
@@ -13531,6 +13539,7 @@ class State:
                     f"keep it: {out.get('error')}")
             print(f"uploads: {note}", file=sys.stderr)
         self.upload_status.pop(service, None)
+        self.upload_hold_gone(service)
         self.upload_recent.end(service)   # a failure after this starts a new outage
         self.upload_down_clear(service)
         if was and not on and self.uploads_hub.marks.pop(service, None) is not None:
@@ -13556,10 +13565,41 @@ class State:
         held = next((status for _, state, status, _ in outcome["results"] if state == "held"), None)
         dropped = next((status for _, state, status, _ in outcome["results"] if state == "dropped"), None)
         self.upload_status[service] = {"error": outcome["error"] or held or dropped, "at": outcome["at"], "held": held}
+        if held:
+            self.upload_hold_said(service, service, f"{outrider.uploads.NAMES.get(service, service)} uploads on hold: {held}",
+                                  outcome["at"])
         ended = self.upload_recent.add(service, outcome)
         if ended and self.upload_down_said.get(service) == ended["since"]:
             self.upload_back(service, ended)
         self.bump()
+
+    def no_key_hold(self, service, cmdr, batch, why):
+        """S3-S1: the rows of the commander playing now, who has no key saved, held (they wait in the outbox; saving the
+        key releases them, set_*_account -> clear_key_hold), or None for another commander (dropped as before: an old
+        alt's lines are not kept forever)."""
+        playing = (self.journals.commander or {}).get("name")
+        if not cmdr or cmdr != playing:
+            return None
+        self.upload_no_key[service] = cmdr
+        return [(r["id"], "held", why, None) for r in batch]
+
+    def upload_hold_said(self, key, service, text, now=None):
+        """S9-S20: a hold (stopped until the player acts: a refused or missing key, an EDDN kind refused) gets a card on
+        the banner and an upload_held moment (the page's 'Upload on hold' row: off until ticked), once per hold. `key`:
+        the service, or eddn:<schema>. The card goes with the hold (upload_hold_gone)."""
+        if self.upload_held_said.get(key) == text:
+            return
+        self.upload_held_said[key] = text
+        self.notices.set(f"upload_held:{key}", text, "warn", "open:uploads")
+        self.journals.moment("upload_held", iso_ts(time.time() if now is None else now), service=service,
+                             name=outrider.uploads.NAMES.get(service, service), text=text)
+        print(f"uploads: {text}", file=sys.stderr)
+        self.bump()
+
+    def upload_hold_gone(self, key):
+        """The hold's card goes without a word (Try again, a new key, the upload switched off or on)."""
+        if self.upload_held_said.pop(key, None) is not None:
+            self.notices.clear(f"upload_held:{key}")
 
     def clear_key_hold(self, service):
         """A key EDSM or Inara refused: send again now (a new key, Settings' Try again; S16, S45 later). The hold stops
@@ -13569,6 +13609,7 @@ class State:
         if not (self.upload_status.get(service) or {}).get("held"):
             return False
         self.upload_status.pop(service, None)
+        self.upload_hold_gone(service)
         if service in self.upload_wake:
             self.upload_wake[service].set()   # the sender's wait ends at once
         return True
@@ -13579,6 +13620,7 @@ class State:
         if service == "eddn":
             if not isinstance(schema, str) or not self.eddn_hold.release(schema):
                 return {"error": "schema: an EDDN message kind on hold (Settings -> Uploads lists them)"}, 404
+            self.upload_hold_gone(f"eddn:{schema}")
             print(f"uploads: EDDN's {schema} sent again (Try again)")
         elif not self.clear_key_hold(service):
             return {"error": f"{outrider.uploads.NAMES[service]} is not on hold"}, 409
@@ -13761,6 +13803,9 @@ class State:
         if state == "dropped":
             self.eddn_hold.refused(name, time.time(), f"{status} {text}", status)
             print(f"EDDN refused a {name} message: {status} {text}", file=sys.stderr)
+            if self.eddn_hold.is_held(name):   # S9-S20: once, when the hold begins (later rows are dropped above)
+                self.upload_hold_said(f"eddn:{name}", "eddn", f"EDDN refuses {name} messages ({status}): none of that kind "
+                                      f"is sent until Try again in Settings -> Uploads (a game update EDDN does not take yet?)")
         return [(r["id"], state, f"{status} {text}".strip(), retry)]
 
     def edsm_build(self, ev, session):
@@ -13769,14 +13814,17 @@ class State:
 
     async def edsm_send(self, rows):
         """Send the leading rows of one commander and one game version (outrider.edsm.same_batch) to EDSM with that
-        commander's account, in one request. A commander with no account: dropped, and the status says so. Under the
-        developer's OUTRIDER_EDSM_DRYRUN the request is logged (the key left out) and nothing is sent."""
+        commander's account, in one request. A commander with no account: the one playing now is held until a key is
+        saved (S3-S1: switching EDSM on before adding the key no longer loses the session), another dropped; the status
+        says so. Under the developer's OUTRIDER_EDSM_DRYRUN the request is logged (the key left out) and nothing is sent."""
         batch = outrider.edsm.same_batch(rows)
         cmdr = batch[0]["cmdr"]
         account = self.edsm_accounts().get(cmdr or "")
         if not account or not account.get("key"):
-            why = f"not sent: no EDSM account for CMDR {cmdr} (Settings -> Uploads)"
-            return [(r["id"], "dropped", why, None) for r in batch]
+            held = self.no_key_hold("edsm", cmdr, batch, f"no EDSM account for CMDR {cmdr}: add it in Settings -> Uploads")
+            return held or [(r["id"], "dropped", f"not sent: no EDSM account for CMDR {cmdr} (Settings -> Uploads)", None)
+                            for r in batch]
+        self.upload_no_key.pop("edsm", None)
         body = outrider.edsm.request(batch, account, outrider.__version__)
         if outrider.edsm.dry_run():
             self.edsm_dry_log(body)
@@ -13869,16 +13917,20 @@ class State:
 
     async def inara_send(self, rows):
         """Send the leading rows of one commander (outrider.inara.same_batch) to Inara with that commander's API key, in
-        one request. A commander with no key: dropped, and the status says so. Under the developer's
+        one request. A commander with no key: held while playing, else dropped (as edsm_send). Under the developer's
         OUTRIDER_INARA_DRYRUN the request is logged (the key left out) and nothing is sent; OUTRIDER_INARA_DEV marks it
         isBeingDeveloped (a test account's trial)."""
         batch = outrider.inara.same_batch(rows)
         cmdr = batch[0]["cmdr"]
         key = (self.inara_accounts().get(cmdr or "") or {}).get("key")
         if not key:
+            held = self.no_key_hold("inara", cmdr, batch, f"no Inara API key for CMDR {cmdr}: add it in Settings -> Uploads")
+            if held:
+                return held
             why = f"not sent: no Inara API key for CMDR {cmdr} (Settings -> Uploads)"
             self.inara_sent.forget(cmdr)   # its snapshots never arrived: sent again once there is a key
             return [(r["id"], "dropped", why, None) for r in batch]
+        self.upload_no_key.pop("inara", None)
         body = outrider.inara.request(batch, key, outrider.__version__, developing=outrider.inara.dev_mode())
         if outrider.inara.dry_run():
             self.inara_dry_log(body)
@@ -14215,13 +14267,15 @@ class State:
         # what EDSM's live stream has (or had queued) is never sent again
         skip = {r[0] for r in self.db.execute("SELECT source FROM upload_queue WHERE service = 'edsm' AND created >= ? "
                                               "AND created < ?", (iso_ts(s), iso_ts(e)))}
-        dirs, discard = self.backfill_dirs(), self.edsm_discard
+        dirs, discard, left_out = self.backfill_dirs(), self.edsm_discard, {}
         try:
             rows, files = await asyncio.get_running_loop().run_in_executor(
-                None, lambda: outrider.backfill.rebuild(dirs, s, e, commander, discard, skip))
+                None, lambda: outrider.backfill.rebuild(dirs, s, e, commander, discard, skip, left_out))
         except ValueError as err:
             return {"error": str(err)}, 400
         summary = outrider.backfill.summary(rows)
+        # S7-S6: the lines read but left out, worded (an empty range is then not read as journals gone)
+        summary["left_out"] = [[n, self.BLOCKED_WORDS.get(why, why)] for why, n in sorted(left_out.items(), key=lambda kv: -kv[1])]
         guard = len(outrider.backfill.windows(s, e, outrider.readclient.EDSM_LOGS_WINDOW_S))
         summary["seconds"] += guard * outrider.readclient.EDSM_GAP_S   # the guard's reads come first
         summary["by_event"] = summary["by_event"][:12]

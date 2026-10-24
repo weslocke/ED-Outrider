@@ -21,7 +21,9 @@ switch them (they are not among the Server settings).
   - It needs your EDSM commander name and API key ([edsm.net → Settings → API key](https://www.edsm.net/en/settings/api)),
     per in-game commander, set in Settings → Uploads. The key stays on this Outrider: the page shows only its first
     and last four characters, to compare with edsm.net.
-  - A commander with no key sends nothing, and Settings says so.
+  - The commander you are playing, with no key saved yet, is held, not dropped: what you play waits in the outbox
+    and goes once you save the key (switching EDSM on before adding the key loses nothing). Another commander with
+    no key sends nothing, and Settings says so.
   - A key EDSM refuses stops the sending (not the recording) until you change the key, press **Try again** in
     Settings → Uploads, or switch EDSM off and on: what you played meanwhile then goes.
   - **Check** beside the key asks EDSM whether it takes that name and key (the one typed, else the one saved), without
@@ -46,7 +48,8 @@ switch them (they are not among the Server settings).
   - It needs your Inara API key ([inara.cz → Settings → API key](https://inara.cz/elite/cmdr-settings-api/)), per
     in-game commander, set in Settings → Uploads. The key stays on this Outrider: the page shows only its first and
     last four characters.
-  - A commander with no key sends nothing, and Settings says so. Once you enter a key (or another one), your ranks,
+  - The commander you are playing, with no key saved yet, is held until you save one, as for EDSM; another
+    commander with no key sends nothing, and Settings says so. Once you enter a key (or another one), your ranks,
     ship, inventory and the rest go whole again the next time the game writes them, most of it at your next login.
   - **Switch Inara off in any other app first** (EDMC, EDDI, EDDiscovery, EDDLite): two apps sending can get your key
     revoked. Outrider sees EDMC's setting on this PC and holds its own while EDMC sends; it cannot see the others.
@@ -132,6 +135,11 @@ If EDDN refuses one kind of message (markets, say) three times within an hour, o
 longer takes), Outrider stops sending that kind until it restarts or you press Try again: usually a game update EDDN
 does not take yet. The other kinds still go. The refused ones are gone; Try again lets new ones go.
 
+**When an upload goes on hold** (a key refused or not saved, a kind of EDDN message refused), a card says so at the top
+of the page ("EDSM uploads on hold: …"), once per hold; it goes when the hold ends (Try again, a new key, the upload
+switched off and on). The **Upload on hold** row in Settings → Alerts adds a desktop notification and a spoken line
+(said by Comms); it is off until you tick it.
+
 **When a service is down.** If an upload that is on has failed for 15 minutes with messages waiting, a card says so at
 the top of the page ("EDDN unreachable for 15 min: 42 messages waiting, they drop after an hour (the oldest in 38
 min)"; for EDSM and Inara "kept until it answers") and, with notifications on, a desktop notification. It is never
@@ -167,7 +175,9 @@ that stretch is missing there. Settings → Uploads → **Fill gaps in EDSM's fl
   started sending is not known ("unknown"): then the range runs to now, and you set the end yourself.
 - **Preview** rebuilds, from your journals (the live folders, the legacy ones and the backups' journal archive), what
   Outrider would send EDSM for that range, sending nothing: "312 events (41 jumps) in 2 requests, about 1 min". Times
-  are UTC.
+  are UTC. A range that comes out empty says why when its lines were read but left out, as the live upload leaves
+  them: "412 lines left out, the Legacy game (3.8): nobody takes its data" (or the beta, or crew in another
+  commander's ship).
 - **Send** (only for the range just previewed, after you confirm) first asks EDSM for its flight log over the range:
   if EDSM has anything there, nothing is sent (never twice what EDSM has); pick a range around it. Then it sends one
   request every 10 seconds. Its line counts what EDSM did with each event: stored, already

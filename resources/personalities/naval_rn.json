@@ -4129,6 +4129,42 @@
     "Someone else's scans of {system} are in. Bloody time we thought about port."
    ]
   },
+  "upload_held": {
+   "naval_rn": [
+    "Be advised: uploads to {service} are on hold. Settings, Uploads wants a look.",
+    "{name}, {service} uploads have stopped. Recommend a look at the uploads settings.",
+    "Signal received: {service} uploads on hold until further orders.",
+    "Uploads to {service} are held, {name}. The card at the top of the page has the details.",
+    "Report: {service} uploads stopped. Try again is under Settings, Uploads.",
+    "Uploads to {service} are on hold. Awaiting your instruction.",
+    "{name}, nothing is going out to {service} for the present. Settings, Uploads, when convenient.",
+    "Uploads to {service} on hold. Standing by.",
+    "Be advised, {name}: {service} uploads are waiting on the uploads settings.",
+    "{service} uploads are on hold. Particulars on the card at the top of the page.",
+    "Uploads to {service} have stopped, and will stay so until you act.",
+    "{service} traffic is being held. Recommend a look at Settings, Uploads.",
+    "{name}, {service} uploads on hold. Nothing more to it than a look at the uploads settings.",
+    "Uploads to {service} on hold, Skipper. When the watch allows.",
+    "Signal: {service} uploads stopped. The uploads settings need attention."
+   ],
+   "naval_rn_profane": [
+    "Be advised: uploads to {service} are on hold. Settings, Uploads wants a bloody look.",
+    "{name}, {service} uploads have stopped, damn it. Recommend a look at the uploads settings.",
+    "Signal received: {service} uploads on hold. Bloody nuisance.",
+    "Uploads to {service} are held, {name}. Damn. The card at the top of the page has the details.",
+    "Report: {service} uploads stopped, damn it. Try again is under Settings, Uploads.",
+    "Uploads to {service} on hold. Bloody hell. Awaiting your instruction.",
+    "{name}, nothing's going out to {service}. Damn. Settings, Uploads, when convenient.",
+    "Uploads to {service} on hold. Standing by, and bloody unimpressed about it.",
+    "Be advised, {name}: {service} uploads are sat waiting on the damn uploads settings.",
+    "{service} uploads on hold. Bloody hell. Particulars on the card at the top of the page.",
+    "Uploads to {service} have stopped, damn it, and will stay so until you act.",
+    "{service} traffic is being held. Recommend a look at Settings, Uploads, damn it.",
+    "{name}, {service} uploads on hold. A look at the bloody uploads settings should do it.",
+    "Uploads to {service} on hold, Skipper. Damn shame.",
+    "Signal: {service} uploads stopped. The bloody uploads settings need attention."
+   ]
+  },
   "carrier_departs": {
    "naval_rn": [
     "{name}, {carrier} departs in {minutes} minutes. You are not aboard.",

@@ -2353,6 +2353,7 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["game", "loading into the game and quitting it", null],
   ["chat", "other players' messages read aloud (channels in Settings → Voice → Chat), never an NPC's", null],
   ["uploads", "EDDN, EDSM or Inara failing for 15 minutes, and sending again", null],
+  ["uploadheld", "an upload stopped until you act: a key refused or not saved, a kind of EDDN message refused", null],
   ["ring", "a body just scanned has a ring of a type ticked above", "find"],
   ["limpets", "no limpets as you undock a mining ship; while mining, limpets low, the hold nearly full and full, then where to sell", "alert"],
   ["prospect", "a prospected rock with your threshold of the minerals ticked above, and motherlodes", null],
@@ -2374,7 +2375,7 @@ const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arri
   riches: "Road to Riches, worlds, sweeps", trade: "Trade route", carriertrip: "Carrier trip", autotarget: "Auto-target",
   wrongtarget: "Not the next stop targeted", docking: "Docking pad and refusals", sell: "Selling", saleleft: "Data left after a sale",
   unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction", approach: "High gravity",
-  loss: "Ship lost", carrier: "Carrier", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing",
+  loss: "Ship lost", carrier: "Carrier", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing", uploadheld: "Upload on hold",
   ring: "Rings to mine", limpets: "Limpets and the hold", prospect: "Prospector call-out",
   rigs: "Mining rigs", rigleash: "Rig too far", rigsout: "Rigs still out"};
 // a row's fine print, in the hover of its line (and found by Find a setting): what the line leaves out
@@ -2404,6 +2405,7 @@ const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, 
   loss: "Samples that died with you count too.",
   chat: "Off until switched on in Settings → Voice → Chat (squadron, wing and direct ticked there).",
   uploads: "A card at the top of the page too. Never spoken.",
+  uploadheld: "The card at the top of the page comes either way (it goes once the hold ends); this adds the notification and the line. Off until you tick it.",
   ring: "Settings → Mining's ring types, pristine ones only if ticked there. Once per body and visit; bodies scanned together in one line. Nothing until a type is ticked.",
   limpets: "The undocking check only when ticked above. Each warning once a stint.",
   prospect: "Only a rock not mined before; duds stay silent.",
@@ -2417,10 +2419,10 @@ const ALERT_GROUPS = {discovery: "Jumps and arrivals", fss: "Exploring a system"
 const alertCfgBase = () => Object.assign({enabled: false}, Object.fromEntries(ALERTS.map(([k]) => [k, true])),
   // a notification on every jump (or scoop, or FSS) would be noise: these are spoken by default, not notified
   {jump: false, honk: false, brief: false, fss: false, mapped: false, scoop: false, scoopstop: false, supercharge: false, highway: false, autotarget: false, wrongtarget: false,
-   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false, limpets: false, prospect: false});
+   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false, limpets: false, prospect: false, uploadheld: false});
 const alertCfg = Object.assign(alertCfgBase(), store.get("alerts", {}));
-// off until you tick them (the whole row): the jumponium call-out
-const OFF_KINDS = {jumponium: false};
+// off until you tick them (the whole row): the jumponium call-out, an upload on hold (its card is there anyway)
+const OFF_KINDS = {jumponium: false, uploadheld: false};
 const alertSoundBase = () => Object.assign(Object.fromEntries(ALERTS.map(([k]) => [k, true])), OFF_KINDS);
 const alertSound = Object.assign(alertSoundBase(), store.get("alertSound", {}));
 // not spoken until you tick them: they repeat what the game (or another alert) already told you
@@ -3128,6 +3130,7 @@ const LINE_SAMPLES = {
   phenomena: {what: "three notable stellar phenomena, all in rings"}, ggg: {body: "B 3"}, rare_star: {what: "a black hole at B"},
   ring_found: {body: "A 3", ring: "a pristine metallic ring"}, limpets_none: {}, limpets_low: {count: 5}, hold_nearly_full: {minutes: 5, free: 12}, hold_full: {}, prospect_hit: {what: "Platinum, 34 percent"}, motherlode: {mineral: "Void Opal"}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
   firsts_seen: {system: "Drojau LL-O b26-3", value: "14.2M"},
+  upload_held: {service: "EDSM"},
   surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
   fuel_topup: {rate: "8 of the last 20 stars were scoopable", jumps: "about 6 jumps"}, hull: {pct: 42}, interdicted: {by: "someone"},
@@ -9824,6 +9827,9 @@ function onData() {
       }
       else if ((m.kind === "upload_down" || m.kind === "upload_back") && m.text)   // S3: the banner has the card; this notifies
         alertOut("uploads", m.text, m.kind === "upload_down" ? "Settings → Uploads has the detail" : "", {tag: m.kind});
+      else if (m.kind === "upload_held" && m.text)   // S9-S20: stopped until you act (the banner has the card)
+        alertOut("uploadheld", m.text, "Settings → Uploads: Try again once it is fixed", {tag: "upload_held",
+                 say: () => line("upload_held", {service: m.name || "an upload"}, `${m.name || "An upload"} is on hold. Settings, Uploads has the reason.`)});
       else if (m.kind === "ring" && m.body) ringHits.push(m);
       else if (m.kind === "prospect") prospectOut(m);
       else if (m.kind === "limpets" && m.what === "none" && miningCfg().limpetWarn)   // a mining ship undocked without limpets
@@ -10929,7 +10935,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
   hull: "hull, heat, interdiction", carrier: "your carrier", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
-  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", uploads: "uploads"};
+  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", uploads: "uploads", uploadheld: "uploads on hold"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
 const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "region", "streak_new", "streak_known"],
   game: ["game_start", "welcome_back", "game_exit", "session_recap"], jump: ["fsd_charge"], brief: ["arrival_brief", "old_data"],
@@ -10940,7 +10946,8 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], carrier: ["carrier_arrived", "carrier_departs"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
-  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"]};
+  curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"],
+  uploadheld: ["upload_held"]};
 const XO_SPEAKS = "voice answers, the status report, the co-pilot, the hush and speech on";
 const crewOn = () => !!(data && data.crew && data.crew.on);
 const crewDangerOn = () => !!(data && data.crew && data.crew.danger !== false);
@@ -12287,6 +12294,12 @@ const BF_WORDS = {stored: "stored", already: "already there", duplicate: "duplic
 const bfShow = iso => iso ? String(iso).replace("T", " ").replace(/Z$/, "") : "";
 const bfNorm = t => String(t || "").trim().replace("T", " ").replace(/Z$/, "").replace(/^(\d{4}-\d\d-\d\d \d\d:\d\d)$/, "$1:00");
 const bfMins = s => s < 90 ? `${Math.max(1, Math.round(s))} s` : `${Math.round(s / 60)} min`;
+// S7-S6: why an empty Preview is empty: the range's lines were read, and left out as the live uploader leaves them
+// ("412 lines of the Legacy game (3.8): nobody takes its data"), so it is not read as journals gone
+function bfLeftOut(sm) {
+  const lo = (sm && sm.left_out) || [];
+  return lo.length ? ": " + lo.map(([n, why]) => `${upN(n)} line${n === 1 ? "" : "s"} left out, ${esc(why)}`).join("; ") : "";
+}
 function backfillHtml(u) {
   const x = (u.edsm || {}).backfill;
   if (!x) return "";
@@ -12318,7 +12331,7 @@ function backfillHtml(u) {
     const sm = pv.summary, kinds = (sm.by_event || []).map(([n, c]) => `${esc(n)} ${upN(c)}`).join(" · ");
     out.push(`<div class="hint">Preview ${esc(bfShow(pv.start))} to ${esc(bfShow(pv.end))} UTC: ` + (sm.events
       ? `${upN(sm.events)} event${sm.events === 1 ? "" : "s"} (${upN(sm.jumps)} jump${sm.jumps === 1 ? "" : "s"}) in ${upN(sm.requests)} request${sm.requests === 1 ? "" : "s"}, about ${bfMins(sm.seconds)}` +
-        `${kinds ? `<br>${kinds}` : ""}` : "nothing EDSM would take in this range") + (same ? "" : ` <span class="unk">(another range than the one above)</span>`) + `</div>`);
+        `${kinds ? `<br>${kinds}` : ""}` : "nothing EDSM would take in this range" + bfLeftOut(sm)) + (same ? "" : ` <span class="unk">(another range than the one above)</span>`) + `</div>`);
   }
   if (pr) {
     const c = pr.counts || {}, done = Object.values(c).reduce((a, b) => a + b, 0);

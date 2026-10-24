@@ -4081,6 +4081,42 @@
     "{system}. Visited. {value} unsold. Do I need to draw you a picture?"
    ]
   },
+  "upload_held": {
+   "ivanova": [
+    "Uploads to {service} are on hold. Check Settings, Uploads.",
+    "{name}, {service} uploads have stopped. Of course they have.",
+    "{service} uploads are waiting. The card at the top of the page says why. Read it.",
+    "Uploads to {service} on hold, {name}. The uploads settings need a look. Wonderful.",
+    "Nothing is going to {service}. Settings, Uploads has a Try again button. Press it when you are ready.",
+    "{service} uploads stopped. And here I was hoping for something exciting.",
+    "Uploads to {service} are on hold. They will stay that way until you act. I know the feeling.",
+    "{name}, {service} uploads are waiting on you. My grandmother would say a letter unsent is a letter unread.",
+    "{service} uploads on hold. Paperwork. Even out here, paperwork.",
+    "Uploads to {service} have stopped. Look at the uploads settings, please, before I lose my patience.",
+    "{service} is getting nothing from us, {name}. Settings, Uploads.",
+    "Uploads to {service} on hold. Not a disaster. Just annoying.",
+    "The {service} uploads are stuck waiting. Have a look at the uploads settings when you can.",
+    "{service} uploads have stopped. I have seen worse. Not today, but I have.",
+    "Uploads to {service} are on hold, {name}. The card on the page explains. I do not."
+   ],
+   "ivanova_profane": [
+    "Uploads to {service} are on hold. Check Settings, Uploads, damn it.",
+    "{name}, {service} uploads have stopped. Of fucking course they have.",
+    "{service} uploads are waiting. The card at the top of the page says why. Read the damn thing.",
+    "Uploads to {service} on hold, {name}. The uploads settings need a look. Fucking wonderful.",
+    "Nothing's going to {service}. Settings, Uploads has a Try again button. Press the bloody thing.",
+    "{service} uploads stopped. And here I was hoping for something exciting. Shit.",
+    "Uploads to {service} are on hold until you act. I know the fucking feeling.",
+    "{name}, {service} uploads are waiting on you. My grandmother hated paperwork too. Hated it like hell.",
+    "{service} uploads on hold. Paperwork. Even out here, goddamn paperwork.",
+    "Uploads to {service} have stopped. Look at the uploads settings before I lose my shit.",
+    "{service} is getting nothing from us, {name}. Settings, Uploads. Hell.",
+    "Uploads to {service} on hold. Not a disaster. Just a pain in the ass.",
+    "The {service} uploads are stuck fucking waiting. Have a look at the uploads settings when you can.",
+    "{service} uploads have stopped. I have seen worse. Not today, but damn, I have.",
+    "Uploads to {service} are on hold, {name}. The card on the page explains. I don't give a damn why."
+   ]
+  },
   "carrier_departs": {
    "ivanova": [
     "{carrier} jumps in {minutes} minutes, and we are not aboard. Move.",

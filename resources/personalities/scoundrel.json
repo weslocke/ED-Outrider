@@ -4091,6 +4091,42 @@
     "{system}, {name}. Somebody else. Sell, before we get beat."
    ]
   },
+  "upload_held": {
+   "scoundrel": [
+    "Uploads to {service} are on hold. Settings, Uploads, buddy.",
+    "{name}, {service} uploads stopped. The uploads settings need a look.",
+    "Huh. Nothing's going out to {service}. Card at the top of the page says why.",
+    "{service} uploads are on hold. Don't look at me, I just work here.",
+    "Uploads to {service} parked, {name}. There's a Try again in Settings, Uploads.",
+    "{service} uploads are sitting tight. Like me in a customs line.",
+    "Uploads to {service} stopped. Paperwork doesn't do itself, pal. Uploads settings.",
+    "{name}, the {service} uploads are waiting on you. Your move.",
+    "Uploads to {service} are on hold. Not my fault. This time.",
+    "{service} uploads are stuck. Go poke Settings, Uploads, then we get back to making money.",
+    "Heads up, {service} uploads are on hold till you sort it.",
+    "Uploads to {service} stopped, buddy. Read the card up top, hit Try again, done.",
+    "{name}, {service} isn't getting a thing from us. The uploads settings know why.",
+    "{service} uploads on hold. Relax, nobody's coming to arrest us. Probably.",
+    "Uploads to {service} are waiting. Quickest job you'll do all day. Settings, Uploads."
+   ],
+   "scoundrel_profane": [
+    "Uploads to {service} are on hold. Settings, Uploads, buddy. Shit.",
+    "{name}, {service} uploads stopped. Shit. The uploads settings need a look.",
+    "Huh. Not a damn thing's going out to {service}. Card at the top of the page says why.",
+    "{service} uploads are on hold. Don't look at me, I just work here, damn it.",
+    "Uploads to {service} parked, {name}. Hell, there's a Try again in Settings, Uploads.",
+    "{service} uploads are sitting tight. Like me in a goddamn customs line.",
+    "Uploads to {service} stopped. Paperwork doesn't do its own damn self, pal. Uploads settings.",
+    "{name}, the {service} uploads are waiting on you. Your move. Don't fuck it up.",
+    "Uploads to {service} are on hold. Not my fault. This time. Hell.",
+    "{service} uploads are stuck. Go poke Settings, Uploads, then we get back to making some damn money.",
+    "Heads up, {service} uploads are on hold till you sort it. Crap.",
+    "Uploads to {service} stopped, buddy. Read the damn card, hit Try again, done.",
+    "{name}, {service} isn't getting a damn thing from us. The uploads settings know why.",
+    "{service} uploads on hold. Relax, nobody's coming to arrest us. Probably. Shit.",
+    "Uploads to {service} are waiting. Quickest damn job you'll do all day. Settings, Uploads."
+   ]
+  },
   "carrier_departs": {
    "scoundrel": [
     "Sir. {carrier} jumps in {minutes} minutes, and we're not aboard. Get back.",

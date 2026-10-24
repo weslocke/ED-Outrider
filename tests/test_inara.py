@@ -608,9 +608,16 @@ class Server(unittest.TestCase):
             logged = f.read()
         self.assertIn("addCommanderTravelFSDJump", logged)
         self.assertNotIn("a1B2c3D4e5F6g7H8i9J0k1L2", logged)
-        # a commander with no key: dropped, and the status says why
+        # the commander playing, with no key: held until one is saved (S3-S1), nothing forgotten
         self.state.set_inara_account("Briadin", remove=True)
         self.state.inara_sent.changed("Briadin", "rank:combat", 3)
+        self.j.commander = {"name": "Briadin"}
+        got = asyncio.run(self.state.inara_send(rows))
+        self.assertEqual(got[0][1], "held")
+        self.assertIn("no Inara API key for CMDR Briadin", got[0][2])
+        self.assertFalse(self.state.inara_sent.changed("Briadin", "rank:combat", 3))
+        # a commander not playing, with no key: dropped, and the status says why
+        self.j.commander = {"name": "Alt"}
         got = asyncio.run(self.state.inara_send(rows))
         self.assertEqual(got[0][1], "dropped")
         self.assertIn("no Inara API key for CMDR Briadin", got[0][2])
