@@ -1491,6 +1491,22 @@ _OTHER_EVENTS = (POSITION_EVENTS + STAR_CLASS_EVENTS + SCAN_EVENTS + DATA_EVENTS
 # cue to ask for the open tab again); COMMANDER_ONLY are read for it alone
 COMMANDER_EVENTS = frozenset(outrider.commander.EVENTS)
 COMMANDER_ONLY = COMMANDER_EVENTS - frozenset(_OTHER_EVENTS) - SRV_TRACKED - CARGO_EVENTS
+PERMIT_BATCH = 200   # S9-S32: id64s per Spansh search when a plotted route is checked for permits
+
+
+def permit_note(rows, permits):
+    """S9-S32's words for a route whose stops need a permit: the destination ("Sol needs a permit you may not have:
+    the route ends there"), else how many stops and which."""
+    if not permits:
+        return None
+    if permits[-1] == len(rows) - 1 and len(permits) == 1:
+        return f"{rows[-1]['system']} needs a permit you may not have: the route ends there."
+    names = [rows[i]["system"] for i in permits]
+    return (f"{len(names)} stop{'s' if len(names) > 1 else ''} need{'' if len(names) > 1 else 's'} a permit you may not have "
+            f"({', '.join(names[:3])}{', ...' if len(names) > 3 else ''}).")
+
+
+JUMP_PACE_N, JUMP_PACE_MIN, JUMP_PACE_GAP_MAX = 10, 3, 900   # S9-S9: the last 10 gaps, 3 at least, none over 15 min
 FILE_CMDR_HEAD = 65536   # S9-S4: a journal's Commander line is among its first few (after the Fileheader)
 
 
@@ -6049,13 +6065,12 @@ BOOKMARK_NOTE_MAX = 2000             # a note's characters, as POST /api/bookmar
 BOOKMARK_PROBLEMS_SHOWN = 20         # bad rows described one by one; the rest only counted
 
 
-def parse_bookmarks(text):
-    """S53: bookmarks from a file, Outrider's own export (/api/export?what=bookmarks) as CSV or JSON: JSON when it
-    starts with "[", else CSV with a header row (a byte-order mark and a spreadsheet's ";"-separated save with decimal
-    commas are read too; "{" is JSON too, refused as no list). Parsed here, not in the page: JavaScript would round an id64 above 2^53. Returns
-    (rows, bad, problems): rows as (id64, name, x, y, z, note, created_ts) for the bookmarks table, the count of rows
-    left out and the first BOOKMARK_PROBLEMS_SHOWN reasons ("line 4: no x"). A file that cannot be read at all, or holds
-    more than BOOKMARK_IMPORT_ROWS rows, raises ValueError with words for the page."""
+def import_items(text, required, what, header):
+    """A Bookmarks import file read into [(where, row dict)] and its number reader (S53's rules: JSON when it starts
+    with "[" (a "{" refused as no list), else CSV with a header row holding the `required` columns; a byte-order mark,
+    and a spreadsheet's ";"-separated save with decimal commas). ValueError with words for the page when it cannot be
+    read or holds more than BOOKMARK_IMPORT_ROWS rows. `what`: "bookmarks" or "pins"; `header`: the export's own
+    first line, for the missing-column message."""
     text = (text or "").strip().lstrip("\ufeff").strip()
     if not text:
         raise ValueError("the file is empty")
@@ -6066,7 +6081,7 @@ def parse_bookmarks(text):
         except ValueError as e:
             raise ValueError(f"not a JSON file Outrider can read ({e})") from None
         if not isinstance(items, list):
-            raise ValueError("expected a list of bookmarks (Outrider's JSON export)")
+            raise ValueError(f"expected a list of {what} (Outrider's JSON export)")
         numbered = [(f"item {i}", r) for i, r in enumerate(items, 1)]
     else:
         import csv
@@ -6075,10 +6090,9 @@ def parse_bookmarks(text):
         decimal_comma = delim == ";"
         reader = csv.reader(io.StringIO(text), delimiter=delim)
         cols = [c.strip().lower() for c in next(reader)]
-        missing = [c for c in ("id64", "name", "x", "y", "z") if c not in cols]
+        missing = [c for c in required if c not in cols]
         if missing:
-            raise ValueError(f"no {', '.join(missing)} column (Outrider's CSV export starts "
-                             "id64,name,x,y,z,note,created_ts)")
+            raise ValueError(f"no {', '.join(missing)} column (Outrider's CSV export starts {header})")
         numbered = []
         try:
             for row in reader:
@@ -6089,9 +6103,7 @@ def parse_bookmarks(text):
         except csv.Error as e:   # a field over csv's 128 KiB limit, a stray NUL
             raise ValueError(f"not a CSV file Outrider can read (line {reader.line_num}: {e})") from None
     if len(numbered) > BOOKMARK_IMPORT_ROWS:
-        raise ValueError(f"more than {BOOKMARK_IMPORT_ROWS:,} bookmarks in one file")
-    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    rows, bad, problems = [], 0, []
+        raise ValueError(f"more than {BOOKMARK_IMPORT_ROWS:,} {what} in one file")
 
     def number(v):
         if isinstance(v, str):
@@ -6100,6 +6112,73 @@ def parse_bookmarks(text):
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
             raise ValueError
         return float(v)
+    return numbered, number
+
+
+PIN_SAME_DEG = 0.0005   # S9-S30: an imported pin this close (both degrees) to one of the same name is that one
+PIN_COLUMNS = ("system_id64", "system", "body", "name", "lat", "lon")   # S9-S30: the pins export, and its import
+
+
+def import_is_pins(text):
+    """S9-S30: whether an import file is the pins export (its body and lat columns) rather than bookmarks."""
+    text = (text or "").strip().lstrip("\ufeff").strip()
+    if text.startswith("["):
+        try:
+            items = json.loads(text)
+        except ValueError:
+            return False
+        return isinstance(items, list) and bool(items) and isinstance(items[0], dict) and "lat" in items[0] and "body" in items[0]
+    cols = [c.strip().strip('"').lower() for c in re.split(r"[,;]", text.split("\n", 1)[0])]
+    return "lat" in cols and "body" in cols
+
+
+def parse_pins(text):
+    """S9-S30: pins from a file, Outrider's own pins export (/api/export?what=pins) as CSV or JSON, read as
+    parse_bookmarks reads bookmarks: (rows, bad, problems), rows as (system id64, system name, body, name, lat, lon)."""
+    numbered, number = import_items(text, ("system_id64", "body", "lat", "lon"), "pins", ",".join(PIN_COLUMNS))
+    rows, bad, problems = [], 0, []
+    for where, r in numbered:
+        why = None
+        if not isinstance(r, dict):
+            why = "not a pin (expected {system_id64, system, body, name, lat, lon})"
+        else:
+            raw = r.get("system_id64")
+            raw = raw.strip() if isinstance(raw, str) else raw
+            body = " ".join(r["body"].split())[:200] if isinstance(r.get("body"), str) else ""
+            if raw is None or raw == "" or isinstance(raw, bool) or not (
+                    isinstance(raw, int) or isinstance(raw, str) and re.fullmatch(r"[0-9]+", raw)) or not 0 <= int(raw) < 2 ** 63:
+                why = "no system_id64 (a whole number)"
+            elif not body:
+                why = "no body"
+            else:
+                try:
+                    lat, lon = number(r.get("lat")), number(r.get("lon"))
+                    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                        raise ValueError
+                except (ValueError, TypeError):
+                    why = "lat or lon missing or out of range (-90 to 90, -180 to 180)"
+        if why:
+            bad += 1
+            if len(problems) < BOOKMARK_PROBLEMS_SHOWN:
+                problems.append(f"{where}: {why}")
+            continue
+        sysname = r.get("system") if isinstance(r.get("system"), str) else ""
+        name = " ".join(r["name"].split())[:PIN_NAME_MAX] if isinstance(r.get("name"), str) else ""
+        rows.append((int(raw), " ".join(sysname.split())[:PIN_NAME_MAX] or None, body, name, lat, lon))
+    return rows, bad, problems
+
+
+def parse_bookmarks(text):
+    """S53: bookmarks from a file, Outrider's own export (/api/export?what=bookmarks) as CSV or JSON: JSON when it
+    starts with "[", else CSV with a header row (a byte-order mark and a spreadsheet's ";"-separated save with decimal
+    commas are read too; "{" is JSON too, refused as no list). Parsed here, not in the page: JavaScript would round an id64 above 2^53. Returns
+    (rows, bad, problems): rows as (id64, name, x, y, z, note, created_ts) for the bookmarks table, the count of rows
+    left out and the first BOOKMARK_PROBLEMS_SHOWN reasons ("line 4: no x"). A file that cannot be read at all, or holds
+    more than BOOKMARK_IMPORT_ROWS rows, raises ValueError with words for the page."""
+    numbered, number = import_items(text, ("id64", "name", "x", "y", "z"), "bookmarks",
+                                    "id64,name,x,y,z,note,created_ts")
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    rows, bad, problems = [], 0, []
 
     for where, r in numbered:
         why = None
@@ -7838,6 +7917,7 @@ class State:
         self._follow_up_seen = set()   # tick follow-up errors already printed (each traceback once)
         self._rig_leash = {}
         self._suit_low = set()   # S9-S7: the suit's low bits at the last look (a rise is said once)
+        self._kb_layout = ...    # S7-S1: the keyboard layout, read once when the Auto-target box first asks
         self._location_landing = None
         # the Neutron Highway: [highway] settings, the plot under way ({state: running | failed | done, plotter, from,
         # to, started, error}), the desktop clipboard (an outrider Clipboard, set at start; None in tests), the arrival
@@ -12508,6 +12588,11 @@ class State:
         if what == "bookmarks":
             rows = [dict(r) for r in self.db.execute("SELECT * FROM bookmarks ORDER BY created_ts")]
             return ["id64", "name", "x", "y", "z", "note", "created_ts"], rows
+        if what == "pins":   # S9-S30: Bookmarks' pins, to carry them to another Outrider (Import takes this file)
+            rows = [{"system_id64": r["system"], "system": r["sysname"], "body": r["body"], "name": r["name"],
+                     "lat": r["lat"], "lon": r["lon"]}
+                    for r in self.db.execute("SELECT * FROM surface_pins ORDER BY sysname, body, ord, id")]
+            return list(PIN_COLUMNS), rows
         if what == "jumps":
             rows = [dict(r) for r in self.db.execute("SELECT * FROM jumps ORDER BY ts")]
             return ["ts", "id64", "name", "x", "y", "z", "star_class", "kind"], rows
@@ -12711,6 +12796,26 @@ class State:
         self.db.execute("DELETE FROM bookmarks WHERE id64=?", (id64,))
         self.db.commit()
         self.bump()
+
+    def import_pins(self, rows):
+        """S9-S30: parse_pins' rows added to your pins: one already there (the same body and name, within PIN_SAME_DEG
+        of it) is left as it is, a row with no name gets the body's next "Pin N". (added, already)."""
+        added = 0
+        for system, sysname, body, name, lat, lon in rows:
+            same = self.db.execute("SELECT 1 FROM surface_pins WHERE system=? AND body=? AND name=? AND abs(lat - ?) < ? "
+                                   "AND abs(lon - ?) < ?", (system, body, name, lat, PIN_SAME_DEG, lon, PIN_SAME_DEG)).fetchone() \
+                if name else None
+            if same:
+                continue
+            n = self.db.execute("SELECT count(*), max(ord) FROM surface_pins WHERE system=? AND body=?", (system, body)).fetchone()
+            self.db.execute("INSERT INTO surface_pins (system, body, sysname, name, lat, lon, ord, created_ts) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (system, body, sysname, name or f"Pin {(n[0] or 0) + 1}",
+                                                                lat, lon, (n[1] or 0) + 1, iso_ts(time.time())))
+            added += 1
+        self.db.commit()
+        if added:
+            self.bump()
+        return added, len(rows) - added
 
     def import_bookmarks(self, rows):
         """S53: parse_bookmarks' rows merged into yours: a system already bookmarked keeps its own name, note and date
@@ -16327,6 +16432,18 @@ class State:
                         "ts": r["ts"], "range": fleet_range(fig), "figures": fig})
         return out
 
+    @staticmethod
+    def ship_scoop(ship):
+        """S9-S31: whether a fleet_loadouts row's latest Loadout carries a fuel scoop (an int_fuelscoop module): True,
+        False, or None when there is no Loadout to read."""
+        try:
+            mods = (json.loads(ship.get("loadout") or "null") or {}).get("Modules")
+        except (ValueError, AttributeError):
+            return None
+        if not isinstance(mods, list):
+            return None
+        return any(isinstance(m, dict) and str(m.get("Item") or "").lower().startswith("int_fuelscoop") for m in mods)
+
     def fleet_ship(self, ship_id):
         r = self.db.execute("SELECT * FROM fleet_loadouts WHERE ship_id=?", (ship_id,)).fetchone()
         return dict(r, figures=json.loads(r["figures"] or "{}")) if r else None
@@ -16360,6 +16477,20 @@ class State:
                                             "index": best[1], "distance": round(best[0], 1)})
         return self._hw_near[1]
 
+    def jump_pace(self):
+        """S9-S9: this login's pace, seconds a jump: the median gap between its last JUMP_PACE_N + 1 jumps of your own
+        (rides on your carrier left out), gaps over JUMP_PACE_GAP_MAX dropped (a break, a long stop); None under
+        JUMP_PACE_MIN gaps. Honks, scoops and stops are in it: that is the pace."""
+        login = (self.journals.commander or {}).get("login_ts") or ""
+        ts = [ts_seconds(r[0]) for r in self.db.execute(
+            "SELECT ts FROM jumps WHERE kind = 'FSDJump' AND coalesce(ride, 0) = 0 AND ts >= ? ORDER BY ts DESC LIMIT ?",
+            (login, JUMP_PACE_N + 1))]
+        gaps = sorted(g for g in (a - b for a, b in zip(ts, ts[1:])) if 0 < g <= JUMP_PACE_GAP_MAX)
+        if len(gaps) < JUMP_PACE_MIN:
+            return None
+        mid = len(gaps) // 2
+        return gaps[mid] if len(gaps) % 2 else (gaps[mid - 1] + gaps[mid]) / 2
+
     def highway_summary(self):
         """The highway line's facts for /api/nearby (Overview, Nearby, Here), or None with no route: the next system
         (neutron, refuel, ly from here), where you are on the route, the refuel coming up, and the detour."""
@@ -16371,13 +16502,17 @@ class State:
         base = at if at is not None else nx - 1 if nx is not None else n - 1   # -1: not on it yet (before its start)
         nxt = rows[nx] if nx is not None else None
         here = rows[at] if at is not None else None
+        left = sum(r["jumps"] or 0 for r in rows[nx:]) if nx is not None else 0
+        pace = self.jump_pace()
         return {
             "id": hw["id"], "plotter": hw.get("plotter"), "created_ts": hw.get("created_ts"),
+            # S9-S9: about how long the jumps left take at this login's pace (seconds; None with no pace yet)
+            "pace_s": pace, "eta_s": round(left * pace) if pace and left and not hw.get("done_ts") else None,
             "destination": rows[-1]["system"], "total": n - 1,
             "index": nx, "at": at, "furthest": hw.get("furthest"), "complete": bool(hw.get("done_ts")),
             "off_route": bool(hw.get("off_route")), "nearest": self.highway_nearest(hw, rows),
             "jumps_total": sum(r["jumps"] or 0 for r in rows),
-            "jumps_left": sum(r["jumps"] or 0 for r in rows[nx:]) if nx is not None else 0,
+            "jumps_left": left,
             "ly_left": rows[base]["remaining"] if base >= 0 else None,
             "refuel_here": bool(here and here["refuel"]),
             "refuel_in": highway_refuel_in(rows, base) if base >= 0 else None,
@@ -16767,26 +16902,28 @@ class State:
         return dict(w, first=str(w["first"]), said=(w["source"], w["first"]) in c["said"])   # an id64 as a string, as every id the page gets
 
     @staticmethod
-    def highway_row_out(i, r):
+    def highway_row_out(i, r, permits=()):
         return {"i": i, "system": r["system"], "id": str(r["id64"]) if r["id64"] is not None else None,
                 "x": r["x"], "y": r["y"], "z": r["z"], "distance": r["distance"], "fuel_used": r["fuel_used"],
                 "fuel_left": r["fuel_left"], "neutron": bool(r["neutron"]), "refuel": bool(r["refuel"]),
-                "jumps": r["jumps"], "remaining": r["remaining"]}
+                "jumps": r["jumps"], "remaining": r["remaining"], "permit": i in permits}
 
     def highway_view(self):
         """GET /api/highway: the route with its progress (the next HIGHWAY_AHEAD rows and the HIGHWAY_DONE most recent
-        done above them), the plot under way, the fleet, the clipboard and auto-target."""
+        done above them), the plot under way, the fleet, the clipboard and auto-target; game_target (S9-S33: the
+        system the game aims at, for the form's "← destination")."""
         hw, rows = self.highway_state()
         route = None
         if hw:
             nx = self.highway_next(hw, rows)
             start = nx if nx is not None else len(rows)
+            permits = set(hw.get("permits") or ())   # S9-S32: the stops that need a permit
             route = dict({k: hw.get(k) for k in ("id", "plotter", "ship", "options", "created_ts", "at", "furthest",
-                                                  "off_route", "arrival_ts", "done_ts", "stand_in")},
+                                                  "off_route", "arrival_ts", "done_ts", "stand_in", "permit_note")},
                          **{"from": rows[0]["system"], "to": rows[-1]["system"], "count": len(rows),
                             "total_ly": rows[0]["remaining"], "summary": self.highway_summary(),
-                            "done": [self.highway_row_out(i, rows[i]) for i in range(max(0, start - HIGHWAY_DONE), start)],
-                            "ahead": [self.highway_row_out(i, rows[i]) for i in range(start, min(len(rows), start + HIGHWAY_AHEAD))],
+                            "done": [self.highway_row_out(i, rows[i], permits) for i in range(max(0, start - HIGHWAY_DONE), start)],
+                            "ahead": [self.highway_row_out(i, rows[i], permits) for i in range(start, min(len(rows), start + HIGHWAY_AHEAD))],
                             # every point for the map: [x, z] in the galaxy's plane, and the neutron flags
                             "points": [[r["x"], r["z"]] for r in rows], "neutrons": [i for i, r in enumerate(rows) if r["neutron"]]})
         cb = self.clipboard.info() if self.clipboard else {"enabled": self.highway_cfg["clipboard"], "available": False,
@@ -16795,6 +16932,7 @@ class State:
         return {"route": route, "plotting": self.highway_plotting, "fleet": self.fleet_list(),
                 "ship_id": (self.journals.ship or {}).get("ship_id"), "cargo": (self.journals.cargo or {}).get("count"),
                 "position": with_id(pos), "clipboard": cb,
+                "game_target": (lambda g: {"name": g["name"], "id": str(g["id64"])} if g and g.get("name") else None)(self.game_target()),
                 "autotarget": self.autotarget_info(),
                 "defaults": {k: self.highway_cfg[k] for k in ("efficiency", "conservative", "conservative_ly")},
                 "background": self.highway_background()}
@@ -16859,9 +16997,13 @@ class State:
                 raise ValueError("conservative must be true or false")
             margin = number("conservative_ly", 0.5, HIGHWAY_CONSERVATIVE_MAX, float,
                             self.highway_cfg.get("conservative_ly", HIGHWAY["conservative_ly"])) if cons else None
+            scoop = self.ship_scoop(ship) if ship else None
             if plotter == "exact":
                 if not ship:
                     return {"error": "pick a ship you have flown (it needs a Loadout in your journals)"}, 400
+                if scoop is False and not flag("allow_no_scoop"):   # S9-S31: warned, never refused
+                    return {"error": f"your {ship['name'] or ship['ship_type']} has no fuel scoop: the exact plotter plans "
+                                     "a refuel at every scoopable star, which it cannot take", "code": "no_scoop"}, 400
                 if not fig.get("exact"):
                     return {"error": f"Outrider does not know this ship's frame shift drive ({fig.get('fsd') or 'none'}): "
                                      "use the neutron plotter with its range"}, 400
@@ -16901,6 +17043,8 @@ class State:
                 url = SPANSH_ROUTE
         except ValueError as e:
             return {"error": str(e)}, 400
+        if scoop is False:
+            options["no_scoop"] = True   # S9-S31: said on the route's head (the neutron plotter's "scoop as you go" too)
         meta = {"plotter": plotter, "options": options,
                 "ship": ship and {"ship_id": ship["ship_id"], "name": ship["name"], "type": ship["ship_type"], "ts": ship["ts"]}}
         self.highway_plotting = {"state": "running", "plotter": plotter, "from": frm, "to": to,
@@ -16908,6 +17052,26 @@ class State:
         self.highway_task = asyncio.get_running_loop().create_task(self._highway_plot(url, params, plotter, meta, reach))
         self.bump()
         return {"ok": True, "plotting": self.highway_plotting}, 202
+
+    def highway_replot(self):
+        """POST /api/highway/replot (S9-S8): the Highway plotted again from where you are to its destination, with the
+        ship you fly now and the route's own plotter and options (injections, secondary stars, neutron boosts, the
+        conservative margin; the neutron plotter's efficiency and multiplier, and its typed range when it had no ship).
+        Through highway_start_plot, so its checks and answers are the plot's own. (answer, HTTP status)."""
+        hw, rows = self.highway_state()
+        if not hw or not rows:
+            return {"error": "no Highway route to plot again"}, 409
+        o = hw.get("options") or {}
+        body = {"plotter": hw.get("plotter") or "exact", "to": rows[-1]["system"],
+                "conservative": bool(o.get("conservative_ly")),
+                **{k: True for k in ("injections", "exclude_secondary", "no_neutrons") if o.get(k)}}
+        if o.get("conservative_ly"):
+            body["conservative_ly"] = o["conservative_ly"]
+        if body["plotter"] == "neutron":
+            body.update({k: o[k] for k in ("efficiency", "supercharge_multiplier") if o.get(k) is not None})
+            if not hw.get("ship"):   # a range typed in, no ship behind it
+                body["range"] = o.get("range_full") or o.get("range")
+        return self.highway_start_plot(body)
 
     def highway_local(self, name):
         """{system, id64, x, y, z} of a system known here by name (where you are, a visit, a bookmark...), or None."""
@@ -16989,6 +17153,10 @@ class State:
             rows = splice_route(rows, plotter, reach, start, end)
             if note:
                 meta = dict(meta, stand_in=note)
+            permits = await self.route_permits(rows)   # S9-S32: a locked stop found now, not at the galaxy map's wall
+            if permits:
+                meta = dict(meta, permits=permits, permit_note=permit_note(rows, permits))
+                note = " ".join(x for x in (note, meta["permit_note"]) if x)
             self.highway_store(rows, meta)
             p.update(state="done", note=note)
             self.highway_copy_next(force=True)   # you are usually at its start: the first hop is ready to paste
@@ -17001,6 +17169,19 @@ class State:
         finally:
             p["ended"] = iso_ts(time.time())
             self.bump()
+
+    async def route_permits(self, rows):
+        """S9-S32: the indices of a plotted route's rows that need a permit (Spansh's system records, PERMIT_BATCH
+        id64s a search); [] when Spansh cannot be asked (never a reason to lose the route)."""
+        ids = [r["id64"] for r in rows if r.get("id64") is not None]
+        locked = set()
+        try:
+            for k in range(0, len(ids), PERMIT_BATCH):
+                locked |= await self.spansh.permit_ids(ids[k:k + PERMIT_BATCH])
+        except Exception as e:  # noqa: BLE001 -- the route stands without the note
+            print(f"highway: the permit check failed ({type(e).__name__}: {e})", file=sys.stderr)
+            return []
+        return [i for i, r in enumerate(rows) if r.get("id64") in locked]
 
     def highway_store(self, rows, meta):
         """A new route replaces the old one: its rows, and its meta with where you are on it now."""
@@ -18218,6 +18399,9 @@ class State:
         steps, missing = t.plan()
         info["missing"] = [{"key": n, "why": w} for n, w in missing]
         info["steps"] = t.describe(steps)
+        if self._kb_layout is ...:   # S7-S1: read once (a subprocess), on the game PC only
+            self._kb_layout = outrider.target.keyboard_layout()
+        info["entry_check"] = outrider.target.entry_check(self._kb_layout, self.clipboard.tool if self.clipboard else None)
         info["status"] = ("off" if not cfg["autotarget"] else "dry run: logs the steps, presses nothing" if info["dry_run"]
                           else h.device_error or "the virtual keyboard is not open" if not h.ready
                           else "not ready: a key has no keyboard binding" if missing
@@ -20329,12 +20513,14 @@ def make_app(state, hosts=None):
             body = None
         if not isinstance(body, dict) or not isinstance(body.get("text"), str):
             return web.json_response({"error": "expected {text: the file's contents}"}, status=400)
+        pins = import_is_pins(body["text"])   # S9-S30: the pins export comes in through the same Import
         try:
-            rows, bad, problems = parse_bookmarks(body["text"])
+            rows, bad, problems = (parse_pins if pins else parse_bookmarks)(body["text"])
         except ValueError as e:
             return web.json_response({"error": str(e)}, status=400)
-        added, already = state.import_bookmarks(rows)
-        return web.json_response({"added": added, "already": already, "bad": bad, "problems": problems})
+        added, already = (state.import_pins if pins else state.import_bookmarks)(rows)
+        return web.json_response(dict({"added": added, "already": already, "bad": bad, "problems": problems},
+                                      **({"what": "pins"} if pins else {})))
 
     async def rigs_remove_view(request):
         """{id}: a mining rig still out picked up (its number free, its tons a saved site); a saved rig site forgotten."""
@@ -20533,6 +20719,11 @@ def make_app(state, hosts=None):
         if body is None:
             return web.json_response({"error": "expected a JSON object"}, status=400)
         out, status = state.highway_start_plot(body)
+        return web.json_response(out, status=status)
+
+    async def highway_replot_view(_):
+        """POST /api/highway/replot (S9-S8): the Highway again from here, as it was plotted (State.highway_replot)."""
+        out, status = state.highway_replot()
         return web.json_response(out, status=status)
 
     async def highway_clear_view(_):
@@ -21568,6 +21759,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/highway/background", highway_background_view)
     app.router.add_get("/api/regions", regions_view)
     app.router.add_post("/api/highway/plot", highway_plot_view)
+    app.router.add_post("/api/highway/replot", highway_replot_view)   # S9-S8
     app.router.add_get("/api/riches", riches_view)
     app.router.add_post("/api/riches/plot", riches_plot_view)
     app.router.add_post("/api/riches/clear", riches_clear_view)

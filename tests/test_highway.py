@@ -8,6 +8,7 @@ import json
 import math
 import os
 import time
+import types
 import unittest
 import unittest.mock
 
@@ -49,11 +50,12 @@ class HighwayH1(unittest.TestCase):
 
     @staticmethod
     def loadout(ts, ship_id=7, name="Sample Ship", ship="krait_light", fsd="int_hyperdrive_overcharge_size5_class5",
-                mods=None, unladen=410.5, r0=58.4, booster=True):
+                mods=None, unladen=410.5, r0=58.4, booster=True, scoop=True):
         fsd_mod = {"Slot": "FrameShiftDrive", "Item": fsd, "Health": 1.0}
         if mods:
             fsd_mod["Engineering"] = {"Modifiers": [{"Label": k, "Value": v, "OriginalValue": v / 2} for k, v in mods.items()]}
-        modules = [fsd_mod] + ([{"Slot": "Slot03_Size5", "Item": "int_guardianfsdbooster_size5", "Health": 1.0}] if booster else [])
+        modules = [fsd_mod] + ([{"Slot": "Slot03_Size5", "Item": "int_guardianfsdbooster_size5", "Health": 1.0}] if booster else []) + \
+            ([{"Slot": "Slot01_Size6", "Item": "int_fuelscoop_size6_class5", "Health": 1.0}] if scoop else [])
         return {"event": "Loadout", "timestamp": ts, "Ship": ship, "ShipID": ship_id, "ShipName": name, "ShipIdent": "SP-01",
                 "HullHealth": 1.0, "UnladenMass": unladen, "CargoCapacity": 8, "MaxJumpRange": r0,
                 "FuelCapacity": {"Main": 32.0, "Reserve": 0.63}, "Modules": modules}
@@ -333,6 +335,54 @@ class HighwayH1(unittest.TestCase):
         self.assertEqual(self.state.highway_plotting["error"], "Spansh: Could not find system End")
         self.assertEqual(self.state.highway_view()["route"]["count"], 6)
 
+    def test_a_ship_with_no_fuel_scoop_is_warned_on_the_exact_plotter(self):
+        """S9-S31: the exact plotter plans a refuel at every scoopable star: a ship with no scoop is warned ("plot anyway"
+        sends allow_no_scoop), never refused, and the route remembers it (no_scoop)."""
+        import asyncio
+        self.j.handle(self.loadout("2026-01-02T00:00:00Z", fsd="int_hyperdrive_overcharge_size8_class5_overchargebooster_mkii",
+                                   scoop=False))
+        self.assertIs(self.state.ship_scoop(self.state.fleet_ship(7)), False)
+        out, status = self.state.highway_start_plot({"from": "Start", "to": "End"})
+        self.assertEqual((status, out["code"]), (400, "no_scoop"))
+        self.assertIn("has no fuel scoop", out["error"])
+        sp = ed_outrider.Spansh(self.db)
+        sp.session = _HwSession([(200, {"job": "e", "status": "ok", "result": self.EXACT})])
+        sp.system_record = spansh_knows(start=100, end=105)
+        self.state.spansh = sp
+
+        async def go():
+            out, status = self.state.highway_start_plot({"from": "Start", "to": "End", "allow_no_scoop": True})
+            await self.state.highway_task
+            return status
+        self.assertEqual(asyncio.run(go()), 202)
+        self.assertTrue(ed_outrider.meta_get(self.db, "highway")["options"]["no_scoop"])
+        self.assertIsNone(self.state.ship_scoop({"loadout": None}))   # no Loadout: not known
+
+    def test_stops_that_need_a_permit_are_said(self):
+        """S9-S32: the plotted route's rows are checked against Spansh's records: the locked ones are marked and the
+        head says so; Spansh not answering leaves the route as it is."""
+        import asyncio
+        rows = [{"system": n, "id64": i} for i, n in enumerate(("Start", "Mid", "Sol"))]
+
+        async def ask(ids):
+            return {2} if 2 in ids else set()
+        self.state.spansh = types.SimpleNamespace(permit_ids=ask)
+        self.assertEqual(asyncio.run(self.state.route_permits(rows)), [2])
+        self.assertEqual(ed_outrider.permit_note(rows, [2]), "Sol needs a permit you may not have: the route ends there.")
+        self.assertEqual(ed_outrider.permit_note(rows, [1, 2]), "2 stops need a permit you may not have (Mid, Sol).")
+        self.assertIsNone(ed_outrider.permit_note(rows, []))
+
+        async def down(ids):
+            raise ed_outrider.ClientError("down")
+        self.state.spansh = types.SimpleNamespace(permit_ids=down)
+        with unittest.mock.patch("sys.stderr"):
+            self.assertEqual(asyncio.run(self.state.route_permits(rows)), [])
+        ex = ed_outrider.highway_rows("exact", self.EXACT)
+        self.state.highway_store(ex, {"plotter": "exact", "options": {}, "ship": None, "permits": [len(ex) - 1],
+                                      "permit_note": "End needs a permit"})
+        view = self.state.highway_view()["route"]
+        self.assertEqual((view["permit_note"], [r["permit"] for r in view["ahead"]][-1]), ("End needs a permit", True))
+
     def test_exact_plot_without_neutrons(self):
         """no_neutrons: Spansh's exact plotter is told not to use the neutron supercharge (regular jumps only), and the
         route remembers it was asked for."""
@@ -394,7 +444,8 @@ class HighwayH1(unittest.TestCase):
         far = (200, {"results": [{"id64": 202, "name": "Far End", "x": 300, "y": 0, "z": 0}]})
         state, err, calls = plot({"plotter": "neutron", "to": "Far End", "range": 50},
                                  [here, far, (200, {"job": "n", "status": "ok", "result": self.NEUTRON})])
-        self.assertEqual((calls[2][1]["from"], calls[2][1]["to"], len(calls)), ("Start", "Far End", 3))
+        self.assertEqual((calls[2][1]["from"], calls[2][1]["to"], len(calls)), ("Start", "Far End", 4))
+        self.assertEqual((calls[3][0], calls[3][1], list(calls[3][2]["filters"])), ("POST", ed_outrider.SPANSH_SEARCH, ["id64"]))   # S9-S32's permit check
         # offline (Spansh never started): a clear error before any request
         with self.assertRaisesRegex(ed_outrider.HighwayError, "cannot be reached"):
             asyncio.run(ed_outrider.Spansh(self.db).system_id64("Nowhere"))
@@ -431,6 +482,27 @@ class HighwayH1(unittest.TestCase):
         p = self.state.highway_summary()
         self.assertEqual((p["at"], p["next"]["name"]), (1, "Bridge B"))
         self.assertEqual(self.hw_moments()[-1][0], "next")
+
+    def test_replot_from_here_asks_as_the_route_was_plotted(self):
+        """S9-S8: POST /api/highway/replot: to the route's destination, from here (no `from`: where you are), the
+        ship you fly now, the route's plotter and options."""
+        rows = ed_outrider.highway_rows("exact", self.EXACT)
+        self.state.highway_store(rows, {"plotter": "exact", "ship": {"ship_id": 3, "name": "Old", "type": "krait"},
+                                        "options": {"injections": True, "exclude_secondary": False, "no_neutrons": True,
+                                                    "conservative_ly": 2.0, "supercharged": True}})
+        with unittest.mock.patch.object(self.state, "highway_start_plot", return_value=({"ok": True}, 202)) as plot:
+            self.assertEqual(self.state.highway_replot(), ({"ok": True}, 202))
+        self.assertEqual(plot.call_args[0][0], {"plotter": "exact", "to": rows[-1]["system"], "conservative": True,
+                                                "conservative_ly": 2.0, "injections": True, "no_neutrons": True})
+        self.state.highway_store(rows, {"plotter": "neutron", "ship": None,
+                                        "options": {"range": 40.0, "range_full": 42.0, "efficiency": 70, "supercharge_multiplier": 6}})
+        with unittest.mock.patch.object(self.state, "highway_start_plot", return_value=({"ok": True}, 202)) as plot:
+            self.state.highway_replot()
+        self.assertEqual(plot.call_args[0][0], {"plotter": "neutron", "to": rows[-1]["system"], "conservative": False,
+                                                "efficiency": 70, "supercharge_multiplier": 6, "range": 42.0})
+        self.db.execute("DELETE FROM highway_route")
+        ed_outrider.meta_set(self.db, "highway", None)
+        self.assertEqual(self.state.highway_replot()[1], 409)
 
     def test_plotted_in_hyperspace_the_arrival_at_the_start_joins(self):
         """Plotted while jumping to the route's start (review F8, second case): the arrival, read after the route

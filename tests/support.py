@@ -18,6 +18,10 @@ ed_outrider.LIVE_DIRS[:] = []
 # whether this machine runs Outrider as the systemd service changes the restore command's words: never in a test
 # (a test that wants it says so)
 ed_outrider.systemd_service_installed = lambda: False
+# ...nor this desktop's keyboard layout (the Auto-target box's typing word): a test that wants one passes its own
+import outrider.target  # noqa: E402
+REAL_KEYBOARD_LAYOUT = outrider.target.keyboard_layout   # the function itself, for its own test (with fakes)
+outrider.target.keyboard_layout = lambda run=None, platform=None: None
 ed_outrider.LEGACY_DIRS[:] = []
 # ...nor the player's config file: the Uploads switch writes [eddn]/[edsm] enabled into it
 import tempfile  # noqa: E402

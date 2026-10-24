@@ -207,7 +207,7 @@ unittest, in-memory SQLite). `support.py` holds the shared fixtures and fakes (`
    `/api/cargo/recount` {counts} for your carrier's untracked lines; `/api/materials` carries `cargo`), `/api/highway` (`State.highway_view`; GET `/api/highway/systems?q=`: the To field's suggestions, Spansh's names
    starting with q (`State.highway_suggest`, 2 to `FIND_NAME_MAX` characters, 502 when Spansh cannot be reached); GET
    `/api/highway/background`: the image `[highway] background_image` names and only that file (`highway_bg_file` checks
-   its type; 404 without one); POST `/api/highway/plot` {plotter, to, ...} (`State.highway_start_plot`: the Spansh job in
+   its type; 404 without one); POST `/api/highway/replot` (S9-S8: `State.highway_replot`, the stored request from here with the ship flown now), POST `/api/highway/plot` {plotter, to, ...} (`State.highway_start_plot`: the Spansh job in
    the background, see the recipe); POST `/api/highway/clear` (`State.highway_clear`: the route forgotten, a plot under
    way and the route's auto-target cancelled); POST `/api/highway/autotarget` {enabled?, delay?: 0-60 s}
    (`State.set_autotarget`, meta `autotarget`; answers `autotarget_info`), POST `/api/highway/autotarget/test`, POST

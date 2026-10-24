@@ -152,5 +152,53 @@ class Pins(unittest.TestCase):
         self.assertEqual(asyncio.run(go()), (200, ["Pin 1"]))
 
 
+
+class PinsExportImport(unittest.TestCase):
+    """S9-S30: pins in Bookmarks' Export, and Import taking that file (CSV or JSON) through the same button."""
+
+    def setUp(self):
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+
+    def pins(self):
+        return [(r["system"], r["sysname"], r["body"], r["name"], r["lat"], r["lon"])
+                for r in self.db.execute("SELECT * FROM surface_pins ORDER BY id")]
+
+    def test_export_then_import_gives_the_same_pins(self):
+        import csv
+        import io
+        big = 2 ** 62 + 7   # an id64 a spreadsheet or JavaScript would round
+        for name, lat in (("Wreck", 12.5), ("Guardian site", -3.25)):
+            self.state.pins_post({"action": "add", "system": str(big), "sysname": "Far Sys", "body": "Far Sys A 1",
+                                  "name": name, "lat": lat, "lon": 100.0})
+        cols, rows = self.state.export_rows("pins")
+        self.assertEqual(cols, list(ed_outrider.PIN_COLUMNS))
+        before = self.pins()
+        out = io.StringIO()
+        w = csv.DictWriter(out, fieldnames=cols)
+        w.writeheader()
+        w.writerows(rows)
+        text = out.getvalue()
+        self.assertTrue(ed_outrider.import_is_pins(text))
+        self.assertFalse(ed_outrider.import_is_pins("id64,name,x,y,z,note,created_ts\n1,Sol,0,0,0,,"))
+        parsed, bad, _ = ed_outrider.parse_pins(text)
+        self.assertEqual(self.state.import_pins(parsed), (0, 2))     # already there
+        self.db.execute("DELETE FROM surface_pins")
+        self.assertEqual(self.state.import_pins(parsed), (2, 0))
+        self.assertEqual(self.pins(), before)
+        js = __import__("json").dumps(rows)
+        self.assertTrue(ed_outrider.import_is_pins(js))
+        self.assertEqual(ed_outrider.parse_pins(js)[0], parsed)
+
+    def test_a_bad_row_is_said_not_added(self):
+        rows, bad, problems = ed_outrider.parse_pins("system_id64,system,body,name,lat,lon\n5,S,S 1,A,95,10\n5,S,S 1,B,10,10\n,S,S 1,C,1,1")
+        self.assertEqual((len(rows), bad), (1, 2))
+        self.assertEqual(problems, ["line 2: lat or lon missing or out of range (-90 to 90, -180 to 180)",
+                                    "line 4: no system_id64 (a whole number)"])
+
+
 if __name__ == "__main__":
     unittest.main()
+

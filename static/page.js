@@ -3627,7 +3627,13 @@ function isRoutine(m) {
 const spokenTime = sec => sec < 90 ? `about ${Math.max(10, Math.round(sec / 5) * 5)} seconds` : `about ${Math.round(sec / 60)} minutes`;
 // The Highway in a spoken clause (review S2): the too-much-fuel warning first, boost here (or done), the next stop
 // and the refuel coming up; off the route, the closest route system. "" with no route, or once it is complete.
-function hwySpoken(s) {
+// S9-S9: a route's time left in words: "40 min", "1 h 40"; spoken "40 minutes", "1 hour 40"
+function etaText(sec, spoken = false) {
+  const m = Math.max(1, Math.round(sec / 60)), h = Math.floor(m / 60), mm = m % 60;
+  if (!h) return spoken ? `${m} minute${m === 1 ? "" : "s"}` : `${m} min`;
+  return spoken ? `${h} hour${h === 1 ? "" : "s"}${mm ? ` ${mm}` : ""}` : `${h} h${mm ? ` ${String(mm).padStart(2, "0")}` : ""}`;
+}
+function hwySpoken(s, eta = false) {
   if (!s || s.complete) return "";
   const ly = v => `${Math.round(v * 10) / 10} light-years`, bits = [], hv = s.heavy;
   if (hv) bits.push(`too much fuel for ${hv.hop > 1 ? `the jump to ${hv.next}` : "the next jump"}, ${Math.floor(hv.need_t)} tonnes at most, you have ${Math.round(hv.have_t)}`);
@@ -3644,6 +3650,7 @@ function hwySpoken(s) {
               `${s.next.name}${s.next.distance != null ? `, ${ly(s.next.distance)}` : ""}`);
     if (s.refuel_here) bits.push("refuel here");
     else if (s.refuel_in != null) bits.push(`refuel in ${s.refuel_in} jump${s.refuel_in === 1 ? "" : "s"}`);
+    if (eta && s.eta_s) bits.push(`about ${etaText(s.eta_s, true)} to go at your pace`);   // S9-S9: the status report's
   }
   return bits.length ? "Highway: " + bits.join(", ") : "";
 }
@@ -3665,7 +3672,7 @@ function statusReportText() {
   if (target && target.v !== "none") parts.push(destSpoken(dest, target));
   if (f && f.pct != null) { const j = f.jumps_max ?? f.jumps_recent;
     parts.push(`Fuel ${f.pct} percent${j ? `, ${j} jump${j === 1 ? "" : "s"}` : ""}`); }
-  const hw = data ? hwySpoken(data.highway) : ""; if (hw) parts.push(hw);
+  const hw = data ? hwySpoken(data.highway, true) : ""; if (hw) parts.push(hw);
   const ms = data ? modulesSpoken() : ""; if (ms) parts.push(ms);   // a core module under your level (S5)
   if (target && target.v === "none") parts.push(`${dest.name}: nothing to do`);
   const rs = hd && hd.leaving ? worthLeavingFor(hd.leaving).rescan : null;
@@ -4495,9 +4502,9 @@ async function bmImport(text) {
   catch (err) { r = {error: err.message}; }   // the server is not answering
   if (r.error) return bmImportSay(`Not imported: ${r.error}.`, true);
   const n = v => v.toLocaleString("en-US"), p = r.problems || [];
-  bmImportSay(`${n(r.added)} added, ${n(r.already)} already there` + (r.bad ? `, ${n(r.bad)} left out: ${p.slice(0, 2).join("; ")}${r.bad > 2 ? "…" : ""}` : ""),
+  bmImportSay(`${r.what === "pins" ? "Pins: " : ""}${n(r.added)} added, ${n(r.already)} already there` + (r.bad ? `, ${n(r.bad)} left out: ${p.slice(0, 2).join("; ")}${r.bad > 2 ? "…" : ""}` : ""),
     false, p.concat(r.bad > p.length ? [`and ${n(r.bad - p.length)} more`] : []));
-  if (r.added) { version = -1; poll(true); }   // the new rows at once
+  if (r.added) { version = -1; poll(true); if (r.what === "pins") loadPins().then(() => renderBookmarks(bmMap())); }   // the new rows at once
 }
 document.getElementById("bmImport").onclick = () => bmFile.click();
 bmFile.onchange = async () => {
@@ -7309,7 +7316,7 @@ function mapPopHtml(pt, touch = false) {
     (b ? `<div class="sec">★ ${esc(b.note) || "bookmarked"}</div>` : "") +
     (!touch ? `<div class="sec unk">${mapClickWords(pt)}</div>` : `<div class="sec mapacts">` +
       (mapAimable(pt) && canAim() ? `<button type="button" class="mini" data-aim="next" data-route="system" data-aimid="${esc(String(pt.id))}">${mk("destination")}Target</button> ` : "") +
-      `<button type="button" class="mini" data-mapcopy="${esc(pt.name)}">Copy name</button></div>`);
+      `<button type="button" class="mini" data-mapcopy="${esc(pt.name)}">Copy name</button>${plotBtn(pt.name)}</div>`);   // S5-S5
 }
 // S9-S26: the Map's "work left" colouring, from what Left behind (at its own radius) and My firsts already load:
 // {by: {id: {kind: lost | left | unsold, text}}, radius, loading}. The worst wins a system's colour (lost, then left
@@ -7542,6 +7549,7 @@ function renderSysAims() {
   if (CL.find) clDrawSide();
 }
 function plotRouteTo(name) {
+  hidePop();   // a tapped card (the Map's, S5-S5) does not linger over Plot Route
   hEl("hwyTo").value = name;
   if (!["exact", "neutron"].includes(hwyPlotter())) { const x = hForm.querySelector('[name=hwyPlotter][value="exact"]'); x.checked = true; x.dispatchEvent(new Event("change", {bubbles: true})); }
   H.openForm = true;   // renderHwy opens the form (it folds away while a route is followed)
@@ -7665,6 +7673,7 @@ const hwyFuel = v => v == null ? "" : fuelT(v);
 function hwyRowHtml(r, cls, retry = false) {
   return `<tr class="${cls}" data-i="${r.i}"><td class="num">${r.i}</td>` +
     `<td class="name" data-name="${esc(r.system)}" title="click to copy">${nameWords(r.system)}` +
+    (r.permit ? ` <span class="warnc" title="needs a permit you may not have (Spansh's record): the galaxy map will not plot into it">🔒</span>` : "") +
     (/\bat\b/.test(cls) ? "" : hwyAimBtn(r.system, "highway", r.i, true)) +
     (retry && canAim() ? ` <button type="button" class="mini hwyretry" data-aim="next" title="auto-target failed here: try again, 5 s from now (click back into the game meanwhile)">⟳ Retry</button>` : "") +
     `</td>` +
@@ -7690,17 +7699,46 @@ function hwyHeadHtml(hd) {
   const o = r.options || {}, sh = r.ship;
   const how = (r.plotter === "neutron"
     ? `neutron plotter · ${o.range != null ? `${o.range} ly range · ` : ""}×${o.supercharge_multiplier || 4} · ${o.efficiency ?? "?"}% efficiency` +
-      ` · no refuel stops: scoop as you go`
+      (o.no_scoop ? " · no refuel stops, and this ship has no fuel scoop: refuel at stations" : ` · no refuel stops: scoop as you go`)
     : `exact plotter${o.injections ? " · injections" : ""}${o.exclude_secondary ? " · no secondary stars" : ""}${o.no_neutrons ? " · no neutron boosts" : ""}`) +
-    (o.conservative_ly ? ` · conservative −${o.conservative_ly} ly` : "");
+    (o.conservative_ly ? ` · conservative −${o.conservative_ly} ly` : "") +
+    (o.no_scoop && r.plotter !== "neutron" ? " · no fuel scoop aboard: its refuel stops cannot be scooped" : "");
   const ship = sh ? ` · ${esc(shipLabel(sh.name, sh.type))}${sh.type && shipName(sh.type) !== shipLabel(sh.name, sh.type) ? ` (${esc(shipName(sh.type))})` : ""}` +
     (sh.ts ? ` <span title="the ship's figures come from this Loadout">as of ${esc(day(sh.ts))}</span>` : "") : "";
   return `<div class="hwyttl">To ${hwyName(r.to)} <span class="unk">from ${esc(r.from)}</span></div>` +
     `<div class="hwystats"><b>${n(s && s.jumps_total)}</b> ${jumpsWord(s && s.jumps_total)} · <b>${n(r.total_ly)}</b> ly` +
-    (s && !s.complete ? ` · left <b>${n(s.jumps_left)}</b> ${jumpsWord(s.jumps_left)} · <b>${n(s.ly_left)}</b> ly` : "") + `</div>` +
-    `<div class="hwystate">${hwyLineHtml(s, {glyph: false})}</div>` +
+    (s && !s.complete ? ` · left <b>${n(s.jumps_left)}</b> ${jumpsWord(s.jumps_left)} · <b>${n(s.ly_left)}</b> ly` : "") +
+    (s && s.eta_s ? ` · <span title="${esc(`your pace this login: a jump every ${Math.round(s.pace_s)} s (the median of your last jumps, honks and scoops included)`)}">about ${etaText(s.eta_s)} at your pace</span>` : "") + `</div>` +
+    `<div class="hwystate">${hwyLineHtml(s, {glyph: false})}</div>` + hwyReplotHtml(hd, s) +
+    (r.permit_note && !(s && s.complete) ? `<div class="hwystate warnc">🔒 ${esc(r.permit_note)}</div>` : "") +
     `<div class="unk hwyhow">${esc(how)}${ship}${r.created_ts ? ` · plotted ${esc(when(r.created_ts))}` : ""}</div>` + hwyClipHtml(hd.clipboard);
 }
+// S9-S8: re-plot the Highway from where you are, offered off the route and when it was plotted for another ship than
+// the one you fly (its fuel stops and warnings are that ship's); "" otherwise
+function hwyReplotHtml(hd, s) {
+  const r = hd.route, sh = r && r.ship;
+  if (!r || (s && s.complete)) return "";
+  const now = (hd.fleet || []).find(f => f.ship_id === hd.ship_id);
+  const other = sh && hd.ship_id != null && sh.ship_id !== hd.ship_id;
+  if (!other && !(s && s.off_route)) return "";
+  const note = other ? `plotted for your ${esc(shipLabel(sh.name, sh.type))}${now ? `; you fly the ${esc(shipLabel(now.name, now.type))}` : ""}: ` +
+    "its fuel stops and warnings don't apply" : "off the route";
+  return `<div class="hwystate hwyreplot"><span class="warnc">${note}</span> <button type="button" class="mini" data-hwyreplot ` +
+    `title="plot this route again from where you are, with the ship you fly now and the same options">↻ Re-plot from here</button></div>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest && e.target.closest("[data-hwyreplot]");
+  if (!b) return;
+  b.disabled = true;
+  let r;
+  try { r = await apiJson("api/highway/replot", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"}); }
+  catch (err) { r = {error: err.message}; }
+  b.disabled = false;
+  if (r.error) return toast(`No route plotted: ${hwyErr(r.error)}`);
+  toast("⏳ Plotting the route again from here");
+  if (H.data) H.data.plotting = r.plotting;
+  H.watch = true; drawHwyStatus(); hwyPoll();
+});
 function renderHwyList(hd) {
   const t = hEl("hwyTable"), r = hd.route, doneEl = hEl("hwyDone"), rowsEl = hEl("hwyRows");
   t.classList.toggle("neutron", !!r && r.plotter === "neutron");
@@ -7913,6 +7951,13 @@ async function carrierSubmit() {
   H.status = null; drawHwyStatus();
 }
 hEl("fcToMe").onclick = () => { const n = data && data.position && data.position.name; if (n) hEl("hwyTo").value = n; };
+// S9-S33: "← destination" fills To with the system targeted in the game (the galaxy map has no copy); nothing plots yet
+function drawHwyDest() {
+  const b = hEl("hwyDest"), g = H.data && H.data.game_target;
+  b.hidden = !(g && g.name);
+  if (g && g.name) b.title = `put the system targeted in the game in To: ${g.name}`;
+}
+hEl("hwyDest").onclick = () => { const g = H.data && H.data.game_target; if (g && g.name) hEl("hwyTo").value = g.name; };
 hEl("fcViaBtn").onclick = () => { const w = hEl("fcViaWrap"); w.hidden = !w.hidden; hEl("fcViaBtn").textContent = w.hidden ? "+ via" : "− via"; if (!w.hidden) hEl("fcVia").focus(); };
 hEl("fcType").onchange = e => { e.target.dataset.touched = "1"; };
 hForm.addEventListener("submit", async e => {
@@ -7925,8 +7970,12 @@ hForm.addEventListener("submit", async e => {
   H.status = null;
   setHwyStatus("Asking Spansh…", "busy");
   let r;
-  try { r = await apiJson("api/highway/plot", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(b)}); }
-  catch (err) { r = {error: err.message}; }
+  const post = body => apiJson("api/highway/plot", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  try { r = await post(b); } catch (err) { r = {error: err.message}; }
+  // S9-S31: a ship with no fuel scoop on the exact plotter is warned, never refused: "plot anyway" sends it again
+  if (r.code === "no_scoop" && confirm(`${r.error}.\n\nPlot anyway?`)) {
+    try { r = await post(Object.assign({}, b, {allow_no_scoop: true})); } catch (err) { r = {error: err.message}; }
+  }
   if (r.error) return setHwyStatus(`Could not plot the route: ${hwyErr(r.error)}.`, "err");
   store.set("hwyShow", "hwy"); H.status = null; H.watch = true;
   if (H.data) H.data.plotting = r.plotting;
@@ -8078,6 +8127,10 @@ function drawAtSet() {
   const m = a.missing || [], miss = hEl("atMissing");
   miss.hidden = !m.length;
   miss.textContent = m.length ? "Missing keyboard bindings (nothing will be pressed): " + m.map(x => `${x.key}: ${x.why}`).join("; ") : "";
+  // S7-S1: whether typing (US key positions) and paste (the clipboard tool) can work on this PC, before a run finds out
+  const ec = a.entry_check, ecEl = hEl("atEntryCheck"), ecText = ec ? `${ec.typing} · ${ec.paste}` : "";
+  ecEl.hidden = !ec;
+  if (ecEl.textContent !== ecText) ecEl.textContent = ecText;
   hEl("atTest").disabled = !a.available || !!a.running || !!(a.test && ["counting", "running"].includes(a.test.state));
   hEl("atTestMsg").textContent = hwyRun && hwyRun.kind === "test" ? hwyRun.msg : "";
 }
@@ -8149,6 +8202,7 @@ function renderHwy() {
   if (view !== "hwy") return;
   drawHwyAuto();
   const hd = H.data;
+  drawHwyDest();
   if (!hd) { hEl("hwyHead").innerHTML = H.error ? `<div class="err">Could not load the highway: ${esc(hwyErr(H.error))}</div>` : "loading…"; drawHwyStatus(); return; }
   const r = hd.route, rd = R.data, rr = rd && rd.route, kind = routeKind(), rich = kind === "rich" && !!rr;
   const busy = [hd.plotting, rd && rd.plotting].some(p => p && p.state === "running");
@@ -8991,12 +9045,13 @@ function renderSearch(bms) {
     ? (a, b) => a.name.localeCompare(b.name, undefined, {numeric: true})
     : (a, b) => a.distance - b.distance));
   document.getElementById("sRows").innerHTML = rows.map(r => `<tr>
-      <td class="bmcell">${bmIcon(r.id, r.name, bms || bmMap())}</td>
+      <td class="bmcell">${bmIcon(r.id, r.name, bms || bmMap())}${sweepTick(r.name)}</td>
       <td class="name" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${/^\d+$/.test(String(r.id)) ? sysAimBtn(r.name, r.id) : ""}${firstsIcon(r.firsts)}${r.visited
         ? `<span class="badge s-visited">visited</span>` : ""}</td>
       <td class="num dist"${r.from_you != null ? ` title="${r.from_you.toFixed(2)} ly from you"` : ""}>${r.distance.toFixed(2)}</td>
       <td class="matches">${Object.entries(r.matches).map(([k, hits]) =>
         `<div><span class="mlbl">${sLabels[k] || k}</span>${hits.map(h => hitHtml(h, r.id)).join("; ")}</div>`).join("")}</td></tr>`).join("");
+  drawSweep();   // S9-S10: Search's results tick into a sweep too
 }
 async function pollSearch() {
   if (searchPolling) return;

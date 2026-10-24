@@ -102,7 +102,8 @@ def find_device(evdev, spec, code=None):
     """The input device `spec` names: a /dev/input path (a by-id link too) or a part of its name, case ignored.
     With `code` (the button), of the devices whose names match, the first that can send it: "X-56" matches the stick
     and the throttle of a two-part HOTAS, and only one has the button (review F41); none of them saying so, the first.
-    (device, None), or (None, why not)."""
+    (device, None), or (None, why not); (device, words) when the device taken lists its buttons and that one is not
+    among them (S7-S5: a wrong [copilot] button, or the stick named where the throttle has it): it is still read."""
     spec = str(spec or "").strip()
     if not spec:
         return None, "no [copilot] device set (python3 -m outrider.button --listen lists them)"
@@ -128,8 +129,12 @@ def find_device(evdev, spec, code=None):
         dev.close()
     if found and first:
         first.close()
-    if found or first:
-        return found or first, None
+    if found:
+        return found, None
+    if first:   # S7-S5: a device that cannot list its keys is left as it is
+        lacks = code is not None and bool(_keys(evdev, first))
+        return first, ("which that device does not report: check [copilot] button (python3 -m outrider.button --listen)"
+                       if lacks else None)
     return None, f"no input device named like {spec!r}" + (
         f" ({unreadable} could not be opened: joysticks need the uaccess tag, keyboards the input group)" if unreadable else "")
 
@@ -176,7 +181,7 @@ class ButtonWatch:
             if dev is None:
                 self.status = f"{why}; looking again every {RETRY:g} s"
             else:
-                self.status = self.listening = f"listening to {dev.name} for {code_name(ev, code)}"
+                self.status = self.listening = f"listening to {dev.name} for {code_name(ev, code)}" + (f", {why}" if why else "")
                 try:
                     await self._read(dev, ev, code)
                     self.status = f"{dev.name} stopped sending; looking again every {RETRY:g} s"

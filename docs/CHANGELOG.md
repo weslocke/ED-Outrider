@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Suggestions (F): routes, auto-target and the Map
+- The full Fable review's suggestions, batch F:
+  - **S9-S8: ↻ Re-plot from here** on the Highway off its route, or when it was plotted for another ship ("its fuel stops
+    and warnings don't apply"): POST `/api/highway/replot`, the same plotter and options with the ship you fly now.
+  - **S9-S9: "about 1 h 40 at your pace"** on the Highway's head and in the status report (this login's median jump gap).
+  - **S9-S31: a ship with no fuel scoop on the exact plotter is warned**, with "plot anyway"; the head says so after.
+  - **S9-S32: stops that need a permit** are checked after each plot (🔒 on the row, a note under the head).
+  - **S9-S33: "← destination"** beside Plot Route's To fills it with the system targeted in the game.
+  - **S9-S10: sweep ticks on Search's results.** **S5-S5:** the Map's tapped card has Plot route.
+  - **S9-S30: pins in Bookmarks' Export**, and Import takes that file.
+  - **S7-S1: the Auto-target box says whether the name entry can work here** (the keyboard layout for typing, the
+    clipboard tool for paste). **S7-S5:** the co-pilot button says when the matched device does not report its button.
+
 ## 2026-10-24 · Suggestions (E): exobiology and geology
 - The full Fable review's suggestions, batch E:
   - **S9-S5: My Samples shows what Vista Genomics paid for a sold run** (the BioData entry's Value plus Bonus, kept since

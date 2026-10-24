@@ -20,7 +20,10 @@ kept apart from both.
   from a range, the supercharge (×4, or ×6 with the SCO Mk II) and an efficiency: for a ship you haven't flown, or
   a quick plot.
 - **Ship.** Any ship you have flown, as of its latest Loadout. The neutron plotter's **Range** starts at that
-  ship's laden range; type another to override it.
+  ship's laden range; type another to override it. A ship with no fuel scoop on the exact plotter is warned (its
+  refuel stops are scoopable stars it cannot use), with **plot anyway**; the route's head says so after.
+- **← destination** beside To fills it with the system targeted in the game (the galaxy map has no copy); nothing is
+  plotted until you press Plot.
 - **📋 paste** beside From, To and a trade route's Station fills the field with the name on the **game PC's**
   clipboard (copied from EDSM, Spansh or anywhere), for a window that never takes focus (a touchscreen beside the game)
   or the Android app, where typing is awkward. It only fills: nothing is plotted until you press Plot. Shown in the game
@@ -57,8 +60,15 @@ arrive there: "The next 3
   it. The map beside it draws the route on the galactic regions with landmarks and your carrier. You can put your
   own galaxy image under it (`background_image`, an EDAstro chart say).
 - **Following.** Arriving at any route system moves you along, forwards or back; anywhere else (a respawn
-  included) is **Off Route: Detour** until you are back on it, with the closest route system marked. A line under
+  included) is **Off Route: Detour** until you are back on it, with the closest route system marked, and **↻ Re-plot
+  from here** plots the same route again from where you are (the same plotter and options, the ship you fly now).
+  The same button shows when the route was plotted for another ship than the one you fly ("plotted for your Krait;
+  you fly the Anaconda: its fuel stops and warnings don't apply"). A line under
   the tiles (and on Now) shows the next stop ("🛣 Next: Hwy Stop 38 · ⚡ neutron · 4.2 ly · 38 of 399 · refuel in 3 jumps").
+  The route's head says how long the jumps left take at this login's pace ("about 1 h 40 at your pace": the median gap
+  of your last jumps, breaks left out), and the status report says it too.
+- **Permits.** Each plotted route is checked against Spansh's records: a stop or destination that needs a permit is
+  marked 🔒 and the head says so ("Sol needs a permit you may not have: the route ends there").
 - **Clipboard.** On arrival the next system's name goes on the desktop clipboard for the galaxy map (Linux:
   `wl-copy` or `xclip`, see [Getting started](install.md#-getting-started); Windows: built in; on the game PC only).
 - **The voice:** "Next Neutron Highway Stop: Hwy Stop 38, with three jumps left to refuel. Boost your FSD to
@@ -97,8 +107,8 @@ own rocky and HMC page lists every plain rocky body too, worth a couple of thous
 a body is done once it is scanned and mapped. Followed like Road to Riches; the end is "Earth-like route complete."
 (or "Ammonia route complete.", "Terraformable route complete.").
 
-**A sweep.** Tick systems in **Left behind**, **My firsts** (with show lost: the systems whose data was lost) or
-**Bookmarks**, then **🧹 Plot a sweep (N)** beside any of the three lists (the ticks are one set across them, kept until
+**A sweep.** Tick systems in **Left behind**, **My firsts** (with show lost: the systems whose data was lost),
+**Bookmarks** or **Search**'s results, then **🧹 Plot a sweep (N)** beside any of those lists (the ticks are one set across them, kept until
 the page reloads). Spansh's tourist router puts them in the order to fly them, from where you are with your ship's range,
 and Plot Route shows the route: on each arrival the voice says the next stop, and "Sweep complete." at the last. A system
 Spansh doesn't know yet (a fresh discovery among your lost firsts, say) is left out, and the plot's message and the
@@ -200,7 +210,8 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   controls preset says (`{"UI_Select": "KEY_SPACE"}`). Opening the map, entering the name, closing the map and
   checking the target are always done; the parts below are yours to change, each with **↺ default** to put Outrider's own back: **into the search field**,
   **submit the search** and **plot the route**, with the timings and whether the name is typed or pasted (a pasted name that finds nothing is typed once more:
-  the clipboard can come out empty): **pause
+  the clipboard can come out empty; a line under the choice says whether each can work on this PC: typing presses US
+  key positions, so another keyboard layout should paste, and on GNOME only `xclip` leaves the game focused): **pause
   between keys** (0.25 s) follows every key of the three parts, since the galaxy map can miss a key pressed straight
   after another, so no `wait` is needed between keys; **typing delay** is only between the name's characters when it
   is typed; the **search wait** (3 s to start) grows by a second for each 200 ly to the system, up to 7 s (the map's flight there is

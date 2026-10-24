@@ -140,6 +140,44 @@ PHASES = {1: "open the galaxy map", 2: "go to the search field", 3: "enter the s
           5: "plot the route", 6: "close the galaxy map", 7: "check the target"}
 
 # US keyboard layout: each printable ASCII character as (evdev key, shift)
+def keyboard_layout(run=None, platform=None):
+    """S7-S1: this desktop's keyboard layout, as a short name ("us", "de", "us,de"), for the Auto-target box's word on
+    typing (the name is typed by US key positions); None when it cannot be told. Linux: `setxkbmap -query`, else
+    `localectl status`; Windows: the foreground thread's layout (0409 is US English). Read only: nothing is pressed."""
+    platform = platform or sys.platform
+    if platform == "win32":
+        try:
+            import ctypes
+            lang = ctypes.windll.user32.GetKeyboardLayout(0) & 0xFFFF
+        except Exception:  # noqa: BLE001 -- unknown is the answer
+            return None
+        return "us" if lang == 0x0409 else f"{lang:04x}"
+    import subprocess
+    run = run or subprocess.run
+    for argv, label in ((["setxkbmap", "-query"], "layout:"), (["localectl", "status"], "x11 layout:")):
+        try:
+            out = run(argv, capture_output=True, text=True, timeout=2).stdout or ""
+        except (OSError, subprocess.SubprocessError):
+            continue
+        for line in out.splitlines():
+            if line.strip().lower().startswith(label):
+                return line.split(":", 1)[1].strip() or None
+    return None
+
+
+def entry_check(layout, tool):
+    """S7-S1: {typing, paste} in words for the Auto-target box: whether typing a name can work with this layout (US key
+    positions are typed), and whether paste has a clipboard tool that leaves the game focused."""
+    first = (layout or "").split(",")[0].strip().lower()
+    typing = ("typing: layout unknown (US key positions are typed: on another layout, prefer paste)" if not first
+              else "typing: US layout ✓" if first in ("us", "en-us") or first.startswith("us(")
+              else f"typing: US key positions are typed and your layout is {layout}: prefer paste")
+    paste = ("paste: no clipboard tool found (install xclip)" if not tool
+             else "paste: only wl-copy found: on GNOME it takes the keyboard focus from the game; install xclip"
+             if tool == "wl-copy" else f"paste: {tool} ✓")
+    return {"typing": typing, "paste": paste}
+
+
 US_KEYMAP = {" ": ("KEY_SPACE", False)}
 for _c in "abcdefghijklmnopqrstuvwxyz":
     US_KEYMAP[_c] = ("KEY_" + _c.upper(), False)

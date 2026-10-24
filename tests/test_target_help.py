@@ -55,5 +55,34 @@ class Cheatsheet(unittest.TestCase):
         self.assertIn("<td>Space</td>", text)
 
 
+
+class EntryCheck(unittest.TestCase):
+    """S7-S1: the Auto-target box says whether typing (US key positions) and paste (the clipboard tool) can work here."""
+
+    def test_the_words(self):
+        E = T.entry_check
+        self.assertEqual(E("us", "xclip"), {"typing": "typing: US layout ✓", "paste": "paste: xclip ✓"})
+        self.assertEqual(E("de,us", "wl-copy")["typing"], "typing: US key positions are typed and your layout is de,us: prefer paste")
+        self.assertIn("takes the keyboard focus", E("de", "wl-copy")["paste"])
+        self.assertIn("layout unknown", E(None, None)["typing"])
+        self.assertIn("install xclip", E(None, None)["paste"])
+
+    def test_the_layout_is_read_not_pressed(self):
+        import subprocess
+        import support
+        calls = []
+
+        def run(argv, **kw):
+            calls.append(argv[0])
+            if argv[0] == "setxkbmap":
+                raise FileNotFoundError(argv[0])
+            return subprocess.CompletedProcess(argv, 0, stdout="   System Locale: LANG=de_DE.UTF-8\n       X11 Layout: de\n")
+        self.assertEqual(support.REAL_KEYBOARD_LAYOUT(run=run, platform="linux"), "de")
+        self.assertEqual(calls, ["setxkbmap", "localectl"])
+        ok = lambda argv, **kw: subprocess.CompletedProcess(argv, 0, stdout="rules:      evdev\nlayout:     us\n")
+        self.assertEqual(support.REAL_KEYBOARD_LAYOUT(run=ok, platform="linux"), "us")
+
+
 if __name__ == "__main__":
     unittest.main()
+

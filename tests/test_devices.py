@@ -832,7 +832,9 @@ class BatchBVoiceControl(unittest.TestCase):
         dev, why = outrider.button.find_device(ev, "x-56", 300)
         self.assertEqual((dev.path, why), ("/dev/input/event5", None))      # the throttle: the stick has no button 300
         self.assertTrue(all(d.closed for d in Dev.opened if d is not dev))   # the others are let go
-        self.assertEqual(outrider.button.find_device(ev, "x-56", 999)[0].path, "/dev/input/event4")   # none has it: the first
+        dev, why = outrider.button.find_device(ev, "x-56", 999)
+        self.assertEqual(dev.path, "/dev/input/event4")                     # none has it: the first, and S7-S5 says so
+        self.assertIn("which that device does not report", why)
         self.assertEqual(outrider.button.find_device(ev, "x-56")[0].path, "/dev/input/event4")        # no code: the first
         dev, why = outrider.button.find_device(ev, "Rhino")
         self.assertIsNone(dev)

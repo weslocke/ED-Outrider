@@ -6381,6 +6381,32 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| suggestions E |", good ? "a sold run's paid figure, the suit row, the Exomastery codex clause" : JSON.stringify({got, want}), errors.slice(before));
   }
+  // Suggestions (F): S9-S9 the time left at your pace; S9-S8 re-plot from here (off the route, another ship); S9-S32
+  // the permit lock on a row; S5-S5 Plot route on the Map's tapped card; S9-S33 "← destination"
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      const o = {};
+      o.eta = [etaText(600), etaText(6000), etaText(6000, true), etaText(3600, true)];
+      const hd = {route: {ship: {ship_id: 3, name: "Old Krait", type: "krait_mkii"}}, ship_id: 7, fleet: [{ship_id: 7, name: "New Conda", type: "anaconda"}]};
+      o.other = hwyReplotHtml(hd, {off_route: false}).replace(/<[^>]+>/g, "");
+      o.off = /data-hwyreplot/.test(hwyReplotHtml({route: {ship: null}, ship_id: 7, fleet: []}, {off_route: true}));
+      o.none = hwyReplotHtml({route: {ship: {ship_id: 7}}, ship_id: 7, fleet: []}, {off_route: false});
+      o.lock = /🔒/.test(hwyRowHtml({i: 3, system: "Sol", permit: true, distance: 5, jumps: 1, remaining: 0}, ""));
+      const md = M.data; M.data = {center: {x: 0, y: 0, z: 0}};
+      o.plot = /data-plotto="Far Away"/.test(mapPopHtml({name: "Far Away", id: "5", x: 1, y: 1, z: 1}, true));
+      M.data = md;
+      const was = H.data; H.data = {game_target: {name: "Colonia", id: "3238296097059"}}; drawHwyDest();
+      o.dest = !hEl("hwyDest").hidden; hEl("hwyDest").click(); o.to = hEl("hwyTo").value;
+      H.data = was; drawHwyDest(); hEl("hwyTo").value = "";
+      return JSON.stringify(o); })()`));
+    const want = {eta: ["10 min", "1 h 40", "1 hour 40", "1 hour"],
+                  other: "plotted for your Old Krait; you fly the New Conda: its fuel stops and warnings don't apply ↻ Re-plot from here",
+                  off: true, none: "", lock: true, plot: true, dest: true, to: "Colonia"};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| suggestions F |", good ? "pace, re-plot, permits, the Map's Plot route, ← destination" : JSON.stringify({got, want}), errors.slice(before));
+  }
   // S9-S20: an upload on hold gets its own alerts row, off until ticked (the card comes from the server either way),
   // said by Comms; S7-S6: an empty backfill Preview says why ("412 lines left out, the Legacy game ...")
   {
@@ -7914,7 +7940,7 @@ const releasePayloads = async () => {
     w.eval(`(() => { const k = window.__s51; data.bookmarks = k.bm; leftData = k.left; firstsData = k.firsts; fShowLost.checked = k.lost;
       data.survey = k.sv; drawSweep({}); store.set("hwyShow", ""); document.querySelector('[data-view="' + k.view + '"]').click(); })()`);
     await w.eval("loadRich(true)"); await settle(1000);
-    const want = {ticks: ["Book One", "Left One", "Lost One"], hiddenFirst: true, buttons: ["🧹 Plot a sweep (2)", "🧹 Plot a sweep (2)", "🧹 Plot a sweep (2)"],
+    const want = {ticks: ["Book One", "Left One", "Lost One"], hiddenFirst: true, buttons: ["🧹 Plot a sweep (2)", "🧹 Plot a sweep (2)", "🧹 Plot a sweep (2)", "🧹 Plot a sweep (2)"],   // + Search's (S9-S10)
       slotTitle: true, kept: true, posted: [{kind: "sweep", systems: ["Book One", "Left One"]}], after: ["hwy", 0, true],
       line: ["🧹 Sweep complete", "🌍 Earth-like worlds to Far · 1 body to do here"], refused: ["Could not plot the sweep: smoke.", 1], untick: [0, false]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));

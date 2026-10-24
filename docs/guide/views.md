@@ -184,7 +184,7 @@ map, hwy, hist, log, mat, cmdr, firsts, overview).
 **Bookmarks** is its own tab: the systems you have bookmarked (☆ beside any system), each with its note and distance.
 The same ☆ sets your **next stop**, shown in the header until you get there. Where auto-target can work (the game PC) a **🎯** beside a bookmark
 or the next stop targets it in the galaxy map, and **Plot route** puts it in Plot Route's To (plotted at once when you
-follow no route). **Export** saves them as CSV or JSON; **Import…** beside it adds the bookmarks in such a file to yours
+follow no route). **Export** saves them as CSV or JSON (your surface pins too, as a file of their own, which Import takes as well); **Import…** beside it adds the bookmarks in such a file to yours
 ("12 added, 3 already there"): a system you have already bookmarked keeps your own note, and a row it cannot read is
 left out with its line and the reason (a spreadsheet that turned a long id64 into 1.15292E+18 is the usual one; save
 that column as text). Up to 10,000 bookmarks a file. The Android app has no Import… (it opens no file picker): import from a browser. **Plot Route** has its own page:

@@ -171,5 +171,38 @@ class SuitLow(unittest.TestCase):
         self.assertEqual(self.look(1 | 1 << 4 | 1 << 6), [])
 
 
+
+class JumpPace(unittest.TestCase):
+    """S9-S9: this login's pace, for "about 1 h 40 at your pace"."""
+
+    def setUp(self):
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+
+    def jumps(self, times, kind="FSDJump", ride=0):
+        for n, t in enumerate(times):
+            self.db.execute("INSERT INTO jumps (ts, id64, name, kind, ride) VALUES (?, ?, ?, ?, ?)",
+                            (ed_outrider.iso_ts(t), n + 1000 * ride, f"S{n}", kind, ride))
+
+    def test_the_median_gap_without_breaks(self):
+        t0 = 1_800_000_000
+        times = [t0 + 45 * i for i in range(6)] + [t0 + 45 * 5 + 2400 + 45 * i for i in range(5)]   # a 40-minute break
+        self.jumps(times)
+        self.assertEqual(self.state.jump_pace(), 45)
+        self.jumps([t0 + 10 + 45 * i for i in range(5)], kind="CarrierJump", ride=1)   # rides are not your pace
+        self.assertEqual(self.state.jump_pace(), 45)
+
+    def test_none_under_three_gaps_and_before_this_login(self):
+        t0 = 1_800_000_000
+        self.jumps([t0, t0 + 50, t0 + 100])
+        self.assertIsNone(self.state.jump_pace())                          # two gaps
+        self.j.commander = {"login_ts": ed_outrider.iso_ts(t0 + 1000)}
+        self.jumps([t0 + 1000 + 60 * i for i in range(4)])
+        self.assertEqual(self.state.jump_pace(), 60)                       # only this login's
+
+
 if __name__ == "__main__":
     unittest.main()
+

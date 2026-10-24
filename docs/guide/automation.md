@@ -67,7 +67,8 @@ Docker), where the HOTAS is plugged in:
 
 Set it up in **Settings → Auto honk → The co-pilot button** (or `[copilot]` in `ed_outrider.toml`): tick **use it**,
 give the **device** (part of its name, such as `"X-56 Rhino Throttle"`, or a `/dev/input/by-id/…` path; of several
-devices that match, the one that has the button is used) and the **button**, then Save and Restart now. Run
+devices that match, the one that has the button is used; when none of them reports that button, the section says so)
+and the **button**, then Save and Restart now. Run
 `python3 -m outrider.button --listen` to find the button's name. **hold** and **double tap** (ms) tune the gestures.
 The section shows whether it is listening. Auto honk's own **key**, **wait after arriving**, **hold** and **leave
 systems already honked alone** are there too (the wait and the skip are used from the next honk, the key and the hold
