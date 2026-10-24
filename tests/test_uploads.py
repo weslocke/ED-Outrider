@@ -888,6 +888,7 @@ class CoreFixes(MarksAndCatchUp):
         db.execute("UPDATE upload_queue SET state='sent' WHERE source='J:2'")
         ed_outrider.meta_set(db, "upload_marks", {"eddn": ["J.log", 1, None]})
         ed_outrider.meta_set(db, "edsm_backfill", {"state": "running", "total": 3})   # S47's, under way in the backup
+        ed_outrider.meta_set(db, "inara_sent", {"Tester": {"ship": "x"}})   # its queued snapshots go with the queue
         db.commit()
         db.close()
         ed_outrider.forget_upload_position(path)
@@ -897,6 +898,7 @@ class CoreFixes(MarksAndCatchUp):
         bf = ed_outrider.meta_get(db, "edsm_backfill")
         self.assertEqual((bf["state"], bf["total"]), ("stopped", 3))   # its queued rows are gone: it ends, said so
         self.assertEqual([r[0] for r in db.execute("SELECT state FROM upload_queue")], ["sent"])
+        self.assertIsNone(ed_outrider.meta_get(db, "inara_sent"))   # sent again at the next login (review S7-B4)
 
 
 class LoopFixes(unittest.TestCase):

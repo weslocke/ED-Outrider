@@ -86,7 +86,8 @@ rail, the co-pilot button, the clipboard and sound played on the PC. Everything 
      docker compose logs -f    (the first start imports every journal: a while for years of them)
 
 5. Open http://<this computer>:\${PORT:-8025}/ then Settings > Server settings: set a password (every device signs
-   in here, your own browser too) and add this computer's name to allowed hosts if you open it by name. Then:
+   in here, your own browser too) and add this computer's name to allowed hosts if you open it by name (with the
+   port when PORT is not 8025, e.g. nas:8030: the refusal page names the exact text). Then:
      docker compose restart
 
 Uploads (EDDN, EDSM, off unless switched on): to let another Outrider see that this one uploads, give it a writable

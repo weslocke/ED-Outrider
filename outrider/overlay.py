@@ -310,7 +310,8 @@ def health(wanted, runner, track, quiet, started, live, loading, fullscreen=Fals
     if state == "failed":
         return out("bad", "failed", f"the overlay window: {why or 'it stopped'}")
     if state == "restarting":
-        return out("wait", "restarting", f"the overlay window {why or 'stopped'}")
+        # as the failed one reads (review 2026-10-23 S7-B5: "the overlay window it stopped (exit 1)")
+        return out("wait", "restarting", f"the overlay window: {why or 'it stopped'}")
     quiet = float("inf") if quiet is None else quiet
     if state == "starting" or (not started and (quiet <= QUIET_S or state == "off")):
         return out("wait", "starting", "starting the overlay window")

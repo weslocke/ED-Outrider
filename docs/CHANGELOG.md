@@ -2,6 +2,27 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Review fixes (5): the rest of the server
+- The full Fable review of 2026-10-23, fix batch 5:
+  - **S1-B1: every number Settings saves is refused out of range in words** ("[highway] efficiency must be 1 to 100
+    %"): one table, `CONFIG_RANGES`, for all the numbers settings_from clamps; they were written and then clamped
+    silently, the field showing a number nobody typed. A hand-edited file is still clamped (auto honk's delay now at
+    30 s there too).
+  - **S3-B2:** a new EDSM backfill no longer shows the last one's "N not sent". **S3-B4:** a stopped or failed EDSM
+    import refreshes the visited marks and History at once. **S3-B5:** each place the import finds is kept at once.
+  - **S3-B6:** with Skip known passing the rest of a boxel over, the co-pilot says so, not "every system is visited".
+  - **S4-B6:** the danger wait after an arrival judges the run's own Status.json reading. **S4-B7:** with no game
+    window found, the countdown says so (not "not the active window"), and the box stops saying it once a look finds it.
+  - **S4-B9: the boxel's automatic run has its own cancel token and holds the keyboard while its switch is on**: the
+    Highway's switch or a cleared route no longer stops it, and it works without them.
+  - **S4-B10:** a search keeps only the systems it shows. **S4-B12:** an unchanged notice keeps its place.
+    **S4-B13:** a service install that fails at systemctl removes the unit it wrote.
+  - **S6-B2:** a personality whose voice will not load speaks as the main voice's own person, never as that voice's
+    person number. **S7-B4:** a restore lets Inara's snapshots go again at the next login. **S7-B5:** the overlay's
+    restart line reads "the overlay window: it stopped (exit 1)…".
+  - **S7-B6:** a host name refused names the exact text to add to allowed hosts, its port included (Docker on another
+    PORT), and install.md and the bundle's INSTALL.txt say so.
+
 ## 2026-10-24 · Review fixes (4): journal data (PARSER_VERSION 59: one full re-read)
 - The full Fable review of 2026-10-23, fix batch 4:
   - **S2-B1 (medium): History's "Since your last sale" counts only what was sold after it**: the last cartographic

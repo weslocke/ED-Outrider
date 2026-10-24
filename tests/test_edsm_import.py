@@ -219,6 +219,25 @@ class Server(unittest.TestCase):
         self.assertEqual(EL.unlocated(self.db), ["A", "B"])               # C found by EDSM
         self.assertIn("of 3", self.state.edsm_import()["why"])
 
+    def test_a_lookup_found_survives_another_writers_rollback(self):
+        """Review 2026-10-23 S3-B5: a name found was written but committed only every tenth lookup, so a failed tick's
+        rollback on the same connection between two lookups took it, for good."""
+        async def system_record(name):
+            if name == "B":
+                self.db.rollback()   # the tick failing meanwhile, on the shared connection
+            return {"name": name, "id64": 55, "x": 1.0, "y": 2.0, "z": 3.0} if name == "A" else None
+        self.state.spansh = types.SimpleNamespace(cached=lambda i: (None, None), system_record=system_record,
+                                                  edsm_system=lambda name: None)
+
+        async def no_edsm(name, gate=None):
+            hit = await system_record(name)
+            return (hit["id64"], hit["x"], hit["y"], hit["z"]) if hit else None
+        EL.store(self.db, "Sample Pilot", [{"system": n, "date": f"2026-09-12T08:0{i}:00Z"} for i, n in enumerate("AB")])
+        self.db.commit()
+        with unittest.mock.patch.object(self.state, "edsm_import_locate", no_edsm):
+            asyncio.run(self.state.edsm_import_resolve(EL.unlocated(self.db)))
+        self.assertEqual(EL.unlocated(self.db), ["B"])                    # A's place kept
+
     def test_stop_or_failure_then_go_on_and_remove(self):
         [(status, _)] = self.start([self.weeks()[0], ConnectionRefusedError(f"https://www.edsm.net/x?apiKey={KEY}")])
         p = self.state.edsm_import_summary()["progress"]
@@ -228,6 +247,7 @@ class Server(unittest.TestCase):
         self.assertEqual([s for s, _ in self.slept], [30, 60, 120, 300, 600])
         self.assertEqual(len(self.state.upload_session.calls), 1 + 6)
         self.assertFalse([x for x in self.printed if KEY in x])
+        self.assertIn(101, self.state.visited)   # the week read before the failure counts at once (review S3-B4)
         # Go on: from where it stopped, the week already read not asked again
         self.start(self.weeks()[1:])
         calls = self.state.upload_session.calls

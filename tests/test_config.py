@@ -299,9 +299,12 @@ class Batch0Security(unittest.TestCase):
                 r4 = await c.get("/api/speech", headers={"Host": "attacker.example"})
             async with TestClient(TestServer(ed_outrider.make_app(self.state, {"good:1"}))) as c:
                 r5 = await c.get("/api/speech", headers={"Host": "bad:1"})   # (the client's own 127.0.0.1 is an IP: answered)
+                self.refused_text = await r5.text()
                 r6 = await c.get("/api/speech", headers={"Host": "good:1"})
             return [r.status for r in (r1, r2, r3, r4, r5, r6)]
         self.assertEqual(asyncio.run(go()), [403, 500, 429, 200, 403, 200])
+        # the exact text to add, its port included (review 2026-10-23 S7-B6: Docker on another PORT)
+        self.assertIn('add "bad:1" (exactly that, with its port if it has one)', self.refused_text)
 
     def test_voice_names(self):
         import tempfile

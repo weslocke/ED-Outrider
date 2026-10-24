@@ -183,7 +183,12 @@ def install(root, args=(), how=None, why=None, graphical=True, env=None, bash=No
     for cmd in (["systemctl", "--user", "daemon-reload"], ["systemctl", "--user", "enable", UNIT_NAME]):
         ok, words = _run(cmd)
         if not ok:
-            raise ServiceError(f"the unit is written ({path}) but {words}")
+            # not left half installed: Settings would show it Installed while systemd knows nothing of it (S4-B13)
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            raise ServiceError(f"the unit could not be enabled ({words}), so it was removed again: {path}")
     when = "when you log in to your desktop" if graphical else "with your user's systemd (at boot too after: loginctl enable-linger)"
     return out + [f"enabled: ED Outrider starts {when}. To switch to it now, stop the Outrider you started by hand, then "
                   "run: systemctl --user start ed-outrider",

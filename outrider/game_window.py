@@ -93,6 +93,8 @@ class GameWindow:
         tr = self.tracker
         st = tr.poll() if tr is not None and not getattr(tr, "missing", False) else None
         self.window = st.identifier if st is not None and st.identifier else None
+        if self.window is not None and self.last and not self.last.get("checked") and self.last.get("why") == NOT_FOUND:
+            self.last = None   # found now: status() stops saying "no game window found" (review S4-B7)
         return self.window is not None
 
     def is_front(self):

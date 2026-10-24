@@ -369,6 +369,34 @@ class HomedKeys(TempConfig):
         with open(self.path, encoding="utf-8") as f:
             self.assertEqual(f.read(), before)
 
+    def test_every_clamped_number_is_refused_out_of_range(self):
+        """Review 2026-10-23 S1-B1: out of range was refused for four keys only; every other number was written and then
+        clamped silently, the field coming back with a number nobody typed. CONFIG_RANGES is the one list, and it must
+        match settings_from's own clamps (a hand-edited file is still clamped, as documented)."""
+        import argparse
+        import contextlib
+        import io
+        args = argparse.Namespace(journals=None, legacy=None, host=None, port=None, radius=None, db=None)
+
+        def read(section, key, value):
+            with contextlib.redirect_stderr(io.StringIO()):
+                st = ed_outrider.settings_from({section: {key: value}}, args, None, ([], []))
+            return st[section][key] if isinstance(st.get(section), dict) and key in st[section] else st[key]
+        for (section, key), (lo, hi, _unit) in ed_outrider.CONFIG_RANGES.items():
+            self.assertEqual(read(section, key, lo - (1 if lo >= 1 else 0.01 if lo else 1)), lo, (section, key))
+            if hi is not None:
+                self.assertEqual(read(section, key, hi + 1), hi, (section, key))
+        s = self.state
+        with open(self.path, encoding="utf-8") as f:
+            before = f.read()
+        for change, why in (({"highway": {"efficiency": 150}}, "[highway] efficiency must be 1 to 100 %"),
+                            ({"highway": {"autotarget_map_wait": 0.2}}, "[highway] autotarget_map_wait must be 1 to 30 s"),
+                            ({"spansh": {"concurrency": 0}}, "[spansh] concurrency must be at least 1"),
+                            ({"speech": {"pad_delay": 25}}, "[speech] pad_delay must be 0 to 20 s")):
+            self.assertEqual(s.config_save(change), ({"error": why}, 400), change)
+        with open(self.path, encoding="utf-8") as f:
+            self.assertEqual(f.read(), before)
+
     def test_overlay_system_seconds_and_radar_range(self):
         s = self.state
         out, status = s.overlay_set({"system_seconds": 30, "radar_range": 50})

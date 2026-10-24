@@ -159,8 +159,10 @@ class Unit(Base):
         self.calls.code, self.calls.stderr = 1, "Failed to connect to bus"
         with self.assertRaises(S.ServiceError) as e:
             S.install(self.root, [], "systemd", None, env={})
-        self.assertIn("the unit is written", str(e.exception))
+        self.assertIn("could not be enabled", str(e.exception))
         self.assertIn("Failed to connect to bus", str(e.exception))
+        # not left half installed: Settings would show it Installed (review 2026-10-23 S4-B13)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp.name, S.UNIT_NAME)))
 
     def test_windows_startup(self):
         lines = S.install("C:\\Games\\ED Outrider", ["--config", "C:\\Users\\p\\my 50%.toml"], "startup", None, env={})

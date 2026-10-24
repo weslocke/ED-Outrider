@@ -1700,6 +1700,9 @@ class Pill(unittest.TestCase):
         self.assertIn("no network", h(runner={"state": "install_failed", "why": "no network"})["why"])
         self.assertEqual(word(runner={"state": "failed", "why": "it stopped 5 times"}), ("bad", "failed"))
         self.assertEqual(word(runner={"state": "restarting", "why": "stopped"}), ("wait", "restarting"))
+        # the runner's own words, read as the failed state reads (review 2026-10-23 S7-B5: "the overlay window it stopped")
+        self.assertEqual(h(runner={"state": "restarting", "why": "it stopped (exit 1); starting it again in 5 s"})["why"],
+                         "the overlay window: it stopped (exit 1); starting it again in 5 s")
         self.assertEqual(word(runner={"state": "starting", "why": None}), ("wait", "starting"))
         self.assertEqual(word(started=False, quiet=3), ("wait", "starting"))           # started, not asked yet
         self.assertEqual(word(started=False, quiet=O.QUIET_S + 1), ("bad", "quiet"))    # started and never asked

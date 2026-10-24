@@ -327,6 +327,16 @@ class Server(unittest.TestCase):
         self.assertIn("does not take back-dated events", bf["why"])
         self.assertEqual([s for _, _, s in self.queued()], ["dropped", "dropped", "dropped"])
 
+    def test_a_new_backfill_does_not_carry_the_last_ones_unsent(self):
+        """Review 2026-10-23 S3-B2: a backfill stopped with rows unsent left "N not sent" on the next one's line."""
+        self.start()
+        [(status, j)] = self.post([(200, {})], {"action": "stop"})
+        self.assertEqual(j["progress"]["unsent"], 2)
+        self.start(end="2026-10-01 12:55")                              # one more event: a new backfill
+        bf = self.state.edsm_backfill()
+        self.assertEqual(bf["state"], "running", bf)
+        self.assertFalse(bf.get("unsent"))
+
     def test_dry_run_hold_go_on_and_stop(self):
         self.start()
         rows = U.due(self.db, "edsm_bf", ed_outrider.time.time())

@@ -12581,7 +12581,7 @@ function overlayStatusHtml(o) {
     `<span class="unk">(switch the overlay off and on to try again)</span>`;
   if (st === "starting") return `<span class="unk">starting the overlay window…</span>`;
   if (st === "running") return `<span class="unk">the overlay window is running, waiting for the game's window</span>`;
-  if (st === "restarting") return `<span class="warnc">the overlay window ${esc(r.why || "stopped")}</span>`;
+  if (st === "restarting") return `<span class="warnc">the overlay window: ${esc(r.why || "it stopped")}</span>`;
   if (st === "failed") return `<span class="bad">the overlay window: ${esc(r.why || "it stopped")}</span>`;
   return `<span class="unk">the overlay window starts when the overlay is on (or for the test panels)</span>`;
 }

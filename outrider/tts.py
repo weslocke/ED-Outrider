@@ -734,6 +734,10 @@ class Speaker:
         speed = min(2.0, max(0.5, float(speed or 1.0)))
         extra = self.extra_voice(voice)
         who = voice if extra else self.voice_name
+        if voice and voice != self.voice_name and not extra:
+            # that voice will not load: the main voice speaks, as its own picked person, never as that voice's person
+            # number (another of the main voice's people: review 2026-10-23 S6-B2)
+            speaker = None
         if speaker is None or isinstance(speaker, bool) or not isinstance(speaker, int) \
                 or not 0 <= speaker < len(self.voice_speakers(who)):
             speaker = self.speaker_for(who)

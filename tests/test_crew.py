@@ -333,6 +333,17 @@ class CrewState(unittest.TestCase):
             "crew: Engineer's voice en_GB-vctk-medium has no speaker 7: the XO speaks for it",
             "crew: Quartermaster's personality dry is not in the lines file: the XO speaks for it"])
 
+    def test_a_voice_that_will_not_load_never_lends_its_person_number(self):
+        """Review 2026-10-23 S6-B2: a personality's voice that would not load fell back to the main voice with the
+        personality's speaker number, which on a several-person main voice is a stranger; it is the main voice's own pick."""
+        sp = fake_speaker(self.dir, main="en_GB-vctk-medium", bad=("en_GB-broken-low",))
+        with contextlib.redirect_stderr(io.StringIO()):
+            got = sp.say("Hello.", voice="en_GB-broken-low", speaker=2)[44:].decode()
+        own = sp.say("Hello.")[44:].decode()
+        self.assertTrue(got.startswith("en_GB-vctk-medium:"), got)
+        self.assertEqual(got, own)                                        # the main voice's own person, not person 2
+        self.assertNotIn('"speaker_id": 2', got)
+
     def test_a_line_said_by_the_xo_on_the_server(self):
         """A crew member's line (the page sends the role with its voice): said in that voice and person when it can be,
         else by the XO, in the main voice and its own person (never that number of another voice), the log saying so

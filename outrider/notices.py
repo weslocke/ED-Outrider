@@ -40,10 +40,9 @@ class Board:
         n = {"id": notice_id(key, text), "key": key, "text": text, "level": level if level in LEVELS else "warn",
              "action": action or None}
         with self.lock:
+            if self.items.get(key) == n:
+                return False   # nothing changed: it keeps its place (review 2026-10-23 S4-B12: it moved to the end)
             old = self.items.pop(key, None)
-            if old == n:
-                self.items[key] = old   # back in its place: nothing changed
-                return False
             if old:
                 self.dismissed.discard(old["id"])   # its text changed: that dismissal is over
             self.items[key] = n

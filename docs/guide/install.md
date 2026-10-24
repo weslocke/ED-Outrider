@@ -196,7 +196,8 @@ turns the automation off inside a container by itself; `false` does the same on 
 the page says so at the top and in the Data tile. It writes its config to `docker/config/ed_outrider.toml` (every network address, the journals at
 `/journals`) and downloads the Cori voice. Open `http://<server>:8025/`, then ⚙ Settings → Server: set a
 **password** (nothing on a server counts as "this PC", so every device signs in, your own browser too), add the
-server's name to **allowed hosts** if you open it by name, save, and **Restart** (or `docker compose restart`). The address and port
+server's name to **allowed hosts** if you open it by name (with the port when `PORT` in `.env` is not 8025:
+`nas:8030`; the refusal page names the exact text to add), save, and **Restart** (or `docker compose restart`). The address and port
 inside the container are fixed (0.0.0.0, 8025): to use another port, set `PORT` in `.env`, not in Settings. If the log says it
 cannot write `/config` or `/app/data`, the folders belong to someone else: `sudo chown -R $(id -u):$(id -g) docker/`
 and `docker compose restart`. Later, ⚙ Settings → Server → **Show log** shows Outrider's log from any device, and

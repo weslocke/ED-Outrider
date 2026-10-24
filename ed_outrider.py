@@ -897,10 +897,30 @@ def _config_range(lo, hi, unit):
     """A check for a number Settings saves: refused outside lo..hi in words, rather than written and then clamped
     silently by settings_from (the field would come back with a number the player never typed: review 2026-10-23 L5)."""
     def check(v):
-        if isinstance(v, bool) or not isinstance(v, (int, float)) or not lo <= v <= hi:
-            raise ValueError(f"must be {lo:g} to {hi:g} {unit}")
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not lo <= v <= (math.inf if hi is None else hi):
+            raise ValueError((f"must be {lo:g} to {hi:g} {unit}" if hi is not None else f"must be at least {lo:g} {unit}").strip())
         return v
     return check
+
+
+# the numbers settings_from clamps, (section, key) -> (lo, hi or None, unit): a Settings save outside is refused in
+# words (CONFIG_CHECKS), never written and clamped silently, the field then showing a number nobody typed (review
+# 2026-10-23 S1-B1, the L5 class for every key). settings_from's clamps must match: tests/test_settings.py checks each.
+CONFIG_RANGES = {
+    ("defaults", "module_warn"): (1, 100, "%"), ("defaults", "rig_warn"): (100, RIG_LOST_M - 100, "m"),
+    ("defaults", "speech_profanity_pct"): (0, 100, "%"), ("defaults", "speech_speed"): (0.5, 2, "times"),
+    ("speech", "pad_delay"): (0, 20, "s"),
+    ("autohonk", "delay"): (0, 30, "s"), ("autohonk", "hold"): (0.5, 20, "s"),
+    ("copilot", "hold_ms"): (200, 3000, "ms"), ("copilot", "double_ms"): (100, 1000, "ms"),
+    ("highway", "autotarget_delay"): (0, 60, "s"), ("highway", "efficiency"): (1, 100, "%"),
+    ("highway", "conservative_ly"): (0.5, HIGHWAY_CONSERVATIVE_MAX, "ly"), ("highway", "background_opacity"): (0.05, 1, ""),
+    ("highway", "autotarget_map_wait"): (1, 30, "s"), ("highway", "autotarget_search_wait"): (0, 30, "s"),
+    ("highway", "autotarget_key_delay"): (0, 1, "s"), ("highway", "autotarget_step_pause"): (0, 2, "s"),
+    ("highway", "voice_plot_ly"): (1, 100000, "ly"),
+    ("server", "backup_keep"): (1, None, "backups"), ("server", "backup_every_days"): (0, None, "days"),
+    ("spansh", "concurrency"): (1, None, ""), ("spansh", "map_max_radius"): (5, None, "ly"),
+    ("spansh", "map_max_pages"): (1, None, "pages"),
+}
 
 
 # keys config_save checks as they are saved, saying why in the converter's own words (a bad step: parse_step's; a key
@@ -908,8 +928,7 @@ def _config_range(lo, hi, unit):
 # discussion #12; Settings -> Auto honk; review 2026-10-23 L1, L5)
 CONFIG_CHECKS = {**{("highway", "autotarget_" + k): _config_plot_steps for k in ("search", "submit", "plot", "target")},
                  ("highway", "autotarget_keys"): _config_target_keys,
-                 ("autohonk", "delay"): _config_range(0, 30, "s"), ("autohonk", "hold"): _config_range(0.5, 20, "s"),
-                 ("copilot", "hold_ms"): _config_range(200, 3000, "ms"), ("copilot", "double_ms"): _config_range(100, 1000, "ms")}
+                 **{k: _config_range(*r) for k, r in CONFIG_RANGES.items()}}
 
 
 def _config_button(v):
@@ -1104,7 +1123,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         "watch_firsts": flag("spansh", sp, "watch_firsts", WATCH_FIRSTS),
         "autohonk": {"enabled": flag("autohonk", ah, "enabled", AUTOHONK["enabled"]),
                      "key": num("autohonk", ah, "key", _config_str, None) or AUTOHONK["key"],
-                     "delay": max(0.0, num("autohonk", ah, "delay", float, AUTOHONK["delay"])),
+                     "delay": min(30.0, max(0.0, num("autohonk", ah, "delay", float, AUTOHONK["delay"]))),
                      "hold": min(20.0, max(0.5, num("autohonk", ah, "hold", float, AUTOHONK["hold"]))),
                      "skip_honked": flag("autohonk", ah, "skip_honked", AUTOHONK["skip_honked"]),
                      "announce": flag("autohonk", ah, "announce", AUTOHONK["announce"])},
@@ -7602,6 +7621,7 @@ class State:
         self._boxel_sectors = (None, {})   # (visits count when built, {(sx, sy, sz): sector name})
         self.autotarget_task = None
         self._autotarget_cancel = None   # threading.Event: the automatic run's own token (switch-off, route cleared/replaced)
+        self._boxel_cancel = None   # the boxel's automatic run's own (its switch, another boxel kept): review 2026-10-23 S4-B9
         self._autotarget_next_cancel = None   # the same for a Target next / Retry run (route cleared/replaced only)
         self._autotarget_next_route = "highway"   # the route that run aims at: "highway" or "survey" (🎯 on a survey row)
         self.autotarget_last = None   # {system, ts, done, phase, label, why, dry_run, test}: the latest run's result
@@ -7970,9 +7990,12 @@ class State:
                 self.targeter.configure(self.autotarget_cfg())
             # a dry run keeps the keyboard closed (set_autotarget): auto-target on, it opens or closes with the dry run now
             # (review 2026-10-23 M1: unticked, the next automatic run found it closed)
-            if "highway.autotarget_dry_run" in done and self.highway_cfg.get("autotarget") and self.honker \
-                    and self.honker.available:
-                (self.honker.close if self.highway_cfg["autotarget_dry_run"] else self.honker.open)("target")
+            if "highway.autotarget_dry_run" in done and self.honker and self.honker.available:
+                switch = self.honker.close if self.highway_cfg["autotarget_dry_run"] else self.honker.open
+                if self.highway_cfg.get("autotarget"):
+                    switch("target")
+                if meta_get(self.db, "boxel_auto"):   # the boxel's switch holds it too (S4-B9)
+                    switch("boxel")
         sp = self.speaker
         if done and sp is not None:
             if "speech.voices_loaded" in done:
@@ -14078,7 +14101,8 @@ class State:
                 self._bf_job(state="failed", text="every event of this range was queued before: nothing new to send")
                 return
             self.edsm_backfill_set(state="running", commander=pv["commander"], start=pv["start"], end=pv["end"], total=n,
-                                   counts={}, started=time.time(), finished=None, why=None, dry=outrider.edsm.dry_run())
+                                   counts={}, started=time.time(), finished=None, why=None, dry=outrider.edsm.dry_run(),
+                                   unsent=None)   # the last run's "N not sent" is not this one's (review S3-B2)
             self.db.commit()
             self.edsm_bf_preview = None
             self._bf_job(state="done", text=f"{n:,} event{'' if n == 1 else 's'} queued: one request every "
@@ -14218,6 +14242,7 @@ class State:
             self.edsm_import_set(state="stopped", why="stopped by you", finished=time.time())
             self.db.commit()
             self.edsm_import_task.cancel()
+            self.edsm_visited_changed()   # what was read counts at once, as "Stop keeps what was read" says (S3-B4)
             self.bump()
             return self.edsm_import_summary(), 200
         if action == "remove":
@@ -14309,10 +14334,12 @@ class State:
             self.edsm_import_set(state="failed", why=str(e) if str(e).startswith("EDSM:") else "EDSM's answer was not understood",
                                  finished=time.time())
             self.db.commit()
+            self.edsm_visited_changed()   # the weeks read before the failure count (review S3-B4)
         except Exception as e:   # the kind only: an error's text can carry the URL
             self.edsm_import_set(state="failed", why=f"Couldn't reach {getattr(e, 'source', 'EDSM')}: {rc.reach_words(e)}"
                                  + (f" (tried {len(rc.RETRY_WAITS_S) + 1} times)" if rc.transient(e) else ""), finished=time.time())
             self.db.commit()
+            self.edsm_visited_changed()
         p = self.edsm_import() or {}
         print(f"uploads: EDSM flight log import for CMDR {commander}: {p.get('state')}, {p.get('weeks_done', 0)} of "
               f"{p.get('weeks', 0)} weeks, {p.get('entries', 0):,} entries" + (f" ({p['why']})" if p.get("why") else ""))
@@ -14344,6 +14371,7 @@ class State:
             hit = await self.edsm_import_locate(name, gate)
             if hit:
                 el.set_location(self.db, name, *hit)
+                self.db.commit()   # at once: the tick's rollback on the same connection must not take it (review S3-B5)
         self.db.commit()
 
     async def edsm_import_locate(self, name, gate=None):
@@ -15396,6 +15424,8 @@ class State:
     def boxel_set(self, prefix=None, sector_index=None):
         """Explore another boxel (a recommended one: its prefix and sector index), or None: the one you are in again.
         False for a prefix that is no boxel's."""
+        if self._boxel_cancel is not None:   # another boxel: the run aimed at the old one's next system stops (S4-B9)
+            self._boxel_cancel.set()
         if prefix is None:
             meta_set(self.db, "boxel_active", None)
         else:
@@ -15480,7 +15510,9 @@ class State:
         # through or partly scanned still has its first discoveries open (review suggestion, 2026-10-12)
         skip = bool(meta_get(self.db, "boxel_skip_known"))
         nxt = None if complete or done else boxel_next_number(visited, spansh, end, skip)
-        return {"complete": complete, "done": done, "boxel": {"prefix": prefix, "label": b["label"], "mc": b["mc"], "size": outrider.boxel.size(b["mc"]),
+        # nothing left only because Skip known passed the rest over (review 2026-10-23 S3-B6: the reason said "visited")
+        skipped_all = bool(skip and nxt is None and not (complete or done) and boxel_next_number(visited, spansh, end) is not None)
+        return {"complete": complete, "done": done, "skipped_all": skipped_all, "boxel": {"prefix": prefix, "label": b["label"], "mc": b["mc"], "size": outrider.boxel.size(b["mc"]),
                           "kind": outrider.boxel.KINDS[b["mc"]], "standard": bool(b.get("standard")), "here": b["here"],
                           "picked": b["picked"], "center": b.get("center"), "sector_index": b.get("sector_index"),
                           "distance": round(dist(pos, b["center"]), 1) if pos and b.get("center") else None},
@@ -15723,7 +15755,8 @@ class State:
             n = v.get("next")
             if n is None:
                 return None, (f"{b['label']} is complete" if v.get("complete") else f"{b['label']} is marked done" if v.get("done")
-                              else f"every system of {b['label']} you know of is visited")
+                              else f"the systems of {b['label']} left are all fully scanned by others (Skip known is on)"
+                              if v.get("skipped_all") else f"every system of {b['label']} you know of is visited")
         if isinstance(n, bool) or not isinstance(n, int) or n < 0:
             return None, "the number must be a whole number"
         id64 = outrider.boxel.id64(b["sector_index"], b["boxel"], b["mc"], n)
@@ -15815,9 +15848,24 @@ class State:
             return False
         if self.autotarget_busy():
             return False
-        self._autotarget_cancel = cancel = threading.Event()
+        # its own token: the Highway's switch or a cleared route must not stop it, nor its switch the Highway's (S4-B9)
+        self._boxel_cancel = cancel = threading.Event()
         self.autotarget_task = loop.create_task(self._autotarget(tgt, cancel=cancel))
         return True
+
+    def set_boxel_auto(self, enabled):
+        """The boxel's auto-target switch (meta boxel_auto): off stops its run under way; the virtual keyboard is held
+        while it is on (owner "boxel"), as the Highway's switch holds it, so it works without that switch or auto honk
+        (review 2026-10-23 S4-B9)."""
+        meta_set(self.db, "boxel_auto", bool(enabled))
+        self.db.commit()
+        if not enabled and self._boxel_cancel is not None:
+            self._boxel_cancel.set()
+        if self.honker and self.honker.available:
+            if enabled and not self.highway_cfg.get("autotarget_dry_run"):
+                self.honker.open("boxel")
+            elif not enabled:
+                self.honker.close("boxel")
 
     # ---- the Neutron Highway ----
 
@@ -17914,13 +17962,15 @@ class State:
                             self.edsm_bf_task, self.edsm_import_task, self.reported_task, self.route_task,
                             *self.upload_tasks.values()) if t]
 
-    def arrival_danger_until(self, now=None):
+    def arrival_danger_until(self, now=None, st=None):
         """The game sets Status.json's in-danger flag on every use of the FSD, from the charge until some 16-26 s after
         a hyperspace arrival or entering supercruise (lifting off a planet...; logged in game 2026-10-09, any star,
         nothing near): no threat, but auto-target's guard refuses it. When that is all it can be (in danger, not
         interdicted, no jump charging, one of those here under AUTOTARGET_DANGER_WAIT s ago): the time a run may wait
-        until for it to clear; else None. After a restart the arrival is only in pos (whose ts is the arrival's)."""
-        st = self.journals.status_json or {}
+        until for it to clear; else None. After a restart the arrival is only in pos (whose ts is the arrival's). st: a
+        Status.json reading to judge (a run's own, status_now: review 2026-10-23 S4-B6), else the watcher's copy; the
+        journal half (the arrival) is always the watcher's, so a tap inside the arrival's own tick may be refused once."""
+        st = (self.journals.status_json if st is None else st) or {}
         flags, T = st.get("flags") or 0, outrider.target
         if not flags & T.FLAG_IN_DANGER or flags & (T.FLAG_INTERDICTED | T.FLAG_FSD_CHARGING | T.FLAG_FSD_JUMP):
             return None
@@ -17970,7 +18020,7 @@ class State:
         # map closed: review 2026-10-23 B2)
         st, end, mu = self.status_now() or {}, lambda: self.journals.navroute_end, self.music_now()
         g = outrider.target.guard(st, tgt["id64"], end, mu)
-        if g and g[0] == "danger" and self.arrival_danger_until():   # the arrival's own flag: the run waits it out,
+        if g and g[0] == "danger" and self.arrival_danger_until(st=st):   # the arrival's own flag: the run waits it out,
             g = outrider.target.guard(dict(st, flags=st["flags"] & ~outrider.target.FLAG_IN_DANGER), tgt["id64"], end, mu)
         if g and g[0] != "already":   # already the target: the run says so (and costs no key)
             return {"error": g[1]}, 400
@@ -18084,7 +18134,9 @@ class State:
         gw, loop = self.game_window, asyncio.get_running_loop()
         got = await loop.run_in_executor(None, gw.bring_forward)
         if not got["front"] and test and test.get("fallback"):
-            test.update({"state": "counting", "in": test.pop("fallback"), "note": outrider.game_window.NOT_FRONT})
+            # the real cause (review 2026-10-23 S4-B7: "not the active window" when no game window was found at all)
+            test.update({"state": "counting", "in": test.pop("fallback"),
+                         "note": got.get("why") or outrider.game_window.NOT_FRONT})
             self.bump()
             await asyncio.sleep(test["in"])
             test["state"] = "running"
@@ -18928,8 +18980,8 @@ class Searcher:
         # the auto honk carry on meanwhile
         results, coverage, note, sparse, found = await self.off_loop(
             lambda db: self.match(db, pos, source, radius, crit, sections, systems, coverage, note, you))
-        self.found.update(found)
         results.sort(key=lambda r: r["distance"])
+        self.keep_found(found, results)
         total = len(results)
         where = "your local database" if source == "local" else "Spansh"
         status = (f"{total} system{'s' if total != 1 else ''} within {coverage:g} ly of {pos['name']}"
@@ -18956,6 +19008,21 @@ class Searcher:
             finally:
                 db.close()
         return await asyncio.get_running_loop().run_in_executor(None, work)
+
+    def keep_found(self, found, results):
+        """The systems shown (results sorted, nearest first), for bookmarking a result, on top of the last searches' (a
+        row of one may still be on screen), at most 2 x SEARCH_MAX_RESULTS: every match of every search was kept for the
+        life of the server (review 2026-10-23 S4-B10)."""
+        for r in results[:SEARCH_MAX_RESULTS]:
+            try:
+                k = int(r["id"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if k in found:
+                self.found.pop(k, None)
+                self.found[k] = found[k]   # newest last
+        while len(self.found) > 2 * SEARCH_MAX_RESULTS:
+            self.found.pop(next(iter(self.found)))
 
     def match(self, db, pos, source, radius, crit, sections, systems, coverage, note, you=None):
         """The systems meeting every ticked section: (results, coverage, note, sparse, found). A local
@@ -19450,8 +19517,10 @@ def request_guard(allowed):
     async def guard(request, handler):
         host = (request.headers.get("Host") or "").strip().lower()
         if allowed is not None and host not in allowed and not ip_literal_host(host):
+            # the exact text to add, its port included (review 2026-10-23 S7-B6: Docker on another PORT needs "nas:8030")
             return web.Response(status=403, text=f"ED Outrider does not answer to the host name {host!r}. To reach it by "
-                                "that name, add it to [server] allowed_hosts in ed_outrider.toml.\n")
+                                f"that name, add \"{host}\" (exactly that, with its port if it has one) to [server] "
+                                "allowed_hosts: Settings -> Server on this PC, or ed_outrider.toml.\n")
         if request.method not in SAFE_METHODS:
             origin = request.headers.get("Origin")
             site = request.headers.get("Sec-Fetch-Site")
@@ -20653,8 +20722,7 @@ def make_app(state, hosts=None):
         if "auto" in body:
             if not isinstance(body["auto"], bool):
                 return web.json_response({"error": "auto must be true or false"}, status=400)
-            meta_set(state.db, "boxel_auto", body["auto"])
-            state.db.commit()
+            state.set_boxel_auto(body["auto"])
         if "prefix" in body and not state.boxel_set(body["prefix"], body.get("sector_index")):
             return web.json_response({"error": "not a boxel's name (the name of one of its systems, less its number)"}, status=400)
         if body.get("clear_end"):
@@ -21458,6 +21526,9 @@ def forget_upload_position(path):
         con.execute("DELETE FROM meta WHERE key = 'upload_marks'")
         if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='upload_queue'").fetchone():
             con.execute("DELETE FROM upload_queue WHERE state = 'queued'")
+        # Inara's queued snapshots went with them: forget what was sent, so each goes again at the next login (cheap,
+        # and what a key change does; review 2026-10-23 S7-B4: they were never sent)
+        con.execute("DELETE FROM meta WHERE key = 'inara_sent'")
         # a backfill under way in the backup (S47) has nothing left to send now: it ends, said so
         row = con.execute("SELECT value FROM meta WHERE key = 'edsm_backfill'").fetchone()
         try:
@@ -21830,6 +21901,9 @@ async def run(args, st):
         state.highway_cfg["autotarget"] = False
     if state.highway_cfg["autotarget"] and state.honker.available and not state.highway_cfg["autotarget_dry_run"]:
         state.honker.open("target")
+    if state.game_pc and meta_get(db, "boxel_auto") and state.honker.available \
+            and not state.highway_cfg["autotarget_dry_run"]:
+        state.honker.open("boxel")   # the boxel's switch holds the keyboard as the Highway's does (S4-B9)
     print("highway clipboard: " + (f"{state.clipboard.tool} (copies the next system when you arrive at a route system)"
                                    if state.clipboard.tool and state.clipboard.enabled else
                                    "off ([highway] clipboard)" if not state.clipboard.enabled else

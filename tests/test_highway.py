@@ -3081,6 +3081,36 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(said[0]["text"], "Not targeting due to danger. I will keep trying until you are out of danger, "
                                           f"for up to {said[0]['secs']} seconds.")
 
+    def test_no_game_window_says_so_in_the_countdown(self):
+        """Review 2026-10-23 S4-B7: with no game window found at all the countdown said "not the active window"; it says
+        none was found, and once a later look finds it, the box stops saying so."""
+        import asyncio
+        import outrider.game_window as G
+        self.state.honker, self.state.targeter = self.honker, self.targeter
+        self.j.status_json = self.status
+        hwy_plot_exact(self)
+        hwy_jump(self, 1, 101, "Neu A", 50)
+        self.state.autotarget_test_countdown = 0.3
+        p = unittest.mock.patch.object(G, "FRONT_WAIT_S", 0.05)
+        p.start()
+        self.addCleanup(p.stop)
+        desk = FakeDesktop(windows={FakeDesktop.BROWSER: "ED Outrider \u2014 Mozilla Firefox"})
+        self.state.game_window = desk.window()
+
+        async def go():
+            self.status["destination"] = None
+            self.state.start_autotarget_run("next")
+            await asyncio.sleep(0.15)
+            seen = dict(self.state.autotarget_test)
+            await self.state.autotarget_test_task
+            return seen
+        seen = asyncio.run(go())
+        self.assertEqual((seen["state"], seen["note"]), ("counting", G.NOT_FOUND))
+        self.assertEqual(self.state.game_window.status()["why"], G.NOT_FOUND)
+        desk.windows[FakeDesktop.GAME] = "Elite - Dangerous (CLIENT)"
+        self.assertTrue(self.state.game_window.locate())
+        self.assertEqual(self.state.game_window.status(), {"front": True, "why": None})
+
     def test_runs_bring_the_game_forward(self):
         """S74: where this PC can bring Elite's window to the front (a fake desktop here: nothing real is activated), the
         page's 🎯 runs at once, no countdown; the activation ignored, it counts down after all, saying why, and still
