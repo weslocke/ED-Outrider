@@ -11,6 +11,115 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## 2026.10.28 · 24 October 2026 · The Mining Release
+
+**Ring mining from the first limpet to the sale, auto-target that copes with any search, Settings tidied, new voice
+questions, carrier upkeep and a lost trip's rescans, and over 100 fixes from code reviews.**
+
+> [!IMPORTANT]
+> **The first start re-reads your journals once** (your mining sessions, past deaths, samples and first scans put
+> right): a few seconds, or a few minutes for years of journals. Outrider **backs up your database first**, and the
+> page shows how far it has got. Your bookmarks, pins, routes and settings are kept. Spansh's records are fetched
+> again as you go.
+
+### ⛏ Ring mining
+
+- **Settings → Mining** (new): tick the ring types you watch for (pristine only, if you like) and the Mining Officer
+  says a body that has one as the FSS resolves it. Hover a ring type for what lasers and cores give there.
+- **Remind me to take limpets** when you undock a mining ship with none aboard (off to start).
+- **The prospector call-out**: the minerals you want and the percentage worth stopping for, motherlodes too.
+- **The mining line** on Now and the overlay's system strip while you mine: the ring and hotspot, tons an hour, the
+  hold, limpets left and minutes to full; spoken once a stint at limpets low, hold nearly full and hold full, with
+  the best price nearby (out in the black: the nearest buyer within 10,000 ly, never your own carrier).
+- **Your hotspot record**: CMDR → Sessions' **Hotspots** table (hit rate, best ship's tons an hour, credits an hour)
+  and a **Where** column for each mining session; Here's ring hover and body card show your record under each ring,
+  and "1🗺/5" for rings mapped and hotspots in them, with the body's reserves.
+- The Rhino's alerts moved into Mining's own alerts table.
+
+### 🎯 Auto-target
+
+- **Settings → Auto-target** (new, game PC): the galaxy map's steps in boxes you can edit, each with **↺ default**,
+  a **Macro cheatsheet ↗** with every control and key the steps take, **▶ test now** against a system you type, a
+  dry run box and your own keys for a control. Every 🎯 uses these steps.
+- **A name with several results works** (Sol, Solati…): the search now picks the first result. If you never changed
+  the submit steps you have it already; if you did, **↺ default** puts it in. (Thanks to Kurbo26,
+  [discussion #12](https://github.com/weslocke/ED-Outrider/discussions/12).)
+- **A route's next stop is targeted, not plotted**, when the route makes it one jump: the game's planner ignores a
+  supercharge with **Use Jet-Cone Boost** off and plotted six jumps for one.
+- **A pause between keys** (0.25 s), a search wait that grows with the distance, control names in any case, its
+  settings without a restart, and each step's keys in the log.
+- **More reliable runs**: the galaxy map is judged by the journal as well as Status.json (which can lag by seconds),
+  Target System closing the map by itself is expected, an empty paste is typed instead. **Linux:** the paste uses
+  `xclip` wherever there is an X display (install it if you use paste).
+- The box says whether typing or paste can work on this PC.
+
+### ⚙ Settings
+
+- **15 sections, related ones together**, and **Alerts in groups**, each alert named with one line of when it fires
+  (the fine print in its hover). Alerts and Questions asked take the full width on a big screen.
+- **Settings → Server** lists only what has no home elsewhere, in six groups. Auto honk has fields for its key, wait,
+  hold and the co-pilot button; the overlay for its system panel and radar range.
+- A number out of range is refused in words, not saved and quietly changed.
+
+### 🎙 Voice questions
+
+- **"say that again"**, **"where am I"**, **"bookmark this system"** (any words after it are its note) and **"remove
+  the bookmark"**, and **"show the map"** (or Nearby, Bio, Bookmarks, …) to switch the tablet's page.
+- "next stop" and the status report follow whichever route you follow; the fuel answer gives your jump range.
+- `python3 -m outrider.speech --skeleton "Name"` writes a personality file for you to fill in.
+
+### 🔭 Exploring and exobiology
+
+- **Clear to sample while flying the ship** below 5 km, not only on foot or in an SRV (thanks to Offshorepred,
+  [discussion #3](https://github.com/weslocke/ED-Outrider/discussions/3)).
+- **A composition scan's codex entry names the species at once**, its colour and value.
+- **Coming back for scans lost with a ship**: Now's Next line, the arrival briefing and the leaving warning name the
+  scans to redo and what they are worth; lost sample runs join My firsts' Show lost list.
+- **Low suit oxygen or health on foot**: a danger line with what a death would lose (a new alert, off until ticked).
+- My Samples shows what Vista Genomics actually paid; the Geology checklist's 🔍 finds bodies nearby; Exomastery
+  counts species new to your codex; Guardian, Thargoid and anomaly sites from Spansh's records.
+- Left behind sorts by its headers; the Map can colour by **work left**.
+
+### 🛣 Routes and the carrier
+
+- **A finished route clears itself** at your next jump out of its last system.
+- **↻ Re-plot from here** on the Highway when you left its route or changed ship; **about 1 h 40 at your pace**;
+  a ship without a fuel scoop is warned; stops that need a permit get 🔒; **← destination** fills Plot Route's To
+  with the game's target. Sweep ticks on Search; pins in Bookmarks' Export and Import.
+- **The carrier's upkeep counted down to today**, with a card under 4 weeks (and an alert, off until ticked); a
+  deposit into its bank counts. The depot follows the carrier's jumps between readings and says how old its reading
+  is; "⚠ last jump it can pay"; the tritium in your ship counts toward a shortfall, with a buy button.
+- Sell asks only for the tons you can sell; the lookup goes on with the journal's commodity name.
+
+### 🧰 Running it
+
+- **More than one commander in a journal folder**: a card offers to keep the one with the most journals
+  (`[journals] commander`); while another commander plays, Outrider stands down.
+- **An upload on hold** (a key refused or not saved yet) gets a card, and what you play waits until the key is saved.
+- **The launchers start when a package will not install** (an optional one is named, with how to add it later).
+- A database that cannot be opened says how to restore it; a `[server] host` that is no longer this PC's address
+  falls back to this PC; Backups say what they take on the disk and refuse a backup the disk cannot hold; a card when
+  the journal folder goes away; Windows finds a moved Saved Games folder.
+- **Faster**: History's counts, Left behind, the unsold estimate and the Log's search do far less work.
+- The browser's own scrollbars and fields follow the dark page; reduced motion stops the pulses and spinners.
+
+### 🔧 Fixes from the code reviews
+
+- **Security:** inside a container the password is never skipped (rootless Docker and Podman delivered every device
+  as "this PC"); no other site can frame the page.
+- **Spansh:** a failed ask about a boxel no longer loops while Spansh is down.
+- **Uploads:** an error in one round no longer stops that service's sending for the session.
+- **History's "Since your last sale"** no longer counts the last sale itself; a death on foot or in the SRV no
+  longer clears the ore you mined.
+- **The carrier:** "re-plot from here" takes the depot and hold as they are now; a depot never read is refused in
+  words.
+- **The light theme's** coloured marks read on white; the Data tile no longer turns amber in supercruise while
+  Status.json moves; the carrier tile's buttons take their click during a trip.
+- **And many smaller ones:** docked at a planetary port is not "flying low", a chat message that mentions you is
+  always read, every long-running part of Outrider says when it stops.
+
+---
+
 ## 2026.10.27 · 20 October 2026 · bug fix release
 
 **Systems whose Spansh data predates Odyssey called out, the geology a body could show, the Anaconda Mk II, and 28

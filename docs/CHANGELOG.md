@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Version 2026.10.28, The Mining Release
+- Ring mining, Settings → Auto-target and its fixes (#12), the Settings tidy, the full Fable review of 2026-10-23's 60
+  fixes and 64 suggestions, the route auto-clear and the bug check's 29 fixes. What's new has its section.
+  PARSER_VERSION 60: one re-read at the first start (from 2026.10.27's 55).
+
 ## 2026-10-24 · The docs brought up to date with the review's work
 - A read-only audit of every doc against the code since 02bf77c found about 75 places behind it; all fixed: the user
   guide (the features of the review's fixes and suggestions where a player looks, a few lines that no longer held:
