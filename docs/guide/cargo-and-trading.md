@@ -39,7 +39,8 @@ The **Materials** tab starts with your **Cargo**.
   sell order in its hold covers it: the hover says whether to move it into the depot before the jumps, or top it up
   again on the way when it needs more than the 1,000 t depot takes at once). Equal jumps of up to 500 ly in a straight
   line, each lighter than the last (the real trip is never shorter). A booked jump says its own: "(432 ly jump ≈ 96 t;
-  depot after ≈ 572 t)". The game's fuel formula is checked against your carrier's own jumps (what the depot held
+  depot after ≈ 572 t)". The journal reads the depot only when you open the carrier's management (or deposit
+  tritium): after a jump since, the tile shows "≈ 534t", the reading less the jumps' burn, until you open it again. The game's fuel formula is checked against your carrier's own jumps (what the depot held
   before and after each one, from its stats and your tritium deposits): once three are measured, their median scales
   the figures (at most ±20%), and the hover says so ("checked against your carrier's last 12 jumps: no correction
   needed"). Tritium other players donate is not in your journal, so such a jump reads low; the median rides over it.

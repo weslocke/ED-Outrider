@@ -9477,7 +9477,7 @@ const releasePayloads = async () => {
       readyQ: [true, [["Your carrier should be ready to jump. Next leg: Leg Two.", "carriertrip"]]],
       ready: [true, [["Carrier ready to jump. Next leg: Far End.", "carriertrip"]]], late: [], arrival: " Leg 2 of 3, 1 to go.", departs: true,
       off: [true, " That is off the planned trip."],
-      posts: [{from: null, to: "Far End", via: null, fuel: 668, hold: 12000, used: 16000, type: "fleet"}, {clear: true}],
+      posts: [{replot: true}, {clear: true}],   // re-plot: the server takes the figures as they are now (review S4-B1)
       list: [true, true, 4, true, true],
       form: [true, true, true, true, "Plot the carrier's trip", "668", "12000", "16000"],
       submit: [{to: "Where I Am", fuel: 500, hold: 12000, used: 16000, type: "fleet", via: "Jaques"}]};

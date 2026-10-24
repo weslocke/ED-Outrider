@@ -2640,6 +2640,22 @@ JOURNAL_SETTLE_STATS = 3
 JOURNAL_FULL_CHECK_S = 60
 
 
+CARRIER_MOVES_KEEP = 30   # moves since the last depot reading kept for the estimate (a reading clears them)
+
+
+def note_carrier_move(c, id64):
+    """The carrier moves to `id64`: [from, to] joins c["moves"], the jumps since the last depot reading (CarrierStats or
+    CarrierDepositFuel clear them), whose burns State.carrier_depot takes off the reading (review 2026-10-23 S6-B3: the
+    depot figure stood still after every jump). A move that only corrects an assumed one (settle_carrier's) replaces it."""
+    moves = list(c.get("moves") or [])
+    origin = c.get("id64")
+    if c.get("assumed") and moves and moves[-1][1] == origin:
+        origin = moves.pop()[0]   # the booked jump that was taken for done: from where it really left
+    if origin is not None and origin != id64:
+        moves.append([origin, id64])
+    c["moves"] = moves[-CARRIER_MOVES_KEEP:]
+
+
 def carrier_seen(c, system, id64, ts, jumped=False):
     """The journal says where your carrier is (CarrierLocation, docking at it, CarrierJump aboard).
 
@@ -2654,6 +2670,7 @@ def carrier_seen(c, system, id64, ts, jumped=False):
     except (TypeError, ValueError):
         gone = False
     if id64 != c.get("id64"):
+        note_carrier_move(c, id64)
         c.update(system=system, id64=id64, x=None, y=None, z=None, moved_ts=ts, planned=None)
     elif jumped or gone:
         c["planned"] = None
@@ -3243,6 +3260,7 @@ class Journals:
                 return False
         except (TypeError, ValueError):
             return False
+        note_carrier_move(c, pl["id64"])
         c.update(system=pl.get("system"), id64=pl["id64"], x=None, y=None, z=None,
                  moved_ts=pl["departure"], planned=None, assumed=True)
         meta_set(self.db, "carrier", c)
@@ -4779,6 +4797,7 @@ class Journals:
                 and isinstance(ev.get("Total"), int) and self.fresh("carrier", ts, self.carrier_ts()):
             self.carrier["fuel"] = ev["Total"]   # the depot after it (the tile's tritium)
             self.carrier["stats_ts"] = max(self.carrier.get("stats_ts") or "", ts)
+            self.carrier["moves"] = []   # a reading: no estimate on top of it
             meta_set(self.db, "carrier", self.carrier)
         sc = self.ship_cargo
         if ts < (sc.get("ts") or "") and name != "Cargo":
@@ -4953,7 +4972,7 @@ class Journals:
             if c.get("id") not in (None, ev.get("CarrierID")):
                 c = {}   # another carrier (the old one decommissioned): nothing of the old one's place or plans
             c.update(id=ev.get("CarrierID"), name=ev.get("Name"), callsign=ev.get("Callsign"),
-                     fuel=ev.get("FuelLevel"), jump_range=ev.get("JumpRangeCurr"), stats_ts=ts)
+                     fuel=ev.get("FuelLevel"), jump_range=ev.get("JumpRangeCurr"), stats_ts=ts, moves=[])
         elif name == "CarrierBuy":
             # a new carrier: its state starts here (its name comes with its first CarrierStats)
             if stale() or ev.get("CarrierID") is None:
@@ -10089,10 +10108,11 @@ class State:
         stats = (st or {}).get("stats") or {}
         # the capacity in use now (carrier_burn's: the last CarrierStats and your journaled moves since)
         used = stats["used"] + st["after_stats"] if isinstance(stats.get("used"), int) else None
-        fuel = c.get("fuel") if isinstance(c.get("fuel"), int) else None
         # the formula scaled by the carrier's own measured jumps (S13 B), 1 until it has BURN_MIN_SAMPLES of them
         factor = self.carrier_burn_factor() if c.get("id") is not None else None
         k = factor["k"] if factor else 1.0
+        depot = self.carrier_depot(used, k)   # the reading less the jumps since (S6-B3)
+        fuel = depot["fuel"] if depot else None
         planned = dict(c["planned"]) if c.get("planned") else None
         if planned and planned.get("id64") and pos:   # how far the booked jump takes it from you
             where = self.locate(int(planned["id64"])) if str(planned["id64"]).isdigit() else None
@@ -10121,7 +10141,9 @@ class State:
                 "carrier_id": str(c["id"]) if c.get("id") is not None else None,   # which carrier (a new one: no "arrived")
                 "aboard": aboard,
                 "id64": str(c["id64"]), "distance": round(d, 1) if d is not None else None,
-                "fuel": c.get("fuel"), "jump_range": c.get("jump_range"), "planned": planned, "trip": trip,
+                "fuel": fuel, "fuel_estimated": bool(depot and depot["estimated"]),
+                "fuel_read": depot["read"] if depot else None, "fuel_read_ts": depot["read_ts"] if depot else None,
+                "jump_range": c.get("jump_range"), "planned": planned, "trip": trip,
                 "burn_factor": factor,   # {k, n, raw}: the tritium figures' scale from its own jumps (S13 B), or None
                 "has_uc": has_uc, "has_vista": has_vista, "suspended": suspended,
                 "finance": self.carrier_finance(st),
@@ -10436,6 +10458,26 @@ class State:
                     ship=ship.get("type"), laden=round(laden, 1) if laden else None, where=pos.get("name"), dssa=dinfo,
                     around=pos["around"], errors=errors), 200
 
+    def carrier_depot(self, used=None, k=1.0):
+        """The depot now: {fuel, read (the last reading), estimated, unsure}. The last CarrierStats/CarrierDepositFuel
+        reading, less the burn of every jump the carrier made since (carrier_burn over each move's distance, scaled by
+        its measured k): estimated True while there are such jumps, unsure when one could not be measured (a system
+        not known here). None when the depot was never read (review 2026-10-23 S6-B3)."""
+        c = self.journals.carrier or {}
+        read = c.get("fuel") if isinstance(c.get("fuel"), int) else None
+        if read is None:
+            return None
+        fuel, unsure = read, False
+        for a, b in c.get("moves") or []:
+            wa, wb = self.locate(int(a)), self.locate(int(b))
+            if not (wa and wb) or used is None:
+                unsure = True
+                continue
+            ly = math.dist(wa[1:4], wb[1:4])
+            fuel = max(0, fuel - round(k * outrider.cargo.carrier_burn(ly, used, fuel)))
+        return {"fuel": fuel, "read": read, "estimated": bool(c.get("moves")), "unsure": unsure,
+                "read_ts": c.get("stats_ts")}
+
     def carrier_tritium(self):
         """The Carrier tile's tritium, only while tritium is on a sell order at your carrier (a confirmed line): the
         depot, the depot plus the hold, and how many 500 ly jumps that gives (outrider.cargo.carrier_jumps)."""
@@ -10447,9 +10489,10 @@ class State:
         if not line or line["state"] != "confirmed" or not isinstance(c.get("fuel"), int):
             return None
         used = stats["used"] + st["after_stats"] if isinstance(stats.get("used"), int) else None
-        return {"depot": c["fuel"], "total": c["fuel"] + line["count"],
-                "jumps": outrider.cargo.carrier_jumps(c["fuel"], line["count"], used,
-                                                      k=(self.carrier_burn_factor() or {}).get("k", 1.0))}
+        k = (self.carrier_burn_factor() or {}).get("k", 1.0)
+        fuel = self.carrier_depot(used, k)["fuel"]
+        return {"depot": fuel, "total": fuel + line["count"],
+                "jumps": outrider.cargo.carrier_jumps(fuel, line["count"], used, k=k)}
 
     def cargo_recount(self, counts):
         """POST /api/cargo/recount {counts: {commodity: tons}}: your counts for carrier lines Outrider cannot confirm.
@@ -16982,7 +17025,10 @@ class State:
         used = stats["used"] + st["after_stats"] if isinstance(stats.get("used"), int) else None
         line = ((st or {}).get("lines") or {}).get("tritium")
         hold = line["count"] if line and line.get("state") == "confirmed" else 0
-        return {"from": c.get("system"), "fuel": c.get("fuel") if isinstance(c.get("fuel"), int) else None, "hold": hold,
+        # the depot now: the last reading less the jumps since (S6-B3), said estimated while there are any
+        depot = self.carrier_depot(used, (self.carrier_burn_factor() or {}).get("k", 1.0)) if c.get("id") is not None else None
+        return {"from": c.get("system"), "fuel": depot["fuel"] if depot else None, "hold": hold,
+                "fuel_estimated": bool(depot and depot["estimated"]), "fuel_read_ts": depot["read_ts"] if depot else None,
                 "used": max(used, hold) if used is not None else hold or None,
                 "type": "squadron" if str(c.get("type") or "").lower().startswith("squadron") else "fleet"}
 
@@ -16993,6 +17039,21 @@ class State:
             return {"error": "a carrier trip is being plotted already"}, 409
         d = self.carrier_trip_defaults()
         name = lambda v: " ".join(v.split()) if isinstance(v, str) else ""
+        estimated = False
+        if body.get("replot"):
+            # "re-plot from here" (review 2026-10-23 S4-B1): the trip's own request from where the carrier is now, with
+            # the depot, the hold and the cargo as they are now (the jumps since the reading taken off), never the
+            # figures it was planned with, and without a via it has already passed
+            t = meta_get(self.db, "carrier_trip")
+            if not t or not isinstance(t.get("request"), dict):
+                return {"error": "no carrier trip to re-plot"}, 400
+            req, at = t["request"], t.get("at") or 0
+            passed = {norm_name(x["system"]) for x in t["legs"][:at + 1]}
+            if t.get("off"):
+                passed.add(norm_name(t["off"].get("system") or ""))
+            via = req.get("via") if req.get("via") and norm_name(req["via"]) not in passed else None
+            body = {"to": req.get("to"), "via": via, "type": req.get("type")}
+            estimated = d["fuel_estimated"]
         frm, to, via = name(body.get("from")) or d["from"] or "", name(body.get("to")), name(body.get("via"))
         if not frm:
             return {"error": "no carrier seen yet: give the system it is in"}, 400
@@ -17012,15 +17073,22 @@ class State:
                     or not lo <= v <= hi:
                 raise ValueError(f"{k} must be a whole number from {lo:,} to {hi:,}")
             return int(v)
+        if body.get("fuel") in (None, "") and d["fuel"] is None:
+            # never a full depot taken for granted (review 2026-10-23 S4-B3), as the trade plot refuses an unknown capital
+            return {"error": "give the depot's tritium (t): no carrier statistics read yet (open the carrier's management "
+                             "panel once)"}, 400
+        if body.get("fuel") in (None, ""):
+            estimated = estimated or d["fuel_estimated"]
         try:
-            fuel = whole("fuel", 0, outrider.cargo.CARRIER_DEPOT_MAX, d["fuel"] if d["fuel"] is not None else 1000)
+            fuel = whole("fuel", 0, outrider.cargo.CARRIER_DEPOT_MAX, d["fuel"])
             hold = whole("hold", 0, capacity, d["hold"] or 0)
             used = whole("used", 0, capacity, d["used"] if d["used"] is not None else hold)
         except ValueError as e:
             return {"error": str(e)}, 400
         if used < hold:
             return {"error": "the cargo in use includes the tritium in the hold: it cannot be less"}, 400
-        request = {"from": frm, "to": to, "via": via or None, "fuel": fuel, "hold": hold, "used": used, "type": kind}
+        request = {"from": frm, "to": to, "via": via or None, "fuel": fuel, "hold": hold, "used": used, "type": kind,
+                   "estimated": estimated}   # the depot taken as estimated (the jumps since its reading): said on the trip
         params = {"source": frm, "destinations": tuple(x for x in (via, to) if x), "capacity": capacity, "mass": mass,
                   "capacity_used": used, "calculate_starting_fuel": 0, "fuel_loaded": fuel, "tritium_stored": hold}
         self.carrier_trip_plotting = {"state": "running", "from": frm, "to": to, "started": iso_ts(time.time()), "error": None}
@@ -17065,12 +17133,20 @@ class State:
         cid = c.get("id64")
         if not t or cid is None or cid == t.get("seen_id64"):
             return False
-        if t.get("done_ts"):   # the carrier moved on after the trip's end: it is over (its "complete" was said once)
-            meta_set(self.db, "carrier_trip", None)
-            return True
-        t["seen_id64"] = cid
         legs, at = t["legs"], t.get("at") or 0
         hit = lambda i: legs[i].get("id64") == cid or norm_name(legs[i]["system"]) == norm_name(c.get("system") or "")
+        if t.get("done_ts"):
+            # the carrier moved on after the trip's end: it is over (its "complete" was said once), unless it is on a leg
+            # of it, the last jump having only been assumed (settle_carrier) and not made: the trip goes on from there
+            # (review 2026-10-23 S4-B5: it was thrown away one leg short)
+            back = next((i for i in range(len(legs) - 2, -1, -1) if hit(i)), None)
+            if back is None:
+                meta_set(self.db, "carrier_trip", None)
+                return True
+            t.update(at=back, done_ts=None, off=None, seen_id64=cid, arrived_ts=c.get("moved_ts") or iso_ts(time.time()))
+            meta_set(self.db, "carrier_trip", t)
+            return True
+        t["seen_id64"] = cid
         # any leg (sweep 2026-10-17): the start when the trip was planned from elsewhere, the current one after a detour,
         # a later one skipped to; the nearest ahead first
         j = next((i for i in range(at, len(legs)) if hit(i)), None)
@@ -17096,7 +17172,7 @@ class State:
         legs, at = t["legs"], t.get("at") or 0
         c = self.journals.carrier or {}
         ready = None
-        if at and t.get("arrived_ts") and not t.get("done_ts"):
+        if t.get("arrived_ts") and not t.get("done_ts"):   # leg 0 too: arriving at a trip's start (review S4-B4)
             try:
                 ready = ts_seconds(t["arrived_ts"]) + CARRIER_COOLDOWN_S
             except (TypeError, ValueError):

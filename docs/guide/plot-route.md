@@ -116,7 +116,8 @@ needed against what you have. It never replaces your ship's route, and 🎯 neve
 Following it, on the **Carrier tile**: "Leg 2/6 → the next system 📋 · departs 12:30 ✕". 📋 copies the system to
 paste in the carrier map (only when you click it); after a jump the line counts the cooldown down, then says
 **ready** (or **ready?** when you are away: only the booked jump says the carrier moved, and a busy system can delay
-it). A jump onto a later leg skips ahead; one anywhere else says "off the trip", with **re-plot from here**; ✕ ends the
+it). A jump onto a later leg skips ahead; one anywhere else says "off the trip", with **re-plot from here** (from the
+depot as it is now, without a via already passed); ✕ ends the
 trip, and the last leg ends it. The Quartermaster says "Carrier ready to jump. Next leg: …" when the cooldown should be
 over (the **Carrier trip** row in Settings → Alerts) and adds "Leg 3 of 6, 3 to go" to the carrier's arrival line.
 

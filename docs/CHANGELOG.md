@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Review fixes (3): carrier trips and the depot between readings
+- The full Fable review of 2026-10-23, fix batch 3:
+  - **S6-B3: the depot figure follows the carrier's jumps.** The journal reads the depot only at CarrierStats and
+    CarrierDepositFuel; each move since is kept and its burn taken off the reading, shown "≈" with the reading in the
+    hover, until the carrier's management is opened again.
+  - **S4-B1 (medium): "re-plot from here" takes the figures as they are now** (the depot, hold and cargo, the jumps
+    since the reading taken off) and drops a via already passed; it sent the trip's original 1,000 t and routed the
+    carrier back to the via.
+  - **S4-B3: a depot never read is refused in words** ("open the carrier's management panel once"), never taken as a
+    full 1,000 t.
+  - **S4-B4: the cooldown and "ready" after arriving at the trip's first system** (a trip plotted from elsewhere).
+  - **S4-B5: an assumed last jump the game did not make keeps the trip** on the leg the carrier is really on.
+
 ## 2026-10-24 · Review fixes (1) and (2): the Boxel ask that looped, nothing stops silently, the password in Docker
 - Both batches in one commit (the first's check ran while the second was being written).
 - **Fix batch 2, security** (the full review's S4-B2, S4-B16, S4-B17):

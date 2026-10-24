@@ -543,11 +543,14 @@ function renderCarrier() {
   // else the meeting line), "UC ✓ · Vista ✓ · Tritium: depot/total", the balance and upkeep
   const move = trip ? carrierTripLineHtml(trip, pl, c) : plan || meet;
   const depot = tr ? tr.depot : c.fuel;
+  // the jumps since the last reading taken off it (S6-B3): "≈", and the reading in the hover
+  const est = c.fuel_estimated, estNote = est ? `; ≈ estimated: ${c.fuel_read != null ? c.fuel_read.toLocaleString() + " t" : "the depot"} when last read` +
+    `${c.fuel_read_ts ? ` (${shortDay(c.fuel_read_ts)})` : ""}, less the jumps since (open the carrier's management to read it again)` : "";
   const nextFuel = trip && trip.next && !trip.off ? trip.next.fuel : null, low = nextFuel != null && depot != null && depot < nextFuel;
   const tritTitle = (tr && tr.jumps != null ? `${tr.jumps.toLocaleString()} jumps of 500 ly with all of it, the depot topped up from the hold as it runs low` : "the depot (the carrier's tank)") +
     (trip && trip.totals ? `; the trip needs ${trip.totals.need.toLocaleString()} t` + (trip.totals.short ? `, ${trip.totals.short.toLocaleString()} t more than you have: buy it before you set out` : "") : "") +
-    (low ? `; the depot will not pay for the next leg (${nextFuel} t): move tritium from the hold into the depot first (carrier management)` : "");
-  const trit = depot == null ? "" : ` · <span id="carrierTrit" title="${esc(tritTitle)}">Tritium: <b>${depot.toLocaleString()}t</b>${tr ? `/${tr.total.toLocaleString()}t` : ""}${low ? ` <span class="warnc">⚠</span>` : ""}</span>`;
+    (low ? `; the depot will not pay for the next leg (${nextFuel} t): move tritium from the hold into the depot first (carrier management)` : "") + estNote;
+  const trit = depot == null ? "" : ` · <span id="carrierTrit" title="${esc(tritTitle)}">Tritium: <b>${est ? "≈" : ""}${depot.toLocaleString()}t</b>${tr ? `/${tr.total.toLocaleString()}t` : ""}${low ? ` <span class="warnc">⚠</span>` : ""}</span>`;
   drawFcTrip();
   if (typeof hForm !== "undefined" && hwyPlotter() === "carrier") { fillFcForm(); drawHwyStatus(); }
   cl.innerHTML = val(mk("fleet-carrier") + esc(c.name), esc(c.callsign || "")) + ln(dcLine) + ln(where) + ln(move) +
@@ -593,6 +596,7 @@ function drawFcTrip() {
   document.getElementById("fcTripHead").innerHTML = `🚢 Carrier trip to <b>${esc(dest)}</b>: ` +
     (t.done ? "<span class=\"ok\">complete</span>" : t.off ? `<span class="warnc">off the trip at ${esc(t.off.system || "?")}</span>` : `leg ${t.at + 1} of ${t.n}`) +
     ` · ${t.n} legs, about ${t.hours} h <span class="unk">(longer in busy systems)</span> · ${(tot.need || 0).toLocaleString()} t tritium of ${(tot.have || 0).toLocaleString()} t` +
+    (t.request && t.request.estimated ? ` <span class="unk" title="planned from the depot as last read, less the jumps since: open the carrier's management to read it again, then re-plot">(≈ estimated depot)</span>` : "") +
     (tot.short ? ` · <span class="noscoop">${tot.short.toLocaleString()} t short: buy it before you set out</span>` : "");
   const note = x => [x.top_up ? `move ${x.top_up.toLocaleString()} t from the hold into the depot first` : "", x.buy ? `buy ${x.buy.toLocaleString()} t here` : "",
                      x.short ? `<span class="noscoop">the depot cannot pay for it</span>` : ""].filter(Boolean).join(" · ");
@@ -607,7 +611,7 @@ document.getElementById("fcTrip").addEventListener("click", e => {
   const b = e.target.closest("[data-fctrip]"); if (!b) return;
   const t = data && data.carrier_trip && data.carrier_trip.trip;
   if (b.dataset.fctrip === "clear") carrierTripPost({clear: true});
-  else if (b.dataset.fctrip === "replot" && t && t.request) carrierTripPost(Object.assign({}, t.request, {from: null}));
+  else if (b.dataset.fctrip === "replot" && t && t.request) carrierTripPost({replot: true});   // the server takes the figures as they are now (S4-B1)
 });
 // the cooldown is over: said once per leg (and only near the moment: a page opened later says nothing)
 let carrierReadySaid = null;
@@ -640,7 +644,7 @@ document.getElementById("carrierLine").addEventListener("click", e => {
   const b = e.target.closest("[data-fctrip]"); if (!b) return;
   const t = carrierTripNow();
   if (b.dataset.fctrip === "clear") carrierTripPost({clear: true});
-  else if (b.dataset.fctrip === "replot" && t && t.request) carrierTripPost(Object.assign({}, t.request, {from: null}));
+  else if (b.dataset.fctrip === "replot" && t && t.request) carrierTripPost({replot: true});   // the server takes the figures as they are now (S4-B1)
 });
 // the countdown ticks without new data
 setInterval(() => {

@@ -138,6 +138,89 @@ class Trip(unittest.TestCase):
         self.assertTrue(self.state.carrier_trip_follow())
         self.assertIsNone(self.state.carrier_trip_summary()["trip"])
 
+    def test_replot_takes_the_figures_as_they_are_now(self):
+        """Review 2026-10-23 S4-B1: re-plot sent back the trip's original depot, hold and via; now the depot as it is now
+        and no via already passed."""
+        via = "Bleia Eohn XE-Y c17-24"
+        self.plot({"to": "Colonia", "via": via, "hold": 300, "used": 1000})
+        legs = self.state.carrier_trip_summary()["trip"]["legs"]
+        for i in range(1, 6):
+            self.j.carrier.update(system=legs[i]["system"], id64=legs[i]["id64"])
+            self.state.carrier_trip_follow()
+        self.j.carrier.update(system="Elsewhere", id64=99, fuel=410)   # off the trip after the via; a later reading
+        self.state.carrier_trip_follow()
+        (out, status), calls = self.plot({"replot": True})
+        self.assertEqual(status, 202, out)
+        fields = calls[0][2]
+        self.assertEqual((fields["source"], fields["destinations"], fields["fuel_loaded"]),
+                         ("Elsewhere", "Colonia", "410"))   # one destination (the fake keeps it as a string)
+        self.state.carrier_trip_clear()                                 # before the via, a re-plot keeps it
+        self.j.carrier.update(system="Sol", id64=legs[0]["id64"], fuel=900)
+        self.plot({"to": "Colonia", "via": via})
+        self.j.carrier.update(system="Detour", id64=77)
+        self.state.carrier_trip_follow()
+        (out, status), calls = self.plot({"replot": True})
+        self.assertEqual(calls[0][2]["destinations"], [via, "Colonia"])
+
+    def test_the_cooldown_after_arriving_at_the_start(self):
+        """Review 2026-10-23 S4-B4: plotted from Sol while the carrier is elsewhere; arriving at Sol starts the cooldown."""
+        self.j.carrier.update(system="Elsewhere", id64=5)
+        self.plot({"from": "Sol", "to": "Colonia"})
+        legs = self.state.carrier_trip_summary()["trip"]["legs"]
+        self.j.carrier.update(system="Sol", id64=legs[0]["id64"], moved_ts="2026-10-17T11:00:00Z")
+        self.state.carrier_trip_follow()
+        t = self.state.carrier_trip_summary()["trip"]
+        self.assertEqual((t["at"], t["ready_at"]),
+                         (0, ed_outrider.ts_seconds("2026-10-17T11:00:00Z") + ed_outrider.CARRIER_COOLDOWN_S))
+
+    def test_an_assumed_last_jump_not_made_keeps_the_trip(self):
+        """Review 2026-10-23 S4-B5: the last leg assumed done, then the carrier found on the leg before: the trip goes on."""
+        self.plot({"to": "Colonia"})
+        legs = self.state.carrier_trip_summary()["trip"]["legs"]
+        for i in range(1, len(legs) - 1):
+            self.j.carrier.update(system=legs[i]["system"], id64=legs[i]["id64"], assumed=False)
+            self.state.carrier_trip_follow()
+        self.j.carrier.update(system=legs[-1]["system"], id64=legs[-1]["id64"], assumed=True)
+        self.state.carrier_trip_follow()
+        self.assertTrue(self.state.carrier_trip_summary()["trip"]["done"])
+        self.j.carrier.update(system=legs[-2]["system"], id64=legs[-2]["id64"], assumed=False)
+        self.assertTrue(self.state.carrier_trip_follow())
+        t = self.state.carrier_trip_summary()["trip"]
+        self.assertEqual((t["at"], t["done"], t["next"]["system"]), (len(legs) - 2, False, "Colonia"))
+
+    def test_a_depot_never_read_is_refused(self):
+        """Review 2026-10-23 S4-B3: with no depot reading the plot took the depot as a full 1,000 t."""
+        self.j.carrier.pop("fuel")
+        out, status = self.state.carrier_trip_plot({"to": "Colonia"})
+        self.assertEqual(status, 400)
+        self.assertIn("no carrier statistics read yet", out["error"])
+
+    def test_the_depot_after_a_jump_is_estimated(self):
+        """Review 2026-10-23 S6-B3: the depot figure stood still after every jump until the carrier's management was
+        opened again. Each move since the last reading is kept and its burn taken off, said estimated; a correction of
+        an assumed move replaces it; a reading clears them."""
+        c = {"id64": 1, "fuel": 900}
+        ed_outrider.note_carrier_move(c, 2)
+        c["id64"] = 2
+        self.assertEqual(c["moves"], [[1, 2]])
+        ed_outrider.note_carrier_move(c, 3)                     # settle_carrier's assumed jump to 3
+        c.update(id64=3, assumed=True)
+        ed_outrider.note_carrier_move(c, 2)                     # it never went: back at 2, no burn for it
+        self.assertEqual(c["moves"], [[1, 2]])
+        self.j.carrier = dict(c, id=7, assumed=False)
+        where = {1: ("A", 0.0, 0.0, 0.0), 2: ("B", 500.0, 0.0, 0.0)}
+        with unittest.mock.patch.object(self.state, "locate", lambda i: where.get(i)):
+            d = self.state.carrier_depot(used=1000)
+            self.assertEqual((d["fuel"], d["read"], d["estimated"], d["unsure"]),
+                             (900 - cargo.carrier_burn(500, 1000, 900), 900, True, False))
+            self.assertTrue(self.state.carrier_depot(used=None)["unsure"])   # no capacity figure: not taken off
+        # a CarrierStats read since: the reading alone
+        self.j.carrier = None
+        self.j.handle({"timestamp": "2026-10-17T12:00:00Z", "event": "CarrierStats", "CarrierID": 7, "Callsign": "X-1",
+                       "Name": "C", "FuelLevel": 640, "JumpRangeCurr": 500, "CarrierType": "FleetCarrier"})
+        self.assertEqual((self.j.carrier["fuel"], self.j.carrier["moves"]), (640, []))
+        self.assertFalse(self.state.carrier_depot(used=1000)["estimated"])
+
     def test_spansh_refuses(self):
         sp = ed_outrider.Spansh(self.db)
         sp.session = _HwSession([(400, {"error": "Could not find destination system Nowhere"})])

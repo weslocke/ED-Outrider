@@ -1421,7 +1421,13 @@ upstream project's choices, not rules of the game.
   departure (settle_carrier) and is corrected by a later CarrierLocation: accurate enough (the author), and "ready?"
   rather than "ready" until the journal confirms. The cooldown is CARRIER_COOLDOWN_S from that arrival: an estimate,
   since busy systems and the servers delay it and only a player docked on the carrier sees the real jump. No automatic
-  clipboard: the author found it confusing when not expected.
+  clipboard: the author found it confusing when not expected. **The depot between readings** (review 2026-10-23 S6-B3):
+  the journal reads the depot only at CarrierStats and CarrierDepositFuel, so each move since is kept (carrier
+  `moves`, `note_carrier_move`; a correction of an assumed jump replaces it) and `State.carrier_depot` takes its burn
+  off the reading: the tile says "≈" with the reading in its hover, and a trip plotted from it says "≈ estimated depot".
+  **Re-plot from here** sends `replot` alone: the trip's request with the depot, hold and cargo as they are now and
+  without a via already passed (S4-B1). A depot never read is refused in words, never taken as full (S4-B3). An
+  assumed last jump that the next CarrierLocation contradicts puts the trip back on that leg (S4-B5).
 - **Surface pins live in the places that exist** (#16, the author: UI space matters): no tab or panel of their own.
   A body panel's folded 📍 Pins section, the map's legend (its title holds Pin here and copy), one line in the strip /
   Now only while a pin is active, a one-character 📍 in the body lists, Bookmarks' list only when there are pins. Keyed
