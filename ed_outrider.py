@@ -2970,6 +2970,26 @@ class Journals:
                         (sid, ev.get("ShipName") or None, ev.get("Ship"), ev.get("ShipIdent") or None, ts,
                          json.dumps(fleet_figures(ev)), value, json.dumps(ev, ensure_ascii=False)))
 
+    def forget_finished_route(self, slot, rc, id64, name, ts):
+        """A finished route (done_ts) and an arrival somewhere other than where it finished (done_id64; a route finished
+        before that was kept: any later arrival): it is forgotten as ✕ Clear does, silently, its "complete" said on the
+        arrival before (the author, 2026-10-24: "when you jump out of that system the route should auto-clear"; the
+        carrier trip already does so). slot: "highway" or "riches". True when it was forgotten."""
+        if not rc.get("done_ts") or (rc.get("done_id64") is not None and rc["done_id64"] == id64):
+            return False
+        if slot == "highway":
+            self.db.execute("DELETE FROM highway_route")
+            meta_set(self.db, "highway", None)
+            self._hw_rows = (None, [])
+        else:
+            for table in ("riches_route", "riches_bodies", "riches_species", "trade_stops"):
+                self.db.execute(f"DELETE FROM {table}")
+            meta_set(self.db, "riches", None)
+            self._rc_rows = (None, [])
+        print(f"{'highway' if slot == 'highway' else 'route'}: the finished route cleared, you left its last system "
+              f"for {name or id64} ({ts})")
+        return True
+
     def highway_route(self, hw):
         """The active route's rows (cached per plot: a new plot has a new id)."""
         if not hw:
@@ -3057,6 +3077,8 @@ class Journals:
         since = rc.get("since_ts")
         if (ts < since if since else ts <= (rc.get("created_ts") or "")) or ts <= (rc.get("arrival_ts") or ""):
             return
+        if self.forget_finished_route("riches", rc, id64, name, ts):
+            return
         rows = self.riches_route(rc)
         if not rows:
             return
@@ -3077,9 +3099,9 @@ class Journals:
             left = self.riches_left(rc, rows, i)
             nx, skipped = self.riches_open(rc, rows, i + 1)   # S12: the next stop past the systems you finished
             if done:
-                pass   # finished: the route stays visible, quietly, until cleared
+                pass   # finished: kept, quietly, until you jump out of its last system (forget_finished_route)
             elif not left and i == len(rows) - 1:
-                rc.update(done_ts=ts, said_done=i)
+                rc.update(done_ts=ts, said_done=i, done_id64=id64)
                 say = ("complete", trade_done_text(rows, i, (rc.get("trade") or {}).get(str(i))) if trade
                        else arrival_text(kind, rows, i, left), 0)
             else:
@@ -3168,7 +3190,7 @@ class Journals:
         rc["said_done"] = i
         last = i == len(rows) - 1
         if last:
-            rc["done_ts"] = ts
+            rc.update(done_ts=ts, done_id64=rows[i].get("id64"))   # the next jump out of it clears the route
         meta_set(self.db, "riches", rc)
         if live_event(ts):
             self.moment(SURVEY_KINDS["trade"].alert, ts, what="complete" if last else "done", system=rows[i]["system"],
@@ -3192,7 +3214,7 @@ class Journals:
         rc["said_done"] = i
         last = i == len(rows) - 1
         if last:
-            rc["done_ts"] = ts
+            rc.update(done_ts=ts, done_id64=id64)   # the next jump out of it clears the route
         meta_set(self.db, "riches", rc)
         if live_event(ts):
             nx, skipped = (None, []) if last else self.riches_open(rc, rows, i + 1)   # S12: past the systems you finished
@@ -3213,6 +3235,8 @@ class Journals:
         since = hw.get("since_ts")
         if (ts < since if since else ts <= (hw.get("created_ts") or "")) or ts <= (hw.get("arrival_ts") or ""):
             return
+        if self.forget_finished_route("highway", hw, id64, name, ts):
+            return
         rows = self.highway_route(hw)
         if not rows:
             return
@@ -3230,9 +3254,9 @@ class Journals:
             back = bool(hw.get("off_route"))
             hw.update(at=i, furthest=max(i, furthest if furthest is not None else i), off_route=None)
             if done:
-                pass   # finished: the route stays visible, quietly, until cleared
+                pass   # finished: kept, quietly, until you jump out of its last system (forget_finished_route)
             elif i == len(rows) - 1:
-                hw["done_ts"] = ts
+                hw.update(done_ts=ts, done_id64=id64)   # the next jump out of it clears the route
                 say = ("complete", "Highway complete.")
             else:
                 say = ("back" if back else "next", ("Back on the highway. " if back else "") + highway_text(rows, i))

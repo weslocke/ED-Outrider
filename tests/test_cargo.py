@@ -1024,6 +1024,11 @@ class TradeRoute(unittest.TestCase):
         self.assertEqual(self.moments()[-1], ("complete", "Trade route complete: about 14,691,200 credits in all."))
         self.assertTrue(self.state.survey_summary()["complete"])
         self.assertEqual(len([m for m in self.moments() if m[0] == "done"]), 3)   # stops 0, 1 and 2, once each
+        # finished by its last sale: the jump out of that system clears the route (the author, 2026-10-24)
+        self.assertEqual(ed_outrider.meta_get(self.db, "riches")["done_id64"], r[-1]["id64"])
+        self.jump(-10, r[0]["id64"], r[0]["system"], 0)
+        self.assertIsNone(self.state.survey_summary())
+        self.assertEqual(self.db.execute("SELECT count(*) FROM trade_stops").fetchone()[0], 0)
 
     def trade(self, s, name, stop, commodity, count, line=None):
         self.j.line_source = line or f"Journal.test.log:{s}"

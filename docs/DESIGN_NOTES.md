@@ -456,6 +456,12 @@ upstream project's choices, not rules of the game.
 - **Parked:** nearest neutron star and a wasted-charge warning (now that the Highway exists, the next candidates).
 - **The Highway keeps one active route.** A new plot replaces it; waypoints may come later. It is live-only data
   (`highway_route`), kept through a journal re-read and carried by backups.
+- **A finished route clears itself at the next jump out** (the author, 2026-10-24: "when you jump out of that system
+  the route should auto-clear"; an option only if players find it annoying): the Highway or the survey slot (Road to
+  Riches, Exomastery, the worlds' routes, a sweep, a trade route), each on its own, once `done_ts` is set, at the
+  first arrival (FSDJump, CarrierJump, a respawn) somewhere other than `done_id64`, where it finished
+  (`Journals.forget_finished_route`, as ✕ Clear; silent, one log line). A relog where it finished keeps it; the arrival
+  guard means a re-read never clears or brings it back. The carrier trip already did the same.
 - **Detour and resume:** arriving off the route counts as a detour only once the route was joined (flying to its
   start is not one), and arriving at *any* route system resumes it, neutron or not, forwards or back. Said once each.
   A respawn or a login somewhere else (a Location that moves you, not a relog) counts as an arrival too. Off the route

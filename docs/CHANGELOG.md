@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · A finished route clears itself at the next jump out
+- The author: once a route is complete (the Highway, Road to Riches, Exomastery, the worlds' routes, a sweep, a trade
+  route), jumping out of the system where it finished clears it, as ✕ Clear does; until then it stays, marked complete.
+  Silent (its "complete" was said on arrival). A relog or a respawn where it finished keeps it; a re-read never clears
+  or brings it back; each slot on its own (a finished Highway goes while a Road to Riches under way stays). The
+  carrier trip already worked this way. `done_id64` beside `done_ts`; a route finished before this goes at the next
+  arrival.
+
 ## 2026-10-24 · Review fixes (8): the docs
 - The full Fable review of 2026-10-23, fix batch 8 (the last): settings.md's list of keys applied at once names auto
   honk's delay and skip (S8-B1); `--simulate`'s row (and its help) says the uploads are off too, and the flags table has

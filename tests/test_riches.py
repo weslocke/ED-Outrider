@@ -191,8 +191,13 @@ class RichesRoute(unittest.TestCase):
         self.mapped(-30, 1003, 1, "Gamma Rich 1")
         self.assertEqual(self.moments()[3], ("complete", "Everything here is done. Road to Riches complete."))
         self.assertTrue(ed_outrider.meta_get(self.db, "riches")["done_ts"])
-        self.jump(-20, 1001, "Alpha Rich", 0)   # after the end: quiet
+        self.assertEqual(ed_outrider.meta_get(self.db, "riches")["done_id64"], 1003)
+        self.assertIsNotNone(self.state.survey_summary())       # still shown in the system where it finished
+        self.jump(-20, 1001, "Alpha Rich", 0)   # after the end: quiet, and the route clears (the author, 2026-10-24)
         self.assertEqual(len(self.moments()), 4)
+        self.assertIsNone(ed_outrider.meta_get(self.db, "riches"))
+        self.assertIsNone(self.state.survey_summary())
+        self.assertEqual(self.db.execute("SELECT count(*) FROM riches_route").fetchone()[0], 0)
 
     def test_scan_only_route(self):
         self.store(mapping=False)   # use_mapping_value off: a scan finishes a body
@@ -316,6 +321,7 @@ class RichesRoute(unittest.TestCase):
         self.assertEqual((s["index"], s["skipped"]), (3, 1))
         self.jump(-60, 1004, "Delta Rich", 70)
         self.assertEqual(self.moments()[-1][0], "complete")
+        self.assertEqual(ed_outrider.meta_get(self.db, "riches")["done_id64"], 1004)   # finished on arrival: where
 
     def test_two_routes_one_clipboard(self):
         """A Highway route and a Road to Riches route at once: only the one plotted last copies its next system (one

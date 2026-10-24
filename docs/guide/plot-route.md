@@ -63,6 +63,8 @@ arrive there: "The next 3
   `wl-copy` or `xclip`, see [Getting started](install.md#-getting-started); Windows: built in; on the game PC only).
 - **The voice:** "Next Neutron Highway Stop: Hwy Stop 38, with three jumps left to refuel. Boost your FSD to
   continue.", plus refuel stops, detours, "Back on the highway", "Highway complete" and the fuel warning.
+- **A finished route clears itself** when you jump out of its last system (any route: the Highway, Road to Riches,
+  Exomastery, a sweep, a trade route), so the next plot starts clean; until then it stays, marked complete.
 
 **Road to Riches.** The third plotter, **Road to Riches**, asks Spansh for a chain of systems whose planets are worth
 scanning (and mapping): from where you are (or From), with your ship's range, and Spansh's own options (radius, number

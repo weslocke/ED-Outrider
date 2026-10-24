@@ -492,14 +492,35 @@ class HighwayH1(unittest.TestCase):
         self.jump(7, 105, "End", 200)
         self.assertEqual(self.hw_moments()[-1], ("complete", "Highway complete."))
         n = len(self.hw_moments())
-        self.jump(8, 997, "After", 250)   # finished: no detour, the route stays until cleared
-        self.assertEqual(len(self.hw_moments()), n)
         p = self.state.highway_summary()
         self.assertEqual((p["complete"], p["off_route"], p["next"], p["furthest"]), (True, False, None, 5))
-        self.state.highway_clear()
+        # the next jump out of its last system clears it, silently (the author, 2026-10-24)
+        self.jump(8, 997, "After", 250)
+        self.assertEqual(len(self.hw_moments()), n)
         self.assertIsNone(self.state.highway_summary())
+        self.assertEqual(self.db.execute("SELECT count(*) FROM highway_route").fetchone()[0], 0)
         self.jump(9, 101, "Neu A", 50)
         self.assertEqual(len(self.hw_moments()), n)
+
+    def test_a_finished_route_clears_at_the_jump_out(self):
+        """The author, 2026-10-24: a finished route clears itself once you leave its last system; a relog or a respawn
+        there keeps it, a re-read never clears or brings it back, and a route finished before done_id64 was kept goes
+        at the next arrival."""
+        self.plot_exact()
+        for k, (id64, name, x) in enumerate(((101, "Neu A", 50), (103, "Scoop C", 100), (105, "End", 200)), 1):
+            self.jump(k, id64, name, x)
+        self.assertTrue(self.state.highway_summary()["complete"])
+        self.j.handle({"event": "Location", "timestamp": self.ts(30), "StarSystem": "End",
+                       "SystemAddress": 105, "StarPos": [200, 0, 0]})   # a respawn or relog where it finished: kept
+        self.assertTrue(self.state.highway_summary()["complete"])
+        hw = ed_outrider.meta_get(self.db, "highway")
+        self.assertEqual(hw["done_id64"], 105)
+        hw.pop("done_id64")                                    # a route finished before the change
+        ed_outrider.meta_set(self.db, "highway", hw)
+        self.jump(40, 105, "End", 200)                       # any later arrival clears it (where it finished is not known)
+        self.assertIsNone(self.state.highway_summary())
+
+
 
     def test_moments_only_live_and_never_on_a_reread(self):
         self.plot_exact(start=-3000)
