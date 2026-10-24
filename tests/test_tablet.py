@@ -14,6 +14,27 @@ import outrider  # noqa: E402
 import outrider.auth  # noqa: E402
 
 
+class PageCss(unittest.TestCase):
+    """Batch I of the full Fable review: the browser's own widgets follow the page (S5-S2), and reduced motion stops
+    every pulse and spinner (S5-S6), its rules last so they win."""
+
+    def test_color_scheme_and_reduced_motion(self):
+        with open(os.path.join(ed_outrider.STATIC_DIR, "page.css"), encoding="utf-8") as f:
+            css = f.read()
+        root = re.search(r"^:root \{(.*?)\n\}", css, re.S | re.M).group(1)
+        self.assertIn("color-scheme: dark", root)
+        self.assertIn("accent-color: var(--accent)", root)
+        light = re.search(r"@media \(prefers-color-scheme: light\) \{ :root:not\(\[data-theme\]\) \{(.*?)\}\}", css, re.S).group(1)
+        self.assertIn("color-scheme: light", light)
+        reduced = css.rindex("@media (prefers-reduced-motion: reduce) {")
+        block = css[reduced:]
+        for sel in (".audiopill", "#sStatus.busy::before", "#hwyStatus.busy::before", "#ovInstalling .spin"):
+            self.assertIn(sel, block)
+            self.assertLess(css.index(sel), reduced, sel)   # its animated rule comes before, so this one wins
+        animated = re.findall(r"animation:\s*(\w+)", css[:reduced])
+        self.assertTrue({"audiopill", "spin", "ovspin"} <= set(animated))
+
+
 class Tablet(unittest.TestCase):
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")

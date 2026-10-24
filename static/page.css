@@ -8,6 +8,9 @@
   --mark-first: #f2c230;
   /* the CMDR tab's Earnings chart: cartography, exobiology, mining (a theme whose own colours are too alike sets its own) */
   --earn-carto: var(--info); --earn-bio: var(--good); --earn-mine: var(--accent);
+  /* S5-S2: the browser's own widgets (scrollbars, selects, date and number fields) follow the dark page; ticks and
+     sliders take the accent */
+  color-scheme: dark; accent-color: var(--accent);
 }
 @media (prefers-color-scheme: light) { :root {
   --bg: #f5f6f8; --panel: #ffffff; --line: #dde1e6; --text: #1d2228; --muted: #69727d;
@@ -19,6 +22,7 @@
   --mark-aw: #7b2cbf; --mark-boost: #0e7490; --mark-ggg: #1e7a3c; --mark-star: #9a7400; --mark-nsp: #0b6fa4;
   --mark-cur: #7a3fc4; --mark-geo: #9a5b14; --mark-mine: #7a6648; --mark-volc: #b5471a; --mark-volc-land: #c2410c;
   --mark-first: #9a7400;
+  color-scheme: light;   /* S5-S2: the light Default's widgets are light too */
 }}
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -1538,3 +1542,9 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 /* Settings -> Auto honk and the co-pilot button: the button's own heading over its fields (2026-10-23) */
 #honkSettings h4.hchead { margin: .9em 0 .2em; font-size: 1em; }
 #fcFuel.stale { border-color: var(--bad); }   /* S4-S4: the depot reading is over a week old */
+/* last in the file: it must win over the rules above (a media query adds no specificity) */
+/* S5-S6: with reduced motion asked for, nothing spins or pulses: the audio pill keeps a still outline instead */
+@media (prefers-reduced-motion: reduce) {
+  .audiopill { animation: none; outline: 2px solid var(--bad); outline-offset: 2px; }
+  #sStatus.busy::before, #hwyStatus.busy::before, #ovInstalling .spin, #logRows .fresh td { animation: none; }
+}

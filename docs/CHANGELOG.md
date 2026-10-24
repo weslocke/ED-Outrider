@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Suggestions (I): the page's polish
+- The full Fable review's suggestions, batch I (the last):
+  - **S5-S2: the browser's own widgets follow the page**: `color-scheme` on the Default (dark, and light in its light
+    block), so scrollbars, selects and number fields are no longer white on the dark page; ticks take the accent.
+  - **S5-S6: reduced motion stops the audio pill's pulse and the spinners** (the pill keeps a still outline).
+
 ## 2026-10-24 · Suggestions (H): voice, tablet and personalities
 - The full Fable review's suggestions, batch H:
   - **S9-S2: the voice's "next stop" and status report follow whichever route you follow**: the Highway or the survey
