@@ -590,7 +590,18 @@ def _mission(e):
             "count": e.get("Count") if e.get("Count") is not None else e.get("KillCount") or e.get("PassengerCount"),
             "delivered": None, "reward": e.get("Reward"), "expiry": e.get("Expiry"), "wing": bool(e.get("Wing")),
             "passengers": e.get("PassengerCount") is not None, "redirected": False,
-            "influence": e.get("Influence"), "reputation": e.get("Reputation"), "accepted": e.get("timestamp")}
+            "influence": e.get("Influence"), "reputation": e.get("Reputation"), "accepted": e.get("timestamp"),
+            # a mining mission (Mission_Mining..., wing ones too) and its commodity's journal id ("$Bertrandite_Name;" ->
+            # "bertrandite"): CMDR -> Missions' search for where to mine it, by the id so a translated game works too
+            # (ideas from EliteMining's feature list, 2026-10-24). A mission held from before has neither: no search
+            "mining": bool(re.match(r"\$?Mission_Mining", str(e.get("Name") or ""), re.I)), "commodity_id": _symbol(e.get("Commodity"))}
+
+
+def _symbol(v):
+    """A journal symbol's id: "$Bertrandite_Name;" -> "bertrandite" (None for none)."""
+    if not isinstance(v, str) or not v.strip():
+        return None
+    return re.sub(r"_name;?$", "", re.sub(r"^\$", "", v.strip()), flags=re.I).rstrip(";").lower() or None
 
 
 # ---- sessions: combat and mining, per login ----

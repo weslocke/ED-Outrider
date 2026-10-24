@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Mining: a threshold per mineral, a ring's prices, Search's 2+, a mission's 🔍
+- Ideas from [EliteMining](https://github.com/Viper-Dude/EliteMining)'s feature list (none of its code or data is used):
+  - **Each mineral its own threshold** in the prospector call-out: a ticked mineral gets a small % field (empty: the
+    shared number, your old setting unchanged); any ticked mineral at its own threshold is said. Combined keeps the one
+    number. Your hotspots' hit rate follows.
+  - **A ring's hotspot minerals by price nearby**: a body panel (Here's or Search's) with hotspots adds "Best nearby:
+    Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum …", the Sell lookup's best within 100 ly, highest first; asked once
+    per mineral and system in 30 minutes (a failure again after 2), and the Rings hover shows it once known.
+  - **Search: 2+ in a ring**, rings with two or more hotspots of one ticked mineral (Spansh and Local).
+  - **A mining mission's 🔍** in CMDR → Missions: Spansh's hotspots of its commodity within 100 ly, or the ring types
+    that yield one without hotspots (Bertrandite: metallic and metal-rich rings). Missions now keep `mining` and the
+    commodity's journal id; ones taken before have no 🔍 (no re-read).
+- Not yet tried in game, like the rest of ring mining.
+
 ## 2026-10-24 · Version 2026.10.28, The Mining Release
 - Ring mining, Settings → Auto-target and its fixes (#12), the Settings tidy, the full Fable review of 2026-10-23's 60
   fixes and 64 suggestions, the route auto-clear and the bug check's 29 fixes. What's new has its section.

@@ -477,7 +477,8 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
           <div class="hint">bodies with bio signals you have not finished sampling; values are what the rest could pay at plain Vista Genomics prices (no first-footfall ×5)</div></fieldset>
       </div>
       <div class="sstack">
-        <fieldset><legend>Ring hotspots</legend><div class="opts" id="sHotspots"></div></fieldset>
+        <fieldset><legend>Ring hotspots</legend><div class="opts" id="sHotspots"></div>
+          <label class="mod" title="a ring with two or more hotspots of one ticked mineral: more places to drop in, and where hotspots overlap"><input type="checkbox" id="sHotMin"> 2+ in a ring</label></fieldset>
         <fieldset><legend>Planetary mining locations</legend>
           <label><input type="checkbox" id="sMining"> ⛏ bodies with mining locations</label>
           <label class="mod">likely to hold <select id="sMineral"></select></label>
@@ -820,7 +821,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <label class="mod"><input type="checkbox" id="miningLimpets"> Remind me to take limpets when I undock in a mining ship without any
         <span class="hint">a ship with a refinery, or a collector or prospector limpet controller, leaving the pad (a station or a carrier) with none in the hold: the Mining Officer reminds you while you can still turn back. Off by default</span></label>
       <div class="mod inlineopts" id="prospectOpts">Prospector call-out: say a rock with
-        <input type="number" id="prospectPct" min="1" max="100" step="1" style="width:4.5em" aria-label="threshold %"> % or more of the minerals ticked
+        <input type="number" id="prospectPct" min="1" max="100" step="1" style="width:4.5em" aria-label="threshold %"> % or more of the minerals ticked (each can have its own beside it)
         <label title="their percentages added up: tick Platinum, Palladium, Gold, Silver and Osmium with 50 for a rock half precious metals"><input type="checkbox" id="prospectCombined"> combined</label>
         <span class="hint">laser-minable minerals (motherlodes are cores: below); none ticked, nothing is said but motherlodes</span>
         <span id="prospectMinerals" class="inlineopts"></span>

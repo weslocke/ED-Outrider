@@ -77,7 +77,9 @@ the game too, for a few seconds each:
   default. Mining's alerts, ring and Rhino, have their sound, notification, voice and crew switches in Settings →
   Mining's own table (grouped Ring mining and Rhino mining), not under Alerts
 - **the prospector call-out**: as each prospector limpet reports, a rock with your threshold (30 % to start) of the
-  minerals ticked in Settings → Mining is said ("Platinum, 34 percent"), or with **combined**, their sum ("Combined
+  minerals ticked in Settings → Mining is said ("Platinum, 34 percent"; a ticked mineral can have **its own
+  threshold** in the small field beside it, Painite at 25 and Platinum at 35, empty for the shared one), or with
+  **combined**, their sum, against the shared threshold alone ("Combined
   52 percent: Platinum 31, Gold 21": tick Platinum, Palladium, Gold, Silver and Osmium with 50 for a rock half precious
   metals); a **motherlode** always (its own box). Duds and rocks mined before stay silent, and "Material content:
   High" (engineering materials, not the commodity) only when ticked. None ticked: only motherlodes
@@ -118,7 +120,7 @@ browser starts with.
 | Fuel alerts under N jumps | off | Warns once when jumps left at your pace fall under N; also sets the top-up level. |
 | Core modules | 80% | A core module under this shows under hull and is said in the status report. |
 | Surface map | 1,000 m / 500 m / 50 m / 3,500 m | Altitude it shows below, narrowest view, rig spacing ring (0 = none), rig leash warning. |
-| Mining | none ticked, off; 30 %; 5 | The ring types said when a scanned body has one (Icy, Rocky, Metallic, Metal Rich), and pristine only; the limpet reminder on undocking; the prospector call-out's minerals, threshold, combined, motherlodes (on) and High material content (off); limpets low at (2 to 50). |
+| Mining | none ticked, off; 30 %; 5 | The ring types said when a scanned body has one (Icy, Rocky, Metallic, Metal Rich), and pristine only; the limpet reminder on undocking; the prospector call-out's minerals, threshold (and each mineral's own), combined, motherlodes (on) and High material content (off); limpets low at (2 to 50). |
 
 **Export settings** and **Import settings** move them to another browser profile (both are a browser's: the Android app opens no file picker and saves no file the page makes). **Use these for new
 browsers** keeps a copy on the server (`data/browser_defaults.json`, included in backups), so a tablet running

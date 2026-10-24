@@ -3234,13 +3234,17 @@ const RIGS_OUT_HINT = "Picked one up without a tap? Mark it with the ✕ by its 
 const RING_KINDS = ["Icy", "Rocky", "Metallic", "Metal Rich"];
 // Settings → Mining's other choices (the "mining" setting): the limpet reminder on undocking; the prospector call-out
 // (mining C): the minerals wanted (commodity ids), the threshold %, one at least that much (or, combined, their sum),
-// motherlodes said, and a rock's High material content (the engineering materials) said too
-const MINING_DEFAULTS = {limpetWarn: false, minerals: [], pct: 30, combined: false, motherlode: true, rawHigh: false, limpetsLow: 5};
+// motherlodes said, and a rock's High material content (the engineering materials) said too. pcts: a mineral's own
+// threshold over the shared one ({id: %}; ideas from EliteMining's feature list, 2026-10-24), not used by combined
+const MINING_DEFAULTS = {limpetWarn: false, minerals: [], pct: 30, pcts: {}, combined: false, motherlode: true, rawHigh: false, limpetsLow: 5};
 const miningCfg = () => { const v = store.get("mining", {}) || {}, d = MINING_DEFAULTS;
   const bool = k => typeof v[k] === "boolean" ? v[k] : d[k];
-  const pct = Number.isFinite(v.pct) && v.pct >= 1 && v.pct <= 100 ? v.pct : d.pct;
+  const okPct = n => Number.isFinite(n) && n >= 1 && n <= 100;
+  const pct = okPct(v.pct) ? v.pct : d.pct;
+  const pcts = v.pcts && typeof v.pcts === "object" && !Array.isArray(v.pcts)
+    ? Object.fromEntries(Object.entries(v.pcts).filter(([k, n]) => PROSPECT_NAMES[k] && Number.isInteger(n) && okPct(n))) : {};
   return {limpetWarn: bool("limpetWarn"), minerals: Array.isArray(v.minerals) ? v.minerals.filter(x => typeof x === "string") : [],
-          pct, combined: bool("combined"), motherlode: bool("motherlode"), rawHigh: bool("rawHigh"),
+          pct, pcts, combined: bool("combined"), motherlode: bool("motherlode"), rawHigh: bool("rawHigh"),
           // 2 at least: "1 limpets" reads wrong, and one left is too late to warn
           limpetsLow: Number.isInteger(v.limpetsLow) && v.limpetsLow >= 2 && v.limpetsLow <= 50 ? v.limpetsLow : d.limpetsLow}; };
 // the laser-minable minerals the call-out offers (commodity ids, as the prospector's names lower-cased), the common
@@ -3253,8 +3257,9 @@ const PROSPECT_MORE = [["lepidolite", "Lepidolite"], ["uraninite", "Uraninite"],
   ["hydrogenperoxide", "Hydrogen Peroxide"], ["methaneclathrate", "Methane Clathrate"], ["water", "Water"], ["haematite", "Haematite"]];
 const PROSPECT_NAMES = Object.fromEntries([...PROSPECT_MAIN, ...PROSPECT_MORE]);
 // a prospected rock against the call-out (mats {id: %}): null when not worth it, else {what (spoken), total}. Combined:
-// the ticked minerals' sum at least the threshold ("Combined 52 percent: Platinum 31, Gold 21"); else the best ticked
-// one at least it ("Platinum, 34 percent"). Names: the moment's, else the list's
+// the ticked minerals' sum at least the shared threshold ("Combined 52 percent: Platinum 31, Gold 21"); else any ticked
+// one at least its own threshold (cfg.pcts, else the shared one), the richest of those said ("Platinum, 34 percent").
+// Names: the moment's, else the list's
 function prospectHit(mats, cfg = miningCfg(), names = {}) {
   if (!cfg.minerals.length || !mats) return null;
   const name = k => names[k] || PROSPECT_NAMES[k] || k;
@@ -3266,9 +3271,11 @@ function prospectHit(mats, cfg = miningCfg(), names = {}) {
     return {total, what: got.length === 1 ? `${name(got[0][0])}, ${Math.round(total)} percent`
       : `Combined ${Math.round(total)} percent: ${got.map(([k, v]) => `${name(k)} ${Math.round(v)}`).join(", ")}`};
   }
-  const [k, v] = got[0];
-  return v >= cfg.pct ? {total: v, what: `${name(k)}, ${Math.round(v)} percent`} : null;
+  const over = got.find(([k, v]) => v >= prospectPct(k, cfg));
+  return over ? {total: over[1], what: `${name(over[0])}, ${Math.round(over[1])} percent`} : null;
 }
+// a mineral's own threshold (Settings → Mining), else the shared one
+const prospectPct = (k, cfg = miningCfg()) => cfg.pcts[k] ?? cfg.pct;
 const miningSet = patch => store.set("mining", Object.assign({}, store.get("mining", {}) || {}, patch));
 // the alerts that are mining's, ring and Rhino: their switches sit in Settings → Mining's own table, not Settings → Alerts
 // (the author, 2026-10-18; the Rhino's moved there too 2026-10-23); every other part (sounds, crew, the tally) treats them as alerts
@@ -3439,6 +3446,44 @@ async function holdFullSell(m, ask = null) {
   }
   alertOut("limpets", best ? `Sell ${name}: ${best.station}, ${best.system}` : `Unload ${name}: your carrier`, shown.join(" · "),
            {tag: "hold_full_sell", say: said.join(" ")});
+}
+// A ring's hotspot minerals by the best sell price within 100 ly (ideas from EliteMining's feature list, 2026-10-24):
+// asked when a body panel opens on a body with hotspots (Here's or Search's), once per mineral and system for 30
+// minutes, a failure kept 2 so a redraw never asks again at once; the Rings hover shows what is known and never asks.
+// The Sell lookup's own rows (stations, from where you are: "from you" for a system you are not in)
+const RING_PRICE_TTL_MS = 30 * 60 * 1000, RING_PRICE_RETRY_MS = 2 * 60 * 1000;
+const RING_PRICES = new Map();   // "id64|mineral" -> {at, best (the lookup's first row) or null, failed, busy}
+// a body's hotspot minerals: the details' rings (d.rings), else a Here row's ring_details (its rings is a count)
+const bodyHotMinerals = b => [...new Set((Array.isArray(b.rings) ? b.rings : b.ring_details || []).flatMap(r => Object.keys(r.hotspots || {})))];
+// ask what is not known (or is out of date) for body `b` of system `sys`: true when an answer came; ask(mineral):
+// the lookup's rows, or null on an error (a test passes its own)
+async function ringPricesAsk(b, sys, ask = m => holdSellAsk(m, 1, 100, "price", false), now = Date.now()) {
+  const due = bodyHotMinerals(b).filter(m => {
+    const c = RING_PRICES.get(`${sys}|${m}`);
+    return !c || (!c.busy && now - c.at > (c.failed ? RING_PRICE_RETRY_MS : RING_PRICE_TTL_MS));
+  });
+  if (!due.length) return false;
+  await Promise.all(due.map(async m => {
+    const key = `${sys}|${m}`;
+    RING_PRICES.set(key, Object.assign(RING_PRICES.get(key) || {}, {busy: true}));
+    const rows = await ask(m);
+    RING_PRICES.set(key, {at: now, best: rows ? rows[0] || null : null, failed: !rows, busy: false});
+  }));
+  return true;
+}
+// "Best nearby: Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum 210k cr/t (…)": the minerals priced, highest first,
+// then those with no buyer within 100 ly; "" while none is known. html: the panel's (escaped, the places muted)
+function ringPricesLine(b, sys, html = false) {
+  const known = bodyHotMinerals(b).map(m => [m, RING_PRICES.get(`${sys}|${m}`)]).filter(([, c]) => c && !c.busy && !c.failed);
+  if (!known.length) return "";
+  const e = html ? esc : x => x;
+  const priced = known.filter(([, c]) => c.best && c.best.price).sort((x, y) => y[1].best.price - x[1].best.price);
+  const none = known.filter(([, c]) => !(c.best && c.best.price)).map(([m]) => m);
+  const where = r => `${r.station}, ${r.system}${r.distance != null ? `, ${Math.round(r.distance).toLocaleString()} ly` : ""}`;
+  const parts = priced.map(([m, c]) => `${e(m)} ${credits(c.best.price)} cr/t` +
+    (html ? ` <span class="unk">(${e(where(c.best))})</span>` : ` (${where(c.best)})`));
+  if (none.length) parts.push(`${e(andList(none))}: no buyer within 100 ly`);
+  return `Best nearby${String(sys) !== String(posId()) ? " from you" : ""}: ${parts.join(" · ")}`;
 }
 // mining C: a prospected rock said when worth it (prospectHit), a motherlode always (its own box), a rock already mined
 // never; High material content (engineering materials) only when its box is ticked. A newer call-out replaces one still
@@ -4669,7 +4714,7 @@ const ringsText = (b, sys = hereData && hereData.id64) => {
     const hs = Object.entries(r.hotspots || {}).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
     return `${r.name} · ${r.type || "?"}: ${hs.length ? hs.map(([k, v]) => `${mineral(k)} ${v}`).join(", ") : r.mapped ? "mapped, no hotspots" : "not mapped"}` +
       (rec[r.name] || []).map(g => `\n  you, ${hotspotLine(g)}`).join("");
-  })].join("\n");
+  }), sys != null ? ringPricesLine(b, sys) : ""].filter(Boolean).join("\n");
 };
 function renderHere() {
   const h = hereData, head = document.getElementById("hereHead"), lv = document.getElementById("hereLeaving");
@@ -5225,6 +5270,7 @@ async function reloadBody() {
   if (!isNewest("body", g)) return;   // an older request answering late (it waited on Spansh) is not the panel's
   if (selectedBody !== name || selectedSystem !== sys) return;
   bodyData = fresh; renderBody();
+  if (fresh && !fresh.error && await ringPricesAsk(fresh, sys) && selectedBody === name && selectedSystem === sys) { renderBody(); renderHere(); }
 }
 async function openBody(name) {
   // the Here rows of another system are cleared while the shown one loads (renderHere); a click that still comes
@@ -5244,9 +5290,10 @@ for (const id of ["bodyPanel", "sBodyPanel"]) document.getElementById(id).addEve
   const sec = lbl.parentNode; sec.classList.toggle("closed");
   bodySecs[sec.dataset.sec] = sec.classList.contains("closed"); store.set("bodySecs", bodySecs);
 });
-function renderBody() { renderBodyInto(document.getElementById("bodyPanel"), bodyData, selectedBody, "closeBody()"); }
-// The body detail panel, drawn into any container (Here's, or Search's); closeJs is the ✕ button's action.
-function renderBodyInto(panel, d, bodyName, closeJs) {
+function renderBody() { renderBodyInto(document.getElementById("bodyPanel"), bodyData, selectedBody, "closeBody()", selectedSystem); }
+// The body detail panel, drawn into any container (Here's, or Search's); closeJs is the ✕ button's action; sys: the
+// body's system id64 (the rings' best prices nearby)
+function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
   if (!d) return;
   const short = name => name && name.startsWith(d.full_name + " ") ? name.slice(d.full_name.length + 1) : name;
   if (d.error) { panel.innerHTML = `<h3><b>${esc(bodyName)}</b> <button type="button" onclick="${closeJs}">✕</button></h3><div class="unk">${esc(d.error)}</div>`; return; }
@@ -5320,7 +5367,8 @@ function renderBodyInto(panel, d, bodyName, closeJs) {
       const hs = Object.entries(r.hotspots || {}).sort((a, b) => a[0].localeCompare(b[0]));
       return `<tr class="ring"><td>${esc(short(r.name))}</td><td>${esc(r.type || "")}</td><td class="num">${r.mass != null ? n(r.mass, 0) : ""}</td><td class="num">${r.inner_km != null ? n(r.inner_km, 0) : ""}</td><td class="num">${r.outer_km != null ? n(r.outer_km, 0) : ""}</td><td class="num">${r.width_km != null ? n(r.width_km, 0) : ""}</td><td class="num">${r.density != null ? n(r.density, 4) : ""}</td></tr>` +
         `<tr class="hs"><td colspan="7">${hs.length ? `<ul>${hs.map(([k, v]) => `<li><b>${esc(k)}</b> ×${v}</li>`).join("")}</ul>` : r.mapped ? "mapped · no hotspots" : "not mapped"}</td></tr>`;
-    }).join("") + `</tbody></table>`);
+    }).join("") + `</tbody></table>` + (sys != null && bodyHotMinerals(d).length
+      ? `<div class="ringprices">${ringPricesLine(d, sys, true) || `<span class="unk">Best nearby: asking…</span>`}</div>` : ""));
   // Order: bio first (it decides whether to land), then rings and composition, then physical | orbit, then value.
   let bioSec = "";
   if (row.bio || (row.genera || []).length || (row.organics || []).length || (row.codex || []).length) {
@@ -9028,6 +9076,7 @@ function formParams() {
     radius: parseFloat(document.getElementById("sRadius").value) || 100,
     main_only: document.getElementById("sMainOnly").checked,
     stars: ticked("stars"), planets: ticked("planets"), rings: ticked("rings"), hotspots: ticked("hotspots"), bio: ticked("bio"),
+    hotspots_min: document.getElementById("sHotMin").checked ? 2 : 1,   // 2+ of one mineral in a ring
     mining: document.getElementById("sMining").checked, mining_mineral: document.getElementById("sMineral").value || null,
     around: sAround.value || "here", around_name: document.getElementById("sAroundName").value.trim(),   // S49
   };
@@ -9040,6 +9089,7 @@ function loadForm(p) {
   for (const g of ["stars", "planets", "rings", "hotspots", "bio"])
     sForm.querySelectorAll(`input[data-group="${g}"]`).forEach(b => b.checked = (p[g] || []).includes(b.value));
   document.getElementById("sMining").checked = p.mining === true;
+  document.getElementById("sHotMin").checked = p.hotspots_min === 2;
   const mn = document.getElementById("sMineral"); mn.value = p.mining_mineral || ""; if (mn.selectedIndex < 0) mn.value = "";
   sAround.value = p.around || "here"; if (sAround.selectedIndex < 0) sAround.value = "here";
   document.getElementById("sAroundName").value = p.around_name || "";
@@ -9055,7 +9105,7 @@ function saveForm() { store.set("search", formParams()); }
 sForm.addEventListener("change", saveForm);
 document.getElementById("sClear").onclick = () => {
   sForm.querySelectorAll("input[data-group]").forEach(b => b.checked = false); syncScoop();
-  document.getElementById("sMining").checked = false; document.getElementById("sMineral").value = ""; saveForm();
+  document.getElementById("sMining").checked = false; document.getElementById("sHotMin").checked = false; document.getElementById("sMineral").value = ""; saveForm();
 };
 loadForm(store.get("search", null));
 
@@ -9093,7 +9143,8 @@ async function openSearchBody(sys, name) {
   let d;
   try { d = await apiJson(`api/body?system=${sys}&name=${encodeURIComponent(name)}`); } catch (err) { d = {error: err.message}; }
   if (sBody.sys !== sys || sBody.name !== name) return;
-  sBody.data = d; renderBodyInto(panel, d, name, "closeSearchBody()");
+  sBody.data = d; renderBodyInto(panel, d, name, "closeSearchBody()", sys);
+  if (d && !d.error && await ringPricesAsk(d, sys) && sBody.sys === sys && sBody.name === name) renderBodyInto(panel, d, name, "closeSearchBody()", sys);
 }
 function closeSearchBody() {
   Object.assign(sBody, {sys: null, name: null, data: null});
@@ -10547,8 +10598,13 @@ function drawMiningRings() {
   document.getElementById("miningLimpets").checked = mc.limpetWarn;
   const lowBox = document.getElementById("limpetsLow");
   if (document.activeElement !== lowBox) lowBox.value = mc.limpetsLow;
-  // the prospector call-out (mining C): its minerals' boxes drawn here (the main ones, the rest under "more")
-  const box = ([id, name]) => `<label><input type="checkbox" data-pmin="${id}"${mc.minerals.includes(id) ? " checked" : ""}> ${esc(name)}</label>`;
+  // the prospector call-out (mining C): its minerals' boxes drawn here (the main ones, the rest under "more"); a ticked
+  // one has its own threshold field, the shared number its placeholder (empty: the shared one), off while combined
+  const own = id => `<input type="number" data-ppct="${id}" min="1" max="100" step="1" class="ppct" placeholder="${mc.pct}"` +
+    ` value="${mc.pcts[id] ?? ""}" aria-label="${esc(PROSPECT_NAMES[id])} threshold %"${mc.combined ? " disabled" : ""}` +
+    ` title="${mc.combined ? "combined uses the one threshold above" : `its own threshold: empty, the ${mc.pct} % above`}">%`;
+  const box = ([id, name]) => `<span class="pmin"><label><input type="checkbox" data-pmin="${id}"${mc.minerals.includes(id) ? " checked" : ""}> ${esc(name)}</label>` +
+    `${mc.minerals.includes(id) ? own(id) : ""}</span>`;
   document.getElementById("prospectMinerals").innerHTML = PROSPECT_MAIN.map(box).join("");
   document.getElementById("prospectMore").innerHTML = PROSPECT_MORE.map(box).join("");
   const pctBox = document.getElementById("prospectPct");
@@ -10567,8 +10623,15 @@ document.getElementById("limpetsLow").onchange = e => {
 };
 document.getElementById("prospectOpts").onchange = () => {
   const n = Number(document.getElementById("prospectPct").value);
+  // a mineral's own threshold: a whole 1-100 kept, anything else (empty) back to the shared one; an unticked mineral
+  // keeps its number for when it is ticked again
+  const pcts = {...miningCfg().pcts};
+  for (const f of document.querySelectorAll("#prospectOpts [data-ppct]")) {
+    const v = Number(f.value);
+    if (f.value.trim() !== "" && Number.isFinite(v) && v >= 1 && v <= 100) pcts[f.dataset.ppct] = Math.round(v); else delete pcts[f.dataset.ppct];
+  }
   miningSet({minerals: [...document.querySelectorAll("#prospectOpts [data-pmin]:checked")].map(b => b.dataset.pmin),
-             pct: Number.isFinite(n) && n >= 1 && n <= 100 ? Math.round(n) : MINING_DEFAULTS.pct,
+             pct: Number.isFinite(n) && n >= 1 && n <= 100 ? Math.round(n) : MINING_DEFAULTS.pct, pcts,
              combined: document.getElementById("prospectCombined").checked, motherlode: document.getElementById("prospectLode").checked,
              rawHigh: document.getElementById("prospectHigh").checked});
   drawMiningRings(); miningRedraw();
@@ -12169,6 +12232,39 @@ function cmdrEngineeringHtml(d) {
       || `<div class="unk">Nothing matches.</div>`);
 }
 
+// A mining mission's search (ideas from EliteMining's feature list, 2026-10-24), by its commodity's journal id: its
+// hotspot when rings have hotspots of it (Search's hotspot minerals), else the ring types that yield it
+// (RING_MINERALS: Settings → Mining's table), else null (no ring gives it: a mission for something bought)
+const MINED_ID_NAMES = {lowtemperaturediamond: "Low Temperature Diamonds", opal: "Void Opal"};   // the ids whose letters differ
+function missionSearch(id) {
+  if (!id) return null;
+  const letters = x => String(x).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const name = MINED_ID_NAMES[id] || PROSPECT_NAMES[id] || id;
+  const hot = ((window.__SEARCH_OPTIONS__ || {}).hotspots || []).find(m => letters(m) === letters(name));
+  if (hot) return {hotspots: [hot], rings: [], name: hot};
+  const rings = Object.entries(RING_MINERALS).filter(([, rows]) => rows.some(([n, l, c]) => letters(n) === letters(name) && (l || c))).map(([t]) => t);
+  if (!rings.length) return null;
+  const rn = Object.values(RING_MINERALS).flat().find(([n]) => letters(n) === letters(name));
+  return {hotspots: [], rings, name: rn ? rn[0] : name};
+}
+// 🔍 from CMDR → Missions: Search's choices replaced by the mission's (rings around you, from Spansh) and run
+function missionFind(id) {
+  if (viewWindow && inMainWindow("missionFind", id)) return;   // S37: a CMDR window has no Search: the main one does it
+  const q = missionSearch(id);
+  if (!q) return;
+  loadForm({...formParams(), source: "spansh", radius: 100, main_only: true, stars: [], planets: [], bio: [], mining: false,
+            mining_mineral: null, around: "here", around_name: "", rings: q.rings, hotspots: q.hotspots, hotspots_min: 1});
+  saveForm();
+  const tab = document.querySelector('.views [data-view="search"]'); if (tab && view !== "search") tab.click();
+  sForm.requestSubmit();
+}
+const missionFindBtn = m => {
+  const q = m.mining ? missionSearch(m.commodity_id) : null;
+  return q ? ` <button type="button" class="mini" data-missionfind="${esc(m.commodity_id)}" title="${esc(q.hotspots.length
+    ? `find ${q.name} hotspots within 100 ly (Search, from Spansh): replaces Search's choices`
+    : `find ${q.rings.join(" or ").toLowerCase()} rings within 100 ly, where ${q.name} is mined (no hotspots exist for it): replaces Search's choices`)}">🔍</button>` : "";
+};
+document.addEventListener("click", e => { const b = e.target.closest("[data-missionfind]"); if (b) missionFind(b.dataset.missionfind); });
 // Missions: the time left counted here at each draw (the answer is read only when a journal line moves the version). Pure
 // but for the clock.
 function cmdrMissionsHtml(d) {
@@ -12185,7 +12281,7 @@ function cmdrMissionsHtml(d) {
     const where = [m.system, m.station].filter(Boolean).map(esc);   // compact: the system alone, the station in its title
     return `<tr><td><b>${esc(m.name || "?")}</b>${m.wing ? ` <span class="unk">wing</span>` : ""}${m.passengers ? ` <span class="unk">${dual("passengers", "pax")}</span>` : ""}` +
       `${m.redirected ? ` <span class="ok" title="the game sent you on: usually back to hand it in">${dual("redirected", "redir.", {title: false})}</span>` : ""}</td>` +
-      `<td class="c2hide">${esc(m.faction || "")}</td><td>${where.length > 1 ? dual(where.join(" · "), where[0]) : where.join("")}</td><td>${need}</td>` +
+      `<td class="c2hide">${esc(m.faction || "")}</td><td>${where.length > 1 ? dual(where.join(" · "), where[0]) : where.join("")}</td><td>${need}${missionFindBtn(m)}</td>` +
       `<td class="num">${cmCrS(m.reward)}</td><td class="num">${exp}</td></tr>`;
   });
   const soon = all.filter(m => m.soon).length;
@@ -12237,7 +12333,7 @@ function cmdrSessionsHtml(d) {
 // best ship's t/h, the hit rate (the call-out's minerals), the last visit; ≈ cr/h at what your ore sold for; 🎯
 function hotspotsHtml(d) {
   const list = (d && d.hotspots) || [];
-  const head = `<h3 class="subhead">Hotspots <span class="unk">· every ring you mined, by hotspot: hit rate by the call-out's minerals (Settings → Mining)</span></h3>`;
+  const head = `<h3 class="subhead">Hotspots <span class="unk">· every ring you mined, by hotspot: hit rate by the call-out's minerals and thresholds (Settings → Mining)</span></h3>`;
   if (!list.length) return head + `<div class="unk">Your mining in rings shows here, ring by ring and hotspot by hotspot.</div>`;
   const rows = list.map(g => ({g, s: hotspotStats(g, miningCfg(), d)}));
   const key = {tph: x => x.s.tph ?? -1, rate: x => x.s.rate ?? -1, last: x => x.g.last}[CM.hotSort] || (x => x.s.tph ?? -1);

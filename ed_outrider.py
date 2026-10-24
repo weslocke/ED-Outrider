@@ -19714,7 +19714,9 @@ def match_system(system, records, crit):
         hits = []
         for r in records:
             for x in r.get("rings") or []:
-                found = {m: n for m, n in minerals(x.get("hotspots")).items() if m in crit["hotspots"]}
+                # 2+ (ideas from EliteMining's feature list, 2026-10-24): one ticked mineral at least that many here
+                found = {m: n for m, n in minerals(x.get("hotspots")).items()
+                         if m in crit["hotspots"] and n >= crit.get("hotspots_min", 1)}
                 if found:
                     hits.append({"t": f"{r['name']} {x['name']} ({x['type']}): " +
                                  ", ".join(f"{m} {n}" for m, n in sorted(found.items(), key=lambda kv: -kv[1])),
@@ -19827,6 +19829,7 @@ class Searcher:
             "planets": set(params.get("planets") or []) & (set(PLANET_TYPES) | {GGG_OPTION[0]}),
             "rings": set(params.get("rings") or []) & set(RING_TYPES),
             "hotspots": set(params.get("hotspots") or []) & set(HOTSPOT_MINERALS),
+            "hotspots_min": 2 if params.get("hotspots_min") == 2 else 1,   # "2+ in a ring": anything else is 1
             # ticked bio thresholds are OR'd like any other section: the lowest one decides
             "bio": min((BIO_SEARCH[k][1] for k in params.get("bio") or [] if k in BIO_SEARCH), default=None),
             # planetary mining locations (S4), with an optional mineral from the survey (an unknown name counts as none)
@@ -19999,7 +20002,7 @@ class Searcher:
         for t in sorted(crit["rings"]):
             queries.append(("rings", {"rings": [{"type": t}]}))
         for m in sorted(crit["hotspots"]):
-            queries.append(("hotspots", {"ring_signals": [{"name": m, "value": [1, 9999], "comparison": "<=>"}]}))
+            queries.append(("hotspots", {"ring_signals": [{"name": m, "value": [crit.get("hotspots_min", 1), 9999], "comparison": "<=>"}]}))
         if crit["bio"] is not None:
             queries.append(("bio", {"signals": [{"name": "Biological", "value": [1, 999], "comparison": "<=>"}]}))
 

@@ -180,6 +180,14 @@ upstream project's choices, not rules of the game.
   resolves a system at once); FSS resolves come seconds apart and are said one by one. The reserves are said only when
   pristine or depleted (they matter for laser mining; major, common and low are on the card). Hotspots have their own
   record (the mining stints, below).
+- **Four mining additions from EliteMining's feature list, ideas only** (2026-10-24; none of its code or data, so no
+  credits row; its fixed overlaps list turned down: "don't want to ship a fixed dataset"). **Each mineral's own
+  threshold** (`pcts`) applies to the plain call-out only: combined is a sum, which one number judges. **A ring's prices**
+  are asked when a body panel opens, never from a hover (a title cannot wait, and hovering across Here would ask Spansh for
+  every ringed body); once per mineral and system for 30 minutes, a failure kept 2 so a redraw never asks again, the
+  distances from you (the lookup measures from the ship). **Search's 2+** is one tick, not a count: three of one mineral
+  in a ring is rare. **A mining mission's search** follows the commodity's journal id, not its localised words; a
+  mission held from before has no id and gets no 🔍 rather than a re-read for something that lives days.
 - **Mining stints and their hotspots** (mining B-D, 2026-10-19; the review of 2026-10-20). A stint runs from a drop
   into a ring (`SupercruiseExit` or a login's `Location` with `BodyType: PlanetaryRing`) to leaving it: `MINING_CLOSE`
   is SupercruiseEntry, FSDJump, CarrierJump, Docked and Died, **not a logout or LoadGame**: the login's Location says
@@ -1593,7 +1601,8 @@ confirmed while playing. Treat reports about them as likely real.
 
 - Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the
   prospector call-out, the ⛏ line and its warnings' timing (limpets low, hold nearly full, hold full with where to
-  sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone).
+  sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone); each
+  mineral's own threshold, a ring's best prices nearby, Search's 2+ and a mining mission's 🔍 (2026-10-24).
 - The sample spacing while flying the ship low over the body (discussion #3, 2026-10-23): from the point under the
   ship, with Status.json's live Latitude/Longitude in flight; tested on made-up Status.json only.
 

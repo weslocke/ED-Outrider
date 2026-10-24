@@ -9105,7 +9105,7 @@ const releasePayloads = async () => {
                   "2026-10-12 11:00 | Type-9 Heavy | Mine Sys 4 B Ring +1 | 6 t + 3 t SRV | Platinum 5, Osmium 1 · SRV: Gold 3 | 12 | 2 High 1, Low 1 · 1 core | 1 / 1 | 30 min | 1.5M cr"],
                  ["Sessions1", "Kills3", "Bounties400k cr", "Combat bonds60k cr", "Deaths1", "Sessions1", "Refined6 t", "SRV refined3 t", "Asteroids prospected2", "Sold1.5M cr"],
                  ["Combat your sessions of the last 30 days, 40 at most", "Mining your sessions of the last 30 days, 40 at most",
-                  "Hotspots · every ring you mined, by hotspot: hit rate by the call-out's minerals (Settings → Mining)"]],
+                  "Hotspots · every ring you mined, by hotspot: hit rate by the call-out's minerals and thresholds (Settings → Mining)"]],
       unchanged: 0, matOther: 0,
       moved: ["api/commander/sessions"],
       after: ["api/commander/sessions", "api/commander/missions", "api/commander/missions"],
@@ -9892,7 +9892,7 @@ const releasePayloads = async () => {
       limpetsOn: [[["No limpets aboard. Turn back for some before we head out.", "limpets"]], JSON.stringify({limpetWarn: true}), "No limpets aboard"],
       tables: ["ring,limpets,prospect,rigs,rigleash,rigsout", false, true, 6],
       pNone: [], pLode: [["Motherlode: Void Opal.", "prospect"]],
-      pCfg: JSON.stringify({limpetWarn: true, minerals: ["platinum", "gold"], pct: 30, combined: false, motherlode: true, rawHigh: false, limpetsLow: 5}),
+      pCfg: JSON.stringify({limpetWarn: true, minerals: ["platinum", "gold"], pct: 30, pcts: {}, combined: false, motherlode: true, rawHigh: false, limpetsLow: 5}),
       pHits: [[["Platinum, 34 percent.", "prospect"]], [], [], []],
       pCombined: [[["Combined 52 percent: Platinum 31, Gold 21.", "prospect"]], [["High material content.", "prospect"]], "⛏ High material content"],
       hRec: ["Alexandrite: 2 stints · 40 t/h · 50 % hits", "  you, Alexandrite: 2 stints · 40 t/h · 50 % hits|  you, no hotspot: 1 stint", false],
@@ -9917,6 +9917,88 @@ const releasePayloads = async () => {
     allOk = allOk && goodRG;
     console.log(goodRG ? "OK" : "FAIL", "| rings to mine |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "nothing until ticked, a ticked type said with its reserves, unticked ones not, bodies together in one line, pristine only, the controls", errors.slice(before));
+  }
+  // Four mining additions, ideas from EliteMining's feature list (2026-10-24): a threshold per mineral (A), a ring's
+  // hotspot minerals by price nearby (B), Search's 2+ in a ring (C), a mining mission's 🔍 (D)
+  {
+    holdPayloads();
+    const w = dom.window, d = w.document, before = errors.length, got = {};
+    w.eval(`window.__mi = {mstore: localStorage.getItem("mining"), sstore: localStorage.getItem("search"), view,
+                           submit: sForm.requestSubmit};`);
+    try {
+      // A: overrides kept only for known minerals at whole 1-100; any ticked one at its own threshold is said
+      w.eval(`localStorage.setItem("mining", JSON.stringify({minerals: ["platinum", "painite"], pct: 30,
+        pcts: {painite: 25, bogus: 10, platinum: "x", gold: 101}})); drawMiningRings()`);
+      got.pcts = w.eval(`JSON.stringify(miningCfg().pcts)`);
+      got.hits = w.eval(`JSON.stringify([prospectHit({painite: 27, platinum: 20}), prospectHit({platinum: 29}),
+        prospectHit({painite: 24, platinum: 31}), prospectHit({painite: 26, platinum: 35})].map(h => h && h.what))`);
+      got.fields = [...d.querySelectorAll("#prospectOpts [data-ppct]")].map(f => [f.dataset.ppct, f.value, f.placeholder, f.disabled]);
+      d.querySelector('#prospectOpts [data-ppct="platinum"]').value = "40";
+      d.getElementById("prospectOpts").dispatchEvent(new w.Event("change", {bubbles: true}));
+      got.saved1 = w.eval(`JSON.stringify(miningCfg().pcts)`);
+      d.querySelector('#prospectOpts [data-ppct="painite"]').value = "";
+      d.getElementById("prospectOpts").dispatchEvent(new w.Event("change", {bubbles: true}));
+      got.saved2 = w.eval(`JSON.stringify(miningCfg().pcts)`);
+      w.eval(`miningSet({combined: true, pct: 50}); drawMiningRings()`);
+      got.combined = [w.eval(`prospectHit({painite: 5, platinum: 41})`) === null,   // Platinum's own 40 met, the sum 46 under 50
+                      [...d.querySelectorAll("#prospectOpts [data-ppct]")].every(f => f.disabled)];
+      // B: one ask per mineral, the best first, a failure asked again after 2 minutes, never at once
+      got.prices = JSON.parse(await w.eval(`(async () => {
+        RING_PRICES.clear();
+        const asked = [], rows = {Painite: [{station: "Hub", system: "Sys", distance: 34.2, price: 412000}], Platinum: [], Alexandrite: null};
+        const ask = async m => { asked.push(m); return rows[m]; };
+        const b = {rings: [{name: "A Ring", hotspots: {Painite: 2, Platinum: 1}}, {name: "B Ring", hotspots: {Alexandrite: 1}}]};
+        const first = await ringPricesAsk(b, "77", ask, 1000);
+        const again = await ringPricesAsk(b, "77", ask, 1000 + 60000);   // a minute on: nothing asked, the failure waits
+        const line = ringPricesLine(b, "77");
+        rows.Alexandrite = [{station: "Far", system: "Out", distance: 90, price: 900000}];
+        const retry = await ringPricesAsk(b, "77", ask, 1000 + 3 * 60000);
+        const div = document.createElement("div");
+        renderBodyInto(div, {full_name: "X 1", rings: [{name: "X 1 A Ring", type: "Metallic", hotspots: {Painite: 2}}]}, "X 1", "", "77");
+        const out = [first, again, asked, line, retry, ringPricesLine(b, "77"), (div.querySelector(".ringprices") || {}).textContent,
+                     ringsText({rings: 1, rings_mapped: 1, ring_details: b.rings.map(r => ({...r, type: "Icy", mapped: true}))}, "77").split("\\n").pop()];
+        RING_PRICES.clear();
+        return JSON.stringify(out);
+      })()`));
+      // C: the 2+ tick goes with the form
+      const hm = d.getElementById("sHotMin");
+      hm.checked = true;
+      got.hotMin = [w.eval("formParams().hotspots_min")];
+      w.eval(`loadForm({...formParams(), hotspots_min: 1})`);
+      got.hotMin.push(hm.checked);
+      // D: the mission's search: a hotspot, ring types for one without hotspots, nothing for what no ring gives
+      got.ms = w.eval(`JSON.stringify(["painite", "opal", "bertrandite", "tea", null].map(missionSearch))`);
+      got.btn = [w.eval(`missionFindBtn({mining: true, commodity_id: "bertrandite"})`).includes('data-missionfind="bertrandite"'),
+                 w.eval(`missionFindBtn({mining: false, commodity_id: "bertrandite"})`), w.eval(`missionFindBtn({mining: true, commodity_id: "tea"})`)];
+      w.eval(`window.__subs = 0; sForm.requestSubmit = () => { window.__subs++; }; missionFind("lowtemperaturediamond")`);
+      got.find = w.eval(`JSON.stringify([window.__subs, view, formParams().source, formParams().hotspots, formParams().rings, formParams().radius])`);
+    } finally {
+      w.eval(`const k = window.__mi; sForm.requestSubmit = k.submit;
+        if (k.mstore === null) localStorage.removeItem("mining"); else localStorage.setItem("mining", k.mstore);
+        if (k.sstore === null) localStorage.removeItem("search"); else localStorage.setItem("search", k.sstore);
+        loadForm(store.get("search", null)); drawMiningRings();
+        if (view !== k.view) { const t = document.querySelector('.views [data-view="' + k.view + '"]'); if (t) t.click(); }
+        delete window.__mi; delete window.__subs;`);
+      await releasePayloads();
+    }
+    const want = {pcts: JSON.stringify({painite: 25}),
+      hits: JSON.stringify(["Painite, 27 percent", null, "Platinum, 31 percent", "Platinum, 35 percent"]),
+      fields: [["platinum", "", "30", false], ["painite", "25", "30", false]],
+      saved1: JSON.stringify({painite: 25, platinum: 40}), saved2: JSON.stringify({platinum: 40}), combined: [true, true],
+      prices: [true, false, ["Painite", "Platinum", "Alexandrite", "Alexandrite"], "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly",
+               true, "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly",
+               "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly)",
+               "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly"],
+      hotMin: [2, false],
+      ms: JSON.stringify([{hotspots: ["Painite"], rings: [], name: "Painite"}, {hotspots: ["Void Opal"], rings: [], name: "Void Opal"},
+                          {hotspots: [], rings: ["Metallic", "Metal Rich"], name: "Bertrandite"}, null, null]),
+      btn: [true, "", ""],
+      find: JSON.stringify([1, "search", "spansh", ["Low Temperature Diamonds"], [], 100])};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const goodMI = !bad.length && errors.length === before;
+    allOk = allOk && goodMI;
+    console.log(goodMI ? "OK" : "FAIL", "| mining ideas |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
+      : "a threshold per mineral (combined keeps one), a ring's minerals by price (cached, a failure retried), Search's 2+, a mining mission's search", errors.slice(before));
   }
   // The geology a body's signals could be (the author, 2026-10-19): the body card names the kinds its volcanism allows,
   // each new to your codex marked (✪ anywhere, ✦ this region), and how one is logged

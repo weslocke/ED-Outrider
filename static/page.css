@@ -229,6 +229,7 @@ main > #hereView.detail > #bodyPanel { position: sticky; top: calc(var(--head-h,
 #bodyPanel .src { color: var(--muted); font-size: 11px; margin-top: 10px; }
 #bodyPanel .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 16px; align-items: start; }
 #bodyPanel .sec > .lbl { cursor: pointer; user-select: none; }
+.ringprices { margin-top: 4px; font-size: 12px; }   /* a ring's hotspot minerals by price nearby */
 #bodyPanel .sec > .lbl::before { content: "▾ "; color: var(--muted); }
 #bodyPanel .sec.closed > .lbl::before { content: "▸ "; }
 #bodyPanel .sec.closed > .secbody { display: none; }
@@ -1537,6 +1538,10 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 .ringtip td + td, .ringtip th + th { text-align: center; color: var(--good, var(--accent)); }
 #alertDialog #prospectOpts details.pmore { flex-basis: 100%; margin: 2px 0; }
 #alertDialog #prospectOpts details.pmore summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+/* a ticked mineral with its own threshold field (ideas from EliteMining's feature list, 2026-10-24) */
+#alertDialog #prospectOpts .pmin { display: inline-flex; align-items: center; gap: 2px; margin: 0 12px 0 0; }
+#alertDialog #prospectOpts .pmin label { margin: 0 4px 0 0; }
+#alertDialog #prospectOpts input.ppct { width: 3.6em; }
 #pop .hs.mrec { color: var(--info); }   /* your mining record under a ring (mining B) */
 .now-line.now-mine { color: var(--accent); }   /* mining D: the strip while you mine in a ring */
 /* Settings -> Auto honk and the co-pilot button: the button's own heading over its fields (2026-10-23) */

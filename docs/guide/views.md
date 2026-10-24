@@ -38,7 +38,10 @@ it drawn from its scan data (an impression: class colours, bands, clouds, atmosp
 community survey's mineral odds for that ground (odds, not contents) and what your SRV mined there before.
 Rings shows the count and, once one is mapped, "1🗺/5": rings mapped and the hotspots in them ("2🗺/20" alone when
 every ring is mapped); hover it for each ring's type and hotspots under it, the body's reserves (pristine, major...) and
-your record there; the body's own hover card adds each ring's width and density.
+your record there; the body's own hover card adds each ring's width and density. Click a body with hotspots and its
+details add **Best nearby**: each hotspot mineral's best sell price within 100 ly (stations, from Spansh's markets),
+highest first, so you know which hotspot to drop into; asked once in half an hour, then shown in the Rings hover too
+("from you" for a system you are not in).
 The to-do line ticks itself off as you honk, map and sample, in a suggested order with supercruise time and
 credits per minute ("~2 min · 450k/min"; "skip?" when not worth the trip). Bio nobody has set foot on is
 valued with the ×5 first-footfall bonus, except in a populated system: Vista Genomics never pays it there.
@@ -130,7 +133,8 @@ order back.
 <b>Search</b> — systems with particular stars (or just <i>scoopable</i>), planets, rings, hotspots,
 unfinished exobiology or planetary mining locations (one mineral, if you like) within a radius, from what
 Outrider knows (<i>Local</i>) or everything reported (<i>Spansh</i>; mining locations are Local only, as Spansh cannot
-filter on them); 🎯 after a result's name targets it in the galaxy map, where auto-target can work. Planets has
+filter on them); <i>2+ in a ring</i> keeps the rings with two or more hotspots of one mineral ticked (more places to
+drop in, and where hotspots overlap); 🎯 after a result's name targets it in the galaxy map, where auto-target can work. Planets has
 <i>Potential green gas giant</i> too (see
 <a href="#-potential-green-gas-giants">below</a>). The name box finds any system (what Outrider knows,
 then EDSM, then Spansh when EDSM is down or doesn't know it) and opens it in Here, where ☆ bookmarks it or makes it the
@@ -549,7 +553,9 @@ above the list:
   only what you can craft now. Experimental effects and suit and weapon upgrades are not listed. The blueprints are a
   copy of EDCD's coriolis-data (community data): a recipe the game changes is wrong until the copy is updated.
 - **Missions**: the missions you hold, the soonest to expire first: where they go, what they ask (and how much is
-  delivered), the reward, and the time left, marked when under half an hour.
+  delivered), the reward, and the time left, marked when under half an hour. A mining mission's 🔍 searches Spansh for
+  where to mine its commodity within 100 ly: its hotspots, or for a mineral that has none (Bertrandite, Gold...) the ring
+  types that yield it (Search's choices are replaced). Missions taken before this version have none.
 - **Sessions**: your sessions of the last 30 days with fighting or mining in them (40 at most), each from one login to
   the next. Combat:
   kills, by ship, bounties and bonds, kills an hour, deaths. Mining: **Where** (the system and the ring, or the body your
