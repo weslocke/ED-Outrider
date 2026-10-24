@@ -190,6 +190,20 @@ class Server(unittest.TestCase):
         self.assertEqual(self.state.payload()["boxel"]["key"], key1)
         self.state._boxel_fetching.discard(prefix)
 
+    def test_the_recommendations_read_each_sector_once(self):
+        """Review 2026-10-23 S3-S2: boxel_nearby asked the visits and the EDSM log once per candidate boxel; one pass
+        per sector gives the same answer."""
+        for k, row in enumerate(REAL):
+            self.jump(k, row)
+        near = self.state.boxel_nearby()
+        prefixes = [b["prefix"] for b in near["boxels"]] + ["Drojau TF-H c13-", "Smojooe XF-G b24-"]
+        many = self.state.boxel_visited_many(prefixes)
+        self.assertEqual(many, {p: self.state.boxel_visited(p) for p in prefixes})
+        self.assertTrue(any(many.values()))
+        from unittest import mock
+        with mock.patch.object(self.state, "boxel_visited", side_effect=AssertionError("asked per boxel")):
+            self.assertEqual(self.state.boxel_nearby()["boxels"], near["boxels"])
+
     def test_next_for_now(self):
         """The payload's boxel Next (for Now and the overlay's Now panel) is the list's, worked out without the list,
         and only when the boxel key changes; the overlay shows it for a kept boxel only (review suggestion 2026-10-12)."""

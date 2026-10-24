@@ -3094,6 +3094,9 @@ class JournalsRegistry(unittest.TestCase):
     # attribute -> why re-handling the same lines after a rolled-back tick leaves it right
     SAFE_ON_RETRY = {
         "arrival_scan": "the latest arrival-star Scan: overwritten, so the retry sets the same value",
+        "unsold_touched": "a flag the tick clears once read: the retry reads the lines again and sets it again; a stray "
+                          "True only re-runs the estimate once",
+        "bad_json_said": "which files a not-JSON line was said of: a retry says nothing again, which is the point",
         "jump_arrival": "the latest hyperspace arrival: overwritten",
         "supercruise_entry": "the latest SupercruiseEntry (auto-target's danger wait): overwritten, newest wins",
         "last_all_found": "the latest FSSAllBodiesFound: overwritten",

@@ -487,9 +487,12 @@ def _row(ev, cursor, bodies):
             "raw": ev}
 
 
-def read_log(dirs, days=7, before=None, after=None, limit=200, cats=None, q=None, noise=False, now=None, only=None):
+def read_log(dirs, days=7, before=None, after=None, limit=200, cats=None, q=None, noise=False, now=None, only=None,
+             budget_s=None, clock=time.monotonic):
     """Journal events newest first. `before`/`after` are cursors; `cats` a set of categories; `only` {file name: set of
-    byte offsets}: those lines alone, in any category (the search still applies)."""
+    byte offsets}: those lines alone, in any category (the search still applies). budget_s: past it, between two files,
+    the rows found so far come back with `partial` and `next` at the file not read yet, so the page asks again (review
+    2026-10-23 S6-S2: a search matching little walked years of journals in one request)."""
     files = journal_files(dirs)
     order = {os.path.basename(p): k for k, p in files}
     want = set(cats) if cats is not None else set(CATEGORIES) - {"noise"}
@@ -555,6 +558,7 @@ def read_log(dirs, days=7, before=None, after=None, limit=200, cats=None, q=None
         return {"rows": rows, "next": None, "newest": newest, "reset": truncated}
 
     chosen = window(files, days, now)
+    started = clock()
     cur = parse_cursor(before) if before else None
     since = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime((time.time() if now is None else now) - days * 86400))
     done = False
@@ -577,6 +581,10 @@ def read_log(dirs, days=7, before=None, after=None, limit=200, cats=None, q=None
             rows.append(r)
             if len(rows) >= limit:
                 break
+        if not done and len(rows) < limit and budget_s is not None and clock() - started > budget_s and k > chosen[0][0]:
+            # out of time, more files to read: what is found, and where to go on (this file is done)
+            return {"rows": rows, "next": f"{base}|0", "newest": seen_newest or _newest(files), "reset": False,
+                    "partial": True}
         if done or len(rows) >= limit:
             break
     more = len(rows) >= limit and not done

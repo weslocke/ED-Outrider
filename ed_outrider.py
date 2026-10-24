@@ -1489,6 +1489,8 @@ _OTHER_EVENTS = (POSITION_EVENTS + STAR_CLASS_EVENTS + SCAN_EVENTS + DATA_EVENTS
 COMMANDER_EVENTS = frozenset(outrider.commander.EVENTS)
 COMMANDER_ONLY = COMMANDER_EVENTS - frozenset(_OTHER_EVENTS) - SRV_TRACKED - CARGO_EVENTS
 WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + outrider.commander.EVENTS))
+# the journal events the unsold estimate reads (outrider.unsold.INTERESTING): only these make it run again (S6-S1)
+UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTING if outrider.unsold else ()))
 
 # Bump when the journal parser learns new events: forces a one-off re-read of every journal.
 # 27: sale pages keyed by journal position (same-second 'Sell all' pages were dropped before); logins.
@@ -1976,6 +1978,11 @@ def reread_message(old, rescan=False):
             + "). This can take a few minutes.")
 
 
+HISTORY_INDEXES = (("own_firsts_first_ts", "own_firsts", "first_ts"), ("own_mapped_ts", "own_mapped", "ts"),
+                   ("own_footfall_ts", "own_footfall", "ts"), ("own_organic_done_ts", "own_organic", "done_ts"),
+                   ("codex_ts", "codex", "ts"), ("sale_events_ts", "sale_events", "ts"))   # deaths: its ts is the key
+
+
 def open_db(path, rescan=False, on_reread=None, before_reset=None, reset=True):
     """The database at `path`, its schema brought up to date. A journal re-read (PARSER_VERSION changed, or `rescan`)
     clears the journal-derived tables (RESET_JOURNAL_DATA): `on_reread(why)` is told first, then, for a database that
@@ -2013,6 +2020,12 @@ def open_db(path, rescan=False, on_reread=None, before_reset=None, reset=True):
                        (b.get("x"), b.get("y"), b.get("z"), r["id64"]))
         db.execute("CREATE INDEX IF NOT EXISTS spansh_xyz ON spansh_systems (x, y, z)")
         db.commit()
+    # the time columns History counts over (COUNT_QUERIES' `BETWEEN`): each range was ten full table scans, about 4 s
+    # on the event loop for "everything" at every jump on a big database (review 2026-10-23 S2-S2); after the
+    # migrations, which may rebuild a table
+    for name, table, col in HISTORY_INDEXES:
+        db.execute(f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({col})")
+    db.commit()
     due, old = reread_due(db, rescan)
     if due and reset:
         if on_reread:
@@ -2814,6 +2827,7 @@ class Journals:
         self.burst = None
         self._hw_rows = (None, [])   # (route id, highway_route rows): the Highway's route, read once per plot
         self.bad_json_said = set()   # journal files a line that is not JSON was said of (once each)
+        self.unsold_touched = False   # a line of a kind outrider.unsold reads was read (State.tick: unsold_dirty)
         self._rc_rows = (None, [])   # (route id, riches_route rows with their bodies): Road to Riches, read once per plot
         self.cargo_version = 0     # bumped by every cargo change (the ship's hold, a carrier event or market read)
         # bumped by your carrier's history only (a cargo_events row, a carrier Market.json): State.carrier_cargo's fold is
@@ -3552,6 +3566,8 @@ class Journals:
                     print(f"uploads: a line was skipped ({type(e).__name__}: {e})", file=sys.stderr)
             elif self.uploads is not None and self.upload_mode:
                 self.uploads.forget()   # not following now: switched on again, it reads the file from its top
+            if not self.unsold_touched and any(w in line for w in UNSOLD_BYTES):
+                self.unsold_touched = True   # a line the unsold estimate reads (S6-S1: any line re-ran it)
             if any(w in line for w in WANTED) or b"Fixed_Event_Life" in line or any(w in line for w in POI_BYTES):
                 # where the line is (the file's name, so a twin copy in another folder gives the same key):
                 # tells apart sale pages written in the same second (sale_events)
@@ -7652,6 +7668,9 @@ class State:
         # live-only)
         self.spansh_commodities = meta_get(db, "spansh_commodities")
         self.scan_version = 0      # bumps only when your own scan data changes (Here/History views key on it)
+        # bumps when Left behind can change: a scan, a sale, a sample elsewhere than where you are (it leaves your own
+        # system out: review 2026-10-23 S2-S1, an FSS session of 40 scans here rebuilt the 500 ly list 40 times)
+        self.left_seq = 0
         # bumps on a jump, a sale or a death: History refetches on this, not on every scan (its ledger is a
         # full pass over your bodies, run on the event loop)
         self.history_version = 0
@@ -7915,7 +7934,7 @@ class State:
             "target": dict(with_id(self.current_target()), leaving=self.leaving_summary(pos["id64"]),
                            hop=self.target_hop(self.current_target())) if self.current_target() and pos else with_id(self.current_target()),
             "arrival": self.arrival,
-            "scan_version": self.scan_version, "history_version": self.history_version,
+            "scan_version": self.scan_version, "history_version": self.history_version, "left_seq": self.left_seq,
             "cargo_version": f"{self.journals.cargo_version}.{self.counts_version}",   # the Materials tab's Cargo
             # read: moves with every journal line consumed (the Log tails on it; journal is to the second)
             "freshness": {"journal": self.journals.last_event_ts, "read": sum(self.journals.offsets.values()),
@@ -10801,7 +10820,8 @@ class State:
         pos = self.journals.pos
         if not pos:
             return {"radius": radius, "systems": []}
-        key = (self.scan_version, pos["id64"], radius)
+        # what can change it (S2-S1): scans and sales elsewhere (left_seq), a death (a run lost), where you are, the radius
+        key = (self.left_seq, self.db.execute("SELECT count(*) FROM deaths").fetchone()[0], pos["id64"], radius)
         if getattr(self, "_left_key", None) == key:
             return self._left
         box = (pos["x"] - radius, pos["x"] + radius, pos["y"] - radius, pos["y"] + radius, pos["z"] - radius, pos["z"] + radius)
@@ -13672,13 +13692,25 @@ class State:
                      "crew": "crew in another commander's ship", "version": "the game version is not known yet",
                      "commander": "no commander yet"}
 
+    def outbox_counts(self):
+        """{service: outrider.uploads.counts}, kept while the database has not changed (and within the minute)."""
+        key = (self.db.total_changes, int(time.time() // 60))
+        if getattr(self, "_upload_counts", (None,))[0] != key:
+            self._upload_counts = (key, {sv: outrider.uploads.counts(self.db, sv)
+                                         for sv in (*outrider.uploads.SERVICES, "edsm_bf")})   # the backfill's queue too
+        return self._upload_counts[1]
+
     def uploads_summary(self):
         """The page's Uploads section: per service on, why it cannot send now (blocked), its queue, the last error."""
         blocked = self.uploads_hub.session.blocked()
         out = {}
+        # the outbox's counts (five queries a service), kept while the database has not changed: they ran for every
+        # window at every payload (review 2026-10-23 S7-S2); any write on this connection (a line queued, a round
+        # settled) is a new total_changes; the minute too, for the last 24 h's counts as rows age out of them
+        counts = self.outbox_counts()
         for service in outrider.uploads.SERVICES:
             st = self.upload_status.get(service) or {}
-            out[service] = dict(outrider.uploads.counts(self.db, service), on=self.upload_on(service),
+            out[service] = dict(counts[service], on=self.upload_on(service),
                                 wanted=self.upload_wanted(service),   # the page's box: what the player switched
                                 available=service in self.upload_senders, error=st.get("error"),
                                 held=st.get("held") or (self.upload_conflict(service) if self.upload_wanted(service) else None),
@@ -14012,7 +14044,7 @@ class State:
         return {"progress": self.edsm_backfill(), "job": self.edsm_bf_job, "since": since if isinstance(since, str) else None,
                 "paused": self.edsm_bf_paused(),
                 "preview": {k: pv[k] for k in ("commander", "start", "end", "summary", "files", "at")} if pv else None,
-                "queued": outrider.uploads.counts(self.db, "edsm_bf")["queued"], "gap_s": outrider.backfill.SEND_GAP_S}
+                "queued": self.outbox_counts()["edsm_bf"]["queued"], "gap_s": outrider.backfill.SEND_GAP_S}
 
     def backfill_dirs(self):
         """Where the backfill finds journals: the live folders, the legacy ones and the backups' journal archive."""
@@ -14841,6 +14873,9 @@ class State:
         bio_sold = self.journals.bio_sales_changed
         if bio_sold:
             self.journals.bio_sales_changed = False
+        here = (self.journals.pos or {}).get("id64")
+        if sold or bio_sold or (dirty - {here}):
+            self.left_seq += 1
         if sold or bio_sold:
             dirty |= set(self.bases)
             values = set()
@@ -15572,6 +15607,29 @@ class State:
                 out[n] = (e["id64"], e["name"], e["x"], e["y"], e["z"])
         return out
 
+    def boxel_visited_many(self, prefixes):
+        """boxel_visited for several boxels at once: one pass over your visits and EDSM log per sector they are in
+        (review 2026-10-23 S3-S2: the recommendations asked once per candidate, up to 60 LIKE scans that the ESCAPE
+        clause keeps off any index). -> {prefix: {number: (id64, name, x, y, z)}}."""
+        out = {p: {} for p in prefixes}
+        by_sector = {}
+        for p in prefixes:
+            by_sector.setdefault(p.rsplit(" ", 2)[0] if p.count(" ") >= 2 else p, []).append(p)
+        for sector, ps in by_sector.items():
+            like = sector.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + " %"
+            mine = self.db.execute("SELECT id64, name, x, y, z FROM visits WHERE name LIKE ? ESCAPE '\\'", (like,)).fetchall()
+            logged = outrider.edsmlog.rows(self.db, like=like)
+            for p in ps:
+                for id64, name, x, y, z in mine:
+                    n = outrider.boxel.number_of(p, name) if name.startswith(p) else None
+                    if n is not None:
+                        out[p][n] = (id64, name, x, y, z)
+                for e in logged:   # S67: your EDSM flight log's, where placed
+                    n = outrider.boxel.number_of(p, e["name"]) if e["name"].startswith(p) else None
+                    if n is not None and n not in out[p] and e["id64"] is not None and e["x"] is not None:
+                        out[p][n] = (e["id64"], e["name"], e["x"], e["y"], e["z"])
+        return out
+
     def boxel_known(self, prefix):
         """Every number of the boxel known to exist: yours and Spansh's."""
         cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
@@ -15727,8 +15785,10 @@ class State:
         if not pos or pos.get("x") is None:
             return {"boxels": [], "finished": [], "codes": {}}
         boxels, finished, per = [], [], {}
-        for b in outrider.boxel.nearby(pos, self.boxel_sectors(), per_code=BOXEL_NEAR_LOOK):
-            f = self.boxel_finished(b["prefix"])
+        cands = outrider.boxel.nearby(pos, self.boxel_sectors(), per_code=BOXEL_NEAR_LOOK)
+        seen = self.boxel_visited_many([b["prefix"] for b in cands])   # one pass per sector, not per boxel (S3-S2)
+        for b in cands:
+            f = self.boxel_finished(b["prefix"], seen[b["prefix"]])
             if f:   # done or complete: listed apart, the next nearest of its kind takes its place
                 finished.append({"prefix": b["prefix"], "label": b["label"], "mc": b["mc"], "distance": b["distance"], "state": f})
             elif per.get(b["mc"], 0) < BOXEL_NEAR_SHOW:
@@ -15736,7 +15796,7 @@ class State:
                 boxels.append(b)
         cache = meta_get(self.db, "boxel_spansh") or {}
         for b in boxels:
-            v = self.boxel_visited(b["prefix"])
+            v = seen[b["prefix"]]
             sp = {int(k) for k in ((cache.get(b["prefix"]) or {}).get("systems") or {}) if str(k).isdigit()}
             # the highest number known, yours or Spansh's (the author: where it is from does not matter there)
             b.update(visited=len(v), top=max(set(v) | sp, default=None), spansh_asked=b["prefix"] in cache,
@@ -15922,12 +15982,16 @@ class State:
         self.bump()
         return True
 
-    def boxel_finished(self, prefix):
-        """"done" (marked so), "complete" (its end known and every number below it visited) or None."""
+    def boxel_finished(self, prefix, visited=None):
+        """"done" (marked so), "complete" (its end known and every number below it visited) or None. visited: its
+        boxel_visited when the caller has it already (boxel_visited_many)."""
         if prefix in (meta_get(self.db, "boxel_done") or {}):
             return "done"
-        end = self.boxel_end(prefix)
-        if end is not None and set(range(end)) <= set(self.boxel_visited(prefix)):   # end 0: empty, complete too
+        visited = self.boxel_visited(prefix) if visited is None else visited
+        cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
+        known = set(visited) | {int(k) for k in (cache.get("systems") or {}) if str(k).isdigit()}
+        end = self.boxel_end(prefix, known)
+        if end is not None and set(range(end)) <= set(visited):   # end 0: empty, complete too
             return "complete"
         return None
 
@@ -18544,7 +18608,9 @@ class State:
             late = None
             self.journals_reachable()   # a share that dropped while running is said (S9-S21)
             for d in LIVE_DIRS:
-                if self.journals.scan_dir(d, upload="live", quick=True):
+                self.journals.scan_dir(d, upload="live", quick=True)
+                if self.journals.unsold_touched:   # a line the estimate reads, not any line (S6-S1)
+                    self.journals.unsold_touched = False
                     self.unsold_dirty = True
                 nr = os.path.join(d, "NavRoute.json")
                 try:
@@ -21076,6 +21142,8 @@ def make_app(state, hosts=None):
             kw["days"] = min(days, outrider.uploads.MARK_DAYS)
             kw["only"] = outrider.uploads.unsent_lines(state.db, iso_ts(time.time() - kw["days"] * 86400))
         dirs = LIVE_DIRS + LEGACY_DIRS
+        if not kw["after"]:
+            kw["budget_s"] = LOG_BUDGET_S   # a long search comes back in parts the page asks for in turn (S6-S2)
         out = await asyncio.get_running_loop().run_in_executor(None, lambda: outrider.log.read_log(dirs, **kw))
         state.log_marks(out["rows"])   # S68: ✓ EDDN · ✓ EDSM... on the last week's lines
         out["marks_days"] = outrider.uploads.MARK_DAYS
@@ -21238,6 +21306,7 @@ def make_app(state, hosts=None):
 # {error, code: "starting"} (the page shows "starting", not "not connected"). The same Host / other-site checks as the
 # real app; with a password, a device that is not signed in learns only that Outrider is starting ----
 STARTING_PAGE = os.path.join(SCRIPT_DIR, "static", "starting.html")
+LOG_BUDGET_S = 2.0   # s a Log request reads journals for before it answers with what it found so far (S6-S2)
 STARTING_FAILED_SHOW_S = 20   # s the starting page shows why Outrider could not start, before it exits (S4-S2)
 STARTING_WORDS = {"start": "Opening the database", "backup": "Backing up your database before reading every journal again",
                   "journals": "Reading your journals", "setup": "Getting ready", "ready": "Ready",

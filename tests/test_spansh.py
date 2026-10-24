@@ -390,6 +390,7 @@ class BatchFSpansh(unittest.TestCase):
         self.j.handle(dict(ev, event="Scan", StarSystem="Sys"))
         self.db.commit()
         self.state.scan_version += 1
+        self.state.left_seq += 1   # as apply_own_changes does for a scan elsewhere than where you are (S2-S1)
         left = {r["id"]: r for r in self.state.left_behind(100)["systems"]}
         self.assertIsNone((left.get("9") or {}).get("old_data"))
 

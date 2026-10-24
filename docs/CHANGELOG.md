@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Suggestions (B): speed
+- The full Fable review's suggestions, batch B:
+  - **S2-S2: History's counts use indexes** on the time columns they count over (about 4 s on the event loop for
+    "everything" on a big database, at every jump); added at the next start, no re-read.
+  - **S2-S1: Left behind is rebuilt only when it can change** (a scan, sale or sample elsewhere, a death, a move),
+    not at every scan in the system you are in (`left_seq`).
+  - **S6-S1: the unsold estimate runs again only when a line of a kind it reads arrives**, not for every journal line.
+  - **S6-S2: the Log's search answers in parts** (`budget_s`, 2 s a request, `partial` and `next`): a search that
+    matches little no longer walks years of journals in one request; the page asks for the next part at once
+    ("searching… N so far").
+  - **S7-S2: the Uploads box's counts are kept while the outbox is unchanged** (they ran for every window at every
+    payload). **S3-S2:** Nearby's Boxel recommendations read your visits and EDSM log once per sector, not per boxel.
+  - **S5-S3: "Hold full" asks Spansh twice, not four times**, and says nothing when the stint ended meanwhile.
+
 ## 2026-10-24 · Suggestions (A): start-up, launchers and running it
 - The full Fable review's suggestions, batch A (project/PLAN-review-suggestions-2026-10-23.md):
   - **S4-S2: a database that cannot be opened says what to do**: the restore command, in the terminal and on the

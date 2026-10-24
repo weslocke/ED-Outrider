@@ -110,6 +110,14 @@ class Log(unittest.TestCase):
         self.assertEqual([x["system"] for x in r2["rows"]], ["Old3", "Old2", "Old1", "Old0"])
         self.assertTrue(outrider.log.read_log([d], days=1, noise=True)["rows"][3]["event"] == "Music")
         self.assertEqual(len(outrider.log.read_log([d], days=1, q="new1")["rows"]), 1)
+        # review 2026-10-23 S6-S2: out of time between two files, the rows found so far and where to go on; the next
+        # request picks up there, so a long search comes back in parts and nothing is lost or doubled
+        ticks = iter(range(0, 100, 10))
+        r = outrider.log.read_log([d], days=1, q="old", budget_s=5, clock=lambda: next(ticks))
+        self.assertEqual((r["rows"], r.get("partial"), r["next"]), ([], True, f"{name(30)}|0"))
+        r = outrider.log.read_log([d], days=1, q="old", before=r["next"], budget_s=5, clock=lambda: 0)
+        self.assertEqual([x["system"] for x in r["rows"]], ["Old4", "Old3", "Old2", "Old1", "Old0"])
+        self.assertFalse(r.get("partial"))
         self.assertEqual(len(outrider.log.read_log([d], days=1, q="→ old")["rows"]), 5)   # matches the summary only
         tail = r["newest"]
         with open(p2, "a") as f:

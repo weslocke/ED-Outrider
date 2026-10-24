@@ -9681,8 +9681,8 @@ const releasePayloads = async () => {
       got.sell = [];
       for (const [label, rows, carrier] of [
           ["near100", {"100": [{station: "Hub", system: "Sys", distance: 34.4, price: 182000, carrier: false}]}, {callsign: "K7Q-1HT", distance: 500}],
-          ["wider", {"100": [{station: "K7Q-1HT", system: "Here", distance: 0, price: 300000, carrier: true, age_s: 60}], "500": [],
-                     "2500": [{station: "Old Carrier", system: "Far", distance: 900, price: 400000, carrier: true, age_s: 10 * 86400},
+          ["wider", {"100": [{station: "K7Q-1HT", system: "Here", distance: 0, price: 300000, carrier: true, age_s: 60}],
+                     "10000": [{station: "Old Carrier", system: "Far", distance: 900, price: 400000, carrier: true, age_s: 10 * 86400},
                               {station: "Jaques Station", system: "Colonia", distance: 1320, price: 175000, carrier: false}]}, {callsign: "K7Q-1HT", distance: 12}],
           ["nothing", {}, {callsign: "K7Q-1HT", distance: 500}],
           ["ownHere", {}, {callsign: "K7Q-1HT", distance: 0}]]) {
@@ -9693,6 +9693,12 @@ const releasePayloads = async () => {
         got.sell.push([label, JSON.parse(w.eval("JSON.stringify(__spoken.splice(0))")), asked]);
       }
       delete w.__rows; delete w.__asked;
+      // S5-S3: the stint ended while Spansh was asked: nothing said (the "Hold full" card still stands)
+      await w.eval(`(async () => { const s = MW.start; MW.start = "stint a"; __spoken.length = 0;
+        await holdFullSell({held: [["platinum", "Platinum", 200]]}, async () => { MW.start = "stint b";
+          return [{station: "Hub", system: "Sys", distance: 3, price: 182000, carrier: false}]; });
+        MW.start = s; })()`);
+      got.sellLeft = JSON.parse(w.eval("JSON.stringify(__spoken.splice(0))"));
       got.nowMine = d.querySelector("#nowBody .now-mine") ? d.querySelector("#nowBody .now-mine").textContent : null;
       got.caps = w.eval(`fillLine("{ring} at {body}. So: {types} rings. {types}!", {ring: "a metallic ring", body: "A 3", types: "icy"})`);
       w.eval(`localStorage.setItem("miningRings", JSON.stringify({types: ["Rocky", "Bogus"], pristine: false})); drawMiningRings()`);
@@ -9731,9 +9737,10 @@ const releasePayloads = async () => {
       nowMine: "⛏ 4 B Ring · Platinum · 60 t/h",
       sell: [["near100", [["Best price for Platinum within 100 light-years: Hub in Sys, 34 light-years, 182k credits a ton.", "limpets"]], [[100, "price", false]]],
              ["wider", [["Nearest buyer for Platinum: Jaques Station in Colonia, 1,320 light-years, 175k credits a ton. Or your carrier, 12 light-years: somewhere to unload.", "limpets"]],
-              [[100, "price", false], [500, "near", true], [2500, "near", true]]],
-             ["nothing", [], [[100, "price", false], [500, "near", true], [2500, "near", true], [10000, "near", true]]],
-             ["ownHere", [["Your carrier, here in the system: somewhere to unload.", "limpets"]], [[100, "price", false], [500, "near", true], [2500, "near", true], [10000, "near", true]]]],
+              [[100, "price", false], [10000, "near", true]]],   // one wider ask (review S5-S3)
+             ["nothing", [], [[100, "price", false], [10000, "near", true]]],
+             ["ownHere", [["Your carrier, here in the system: somewhere to unload.", "limpets"]], [[100, "price", false], [10000, "near", true]]]],
+      sellLeft: [],
       hTable: [["2", "50 %", "40 Digger", "6.0M*", "80 t"], ["1", "", "", "", "0 t"]],
       ringCell: ["1🗺/3", "2 rings, 1 mapped (🗺), 3 hotspots · Pristine reserves\nA Ring · Metallic: Platinum 2, Painite 1\nB Ring · Icy: not mapped", "",
                  '2<div class="sub2 unk">1🗺/3</div>', "2🗺/3", "2", ""],

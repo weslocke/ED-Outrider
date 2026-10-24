@@ -3357,11 +3357,12 @@ function miningWarn(m) {
   }
 }
 // After "Hold full" (the author, 2026-10-19): where to sell the most you carry. The best price within 100 ly (stations);
-// none there (out in the black), the nearest buyer within 500, then 2,500, then 10,000 ly, fleet carriers reported in
+// none there (out in the black), the nearest buyer within 10,000 ly (sorted nearest first, so its first row is the nearest
+// within any smaller radius too: one ask, not three, review 2026-10-23 S5-S3), fleet carriers reported in
 // the last 7 days among them (they move, their markets go stale). Your own carrier is never a place to sell (it pays
 // you nothing: Earnings leaves those sales out), but within your laden jump range it is named as somewhere to unload.
 // ask(within, sort, carriers): the Sell lookup's rows (GET api/cargo/lookup), [] or null on an error; a test passes its own
-const HOLD_SELL_WIDER = [500, 2500, 10000];
+const HOLD_SELL_WIDER = [10000];
 const CARRIER_FRESH_S = 7 * 86400;
 async function holdSellAsk(commodity, tons, within, sort, carriers) {
   try {
@@ -3374,6 +3375,7 @@ async function holdFullSell(m, ask = null) {
   const top = (m.held || [])[0];
   if (!top) return;
   const [id, name, tons] = top;
+  const stint = MW.start;   // the stint asked for: its answer is not said once you have left the ring (S5-S3)
   ask = ask || ((within, sort, carriers) => holdSellAsk(id, tons, within, sort, carriers));
   const own = data && data.carrier;
   const ownNames = own ? [own.callsign, own.name].filter(Boolean).map(x => String(x).trim().toUpperCase()) : [];
@@ -3384,6 +3386,7 @@ async function holdFullSell(m, ask = null) {
     best = usable(await ask(w, "near", true))[0];
     if (best) { near = true; break; }
   }
+  if (MW.start !== stint) return;
   const range = plainRange();
   const ownNear = own && own.distance != null && range && own.distance <= range ? own : null;
   if (!best && !ownNear) return;
@@ -5557,7 +5560,7 @@ const lbRadius = document.getElementById("lbRadius");
 lbRadius.value = store.get("lbRadius", "100");
 lbRadius.onchange = () => { store.set("lbRadius", lbRadius.value); leftKey = null; loadLeft(); };
 async function loadLeft() {
-  const key = `${lbRadius.value}|${data && data.scan_version}|${posId()}`;
+  const key = `${lbRadius.value}|${data && data.left_seq}|${posId()}`;   // not every scan here (S2-S1)
   if (key === leftKey) return renderLeft();
   leftKey = key;
   const g = newRequest("left");
@@ -6236,10 +6239,11 @@ async function loadLog(force = false) {
     const r = await apiJson(`api/log?${key}`);
     if (gen !== L.gen) return;
     if (r.error) throw new Error(r.error);
-    Object.assign(L, {rows: r.rows || [], next: r.next, newest: r.newest, error: null, journal: mark});
+    Object.assign(L, {rows: r.rows || [], next: r.next, newest: r.newest, error: null, journal: mark, partial: !!r.partial});
   } catch (err) { if (gen !== L.gen) return; L.error = "log failed: " + err.message; L.key = null; }   // rows kept; the next render tries again
   L.loading = false;
   renderLog();
+  if (L.partial && gen === L.gen) moreLog();   // a long search answered in parts: the next part at once (S6-S2)
 }
 async function moreLog() {
   // after a failed reload there are no filters to page with (L.key null): the next render reloads first
@@ -6249,10 +6253,11 @@ async function moreLog() {
     const r = await apiJson(`api/log?${key}&before=${encodeURIComponent(L.next)}`);
     if (gen !== L.gen) return;   // the filters changed meanwhile: that load owns the lock now
     if (r.error) throw new Error(r.error);
-    L.rows = L.rows.concat(r.rows || []); L.next = r.next; L.error = null;
-  } catch (err) { if (gen !== L.gen) return; L.error = "loading more failed: " + err.message; }   // L.next kept: "more" tries again
+    L.rows = L.rows.concat(r.rows || []); L.next = r.next; L.error = null; L.partial = !!r.partial;
+  } catch (err) { if (gen !== L.gen) return; L.error = "loading more failed: " + err.message; L.partial = false; }   // L.next kept: "more" tries again
   L.loading = false;
   renderLog();
+  if (L.partial && gen === L.gen) moreLog();   // still searching: the next part
 }
 async function tailLog() {   // new journal lines since the newest row: prepend them
   const j = logMark();
@@ -6296,7 +6301,8 @@ const localTime = ts => { const d = new Date(ts); return isNaN(d) ? ts : d.toLoc
 const localDay = ts => { const d = new Date(ts); return isNaN(d) ? "" : d.toLocaleDateString([], {weekday: "short", year: "numeric", month: "short", day: "numeric"}); };
 function renderLog() {
   const st = document.getElementById("lStatus");
-  st.textContent = L.error ? L.error : L.loading ? "loading…" : `${L.rows.length} ${lUnsent.checked ? "not sent" : "events"}${L.next ? " (more below)" : ""}`;
+  st.textContent = L.error ? L.error : L.loading || L.partial ? `searching…${L.rows.length ? ` ${L.rows.length} so far` : ""}`
+    : `${L.rows.length} ${lUnsent.checked ? "not sent" : "events"}${L.next ? " (more below)" : ""}`;
   logUnsentShow();
   let day = null, h = "";
   for (const r of L.rows) {
