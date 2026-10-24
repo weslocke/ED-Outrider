@@ -6354,6 +6354,33 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| suggestions D |", good ? "the rescan trip, lost runs, reported sites, Left behind by Worth, the Map's work left" : JSON.stringify({got, want}), errors.slice(before));
   }
+  // Suggestions (E): S9-S5 a sold run's paid figure; S9-S7 the suit row (danger, spoken by default); S9-S29 the
+  // Exomastery arrival's codex clause, only with Codex finds count on
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      const o = {}, txt = h => h.replace(/<[^>]+>/g, "");
+      o.paid = [txt(bioValueCell({state: "sold", paid: 19600000, value: 19200000, factor: 5})), /estimated 19.2M ✦/.test(bioValueCell({state: "sold", paid: 19600000, value: 19200000, factor: 5}))];
+      o.est = txt(bioValueCell({state: "sold", paid: null, value: 3000000, factor: 1}));
+      o.aboard = txt(bioValueCell({state: "aboard", paid: null, value: 3000000, factor: 1}));
+      o.suit = ALERTS.some(a => a[0] === "suit" && a[2] === "danger") && alertSpeakBase().suit === true && DANGER.has("suit_low") &&
+        (ROW_KEYS.suit || []).includes("suit_low") && !!LINE_SAMPLES.suit_low;
+      const was = codexNewCounts;
+      codexNewCounts = () => false;
+      o.cxOff = exoCodexWords({kind: "exo", codex_new: 2, codex_best: "Frutexa Flammasis"});
+      codexNewCounts = () => true;
+      o.cx = [exoCodexWords({kind: "exo", codex_new: 2, codex_best: "Frutexa Flammasis"}), exoCodexWords({kind: "exo", codex_new: 1, codex_best: "Tubus Rosarium"}),
+              exoCodexWords({kind: "riches", codex_new: 2, codex_best: "X"})];
+      codexNewCounts = was;
+      o.newLeft = exoNewLeft({bodies: [{species: [{new: true}, {new: true, done: true}, {new: false}]}]});
+      return JSON.stringify(o); })()`));
+    const want = {paid: ["19.6M", true], est: "≈3.0M", aboard: "3.0M", suit: true,
+                  cxOff: "",
+                  cx: ["Two would be new to your codex: the best, Frutexa Flammasis.", "Tubus Rosarium would be new to your codex.", ""], newLeft: 1};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| suggestions E |", good ? "a sold run's paid figure, the suit row, the Exomastery codex clause" : JSON.stringify({got, want}), errors.slice(before));
+  }
   // S9-S20: an upload on hold gets its own alerts row, off until ticked (the card comes from the server either way),
   // said by Comms; S7-S6: an empty backfill Preview says why ("412 lines left out, the Legacy game ...")
   {

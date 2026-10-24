@@ -3275,6 +3275,44 @@
     "Hull's at {pct} percent. Dadgum, let's go home and get patched up."
    ]
   },
+  "suit_low": {
+   "southern_belle": [
+    "{name}, I don't mean to fuss, but your suit {what} is low. Back to the ship, if you please.",
+    "Suit {what} low, sugar. The ship is {distance} away. Hurry along now.",
+    "Lord have mercy, your {what} is failing. {value} credits are riding on you.",
+    "Darlin', {what} low. Leave the scenery and come on home.",
+    "{name}, suit {what} is low. {distance} to the ship. Quick as you can.",
+    "Honey, {what} low. {value} credits in data and samples, and I won't lose a cent of it, or you.",
+    "Suit {what} low. Grandmama never dawdled when the stove was hot, and neither should you.",
+    "Your {what} is failing, sugar. The ship is {distance} off. Walk with purpose.",
+    "Well, I never. {what} low, {name}. Back to the ship.",
+    "Suit {what} is low, darlin'. {value} credits are too dear to leave in the dirt.",
+    "{what} low. Ship's {distance} away, honey. Go on now.",
+    "{name}, your {what} is failing. Gracefully if we can, quickly if we can't. To the ship.",
+    "Suit {what} low, sugar. Back aboard, if you please.",
+    "Dang, {what} low. {value} credits riding on you. Mind your step and hurry.",
+    "Lord have mercy, {name}, suit {what} is low. {distance}. Go.",
+    "Darlin', {what} low. Come on back to the ship before I worry myself sick."
+   ],
+   "southern_belle_profane": [
+    "{name}, I don't mean to fuss, but your suit {what} is low. Back to the damn ship, if you please.",
+    "Suit {what} low, sugar. The ship is {distance} away. Hurry your ass along now.",
+    "Lord have mercy, your {what} is failing. Hell, {value} credits are riding on you.",
+    "Darlin', {what} low. Leave the damn scenery and get your behind home.",
+    "{name}, suit {what} is low. {distance} to the ship. Quick as hell.",
+    "Honey, {what} low. {value} credits in data and samples, and I will not lose a damn cent of it, or you.",
+    "Holy shit, suit {what} low. Grandmama never dawdled when the stove was hot. Move.",
+    "Your {what} is failing, sugar. The ship is {distance} off. Walk like you damn well mean it.",
+    "Well, damn. {what} low, {name}. Back to the ship.",
+    "Suit {what} is low, darlin'. {value} credits are too dear to leave in the fucking dirt.",
+    "Shit, {what} low. Ship's {distance} away, honey. Go on now.",
+    "I am a lady, {name}, but your {what} is failing. Get your ass to the ship.",
+    "Suit {what} low, sugar. Back aboard, and I mean right the hell now.",
+    "Hell, {what} low. {value} credits riding on you. Mind your step and hurry.",
+    "Bless your heart, {name}, suit {what} is low. {distance}. Go, damn it.",
+    "Darlin', {what} low. Get on back to the ship before I worry myself sick as shit."
+   ]
+  },
   "heat": {
    "southern_belle": [
     "{name}, I don't mean to fuss, but we're taking heat damage. Throttle back and ease away from that star.",

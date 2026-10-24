@@ -2357,6 +2357,7 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["unsold", "your unsold data crosses the amber or red level", "cash"],
   ["firstsseen", "someone else's scans of your unsold first discoveries reached Spansh", "alert"],
   ["hull", "hull damage, heat damage, an interdiction", "danger"],
+  ["suit", "on foot on a planet, your suit's oxygen or health running low with data aboard", "danger"],
   ["approach", "approaching a high-gravity landable body with a lot of unsold data aboard", "alert"],
   ["loss", "what was lost with your ship, and the nearest system to rescan", "danger"],
   ["carrier", "your carrier departing and arriving", "chime"],
@@ -2384,7 +2385,7 @@ const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arri
   refuelshort: "Fuel short of the refuel stop", highway: "Highway next stop", exo: "Exomastery route",
   riches: "Road to Riches, worlds, sweeps", trade: "Trade route", carriertrip: "Carrier trip", autotarget: "Auto-target",
   wrongtarget: "Not the next stop targeted", docking: "Docking pad and refusals", sell: "Selling", saleleft: "Data left after a sale",
-  unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction", approach: "High gravity",
+  unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction", suit: "Suit oxygen or health low", approach: "High gravity",
   loss: "Ship lost", carrier: "Carrier", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing", uploadheld: "Upload on hold",
   ring: "Rings to mine", limpets: "Limpets and the hold", prospect: "Prospector call-out",
   rigs: "Mining rigs", rigleash: "Rig too far", rigsout: "Rigs still out"};
@@ -2411,6 +2412,7 @@ const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, 
   saleleft: "Universal Cartographics sells 50 systems a page: said once the pages stop and the estimate has caught up.",
   unsold: "The levels are under Risk and warnings → Unsold data on board.",
   firstsseen: "The firsts watch: a card and a notification each time, spoken at most once in 30 minutes.",
+  suit: "What a death would lose and how far your ship is. Once each time it runs low; quiet in a station or with nothing aboard. Read from Status.json as Frontier documents it: not yet tried in a live game.",
   approach: "The gravity and unsold levels are under Risk and warnings → Approach warning (unsold over the amber level or the rebuy multiple).",
   loss: "Samples that died with you count too.",
   chat: "Off until switched on in Settings → Voice → Chat (squadron, wing and direct ticked there).",
@@ -2975,7 +2977,7 @@ const allFilled = (text, all) => [...text.matchAll(/\{(\w+)\}/g)].every(m => all
 // Danger lines: a joke at 20% hull costs clarity, so with "Danger alerts always down to business" ticked (the
 // default) these come only from the business lists and never swear, whatever personalities are ticked.
 // (ship_lost too: a debrief after a rebuy is no time for a joke; it also jumps the queue like the others)
-const DANGER = new Set(["hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop", "carrier_departs", "ship_lost", "rig_leash"]);
+const DANGER = new Set(["hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop", "carrier_departs", "ship_lost", "rig_leash", "suit_low"]);
 const speechDangerBusiness = () => !!(store.get("speechDangerBusiness", null) ?? (data && data.defaults && data.defaults.speech_danger_business) ?? true);
 // "One personality per system": the personality is drawn at game start and at each arrival and says every line
 // until the next one, so a character (and its own voice) holds through a system. In memory only: a reload draws
@@ -3141,6 +3143,7 @@ const LINE_SAMPLES = {
   ring_found: {body: "A 3", ring: "a pristine metallic ring"}, limpets_none: {}, limpets_low: {count: 5}, hold_nearly_full: {minutes: 5, free: 12}, hold_full: {}, prospect_hit: {what: "Platinum, 34 percent"}, motherlode: {mineral: "Void Opal"}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
   firsts_seen: {system: "Drojau LL-O b26-3", value: "14.2M"},
   upload_held: {service: "EDSM"},
+  suit_low: {what: "oxygen", value: "412M", distance: "640 metres"},
   surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
   fuel_topup: {rate: "8 of the last 20 stars were scoopable", jumps: "about 6 jumps"}, hull: {pct: 42}, interdicted: {by: "someone"},
@@ -6418,6 +6421,13 @@ const when = ts => ts ? ts.slice(0, 10) + " " + ts.slice(11, 16) : "";
 // a table's time cell: "2026-09-19 18:02", compact "09-19 18:02", compact2 "09-19"
 const whenCell = ts => { const w = when(ts); return w ? dual(esc(w), esc(shortForm("when", w)), {title: w, s2: esc(w.slice(5, 10))}) : ""; };
 const sysCell = s => !s ? "" : `<span class="name" data-name="${esc(s.name)}" title="click to copy">${nameWords(s.name)}</span><span class="goto" data-goto="${esc(s.id)}" title="open in Here">⌖</span>`;
+// S9-S5: a sold run shows what Vista Genomics paid (the estimate in its title), ≈ before an estimate where the sale's
+// figures are not known; the others their estimate (✦: the ×5 first-footfall bonus)
+function bioValueCell(r) {
+  const est = r.value ? credits(r.value) + (r.factor === 5 ? " ✦" : "") : "?";
+  if (r.paid != null) return `<td class="num" title="paid ${credits(r.paid)} · estimated ${est}${r.factor === 5 ? " (×5 first footfall)" : ""}">${credits(r.paid)}</td>`;
+  return `<td class="num" title="${r.state === "sold" ? "estimated: the sale's own figures are not known" : r.factor === 5 ? "×5 first footfall bonus" : ""}">${r.state === "sold" && r.value ? "≈" : ""}${est}</td>`;
+}
 function renderBio() {
   const b = bioData, st = document.getElementById("bStatus");
   if (!b || b.error) { st.textContent = b ? b.error : ""; return; }
@@ -6431,7 +6441,7 @@ function renderBio() {
     return dir * String(a ?? "").localeCompare(String(c ?? ""), undefined, {numeric: true}); });
   const n = b.counts, t = b.totals;
   st.innerHTML = `${b.rows.length} sample runs · <span class="aboard">${n.aboard} aboard <b>${credits(t.aboard)} cr</b></span> · ` +
-    `<span class="sold">${n.sold} sold <b>${credits(t.sold)} cr</b></span> · <span class="lost">${n.lost} lost <b>${credits(t.lost)} cr</b></span>` +
+    `<span class="sold"${b.sold_estimated ? ` title="partly estimated: sales from before Outrider kept what each entry paid"` : ""}>${n.sold} sold <b>${b.sold_estimated ? "≈" : ""}${credits(t.sold)} cr</b></span> · <span class="lost">${n.lost} lost <b>${credits(t.lost)} cr</b></span>` +
     (n["in progress"] ? ` · <span class="progress">${n["in progress"]} in progress</span>` : "") +
     (rows.length !== b.rows.length ? ` · showing ${rows.length}` : "");
   document.querySelectorAll("th[data-bsort]").forEach(h => h.classList.toggle("on", h.dataset.bsort === k));
@@ -6443,7 +6453,7 @@ function renderBio() {
       <td class="num c2hide">${r.samples}/3</td>
       <td class="${r.state === "in progress" ? "progress" : r.state}" title="${r.sold_ts ? "sold " + when(r.sold_ts) : ""}">${dual(esc(r.state), esc(shortForm("state", r.state)),
         {title: `${r.state} · ${r.samples}/3 samples`, s2: r.state === "in progress" ? `${r.samples}/3` : esc(r.state)})}</td>
-      <td class="num" title="${r.factor === 5 ? "×5 first footfall bonus" : ""}">${r.value ? credits(r.value) + (r.factor === 5 ? " ✦" : "") : "?"}</td></tr>`).join("") ||
+      ${bioValueCell(r)}</tr>`).join("") ||
     `<tr><td colspan="9" class="unk">${b.rows.length ? "Nothing matches the filter." : "No samples in this period."}</td></tr>`;
   const cx = b.codex.filter(c => !f || [c.name, c.category, c.region, c.system && c.system.name].some(x => (x || "").toLowerCase().includes(f)));
   document.getElementById("cStatus").textContent = `· ${b.codex.length} in this period, ${b.codex.filter(c => c.new).length} new to your codex, ` +
@@ -6576,7 +6586,7 @@ function renderChecklist() {
       return `<tr class="${cls}${CL.open === r.id ? " on" : ""}" data-cl="${esc(r.id)}" title="${esc(tip)}"><td>${esc(r.short)}` +
         `${r.possible === "parts" ? ' <span class="clparts">◐</span>' : ""}</td><td>${r.state ? CL_WORD[r.state]
           : r.elsewhere ? `<span class="clelse" title="${esc(`found in another region: ${CL_WORD[r.elsewhere]}`)}">elsewhere</span>`
-          : geo ? "" : clFindBtn(r, null, "🔍")}</td>` +
+          : clFindBtn(r, null, "🔍")}</td>` +
         `<td class="num">${geo ? (r.sites ? r.sites.toLocaleString() : "—") : `${r.variants.found} / ${r.variants.total}`}</td></tr>` +
         (!geo && CL.open === r.id ? clVariantRows(r) : "");
     }).join("") + "</table></div>";
@@ -6632,7 +6642,7 @@ async function clFind(id, colour) {
   const f = CL.find = {id, colour, busy: true, answer: null};
   clDrawSide();
   let a;
-  try { a = await apiJson(`api/checklist/find?species=${encodeURIComponent(id)}${colour ? `&colour=${encodeURIComponent(colour)}` : ""}`); }
+  try { a = await apiJson(`api/checklist/find?species=${encodeURIComponent(id)}${colour ? `&colour=${encodeURIComponent(colour)}` : ""}${clKind() === "geo" ? "&kind=geo" : ""}`); }
   catch (err) { a = {error: err.message}; }
   if (CL.find !== f) return;   // another find (or ✕) meanwhile
   f.busy = false; f.answer = a;
@@ -6675,6 +6685,7 @@ function clDrawSide() {
       `<p>${r.sites ? `Reported at <b>${r.sites.toLocaleString()}</b> site${r.sites === 1 ? "" : "s"} ${CL.data.region == null ? "in all" : "in this region"}`
         : "Not reported in this region yet"}${sp && sp.sites_total ? `, ${sp.sites_total.toLocaleString()} in the galaxy` : ""}.` +
       ` ${r.state ? `<span class="cl-logged">Logged here</span>` : r.elsewhere ? `<span class="clelse">Logged in another region</span>` : "Not in your codex here."}</p>` +
+      clFindHtml(r) +   // S9-S6: 🔍 nearby, as for a species
       (sp && !sp.error ? clFigure(sp.image, r.name) : "") +
       (mine.length ? `<div class="unk">Where you logged it: ${mine.map(esc).join(", ")}</div>` : "") +
       `<div class="clmapbox"><canvas id="clMap" width="880" height="880" aria-label="${esc(`the galaxy: where ${r.name} has been reported`)}"></canvas>` +
@@ -8239,9 +8250,20 @@ function richHeadHtml(d) {
     (rt.done_ts ? `<div class="hwystate hwydone">${k.name} complete.</div>`
       : nx ? `<div class="hwystate">Next: <b class="copy" data-name="${esc(nx.system)}" title="click to copy">${esc(nx.system)}</b>` +
              `${live && live.target_check ? ` · ${targetCheckHtml(live.target_check)}` : ""}${live && live.skipped ? ` · ${surveySkipHtml(live)}` : ""}` +
-             `${nx.left ? ` · ${nx.left} ${exo ? "species to sample" : "to do"} there` : ""}</div>` : "") +
+             `${nx.left ? ` · ${nx.left} ${exo ? "species to sample" : "to do"} there` : ""}` +
+             `${exo && codexNewCounts() && exoNewLeft(nx) ? `, ${exoNewLeft(nx)} new <span class="cxnew" title="new to your codex in that region">✦</span>` : ""}</div>` : "") +
     `<div class="unk hwyhow">${esc(how)}${rt.created_ts ? ` · plotted ${esc(when(rt.created_ts))}` : ""}</div>`;
 }
+// S9-S29: an Exomastery arrival's species new to your codex here, while Codex finds count is ticked: "Frutexa
+// Flammasis would be new to your codex." / "Two would be new to your codex: the best, Frutexa Flammasis." ("" otherwise)
+function exoCodexWords(m) {
+  if (m.kind !== "exo" || !m.codex_new || !codexNewCounts()) return "";
+  if (m.codex_new === 1) return `${m.codex_best} would be new to your codex.`;
+  const n = (NSP_WORDS[m.codex_new] || String(m.codex_new));
+  return `${n[0].toUpperCase()}${n.slice(1)} would be new to your codex: the best, ${m.codex_best}.`;
+}
+// a next stop's species still to sample that would be new to your codex there (the ✦ on its rows)
+const exoNewLeft = nx => (nx.bodies || []).reduce((n, b) => n + (b.species || []).filter(x => !x.done && x.new).length, 0);
 function exoBodyHtml(b, system) {
   const sp = (b.species || []).map(x => `<span class="${x.done ? "exodone" : ""}" title="${esc(x.genus || "")}${x.count ? ` · reported ${x.count}×` : ""}">` +
     `${x.done ? "✓ " : ""}${esc(x.species)} ${x.value != null ? credits(x.value) : ""}${x.new && !x.done ? ` <span class="exonew" title="new to your codex in this region">✦</span>` : ""}</span>`).join(" · ");
@@ -9845,8 +9867,10 @@ function onData() {
         else alertOut("sell", `Undocked with ${credits(u.total)} cr still aboard`, `Still to sell: ${leftToSell(u)}.`,   // part of it was sold here
                       {sound: "alert", say: () => line("unsold_urgent", {value: credits(u.total)})});
       }
-      else if ((m.kind === "riches" || m.kind === "exo" || m.kind === "trade") && m.text)   // the slot's route: what is left where you arrived, and where next
-        alertOut(m.kind, m.text.replace(/\.$/, ""), "", {tag: m.kind, say: m.text});
+      else if ((m.kind === "riches" || m.kind === "exo" || m.kind === "trade") && m.text) {   // the slot's route: what is left where you arrived, and where next
+        const cx = exoCodexWords(m), text = cx ? `${m.text} ${cx}` : m.text;
+        alertOut(m.kind, text.replace(/\.$/, ""), "", {tag: m.kind, say: text});
+      }
       else if (m.kind === "highway" && m.what === "short") {   // S1: the fuel aboard won't reach the next refuel stop
         const t = hwyShortText(m), jumps = `${m.jumps} jump${m.jumps === 1 ? "" : "s"}`;
         alertOut("refuelshort", `Fuel won't reach ${m.refuel_at}`, t, {tag: "fuel_short",
@@ -9904,6 +9928,12 @@ function onData() {
       else if (m.kind === "limpets" && m.what === "none" && miningCfg().limpetWarn)   // a mining ship undocked without limpets
         alertOut("limpets", "No limpets aboard", "a mining ship left the pad without any (Settings → Mining)",
                  {tag: "limpets_none", say: () => line("limpets_none", {}, "No limpets aboard. Turn back for some before we head out.")});
+      else if (m.kind === "suit" && m.what) {   // S9-S7: on foot, the suit running low with data aboard: danger
+        const value = credits(m.value), distance = m.dist != null ? pinSpokenDist(m.dist) : "";
+        alertOut("suit", `Suit ${m.what} low`, `${value} cr aboard${m.dist != null ? ` · your ship ${surfDist(m.dist)} away` : ""}`, {tag: "suit_low",
+                 say: () => distance ? line("suit_low", {what: m.what, value, distance}, `Suit ${m.what} low. ${value} aboard; the ship is ${distance} away.`)
+                   : `Suit ${m.what} low. ${value} aboard.`});
+      }
       else if (m.kind === "rig_leash" && m.text)   // a rig past the leash warning, or lost at 5 km: danger
         alertOut("rigleash", m.text.replace(/\.$/, ""), "", {tag: "rig_leash", say: m.text});
       else if (m.kind === "rigs_out" && m.text) {   // the Rhino docked with rigs still marked out: spoken, and a card
@@ -11002,7 +11032,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   trade: "trade routes", highway: "the Highway", refuelshort: "fuel short of a refuel", lastscoop: "last scoop", autotarget: "auto-target",
   wrongtarget: "wrong target", find: "valuable bodies", jumponium: "jumponium", sampling: "sampling", approach: "high-g approaches",
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
-  hull: "hull, heat, interdiction", carrier: "your carrier", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
+  hull: "hull, heat, interdiction", suit: "the suit running low", carrier: "your carrier", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
   rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", uploads: "uploads", uploadheld: "uploads on hold"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
@@ -11013,7 +11043,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   autotarget: ["autotarget_nothing"], wrongtarget: ["wrong_target"], find: ["find_body", "find_bio", "mapped_before", "sample_clear"],
   jumponium: ["jumponium"], sampling: ["bio_done_last", "bio_done_more", "bio_tag_near", "left_body"], approach: ["high_g"],
   bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
-  firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], carrier: ["carrier_arrived", "carrier_departs"], codex: ["codex"],
+  firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
   curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"],
   uploadheld: ["upload_held"]};

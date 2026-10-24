@@ -3249,6 +3249,44 @@
     "{pct} percent hull. I swear to God, if we die out here, I am going to be furious."
    ]
   },
+  "suit_low": {
+   "ivanova": [
+    "Suit {what} low, {name}. Back to the ship. Now.",
+    "Your {what} is failing. The ship is {distance} away. Run.",
+    "{what} low. {value} credits on you. Do not die out here.",
+    "{name}, suit {what} is low. Whatever you are looking at, stop looking at it.",
+    "Suit {what} low. {distance} to the ship. Move.",
+    "Wonderful. {what} low, and {value} credits in data and samples. Go.",
+    "Suit {what} is low. My grandmother walked farther than {distance} in a blizzard. Walk.",
+    "{name}, your {what} is failing. Get to the ship. That is not a suggestion.",
+    "{what} low. Die here and {value} credits die with you.",
+    "Suit {what} low. The ship is {distance} off. I am not coming to carry you.",
+    "Your {what} is failing, {name}. {value} credits. Move.",
+    "{what} low. Back to the ship. No arguments.",
+    "Suit {what} is low. {distance}. Run, {name}.",
+    "{what} low. {value} credits riding on you. Do not make me write that report.",
+    "Suit {what} low. Back to the ship before this gets interesting.",
+    "Your {what} is failing. Ship, {distance}. Go now."
+   ],
+   "ivanova_profane": [
+    "Suit {what} low, {name}. Back to the damn ship. Now.",
+    "Your {what} is failing. The ship is {distance} away. Fucking run.",
+    "{what} low. {value} credits on you. Don't you die out here, damn it.",
+    "{name}, suit {what} is low. Stop staring at rocks, for God's sake.",
+    "Suit {what} low. {distance} to the ship. Move your ass.",
+    "Shit. {what} low, and {value} credits in data and samples. Go.",
+    "Suit {what} is low. My grandmother walked farther than {distance} in a blizzard. Walk, damn it.",
+    "{name}, your {what} is failing. Get to the ship. That's an order, not a fucking suggestion.",
+    "{what} low. Die here and {value} credits die with you. Hell no.",
+    "Suit {what} low. The ship is {distance} off. I'm not coming to carry your ass.",
+    "Your {what} is failing, {name}. {value} credits. Move, God damn it.",
+    "{what} low. Back to the ship. No fucking arguments.",
+    "Shit, suit {what} is low. {distance}. Run, {name}.",
+    "{what} low. {value} credits riding on you. Don't make me write that shit report.",
+    "Suit {what} low. Back to the ship before this goes to hell.",
+    "God damn it, your {what} is failing. Ship, {distance}. Go."
+   ]
+  },
   "heat": {
    "ivanova": [
     "Heat damage, {name}. Throttle down and turn away from the star.",

@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Suggestions (E): exobiology and geology
+- The full Fable review's suggestions, batch E:
+  - **S9-S5: My Samples shows what Vista Genomics paid for a sold run** (the BioData entry's Value plus Bonus, kept since
+    the sale was read), the estimate in its hover; the sold total from the paid figures, ≈ where a sale predates them.
+  - **S9-S6: the Geology checklist's 🔍 nearby**: the nearest bodies where commanders' mapping reported an entry to
+    Spansh (the same landmark filter as species; GET `/api/checklist/find?kind=geo`).
+  - **S9-S7: low suit oxygen or health on foot**: a danger line with what a death would lose and how far the ship is
+    (new alerts row and speech key `suit_low`, lines in every personality); quiet in a station or with nothing aboard.
+  - **S9-S29: Exomastery's arrival line and Next count the species new to your codex** there, while Codex finds count
+    is ticked.
+
 ## 2026-10-24 · Suggestions (D): exploring and what a loss leaves
 - The full Fable review's suggestions, batch D:
   - **S9-S1: the rescan trip says why you came back**: in a system where first-discovery scans died with a ship, Now's

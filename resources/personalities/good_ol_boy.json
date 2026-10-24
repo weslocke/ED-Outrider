@@ -3292,6 +3292,44 @@
     "{pct} percent hull. Easy does it. Find us a repair bay and we'll be right as rain."
    ]
   },
+  "suit_low": {
+   "good_ol_boy": [
+    "{name}, your suit {what} is low. Let's mosey on back to the ship, and quick.",
+    "Suit {what} low, buddy. Ship's {distance} off. Hustle on back.",
+    "Easy now, partner. {what} low, and you got {value} credits on you.",
+    "Dadgum, your {what} is failing. Get on back to the ship, {distance}.",
+    "{name}, suit {what} is low. Leave them rocks be and head home.",
+    "Shoot, {what} low. {value} credits in data and samples. Don't you go dropping it.",
+    "Suit {what} low. Ship's {distance} away. Grandpa always said walk fast when the well runs dry.",
+    "Your {what} is failing, pal. Let's get you back to the ship.",
+    "{what} low, {name}. {value} credits riding on you. Hurry, now.",
+    "Lord have mercy, suit {what} is low. {distance} to the ship. Get a move on.",
+    "Suit {what} low, buddy. That's {value} credits I'd hate to see go to waste.",
+    "{name}, your {what} is failing. Ship's {distance} out. Step lively.",
+    "Dang, {what} low. Back to the ship, partner.",
+    "Suit {what} is low. Sightseeing's over, pal. Head on home.",
+    "{what} low. {value} credits on you and {distance} to go. Let's hustle.",
+    "Well, shoot, {name}. Suit {what} low. Back to the ship."
+   ],
+   "good_ol_boy_profane": [
+    "{name}, your suit {what} is low. Haul your butt on back to the damn ship.",
+    "Suit {what} low, buddy. Ship's {distance} off. Get the hell back.",
+    "Damn, partner. {what} low, and you got {value} credits on you.",
+    "Holy hell, your {what} is failing. Get on back to the ship, {distance}.",
+    "{name}, suit {what} is low. Leave them damn rocks be and head home.",
+    "Shit, {what} low. {value} credits in data and samples. Don't you go dropping it.",
+    "Suit {what} low. Ship's {distance} away. Grandpa said walk like hell when the well runs dry.",
+    "Your {what} is failing, pal. Let's get your sorry ass back to the ship.",
+    "{what} low, {name}. {value} credits riding on you. Hurry, damn it.",
+    "Hell's bells, suit {what} is low. {distance} to the ship. Get a damn move on.",
+    "Suit {what} low, buddy. That's {value} credits I'd hate to see go to hell.",
+    "{name}, your {what} is failing. Ship's {distance} out. Run like hell.",
+    "Well, shit. {what} low. Back to the ship, partner.",
+    "Suit {what} is low. Sightseeing's over, pal. Haul ass home.",
+    "Damn, {what} low. {value} credits on you and {distance} to go. Let's hustle.",
+    "Damn it, {name}. Suit {what} low. Back to the ship."
+   ]
+  },
   "heat": {
    "good_ol_boy": [
     "{name}, I don't mean to fuss, but we're cookin'. Throttle down and turn away from that star.",

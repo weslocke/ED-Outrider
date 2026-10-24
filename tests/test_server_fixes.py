@@ -140,5 +140,36 @@ class ServerFixes(unittest.TestCase):
                 return first.is_set(), s.stop.is_set()
         self.assertEqual(asyncio.run(go()), (True, False))
 
+
+class SuitLow(unittest.TestCase):
+    """S9-S7: the suit's oxygen or health running low on foot on a planet, with data aboard: one danger moment per rise."""
+
+    def setUp(self):
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        self.state.unsold = {"total": 412_000_000}
+
+    def look(self, flags2):
+        self.state.suit_watch({"live": True, "flags2": flags2}, None, 1000)
+        return [(m["what"], m["value"], m["dist"]) for m in self.j.moments if m["kind"] == "suit"]
+
+    def test_once_per_rise_on_a_planet_with_data_aboard(self):
+        planet, oxygen, health = 1 | 1 << 4, 1 << 6, 1 << 7
+        self.assertEqual(self.look(planet), [])
+        self.assertEqual(self.look(planet | oxygen), [("oxygen", 412_000_000, None)])
+        self.assertEqual(len(self.look(planet | oxygen)), 1)                 # the same rise: said once
+        self.assertEqual(len(self.look(planet | oxygen | health)), 2)        # health too now
+        self.look(planet)
+        self.assertEqual(len(self.look(planet | oxygen)), 3)                 # low again later: said again
+
+    def test_quiet_in_a_station_and_with_nothing_aboard(self):
+        self.assertEqual(self.look(1 | 1 << 3 | 1 << 6), [])                 # on foot in a station
+        self.look(0)
+        self.state.unsold = {"total": 0}
+        self.assertEqual(self.look(1 | 1 << 4 | 1 << 6), [])
+
+
 if __name__ == "__main__":
     unittest.main()

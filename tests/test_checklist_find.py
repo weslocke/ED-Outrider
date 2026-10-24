@@ -102,6 +102,24 @@ class Server(unittest.TestCase):
         self.find(self.sid, None, now=5000)
         self.assertEqual(self.spansh.session.calls[-1][2]["filters"]["landmarks"], [{"subtype": VES}])
 
+    def test_geology_entries_are_found_the_same_way(self):
+        """S9-S6: a Geology checklist entry (its codex id) is asked for by its name as the landmark subtype, no colour;
+        only bodies whose landmarks name it are kept."""
+        e = next(x for x in self.state.geo_codex() if x["name"] == "Nitrogen Ice Geyser")
+        answer = {"count": 49, "results": [
+            {"system_id64": 5, "system_name": "Geyser Land", "system_x": 1.0, "system_y": 2.0, "system_z": 3.0,
+             "name": "Geyser Land A 1", "distance": 12.5, "landmarks": [{"subtype": "Nitrogen Ice Geyser", "type": "Geyser"}]},
+            {"system_id64": 6, "system_name": "Other", "system_x": 1.0, "system_y": 2.0, "system_z": 3.0,
+             "name": "Other 1", "distance": 13.0, "landmarks": [{"subtype": "Water Geyser", "type": "Geyser"}]}]}
+        self.spansh.session = _HwSession([(200, answer)])
+        self.at_colonia()
+        out, status = self.find(str(e["id"]), kind="geo")
+        self.assertEqual(status, 200)
+        self.assertEqual(self.spansh.session.calls[0][2]["filters"]["landmarks"], [{"subtype": "Nitrogen Ice Geyser"}])
+        self.assertEqual([(r["system"], r["body"]) for r in out["rows"]], [("Geyser Land", "A 1")])
+        self.assertEqual(self.find(str(e["id"]), "Blue", kind="geo")[1], 400)   # no colours
+        self.assertEqual(self.find(self.sid, kind="geo")[1], 404)               # a species id is not a geology entry
+
     def test_refused(self):
         self.at_colonia()
         self.spansh.session = _HwSession([ed_outrider.ClientError("down")])

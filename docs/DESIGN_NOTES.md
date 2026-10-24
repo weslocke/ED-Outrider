@@ -154,9 +154,10 @@ upstream project's choices, not rules of the game.
 - **🔍 nearby on the checklist asks Spansh, nearest first** (S29, 2026-10-12). The body search's
   `{landmarks: [{subtype, variant}]}` filters by species and colour (checked against what came back: 144 Mulberry and
   149 Lime of 741 Bacterium Vesicula near Colonia), and every hit is checked again, since Spansh ignores a filter shape
-  it does not know. Reported only: a species nobody uploaded shows "No body within 20,000 ly". Not yet: 🎯 on its rows
-  (it waits for S31's route "system") and the Geology checklist's half (Canonn's per-entry site dumps, which
-  geo_codex.json does not link).
+  it does not know. Reported only: a species nobody uploaded shows "No body within 20,000 ly". The Geology checklist
+  has it too (the review's S9-S6, 2026-10-24): Spansh's geology landmarks are named as the codex names them, so the
+  same subtype filter finds a fumarole or geyser (checked 2026-10-23: 49 Nitrogen Ice Geysers near Colonia, all
+  carrying it); no colours there.
 - **Search's green gas giant option asks Spansh for every giant it can judge** (S27). Spansh cannot filter on the model,
   so one query lists the classes with a usable rule (Class I, III, IV, the life-bearing giants, water giants) and the
   model checks each answer (search results carry the mass, radius and the journal's temperature). Over a big radius that
@@ -1534,6 +1535,8 @@ confirmed while playing. Treat reports about them as likely real.
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen
   in the author's journals (the carrier was bought before them).
 - Status.json Flags2 on-foot-in-station bits (3, 13, 14) counting as docked.
+- The suit warning (S9-S7): Status.json Flags2's LowOxygen and LowHealth bits (6, 7) on foot on a planet (bit 4), from
+  Frontier's journal manual only.
 - The commander filter (S9-S4) with a real second commander's journals in the folder: written to Frontier's journal
   format (Commander and LoadGame carry the FID), tested on synthetic files only.
 - Surface pins' guidance from orbital cruise down and their arrival distances; carrier trips' following (the leg on

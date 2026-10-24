@@ -3277,6 +3277,44 @@
     "Hull at {pct} percent, {name}! Not one more hit. Withdraw!"
    ]
   },
+  "suit_low": {
+   "klingon": [
+    "Suit {what} low, {name}! Back to the ship! {distance}!",
+    "Your {what} is failing! {value} credits ride on you. Do not fall here!",
+    "{what} low! A warrior chooses where to die, and it is not here. Return to the ship!",
+    "{name}, suit {what} is low! The ship is {distance} away. Run!",
+    "Suit {what} low! {value} credits in data and samples! Carry them home!",
+    "Your {what} is failing! There is no honour in choking on a rock. To the ship!",
+    "{what} low! {distance} to the ship! Move, warrior!",
+    "Suit {what} is low, {name}! The hunt is over. Bring back the spoils!",
+    "{what} low! Die now and {value} credits are lost. Unacceptable!",
+    "Suit {what} low! The ship is {distance} off. Your legs are strong. Use them!",
+    "Your {what} is failing, {name}! Return to the ship. Today is not your day to die!",
+    "{what} low! {value} credits! Do not leave our trophies in the dust!",
+    "Suit {what} low! To the ship! Go!",
+    "{name}! {what} low! {distance}! Run like a targ is on your heels!",
+    "Your {what} is failing! Leave this place, and live to boast of it!",
+    "Suit {what} is low! {value} credits ride with you. Get them home!"
+   ],
+   "klingon_profane": [
+    "Suit {what} low, {name}! Back to the damned ship! {distance}!",
+    "Your {what} is failing! {value} credits ride on you. Do not fall here, son of a targ!",
+    "{what} low! A warrior chooses where to die, and it is not this hell rock. Return to the ship!",
+    "{name}, suit {what} is low! The ship is {distance} away. Run, damn it!",
+    "Suit {what} low! {value} credits in data and samples! Carry them home, you stubborn targ!",
+    "Your {what} is failing! There is no honour in choking on a damned rock. To the ship!",
+    "{what} low! {distance} to the ship! Move, warrior, or by hell I will drag you!",
+    "Hell, {name}, suit {what} is low! The hunt is over. Bring back the spoils!",
+    "{what} low! Die now and {value} credits are lost. Only a damned Ferengi fool would allow it!",
+    "Suit {what} low! The ship is {distance} off. Use those legs, you gutless cur! Damn it, run!",
+    "Damn it, {name}, your {what} is failing! Return to the ship!",
+    "{what} low! {value} credits! Do not leave our trophies in the damned dust!",
+    "Suit {what} low! To the ship, son of a targ! Go!",
+    "{name}! {what} low! {distance}! Run like a hell-born targ is on your heels!",
+    "Your {what} is failing! Leave this damned place and live to boast of it!",
+    "Suit {what} is low! {value} credits ride with you. Get them home, bloody fool!"
+   ]
+  },
   "heat": {
    "klingon": [
     "We are burning, {name}! Pull away from the star!",

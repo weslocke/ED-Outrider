@@ -3247,6 +3247,44 @@
     "Hull integrity at {pct} percent. Damage control recommends repairs."
    ]
   },
+  "suit_low": {
+   "naval_us": [
+    "Suit {what} low, {name}. Return to the ship. Distance {distance}.",
+    "Be advised, suit {what} is low. {value} credits of data and samples aboard.",
+    "Warning. {what} low. Recommend immediate return to the ship.",
+    "{name}, your {what} is failing. Ship is {distance} out. Move now.",
+    "Suit {what} low. A loss here costs {value} credits.",
+    "Caution. {what} low. Ship at {distance}. Recommend best speed.",
+    "Suit {what} low. {value} credits unbanked. Recommend you head for the ship.",
+    "{name}, {what} low. Break off and return to the ship.",
+    "Be advised: {what} low, ship {distance}, {value} credits at risk.",
+    "Suit {what} is low. Recommend you make for the ship at once.",
+    "{what} low, {name}. {value} credits ride with you.",
+    "Suit warning. {what} low. Distance to ship, {distance}.",
+    "Your {what} is failing. Recommend immediate withdrawal to the ship.",
+    "Suit {what} low. {value} credits at stake. Do not delay.",
+    "{name}, suit {what} is low. Ship bears {distance}. Proceed directly.",
+    "Warning. {what} low. Return to the ship."
+   ],
+   "naval_us_profane": [
+    "Suit {what} low, {name}. Damn it, return to the ship. Distance {distance}.",
+    "Be advised, suit {what} is low. {value} credits unbanked. Get the hell back aboard.",
+    "Warning. {what} low. Recommend you hightail it to the damn ship.",
+    "{name}, your {what} is failing. Ship is {distance} out. Move like hell.",
+    "Suit {what} low. {value} credits of data and samples. Damn poor odds out here.",
+    "Caution. {what} low. Ship at {distance}. Best speed, damn it.",
+    "{what} low. A damn poor place to lose {value} credits. Return to the ship.",
+    "{name}, {what} low. Break off now. That is a hell of a lot of credits on you.",
+    "Hell, {what} low. Ship {distance}, {value} credits at stake.",
+    "Suit {what} is low. Make for the ship at once, damn it.",
+    "Damn it, {name}, {what} low. {value} credits ride with you.",
+    "Suit warning, damn it. {what} low. Distance to ship, {distance}.",
+    "Your {what} is failing. Get your ass back to the ship.",
+    "Suit {what} low. {value} credits on the line. Do not delay, damn it.",
+    "{name}, suit {what} is low. Ship bears {distance}. Haul ass.",
+    "Hell of a time for it. {what} low. Get to the ship."
+   ]
+  },
   "heat": {
    "naval_us": [
     "Heat damage, {name}. Recommend we reduce temperature now.",

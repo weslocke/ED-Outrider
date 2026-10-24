@@ -114,6 +114,9 @@ KEYS = {
     "firsts_seen": "the firsts watch found, for the first time, that someone else's scans of a system holding your unsold "
                    "first discoveries reached Spansh (said at most once in 30 minutes; never 'stolen'): {system} (its name), "
                    "{value} (its unsold cartographic value, e.g. '14.2M')",
+    "suit_low": "on foot on a planet, your suit's oxygen or health just ran low while unsold data or samples are aboard "
+                "that dying would lose (a danger line, once each time it drops low): {what} ('oxygen' or 'health'), {value} "
+                "(what a death would lose, in credits, e.g. '412M'), {distance} (how far the ship is, e.g. '640 metres')",
     "upload_held": "an upload went on hold and stays stopped until you act (a card at the top of the page says why; "
                    "Settings -> Uploads has Try again): {service} (EDDN, EDSM or Inara)",
     "carrier_departs": "your carrier leaves in under five minutes without you: {minutes}, {carrier}",
@@ -656,6 +659,7 @@ SAMPLES = {
     "unsold_warn": {"value": "52.0M"}, "unsold_urgent": {"value": "251.3M"},
     "firsts_seen": {"system": "Drojau LL-O b26-3", "value": "14.2M"},
     "upload_held": {"service": "EDSM"},
+    "suit_low": {"what": "oxygen", "value": "412M", "distance": "640 metres"},
     "carrier_departs": {"minutes": 4, "carrier": "Out Of The Blue"},
     "autotarget_nothing": {"why": "no route is plotted"},
     "wrong_target": {"system": "Smojooe AR-E b25-8", "next": "Pru Aim XY-Z d1"},
@@ -696,7 +700,7 @@ CREW_ROLES = (
      ("discovery", "arrival", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "leaving", "codex", "phenomena",
       "ggg", "rare_star", "surface_site", "signal_poi", "curious")),
     ("exobiologist", "Exobiologist", "Exobiologist", ("exo", "find", "sampling")),
-    ("engineer", "Chief Engineer", "Engineer", ("fuel", "scoop", "scoopstop", "jumponium", "hull")),
+    ("engineer", "Chief Engineer", "Engineer", ("fuel", "scoop", "scoopstop", "jumponium", "hull", "suit")),
     ("quartermaster", "Quartermaster", "Quartermaster", ("sell", "saleleft", "unsold", "carrier", "carriertrip", "loss")),
     ("comms", "Comms Officer", "Comms", ("uploads", "uploadheld", "firstsseen", "game", "docking", "chat")),
     ("tactical", "Tactical", "Tactical", ()),
@@ -722,10 +726,10 @@ ROW_KEYS = {
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
     "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none", "limpets_low", "hold_nearly_full", "hold_full"), "prospect": ("prospect_hit", "motherlode"),
-    "uploadheld": ("upload_held",),
+    "uploadheld": ("upload_held",), "suit": ("suit_low",),
 }
 DANGER = ("hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop",
-          "carrier_departs", "ship_lost", "rig_leash")
+          "carrier_departs", "ship_lost", "rig_leash", "suit_low")
 # The crew placeholders (crew batch 3, the author's idea of 2026-10-13): a line may name another crew member, one
 # placeholder per role ("...ask {engineer} whether the tank can take that stretch"). Filled with the member's name when
 # Settings gives it one (the name in every position: "Mira", never "the Mira"), else these words, with a capital at a

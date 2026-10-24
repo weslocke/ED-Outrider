@@ -1694,6 +1694,26 @@
     "Hull integrity {pct} percent. This is a matter of survival, not preference."
    ]
   },
+  "suit_low": {
+   "vulcan": [
+    "Suit {what} is low. Return to the ship. It is {distance} away.",
+    "{name}. Your {what} is failing. Death would forfeit {value} credits.",
+    "Suit {what} low. Continued exploration would be illogical.",
+    "{what} low. The ship is {distance} distant. I recommend you walk briskly.",
+    "{name}, suit {what} is low. {value} credits of data and samples depend on your survival.",
+    "Your {what} is failing. Logic dictates an immediate return to the ship.",
+    "Suit {what} low. {value} credits at risk. I would prefer not to report your death.",
+    "{what} low. Distance to the ship, {distance}. Proceed directly.",
+    "{name}. Suit {what} is low. I must insist you return.",
+    "Suit {what} low. The ship is {distance} away. Do not stop to admire anything.",
+    "Your {what} is failing. {value} credits ride on you. That is not a figure of speech.",
+    "{what} low. Return to the ship. That is not a suggestion.",
+    "Suit {what} is low. A death here would cost {value} credits. Also you.",
+    "{name}, your {what} is failing. {distance} to the ship.",
+    "Suit {what} low. Your survival is the logical priority.",
+    "Advisory. {what} low. {value} credits unsold. Return to the ship."
+   ]
+  },
   "heat": {
    "vulcan": [
     "Heat damage. Reduce temperature.",

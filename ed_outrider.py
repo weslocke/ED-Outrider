@@ -1591,6 +1591,8 @@ NAV_BEACON_SCANS = ("NavBeaconDetail", "NavBeacon")
 SCOOPABLE = set("OBAFGKM")
 FLAG2_ON_FOOT = 1 << 0    # Status.json Flags2: on foot (anywhere: a station, a planet's surface)
 ON_FOOT_DOCKED = (1 << 3) | (1 << 13) | (1 << 14)   # Status.json Flags2: on foot in a station, hangar, social space
+FLAG2_ON_FOOT_PLANET = 1 << 4   # Status.json Flags2: on foot on a planet's surface
+SUIT_LOW = (("oxygen", 1 << 6), ("health", 1 << 7))   # Status.json Flags2: the suit's LowOxygen, LowHealth (S9-S7)
 HEAT_QUIET = 30            # s: at most one heat alert in this long
 FUEL_HISTORY = 20          # recent jumps used to estimate fuel per jump
 JUMP_CARGO_S = 120         # s: a Status.json hold this close to a jump stands in for a Cargo not read yet
@@ -3171,9 +3173,22 @@ class Journals:
         if say and live_event(ts):
             nxt = rows[nx]["system"] if i is not None and nx is not None else None
             # the moment's kind is the kind's alerts row (the worlds' routes and a sweep share Road to Riches'); `route`
-            # says which route it was
+            # says which route it was. S9-S29: on Exomastery, the species left here new to your codex in this region
+            # (the page adds them to the line while Codex finds count is ticked)
+            new = self.exo_new_here(rows[i], left) if i is not None and survey_kind(kind).work == "species" else []
             self.moment(survey_kind(kind).alert, ts, what=say[0], text=say[1], system=name, index=i, next=nxt,
-                        left=say[2], route=kind)
+                        left=say[2], route=kind, codex_new=len(new), codex_best=new[0] if new else None)
+
+    def exo_new_here(self, row, left):
+        """S9-S29: the species of an Exomastery stop still to sample (exo_left's, best first) that would be new to your
+        codex in the stop's galactic region, by name; [] where the region is not known."""
+        if not outrider.bio or None in (row.get("x"), row.get("y"), row.get("z")):
+            return []
+        region = outrider.bio.region_name(row["x"], row["y"], row["z"])
+        known = codex_species(self.db, region)[1] if region else None
+        if known is None:
+            return []
+        return list(dict.fromkeys(x["species"] for _b, x in left if x["species"].lower() not in known))
 
     def trade_progress(self, ev, ts):
         """A MarketSell or MarketBuy at the trade route's stop you are at: the trades made there, and once they are all
@@ -5707,7 +5722,9 @@ def organic_replay(db, until=None):
     takes every run aboard (exobiology data dies with you, ship or not). A sale stored before bio_sales kept its
     BioData takes every run aboard, as before. A sale or death in the same second as a run's completion comes
     before it. -> ({(system, body_id, species): (state, ts)}: sold with the sale's time, lost with the death's,
-    aboard with None; [the runs aboard at the end: rows of system, body_id, species, done_ts, was_footfalled])."""
+    aboard with None; [the runs aboard at the end: rows of system, body_id, species, done_ts, was_footfalled];
+    {run: credits}: what the BioData entry that took a sold run paid, Value plus Bonus (S9-S5; a sale stored before
+    PARSER_VERSION 53 has no figures: its runs are not in it))."""
     cut = "" if until is None else " AND o.done_ts < ?"
     args = () if until is None else (until,)
     events = [(r["done_ts"], 2, r) for r in db.execute(
@@ -5720,7 +5737,7 @@ def organic_replay(db, until=None):
     events += [(r["ts"], 0, None) for r in db.execute(f"SELECT ts FROM deaths{cut}", args)]
     events.sort(key=lambda e: (e[0], e[1]))
     key = lambda r: (r["system"], r["body_id"], r["species"])
-    fates, aboard = {}, []
+    fates, aboard, paid = {}, [], {}
     for ts, kind, x in events:
         if kind == 2:
             aboard.append(x)
@@ -5729,16 +5746,18 @@ def organic_replay(db, until=None):
                 fates[key(r)] = ("lost" if kind == 0 else "sold", ts)
             aboard = []
         else:
-            for sp, bonus, *_paid in x:
+            for sp, bonus, *figures in x:
                 order = (0, None, 1) if bonus else (1, None, 0)
                 runs = [r for r in aboard if (r["species"] or "").lower() == sp]
                 if runs:   # min keeps the earliest of equals; an entry with no run on record takes nothing
                     pick = min(runs, key=lambda r: order.index(r["was_footfalled"]))
                     aboard.remove(pick)
                     fates[key(pick)] = ("sold", ts)
+                    if len(figures) >= 2 and isinstance(figures[0], int) and isinstance(figures[1], int):
+                        paid[key(pick)] = figures[0] + figures[1]
     for r in aboard:
         fates[key(r)] = ("aboard", None)
-    return fates, aboard
+    return fates, aboard, paid
 
 
 _ORGANIC_FATES = {}
@@ -5749,8 +5768,15 @@ def organic_fates(db):
     write): organic_state asks once per run, in loops over many."""
     c = _ORGANIC_FATES
     if c.get("db") is not db or c.get("changes") != db.total_changes:
-        c.update(db=db, changes=db.total_changes, fates=organic_replay(db)[0])
+        fates, _aboard, paid = organic_replay(db)
+        c.update(db=db, changes=db.total_changes, fates=fates, paid=paid)
     return c["fates"]
+
+
+def organic_paid(db):
+    """S9-S5: organic_replay's {run: credits Vista Genomics paid}, kept with organic_fates."""
+    organic_fates(db)
+    return _ORGANIC_FATES["paid"]
 
 
 def sale_check(db, ts, bio_data, source=None):
@@ -7811,6 +7837,7 @@ class State:
         self._surface_told = False   # whether the page was last told the surface map shows (a flip either way wakes it)
         self._follow_up_seen = set()   # tick follow-up errors already printed (each traceback once)
         self._rig_leash = {}
+        self._suit_low = set()   # S9-S7: the suit's low bits at the last look (a rise is said once)
         self._location_landing = None
         # the Neutron Highway: [highway] settings, the plot under way ({state: running | failed | done, plotter, from,
         # to, started, error}), the desktop clipboard (an outrider Clipboard, set at start; None in tests), the arrival
@@ -8607,6 +8634,7 @@ class State:
             wrote = True
         j.end_burst(now)
         h = self.surface_here()
+        self.suit_watch(st, h, now)
         if self.in_rhino(h):
             for rig in self.rigs_out(h["system"], h["body_id"]):
                 d = surface_m(h["lat"], h["lon"], rig["lat"], rig["lon"], h["radius"])
@@ -8629,6 +8657,25 @@ class State:
         if wrote:
             self.db.commit()
         return wrote or j.moment_seq != said
+
+    def suit_watch(self, st, h, now):
+        """S9-S7: on foot on a planet, the suit's oxygen or health just ran low (a Flags2 bit rising, once per rise)
+        with data aboard that a death would lose: a `suit` moment {what, value, dist} (dist: metres to your ship on this
+        body, else None), the page's danger line. Quiet in a station, with nothing aboard, and at the same rise again.
+        From Frontier's journal manual (the bits are untested live)."""
+        f2 = (st.get("flags2") or 0) if st.get("live") else 0
+        low = {w for w, bit in SUIT_LOW if f2 & bit}
+        risen = [w for w, _ in SUIT_LOW if w in low and w not in self._suit_low]
+        self._suit_low = low
+        if not risen or not f2 & FLAG2_ON_FOOT_PLANET or f2 & ON_FOOT_DOCKED:
+            return
+        value = (self.unsold or {}).get("total") or 0
+        if value <= 0:
+            return
+        m, dist = self.journals.ship_marker, None
+        if h and m and (m["system"], m["body_id"]) == (h["system"], h["body_id"]):
+            dist = round(surface_m(h["lat"], h["lon"], m["lat"], m["lon"], h["radius"]))
+        self.journals.moment("suit", iso_ts(now), what=risen[0], value=value, dist=dist)
 
     def note_location(self, h):
         """Arrived at a targeted planetary mining location (Status.json Destination #index=N, in this system): your
@@ -12357,18 +12404,28 @@ class State:
         return {"id": species_id, "name": sp["name"], "regions": {str(k): v for k, v in regions.items()}, "runs": runs,
                 "images": imgs}, 200
 
-    async def checklist_find(self, species_id, colour=None, now=None):
+    async def checklist_find(self, species_id, colour=None, now=None, kind="bio"):
         """GET /api/checklist/find?species=<checklist id>&colour=: S29, the bodies nearest you where commanders'
         uploads reported a species (and that colour) to Spansh, nearest first, each with whether you visited the system
-        and bookmarked it. The same question from the same place is answered from memory for CHECKLIST_FIND_KEEP_S.
+        and bookmarked it. kind "geo" (S9-S6): a Geology checklist entry (its codex id), found by the same landmark
+        subtype filter (Spansh's geology landmarks are named as the codex names them: checked 2026-10-23), no colour.
+        The same question from the same place is answered from memory for CHECKLIST_FIND_KEEP_S.
         Not an AI tool (it asks Spansh). (answer, HTTP status)."""
-        R = outrider.bio.load_rules() if outrider.bio else None
-        if not R:
-            return {"error": "the exobiology rules are not loaded"}, 503
-        merged, _ = outrider.checklist.merge_species(R["species"])
-        sp = next((s for s in merged if (s.get("id") or s["name"]) == species_id), None)
-        if sp is None:
-            return {"error": "no such species"}, 404
+        if kind == "geo":
+            e = next((e for e in self.geo_codex() if str(e.get("id")) == str(species_id)), None)
+            if e is None:
+                return {"error": "no such geology entry"}, 404
+            if colour:
+                return {"error": "a geology entry has no colours"}, 400
+            sp = {"name": e["name"]}
+        else:
+            R = outrider.bio.load_rules() if outrider.bio else None
+            if not R:
+                return {"error": "the exobiology rules are not loaded"}, 503
+            merged, _ = outrider.checklist.merge_species(R["species"])
+            sp = next((s for s in merged if (s.get("id") or s["name"]) == species_id), None)
+            if sp is None:
+                return {"error": "no such species"}, 404
         colour = " ".join((colour or "").split()) or None
         if colour:
             known = {c.lower(): c for c, _ in outrider.checklist.colours(sp)}
@@ -12414,7 +12471,9 @@ class State:
         codex = [dict(r) for r in self.db.execute("SELECT * FROM codex WHERE ts >= ? ORDER BY ts DESC", (since,))]
         names = self.system_names([r["system"] for r in runs] + [c["system"] for c in codex if c["system"]])
         fates = organic_fates(self.db)   # a sale takes one run per BioData entry of its species (organic_replay)
+        paid = organic_paid(self.db)     # S9-S5: what a sold run was paid, when the sale's figures are known
         rows, totals = [], {"aboard": 0, "sold": 0, "lost": 0, "in progress": 0}
+        estimated_sold = False   # a sold run with no paid figure: the sold total is then (partly) an estimate
         counts = dict.fromkeys(totals, 0)
         for r in runs:
             sysname = names.get(r["system"]) or f"#{r['system']}"
@@ -12424,14 +12483,16 @@ class State:
             base = outrider.bio.species_value(r["species_name"]) if outrider.bio and r["species_name"] else None
             value = base * factor if base else None
             body = short_name(sysname, r["body_name"]) if r["body_name"] else f"body #{r['body_id']}"
+            got = paid.get((r["system"], r["body_id"], r["species"])) if st == "sold" else None
             rows.append({"ts": r["done_ts"] or r["ts"], "system": {"id": str(r["system"]), "name": sysname},
                          "body": body, "genus": r["genus_name"], "species": r["species_name"],
                          "variant": r["variant_name"], "samples": r["samples"], "state": st,
-                         "value": value, "factor": factor,
+                         "value": value, "factor": factor, "paid": got,
                          "sold_ts": fate[1] if fate and st == "sold" else None})
             counts[st] += 1
-            totals[st] += value or 0
-        return {"days": days, "rows": rows, "totals": totals, "counts": counts,
+            totals[st] += (got if got is not None else value) or 0
+            estimated_sold = estimated_sold or (st == "sold" and got is None)
+        return {"days": days, "rows": rows, "totals": totals, "counts": counts, "sold_estimated": estimated_sold,
                 "codex": [{"ts": c["ts"], "name": c["name"], "category": c["category"], "subcategory": c["subcategory"],
                            "region": c["region"], "new": bool(c["is_new"]), "voucher": c["voucher"],
                            "system": {"id": str(c["system"]), "name": c["system_name"] or names.get(c["system"])}
@@ -20366,7 +20427,8 @@ def make_app(state, hosts=None):
         species = request.query.get("species", "")[:200]
         if not species:
             return web.json_response({"error": "species is required"}, status=400)
-        out, status = await state.checklist_find(species, request.query.get("colour", "")[:60] or None)
+        kind = "geo" if request.query.get("kind") == "geo" else "bio"   # S9-S6: a Geology entry
+        out, status = await state.checklist_find(species, request.query.get("colour", "")[:60] or None, kind=kind)
         return web.json_response(out, status=status)
 
     async def organics_view(request):

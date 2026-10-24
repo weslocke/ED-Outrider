@@ -536,6 +536,10 @@ class ExoRoute(unittest.TestCase):
         what, text = self.moments_exo()[-1]
         self.assertEqual(what, "next")
         self.assertTrue(text.startswith("14 species on two bodies here: the best, Frutexa Flammasis on ABC 2 e, about 10.3 million"), text)
+        # S9-S29: with nothing in your codex, every species left would be new: counted, the best named first
+        m = [m for m in self.j.moments if m["kind"] == "exo"][-1]
+        distinct = len({x["species"] for b in sys1["bodies"] for x in b["species"]})   # one name counts once
+        self.assertEqual((m["codex_new"], m["codex_best"]), (distinct, "Frutexa Flammasis"))
         s = self.state.survey_summary()
         self.assertEqual((s["kind"], s["at"], s["left_here"]), ("exo", 1, 14))
         out = self.state.riches_view()["route"]

@@ -88,7 +88,8 @@ what each death cost, and your 25 most valuable finds.
 <td width="50%" valign="top">
 <b>Bio/Geo</b> — <b>My Samples</b>: every exobiology sample run: species, variant, body, value, and whether it is
 <i>aboard</i>, <i>sold</i> or <i>lost</i>. Filter, sort, export; codex entries underneath. Unsold runs are
-priced one by one ("x5 on 42 of 47 runs"). Beside it, the <a href="#-the-exobiology-checklist">Exo-Biology and Geology
+priced one by one ("x5 on 42 of 47 runs"); a sold run shows what Vista Genomics paid for it, the estimate in its hover
+(≈ before an estimate where the sale was made before Outrider kept what each entry paid). Beside it, the <a href="#-the-exobiology-checklist">Exo-Biology and Geology
 checklists</a>.
 <br><br><img src="../images/samples.png" alt="Bio/Geo: My Samples">
 </td>
@@ -414,7 +415,8 @@ lava spouts, then Lagrange clouds and the lettered anomalies. Each is logged in 
 beside it, how many sites players have reported in that region (from [Canonn](https://canonn.science)), greyed where
 none have been reported yet (which is not to say there are none). Completion is the share of the entries reported in
 the region that you have logged. Click one for its picture, its sites in the galaxy, where you logged it, and the map
-of the regions it has been reported in.
+of the regions it has been reported in. **🔍** on an entry you have not logged lists the nearest bodies where
+commanders' mapping reported it to Spansh, as for a species (☆, Copy, 🎯).
 
 The pictures are [Canonn](https://canonn.science)'s screenshots, each credited to the commander who took it: Outrider
 links to them (they load from Canonn when you open an entry; click one for full size) and keeps no copy. Click a

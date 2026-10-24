@@ -53,6 +53,9 @@ the game too, for a few seconds each:
 - a sale that left data aboard (Universal Cartographics sells 50 systems a page; at Vista Genomics, the species
   you kept back), said 90 seconds after the last page
 - hull damage, heat damage, interdiction, and unsold data past a threshold
+- on foot on a planet, your suit's oxygen or health running low while data is aboard: what a death would lose and how
+  far your ship is ("Suit oxygen low. 412M aboard; the ship is 640 metres away."), once each time it runs low; quiet in a
+  station or with nothing aboard
 - someone else's scans of a system holding your unsold first discoveries reached Spansh (the firsts watch, see
   [My firsts](views.md)): a card and a notification each time, "👁 Someone else scanned your unsold Drojau LL-O
   b26-3: 3 bodies reached Spansh 12 days after you (your scan 15 days ago) · 14.2M cr at stake", and spoken at most
@@ -105,7 +108,7 @@ browser starts with.
 | Body highlights | 500k / 10M | Here's row turns green (scan + map) or its bio violet (species) over these. Bonuses left out. |
 | Approach warning | 2 g | Gravity at which orbital cruise at a landable body warns you, with data over the amber level. |
 | Max with bonuses | on | Whether Here's Max column counts first-discovery, mapping and footfall bonuses. |
-| Codex finds count | on | A body whose likeliest species is new to your codex in this region (✦) is worth stopping for, whatever its value. |
+| Codex finds count | on | A body whose likeliest species is new to your codex in this region (✦) is worth stopping for, whatever its value. On an Exomastery route, the arrival line adds the species new to your codex there ("two would be new to your codex: the best, Frutexa Flammasis") and Next counts them ("3 species to sample there, 2 new ✦"). |
 | Discovery streak | 10 / 5 | Known or undiscovered systems in a row for a spoken line (0 turns it off). |
 | Suggested order | 100k/min | Supercruise credits per minute under which Here marks "skip?". |
 | Fuel alerts under N jumps | off | Warns once when jumps left at your pace fall under N; also sets the top-up level. |
@@ -245,7 +248,7 @@ the sentence ends:
 | Navigator | jumps and every route line (the Highway, survey and trade routes), fuel short of a refuel, last scoop, auto-target, wrong target, supercharges, surface pins |
 | Science Officer | target verdicts, arrivals, the honk, briefings, the FSS, mapped planets, high-g approaches, bio bodies ahead, leaving with work left, codex, phenomena, green gas giants, rare stars, surface sites, signals, curiosities |
 | Exobiologist | valuable bodies, sampling, Exomastery routes |
-| Chief Engineer | fuel, tank full, scooping stopped, jumponium, hull and heat |
+| Chief Engineer | fuel, tank full, scooping stopped, jumponium, hull and heat, the suit running low |
 | Quartermaster | sales, unsold data, your carrier and its trips, losses |
 | Comms Officer | the game's start and exit, someone scanning your firsts, docking pads and refusals, other players' chat (read aloud, below) |
 | Tactical | every danger line (while Danger lines always in Tactical's voice is on) |
@@ -260,8 +263,8 @@ the sentence ends:
   you give a member a voice of its own. A member left "as the personality" speaks in that personality's voice
   (Personality voices). Whenever a member cannot speak (its voice not installed or failing to load), the XO says the
   line instead, so no line is ever lost; the table says why under its name, and Show log says it once.
-- **Danger lines always in Tactical's voice** (on by default): hull, heat, interdiction, the fuel warnings, your carrier
-  leaving without you, a ship lost, a rig too far, so a danger line is never mistaken for chatter. Off, they stay with
+- **Danger lines always in Tactical's voice** (on by default): hull, heat, interdiction, the suit running low, the fuel
+  warnings, your carrier leaving without you, a ship lost, a rig too far, so a danger line is never mistaken for chatter. Off, they stay with
   their alert's crew member. Danger still comes first either way.
 - **Who says which alert:** ⚙ Settings → Alerts has a **Crew** column while the crew is on: move any alert to another
   member there. A danger alert says "spoken by Tactical (danger)" while that switch is on.

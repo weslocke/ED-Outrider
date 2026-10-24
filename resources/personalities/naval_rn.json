@@ -3281,6 +3281,44 @@
     "Hull integrity {pct} percent. Further contact not recommended."
    ]
   },
+  "suit_low": {
+   "naval_rn": [
+    "Suit {what} low, {name}. Recommend you return to the ship. {distance}.",
+    "Warning. {what} low. {value} credits of data and samples aboard.",
+    "{name}, your {what} is failing. Make for the ship.",
+    "Suit {what} low. Ship lies {distance} off.",
+    "Be advised, suit {what} is low. {value} credits not yet banked.",
+    "Caution. {what} low. Recommend best speed to the ship.",
+    "{what} low, {name}. {value} credits at risk.",
+    "Suit {what} is low. Recommend we return aboard directly.",
+    "Warning, {what} low. Distance to the ship, {distance}.",
+    "Your {what} is failing. {value} credits would be lost. Return to the ship.",
+    "{name}, suit {what} low. Recommend you break off.",
+    "Suit {what} low. Ship {distance}. {value} credits riding on it.",
+    "{what} low. Return to the ship at once.",
+    "Suit {what} low, {name}. Do not linger.",
+    "Be advised. {what} low. Ship at {distance}.",
+    "Suit {what} is low. {value} credits unbanked. Recommend withdrawal."
+   ],
+   "naval_rn_profane": [
+    "Suit {what} low, {name}. Back to the bloody ship. {distance}.",
+    "Warning. {what} low. {value} credits of data and samples. Damn well get aboard.",
+    "{name}, your {what} is failing. Make for the ship, bloody quick.",
+    "Suit {what} low. Ship lies {distance} off. Get a bloody move on.",
+    "Be advised, suit {what} is low. {value} credits unbanked. Don't dawdle, damn it.",
+    "Bloody hell. {what} low. Best speed to the ship.",
+    "{what} low, {name}. A damn costly place to stop. {value} credits.",
+    "Suit {what} is low. Back aboard directly, and no bloody sightseeing.",
+    "Damn it, {what} low. Distance to the ship, {distance}.",
+    "Your {what} is failing. {value} credits would be lost. Bloody well return to the ship.",
+    "{name}, suit {what} low. Break off, for God's sake.",
+    "Suit {what} low. Ship {distance}. {value} credits riding on your bloody legs.",
+    "{what} low. Return to the ship at once. Sod the rocks.",
+    "Suit {what} low, {name}. Do not bloody linger.",
+    "Hell. {what} low. Ship at {distance}. Go.",
+    "Suit {what} is low. {value} credits at stake. Bugger off back to the ship."
+   ]
+  },
   "heat": {
    "naval_rn": [
     "Heat damage, {name}. Recommend reducing temperature.",

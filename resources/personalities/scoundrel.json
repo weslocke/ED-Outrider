@@ -3251,6 +3251,44 @@
     "Hull's at {pct} percent. Fucking marvellous. Repair bay, now."
    ]
   },
+  "suit_low": {
+   "scoundrel": [
+    "Sir. Suit {what} low. Back to the ship, now.",
+    "{name}, your {what} is failing, and you're carrying {value} credits. Run.",
+    "Suit {what} low. Ship's {distance} away. Walk like the cops are behind you.",
+    "Sir, {what} low. {value} credits ride on you. Not a joke.",
+    "{what} low. Die out here and {value} credits walk off without you.",
+    "Suit {what} is low, {name}. {distance} to the ship. Move it.",
+    "Your {what} is failing. Forget the rocks, buddy. Back to the ship.",
+    "Sir. {what} low. {distance}. Go.",
+    "Suit {what} low. That's {value} credits of my cut, {name}. Run.",
+    "{what} low. Ship's {distance} out. I've outrun security over less.",
+    "Sir, your {what} is failing. Get back to the ship. No heroics.",
+    "{name}, suit {what} is low. {value} credits in data and samples. Don't drop them.",
+    "Suit {what} low. Back to the ship, buddy. Fast.",
+    "{what} low. {distance} to the ship. Run first, sightsee later.",
+    "Your {what} is failing, Sir. {value} credits says you move.",
+    "{name}, {what} low. Ship. Now."
+   ],
+   "scoundrel_profane": [
+    "Sir. Suit {what} low. Get your ass back to the ship, now.",
+    "{name}, your {what} is failing, and you're carrying {value} credits. Fucking run.",
+    "Suit {what} low. Ship's {distance} away. Walk like the damn cops are behind you.",
+    "Sir, {what} low. {value} credits ride on you. No bullshit.",
+    "{what} low. Die out here and {value} credits go straight to hell without you.",
+    "Shit. Suit {what} is low, {name}. {distance} to the ship. Move it.",
+    "Your {what} is failing. Forget the damn rocks, buddy. Back to the ship.",
+    "Sir. {what} low. {distance}. Go, damn it.",
+    "Suit {what} low. That's {value} credits of my cut, {name}. Haul ass.",
+    "{what} low. Ship's {distance} out. I've outrun security over less shit than this.",
+    "Sir, your {what} is failing. Get back to the ship. No damn heroics.",
+    "{name}, suit {what} is low. {value} credits in data and samples. Don't you fucking drop them.",
+    "Suit {what} low. Back to the damn ship, buddy. Fast.",
+    "Hell, {what} low. {distance} to the ship. Run first, sightsee later.",
+    "Your {what} is failing, Sir. {value} credits says you move your ass.",
+    "Fuck me, {name}, {what} low. Ship. Now."
+   ]
+  },
   "heat": {
    "scoundrel": [
     "Sir. We're cooking. Throttle down and turn away from the star.",

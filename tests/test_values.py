@@ -259,8 +259,8 @@ class Samples(unittest.TestCase):
         self.assertEqual(by["body #8"]["state"], "in progress")
         self.assertEqual(o["counts"], {"aboard": 1, "sold": 1, "lost": 1, "in progress": 1})
         self.assertEqual(by["5"]["system"]["name"], "Sys")
-        if outrider.bio:
-            self.assertEqual(o["totals"]["sold"], by["5"]["value"])
+        # S9-S5: the sold total is what the sale paid (the fixture's entry: Value 1, Bonus 0), not the estimate
+        self.assertEqual((by["5"]["paid"], o["totals"]["sold"], o["sold_estimated"]), (1, 1, False))
 
 
 class HeaderAndTotals(unittest.TestCase):
