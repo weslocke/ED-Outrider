@@ -6319,6 +6319,41 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| firsts scanned by others |", good ? "a card and a notification each time, days from the timestamps, so far today, spoken once" : JSON.stringify({got, want}), errors.slice(before));
   }
+  // Suggestions (D): S9-S1 the rescan trip on the Next line, the leaving words and the briefing; S9-S28 lost sample runs
+  // in My firsts; S9-S3 sites reported by others; S9-S27 Left behind sorted by Worth; S9-S26 the Map's work left
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      const o = {}, lost = {bodies: [{name: "A 2", value: 3000000}, {name: "A 3", value: 1100000}], value: 4100000};
+      const l = {bio_pending: [], unmapped: [], rescan: lost, body_count: 3, unscanned: 0, honked: true};
+      o.clean = worthLeavingFor(l).clean;
+      o.leaving = leavingText(l).replace(/<[^>]+>/g, "");
+      o.said = worthSaying(l);
+      o.brief = arrivalBriefText({status: "explored", lost, star_class: "K"});
+      o.routine = isRoutine({status: "explored", all_found: true, star_class: "K", lost, in_spansh: true, undiscovered: false});
+      o.bioNote = lostBioNote({runs: 2, value: 24000000, species: ["Stratum Paleas"]}).replace(/<[^>]+>/g, "");
+      o.cells = lostCells(null, {runs: 1, value: 5000000}).replace(/<[^>]+>/g, "|").split("|").filter(Boolean);
+      o.site = siteText([{body: "B 3", sites: {guardian: 2}, reported: true}]);
+      const was = [leftData, sortKeys.left];
+      leftData = {radius: 100, systems: [{id: "1", name: "Near", distance: 5, maps: [{body: "A 1", subtype: "Water world", increment: 2e6}], bio: []},
+                                         {id: "2", name: "Rich", distance: 50, maps: [{body: "B 1", subtype: "Earth-like world", increment: 9e6}], bio: []}]};
+      sortKeys.left = "worth"; renderLeft();
+      o.byWorth = [...document.querySelectorAll("#leftRows .name")].map(n => n.dataset.name);
+      sortKeys.left = "distance"; renderLeft();
+      o.byDist = [...document.querySelectorAll("#leftRows .name")].map(n => n.dataset.name);
+      const fw = firstsData; firstsData = {firsts: [{id: "2", state: "lost", sale: "lost", recover: {lost_total: 3e6}}, {id: "3", state: "unsold", sale: "unsold", value: 2e6}]};
+      const mw = mapWork(); o.work = Object.fromEntries(Object.entries(mw.by).map(([k, v]) => [k, [v.kind, v.text]]));
+      [leftData, sortKeys.left] = was; firstsData = fw; renderLeft();
+      return JSON.stringify(o); })()`));
+    const want = {clean: false, leaving: "Leaving with unfinished work: rescan 2 lost scans in the FSS (4.1M)",
+                  said: "2 lost scans to redo in the FSS, 4.1M", brief: "Fully scanned. Scoopable K star. You lost 2 scans here: rescan them, 4.1M.",
+                  routine: false, bioNote: "+ 2 sample runs lost, 24.0M", cells: ["0", "0", "5.0M"],
+                  site: "🏛 Guardian sites on B 3 (reported by others)", byWorth: ["Rich", "Near"], byDist: ["Near", "Rich"],
+                  work: {"1": ["left", "left: map A 1 +2.0M"], "2": ["lost", "left: map B 1 +9.0M · lost firsts 3.0M"], "3": ["unsold", "unsold 2.0M"]}};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| suggestions D |", good ? "the rescan trip, lost runs, reported sites, Left behind by Worth, the Map's work left" : JSON.stringify({got, want}), errors.slice(before));
+  }
   // S9-S20: an upload on hold gets its own alerts row, off until ticked (the card comes from the server either way),
   // said by Comms; S7-S6: an empty backfill Preview says why ("412 lines left out, the Legacy game ...")
   {

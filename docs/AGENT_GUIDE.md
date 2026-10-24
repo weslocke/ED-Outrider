@@ -212,7 +212,7 @@ unittest, in-memory SQLite). `support.py` holds the shared fixtures and fakes (`
    way and the route's auto-target cancelled); POST `/api/highway/autotarget` {enabled?, delay?: 0-60 s}
    (`State.set_autotarget`, meta `autotarget`; answers `autotarget_info`), POST `/api/highway/autotarget/test`, POST
    `/api/highway/target` {countdown?}: Target next / Retry), `/api/regions` (the Highway map's region grid), `/api/status` and `/api/status.txt`, `/api/version`, `/api/starting` (the starting page's question: "ready"),
-   `/api/service` (+ POST, this PC only: Start with this computer), `/api/serverlog` (Show log), `/api/backups` (Settings → Server → Backups), `/api/autohonk/check` (auto honk's readiness), POST `/api/restart` (Settings → Server's Restart), POST `/api/notices/dismiss`, `/api/auth/signin`
+   `/api/service` (+ POST, this PC only: Start with this computer), `/api/serverlog` (Show log), `/api/backups` (Settings → Server → Backups), `/api/autohonk/check` (auto honk's readiness), POST `/api/restart` (Settings → Server's Restart), POST `/api/journals/commander` (S9-S4: the commander filter's card sets `[journals] commander`, then the restart that re-reads every journal; `State.set_commander_filter`), POST `/api/notices/dismiss`, `/api/auth/signin`
    and `/api/auth/signout` (see the app's contract below). The older controls: POST `/api/radius` {radius: one of
    `RADIUS_CHOICES`} (Nearby's sphere, `State.set_radius`: meta `radius_choice`, the sphere fetched again at once); POST
    `/api/hush` {mode: 10m | 30m | jump | off} (`State.set_hush`, `HUSH_MODES`; danger lines still speak; the payload's

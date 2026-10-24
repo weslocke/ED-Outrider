@@ -34,6 +34,23 @@ class DumpPricing(unittest.TestCase):
         scanned = ed_outrider.carto_values(r, True, f, "unsold", None)
         self.assertEqual(scanned["now"] + scanned["left"], expect)
 
+    def test_surface_sites_from_spansh(self):
+        """S9-S3: a Spansh body with Guardian (and other) site counts carries them, marked reported by others; your
+        own DSS's counts win in the merge, and a body without any carries none."""
+        body = {"name": "Sys 3", "type": "Planet", "subType": "Rocky body", "bodyId": 3,
+                "signals": {"signals": {"$SAA_SignalType_Guardian;": 2, "$SAA_SignalType_Geological;": 4,
+                                        "$SAA_SignalType_Thargoid;": 0}}}
+        r = ed_outrider.record_from_dump("Sys", body)
+        self.assertEqual((r["sites"], r["sites_reported"], r["geo"]), ({"guardian": 2}, True, 4))
+        self.assertEqual(ed_outrider.surface_sites([r]), [{"body": "3", "sites": {"guardian": 2}, "reported": True}])
+        plain = ed_outrider.record_from_dump("Sys", dict(body, signals={"signals": {}}))
+        self.assertNotIn("sites", plain)
+        mine = {"name": "3", "type": "Planet", "rings": [], "sites": {"guardian": 3, "anomaly": 1}}
+        [m] = ed_outrider.merge_records([r], {"3": mine}, {})
+        self.assertEqual((m["sites"], m.get("sites_reported")), ({"guardian": 3, "anomaly": 1}, None))   # yours win
+        [m] = ed_outrider.merge_records([r], {"3": dict(mine, sites=None)}, {})
+        self.assertEqual((m["sites"], m["sites_reported"]), ({"guardian": 2}, True))   # scanned, not mapped: theirs
+
     def test_terraformable_as_spansh_spells_it_now(self):
         """Spansh's dumps say "Terraformable" (no longer "Candidate for terraforming"): priced as terraformable (a
         terraformable high metal content world was priced as a plain one, 59k, 2026-10-09)."""
@@ -255,7 +272,7 @@ class BatchFSpansh(unittest.TestCase):
     # ---- P16 ----
 
     def test_record_keeps_update_time_and_signals_block(self):
-        self.assertEqual(ed_outrider.CACHE_VERSION, 19)   # 16: mining (Batch M4); 17: "Terraformable" priced; 18: spansh_old; 19: reserve
+        self.assertEqual(ed_outrider.CACHE_VERSION, 20)   # 16: mining (Batch M4); 17: "Terraformable" priced; 18: spansh_old; 19: reserve; 20: sites
         r = self.rec()
         self.assertEqual((r["updated"], r["signals_known"]), ("2019-06-01 10:00:00+00", False))
         self.assertTrue(self.rec(signals={"signals": {}, "updateTime": "2019-06-01"})["signals_known"])

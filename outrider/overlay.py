@@ -1437,7 +1437,14 @@ def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, h
         dest = info.get("destination")
         dest_next = bool(dest and plan and plan[0]["body"] == dest)
         right = (f"{credits(info['value_now'])} here", "muted") if info.get("value_now") else None
-        if plan:
+        rescan = ((l or {}).get("rescan") or {}).get("bodies") if info.get("detail_ready") else None
+        if rescan:   # S9-S1: the rescan trip's reason first (the page's Next line)
+            n, value = len(rescan), l["rescan"].get("value")
+            row = [("Next: ", "warn"), (f"rescan {n} lost scan{'' if n == 1 else 's'} in the FSS", "warn")]
+            row += [(f" ({credits(value)})", "muted")] if value else []
+            row += [(f" · {len(plan)} more", "muted")] if plan else []
+            rows.append({"left": row, "right": right})
+        elif plan:
             head, detail = plan_parts(plan[0], high_gravity)
             rows.append({"left": [("Next: ", "warn")] + ([("➜ ", "accent")] if dest_next else []) + head, "right": right})
             more = [(f" · {len(plan) - 1} more", "muted")] if len(plan) > 1 else []

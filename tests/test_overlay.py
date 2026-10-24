@@ -831,6 +831,10 @@ class NowPanel(unittest.TestCase):
         self.assertEqual(line(leaving=None), "Next: honk (FSS discovery scan)")
         self.assertEqual(line(leaving={"honked": True, "unscanned": 3}), "Next: 3 bodies to find in the FSS")
         self.assertEqual(line(leaving={"honked": True, "unscanned": 0}), "✓ nothing worth staying for")
+        # S9-S1: the rescan trip: lost scans come first, not "nothing worth staying for"
+        lost = {"honked": True, "unscanned": 0, "rescan": {"bodies": [{"name": "A 1", "value": 3e6}, {"name": "A 2", "value": 1.1e6}],
+                                                            "value": 4.1e6}}
+        self.assertEqual(line(leaving=lost), "Next: rescan 2 lost scans in the FSS (4.1M)")
         heading = texts(O.now_panel(dict(self.INFO, destination="A 3", destination_ls=600), pal))
         self.assertIn("➜ A 3 · ~30 s · worth it · 1.9M/min", heading)
         self.assertIn("➜ A 2 · nothing to do here", texts(O.now_panel(dict(self.INFO, destination="A 2"), pal)))

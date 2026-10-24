@@ -23,8 +23,10 @@ the galaxy map (not on your own system's row). ⛏ N counts planetary mining
 locations on ground worth a Rhino. 🌀 N counts the notable stellar phenomena your FSS found there (life in clouds or rings; hover
 for what they are), dimmed once you have been to them. ⭐ marks a rare star (a black hole, a Wolf-Rayet, a carbon,
 MS, S or O-type star, a Herbig Ae/Be star, a supergiant, a rare white dwarf, an exotic star), from Spansh's records
-too, so you see it before you go. 🏛 👾 ❔ mark Guardian sites, Thargoid sites and planetary anomalies on a system's bodies (your own scans: an anomaly shows once
-the FSS finds it, Guardian and Thargoid sites only once the DSS has mapped the body); Here tags the body itself. 📍
+too, so you see it before you go. 🏛 👾 ❔ mark Guardian sites, Thargoid sites and planetary anomalies on a system's bodies: your own scans (an anomaly shows once
+the FSS finds it, Guardian and Thargoid sites only once the DSS has mapped the body), and what other commanders' mapping
+reported to Spansh, so you see them before you go (the hover says "reported by others" until your own DSS counts them;
+only your own scans are ever spoken); Here tags the body itself. 📍
 counts FSS signals worth a detour (a Titan shows the galaxy map's Titan marker instead): Titans, Guardian beacons, generation ships, listening posts, number stations, tourist
 beacons and memorials (hover for which).
 <br><br><img src="../images/nearby.png" alt="Nearby systems">
@@ -64,7 +66,8 @@ and values as a spreadsheet.
 <tr>
 <td width="50%" valign="top">
 <b>Map</b> — a 3D view: left-drag to rotate, right-drag to move, scroll to zoom. Your path in orange,
-your first discoveries in gold, visited systems in blue (or colour them by star class; by touch: one finger rotates, two move,
+your first discoveries in gold, visited systems in blue (or colour them by star class, or by **work left**: Left behind's
+systems ringed amber (at its own radius), lost firsts to rescan red, unsold firsts gold, the hover naming what is left; by touch: one finger rotates, two move,
 pinch zooms); tick <i>boost stars</i> for neutron stars and white dwarfs. The route ahead is dashed: the one plotted in
 game, and the route Outrider follows (Plot Route's) from where you are, with ◎ on its next stop (else your next stop);
 hover a stop for which it is. A click on a system targets it in the galaxy
@@ -139,8 +142,11 @@ device).
 checks them on Spansh in the background and marks any someone else has scanned since you ("👁 8 d after you");
 the first time it finds someone in one, a card and a notification say so (see
 [Voice and alerts](voice-and-alerts.md#-alerts)); selling first still keeps your name if nobody sold before you. <b>Show lost</b> with <b>within N ly</b> is a
-rescan checklist for data lost with a ship, nearest first, priced by what is left to scan and map. <b>Left
-behind</b> lists nearby systems with work over your thresholds.
+rescan checklist for data lost with a ship, nearest first, priced by what is left to scan and map, and the sample
+runs that died with you ("+ 2 sample runs lost, 24M", a system with only those listed too). Back in such a system, Now's
+Next line, the leaving warning, the status report and the arrival briefing name the scans still to redo ("Next: rescan
+12 lost scans in the FSS"), never "nothing worth staying for". <b>Left behind</b> lists nearby systems with work over your
+thresholds, nearest first; a click on Worth sorts the most valuable first (kept per device).
 <br><br><img src="../images/firsts.png" alt="My firsts">
 </td>
 </tr>

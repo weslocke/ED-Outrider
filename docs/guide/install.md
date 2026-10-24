@@ -122,6 +122,21 @@ Run this way, on the PC the game runs on, everything works. Further down: [openi
 another device](#-other-devices-on-your-network), [running Outrider as a server in Docker](#-running-as-a-server-docker)
 (the automation is off there), and [asking an AI client about your game](voice-and-alerts.md#-ask-an-ai-about-your-game).
 
+### Two commanders on one PC
+
+The journal folder belongs to the Windows (or Proton) user, so an alt, or someone else's account played on the same
+login, writes into the same folder, and Outrider would mix both into one history. When the journals name a second
+commander, a card says so ("This journal folder also logs CMDR B ... Keep only CMDR A here?"); its button keeps the
+commander with the most journals: Outrider sets `[journals] commander`, restarts and reads every journal again under it.
+To keep another one, or to change your mind, set ⚙ Settings → Server → Files and backups → `[journals] commander`
+yourself (the FID or the name as the game shows it, blank for every commander); every journal is read again at the next
+start. While the other commander plays, this Outrider stands down: the page says "CMDR B is playing: not tracked here",
+Status.json is not read, and auto-target presses nothing. Uploads still go per commander, each with its own key.
+
+To track the alt too, run a second Outrider with its own port, database and config file (`--port 8027 --db
+data/alt.sqlite --config alt.toml`) and `[journals] commander` set to that commander: each is live only while its
+commander plays, so the two never press keys together. Keep the uploads switched on in one of them only.
+
 ## 🐳 Running as a server (Docker)
 
 Outrider can run 24/7 on another computer (a home server or NAS, x86-64 or ARM) in Docker, reading the game's journal

@@ -1061,6 +1061,8 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         legacy = [] if (args.journals or env_journals or j.get("live") is not None) else list(detected[1])
     return {
         "live": [os.path.expanduser(d) for d in live], "legacy": [os.path.expanduser(d) for d in legacy],
+        # S9-S4: only this commander's journal files are read ("": every commander)
+        "commander": (num("journals", j, "commander", _config_str, None) or "").strip(),
         "host": pick(args.host, num("server", sv, "host", _config_str, None), "127.0.0.1"),
         "port": pick(args.port, num("server", sv, "port", _config_port, None), 8025),
         "allowed_hosts": [h.strip() for h in hosts if h.strip()],
@@ -1205,6 +1207,7 @@ def config_text(st):
 [journals]
 {"live = " + plst(st["live"]) if st["live"] else "# live = []"}      # folders holding Journal.*.log that are tailed live (auto-detected when absent)
 {"" if st["live"] else "# "}legacy = {plst(st["legacy"])}  # folders of older journals, imported once and never re-read ([] = none; auto-detected only when live is absent too)
+{"" if st["commander"] else "# "}commander = {q(st["commander"])}   # only this commander's journals (the FID, or the name as the game shows it); "" = every commander. Changing it reads every journal again at the next start
 
 [server]
 host = {q(st["host"])}   # "0.0.0.0" to reach the page from another device on your network
@@ -1488,6 +1491,16 @@ _OTHER_EVENTS = (POSITION_EVENTS + STAR_CLASS_EVENTS + SCAN_EVENTS + DATA_EVENTS
 # cue to ask for the open tab again); COMMANDER_ONLY are read for it alone
 COMMANDER_EVENTS = frozenset(outrider.commander.EVENTS)
 COMMANDER_ONLY = COMMANDER_EVENTS - frozenset(_OTHER_EVENTS) - SRV_TRACKED - CARGO_EVENTS
+FILE_CMDR_HEAD = 65536   # S9-S4: a journal's Commander line is among its first few (after the Fileheader)
+
+
+def commander_matches(filt, who):
+    """S9-S4: whether (FID, name) is the [journals] commander filter's: the FID or the name as shown, any case; every
+    commander with no filter."""
+    f = (filt or "").strip().lower()
+    return not f or f in (who[0].strip().lower(), who[1].strip().lower())
+
+
 WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + outrider.commander.EVENTS))
 # the journal events the unsold estimate reads (outrider.unsold.INTERESTING): only these make it run again (S6-S1)
 UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTING if outrider.unsold else ()))
@@ -1954,9 +1967,16 @@ DELETE FROM play_activity; DELETE FROM mining_stints;
 DELETE FROM meta WHERE key IN ('reputation', 'powerplay', 'squadron', 'stored_ships', 'stored_modules', 'ship_locker',
                                'suit_loadouts', 'engineers', 'missions');
 DELETE FROM meta WHERE key IN ('ship', 'carrier', 'fuel_hist', 'last_scoop', 'commander', 'materials', 'last_session', 'cargo',
-                               'game_load');
+                               'game_load', 'commanders_seen');
 DELETE FROM meta WHERE key LIKE 'legacy:%' OR key IN ('pos', 'prev', 'jump_range', 'state_ts');
 """
+
+
+def filter_message(old, new):
+    """S9-S4's start-up line: every journal is read again because [journals] commander changed."""
+    words = lambda f: f"CMDR {f} only" if f else "every commander"
+    return (f"re-reading every journal: the commander filter changed ({words(old)} -> {words(new)}). "
+            "This can take a few minutes.")
 
 
 def reread_message(old, rescan=False):
@@ -2560,7 +2580,15 @@ def record_from_dump(system, b):
         # when the body was last reported, and whether Spansh has a signals block for it at all: a pre-Odyssey
         # client reported no bio signals and marked thin-atmosphere worlds not landable (see stale_bio_body)
         "updated": b.get("updateTime"), "signals_known": "signals" in b,
+        # S9-S3: Guardian, Thargoid and anomaly sites other commanders' DSS reported (your own scan's win: merge_records)
+        **spansh_sites(signals),
     }
+
+
+def spansh_sites(signals):
+    """{sites, sites_reported} from a Spansh body's signal counts ($SAA_SignalType_Guardian; and the rest), or {}."""
+    sites = {k: signals[v] for k, v in SITE_SIGNALS.items() if isinstance(signals.get(v), int) and signals[v] > 0}
+    return {"sites": sites, "sites_reported": True} if sites else {}
 
 
 def record_from_scan(ev):
@@ -2647,6 +2675,8 @@ def merge_records(spansh, own, hotspots):
             r = dict(r, mining=base["mining"])   # Spansh has the count from someone else's FSS
         if base and base.get("signals_known"):
             r = dict(r, signals_known=True)      # someone's FSS counted its signals (unknown_bio_groups)
+        if base and not r.get("sites") and base.get("sites"):
+            r = dict(r, sites=base["sites"], sites_reported=True)   # S9-S3: theirs until your own DSS counts them
         if base:
             spansh_rings = {x["name"]: x for x in base.get("rings") or []}
             r = dict(r, rings=[dict(x, hotspots=x["hotspots"] or
@@ -2827,6 +2857,15 @@ class Journals:
         self.burst = None
         self._hw_rows = (None, [])   # (route id, highway_route rows): the Highway's route, read once per plot
         self.bad_json_said = set()   # journal files a line that is not JSON was said of (once each)
+        # S9-S4: [journals] commander ("": every commander). A journal file's commander is its first Commander or LoadGame
+        # line (file_cmdrs, by file name); another commander's file is skipped whole, and while the newest live file is
+        # theirs (other_playing: their name) the live layer stands down. cmdrs_seen: every FID the journals named
+        # ({fid: {name, first_ts, last_ts, files, last_file}}, meta commanders_seen), for the "also logs CMDR B" card
+        self.commander_filter = ""
+        self.file_cmdrs = {}
+        self.other_playing = None
+        self._newest = None
+        self.cmdrs_seen = meta_get(db, "commanders_seen") or {}
         self.unsold_touched = False   # a line of a kind outrider.unsold reads was read (State.tick: unsold_dirty)
         self._rc_rows = (None, [])   # (route id, riches_route rows with their bodies): Road to Riches, read once per plot
         self.cargo_version = 0     # bumped by every cargo change (the ship's hold, a carrier event or market read)
@@ -3361,6 +3400,7 @@ class Journals:
         """
         db = self.db
         self.new_sales = []   # a rolled-back tick reads its sales again
+        self.cmdrs_seen = meta_get(db, "commanders_seen") or {}   # S9-S4: as the database has it
         self.offsets = {r["path"]: r["offset"] for r in db.execute("SELECT * FROM journal_files")}
         # the same journal in two folders (a legacy copy of the live folder, two Proton prefixes) is one
         # file: basename -> the path read furthest, so a copy continues where the other stopped
@@ -3495,6 +3535,10 @@ class Journals:
     def _scan_steps(self, d, commit_each, quick=False):
         # in time order: the old names (Journal.YYMMDDhhmmss.NN.log, before 2023) sort after every new one as text
         paths = sorted(glob(os.path.join(glob_escape(d), "Journal.*.log")), key=outrider.uploads.name_key)
+        self._newest = paths[-1] if paths else None
+        if self.upload_mode is not None:   # a live folder (legacy ones are scanned with no upload mode): who plays now
+            who = self.file_commander(paths[-1]) if self.commander_filter and paths else None
+            self.other_playing = (who[1] or who[0]) if who and not commander_matches(self.commander_filter, who) else None
         skip = set()
         if quick:
             now = self.clock()
@@ -3545,7 +3589,44 @@ class Journals:
         twin = self.twins.get(os.path.basename(path))
         return max(self.offsets.get(path, 0), self.offsets.get(twin, 0) if twin else 0)
 
+    def file_commander(self, path):
+        """(FID, name) of the commander a journal file belongs to: its first Commander or LoadGame line within its first
+        FILE_CMDR_HEAD bytes, kept by file name; None when it has none yet (not kept: a live file gets one soon)."""
+        b = os.path.basename(path)
+        if b in self.file_cmdrs:
+            return self.file_cmdrs[b]
+        try:
+            with open(path, "rb") as f:
+                head = f.read(FILE_CMDR_HEAD)
+        except OSError:
+            return None
+        for raw in head.split(b"\n")[:-1]:   # complete lines only
+            if b'"event":"Commander"' in raw or b'"event":"LoadGame"' in raw:
+                try:
+                    ev = json.loads(raw)
+                except ValueError:
+                    continue
+                if isinstance(ev, dict) and (ev.get("FID") or ev.get("Name") or ev.get("Commander")):
+                    who = self.file_cmdrs[b] = (str(ev.get("FID") or ""), str(ev.get("Name") or ev.get("Commander") or ""))
+                    return who
+        return None
+
+    def file_is_mine(self, path):
+        """S9-S4: whether this file's lines are handled under the commander filter: True with no filter, for the
+        filter's commander and for a file with no commander line that is not the newest (cut short by a crash at
+        start: read as before); False for another commander's; None for the newest file before its commander line
+        (a brand-new journal: it waits, nothing read yet)."""
+        if not self.commander_filter:
+            return True
+        who = self.file_commander(path)
+        if who is None:
+            return None if path == self._newest else True
+        return commander_matches(self.commander_filter, who)
+
     def read_file(self, path):
+        mine = self.file_is_mine(path)
+        if mine is None:
+            return
         start = self.start_offset(path)
         with open(path, "rb") as f:
             f.seek(start)
@@ -3566,6 +3647,8 @@ class Journals:
                     print(f"uploads: a line was skipped ({type(e).__name__}: {e})", file=sys.stderr)
             elif self.uploads is not None and self.upload_mode:
                 self.uploads.forget()   # not following now: switched on again, it reads the file from its top
+            if not mine:
+                continue   # S9-S4: another commander's file (its uploads above go with that commander's own accounts)
             if not self.unsold_touched and any(w in line for w in UNSOLD_BYTES):
                 self.unsold_touched = True   # a line the unsold estimate reads (S6-S1: any line re-ran it)
             if any(w in line for w in WANTED) or b"Fixed_Event_Life" in line or any(w in line for w in POI_BYTES):
@@ -4560,8 +4643,26 @@ class Journals:
         self.commander_version += 1
         return True
 
+    def note_cmdr_seen(self, fid, name, ts):
+        """S9-S4: a Commander or LoadGame line names this FID: cmdrs_seen keeps its name, first and last time and how
+        many journal files named it (a file counted once, also when its lines are handled again after a retry)."""
+        if not fid:
+            return
+        b = self.line_source.rsplit(":", 1)[0] if self.line_source else ""
+        old = self.cmdrs_seen.get(fid) or {}
+        e = dict(old, name=name or old.get("name") or "", first_ts=min(t for t in (old.get("first_ts"), ts) if t),
+                 last_ts=max(t for t in (old.get("last_ts"), ts) if t), files=old.get("files", 0))
+        if b and old.get("last_file") != b:
+            e["files"] += 1
+            e["last_file"] = b
+        if e != old:
+            self.cmdrs_seen[fid] = e
+            meta_set(self.db, "commanders_seen", self.cmdrs_seen)
+
     def handle_cmdr(self, name, ev, ts):
         c = self.commander or {}
+        if name in ("LoadGame", "Commander") and isinstance(ev.get("FID"), str):
+            self.note_cmdr_seen(ev["FID"], ev.get("Name") if name == "Commander" else ev.get("Commander"), ts)
         if name == "LoadGame":   # every login, old ones read out of order too (History's session windows)
             self.db.execute("INSERT OR IGNORE INTO logins VALUES (?)", (ts,))
         if ts < c.get("login_ts", ""):
@@ -5385,7 +5486,10 @@ class Journals:
         return self.game_load.get("start", "") > self.game_load.get("ready", "")
 
     def read_status(self, d):
-        """Status.json: the live fuel gauge (rewritten by the game every few seconds)."""
+        """Status.json: the live fuel gauge (rewritten by the game every few seconds). Not while another commander
+        plays (S9-S4: the commander filter's stand-down)."""
+        if self.other_playing:
+            return
         try:
             with open(os.path.join(d, "Status.json"), encoding="utf-8") as f:
                 st = json.load(f)
@@ -6215,8 +6319,10 @@ def site_words(kinds, body):
 
 
 def surface_sites(records, system_name=None):
-    """[{body, sites}] for the bodies with surface sites among a system's records (your own scans only)."""
-    return [{"body": short_name(system_name, r.get("name")) if system_name else r.get("name"), "sites": r["sites"]}
+    """[{body, sites, reported}] for the bodies with surface sites among a system's records: your own DSS's, and
+    (S9-S3) what Spansh has from other commanders' (reported: True) where you have not mapped the body."""
+    return [{"body": short_name(system_name, r.get("name")) if system_name else r.get("name"), "sites": r["sites"],
+             "reported": bool(r.get("sites_reported"))}
             for r in records or [] if r.get("sites")]
 
 
@@ -6653,8 +6759,9 @@ def summarise(records, body_count, star=None, ctx=None, genera=None):
 FIND_NAME_MAX = 100   # /api/find: the longest system name taken (real ones are far shorter)
 
 # Bump when the cached record layout changes so cached systems get re-fetched.
-CACHE_VERSION = 19   # 14: pressure_raw; 15: updated, signals_known (stale_bio_body); 16: mining; 17: "Terraformable" priced;
-#                      18: spansh_date, spansh_old (main, 2026.10.26's fixes); 19: reserve (mining) on top of it
+CACHE_VERSION = 20   # 14: pressure_raw; 15: updated, signals_known (stale_bio_body); 16: mining; 17: "Terraformable" priced;
+#                      18: spansh_date, spansh_old (main, 2026.10.26's fixes); 19: reserve (mining) on top of it;
+#                      20: sites, sites_reported (Spansh's Guardian/Thargoid/anomaly counts, S9-S3)
 
 
 def cached_base(db, id64):
@@ -7863,6 +7970,8 @@ class State:
             "game_pc": self.game_pc,   # False: the page leaves out what needs the game PC
             "outrider": outrider.__version__,   # Settings' line beside the GitHub link
             "notices": self.notices.active(),   # the banner: start-up problems, until fixed or dismissed
+            # S9-S4: the commander the "also logs CMDR B" card's button keeps (only while that card can show)
+            "commander_keep": self.commander_choice()[0] if len(self.journals.cmdrs_seen) > 1 and not self.journals.commander_filter else None,
             "restart": self.restart_info(),     # Settings -> Server's Restart: whether it can, how, why not
             # a newer release ({version, current, url, kind}: kind says how to update this install), else None
             "update": dict(self.update_available, current=outrider.__version__, kind=install_kind())
@@ -9916,6 +10025,7 @@ class State:
                 "honked": bool(sysrow), "all_found": bool(sysrow and sysrow["all_found"]), "star_class": mr["star"],
                 "base_known": mr["base_known"],
                 "worth": special[:3] + [w for w in worth[:3] if w not in special[:3]], "bio": bio,
+                "lost": self.rescan_left(id64, mr["name"]),   # S9-S1: scans here that died with a ship
                 "region": self.region_crossed(id64),
                 # pre-Odyssey Spansh data (#11): never routine, "worth a rescan"; and its worlds that may hold life
                 "spansh_old": mr["spansh_old"], "old_bodies": (stale_bio_summary(mr["records"], mr["star"], mr["ctx"]) or {}).get("bodies") or 0}
@@ -10922,9 +11032,11 @@ class State:
     def firsts_list(self):
         """Every visited system holding first-discovery data, with its sale state and value (and, for unsold ones,
         `seen`: what the firsts watch found of someone else's scans there, or None). `recover` (firsts_recovery) is
-        the rescan checklist for data lost with a ship."""
+        the rescan checklist for data lost with a ship. `lost_bio` (S9-S28): the sample runs that died with you there and
+        are not done again ({runs, value, species}); a system with only those is listed too, as lost."""
         pos = self.journals.pos
         watch = self.firsts_watch_rows()
+        lost_bio = self.lost_bio_runs()
         out = []
         for r in self.db.execute(
                 "SELECT DISTINCT f.system AS id64, v.name, v.x, v.y, v.z FROM own_firsts f "
@@ -10943,8 +11055,35 @@ class State:
                         "system_state": f["system_state"], "bodies_by": f["bodies_by"], "mapped_by": f["mapped_by"],
                         "distance": round(dist(pos, r), 2) if pos else None,
                         "value": self.system_values.get(r["name"]),
-                        "seen": firsts_seen(watch.get(r["id64"])) if f["sale"] == "unsold" else None})
+                        "seen": firsts_seen(watch.get(r["id64"])) if f["sale"] == "unsold" else None,
+                        "lost_bio": lost_bio.pop(r["id64"], None)})
+        if lost_bio:   # lost runs where no first of yours is unsold or lost: the rescan list has them alone
+            marks = ",".join("?" * len(lost_bio))
+            for r in self.db.execute(f"SELECT id64, name, x, y, z FROM visits WHERE id64 IN ({marks})", list(lost_bio)):
+                out.append({"id": str(r["id64"]), "name": r["name"], "state": "lost", "sale": "lost", "recover": None,
+                            "system": False, "system_state": None, "bodies_by": {}, "mapped_by": {},
+                            "distance": round(dist(pos, r), 2) if pos else None, "value": None, "seen": None,
+                            "lost_bio": lost_bio[r["id64"]]})
         out.sort(key=lambda x: (-(x["value"] or 0), x["distance"] or 0))
+        return out
+
+    def lost_bio_runs(self):
+        """S9-S28: {system id64: {runs, value, species: [names]}} of the completed sample runs that died with you and
+        were not done again since (organic_fates: a run done again is that row's new run), priced at Vista Genomics'
+        base value with the first-footfall x5 where your scan earned it."""
+        fates = organic_fates(self.db)
+        out = {}
+        for r in self.db.execute("SELECT o.system, o.body_id, o.species, o.species_name, (1 - f.bio_x5) AS was_footfalled "
+                                 "FROM own_organic o LEFT JOIN own_firsts f ON f.system = o.system AND f.body_id = o.body_id "
+                                 "WHERE o.done_ts IS NOT NULL"):
+            fate = fates.get((r["system"], r["body_id"], r["species"]))
+            if not fate or fate[0] != "lost":
+                continue
+            value = (outrider.bio.species_value(r["species_name"]) or 0) if outrider.bio and r["species_name"] else 0
+            e = out.setdefault(r["system"], {"runs": 0, "value": 0, "species": []})
+            e["runs"] += 1
+            e["value"] += value * (5 if r["was_footfalled"] == 0 else 1)
+            e["species"].append(r["species_name"] or r["species"])
         return out
 
     # ---- the firsts watch: has someone else scanned your unsold first discoveries since? ----
@@ -11254,11 +11393,22 @@ class State:
                                  # someone else mapped it (your scan says): no alert points it out (the author, 2026-10-09)
                                  "mapped_before": rec.get("was_mapped") is True})   # the suggested order (by increment)
         unmapped_all.sort(key=lambda u: -(u["increment"] or 0))
+        rescan = self.rescan_left(id64, where[0])
         # id64: the system, as a string (S30: the first stop you picked applies to its own system only)
         return {"id64": str(id64), "body_count": count, "scanned": len(bodies), "unscanned": unscanned,
                 "honked": bool(sysrow), "all_found": bool(sysrow and sysrow["all_found"]),
-                "bio_pending": bio_pending, "unmapped_valuable": unmapped, "unmapped": unmapped_all,
-                "clean": not unscanned and not bio_pending and not unmapped}
+                "bio_pending": bio_pending, "unmapped_valuable": unmapped, "unmapped": unmapped_all, "rescan": rescan,
+                "clean": not unscanned and not bio_pending and not unmapped and not rescan}
+
+    def rescan_left(self, id64, name):
+        """S9-S1: the first discoveries here whose scan died with a ship and is not picked up again (firsts_recovery's
+        todo_scan): {bodies: [{name, value}], value}, or None. A lost first map is in `unmapped` already (a lost map
+        does not count as mapped). Only bodies you were first to discover: a lost scan of a known body is kept nowhere."""
+        f = own_firsts(self.db, id64, name) if name else None
+        rec = (f or {}).get("recover") or {}
+        if not rec.get("todo_scan"):
+            return None
+        return {"bodies": rec["todo_scan"], "value": rec["lost_scan"]}
 
     def species_history(self):
         """S24: species_history over your completed runs, counted again only when they change (a run finished, a
@@ -11425,7 +11575,7 @@ class State:
                 "codex_type": codex_type(r),
                 # the geology entries its volcanism could log (S22: ✦ / ✪ when one is not in your codex for the region)
                 "codex_geo": codex_geo(r),
-                "sites": r.get("sites") or None,
+                "sites": r.get("sites") or None, "sites_reported": bool(r.get("sites") and r.get("sites_reported")),
                 "scanned": bid is not None, "first_discovered": first_disc, "mapped": is_mapped,
                 "first_mapped": first_map, "map_state": map_state, "footfall": bool(f and f["foot_ts"]),
                 "first_footfall": bool(f and f["was_footfalled"] == 0 and f["foot_ts"]),
@@ -12595,7 +12745,7 @@ class State:
         s["codex_types"] = [dict(t, body=r["name"]) for r in records for t in [codex_type(r)] if t]
         s["region"] = outrider.bio.region_name(base["x"], base["y"], base["z"]) \
             if outrider.bio and all(isinstance(base.get(k), (int, float)) for k in "xyz") else None
-        s["sites"] = surface_sites(records, base["name"])     # Guardian, Thargoid, anomalies: your own scans
+        s["sites"] = surface_sites(records, base["name"])     # Guardian, Thargoid, anomalies: yours, then Spansh's
         s["pois"] = [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))]
         raws = {short_name(base["name"], r_["name"]): json.loads(r_["raw"]) for r_ in self.db.execute(
             "SELECT name, raw FROM own_bodies WHERE system=? AND raw IS NOT NULL", (id64,))}
@@ -18245,6 +18395,8 @@ class State:
         t, h = self.targeter, self.honker
         if not t or not t.available:
             return {"error": (h.status if h else "not started")}, 400
+        if self.journals.other_playing:   # S9-S4: the game is another commander's now: no key goes into it
+            return {"error": f"CMDR {self.journals.other_playing} is playing: not tracked here"}, 409
         if self.autotarget_busy():
             return {"error": "auto-target is already running"}, 409
         tgt, why = (self.route_target(*aim) if aim else self.autotarget_test_target() if kind == "test"
@@ -18661,6 +18813,7 @@ class State:
         try:
             late = None
             self.journals_reachable()   # a share that dropped while running is said (S9-S21)
+            self.commander_notices()   # S9-S4: another commander playing, or a second one in the folder
             for d in LIVE_DIRS:
                 self.journals.scan_dir(d, upload="live", quick=True)
                 if self.journals.unsold_touched:   # a line the estimate reads, not any line (S6-S1)
@@ -18808,6 +18961,53 @@ class State:
         return True
 
     JOURNALS_GONE_TICKS = 2   # looks in a row a journal folder seen before is missing, before it is said
+
+    def commander_notices(self):
+        """S9-S4's cards: while another commander than the filter's plays, "CMDR B is playing: not tracked here"; with
+        no filter and a second FID in the journals, "This journal folder also logs CMDR B ... Keep only CMDR A here?"
+        with the button that sets the filter (POST /api/journals/commander). Nothing for a single-commander player."""
+        j = self.journals
+        if j.other_playing:
+            self.notices.set("commander_other", f"CMDR {j.other_playing} is playing: not tracked here (the commander "
+                             f"filter keeps CMDR {j.commander_filter}; Settings -> Server -> [journals] commander).",
+                             "info", "open:server:commander")
+        else:
+            self.notices.clear("commander_other")
+        main, others = self.commander_choice()
+        if main and others and not j.commander_filter:
+            also = ", ".join(f"CMDR {o['name'] or o['fid']} (since {str(o.get('first_ts'))[:10]})" for o in others[:3])
+            self.notices.set("commander_more", f"This journal folder also logs {also}, beside CMDR {main['name'] or main['fid']}: "
+                             f"Outrider mixes them into one history. Keep only CMDR {main['name'] or main['fid']} here?",
+                             "info", "commander:keep")
+        else:
+            self.notices.clear("commander_more")
+
+    def commander_choice(self):
+        """(the commander with the most journal files, [the others]) from Journals.cmdrs_seen, each {fid, name, files,
+        first_ts, last_ts}; (None, []) with none."""
+        seen = sorted(({"fid": f, **{k: e.get(k) for k in ("name", "files", "first_ts", "last_ts")}}
+                       for f, e in self.journals.cmdrs_seen.items()),
+                      key=lambda e: (-(e["files"] or 0), e["first_ts"] or ""))
+        return (seen[0], seen[1:]) if seen else (None, [])
+
+    def set_commander_filter(self, commander):
+        """POST /api/journals/commander {commander}: [journals] commander written (an FID or name the journals named,
+        or "" for every commander), then Outrider restarts itself to read every journal again under it (S9-S4).
+        (answer, status): {ok, restart} (restart: the restart's own answer; "restart it yourself" when it cannot)."""
+        want = str(commander or "").strip()
+        known = {x for f, e in self.journals.cmdrs_seen.items() for x in (f.lower(), str(e.get("name") or "").lower()) if x}
+        if want and want.lower() not in known:
+            return {"error": "commander: an FID or commander name the journals named"}, 400
+        e = next((e for f, e in self.journals.cmdrs_seen.items() if want.lower() in (f.lower(), str(e.get("name") or "").lower())), None)
+        value = (e and e.get("name")) or want   # the name as shown reads best in the file; the FID matches as well
+        out, status = self.config_save({"journals": {"commander": value}})
+        if status != 200:
+            return out, status
+        answer, rs = self.request_restart()
+        print(f"journals: the commander filter set to {value or 'every commander'}" +
+              ("; restarting to read every journal again" if rs == 202 else ": it applies at the next start"))
+        return {"ok": True, "commander": value, "restart": answer if rs == 202 else None,
+                "note": None if rs == 202 else f"Saved: restart Outrider to read every journal again ({answer.get('error')})"}, 200
 
     def journals_reachable(self, isdir=os.path.isdir):
         """A live journal folder that was there and is gone for JOURNALS_GONE_TICKS looks (a NAS or the game PC
@@ -20722,6 +20922,13 @@ def make_app(state, hosts=None):
         out, status = state.request_restart()
         return web.json_response(out, status=status)
 
+    async def journals_commander_view(request):
+        """POST /api/journals/commander {commander} (S9-S4): the commander filter set, then the restart that re-reads
+        every journal under it (State.set_commander_filter). Guarded as POST /api/config is."""
+        body = await json_object(request)
+        out, status = state.set_commander_filter((body or {}).get("commander"))
+        return web.json_response(out, status=status)
+
     async def config_post_view(request):
         """POST /api/config {section: {key: value}}: written into the config file (applied at the next start)."""
         body = await json_object(request)
@@ -21286,6 +21493,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/serverlog", serverlog_view)
     app.router.add_post("/api/notices/dismiss", notices_dismiss_view)
     app.router.add_post("/api/config", config_post_view)
+    app.router.add_post("/api/journals/commander", journals_commander_view)   # S9-S4: guarded as /api/config
     app.router.add_post("/api/restart", restart_view)   # not pc_only: a server restarts from the tablet (S10)
     app.router.add_get("/api/starting", starting_view)   # S9: the starting page reloads on this
     app.router.add_get("/api/clipboard", clipboard_view)             # #5: the 📋 buttons (this PC's browser, the app)
@@ -22087,8 +22295,11 @@ async def run(args, st):
         raise SystemExit(1)
     starting.db = db
     due, old = reread_due(db, args.rescan)
-    if due:   # says why when every journal is read again, and backs the database up first (S4: even with backup_every_days = 0)
-        starting.why = reread_message(old, args.rescan)
+    # S9-S4: the [journals] commander filter changed since the journals were read: every journal read again under it
+    was_filter = meta_get(db, "commander_filter") or ""
+    filter_changed = old is not None and was_filter != st["commander"]
+    if due or filter_changed:   # says why when every journal is read again, and backs the database up first (S4: even with backup_every_days = 0)
+        starting.why = reread_message(old, args.rescan) if due else filter_message(was_filter, st["commander"])
         print(starting.why)
         if old is not None:   # a database in use (a crashed first run leaves an empty one: nothing to keep)
             starting.phase = "backup"
@@ -22101,7 +22312,9 @@ async def run(args, st):
                 await stopped_starting("before the journal re-read: it happens at the next start")
                 return None
         reset_journal_data(db)
+    meta_set(db, "commander_filter", st["commander"])
     journals = Journals(db)
+    journals.commander_filter = st["commander"]
     sweep_backup_leftovers(BACKUP_DIR, db.execute("PRAGMA database_list").fetchone()[2] or DB_PATH)
     starting.phase = "journals"
     t = time.time()

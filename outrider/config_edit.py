@@ -38,7 +38,7 @@ def homed(section, key):
 GROUPS = (
     ("network", "Network and access", (("server", "host"), ("server", "port"), ("server", "allowed_hosts"),
                                         ("server", "password"), ("server", "game_pc"))),
-    ("files", "Files and backups", (("journals", "live"), ("journals", "legacy"), ("server", "db"), ("server", "backup_dir"),
+    ("files", "Files and backups", (("journals", "live"), ("journals", "legacy"), ("journals", "commander"), ("server", "db"), ("server", "backup_dir"),
                                      ("server", "backup_keep"), ("server", "backup_every_days"), ("server", "speech_file"))),
     ("online", "Online checks", (("server", "update_check"), ("spansh", "watch_firsts"), ("spansh", "concurrency"),
                                   ("spansh", "map_max_radius"), ("spansh", "map_max_pages"))),

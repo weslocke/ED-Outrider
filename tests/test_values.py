@@ -2122,6 +2122,46 @@ class RescanChecklist(unittest.TestCase):
         self.assertIsNone(self.entry("Lossy"))
         self.assertEqual((self.entry("Clean")["state"], self.entry("Gone")["state"]), ("unsold", "lost"))
 
+    def test_the_rescan_trip_is_not_nothing_worth_staying_for(self):
+        """S9-S1: back where a scan died with the ship, the leaving summary (Now's Next, the leaving alert) and the
+        arrival briefing name what is still to rescan; the summary is not clean until it is done."""
+        self.jump("2026-01-01T00:00:00Z", "Lossy", 5)
+        self.scans("2026-01-01T00:01:00Z", "Lossy", 5, [1, 2, 3])
+        self.die("2026-01-01T01:00:00Z")
+        self.jump("2026-01-02T00:00:00Z", "Lossy", 5)
+        self.scans("2026-01-02T00:01:00Z", "Lossy", 5, [1])
+        l = self.state.leaving_summary(5)
+        self.assertEqual([b["name"] for b in l["rescan"]["bodies"]], ["A 2", "A 3"])
+        self.assertEqual(l["rescan"]["value"], sum(b["value"] for b in l["rescan"]["bodies"]))
+        self.assertFalse(l["clean"])
+        facts = self.state.arrival_facts(5)
+        self.assertEqual([b["name"] for b in facts["lost"]["bodies"]], ["A 2", "A 3"])
+        self.scans("2026-01-02T00:02:00Z", "Lossy", 5, [2, 3])
+        l = self.state.leaving_summary(5)
+        self.assertIsNone(l["rescan"])
+        self.assertIsNone(self.state.arrival_facts(5)["lost"])
+
+    def test_lost_sample_runs_join_the_rescan_list(self):
+        """S9-S28: a sample run that died with you is on My firsts' lost list with its value, in a system holding no
+        first of yours too; done again, it is off."""
+        def analysed(ts):
+            self.j.handle({"event": "ScanOrganic", "timestamp": ts, "ScanType": "Analyse", "SystemAddress": 11, "Body": 4,
+                           "Genus": "$Codex_Ent_Stratum_Genus_Name;", "Genus_Localised": "Stratum",
+                           "Species": "$Codex_Ent_Stratum_02_Name;", "Species_Localised": "Stratum Paleas"})
+            self.db.commit()
+        self.jump("2026-01-01T00:00:00Z", "Bioland", 11, x=30)
+        analysed("2026-01-01T00:05:00Z")
+        self.assertIsNone(self.entry("Bioland"))                     # aboard: not lost
+        self.die("2026-01-01T01:00:00Z")
+        e = self.entry("Bioland")
+        self.assertEqual((e["state"], e["recover"], e["lost_bio"]["runs"], e["lost_bio"]["species"]),
+                         ("lost", None, 1, ["Stratum Paleas"]))
+        self.assertGreater(e["lost_bio"]["value"], 0)
+        self.assertIsNotNone(e["distance"])
+        self.jump("2026-01-02T00:00:00Z", "Bioland", 11, x=30)
+        analysed("2026-01-02T00:05:00Z")                             # sampled again: aboard, off the list
+        self.assertIsNone(self.entry("Bioland"))
+
     def test_todo_names_what_is_left_short_and_in_natural_order(self):
         # the rescan checklist's to-do lists: short body names still to scan (FSS) and maps still to redo (DSS),
         # naturally sorted (A 10 after A 3); empty once everything is back

@@ -48,12 +48,12 @@ const posId = () => data && data.position ? data.position.id ?? String(data.posi
 // id64s above 2^53 can round to the same number; Codex C2)
 const sysId = x => !x ? null : x.id != null ? String(x.id) : x.id64 != null ? String(x.id64) : null;
 // Each sortable table keeps its own sort (a value sort chosen in My firsts must not re-sort Nearby).
-const SORT_TABLES = {nearTable: "near", firstsTable: "firsts", bmTable: "bm", sTable: "search", hereTable: "here"};
+const SORT_TABLES = {nearTable: "near", firstsTable: "firsts", bmTable: "bm", sTable: "search", hereTable: "here", leftTable: "left"};
 // A heading sorts its table; clicked again it reverses ("-key", ▴); a third time the table goes back to its default
-const SORT_DEFAULT = {near: "distance", firsts: "distance", bm: "distance", search: "distance", here: "max"};
+const SORT_DEFAULT = {near: "distance", firsts: "distance", bm: "distance", search: "distance", here: "max", left: "distance"};
 const sortKey = t => String(sortKeys[t] || SORT_DEFAULT[t]).replace(/^-/, "");
 const sortWith = (t, cmp) => String(sortKeys[t] || "").startsWith("-") ? (a, b) => cmp(b, a) : cmp;
-const sortKeys = Object.assign({near: store.get("sort", "distance"), firsts: "distance", bm: "distance", search: "distance", here: "max"},
+const sortKeys = Object.assign({near: store.get("sort", "distance"), firsts: "distance", bm: "distance", search: "distance", here: "max", left: "distance"},
                                store.get("sorts", {}));
 const showVisited = document.getElementById("showVisited");
 const showExplored = document.getElementById("showExplored");
@@ -293,9 +293,11 @@ const phenomenaLeftText = list => { const n = phenomenaCount(list), v = phenomen
 const SITE_LOOK = {guardian: ["🏛", "Guardian sites"], thargoid: ["👾", "Thargoid sites"], anomaly: ["❔", "an unknown planetary anomaly"],
                    other: ["📡", "unidentified surface signals"]};
 const siteIcons = sites => Object.keys(SITE_LOOK).filter(k => (sites || {})[k]).map(k => SITE_LOOK[k][0]).join("");
-const siteTags = sites => Object.keys(SITE_LOOK).filter(k => (sites || {})[k]).map(k =>
-  `<span class="sp site site-${k}" title="${esc(SITE_LOOK[k][1])}: ${sites[k]} signal${sites[k] === 1 ? "" : "s"}">${SITE_LOOK[k][0]}</span>`).join("");
-const siteText = list => (list || []).map(x => `${siteIcons(x.sites)} ${Object.keys(SITE_LOOK).filter(k => x.sites[k]).map(k => SITE_LOOK[k][1]).join(", ")} on ${x.body}`).join(" · ");
+// reported: from Spansh's records (other commanders' DSS, S9-S3), until your own DSS counts them
+const REPORTED_SITES = " (reported by others)";
+const siteTags = (sites, reported) => Object.keys(SITE_LOOK).filter(k => (sites || {})[k]).map(k =>
+  `<span class="sp site site-${k}" title="${esc(SITE_LOOK[k][1])}: ${sites[k]} signal${sites[k] === 1 ? "" : "s"}${reported ? REPORTED_SITES : ""}">${SITE_LOOK[k][0]}</span>`).join("");
+const siteText = list => (list || []).map(x => `${siteIcons(x.sites)} ${Object.keys(SITE_LOOK).filter(k => x.sites[k]).map(k => SITE_LOOK[k][1]).join(", ")} on ${x.body}${x.reported ? REPORTED_SITES : ""}`).join(" · ");
 const sitesTag = list => !list || !list.length ? "" : `<span class="nb sites" title="${esc(siteText(list))}">${[...new Set([...list.map(x => siteIcons(x.sites)).join("")])].join("")}${list.length > 1 ? " " + list.length : ""}</span>`;
 // 📍 FSS signals worth a detour (State's poi): the rare ones by name, the common ones counted
 const POI_NAMES = {titan: ["Titan", "Titans"], guardian_beacon: ["Guardian beacon", "Guardian beacons"],
@@ -1022,8 +1024,15 @@ function worthLeavingFor(l) {
   // A body someone else mapped (your scan says) never counts: one line said so when it was scanned (mapped_before).
   // Unscanned bodies and a missing honk stay on Here's to-do line; they never sound the alert on their own.
   const maps = (l.unmapped || []).filter(u => !u.mapped_before && (u.special || (u.increment != null && u.increment >= hlLevel("body"))));
-  return {...l, bio_pending: bio, maps, clean: !maps.length && !bio.length};
+  // S9-S1: first discoveries whose scan died with a ship (the rescan trip): always worth staying for, whatever they pay
+  const rescan = l.rescan && (l.rescan.bodies || []).length ? l.rescan : null;
+  return {...l, bio_pending: bio, maps, rescan, clean: !maps.length && !bio.length && !rescan};
 }
+// S9-S1: the lost scans to redo, in words: "12 lost scans" (with what they pay, and the bodies in a hover on screen)
+const rescanCount = r => `${r.bodies.length} lost scan${r.bodies.length === 1 ? "" : "s"}`;
+const rescanHtml = r => `rescan <b title="${esc(r.bodies.map(b => b.name).join(", "))}">${rescanCount(r)}</b> in the FSS` +
+  (r.value ? ` (${credits(r.value)})` : "");
+const rescanSaid = r => `${rescanCount(r)} to redo in the FSS${r.value ? `, ${credits(r.value)}` : ""}`;
 // what a bio_pending body could pay with its first-footfall factor (the server's potential is bonus-free, so the
 // bio threshold compares what it always did; the order, the per-minute figure and the "up to" use this)
 const pendingWorth = b => (b.potential || 0) * (b.factor || 1);
@@ -1036,7 +1045,7 @@ const noDssText = (b, parts) => [...parts, b.signals ? `${b.signals} signal${b.s
 function leavingText(l) {
   l = worthLeavingFor(l);
   if (!l || l.clean) return "";
-  const bits = [];
+  const bits = l.rescan ? [rescanHtml(l.rescan)] : [];
   if (l.maps.length) bits.push("unmapped " + l.maps.map(u => `<b>${esc(u.body)}</b> (${esc(u.subtype)}${u.terraformable ? " T" : ""}` +
     (u.increment ? `, +${credits(u.increment)}` : "") + ")").join(", "));
   for (const b of l.bio_pending) {
@@ -1366,7 +1375,8 @@ function renderNow() {
     const plan = w && !w.clean ? planItems(l) : [];
     const dest = hd && data.destination ? hd.bodies.find(b => b.body_id === data.destination.body_id) : null;
     const destIsNext = !!(dest && plan.length && plan[0].body === dest.name);
-    lines.push(`<div class="now-line">${plan.length ? `<span class="warnc">Next: ${destIsNext ? `<span title="the body you have targeted">➜</span> ` : ""}${planText(plan[0], true)}${plan[0].sec != null ? ` <span class="unk">${scText(plan[0].sec)}</span>` : ""}` +
+    lines.push(`<div class="now-line">${w && w.rescan ? `<span class="warnc">Next: ${rescanHtml(w.rescan)}${plan.length ? ` <span class="unk">· ${plan.length} more</span>` : ""}</span>`
+      : plan.length ? `<span class="warnc">Next: ${destIsNext ? `<span title="the body you have targeted">➜</span> ` : ""}${planText(plan[0], true)}${plan[0].sec != null ? ` <span class="unk">${scText(plan[0].sec)}</span>` : ""}` +
       `${plan.length > 1 ? ` <span class="unk">· ${plan.length - 1} more</span>` : ""}</span>`
       : !hd ? `<span class="unk">checking…</span>`
       : !l || !l.honked ? `<span class="warnc">Next: honk</span> <span class="unk">(FSS discovery scan)</span>`
@@ -1379,7 +1389,7 @@ function renderNow() {
     if (dest && !destIsNext) lines.push(`<div class="now-line now-small">${nowDestText(hd, l, plan, dest)}</div>`);
     const siteBodies = hd ? (hd.bodies || []).filter(b => b.sites && ["guardian", "thargoid", "anomaly"].some(k => b.sites[k])) : [];
     if (siteBodies.length)   // Guardian or Thargoid sites, an anomaly, on this system's bodies
-      lines.push(`<div class="now-line now-sites"><span class="ok">${esc(siteText(siteBodies.map(b => ({body: b.name, sites: b.sites}))))}</span></div>`);
+      lines.push(`<div class="now-line now-sites"><span class="ok">${esc(siteText(siteBodies.map(b => ({body: b.name, sites: b.sites, reported: b.sites_reported}))))}</span></div>`);
     if (hd && hd.pois && hd.pois.length)   // FSS signals worth a detour: Titans, beacons, listening posts...
       lines.push(`<div class="now-line now-poi"><span class="ok">${poiLineHtml(hd.pois)}</span></div>`);
     // green gas giants here: the model's guesses (check them in the system map) and any your codex confirms
@@ -3471,7 +3481,7 @@ function workSaid(w, runsOf) {
   const shared = [codexAll && `${n === 2 ? "both" : "all"} new to your codex here`, ffAll && (codexAll ? "with first footfall" : `${n === 2 ? "both" : "all"} with first footfall`)].filter(Boolean);
   const group = n ? (n > 1 ? `${bits.slice(0, -1).join(", ")}, and ${bits[n - 1]}` : bits[0]) + (shared.length ? `; ${shared.join(", ")}` : "") : "";
   const more = w.maps.length + w.bio_pending.length - mapsTold.length - n;
-  return andList([...mapsTold.map(x => mapSaid(x.u)), group].filter(Boolean)) + (more > 0 ? `, and ${more} more` : "");
+  return andList([w.rescan && rescanSaid(w.rescan), ...mapsTold.map(x => mapSaid(x.u)), group].filter(Boolean)) + (more > 0 ? `, and ${more} more` : "");
 }
 // what the FSS debrief names: the maps and the bio your thresholds keep, most valuable first, three at most
 function worthSaying(l) {
@@ -3549,7 +3559,10 @@ function arrivalBriefText(m) {
     .sort((a, b) => (b.value || 0) - (a.value || 0))[0];
   if (w) bits.push(`The ${spokenClass(w.subtype, w.terraformable)} at ${w.body} is unmapped${w.value ? `, ${credits(w.value)}` : ""}.`);
   if (m.bio && m.bio.value >= bioMinNow()) bits.push(`Biology on ${m.bio.body}, up to ${credits(m.bio.value)}.`);
-  if (!w && !(m.bio && m.bio.value >= bioMinNow()) && m.status === "explored") bits.push("Nothing here for you.");
+  // S9-S1: you came back for scans that died with a ship
+  const lost = m.lost && (m.lost.bodies || []).length ? m.lost : null;
+  if (lost) bits.push(`You lost ${rescanCount(lost).replace(/^(\d+) lost /, "$1 ")} here: rescan ${lost.bodies.length === 1 ? "it" : "them"}${lost.value ? `, ${credits(lost.value)}` : ""}.`);
+  if (!w && !lost && !(m.bio && m.bio.value >= bioMinNow()) && m.status === "explored") bits.push("Nothing here for you.");
   return bits.filter(Boolean).join(" ");
 }
 // "Routine systems: sound only": a system with nothing worth a sentence. Not your first visit to an undiscovered
@@ -3600,6 +3613,7 @@ function sayJumponium(j) {
 let briefFacts = null;   // the last arrival briefing's facts ({sys, m}): the FSS debrief of that system asks isRoutine too
 function isRoutine(m) {
   if (m && m.spansh_old && !m.all_found) return false;   // #11: "known" from pre-Odyssey data is not routine
+  if (m && m.lost && (m.lost.bodies || []).length) return false;   // S9-S1: scans to redo
   if (!m || m.region || (m.undiscovered && !(m.visits > 1)) || (m.undiscovered == null && !m.in_spansh && !(m.visits > 1))) return false;
   const covered = m.all_found || (m.body_count > 0 && m.base_known != null && m.base_known >= m.body_count);
   if (!covered || !/^[OBAFGKM](_|$)/.test(m.star_class || "") || hazardNote(m.star_class)) return false;
@@ -3651,7 +3665,9 @@ function statusReportText() {
   const hw = data ? hwySpoken(data.highway) : ""; if (hw) parts.push(hw);
   const ms = data ? modulesSpoken() : ""; if (ms) parts.push(ms);   // a core module under your level (S5)
   if (target && target.v === "none") parts.push(`${dest.name}: nothing to do`);
-  if (plan.length) { const it = plan[0];
+  const rs = hd && hd.leaving ? worthLeavingFor(hd.leaving).rescan : null;
+  if (rs) parts.push(`Next: ${rescanSaid(rs)}`);   // S9-S1: the rescan trip's reason first
+  else if (plan.length) { const it = plan[0];
     parts.push(`Next: ${it.kind === "map" ? `map ${it.body}` : `biology on ${it.body}`}${nextValue(it, true) ? `, ${nextValue(it, true)}` : ""}${it.sec != null ? `, ${spokenTime(it.sec)}` : ""}`); }
   const u = data && data.unsold, rebuy = riskRebuy();
   if (u && !u.error && u.total > 0) parts.push(`${credits(u.total)} aboard${rebuy ? `, ${(u.total / rebuy).toFixed(1)} rebuys` : ""}`);
@@ -4752,7 +4768,7 @@ function renderHere() {
       <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}</td>
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
       <td class="hide-sm c2hide">${b.type === "Planet" ? (atm ? sfText("atmosphere", atm) : b.landable ? dual("none · landable", "landable") : "") : ""}${b.stale_bio ? ` <span class="unk old" title="${esc(staleBodyTitle(b))}">${dual("landable? (old data)", "landable?", {title: `landable? (old data): ${staleBodyTitle(b)}`})}</span>` : ""}${b.bio_unknown ? ` <span class="warnc" title="${BIO_UNKNOWN_TITLE}">${dual("bio possible: check the FSS", "🧬?")}</span>` : ""}</td>
-      <td class="bio">${bio.join(" ")}${geoTag(b)}${volcanoIcon(b)}${codex}${siteTags(b.sites)}${b.mining || (b.mined || []).length ? `<span class="sf2"> ${mineTag(b)}</span>` : ""}</td>
+      <td class="bio">${bio.join(" ")}${geoTag(b)}${volcanoIcon(b)}${codex}${siteTags(b.sites, b.sites_reported)}${b.mining || (b.mined || []).length ? `<span class="sf2"> ${mineTag(b)}</span>` : ""}</td>
       <td class="c2hide rings"${b.rings ? ` title="${esc(ringsText(b))}"` : ""}>${ringsCell(b)}</td>
       <td class="num mine c2hide">${mineTag(b)}</td>
       <td class="c2hide">${firsts}</td>
@@ -5479,7 +5495,7 @@ function renderFirsts() {
   // show lost adds the Lost value columns; Lost total sorts the most valuable trips first (with or without "within",
   // which is otherwise nearest first); without show lost that sort falls back to the unsold value
   const lostCols = fShowLost.checked, byLost = lostCols && sortKey("firsts") === "lost";
-  const lostOf = x => (x.recover && x.recover.lost_total) || 0, byDist = (a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9);
+  const lostOf = x => ((x.recover && x.recover.lost_total) || 0) + ((x.lost_bio && x.lost_bio.value) || 0), byDist = (a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9);
   document.getElementById("firstsTable").classList.toggle("lostcols", lostCols);
   list.sort(sortWith("firsts", byLost ? (a, b) => lostOf(b) - lostOf(a) || byDist(a, b)
           : within != null || sortKey("firsts") === "distance" ? byDist
@@ -5501,12 +5517,12 @@ function renderFirsts() {
                        {title: byKeys(b).map(k => `${b[k]} ${k}`).join(" · ")});
   document.getElementById("firstsRows").innerHTML = list.map(x => { const rs = rescanNote(x); return `<tr${rs ? ` class="${rs.cls}"` : ""}>
       <td class="bmcell">${bmIcon(x.id, x.name, bms)}${x.state === "lost" ? sweepTick(x.name) : ""}</td>
-      <td class="name" data-name="${esc(x.name)}" title="click to copy">${nameWords(x.name)}${rs ? `<div class="rescan"${rs.pop ? ` data-rescanpop="${esc(rs.pop)}"` : ` title="${esc(rs.title)}"`}>${esc(rs.text)}</div>` : ""}${x.seen ? `<div class="seen seen-sub${lostCols ? "" : " sf2"}">${seenCell(x.seen)}</div>` : ""}</td>
+      <td class="name" data-name="${esc(x.name)}" title="click to copy">${nameWords(x.name)}${lostBioNote(x.lost_bio)}${rs ? `<div class="rescan"${rs.pop ? ` data-rescanpop="${esc(rs.pop)}"` : ` title="${esc(rs.title)}"`}>${esc(rs.text)}</div>` : ""}${x.seen ? `<div class="seen seen-sub${lostCols ? "" : " sf2"}">${seenCell(x.seen)}</div>` : ""}</td>
       <td class="num dist">${x.distance == null ? "?" : x.distance.toLocaleString("en-US", {maximumFractionDigits: 1})}</td>
       <td class="f-unsold">${x.system ? `<span class="${x.system_state}">${dual(`🏁 ${x.system_state}`, "🏁", {title: `system tag ${x.system_state}`})}</span>` : ""}</td>
       <td class="by f-by">${by(x.bodies_by)}${byKeys(x.mapped_by).length ? `<div class="sf2" title="first mapped: ${byKeys(x.mapped_by).map(k => `${x.mapped_by[k]} ${k}`).join(" · ")}">🗺 ${byShort(x.mapped_by)}</div>` : ""}</td><td class="by f-by c2hide">${by(x.mapped_by)}</td>
       <td class="seen f-unsold c2hide">${seenCell(x.seen)}</td>
-      ${lostCells(x.recover)}
+      ${lostCells(x.recover, x.lost_bio)}
       <td class="num">${x.value ? credits(x.value) : ""}</td></tr>`; }).join("") ||
     `<tr><td colspan="11" class="unk">${within != null ? `Nothing lost to rescan within ${within} ly.`
       : lost.length && !fShowLost.checked ? `Nothing unsold. ${lost.length} systems with lost data are hidden — tick "show lost" to see them.`
@@ -5534,14 +5550,21 @@ function rescanNote(x) {
     pop: todo && `<h3>${esc(x.name)} <span class="src">rescan checklist</span></h3>${todo}<div class="sec unk">${esc(title)}</div>`};
 }
 // My firsts with show lost: what is still lost there, scan (FSS) / map (DSS) / total (firsts_recovery's values);
-// blank for a system that never lost anything, a muted 0 once everything is back
-function lostCells(r) {
-  if (!r) return `<td class="num f-lost c2hide"></td>`.repeat(2) + `<td class="num f-lost"></td>`;
+// blank for a system that never lost anything, a muted 0 once everything is back. S9-S28: the total counts the
+// sample runs lost there too (b: lost_bio)
+function lostCells(r, b) {
+  const bio = (b && b.value) || 0;
+  if (!r && !bio) return `<td class="num f-lost c2hide"></td>`.repeat(2) + `<td class="num f-lost"></td>`;
+  r = r || {};
   const cell = (v, cls = "", title = "") => `<td class="num f-lost${v ? "" : " zero"}${cls}"${title}>${v ? credits(v) : "0"}</td>`;
   // compact2 drops the scan and map columns: the total's title keeps them
   return cell(r.lost_scan, " c2hide") + cell(r.lost_map, " c2hide") +
-    cell(r.lost_total, " tot", ` title="scan (FSS) ${credits(r.lost_scan || 0)} + map (DSS) ${credits(r.lost_map || 0)}"`);
+    cell((r.lost_total || 0) + bio, " tot", ` title="scan (FSS) ${credits(r.lost_scan || 0)} + map (DSS) ${credits(r.lost_map || 0)}${bio ? ` + samples ${credits(bio)}` : ""}"`);
 }
+// S9-S28: the sample runs that died with you there and are not done again: "+ 2 sample runs lost, 24M", the species in
+// the hover
+const lostBioNote = b => b && b.runs ? `<div class="rescan" title="${esc(`Sample runs lost with a ship: ${(b.species || []).join(", ")}. Sample them again to earn them back.`)}">` +
+  `+ ${b.runs} sample run${b.runs === 1 ? "" : "s"} lost${b.value ? `, ${credits(b.value)}` : ""}</div>` : "";
 // the "within N ly" box: a positive number, or null (no limit)
 function firstsWithin() {
   const v = parseFloat(fWithin.value);
@@ -5574,12 +5597,17 @@ async function loadLeft() {
   if (leftData.error) leftKey = null;
   renderLeft();
 }
+// a Left behind row's mapping and biology over your levels, and what they pay together (the table's Worth, the Map's
+// "work left" colouring)
+function leftWorth(r) {
+  const maps = r.maps.filter(m => m.increment >= hlLevel("body")), bio = r.bio.filter(b => b.value >= bioMinNow());
+  return {maps, bio, worth: maps.reduce((n, m) => n + m.increment, 0) + bio.reduce((n, b) => n + b.value, 0)};
+}
 function renderLeft() {
   const el = document.getElementById("leftRows"), d = leftData;
   if (!d || d.error) { el.innerHTML = `<tr><td colspan="4" class="unk">${d ? esc(d.error) : "loading…"}</td></tr>`; return; }
   const rows = d.systems.map(r => {
-    const maps = r.maps.filter(m => m.increment >= hlLevel("body")), bio = r.bio.filter(b => b.value >= bioMinNow());
-    const worth = maps.reduce((n, m) => n + m.increment, 0) + bio.reduce((n, b) => n + b.value, 0);
+    const {maps, bio, worth} = leftWorth(r);
     const bits = [r.unfound ? `${r.unfound} bod${r.unfound === 1 ? "y" : "ies"} not found` : "",
       maps.length ? "map " + maps.map(m => `<b>${esc(m.body)}</b> <span class="unk">${sfText("planet", m.subtype)}${m.terraformable ? " T" : ""} +${credits(m.increment)}</span>`).join(", ") : "",
       // genera null: FSS signals nobody DSS'd, priced as the leaving alert prices them (an upper bound)
@@ -5589,6 +5617,10 @@ function renderLeft() {
       r.old_data ? `<span class="unk old" title="${oldDataTitle(r.old_data)}">old data: ${r.old_data.bodies} bod${r.old_data.bodies === 1 ? "y" : "ies"}</span>` : ""].filter(Boolean);
     return {r, bits, worth, keep: maps.length || bio.length || r.unfound || r.old_data};
   }).filter(x => x.keep && x.bits.length);
+  // S9-S27: sorted by its headers (Worth most first, ties nearest first), nearest first by default, kept per device
+  const byDist = (a, b) => a.r.distance - b.r.distance, k = sortKey("left");
+  rows.sort(sortWith("left", k === "worth" ? (a, b) => b.worth - a.worth || byDist(a, b)
+    : k === "name" ? (a, b) => a.r.name.localeCompare(b.r.name, undefined, {numeric: true}) : byDist));
   el.innerHTML = rows.map(({r, bits, worth}) => `<tr><td>${sweepTick(r.name)}<span class="name" data-name="${esc(r.name)}" title="click to copy">${esc(r.name)}</span><span class="goto" data-goto="${esc(r.id)}" title="open in Here">⌖</span></td>
       <td class="num">${r.distance.toFixed(1)}</td><td class="left-what">${bits.join(" · ")}</td><td class="num">${worth ? credits(worth) : ""}</td></tr>`).join("")
     || `<tr><td colspan="4" class="unk">Nothing worth going back for within ${d.radius} ly.</td></tr>`;
@@ -7006,10 +7038,17 @@ function drawMap() {
   const cs = getComputedStyle(document.documentElement), col = v => cs.getPropertyValue(v).trim();
   const C = {line: col("--line"), muted: col("--muted"), text: col("--text"), accent: col("--accent"),
              info: col("--info"), good: col("--good"), bg: col("--bg"), gold: "#f2c94c"};
-  const byColour = mSettings.color === "star";
+  const byColour = mSettings.color === "star", byWork = mSettings.color === "work";
+  const work = byWork ? mapWork() : null, C2 = {warn: col("--warn"), bad: col("--bad")};
   // Legend first: its height is part of the sizing below (written after it, the first draw was sized wrong).
   const dot = (color, text, ring) => `<span><i class="${ring ? "ring" : ""}" style="background:${color};border-color:${color}"></i>${text}</span>`;
-  const legend = byColour
+  const inView = k => byWork && M.data.points.some(pt => work.by[pt.id] && work.by[pt.id].kind === k);
+  const legend = byWork
+    ? [dot(C.accent, "you are here"), inView("lost") ? dot(C2.bad, "lost firsts to rescan") : "",
+       inView("left") ? dot(C2.warn, `left behind (within ${work.radius ?? "?"} ly)`, true) : "",
+       inView("unsold") ? dot(C.gold, "unsold firsts") : "", dot(C.muted, "nothing left")].join("") +
+      (work.loading ? `<span class="unk">loading Left behind and My firsts…</span>` : "")
+    : byColour
     ? [...new Set(M.data.points.map(pt => starGroup(pt.star)).concat((M.data.path || []).map(j => starGroup(j.star_class))))]
         .filter(Boolean).sort().map(k => dot(STAR_COLOURS[k] || C.muted, STAR_NAMES[k] || k)).join("") +
       dot(C.muted, "class unknown", true)
@@ -7189,13 +7228,16 @@ function drawMap() {
   for (const q of pts) {
     const pt = q.pt, id = pt.id, r0 = Math.max(1.6, 3 * q.k);
     let fill, ring = false, r = r0;
+    const wk = byWork ? work.by[id] : null;
     if (byColour) { fill = STAR_COLOURS[starGroup(pt.star)] || C.muted; if (!pt.star) ring = true; }
+    else if (byWork) { fill = !wk ? C.muted : wk.kind === "lost" ? C2.bad : wk.kind === "left" ? C2.warn : C.gold;
+      ring = !!wk && wk.kind === "left"; r = wk ? r0 * 1.3 : r0 * .8; }
     else if (pt.first) { fill = C.gold; r = r0 * 1.3; }
     else if (pt.visited) { fill = C.info; r = r0 * 1.15; }
     else if (pt.kind === "route") { fill = C.text; ring = true; }
     else { fill = C.muted; ring = !pt.scanned; r = r0 * .8; }
     if (id === hereId) { fill = C.accent; ring = false; r = 7; }
-    g.globalAlpha = pt.visited || id === hereId ? 1 : byColour ? .5 + .5 * density : .35 + .5 * density;
+    g.globalAlpha = pt.visited || id === hereId || wk ? 1 : byColour ? .5 + .5 * density : .35 + .5 * density;
     g.beginPath(); g.arc(q.sx, q.sy, r, 0, 2 * Math.PI);
     if (ring) { g.strokeStyle = fill; g.lineWidth = 1.3; g.stroke(); } else { g.fillStyle = fill; g.fill(); }
     g.globalAlpha = 1;
@@ -7204,8 +7246,8 @@ function drawMap() {
       g.beginPath(); g.arc(q.sx, q.sy, r + 4, 0, 2 * Math.PI); g.stroke(); g.setLineDash([]);
     }
     if (bms[id]) { g.fillStyle = C.gold; g.font = "12px system-ui"; g.fillText("★", q.sx + r + 1, q.sy - r); }
-    M.proj.push({sx: q.sx, sy: q.sy, pt: boostOf[id] || id === carrierAt || routeOf[id]
-      ? {...pt, boost: boostOf[id], carrier: id === carrierAt ? carrierName(cr) : undefined, onroute: routeOf[id]} : pt});
+    M.proj.push({sx: q.sx, sy: q.sy, pt: boostOf[id] || id === carrierAt || routeOf[id] || wk
+      ? {...pt, boost: boostOf[id], carrier: id === carrierAt ? carrierName(cr) : undefined, onroute: routeOf[id], work: wk || undefined} : pt});
     if (mSettings.labels && (id === hereId || id === prevId || id === targetId || bms[id]))
       labels.push([q, pt.name + (id === prevId ? " (previous)" : id === targetId ? " (target)" : "")]);
   }
@@ -7252,10 +7294,36 @@ function mapPopHtml(pt, touch = false) {
     (pt.star ? `<div>main star: <span class="mono">${esc(pt.star)}</span></div>` : "") +
     (pt.arrived ? `<div class="unk">on your path: arrived ${esc(pt.arrived.replace("T", " ").replace("Z", ""))}</div>` : "") +
     (pt.onroute ? `<div class="unk">${esc(pt.onroute)}</div>` : "") +
+    (pt.work ? `<div class="unk">${esc(pt.work.text)}</div>` : "") +
     (b ? `<div class="sec">★ ${esc(b.note) || "bookmarked"}</div>` : "") +
     (!touch ? `<div class="sec unk">${mapClickWords(pt)}</div>` : `<div class="sec mapacts">` +
       (mapAimable(pt) && canAim() ? `<button type="button" class="mini" data-aim="next" data-route="system" data-aimid="${esc(String(pt.id))}">${mk("destination")}Target</button> ` : "") +
       `<button type="button" class="mini" data-mapcopy="${esc(pt.name)}">Copy name</button></div>`);
+}
+// S9-S26: the Map's "work left" colouring, from what Left behind (at its own radius) and My firsts already load:
+// {by: {id: {kind: lost | left | unsold, text}}, radius, loading}. The worst wins a system's colour (lost, then left
+// behind, then unsold); the hover names them all ("left: map B 2, bio A 5 +1.2M · lost firsts 3.4M · unsold 2.0M").
+// Asks for what is not loaded yet once, and draws again when it comes.
+function mapWork() {
+  const loading = !leftData || !firstsData;
+  if (loading && !M.workAsked) {
+    M.workAsked = true;
+    Promise.allSettled([leftData ? null : loadLeft(), firstsData ? null : loadFirsts()]).then(() => { M.workAsked = false; drawMap(); });
+  }
+  const by = {}, add = (id, kind, text) => { const e = by[id] || (by[id] = {kind, bits: []}); e.bits.push(text);
+    if (["lost", "left", "unsold"].indexOf(kind) < ["lost", "left", "unsold"].indexOf(e.kind)) e.kind = kind; };
+  for (const r of (leftData && !leftData.error && leftData.systems) || []) {
+    const {maps, bio, worth} = leftWorth(r);
+    if (!worth) continue;
+    add(String(r.id), "left", `left: ${[...maps.map(m => `map ${m.body}`), ...bio.map(b => `bio ${b.body}`)].join(", ")} +${credits(worth)}`);
+  }
+  for (const x of (firstsData && !firstsData.error && firstsData.firsts) || []) {
+    const lost = ((x.recover && x.recover.lost_total) || 0) + ((x.lost_bio && x.lost_bio.value) || 0);
+    if (x.state === "lost" && lost) add(String(x.id), "lost", `lost firsts ${credits(lost)}`);
+    if ((x.sale || x.state) === "unsold" && x.value) add(String(x.id), "unsold", `unsold ${credits(x.value)}`);
+  }
+  for (const e of Object.values(by)) e.text = e.bits.join(" · ");
+  return {by, radius: leftData && leftData.radius, loading};
 }
 // S72: a mouse click on a system: target it (canAim) or copy its name; a run under way is said, not doubled
 function mapClick(pt) {
@@ -8970,6 +9038,7 @@ document.querySelectorAll("th[data-sort]").forEach(b => b.onclick = () => {
   sortKeys[t] = cur === k ? "-" + k : cur === "-" + k ? SORT_DEFAULT[t] : k;
   store.set("sorts", sortKeys);
   if (t === "firsts") renderFirsts();
+  if (t === "left") renderLeft();
   if (t === "here" && hereData) renderHere();
   render();
 });
@@ -13682,7 +13751,22 @@ const NOTICE_ACTIONS = {
   "open:log": ["Show log", () => openServerLog()],
   "open:uploads": ["Uploads", () => openSettingsSection("uploads")],
   "retry:bio_colours": ["Retry", () => bioColoursRetry()],
+  "open:server:commander": ["Commander filter", () => openServerSettings("journals", "commander")],
+  "commander:keep": ["Keep one commander", () => keepCommander()],
 };
+// S9-S4: the "also logs CMDR B" card's button: [journals] commander set to the commander with the most journals, then
+// Outrider restarts and reads every journal again under it (another one: Settings → Server → [journals] commander)
+async function keepCommander() {
+  const k = data && data.commander_keep;
+  if (!k) return;
+  const who = k.name || k.fid;
+  if (!confirm(`Keep only CMDR ${who} in this Outrider? It restarts and reads every journal again (a few minutes); ` +
+               "the other commanders' journals are left out. To keep another one, set Settings → Server → [journals] commander.")) return;
+  let r;
+  try { r = await apiJson("api/journals/commander", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({commander: k.fid})}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  toast(r.error ? `Could not set it: ${r.error}` : r.note || `Only CMDR ${who} now: Outrider is restarting to read the journals again`);
+}
 // S7: ExploData's colour tables missing (the first start's download failed): a note where colour variants would show
 // (the Exo-Biology checklist, the body pop's Bio section, Here's legend) beside the banner's card, each with Retry
 // (POST api/bio/colours: the tables only). "" while they are loaded, or with no spawn rules at all.
@@ -13711,7 +13795,7 @@ let noticeDrawn = null;
 function noticeAction(a) {
   if (!a || !Object.prototype.hasOwnProperty.call(NOTICE_ACTIONS, a)) return null;
   // the tablet has no Server settings, nor Uploads
-  return TABLET && (a.startsWith("open:server") || a === "open:uploads") ? null : NOTICE_ACTIONS[a];
+  return TABLET && (a.startsWith("open:server") || a === "open:uploads" || a === "commander:keep") ? null : NOTICE_ACTIONS[a];
 }
 function renderNotices() {
   const bar = document.getElementById("noticeBar");

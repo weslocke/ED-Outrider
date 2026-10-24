@@ -1442,6 +1442,18 @@ upstream project's choices, not rules of the game.
   by the system and the body's full name (the panel, the map and Status.json all have it; a body id is not always
   known). Only the active pin is guided or spoken: the others are drawn, never said. The tick refreshes the page as the
   guidance changes (State.pin_watch: a distance step and a 10° turn), so it moves from orbit, above the map's 1,000 m.
+- **One commander per Outrider, by choice** (the full review's S9-S4, 2026-10-24): `[journals] commander` reads one
+  commander's journal files (a file's commander is its first Commander or LoadGame line; another's is skipped whole,
+  a new live file waits for that line, one cut before it is read as before). Blank (the default) reads everyone, as
+  before; a second FID in the journals gets a card whose button sets the filter to the commander with the most
+  journals. A change re-reads every journal at the next start (meta `commander_filter`). While another commander
+  plays, the live layer stands down (Status.json not read, auto-target refused); the uploads still see every line,
+  each commander's going with its own key. Two tracked commanders: two Outriders, each with its own database.
+- **The rescan trip outranks "nothing worth staying for"** (S9-S1): a first discovery whose scan died
+  with a ship (`firsts_recovery`'s `todo_scan`) puts "rescan N lost scans in the FSS" first on Now's Next line, the
+  leaving warning, the status report and the briefing; only bodies you were first to discover are known (a lost scan of
+  a known body is kept nowhere). Spansh's Guardian, Thargoid and anomaly counts show as "reported by others" until your
+  own DSS counts them (S9-S3), and are never spoken: the surface-site line stays your own SAASignalsFound.
 
 ## Known limits
 
@@ -1522,6 +1534,8 @@ confirmed while playing. Treat reports about them as likely real.
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen
   in the author's journals (the carrier was bought before them).
 - Status.json Flags2 on-foot-in-station bits (3, 13, 14) counting as docked.
+- The commander filter (S9-S4) with a real second commander's journals in the folder: written to Frontier's journal
+  format (Commander and LoadGame carry the FID), tested on synthetic files only.
 - Surface pins' guidance from orbital cruise down and their arrival distances; carrier trips' following (the leg on
   the booked jump's departure, the cooldown estimate); chat read aloud from real squadron traffic (the pace, mentions).
 - Space chatter's places and blockers (`outrider.chatter.where`): the on-foot-on-planet and SRV bits, GuiFocus

@@ -3111,6 +3111,7 @@ class JournalsRegistry(unittest.TestCase):
         "cmdr_changed": "a flag set by handling, consumed after the commit",
         "commander_version": "a counter the Commander view's lines bump (the page's cue to ask again): a retry only bumps it more",
         "status_json": "the latest Status.json reading: live, re-read from the file, nothing in the database",
+        "_newest": "the folder's newest journal, set at the top of each scan: the retry's scan sets it again",
     }
     # meta key -> why it is NOT cleared by RESET_JOURNAL_DATA
     KEPT_THROUGH_REREAD = {

@@ -152,7 +152,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
   <div class="hint">Bodies the honk counted that you never found, genera the DSS found that you never sampled, bio signals on bodies you never
     probed (priced before the DSS, so an upper bound), and planets worth mapping; by your bio threshold and highlight level.</div>
   <table id="leftTable">
-    <thead><tr><th>System</th><th class="num">Dist</th><th>What is left</th><th class="num">Worth</th></tr></thead>
+    <thead><tr><th data-sort="name">System</th><th class="num" data-sort="distance">Dist</th><th>What is left</th><th class="num" data-sort="worth" title="what mapping and the biology over your levels would pay (click to sort, most first)">Worth</th></tr></thead>
     <tbody id="leftRows"></tbody>
   </table>
   <div class="hint">Mapping counts when it would add at least your green-row level; exobiology when a genus the DSS found could pay over your
@@ -300,7 +300,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <option value="100">last 100 jumps</option><option value="500">last 500 jumps</option>
       <option value="5000">everything</option></select></label>
     <label>Colour <select id="mColor"><option value="status">by visit</option>
-      <option value="star">by star class</option></select></label>
+      <option value="star">by star class</option><option value="work" title="Left behind (at its own radius), lost firsts to rescan, unsold firsts">by work left</option></select></label>
     <label><input type="checkbox" id="mLabels"> labels</label>
     <label><input type="checkbox" id="mStalks"> stalks</label>
     <label><input type="checkbox" id="mBoost"> boost stars</label>

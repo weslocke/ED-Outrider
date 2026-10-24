@@ -2,6 +2,22 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Suggestions (D): exploring and what a loss leaves
+- The full Fable review's suggestions, batch D:
+  - **S9-S1: the rescan trip says why you came back**: in a system where first-discovery scans died with a ship, Now's
+    Next line ("rescan 12 lost scans in the FSS (4.1M)"), the leaving warning, the FSS debrief, the status report, the
+    overlay's Now panel and the arrival briefing ("You lost 12 scans here: rescan them, 4.1M.") name them; it is never
+    "nothing worth staying for" or a routine system while they are there.
+  - **S9-S28: lost sample runs join My firsts' Show lost list** ("+ 2 sample runs lost, 24M", the species in the hover),
+    counted in Lost total, a system with only lost runs listed too.
+  - **S9-S3: Guardian, Thargoid and anomaly sites from Spansh's records**, "reported by others" until your own DSS
+    counts them; nothing new spoken. CACHE_VERSION 20.
+  - **S9-S4: the commander filter**, `[journals] commander`: only that commander's journal files are read; a second
+    commander in the folder gets a card whose button keeps the one with the most journals (it restarts and re-reads);
+    while another commander plays, the page says so and the live layer stands down. POST `/api/journals/commander`.
+  - **S9-S27: Left behind sorts by its headers** (Worth most first), kept per device. **S9-S26:** the Map colours by
+    **work left** (Left behind, lost firsts, unsold firsts).
+
 ## 2026-10-24 · Suggestions (C): uploads
 - The full Fable review's suggestions, batch C:
   - **S3-S1: the commander you are playing, with no EDSM or Inara key saved yet, is held, not dropped**: what you play
