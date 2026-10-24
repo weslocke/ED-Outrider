@@ -211,7 +211,20 @@ class MinedStock(unittest.TestCase):
         j.handle(ev(T("08:12:00"), "EjectCargo", Type="painite", Count=9, Abandoned=True))
         self.assertEqual(self.stock(j), {"gold": 1})                  # never below 0
         j.handle(ev(T("08:13:00"), "Died"))
-        self.assertEqual(self.stock(j), {})                           # the hold is lost
+        self.assertEqual(self.stock(j), {"gold": 1})                  # not yet: the death waits for its Resurrect
+        j.handle(ev(T("08:13:30"), "Resurrect", Option="rebuy", Cost=100, Bankrupt=False))
+        self.assertEqual(self.stock(j), {})                           # the ship lost: the hold is lost
+
+    def test_a_death_out_of_the_ship_keeps_the_stock(self):
+        """Review 2026-10-23 S1-B5: a death on foot or in the SRV (Resurrect recover / rejoin) wiped the mined stock
+        though the ship and its hold survive; a death with no Resurrect before the next login counts as a loss."""
+        j, _ = setup(self, [refined(T("08:00:00")), refined(T("08:00:01"), "gold")])
+        j.handle(ev(T("08:10:00"), "Died"))
+        j.handle(ev(T("08:10:30"), "Resurrect", Option="recover", Cost=0, Bankrupt=False))
+        self.assertEqual(self.stock(j), {"painite": 1, "gold": 1})
+        j.handle(ev(T("08:20:00"), "Died"))
+        j.handle(ev(T("09:00:00"), "LoadGame", Commander="Tester", Ship="python"))   # quit at the death screen
+        self.assertEqual(self.stock(j), {})
 
     def kept(self, j):
         return ed_outrider.meta_get(j.db, "mined_carrier")
@@ -272,7 +285,8 @@ class MinedStock(unittest.TestCase):
             ev(T("08:10:00"), "CargoTransfer", Transfers=[{"Type": "painite", "Count": 5, "Direction": "tocarrier"}]),
             ev(T("09:00:00"), "CargoTransfer", Transfers=[{"Type": "painite", "Count": 2, "Direction": "toship"}])])
         self.assertEqual((self.stock(j), self.kept(j)), ({"painite": 2}, {"painite": 3}))
-        j.handle(ev(T("09:10:00"), "Died"))   # the ship's hold is lost, the carrier's is not
+        j.handle(ev(T("09:10:00"), "Died"))   # the ship's hold is lost (at its rebuy), the carrier's is not
+        j.handle(ev(T("09:10:30"), "Resurrect", Option="rebuy", Cost=100, Bankrupt=False))
         self.assertEqual((self.stock(j), self.kept(j)), ({}, {"painite": 3}))
         j.handle(ev(T("09:20:00"), "CarrierBuy", CarrierID=99, Callsign="XYZ-987", Location="Sol", Price=5000000000))
         self.assertEqual(self.kept(j), {})   # a new carrier holds none of it

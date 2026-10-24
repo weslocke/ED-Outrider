@@ -242,9 +242,12 @@ LOG_FORMAT = {
     "CodexEntry": lambda e: f"📖 {_loc(e, 'Name')} ({_loc(e, 'SubCategory') or _loc(e, 'Category')})"
                             + (" · new" if e.get("IsNewEntry") else "")
                             + (f" · {_num(e['VoucherAmount'])} cr voucher" if e.get("VoucherAmount") else ""),
+    # which craft: the SRV, a taxi, another commander's ship (multicrew), else your own (review 2026-10-23 S6-B4)
     "Disembark": lambda e: "Disembarked" + (f" on {_short(e, e.get('Body'))}" if e.get("OnPlanet") else "")
-                           + (" from SRV" if e.get("SRV") else ""),
-    "Embark": lambda e: "Embarked in " + ("SRV" if e.get("SRV") else "ship" if e.get("OnStation") is not None else "ship"),
+                           + (" from SRV" if e.get("SRV") else " from a taxi" if e.get("Taxi")
+                              else " from another commander's ship" if e.get("Multicrew") else ""),
+    "Embark": lambda e: "Embarked in " + ("SRV" if e.get("SRV") else "a taxi" if e.get("Taxi")
+                                          else "another commander's ship" if e.get("Multicrew") else "your ship"),
     "LaunchSRV": lambda e: f"Launched {_loc(e, 'SRVType') or 'SRV'}",
     "DockSRV": lambda e: f"Docked {_loc(e, 'SRVType') or 'SRV'}",
     # ship

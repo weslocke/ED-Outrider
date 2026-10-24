@@ -1440,7 +1440,7 @@ CARRIER_CARGO_EVENTS = ("CarrierStats", "CarrierTradeOrder", "CargoTransfer", "M
 # Earnings (the CMDR tab's, NEXT-VERSION #7), all of them read for other things too: where you are docked, followed line
 # by line for each sale's station (Journals.note_sale_dock, meta sale_dock), and the tons you mined still aboard
 # (Journals.note_mined, meta mined_stock): MiningRefined adds 1 t (the ship's refinery or the SRV's), a jettison takes
-# off, a death empties it, a transfer to your carrier moves it to the carrier's own mined stock (meta mined_carrier) and
+# off, a death that costs the ship empties it (at its Resurrect), a transfer to your carrier moves it to the carrier's own mined stock (meta mined_carrier) and
 # one back to the ship moves it back, and a MarketSell counts as mining up to what it holds (mining_sales; the rest of
 # the sale is trade)
 SALE_DOCK_EVENTS = ("Docked", "Undocked", "Location", "CarrierJump")
@@ -1451,7 +1451,8 @@ CHAT_EVENTS = ("ReceiveText",)
 CHAT_KEEP = 32               # messages the payload carries (a burst between two polls loses none)
 CHAT_CHANNELS = ("squadron", "wing", "player", "friend", "local", "starsystem", "voicechat")
 CHAT_MAX = 300               # characters of a message kept (the page says "and more" past it)
-MINED_EVENTS = ("MiningRefined", "CargoTransfer", "EjectCargo", "Died", "MarketSell", "CarrierBuy", "CarrierDepositFuel")
+MINED_EVENTS = ("MiningRefined", "CargoTransfer", "EjectCargo", "Died", "Resurrect", "LoadGame", "MarketSell", "CarrierBuy",
+                "CarrierDepositFuel")
 # Mining stints (Journals.handle_mining): a drop into a ring opens one, these fill it, MINING_CLOSE ends it. Not a logout
 # or LoadGame: the login's Location says whether you are still in the ring (review 2026-10-20 M3: the LoadGame written
 # before it closed the stint, so a relog to respawn the rocks split it and lost its hotspot)
@@ -1497,7 +1498,7 @@ WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + 
 #     on its way keeps its arrival time through a shipyard list; and a mining stint lasts through a relog in its ring
 #     (one after a long break keeps its hotspot), a legacy folder's stints are not today's ship's
 # 58: each mining session keeps where it mined (play_activity's mining places: the ring, the SRV's body): Sessions' Where
-PARSER_VERSION = 58
+PARSER_VERSION = 59
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1523,6 +1524,9 @@ PARSER_VERSION = 58
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    59: "a death on foot or in the SRV no longer clears the ore you mined (the ship and its hold survive), an older "
+        "sample read late no longer replaces a newer one, and a first discovery read late from an older folder keeps "
+        "its first scan's details (the full review of 2026-10-23)",
     58: "each mining session keeps where you mined: the ring, or the body your SRV was on (CMDR → Sessions)",
     57: "mining income no longer counts ore moved between the ship and the SRV or tritium put in your carrier's depot, "
         "and ships stored at your carrier or on their way show where they really are (the Commander tab); a relog in a "
@@ -1924,7 +1928,7 @@ DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM phenomena_sites;
 DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here');
 DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
-DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_carrier', 'sale_dock');
+DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_carrier', 'mined_died', 'sale_dock');
 DELETE FROM play_activity; DELETE FROM mining_stints;
 DELETE FROM meta WHERE key IN ('reputation', 'powerplay', 'squadron', 'stored_ships', 'stored_modules', 'ship_locker',
                                'suit_loadouts', 'engineers', 'missions');
@@ -3353,6 +3357,7 @@ class Journals:
         self.sale_dock = meta_get(db, "sale_dock")
         self.mined_stock = meta_get(db, "mined_stock") or {}
         self.mined_carrier = meta_get(db, "mined_carrier") or {}   # the mined ore moved to your carrier (note_mined)
+        self.mined_died = meta_get(db, "mined_died")   # a death waiting for its Resurrect (note_mined): ts or None
         self.commodity_names = meta_get(db, "commodity_names", {})
         # the Commander view's folds (outrider/commander.py, handle_commander): meta key -> its state
         self.cmdr_view = {k: meta_get(db, k) for k in outrider.commander.COMMANDER_META}
@@ -3393,6 +3398,14 @@ class Journals:
             for path, read in self.scan_steps(d, commit_each=True):
                 n, done = n + 1, done + read
                 yield {"done": done, "total": total, "path": path}
+            skipped = sorted(p for p in self.bad_files if os.path.normpath(os.path.dirname(p)) == os.path.normpath(d))
+            if skipped:
+                # not marked read: the next start tries the folder again (the files read are skipped by their offsets),
+                # and the banner names what could not be read (review 2026-10-23 S1-B3: marked read, it never was)
+                outrider.notices.warn(f"legacy_unread:{d}", f"{len(skipped)} journal file{'s' if len(skipped) != 1 else ''} in "
+                                      f"{d} could not be read ({os.path.basename(skipped[0])}"
+                                      f"{' and more' if len(skipped) > 1 else ''}): they are tried again at the next start")
+                continue
             meta_set(self.db, f"legacy:{d}", True)
             self.db.commit()
             print(f"imported {n} journal files from {d}")
@@ -3456,7 +3469,11 @@ class Journals:
                 self.bad_files.discard(path)
                 if commit_each:
                     self.db.commit()
-                yield path, max(0, self.offsets.get(path, start) - start)
+                read = max(0, self.offsets.get(path, start) - start)
+                # a file whose new bytes are only a line still being written (or cut short for good: a crash) was not
+                # touched: counted, it made the unsold estimate run again every 15 s for its life (review S1-B2)
+                if read or commit_each:
+                    yield path, read
 
     def start_offset(self, path):
         """Where reading `path` starts: its own offset, or where another folder's copy of the same file was read
@@ -3503,8 +3520,9 @@ class Journals:
                     self.line_source = ""
         if self.uploads is not None and self.upload_mode == "live":
             self.uploads.flush()   # the uploads' marks moved with these lines: stored in the same transaction
-        self.db.execute("INSERT OR REPLACE INTO journal_files (path, offset) VALUES (?, ?)",
-                        (path, start + end))
+        if end or self.offsets.get(path) != start:   # nothing new read (a last line cut short): no write (S1-B2)
+            self.db.execute("INSERT OR REPLACE INTO journal_files (path, offset) VALUES (?, ?)",
+                            (path, start + end))
         self.offsets[path] = start + end
         if start + end > self.offsets.get(self.twins.get(b), -1):
             self.twins[b] = path
@@ -4576,7 +4594,10 @@ class Journals:
     def note_mined(self, name, ev, ts):
         """The tons you mined still aboard (meta mined_stock {commodity: t}, the journal's lower-case name: the ship's
         hold and the SRV's together). MiningRefined adds 1 t, the ship's refinery's or the SRV's; an EjectCargo takes its
-        tons off (never below 0); a death empties it (the hold is lost). Your carrier keeps a mined stock of its own (meta
+        tons off (never below 0); a death that costs the ship empties it (the hold is lost): Died waits for its Resurrect
+        (meta mined_died), which empties it unless you went back to the ship (Option recover or rejoin: on foot or in the
+        SRV the ship and its hold survive, review 2026-10-23 S1-B5); a Died with no Resurrect before the next LoadGame
+        counts as a loss, as SHIP_LOSS_SQL does. Your carrier keeps a mined stock of its own (meta
         mined_carrier; the author, 2026-10-14: ore stored on the carrier and sold later is still what you mined): a
         CargoTransfer to the carrier moves the mined part of its tons there, one back to the ship (only while docked: on a
         planet the same event moves cargo between the ship and the SRV) moves up to what the carrier's mined stock holds
@@ -4596,7 +4617,15 @@ class Journals:
             if cid(ev.get("Type")):
                 stock[cid(ev["Type"])] = stock.get(cid(ev["Type"]), 0) + 1
         elif name == "Died":
-            stock = {}
+            self.mined_died = ts
+            meta_set(self.db, "mined_died", ts)
+        elif name in ("Resurrect", "LoadGame"):
+            if self.mined_died is None:
+                return None
+            if name == "LoadGame" or (ev.get("Option") or "rebuy") not in SHIP_SURVIVED_OPTIONS:
+                stock = {}
+            self.mined_died = None
+            meta_set(self.db, "mined_died", None)
         elif name == "CarrierBuy":
             kept = {}   # a new carrier: what the old one held is gone with it
         elif name == "CargoTransfer":
@@ -5039,8 +5068,12 @@ class Journals:
             body, species, kind = ev.get("Body"), ev.get("Species"), ev.get("ScanType")
             if body is None or not species or kind not in ("Log", "Sample", "Analyse"):
                 return
-            row = self.db.execute("SELECT samples, done_ts FROM own_organic WHERE system=? AND body_id=? AND species=?",
+            row = self.db.execute("SELECT samples, done_ts, ts FROM own_organic WHERE system=? AND body_id=? AND species=?",
                                   (system, body, species)).fetchone()
+            if row and row["ts"] and ts < row["ts"]:
+                # older than the run kept (a legacy folder read after the live one): it never replaces a newer run, a
+                # sold one taken back to unfinished and lost at an older death (review 2026-10-23 S1-B4)
+                return
             samples, done = (row["samples"], row["done_ts"]) if row else (0, None)
             if kind == "Log":            # first sample of a run (a new run if this species was already done)
                 samples, done = 1, None
@@ -5159,7 +5192,16 @@ class Journals:
                                                    was_footfalled, first_ts, undisc_ts, bio_x5)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                            ON CONFLICT(system, body_id) DO UPDATE SET
-                             undisc_ts = coalesce(excluded.undisc_ts, undisc_ts)""",
+                             undisc_ts = coalesce(excluded.undisc_ts, undisc_ts),
+                             -- an older line read late (a legacy folder after the live one) is the first scan: its flags
+                             -- stand, not the rescan's (review 2026-10-23 S1-B6)
+                             name = CASE WHEN excluded.first_ts < first_ts THEN excluded.name ELSE name END,
+                             is_main = CASE WHEN excluded.first_ts < first_ts THEN excluded.is_main ELSE is_main END,
+                             was_discovered = CASE WHEN excluded.first_ts < first_ts THEN excluded.was_discovered ELSE was_discovered END,
+                             was_mapped = CASE WHEN excluded.first_ts < first_ts THEN excluded.was_mapped ELSE was_mapped END,
+                             was_footfalled = CASE WHEN excluded.first_ts < first_ts THEN excluded.was_footfalled ELSE was_footfalled END,
+                             bio_x5 = CASE WHEN excluded.first_ts < first_ts THEN excluded.bio_x5 ELSE bio_x5 END,
+                             first_ts = min(first_ts, excluded.first_ts)""",
                         (system, ev["BodyID"], ev["BodyName"], int(record["main"]),
                          flag("WasDiscovered"), flag("WasMapped"), ff, ts, undisc, x5))
         elif name == "SAAScanComplete":
@@ -5985,7 +6027,7 @@ def codex_types_scanned(db, after=0, into=None, regions=None):
             r = json.loads(record)
         except ValueError:
             continue
-        if r.get("scan_type") == "NavBeaconDetail":
+        if r.get("scan_type") in NAV_BEACON_SCANS:   # both of the game's nav-beacon reads (review 2026-10-23 S6-B1)
             continue
         i = outrider.codex_bodies.entry_for(r)
         if i:
@@ -11347,6 +11389,7 @@ class State:
         "died": "SELECT count(*) FROM deaths WHERE ts BETWEEN ? AND ?",
         "lost": f"SELECT count(*) FROM deaths WHERE {SHIP_LOSS_SQL} AND ts BETWEEN ? AND ?",
     }
+    COUNT_QUERIES_AFTER = {k: re.sub(r"(\w+) BETWEEN \? AND \?", r"\1 > ? AND \1 <= ?", q) for k, q in COUNT_QUERIES.items()}
 
     def export_system(self, id64):
         """One system's bodies as rows (Pioneer's per-system export): (columns, rows, system name), or (None, None,
@@ -11363,9 +11406,12 @@ class State:
                  "pays_now": b.get("value_now"), "could_pay": b.get("value_max")} for b in d["bodies"]]
         return cols, rows, d.get("name")
 
-    def range_counts(self, a, b):
-        """What you achieved between two timestamps (inclusive): the per-session and all-time numbers."""
-        return {k: self.db.execute(sql, (a, b)).fetchone()[0] for k, sql in self.COUNT_QUERIES.items()}
+    def range_counts(self, a, b, after=False):
+        """What you achieved between two timestamps (inclusive): the per-session and all-time numbers. after: from just
+        after `a` (a trip or "since your last sale" starts at a sale, which is not theirs: review 2026-10-23 S2-B1, its
+        own total was counted as sold since)."""
+        queries = self.COUNT_QUERIES_AFTER if after else self.COUNT_QUERIES
+        return {k: self.db.execute(sql, (a, b)).fetchone()[0] for k, sql in queries.items()}
 
     def note_sale_estimates(self):
         """Sales were just read: record what Outrider estimated just before each, so the trip ledger can say how
@@ -11566,7 +11612,7 @@ class State:
                 carto_sales.append(dict(x))
         last_carto = carto_sales[-1]["ts"] if carto_sales else ""
         last_bio = next((x["ts"] for x in reversed(sales) if x["kind"] == "bio"), None)
-        since = dict(self.span_stats(last_carto, now), **self.range_counts(last_carto, "~"),
+        since = dict(self.span_stats(last_carto, now), **self.range_counts(last_carto, "~", after=True),
                      since=last_carto or None, last_bio=last_bio,
                      days=round((time.time() - ts_seconds(last_carto)) / 86400, 1) if last_carto else None)
         losses = self.ship_losses()
@@ -11593,7 +11639,7 @@ class State:
             lo, hi = ts_seconds(start) if start else float("-inf"), ts_seconds(end)
             hours = sum(overlap(a, b, lo, hi) for a, b in spans) / 3600
             st = self.span_stats(start, end)
-            counts = self.range_counts(start, end)
+            counts = self.range_counts(start, end, after=True)
             paid = (x["total"] or 0) + paid_bio
             return dict(st, **counts, start=start or None, end=end,
                         days=round((ts_seconds(end) - ts_seconds(start)) / 86400, 1) if start else None,
@@ -14642,7 +14688,12 @@ class State:
             self.journals.sales_changed = False
         dirty, self.journals.dirty = self.journals.dirty, set()
         values, self.value_dirty = self.value_dirty - dirty, set()   # value-only rebuilds
-        if sold:
+        # a bio sale changes every row's "now" value whose samples were aboard (organic_state reads bio_sales): those
+        # rows are rebuilt in this tick, as after a cartographic sale (review 2026-10-23 S3-B3: they waited for a jump)
+        bio_sold = self.journals.bio_sales_changed
+        if bio_sold:
+            self.journals.bio_sales_changed = False
+        if sold or bio_sold:
             dirty |= set(self.bases)
             values = set()
         changed = False
@@ -14655,12 +14706,6 @@ class State:
                     changed = changed or id64 in dirty
         if values - self.value_dirty:
             self.bump()   # new values in Nearby rows; nothing of your own scans changed
-        bio_sold = self.journals.bio_sales_changed
-        if bio_sold:
-            self.journals.bio_sales_changed = False
-            pos = self.journals.pos
-            if pos and pos["id64"] in self.bases:
-                dirty.add(pos["id64"])
         if changed or dirty or bio_sold:   # a sale changes My Samples even far from any row
             self.scan_version += 1
             self.bump()

@@ -2,6 +2,27 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Review fixes (4): journal data (PARSER_VERSION 59: one full re-read)
+- The full Fable review of 2026-10-23, fix batch 4:
+  - **S2-B1 (medium): History's "Since your last sale" counts only what was sold after it**: the last cartographic
+    sale itself was counted as sold since (5,000 cr of maps then 1,000 cr of bio showed 6,000); a trip's sold the same.
+  - **S1-B5: a death on foot or in the SRV no longer clears the ore you mined** (the ship and its hold survive): the
+    stock is emptied at the Resurrect only when the ship was lost (a Died with no Resurrect before the next login
+    counts as a loss).
+  - **S1-B4: an older sample read late never replaces a newer run** (a legacy folder read after the live one took a
+    sold run back to unfinished).
+  - **S1-B6: a first discovery read late from an older folder keeps its first scan's details**, not the rescan's.
+  - **S1-B2: a journal whose last line was cut short is no longer counted as changed every second** (it re-ran the
+    unsold estimate every 15 s and wrote the database every second).
+  - **S1-B3: a legacy folder with a journal that cannot be read is tried again at the next start**, and the banner
+    names the file; it was marked imported and never read.
+  - **S3-B3: a bio sale rebuilds Nearby's rows at once** ("now" values waited for the next jump).
+  - **S6-B1: a nav beacon's "NavBeacon" read no longer counts a body type as logged** in your codex (only its
+    "NavBeaconDetail" was left out): the ✦ is no longer withheld.
+  - **S6-B4: the Log's Embark and Disembark lines name a taxi or another commander's ship.**
+  - PARSER_VERSION 59: the journals are read again once at the next start, so past deaths, samples and first scans
+    are put right.
+
 ## 2026-10-24 · Review fixes (3): carrier trips and the depot between readings
 - The full Fable review of 2026-10-23, fix batch 3:
   - **S6-B3: the depot figure follows the carrier's jumps.** The journal reads the depot only at CarrierStats and

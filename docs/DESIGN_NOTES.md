@@ -101,7 +101,7 @@ upstream project's choices, not rules of the game.
   meta `mined_stock`, `mining_sales`). The journal's `MarketSell` never says whether the tons were mined or bought, so
   the reader keeps the mined tons aboard: every `MiningRefined` adds 1 t (the ship's refinery or the SRV's), a sale
   counts as mining up to what that holds of its commodity (its share of `TotalSale`) and the rest is trade, left out; a
-  jettison takes its tons off, a death empties it. Your carrier keeps a mined stock of its own (meta `mined_carrier`,
+  jettison takes its tons off, a death that costs the ship empties it (at its Resurrect). Your carrier keeps a mined stock of its own (meta `mined_carrier`,
   the author's call the same evening: on his journals about half the mined ore went through the carrier, so leaving
   it out halved the figure, 0.89B of about 1.72B): a transfer to the carrier moves the mined tons there, one back to
   the ship moves them back aboard (only while docked: the same event moves cargo between the ship and the SRV on a

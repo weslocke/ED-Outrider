@@ -110,6 +110,10 @@ class Server(unittest.TestCase):
         logged = self.state.payload()["codex_types"]
         self.assertIn(1300801, logged.get(region, []))        # the icy body you scanned: logged before
         self.assertNotIn(1300601, logged.get(region, []))     # the nav beacon's rocky body: not counted
+        # the game's other nav-beacon read, "NavBeacon", counts no more (review 2026-10-23 S6-B1)
+        self.j.handle(dict(scan, timestamp=at(6.5), ScanType="NavBeacon", BodyID=7, BodyName=name + " B 6",
+                           PlanetClass="Metal rich body"))
+        self.assertNotIn(1300401, self.state.payload()["codex_types"].get(region, []))
         self.j.handle(dict(scan, timestamp=at(7), BodyID=6, BodyName=name + " B 5", PlanetClass="Rocky body"))
         self.assertIn(1300601, self.state.payload()["codex_types"][region])   # a later scan: read incrementally
 
