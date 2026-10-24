@@ -1138,7 +1138,8 @@ function planText(it, totals = false) {
   const atm = b.atmosphere && b.atmosphere !== "None" ? ` · ${esc(b.atmosphere)}` : "";
   return `bio on <b>${esc(b.body)}</b>` + (b.genera === null ? ` (${noDssText(b, parts)})` : parts.length ? `: ${parts.join(", ")}` : "") +
     (b.potential ? ` up to ${credits(pendingWorth(b))}` + (b.factor === 5 ? ` <span class="ok" title="nobody had set foot here when you scanned it: exobiology pays ×5 (included)">👣×5</span>` : "") : "") +
-    (b.codex_galaxy ? ` <span class="cxnew cxgal" title="new to your codex anywhere">✪</span>` : b.codex_new ? ` <span class="cxnew">✦</span>` : "") + g + atm;
+    (b.codex_galaxy || b.codex_new ? ` <span class="cxnew${b.codex_galaxy ? " cxgal" : ""}" title="${b.codex_galaxy ? "new to your codex anywhere" : "new to your codex in this region"}` +
+      `${(b.codex_names || []).length ? `: ${esc(andList(b.codex_names))} (if ${b.codex_names.length > 1 ? "they are" : "it is"} there)` : ""}">${b.codex_galaxy ? "✪" : "✦"}</span>` : "") + g + atm;
 }
 const planCost = it => it.sec == null ? "" : ` <span class="unk" title="supercruise from the arrival star (${Math.round(it.dist).toLocaleString("en-US")} ls), and what it pays per minute of that">· ${scText(it.sec)}${it.perMin ? ` · ${credits(it.perMin)}/min` : ""}</span>` +
   (it.skip ? ` <span class="unk skipq" title="under your ${credits(skipFloor())} cr per minute of supercruise">skip?</span>` : "");

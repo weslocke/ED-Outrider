@@ -2453,6 +2453,27 @@ class BatchBState(unittest.TestCase):
         with unittest.mock.patch.object(outrider.bio, "predict", return_value=cands("Green")):
             self.assertEqual(new_of(), {"A 4": False})
 
+    def test_codex_marks_before_the_dss(self):
+        """The author, 2026-10-24: the leaving line's ✪ counted a possible species new to the codex while the table and the
+        hover, listing the possible genera before the DSS, marked none (bio_options carried no codex fields); the line's
+        mark now names what it counts."""
+        region = outrider.bio.region_name(0, 0, 0)
+        if not region:
+            self.skipTest("no bio_rules.json")
+        self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, PlanetClass="Rocky body", MassEM=0.2)
+        self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:02:00Z", "SystemAddress": 1, "BodyName": "S1 A 4",
+                       "BodyID": 4, "Signals": [{"Type": ed_outrider.BIO, "Count": 1}]})
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES ('t', 1, 'Concha Biconcavis - Red', ?)", (region,))
+        self.db.commit()
+        cands = [dict(self.CANDS[0], variants=["Stratum Tectonicas - Teal"]), dict(self.CANDS[1], variants=[])]   # Concha: logged
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=cands):
+            body = next(b for b in self.state.system_detail(1)["bodies"] if b["name"] == "A 4")
+            opts = {g["genus"]: g for g in body["bio_options"]["genera"]}
+            self.assertEqual({k: (g["codex_new"], g["codex_galaxy_new"], g["variants"]) for k, g in opts.items()},
+                             {"Stratum": (True, True, ["Stratum Tectonicas - Teal"]), "Concha": (False, False, [])})
+            [pend] = self.state.leaving_summary(1)["bio_pending"]
+            self.assertEqual((pend["codex_galaxy"], pend["codex_names"]), (True, ["Stratum Tectonicas - Teal"]))
+
     def test_leaving_skips_a_finished_body_without_dss(self):   # F2
         self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, PlanetClass="Rocky body", MassEM=0.2)
         self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:02:00Z", "SystemAddress": 1, "BodyName": "S1 A 4",

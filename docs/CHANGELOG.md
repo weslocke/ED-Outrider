@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · The codex marks before the DSS, and what the to-do line's ✪ counts
+- The author: the to-do line said "bio on A 7 … 👣×5 ✪" while the table and the body's hover marked no species new to
+  the codex. Before the DSS, the possible genera they list came from `bio_options`, which carried no codex fields, so
+  `codexMark` had nothing to draw; the line's ✪ came from the leaving summary, which checks them. Each possible genus now
+  carries the guesses' marks (`codex_new`, `codex_galaxy_new`, `variants`, `codex_have`): Clypeus and Osseus get their ✪
+  in the table and the hover. The line's ✪ / ✦ names what it counts in its hover (the leaving summary's `codex_names`):
+  a bare ✪ after "👣×5" read as "5 new codex entries".
+
 ## 2026-10-24 · Mining: a threshold per mineral, a ring's prices, Search's 2+, a mission's 🔍
 - Ideas from [EliteMining](https://github.com/Viper-Dude/EliteMining)'s feature list (none of its code or data is used):
   - **Each mineral its own threshold** in the prospector call-out: a ticked mineral gets a small % field (empty: the

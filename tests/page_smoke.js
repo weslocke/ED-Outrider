@@ -10000,6 +10000,20 @@ const releasePayloads = async () => {
     console.log(goodMI ? "OK" : "FAIL", "| mining ideas |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "a threshold per mineral (combined keeps one), a ring's minerals by price (cached, a failure retried), Search's 2+, a mining mission's search", errors.slice(before));
   }
+  // The leaving line's ✪ / ✦ names what it counts (the author, 2026-10-24: a bare ✪ after "👣×5" read as a count)
+  {
+    const w = dom.window, before = errors.length;
+    const mark = b => { const h = new w.DOMParser().parseFromString(w.eval(`planText({kind: "bio", b: ${JSON.stringify(b)}})`), "text/html").querySelector(".cxnew");
+      return h ? [h.textContent, h.title] : null; };
+    const b = {body: "A 7", genera: ["Clypeus", "Osseus"], partial: {}, potential: 1e6, factor: 5};
+    const got = [mark({...b, codex_galaxy: true, codex_new: true, codex_names: ["Clypeus Margaritus", "Osseus Pellebantus - Grey"]}),
+                 mark({...b, codex_new: true, codex_names: ["Osseus Pellebantus - Grey"]}), mark({...b, codex_galaxy: true}), mark(b)];
+    const want = [["✪", "new to your codex anywhere: Clypeus Margaritus and Osseus Pellebantus - Grey (if they are there)"],
+                  ["✦", "new to your codex in this region: Osseus Pellebantus - Grey (if it is there)"], ["✪", "new to your codex anywhere"], null];
+    const goodCX = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && goodCX;
+    console.log(goodCX ? "OK" : "FAIL", "| leaving line's codex mark |", goodCX ? "names the species it counts" : JSON.stringify(got), errors.slice(before));
+  }
   // The geology a body's signals could be (the author, 2026-10-19): the body card names the kinds its volcanism allows,
   // each new to your codex marked (✪ anywhere, ✦ this region), and how one is logged
   {

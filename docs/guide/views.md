@@ -44,7 +44,9 @@ highest first, so you know which hotspot to drop into; asked once in half an hou
 ("from you" for a system you are not in).
 The to-do line ticks itself off as you honk, map and sample, in a suggested order with supercruise time and
 credits per minute ("~2 min · 450k/min"; "skip?" when not worth the trip). Bio nobody has set foot on is
-valued with the ×5 first-footfall bonus, except in a populated system: Vista Genomics never pays it there.
+valued with the ×5 first-footfall bonus, except in a populated system: Vista Genomics never pays it there. A bio line's
+✪ (✦: this region only) says a species that could be there is new to your codex; hover it for which. Before the DSS
+the table and the body's hover mark each possible genus the same way.
 A footer under the list says what each icon means, for the icons that system's list shows (none, no footer); it
 stays in view while the list scrolls.
 "🧬? check in the FSS" marks a landable body you have only from an AutoScan or a nav beacon, whose signals nobody

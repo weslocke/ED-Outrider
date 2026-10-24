@@ -6707,11 +6707,12 @@ def bio_left_groups(r, star, known, ctx, done):
     return [g for g in groups if g["genus"] not in done][:left_n]
 
 
-def bio_options(r, star=None, ctx=None, known=()):
+def bio_options(r, star=None, ctx=None, known=(), mark=None):
     """Before the DSS, when a body has fewer signals than genera the rules allow, which genus it is cannot
     be told: {low, high, genera} -- every possible genus (most valuable first) and the range the signals
     could pay, from the cheapest to the most valuable. None when the signals already cover the choices.
-    `known`: genera you sampled there without a DSS; each accounts for one signal and is no longer an option."""
+    `known`: genera you sampled there without a DSS; each accounts for one signal and is no longer an option.
+    `mark(group)`: more fields for each genus (system_detail's codex marks, as its guesses carry them)."""
     known = set(known or ())
     n = (r.get("bio") or 0) - len(known)
     if not outrider.bio or r.get("type") != "Planet" or n <= 0:
@@ -6722,7 +6723,8 @@ def bio_options(r, star=None, ctx=None, known=()):
     lows = sorted(g.get("min_value") or 0 for g in groups)
     return {"low": sum(lows[:n]), "high": sum(g.get("value") or 0 for g in groups[:n]),
             "genera": [{"genus": g["genus"], "best": g["best"], "value": g["value"],
-                        "species": [outrider.bio.short_species(x["name"], g["genus"]) for x in g["species"]]} for g in groups]}
+                        "species": [outrider.bio.short_species(x["name"], g["genus"]) for x in g["species"]],
+                        **(mark(g) if mark else {})} for g in groups]}
 
 
 # Odyssey's legacy/live split (29 Nov 2022): body data reported before it came from pre-Odyssey clients, which marked
@@ -11565,6 +11567,10 @@ class State:
         codex_new = lambda bid, groups: any(codex_new_group(g, known_codex) for g in with_logged_variants(groups, logged.get(bid, {}))) \
             if region else False
         codex_galaxy = lambda bid, groups: any(codex_new_group(g, known_all) for g in with_logged_variants(groups, logged.get(bid, {})))
+        # which: the species (its colour when settled) the ✪ / ✦ counts, for its hover (the author, 2026-10-24: a mark
+        # that names nothing read as a count)
+        codex_names = lambda bid, groups, known: [g.get("variant") or g.get("best") for g in
+                                                  with_logged_variants(groups, logged.get(bid, {})) if codex_new_group(g, known)]
         # the x5 first-footfall bonus per body, as body_bio / approach_facts apply it. A separate factor: potential
         # stays bonus-free, so the bio threshold compares what it always did
         footfalled = {r["body_id"]: r["was_footfalled"] for r in self.db.execute(
@@ -11594,6 +11600,7 @@ class State:
                 val = sum((g.get("value") or 0) for g in groups) or None
                 bio_pending.append({"body": name_of(bid), "signals": n_left, "genera": None, "partial": partial, "potential": val,
                                     "codex_new": codex_new(bid, groups), "codex_galaxy": codex_galaxy(bid, groups),
+                                    "codex_names": codex_names(bid, groups, known_all if codex_galaxy(bid, groups) else known_codex),
                                     "dist_ls": rec.get("dist_ls"), **extra(bid, rec)})
             elif left or partial:
                 left_val, left_groups = bio_guess(rec, star, sorted(left), ctx) if left else (None, [])
@@ -11602,6 +11609,7 @@ class State:
                 bio_pending.append({"body": name_of(bid), "signals": n_sig, "genera": sorted(left),
                                     "partial": partial, "potential": left_val, "codex_new": codex_new(bid, left_groups),
                                     "codex_galaxy": codex_galaxy(bid, left_groups),
+                                    "codex_names": codex_names(bid, left_groups, known_all if codex_galaxy(bid, left_groups) else known_codex),
                                     "dist_ls": rec.get("dist_ls"), **extra(bid, rec)})
         unmapped, unmapped_all = [], []
         for bid, rec in bodies.items():
@@ -11804,7 +11812,13 @@ class State:
                               for g in bio_groups],
                 "bio_potential": bio_val,
                 # undecided before the DSS: every genus it could be, and the range ("Stratum or Bacterium")
-                "bio_options": bio_options(r, star, ctx, {o["genus"] for o in held}) if r.get("bio") and not known_genera else None,
+                # each possible genus with the guesses' codex marks: the leaving line's ✪ / ✦ counts them before the
+                # DSS too, so the table and the hover must show which (the author, 2026-10-24)
+                "bio_options": bio_options(r, star, ctx, {o["genus"] for o in held}, mark=lambda g: {
+                    "variants": g.get("variants") or [],
+                    "codex_new": bool(region and g["genus"] not in got and codex_new_group(g, known_codex)),
+                    "codex_galaxy_new": bool(g["genus"] not in got and codex_new_group(g, known_all)),
+                    "codex_have": codex_have(g, known_codex)}) if r.get("bio") and not known_genera else None,
                 # a codex entry with no body (a phenomenon in space) is no unscanned body's: those have bid None too
                 "organics": organics.get(bid, []), "codex": codex.get(bid, []) if bid is not None else [],
                 # a potential green gas giant (the ladder model on its full-precision temperature) or a confirmed one
