@@ -4373,6 +4373,44 @@
     "{carrier} jumped to {system}. Easy money, easy living."
    ]
   },
+  "upkeep_low": {
+   "scoundrel": [
+    "{carrier}'s bank is getting thin, {name}. About {weeks} of upkeep left.",
+    "Our floating hideout can pay its bills for roughly {weeks}. Then the landlord comes knocking.",
+    "{name}, move some credits into {carrier}. About {weeks} left.",
+    "Roughly {weeks} of upkeep on {carrier}. I've been broke before. It's not fun.",
+    "Carrier funds low. About {weeks}. Go to carrier management and pay the man.",
+    "{carrier} covers about {weeks}. Let it run dry and they shut it down, then scrap it.",
+    "Just an estimate, {name}, but {carrier} has roughly {weeks} in the bank.",
+    "Our carrier's nearly broke. About {weeks}. And I know broke.",
+    "{name}, I once skipped out on a docking bill in Lave. You can't skip out on a carrier. About {weeks} left.",
+    "About {weeks} of upkeep on {carrier}. Feed the beast, buddy.",
+    "{carrier}'s running on fumes and bluff. Roughly {weeks}.",
+    "Roughly {weeks} left in the carrier's bank, {name}. Top it up before it gets embarrassing.",
+    "{carrier} can cover about {weeks}. Even a crook pays rent on his hideout.",
+    "Heads up. {carrier}'s balance covers roughly {weeks}.",
+    "{name}, about {weeks} of upkeep. No services, no bar. Pay up.",
+    "About {weeks} on {carrier}. {xo} says I'm not allowed to fix this the way I'd like."
+   ],
+   "scoundrel_profane": [
+    "{carrier}'s bank is getting damn thin, {name}. About {weeks} of upkeep left.",
+    "Our floating hideout can pay its bills for roughly {weeks}. Then the damn landlord comes knocking.",
+    "{name}, shove some credits into {carrier}, for fuck's sake. About {weeks} left.",
+    "Roughly {weeks} of upkeep on {carrier}. I've been broke before. It's shit.",
+    "Carrier funds low as hell. About {weeks}. Go to carrier management and pay the son of a bitch.",
+    "{carrier} covers about {weeks}. Let it run dry and they shut the bastard down, then scrap it.",
+    "Just an estimate, {name}, but shit, {carrier} has roughly {weeks} in the bank.",
+    "Our carrier's nearly fucking broke. About {weeks}.",
+    "{name}, I skipped out on a docking bill in Lave once. You can't skip out on a carrier, damn it. About {weeks}.",
+    "About {weeks} of upkeep on {carrier}. Feed the damn beast, buddy.",
+    "{carrier}'s running on fumes and bullshit. Roughly {weeks}.",
+    "Roughly {weeks} left in the carrier's bank, {name}. Top it up before it gets embarrassing as hell.",
+    "{carrier} can cover about {weeks}. Even a crook pays rent on his damn hideout.",
+    "Heads up. {carrier}'s balance covers roughly {weeks}. Crap.",
+    "{name}, about {weeks} of upkeep. No services, no bar. Pay the fuckers.",
+    "About {weeks} on {carrier}. Don't make me sell the good shit."
+   ]
+  },
   "autotarget_nothing": {
    "scoundrel": [
     "Target what? {why}.",

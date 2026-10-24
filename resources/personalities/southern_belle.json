@@ -4407,6 +4407,44 @@
     "Carrier jump done, honey. {carrier} is at {system}."
    ]
   },
+  "upkeep_low": {
+   "southern_belle": [
+    "{name}, {carrier}'s bank is running low, sugar. About {weeks} of upkeep left.",
+    "Lord have mercy, the carrier can only pay its way for roughly {weeks}.",
+    "Darlin', a deposit in carrier management would do wonders. {carrier} has about {weeks}.",
+    "Grandmama always said a lady pays her bills on time. {carrier} has roughly {weeks}.",
+    "Honey, {carrier} covers about {weeks} of upkeep. Let's top it up.",
+    "I don't mean to fuss, but our carrier's down to roughly {weeks}.",
+    "{name}, a carrier that can't pay loses its services, and in the end they decommission it. {carrier} has about {weeks}.",
+    "Well, I never. {carrier} has about {weeks} of upkeep in the bank.",
+    "Sugar, it's only a reckoning from the last figures, but {carrier} has roughly {weeks}.",
+    "Bless its heart, {carrier} is running short. About {weeks}.",
+    "{name}, our home needs a little something in the cookie jar. Roughly {weeks} left.",
+    "Darlin', about {weeks} of upkeep on {carrier}. Let's not let the porch light go out.",
+    "Gracious, the carrier's funds cover roughly {weeks}.",
+    "Honey, move some credits into {carrier}'s bank. It has about {weeks}.",
+    "Sugar, {carrier} is living on credit and charm, and the charm won't pay. About {weeks}.",
+    "{name}, roughly {weeks} of upkeep left on the carrier. A little deposit, please."
+   ],
+   "southern_belle_profane": [
+    "{name}, {carrier}'s bank is running damn low, sugar. About {weeks} of upkeep left.",
+    "Lord have mercy, the damn carrier can only pay its way for roughly {weeks}.",
+    "Darlin', get your ass into carrier management and make a deposit. {carrier} has about {weeks}.",
+    "Grandmama always said a lady pays her bills on time, and she'd tan my hide for this. {carrier} has roughly {weeks}, damn it.",
+    "Honey, {carrier} covers about {weeks} of upkeep. Let's top the damn thing up.",
+    "I don't mean to fuss, but our carrier's down to roughly {weeks}, and that's a hell of a thing.",
+    "{name}, a carrier that can't pay loses its services, and in the end they decommission the damn thing. {carrier} has about {weeks}.",
+    "Well, hell. {carrier} has about {weeks} of upkeep in the bank.",
+    "Sugar, it's only a reckoning from the last figures, but shit, {carrier} has roughly {weeks}.",
+    "Bless its damn heart, {carrier} is running short. About {weeks}.",
+    "{name}, our home needs something in the cookie jar. Roughly {weeks} left, damn it.",
+    "Darlin', about {weeks} of upkeep on {carrier}. Don't you let the damn porch light go out.",
+    "Shit, sugar, the carrier's funds cover roughly {weeks}.",
+    "Honey, move some credits into {carrier}'s bank before it all goes to hell. It has about {weeks}.",
+    "Sugar, {carrier} is living on charm, and charm doesn't pay a damn bill. About {weeks}.",
+    "{name}, roughly {weeks} of upkeep left on the carrier. Pay the bastard, please."
+   ]
+  },
   "autotarget_nothing": {
    "southern_belle": [
     "Nothing to target, sugar: {why}.",

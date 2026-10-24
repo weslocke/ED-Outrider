@@ -1537,3 +1537,4 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 .now-line.now-mine { color: var(--accent); }   /* mining D: the strip while you mine in a ring */
 /* Settings -> Auto honk and the co-pilot button: the button's own heading over its fields (2026-10-23) */
 #honkSettings h4.hchead { margin: .9em 0 .2em; font-size: 1em; }
+#fcFuel.stale { border-color: var(--bad); }   /* S4-S4: the depot reading is over a week old */

@@ -4415,6 +4415,44 @@
     "{carrier} arrived on schedule. Damn punctual."
    ]
   },
+  "upkeep_low": {
+   "naval_rn": [
+    "{name}, {carrier}'s funds are low. Roughly {weeks} of upkeep remaining.",
+    "Be advised: carrier balance covers about {weeks} of upkeep.",
+    "Advisory: {carrier} upkeep estimated at {weeks}. Recommend a deposit.",
+    "Carrier bank running low. Approximately {weeks} of upkeep in hand.",
+    "{name}, recommend transferring credits to {carrier}. About {weeks} remaining.",
+    "{carrier} upkeep funds below the warning level. Estimate {weeks}.",
+    "Report: {carrier} can meet upkeep for roughly {weeks}.",
+    "Carrier finances, {name}. About {weeks} of upkeep. Recommend a deposit through carrier management.",
+    "Be advised: a carrier that cannot pay loses its services, and in time is decommissioned. {carrier} has about {weeks}.",
+    "Low funds in {carrier}'s bank. Roughly {weeks}.",
+    "{name}, the carrier's upkeep is covered for about {weeks}.",
+    "Estimate: {weeks} of upkeep aboard {carrier}. Recommend topping up.",
+    "{carrier} wants funds. Approximately {weeks} remaining.",
+    "Advisory: carrier bank thin. About {weeks} of upkeep, {name}.",
+    "Recommend a deposit to {carrier}. Upkeep in hand for roughly {weeks}.",
+    "Carrier funds report. {carrier}, about {weeks}."
+   ],
+   "naval_rn_profane": [
+    "{name}, {carrier}'s funds are low. Roughly {weeks} of upkeep. Bloody thin.",
+    "Be advised: carrier balance covers about {weeks}. Recommend a deposit, damn it.",
+    "Advisory: {carrier} upkeep estimated at {weeks}. Damn poor show.",
+    "Carrier bank running low. About {weeks} in hand. Bloody well top it up.",
+    "{name}, recommend transferring credits to {carrier}. Roughly {weeks} remaining, damn it.",
+    "{carrier} upkeep funds below the warning level. Estimate {weeks}. Damn.",
+    "Report: {carrier} can meet upkeep for about {weeks}. Bloody tight.",
+    "Carrier finances, {name}. About {weeks}. Recommend a bloody deposit through carrier management.",
+    "Be advised: an unpaid carrier loses its services. {carrier} has roughly {weeks}. Damn well pay it.",
+    "Low funds in {carrier}'s bank. About {weeks}. Bloody hell.",
+    "{name}, the carrier's upkeep is covered for roughly {weeks}. Hell of a state.",
+    "Estimate: {weeks} of upkeep aboard {carrier}. Recommend topping up, and damn soon.",
+    "{carrier} wants funds. Approximately {weeks}. Bloody inconvenient.",
+    "Advisory: carrier bank thin. About {weeks}, {name}. Damn.",
+    "Recommend a deposit to {carrier}. Roughly {weeks} in hand. Bloody careless.",
+    "Carrier funds report. {carrier}, about {weeks}. Not bloody good."
+   ]
+  },
   "autotarget_nothing": {
    "naval_rn": [
     "Nothing to target, {name}: {why}.",

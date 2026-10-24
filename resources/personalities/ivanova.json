@@ -4363,6 +4363,44 @@
     "{carrier} made it to {system}. The big bastard gets around more than it has any right to. Fuck."
    ]
   },
+  "upkeep_low": {
+   "ivanova": [
+    "{carrier} has about {weeks} of upkeep left. Feed it, {name}.",
+    "{name}, the carrier bank is nearly empty. Roughly {weeks}.",
+    "About {weeks} of upkeep on {carrier}. Then the services start shutting down.",
+    "{carrier} is going broke. About {weeks}. Move some credits over.",
+    "Roughly {weeks} of upkeep left. My grandmother kept money under the floor. The carrier has no floor money.",
+    "{name}, carrier management. Deposit. Now. {carrier} has about {weeks}.",
+    "Oh, wonderful. {carrier} can pay for roughly {weeks}.",
+    "An estimate, but {carrier} is down to about {weeks} of upkeep.",
+    "{carrier} has roughly {weeks} left. A broke carrier gets decommissioned. I like our carrier.",
+    "About {weeks} of upkeep, {name}. I am not living in a cockpit forever.",
+    "{name}, {carrier}'s funds cover about {weeks}. Fix it.",
+    "Roughly {weeks} of upkeep in the carrier bank. Boring, but important.",
+    "{carrier} is running dry. About {weeks}. Everything dies eventually, but not like this.",
+    "Carrier funds low, {name}. Roughly {weeks}.",
+    "About {weeks} left on {carrier}. Put some credits in before the bank does something unpleasant.",
+    "{carrier}'s balance covers roughly {weeks}. {xo} will want to know why."
+   ],
+   "ivanova_profane": [
+    "{carrier} has about {weeks} of upkeep left. Feed the damn thing, {name}.",
+    "{name}, the carrier bank is nearly fucking empty. Roughly {weeks}.",
+    "About {weeks} of upkeep on {carrier}. Then the services shut down. Hell no.",
+    "{carrier} is going broke. About {weeks}. Move some credits over, damn it.",
+    "Roughly {weeks} of upkeep left. My grandmother kept money under the floor. The carrier has shit.",
+    "{name}, carrier management. Deposit. Now, damn it. {carrier} has about {weeks}.",
+    "Oh, fucking wonderful. {carrier} can pay for roughly {weeks}.",
+    "An estimate, but {carrier} is down to about {weeks}. Damn it.",
+    "{carrier} has roughly {weeks}. A broke carrier gets decommissioned. Not our carrier, God damn it.",
+    "About {weeks} of upkeep, {name}. I am not living in a fucking cockpit forever.",
+    "{name}, {carrier}'s funds cover about {weeks}. Fix it, or I will kick something. Hard. Shit.",
+    "Roughly {weeks} in the carrier bank. Boring as hell, but important.",
+    "{carrier} is running dry. About {weeks}. Everything dies, but not like this, for fuck's sake.",
+    "Carrier funds low, {name}. Roughly {weeks}. Shit.",
+    "About {weeks} left on {carrier}. Put some credits in before this goes to hell.",
+    "{carrier}'s balance covers roughly {weeks}. Pay the bastard, {name}."
+   ]
+  },
   "autotarget_nothing": {
    "ivanova": [
     "Nothing to target, {name}: {why}.",

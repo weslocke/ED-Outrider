@@ -10565,6 +10565,15 @@ class State:
             if planned.get("jump_ly") and used is not None and fuel is not None:   # what it burns, what is left (S13)
                 planned["burn"] = round(k * outrider.cargo.carrier_burn(planned["jump_ly"], used, fuel))
                 planned["depot_after"] = fuel - planned["burn"]
+                # S9-S11: whether the depot after it (topped up from a confirmed tritium sell order in its hold) can pay a
+                # full-length jump after this one: the booking that strands a deep-space carrier
+                line = ((st or {}).get("lines") or {}).get("tritium")
+                hold = line["count"] if line and line.get("state") == "confirmed" else 0
+                after = planned["depot_after"]
+                if after >= 0:
+                    nxt = round(k * outrider.cargo.carrier_burn(outrider.cargo.CARRIER_JUMP_LY, used, after))
+                    can = after + min(hold, max(0, outrider.cargo.CARRIER_DEPOT_MAX - after))
+                    planned.update(next_burn=nxt, hold_tritium=hold, last=can < nxt)
         docked = self.journals.docked
         aboard = bool(docked and c.get("id") and docked.get("market_id") == c.get("id"))
         here = bool(pos and pos["id64"] == c["id64"])
@@ -10579,7 +10588,11 @@ class State:
             hold = line["count"] if line and line["state"] == "confirmed" else None
             if trip:
                 top_up = outrider.cargo.trip_top_up(trip, d, hold, used, k=k)
-                trip.update(hold=hold, covered=bool(top_up), top_up=top_up)
+                # S9-S12: the tritium you carry in the ship counts too ("aboard": deposit it into the depot when you dock)
+                ship_t = (((self.journals.ship_cargo or {}).get("lines") or {}).get("tritium") or {}).get("count") or 0
+                if not top_up and trip["short"] and ship_t and trip["short"] <= (hold or 0) + ship_t:
+                    top_up = "aboard"
+                trip.update(hold=hold, ship=ship_t, covered=bool(top_up), top_up=top_up)
         return {"name": c.get("name"), "callsign": c.get("callsign"), "system": c.get("system"),
                 "carrier_id": str(c["id"]) if c.get("id") is not None else None,   # which carrier (a new one: no "arrived")
                 "aboard": aboard,
@@ -10617,18 +10630,45 @@ class State:
         return ("exploration" in on, "vistagenomics" in on,
                 [outrider.cargo.CREW_LABELS.get(r, r) for r in paused])
 
-    def carrier_finance(self, st):
+    def carrier_finance(self, st, now=None):
         """The Carrier tile's balance and weeks of upkeep (S61), from the last CarrierStats: the balance (upkeep is
         drawn from it: the reserve stays put), the week's upkeep at the published rates (outrider.cargo.CARRIER_UPKEEP,
-        not checked against the game's Finance screen yet), the weeks it pays; None before a CarrierStats with Finance."""
+        not checked against the game's Finance screen yet), the weeks it pays; None before a CarrierStats with Finance.
+        S9-S13: weeks_now counts them down to today (a week's upkeep off the balance for each whole week since the
+        stats: an estimate, the market moves the balance too), and the warning goes by it."""
         fin = (st or {}).get("finance")
         if not fin:
             return None
         crew = st.get("crew")
         upkeep = outrider.cargo.carrier_upkeep(crew["roles"]) if crew else None
         weeks = outrider.cargo.upkeep_weeks(fin["balance"], upkeep)
-        return dict(fin, upkeep=upkeep, weeks=weeks, rates="published",
-                    warn=weeks is not None and weeks < outrider.cargo.UPKEEP_WARN_WEEKS)
+        try:
+            since = max(0, int(((time.time() if now is None else now) - ts_seconds(fin["ts"])) // 604800))
+        except (TypeError, ValueError):
+            since = 0
+        weeks_now = outrider.cargo.upkeep_weeks(fin["balance"] - upkeep * since, upkeep) if upkeep and since else weeks
+        return dict(fin, upkeep=upkeep, weeks=weeks, weeks_now=weeks_now, weeks_since=since, rates="published",
+                    warn=weeks_now is not None and weeks_now < outrider.cargo.UPKEEP_WARN_WEEKS)
+
+    def check_upkeep(self, now=None):
+        """S9-S13, each tick: the carrier's upkeep counted down (carrier_finance's weeks_now) under the warning: a card
+        while it is (dismissible), and an upkeep_low moment once per stats reading (meta upkeep_said: the reading's
+        time), the page's "Carrier upkeep low" row (off until ticked)."""
+        c = self.journals.carrier or {}
+        fi = self.carrier_finance(self.carrier_cargo(), now) if c.get("id") is not None else None
+        if not fi or not fi["warn"]:
+            self.notices.clear("carrier_upkeep")
+            return
+        name = c.get("name") or c.get("callsign") or "your carrier"
+        weeks = fi["weeks_now"]
+        self.notices.set("carrier_upkeep", f"{name} has about {weeks:g} week{'' if weeks == 1 else 's'} of upkeep left (counted "
+                         f"down from its stats of {str(fi['ts'])[:10]}): move credits into its bank in the carrier "
+                         "management, or it loses its services and, in the end, the carrier.", "warn")
+        if meta_get(self.db, "upkeep_said") != fi["ts"]:
+            meta_set(self.db, "upkeep_said", fi["ts"])
+            self.journals.moment("upkeep_low", iso_ts(time.time() if now is None else now), carrier=name, weeks=weeks,
+                                 balance=fi["balance"], upkeep=fi["upkeep"])
+            self.db.commit()
 
     def carrier_decommission(self):
         """Your carrier's decommissioning, if requested and not cancelled: {ts, refund, scrap_ts, done}."""
@@ -10727,8 +10767,11 @@ class State:
         try:
             names = await self.spansh.commodity_names()
         except (ClientError, asyncio.TimeoutError, ValueError) as e:
-            print(f"Spansh's commodity names could not be read: {e}", file=sys.stderr)
+            if not getattr(self, "_commodities_failed", False):   # once an outage, not at every lookup (S2-S3)
+                print(f"Spansh's commodity names could not be read: {e}", file=sys.stderr)
+            self._commodities_failed = True
             return sc.get("norm")
+        self._commodities_failed = False
         self.spansh_commodities = {"ts": time.time(), "norm": {outrider.cargo.norm(n): n for n in names}}
         meta_set(self.db, "spansh_commodities", self.spansh_commodities)
         self.db.commit()
@@ -10753,12 +10796,13 @@ class State:
         if not text or not 1 <= tons <= 100000 or within not in outrider.cargo.LOOKUP_WITHIN or not 1 <= age <= 365:
             return {"error": f"a commodity, 1 to 100,000 t, within one of {outrider.cargo.LOOKUP_WITHIN} ly, 1 to 365 days"}, 400
         names = await self.commodity_list()
-        if not names:
-            return {"error": "Spansh's commodity list cannot be read just now: try again later"}, 502
         i = outrider.cargo.cid(text)
-        name = names.get(outrider.cargo.norm(self.commodity_name(i))) or names.get(outrider.cargo.norm(text))
-        if not name:
-            return {"error": f"Spansh has no market data for {text!r}"}, 404
+        if names:
+            name = names.get(outrider.cargo.norm(self.commodity_name(i))) or names.get(outrider.cargo.norm(text))
+            if not name:
+                return {"error": f"Spansh has no market data for {text!r}"}, 404
+        else:   # S2-S3: the list could not be read: the journal's own name (Spansh's spelling for nearly every one)
+            names, name = {}, self.commodity_name(i) or text
         c = self.carrier_summary() or {}
         if src == "carrier":
             ref, where = (c if c.get("x") is not None else None), c.get("system")
@@ -10789,7 +10833,7 @@ class State:
         return {"commodity": name, "mode": mode, "tons": tons, "from": src, "where": where, "avg": avg,
                 "sort": "near" if q.get("sort") == "near" else "price", "within": within, "age": age,
                 "carriers": q.get("carriers") in ("1", "true"), "pad": pad, "pad_known": bool(ship.get("pad")),
-                "count": d.get("count"), "rows": rows}, 200
+                "count": d.get("count"), "rows": rows, "names_missing": not names}, 200
 
     async def dssa_list(self, fetch=True):
         """The DSSA carrier list as outrider.dock rows, with {checked, modified, error}: asked for again (conditionally)
@@ -17811,7 +17855,9 @@ class State:
         if used < hold:
             return {"error": "the cargo in use includes the tritium in the hold: it cannot be less"}, 400
         request = {"from": frm, "to": to, "via": via or None, "fuel": fuel, "hold": hold, "used": used, "type": kind,
-                   "estimated": estimated}   # the depot taken as estimated (the jumps since its reading): said on the trip
+                   "estimated": estimated,   # the depot taken as estimated (the jumps since its reading): said on the trip
+                   # S4-S4: when the depot taken was read (a typed figure: none), for the trip head's hover
+                   "fuel_read_ts": d.get("fuel_read_ts") if body.get("fuel") in (None, "") else None}
         params = {"source": frm, "destinations": tuple(x for x in (via, to) if x), "capacity": capacity, "mass": mass,
                   "capacity_used": used, "calculate_starting_fuel": 0, "fuel_loaded": fuel, "tritium_stored": hold}
         self.carrier_trip_plotting = {"state": "running", "from": frm, "to": to, "started": iso_ts(time.time()), "error": None}
@@ -19059,6 +19105,7 @@ class State:
             late = None
             self.journals_reachable()   # a share that dropped while running is said (S9-S21)
             self.commander_notices()   # S9-S4: another commander playing, or a second one in the folder
+            self.check_upkeep()   # S9-S13: the carrier's upkeep counted down under the warning
             for d in LIVE_DIRS:
                 self.journals.scan_dir(d, upload="live", quick=True)
                 if self.journals.unsold_touched:   # a line the estimate reads, not any line (S6-S1)

@@ -4408,6 +4408,44 @@
     "{carrier} has made the jump! Our banner flies!"
    ]
   },
+  "upkeep_low": {
+   "klingon": [
+    "{name}! {carrier} has only about {weeks} of upkeep left! Feed our fortress!",
+    "Our carrier's coffers run dry! Roughly {weeks}! Move credits to its bank!",
+    "{carrier} can pay its crew for about {weeks}! A great house does not let its walls crumble!",
+    "Hear me, {name}! A carrier that cannot pay loses its services and is broken up! {carrier} has about {weeks}!",
+    "Roughly {weeks} of upkeep left! Go to carrier management and fill the war chest!",
+    "{carrier}'s treasury holds about {weeks}! Even honour needs fuel!",
+    "By my reckoning, {carrier} covers about {weeks}! Not enough!",
+    "{name}, our fortress is starving! Roughly {weeks} of upkeep!",
+    "About {weeks}, {name}! I will not watch our great ship be sold off like a Ferengi trinket!",
+    "{carrier} is short of credits! About {weeks}! Deposit, warrior!",
+    "Credits are not glory, but glory does not pay upkeep! {carrier} has roughly {weeks}!",
+    "The war chest of {carrier} holds about {weeks}! Fill it!",
+    "{name}! Roughly {weeks} of upkeep! Our house must not fall to unpaid bills!",
+    "{carrier}'s funds cover about {weeks}! Act before the bankers win this battle!",
+    "About {weeks} left in the carrier's bank! A warrior provides for the ship!",
+    "Ha! {carrier} has roughly {weeks} of credits, and then it starves! Feed it, {name}!"
+   ],
+   "klingon_profane": [
+    "{name}! {carrier} has about {weeks} of upkeep left! Feed our damn fortress!",
+    "Our carrier's coffers run dry! Roughly {weeks}! Move credits to its bank, damn you, son of a targ!",
+    "{carrier} can pay for about {weeks}! Hell, a great house does not let its walls crumble!",
+    "Hear me, {name}! An unpaid carrier loses its services and is broken up! {carrier} has about {weeks}! Damn it!",
+    "Roughly {weeks} of upkeep! Go to carrier management and fill the bloody war chest!",
+    "{carrier}'s treasury holds about {weeks}! Even honour needs fuel, damn it!",
+    "By my reckoning, {carrier} covers about {weeks}! Shit, not enough!",
+    "{name}, our fortress is starving! Roughly {weeks}! Hell, do not be a son of a targ about this!",
+    "About {weeks}, {name}! I will not see our damn ship sold like a Ferengi's cheap trinket!",
+    "{carrier} is short of credits! About {weeks}! Deposit, warrior, damn you!",
+    "Credits are not glory, but glory does not pay the damn upkeep! {carrier} has roughly {weeks}!",
+    "The war chest of {carrier} holds about {weeks}! Fill it, or hell take us!",
+    "{name}! Roughly {weeks} of upkeep! Our house will not fall to some bloody bankers!",
+    "{carrier}'s funds cover about {weeks}! Act before the bloody cowards in the bank win!",
+    "About {weeks} left in the carrier's bank! Hell, a warrior provides for the ship!",
+    "Ha! {carrier} has roughly {weeks}, and then it starves! Feed it, {name}, damn it!"
+   ]
+  },
   "autotarget_nothing": {
    "klingon": [
     "Nothing to target, {name}! {why}.",

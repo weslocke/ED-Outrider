@@ -461,10 +461,16 @@ const carrierTripHtml = (t, f) => !t ? "" :
   `, <span title="the tritium for its trip to you: equal jumps of up to 500 ly in a straight line (the real trip is never shorter), each lighter than the last; ${esc(carrierBurnTitle(f))}">≈${t.burn.toLocaleString()} t</span>` +
   (t.short ? ` · <span class="${t.covered ? "warnc" : "noscoop"}" title="the depot holds ${t.depot.toLocaleString()} t: ${!t.covered ? "it and the confirmed tritium in its hold (a sell order) do not cover the trip"
     : t.top_up === "on_the_way" ? `the ${t.hold.toLocaleString()} t of tritium on a sell order in its hold covers it, but the depot holds 1,000 t: fill it before the jumps and top it up again on the way`
-    : `the ${t.hold.toLocaleString()} t of tritium on a sell order in its hold covers it: move it into the depot before the jumps`}">${t.short.toLocaleString()} t short</span>` : "");
+    : t.top_up === "aboard" ? `the ${t.ship.toLocaleString()} t of tritium in your ship's hold${t.hold ? ` and the ${t.hold.toLocaleString()} t on a sell order in its own` : ""} cover it: deposit it into the depot when you dock`
+    : `the ${t.hold.toLocaleString()} t of tritium on a sell order in its hold covers it: move it into the depot before the jumps`}">${t.short.toLocaleString()} t short${t.top_up === "aboard" ? " (aboard)" : ""}</span>` +
+    // S9-S12: what is still to buy, straight into the Buy lookup
+    (!t.covered && t.short - (t.ship || 0) > 0 ? ` <button type="button" class="mini" data-buytritium="${t.short - (t.ship || 0)}" title="where to buy ${(t.short - (t.ship || 0)).toLocaleString()} t of tritium near you (Materials → Cargo's lookup)">buy</button>` : "") : "");
 // a booked jump's burn and the depot after it (S13 A)
 const carrierPlanBurn = (pl, f) => pl.burn == null ? "" : ` ≈ <span title="${esc(carrierBurnTitle(f))}">${pl.burn} t</span>; ` +
-  (pl.depot_after < 0 ? `<span class="noscoop">depot ${-pl.depot_after} t short</span>` : `depot after ≈ ${pl.depot_after.toLocaleString()} t`);
+  (pl.depot_after < 0 ? `<span class="noscoop">depot ${-pl.depot_after} t short</span>` : `depot after ≈ ${pl.depot_after.toLocaleString()} t`) +
+  // S9-S11: after this one the depot (and a tritium sell order in its hold) cannot pay a full 500 ly jump
+  (pl.last ? ` · <span class="${pl.hold_tritium ? "warnc" : "noscoop"}" title="${esc(`a 500 ly jump after it burns about ${pl.next_burn} t; the depot will hold ${pl.depot_after} t` +
+    (pl.hold_tritium ? ` and its hold ${pl.hold_tritium} t of tritium on a sell order (move it into the depot)` : " and there is no tritium in its hold: buy some before you go"))}">⚠ last jump it can pay</span>` : "");
 // UC and Vista on, off or suspended, and any other service suspended (S55 B: CarrierStats' crew, newer than its last
 // Docked or not): a suspended one is its name and a red ✗, as "UC ✓" beside it (the author, 2026-10-14), "suspended" on hover
 function carrierServicesHtml(c) {
@@ -479,12 +485,14 @@ function carrierServicesHtml(c) {
 const crSign = n => n == null ? "?" : (n < 0 ? "−" : "") + credits(Math.abs(n));
 function carrierFinanceHtml(fi) {
   if (!fi) return "";
-  const old = Date.now() - Date.parse(fi.ts) > 86400e3, w = fi.weeks;
+  // S9-S13: the weeks counted down to today (weeks_now), the stats' own figure in the title
+  const old = Date.now() - Date.parse(fi.ts) > 86400e3, w = fi.weeks_now ?? fi.weeks;
   // the line says only "~N wks upkeep" (the author, 2026-10-14); how old the stats are goes in the title
   const title = `balance ${crSign(fi.balance)} cr · reserve ${crSign(fi.reserve)} cr · available ${crSign(fi.available)} cr, from the carrier's last stats (${(fi.ts || "").slice(0, 10)}${old ? `: as of ${shortDay(fi.ts)}` : ""}: opening its management writes them).` +
-    (fi.upkeep ? ` Upkeep ≈ ${credits(fi.upkeep)} cr a week at the published rates (the core and each service, a suspended one at its lower rate), not yet checked against the game's carrier Finance screen: the journal has no upkeep figure. Upkeep is drawn from the balance each week.` : "");
+    (fi.upkeep ? ` Upkeep ≈ ${credits(fi.upkeep)} cr a week at the published rates (the core and each service, a suspended one at its lower rate), not yet checked against the game's carrier Finance screen: the journal has no upkeep figure. Upkeep is drawn from the balance each week.` : "") +
+    (fi.weeks_since ? ` ≈ ${w < 10 ? w.toFixed(1) : Math.floor(w).toLocaleString()} weeks now: ${fi.weeks_since} week${fi.weeks_since === 1 ? "" : "s"} of upkeep taken off since those stats (${fi.weeks < 10 ? fi.weeks.toFixed(1) : Math.floor(fi.weeks).toLocaleString()} then), an estimate: the market moves the balance too.` : "");
   return `<span id="carrierFin" class="${fi.warn ? "warnc" : ""}" title="${esc(title)}">Balance <b>${crSign(fi.balance)}</b>` +
-    (w != null ? ` · ~<b>${w < 10 ? w.toFixed(1) : Math.floor(w).toLocaleString()}</b> wks upkeep` : "") + `</span>`;
+    (w != null ? ` · ~<b>${w < 10 ? w.toFixed(1) : Math.floor(w).toLocaleString()}</b> wks upkeep${fi.weeks_since ? " now" : ""}` : "") + `</span>`;
 }
 function renderCarrier() {
   const c = data && data.carrier, cl = document.getElementById("carrierLine");
@@ -610,6 +618,8 @@ function drawFcTrip() {
     (t.done ? "<span class=\"ok\">complete</span>" : t.off ? `<span class="warnc">off the trip at ${esc(t.off.system || "?")}</span>` : `leg ${t.at + 1} of ${t.n}`) +
     ` · ${t.n} legs, about ${t.hours} h <span class="unk">(longer in busy systems)</span> · ${(tot.need || 0).toLocaleString()} t tritium of ${(tot.have || 0).toLocaleString()} t` +
     (t.request && t.request.estimated ? ` <span class="unk" title="planned from the depot as last read, less the jumps since: open the carrier's management to read it again, then re-plot">(≈ estimated depot)</span>` : "") +
+    (() => { const a = depotAge(t.request && t.request.fuel_read_ts);   // S4-S4
+      return a ? ` <span class="${a.stale ? "noscoop" : "unk"}" title="the depot as read ${esc(a.date)}${a.stale ? ": open the carrier's management panel to read it again, then re-plot" : ""}">· depot read ${esc(a.text)}</span>` : ""; })() +
     (tot.short ? ` · <span class="noscoop">${tot.short.toLocaleString()} t short: buy it before you set out</span>` : "");
   const note = x => [x.top_up ? `move ${x.top_up.toLocaleString()} t from the hold into the depot first` : "", x.buy ? `buy ${x.buy.toLocaleString()} t here` : "",
                      x.short ? `<span class="noscoop">the depot cannot pay for it</span>` : ""].filter(Boolean).join(" · ");
@@ -2361,6 +2371,7 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["approach", "approaching a high-gravity landable body with a lot of unsold data aboard", "alert"],
   ["loss", "what was lost with your ship, and the nearest system to rescan", "danger"],
   ["carrier", "your carrier departing and arriving", "chime"],
+  ["upkeep", "your carrier's upkeep, counted down from its last stats, drops under 4 weeks", "alert"],
   ["game", "loading into the game and quitting it", null],
   ["chat", "other players' messages read aloud (channels in Settings → Voice → Chat), never an NPC's", null],
   ["uploads", "EDDN, EDSM or Inara failing for 15 minutes, and sending again", null],
@@ -2386,7 +2397,7 @@ const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arri
   riches: "Road to Riches, worlds, sweeps", trade: "Trade route", carriertrip: "Carrier trip", autotarget: "Auto-target",
   wrongtarget: "Not the next stop targeted", docking: "Docking pad and refusals", sell: "Selling", saleleft: "Data left after a sale",
   unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction", suit: "Suit oxygen or health low", approach: "High gravity",
-  loss: "Ship lost", carrier: "Carrier", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing", uploadheld: "Upload on hold",
+  loss: "Ship lost", carrier: "Carrier", upkeep: "Carrier upkeep low", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing", uploadheld: "Upload on hold",
   ring: "Rings to mine", limpets: "Limpets and the hold", prospect: "Prospector call-out",
   rigs: "Mining rigs", rigleash: "Rig too far", rigsout: "Rigs still out"};
 // a row's fine print, in the hover of its line (and found by Find a setting): what the line leaves out
@@ -2417,6 +2428,7 @@ const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, 
   loss: "Samples that died with you count too.",
   chat: "Off until switched on in Settings → Voice → Chat (squadron, wing and direct ticked there).",
   uploads: "A card at the top of the page too. Never spoken.",
+  upkeep: "The card at the top of the page comes either way; this adds the notification and the line, once per reading of the carrier's stats. Counted down from them a week at a time: an estimate (the market moves the balance too). Off until you tick it.",
   uploadheld: "The card at the top of the page comes either way (it goes once the hold ends); this adds the notification and the line. Off until you tick it.",
   ring: "Settings → Mining's ring types, pristine ones only if ticked there. Once per body and visit; bodies scanned together in one line. Nothing until a type is ticked.",
   limpets: "The undocking check only when ticked above. Each warning once a stint.",
@@ -2431,10 +2443,10 @@ const ALERT_GROUPS = {discovery: "Jumps and arrivals", fss: "Exploring a system"
 const alertCfgBase = () => Object.assign({enabled: false}, Object.fromEntries(ALERTS.map(([k]) => [k, true])),
   // a notification on every jump (or scoop, or FSS) would be noise: these are spoken by default, not notified
   {jump: false, honk: false, brief: false, fss: false, mapped: false, scoop: false, scoopstop: false, supercharge: false, highway: false, autotarget: false, wrongtarget: false,
-   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false, limpets: false, prospect: false, uploadheld: false});
+   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false, limpets: false, prospect: false, uploadheld: false, upkeep: false});
 const alertCfg = Object.assign(alertCfgBase(), store.get("alerts", {}));
 // off until you tick them (the whole row): the jumponium call-out, an upload on hold (its card is there anyway)
-const OFF_KINDS = {jumponium: false, uploadheld: false};
+const OFF_KINDS = {jumponium: false, uploadheld: false, upkeep: false};
 const alertSoundBase = () => Object.assign(Object.fromEntries(ALERTS.map(([k]) => [k, true])), OFF_KINDS);
 const alertSound = Object.assign(alertSoundBase(), store.get("alertSound", {}));
 // not spoken until you tick them: they repeat what the game (or another alert) already told you
@@ -3144,6 +3156,7 @@ const LINE_SAMPLES = {
   firsts_seen: {system: "Drojau LL-O b26-3", value: "14.2M"},
   upload_held: {service: "EDSM"},
   suit_low: {what: "oxygen", value: "412M", distance: "640 metres"},
+  upkeep_low: {carrier: "Deep Wanderer", weeks: "3 weeks"},
   surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
   fuel_topup: {rate: "8 of the last 20 stars were scoopable", jumps: "about 6 jumps"}, hull: {pct: 42}, interdicted: {by: "someone"},
@@ -5970,7 +5983,7 @@ function renderCargo(cg) {
   h += s.lines.length ? `<table class="cargoTable"><tbody>` + s.lines.map(x =>
     `<tr data-cid="${esc(x.id)}" data-from="ship"><td>${esc(x.name)}${x.avg_text ? ` <span class="unk" title="what you paid: the game's method, the average over your purchases; a sale or transfer leaves it">· ${esc(x.avg_text)}</span>` : ""}` +
     `${x.stolen ? ` <span class="noscoop">${x.stolen} stolen</span>` : ""}${x.mission ? ` <span class="unk">· ${x.mission} for a mission</span>` : ""}</td>` +
-    `<td class="num">${tons(x.count)}</td><td class="num cact">${LOOK_BTNS}</td></tr>`).join("") + `</tbody></table>` : `<div class="unk">Nothing in the hold.</div>`;
+    `<td class="num">${tons(x.count)}</td><td class="num cact">${shipLookBtns(x)}</td></tr>`).join("") + `</tbody></table>` : `<div class="unk">Nothing in the hold.</div>`;
   if (c) {
     const dc = c.decommission;
     h += `<div class="csub">Carrier${c.name ? ` · ${esc(c.name)}` : ""} · ${dc ? `<span class="noscoop">${dc.done ? "Decommissioned" : "Decommissioning: scrapped"} ${esc(shortDay(dc.scrap_ts || dc.ts || ""))}</span>` : cargoSyncHtml(c)}</div>` +
@@ -5999,6 +6012,17 @@ function renderCargo(cg) {
 }
 const LOOK_BTNS = `<button type="button" class="mini" data-look="sell" title="where to sell it: Spansh's stations that take all of it">Sell</button>` +
   `<button type="button" class="mini" data-look="buy" title="where to buy more: Spansh's stations that have this much">Buy</button>`;
+// S9-S14: a ship line's Sell asks only for what can be sold: its title says what is left out; mission cargo alone sells nowhere
+function shipLookBtns(x) {
+  const sv = sellable(x);
+  if (!x.stolen && !x.mission) return LOOK_BTNS;
+  const why = !sv.black && sv.tons === x.count ? "" : sv.black ? ` (all ${x.stolen === x.count ? "stolen" : "stolen or for a mission"}: black markets only)`
+    : ` (${tons(sv.tons)} of ${tons(x.count)}: ${[x.stolen ? `${tons(x.stolen)} stolen` : "", x.mission ? `${tons(x.mission)} for a mission` : ""].filter(Boolean).join(", ")} left out)`;
+  const sell = !x.stolen && x.count <= x.mission   // all of it for a mission
+    ? `<button type="button" class="mini" disabled title="mission cargo: not yours to sell">Sell</button>`
+    : `<button type="button" class="mini" data-look="sell" title="${esc(`where to sell it: Spansh's stations that take all of it${why}`)}">Sell</button>`;
+  return sell + `<button type="button" class="mini" data-look="buy" title="where to buy more: Spansh's stations that have this much">Buy</button>`;
+}
 // Recount: the lines Outrider cannot confirm (last seen, entered), and any you add
 function openRecount() {
   const c = cargoData && cargoData.carrier;
@@ -6052,7 +6076,11 @@ document.getElementById("recountSave").onclick = async () => {
   const counts = {};
   for (const i of document.querySelectorAll("#recountRows input.qn[data-rc]")) {
     const name = i.dataset.rc || (i.closest("tr").querySelector(".rcname") || {}).value || "";
-    if (!name.trim() || i.value === "" || i.value === i.dataset.was) continue;
+    if (!i.dataset.rc) {   // S5-S4: an added line half filled in is said, not dropped without a word
+      if (!name.trim() && i.value === "") continue;
+      if (!name.trim()) return toast("the new line needs a commodity name");
+      if (i.value === "") return toast(`${name.trim()}: give the tons (0 removes it)`);
+    } else if (i.value === "" || i.value === i.dataset.was) continue;
     const n = Number(i.value);
     if (!Number.isInteger(n) || n < 0) return toast(`${name}: whole tons, 0 or more`);
     counts[name.trim()] = n;
@@ -6074,13 +6102,22 @@ document.getElementById("cargoList").addEventListener("click", e => {
     const tr = b.closest("tr"), from = tr.dataset.from, cg = cargoData || {};
     const line = ((from === "ship" ? cg.ship : cg.carrier) || {lines: []}).lines.find(x => x.id === tr.dataset.cid);
     if (!line) return;
-    return startLook({commodity: line.id, label: line.name, mode: b.dataset.look, tons: line.count, from, key: `${from}:${line.id}`});
+    return startLook(Object.assign({commodity: line.id, label: line.name, mode: b.dataset.look, tons: line.count, from, key: `${from}:${line.id}`},
+                                   b.dataset.look === "sell" && from === "ship" ? sellable(line) : {}));
   }
   if (e.target.closest("#cargoFind")) {
     const name = document.getElementById("cargoFindName").value.trim(), n = parseInt(document.getElementById("cargoFindTons").value, 10) || 1;
     if (!name) return document.getElementById("cargoFindName").focus();
     startLook({commodity: name, label: name, mode: "buy", tons: n, from: "here", key: null});
   }
+});
+// S9-S12: the Carrier tile's "buy": the Buy lookup for the tritium still short, in Materials → Cargo
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-buytritium]");
+  if (!b) return;
+  const v = document.querySelector('[data-view="mat"]'); if (v) v.click();
+  startLook({commodity: "tritium", label: "Tritium", mode: "buy", tons: Number(b.dataset.buytritium) || 1, from: "here", key: null});
+  const el = document.getElementById("cargoLook"); if (el && el.scrollIntoView) el.scrollIntoView({block: "start"});
 });
 document.getElementById("cargoList").addEventListener("keydown", e => {
   if (e.key === "Enter" && e.target.closest(".cfind input")) { e.preventDefault(); document.getElementById("cargoFind").click(); }
@@ -6097,6 +6134,13 @@ const lookTons = q => LK.load === "ship" && lookCap(q) ? lookCap(q) : q.tons;
 // a carrier with no name yet (bought, no CarrierStats since): its callsign, else "your carrier" (it said "null")
 const carrierName = c => (c && (c.name || c.callsign)) || "your carrier";
 function startLook(q) { LK.q = q; LK.open = null; LK.answer = null; loadLook(); }   // not the last lookup's heading
+// S9-S14: what of a ship's line can be sold: the legal tons (stolen cargo takes a black market; mission cargo is not
+// yours to sell), {tons, of, stolen, mission, black}; black: nothing legal is left, so only black markets are shown
+function sellable(line) {
+  const stolen = line.stolen || 0, mission = line.mission || 0, legal = Math.max(0, line.count - stolen - mission);
+  if (legal > 0) return {tons: legal, of: line.count, stolen, mission, black: false};
+  return {tons: Math.max(1, stolen), of: line.count, stolen, mission, black: stolen > 0};
+}
 async function loadLook() {
   const q = LK.q, el = document.getElementById("cargoLook");
   if (!q) { el.hidden = true; return; }
@@ -6125,7 +6169,9 @@ function renderLook() {
   const sell = q.mode === "sell";
   const avg = a && !a.error && a.avg;
   const cap = lookCap(q), n = lookTons(q);
-  let h = `<h3 class="subhead lookhead">${sell ? "Sell" : "Buy"} ${n !== q.tons ? `${tons(n)} of ${tons(q.tons)}` : tons(q.tons)} ${esc(a && a.commodity || q.label)}` +
+  const left = [q.stolen ? `${tons(q.stolen)} stolen: black market only` : "", q.mission ? `${tons(q.mission)} for a mission` : ""].filter(Boolean);
+  let h = `<h3 class="subhead lookhead">${sell ? "Sell" : "Buy"} ${n !== q.tons ? `${tons(n)} of ${tons(q.tons)}` : q.of && q.of !== q.tons ? `${tons(q.tons)} of ${tons(q.of)}` : tons(q.tons)} ${esc(a && a.commodity || q.label)}` +
+    (left.length && sell ? ` <span class="unk">(${esc(left.join("; "))}${q.black ? "; black markets only, at the legal market's price" : ""})</span>` : "") +
     (avg ? ` <span class="unk">· you paid ${q.tons ? "Avg " : ""}${Math.round(avg).toLocaleString()} cr/t</span>` : "") +
     `<button type="button" class="mini lookclose" data-lk="close" title="close the lookup">✕</button></h3>`;
   h += `<div class="lookbar"><span class="seg2"><button type="button" class="mini${LK.sort === "price" ? " on" : ""}" data-lk="price">Best price</button>` +
@@ -6138,13 +6184,17 @@ function renderLook() {
       `<span class="unk">≈ ${Math.ceil(q.tons / cap).toLocaleString()} shiploads for all of it</span>` : "") +
     (a && !a.error ? `<span class="unk">${a.pad === "L" ? "large pad" : a.pad === "M" ? "medium pad" : a.pad_known ? "" : "any pad (your ship's size is not known)"}` +
       ` · ${sell ? `where they take all ${tons(n)}` : `where they have ${tons(n)}`}</span>` : "") + `</div>`;
+  if (a && a.names_missing) h += `<div class="unk">Spansh's commodity list could not be read: searched as "${esc(a.commodity)}".</div>`;   // S2-S3
   if (LK.busy) h += `<div class="unk">asking Spansh…</div>`;
   else if (!a || a.error) h += `<div class="noscoop">${esc(a ? a.error : "")}</div>`;
+  else if (q.black && !a.rows.some(r => (r.services || []).includes("Black Market")))
+    h += `<div class="unk">No station in these answers has a black market for stolen goods: try further.</div>`;
   else if (!a.rows.length) h += `<div class="unk">No station within ${a.within.toLocaleString()} ly ${sell ? "takes" : "has"} ${tons(n)} with data under ${a.age} days. Try further, or older data.</div>`;
   else {
     h += `<table class="lookTable"><thead><tr><th>Station</th><th class="num">Distance</th><th class="num">From star</th><th class="num">Price</th>` +
       `<th class="num">${sell ? "Demand" : "Supply"}</th><th class="num">${sell ? `Your ${tons(n)}` : "Cost"}</th><th class="num">Data</th></tr></thead><tbody>` +
       a.rows.map((r, n) => {
+        if (q.black && !(r.services || []).includes("Black Market")) return "";   // S9-S14: stolen goods go to a black market
         const open = LK.open === n;
         let row = `<tr class="lookrow${open ? " open" : ""}" data-n="${n}"><td><span class="tw">${open ? "▾" : "▸"}</span> <b>${esc(r.station)}</b>` +
           `${r.carrier ? ` <span class="unk">(carrier)</span>` : ""}<div class="unk">${esc(r.system)}</div></td>` +
@@ -7937,6 +7987,18 @@ function fillFcForm() {
     if (document.activeElement !== hEl(id) && hEl(id).value === "" && v != null) hEl(id).value = v;
   if (d.type && !hEl("fcType").dataset.touched) hEl("fcType").value = d.type;
   if (hwyPlotter() === "carrier") hEl("hwyFrom").placeholder = d.from ? `the carrier: ${d.from}` : "the carrier's system";
+  // S4-S4: how old the depot reading is (it moves only when the carrier's management panel is opened)
+  const age = depotAge(d.fuel_read_ts);
+  hEl("fcFuel").title = `the tritium in the carrier's depot (its tank: up to 1,000 t), from its last stats` +
+    (age ? `: read ${age.text}${d.fuel_estimated ? ", less the jumps since" : ""}${age.stale ? " (open the carrier's management panel to read it again)" : ""}` : "");
+  hEl("fcFuel").classList.toggle("stale", !!(age && age.stale));
+}
+// S4-S4: a depot reading's age, {text: "3 d ago", stale: past CONFIRM_STALE_D}, or null
+function depotAge(ts) {
+  const t = ts ? Date.parse(ts) : NaN;
+  if (!isFinite(t)) return null;
+  const days = Math.max(0, (Date.now() - t) / 86400000);
+  return {text: days < 1 ? "today" : `${Math.floor(days)} d ago`, stale: days > CONFIRM_STALE_D, date: day(ts)};
 }
 async function carrierSubmit() {
   const num = id => hEl(id).value === "" ? null : Number(hEl(id).value);
@@ -9983,6 +10045,11 @@ function onData() {
       else if (m.kind === "limpets" && m.what === "none" && miningCfg().limpetWarn)   // a mining ship undocked without limpets
         alertOut("limpets", "No limpets aboard", "a mining ship left the pad without any (Settings → Mining)",
                  {tag: "limpets_none", say: () => line("limpets_none", {}, "No limpets aboard. Turn back for some before we head out.")});
+      else if (m.kind === "upkeep_low" && m.weeks != null) {   // S9-S13: the carrier's upkeep counted down under 4 weeks
+        const weeks = `${m.weeks < 10 ? Number(m.weeks).toFixed(1).replace(/\.0$/, "") : Math.floor(m.weeks)} week${m.weeks === 1 ? "" : "s"}`;
+        alertOut("upkeep", `${m.carrier}: about ${weeks} of upkeep left`, "move credits into its bank in the carrier management", {tag: "upkeep_low",
+                 say: () => line("upkeep_low", {carrier: m.carrier, weeks}, `${m.carrier} has about ${weeks} of upkeep left.`)});
+      }
       else if (m.kind === "suit" && m.what) {   // S9-S7: on foot, the suit running low with data aboard: danger
         const value = credits(m.value), distance = m.dist != null ? pinSpokenDist(m.dist) : "";
         alertOut("suit", `Suit ${m.what} low`, `${value} cr aboard${m.dist != null ? ` · your ship ${surfDist(m.dist)} away` : ""}`, {tag: "suit_low",
@@ -11087,7 +11154,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   trade: "trade routes", highway: "the Highway", refuelshort: "fuel short of a refuel", lastscoop: "last scoop", autotarget: "auto-target",
   wrongtarget: "wrong target", find: "valuable bodies", jumponium: "jumponium", sampling: "sampling", approach: "high-g approaches",
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
-  hull: "hull, heat, interdiction", suit: "the suit running low", carrier: "your carrier", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
+  hull: "hull, heat, interdiction", suit: "the suit running low", carrier: "your carrier", upkeep: "carrier upkeep", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
   rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", uploads: "uploads", uploadheld: "uploads on hold"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
@@ -11098,7 +11165,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   autotarget: ["autotarget_nothing"], wrongtarget: ["wrong_target"], find: ["find_body", "find_bio", "mapped_before", "sample_clear"],
   jumponium: ["jumponium"], sampling: ["bio_done_last", "bio_done_more", "bio_tag_near", "left_body"], approach: ["high_g"],
   bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
-  firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], codex: ["codex"],
+  firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], upkeep: ["upkeep_low"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
   curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"],
   uploadheld: ["upload_held"]};
@@ -11954,7 +12021,7 @@ const cmTile = (k, v, title = "") => v == null || v === "" ? "" : `<span class="
 // decommissioning in red. Pure.
 function cmdrCarrierHtml(c) {
   if (!c) return "";
-  const dc = c.decommission, fi = c.finance, w = fi ? fi.weeks : null;
+  const dc = c.decommission, fi = c.finance, w = fi ? fi.weeks_now ?? fi.weeks : null;
   const money = dc ? ` · <span class="short" title="its decommissioning was requested ${esc(shortDay(dc.ts || ""))}">${dc.done ? "Decommissioned" : "Decommissioning"} ${esc(shortDay(dc.scrap_ts || dc.ts || ""))}</span>`
     : fi ? ` · <span class="${fi.warn ? "warnc" : ""}">balance <b>${esc(crSign(fi.balance))}</b>` +
       (w != null ? ` · ~<b>${esc(w < 10 ? w.toFixed(1) : Math.floor(w).toLocaleString())}</b> wks upkeep` : "") + `</span>` : "";

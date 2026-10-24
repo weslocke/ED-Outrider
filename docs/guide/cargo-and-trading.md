@@ -37,16 +37,20 @@ The **Materials** tab starts with your **Cargo**.
   meeting takes, short: "To it 5 jumps · to you 3, ≈340 t" (your jumps to it, amber when your tank covers fewer; its
   carrier jumps to you and their tritium), and when the depot holds less, "140 t short" in red (amber when tritium on a
   sell order in its hold covers it: the hover says whether to move it into the depot before the jumps, or top it up
-  again on the way when it needs more than the 1,000 t depot takes at once). Equal jumps of up to 500 ly in a straight
+  again on the way when it needs more than the 1,000 t depot takes at once; "(aboard)" when the tritium in your ship's
+  hold covers it: deposit it when you dock). Still short, a **buy** button opens the Buy lookup for what is missing. Equal jumps of up to 500 ly in a straight
   line, each lighter than the last (the real trip is never shorter). A booked jump says its own: "(432 ly jump ≈ 96 t;
-  depot after ≈ 572 t)". The journal reads the depot only when you open the carrier's management (or deposit
+  depot after ≈ 572 t)", and "⚠ last jump it can pay" when the depot after it (with a tritium sell order in its hold)
+  cannot pay a full 500 ly jump more: red with no tritium in its hold, amber when moving it in would. The journal reads the depot only when you open the carrier's management (or deposit
   tritium): after a jump since, the tile shows "≈ 534t", the reading less the jumps' burn, until you open it again. The game's fuel formula is checked against your carrier's own jumps (what the depot held
   before and after each one, from its stats and your tritium deposits): once three are measured, their median scales
   the figures (at most ±20%), and the hover says so ("checked against your carrier's last 12 jumps: no correction
   needed"). Tritium other players donate is not in your journal, so such a jump reads low; the median rides over it.
 - **Services and upkeep:** a service suspended in the carrier's management shows as its name and a red ✗ ("UC ✗",
   "Redemption office ✗"; "suspended" on hover), beside "Vista ✓" for one that is on, from its last stats or the newer of them and your last docking there. Under them,
-  "balance 1.33B · ~96 wks upkeep" (amber under 4 weeks; the hover says how old the stats are). The
+  "balance 1.33B · ~83 wks upkeep now", counted down a week of upkeep for each week since its stats (an estimate: the
+  market moves the balance too; the hover has the stats' own figure and how old they are), amber under 4 weeks; then a
+  card says so too, and the **Carrier upkeep low** alert row (off until you tick it) adds a notification and a line. The
   journal has no upkeep figure: the week's upkeep is worked out from the services installed at the **published rates**
   (the core and each service, a suspended one at its lower rate), not yet checked against the game's Finance screen;
   hover for the figure. Opening the carrier's management refreshes the stats.
@@ -72,6 +76,8 @@ players last reported, so the newer the data, the safer the trip.
 </p>
 
 - **Sell / Buy** on any line of your Cargo asks where to sell all of it (or buy that much): best price or closest,
+  only the tons you can sell (stolen cargo needs a black market, and is asked for on its own with only black markets
+  listed, at the legal market's price; mission cargo is not yours to sell, so a line of only that has no Sell),
   within a distance, data under an age, your ship's pad size, fleet carriers left out unless ticked (their orders
   are often years old). Each station shows how far it is (and how far from its star), the price, demand or supply,
   what your load earns and the profit over what you paid. Opened, it lists what else it buys from your hold and its

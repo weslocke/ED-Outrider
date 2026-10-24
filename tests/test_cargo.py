@@ -660,7 +660,7 @@ class CarrierTile(unittest.TestCase):
         (25,000 − 7,645 free, nothing reserved), the depot its FuelLevel."""
         c = self.state.carrier_summary()
         want = cargo.carrier_trip(1200.0, 668, 25000 - 7645)
-        self.assertEqual(c["trip"], dict(want, hold=None, covered=False, top_up=None))
+        self.assertEqual(c["trip"], dict(want, hold=None, ship=0, covered=False, top_up=None))   # ship: the tritium your ship carries (S9-S12)
         self.assertEqual(c["trip"]["jumps"], 3)
         self.j.pos = dict(self.j.pos, x=4000.0)   # far: the depot runs short, and nothing confirmed in the hold covers it
         t = self.state.carrier_summary()["trip"]
@@ -956,6 +956,18 @@ class Lookup(unittest.TestCase):
         out, status = self.look(commodity="metaalloys", mode="buy", pad="any", carriers=1)
         self.assertEqual((status, out["commodity"], out["pad"]), (200, "Meta-Alloys", None))
         self.assertNotIn("type", self.bodies[-1]["filters"])
+
+    def test_the_lookup_goes_on_without_spansh_names(self):
+        """S2-S3: Spansh's commodity list unreadable (and no copy kept): the journal's own name is searched, and said."""
+        async def broken():
+            raise ed_outrider.ClientError("Spansh sent no commodity names")
+        self.sp.commodity_names = broken
+        self.j.pos = {"id64": 10477373803, "name": "Sol", "x": 0, "y": 0, "z": 0}
+        self.j.commodity_names["tritium"] = "Tritium"
+        with unittest.mock.patch("sys.stderr"):
+            out, status = self.look(commodity="tritium", mode="buy", tons=200)
+            self.look(commodity="tritium", mode="buy", tons=200)
+        self.assertEqual((status, out["commodity"], out["names_missing"]), (200, "Tritium", True))
 
 
 def trade_answer():

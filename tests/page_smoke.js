@@ -6407,6 +6407,28 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| suggestions F |", good ? "pace, re-plot, permits, the Map's Plot route, ← destination" : JSON.stringify({got, want}), errors.slice(before));
   }
+  // Suggestions (G): S9-S14 Sell asks for the legal tons; S9-S11 the last jump it can pay; S9-S12 tritium aboard and the
+  // buy button; S9-S13 the upkeep counted down, its row off until ticked; S4-S4 the depot reading's age
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      const o = {}, txt = h => h.replace(/<[^>]+>/g, "");
+      o.sell = [sellable({count: 8, stolen: 3, mission: 2}), sellable({count: 4, stolen: 4, mission: 0}).black];
+      o.mission = /disabled/.test(shipLookBtns({count: 2, stolen: 0, mission: 2}));
+      o.last = txt(carrierPlanBurn({burn: 68, depot_after: 62, last: true, next_burn: 70, hold_tritium: 0}, null));
+      o.aboard = txt(carrierTripHtml({burn: 300, short: 240, covered: true, top_up: "aboard", ship: 300, hold: 0, depot: 60}, null));
+      o.buy = (carrierTripHtml({burn: 300, short: 240, covered: false, top_up: null, ship: 40, hold: 0, depot: 60}, null).match(/data-buytritium="(\\d+)"/) || [])[1];
+      o.weeks = txt(carrierFinanceHtml({balance: 100, reserve: 0, available: 0, ts: "2026-01-01T00:00:00Z", upkeep: 10, weeks: 12, weeks_now: 2, weeks_since: 10, warn: true}));
+      o.upkeepRow = ALERTS.some(a => a[0] === "upkeep") && alertCfgBase().upkeep === false && alertSpeakBase().upkeep === false && !!LINE_SAMPLES.upkeep_low;
+      o.age = [depotAge(new Date(Date.now() - 3 * 86400000).toISOString()).text, depotAge(new Date(Date.now() - 9 * 86400000).toISOString()).stale, depotAge(null)];
+      return JSON.stringify(o); })()`));
+    const want = {sell: [{tons: 3, of: 8, stolen: 3, mission: 2, black: false}, true], mission: true,
+                  last: " ≈ 68 t; depot after ≈ 62 t · ⚠ last jump it can pay", aboard: ", ≈300 t · 240 t short (aboard)", buy: "200",
+                  weeks: "Balance 100 · ~2.0 wks upkeep now", upkeepRow: true, age: ["3 d ago", true, null]};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| suggestions G |", good ? "legal tons, the last jump, tritium aboard, the upkeep now, the depot's age" : JSON.stringify({got, want}), errors.slice(before));
+  }
   // S9-S20: an upload on hold gets its own alerts row, off until ticked (the card comes from the server either way),
   // said by Comms; S7-S6: an empty backfill Preview says why ("412 lines left out, the Legacy game ...")
   {

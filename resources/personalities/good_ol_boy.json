@@ -4425,6 +4425,44 @@
     "Shit, there she is. {carrier}, {system}."
    ]
   },
+  "upkeep_low": {
+   "good_ol_boy": [
+    "{name}, {carrier}'s bank is lookin' thin. About {weeks} of upkeep left.",
+    "Hey partner, the carrier can pay its way for roughly {weeks}. Might should top it up.",
+    "Shoot, {carrier}'s down to about {weeks} of upkeep, buddy.",
+    "Grandpa always said feed the mule before you ride it. {carrier}'s got roughly {weeks} left.",
+    "{name}, best pop into carrier management and drop some credits in. About {weeks} left.",
+    "Now I'm just guessin' from the last numbers, but {carrier}'s got about {weeks}.",
+    "Dadgum, pal, the carrier's runnin' low. Roughly {weeks} of upkeep.",
+    "Heads up. {carrier} covers about {weeks} of upkeep, and then things get ugly.",
+    "A carrier that can't pay its bills loses its services, partner, and they scrap it in the end. {carrier}'s got about {weeks}.",
+    "{name}, our home's runnin' short on groceries. Roughly {weeks} of upkeep.",
+    "Hey buddy, about {weeks} left in {carrier}'s bank. Let's not let the lights go out.",
+    "Well, dang. {carrier} can cover roughly {weeks}.",
+    "{carrier}'s purse is gettin' light, friend. About {weeks}.",
+    "{name}, I don't mean to fuss, but the carrier's got roughly {weeks} of upkeep.",
+    "Grandpa never let the porch light go dark for want of a nickel. {carrier}'s got about {weeks}.",
+    "Pal, roughly {weeks} of upkeep left on {carrier}. Time to fill the piggy bank."
+   ],
+   "good_ol_boy_profane": [
+    "{name}, {carrier}'s bank is lookin' damn thin. About {weeks} of upkeep left.",
+    "Hey partner, the carrier can pay its way for roughly {weeks}. Top the damn thing up.",
+    "Shit, {carrier}'s down to about {weeks} of upkeep, buddy.",
+    "Grandpa always said feed the mule before you ride it, or the son of a bitch bucks. {carrier}'s got roughly {weeks}.",
+    "{name}, get your butt into carrier management and drop some credits in. About {weeks} left, hell.",
+    "Now I'm guessin' from the last numbers, but damn, {carrier}'s got about {weeks}.",
+    "Damn, pal, the carrier's runnin' low. Roughly {weeks} of upkeep.",
+    "Heads up. {carrier} covers about {weeks}, and then things go to hell.",
+    "A carrier that can't pay loses its services, partner, and they scrap the damn thing in the end. {carrier}'s got about {weeks}.",
+    "{name}, our home's runnin' short on groceries. Roughly {weeks} of upkeep. Shit.",
+    "Hey buddy, about {weeks} left in {carrier}'s bank. Let's not let the damn lights go out.",
+    "Well, hell. {carrier} can cover roughly {weeks}.",
+    "{carrier}'s purse is gettin' light as hell, friend. About {weeks}.",
+    "{name}, I don't mean to fuss, but the carrier's got roughly {weeks}. That's cuttin' it damn close.",
+    "Hell, partner, that carrier's eatin' us out of house and home. About {weeks} left.",
+    "Pal, roughly {weeks} of upkeep left on {carrier}. Fill the damn piggy bank."
+   ]
+  },
   "autotarget_nothing": {
    "good_ol_boy": [
     "Can't do it, {name}. {why}.",

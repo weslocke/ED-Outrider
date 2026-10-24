@@ -114,6 +114,9 @@ KEYS = {
     "firsts_seen": "the firsts watch found, for the first time, that someone else's scans of a system holding your unsold "
                    "first discoveries reached Spansh (said at most once in 30 minutes; never 'stolen'): {system} (its name), "
                    "{value} (its unsold cartographic value, e.g. '14.2M')",
+    "upkeep_low": "your fleet carrier's balance, counted down week by week from its last stats (an estimate), now covers "
+                  "less than four weeks of upkeep (once per stats reading): {carrier} (its name), {weeks} (the weeks of "
+                  "upkeep left, in words, e.g. '3 weeks')",
     "suit_low": "on foot on a planet, your suit's oxygen or health just ran low while unsold data or samples are aboard "
                 "that dying would lose (a danger line, once each time it drops low): {what} ('oxygen' or 'health'), {value} "
                 "(what a death would lose, in credits, e.g. '412M'), {distance} (how far the ship is, e.g. '640 metres')",
@@ -660,6 +663,7 @@ SAMPLES = {
     "firsts_seen": {"system": "Drojau LL-O b26-3", "value": "14.2M"},
     "upload_held": {"service": "EDSM"},
     "suit_low": {"what": "oxygen", "value": "412M", "distance": "640 metres"},
+    "upkeep_low": {"carrier": "Deep Wanderer", "weeks": "3 weeks"},
     "carrier_departs": {"minutes": 4, "carrier": "Out Of The Blue"},
     "autotarget_nothing": {"why": "no route is plotted"},
     "wrong_target": {"system": "Smojooe AR-E b25-8", "next": "Pru Aim XY-Z d1"},
@@ -701,7 +705,7 @@ CREW_ROLES = (
       "ggg", "rare_star", "surface_site", "signal_poi", "curious")),
     ("exobiologist", "Exobiologist", "Exobiologist", ("exo", "find", "sampling")),
     ("engineer", "Chief Engineer", "Engineer", ("fuel", "scoop", "scoopstop", "jumponium", "hull", "suit")),
-    ("quartermaster", "Quartermaster", "Quartermaster", ("sell", "saleleft", "unsold", "carrier", "carriertrip", "loss")),
+    ("quartermaster", "Quartermaster", "Quartermaster", ("sell", "saleleft", "unsold", "carrier", "upkeep", "carriertrip", "loss")),
     ("comms", "Comms Officer", "Comms", ("uploads", "uploadheld", "firstsseen", "game", "docking", "chat")),
     ("tactical", "Tactical", "Tactical", ()),
     ("mining", "Mining Officer", "Mining Officer", ("rigs", "rigleash", "rigsout", "ring", "limpets", "prospect")),
@@ -726,7 +730,7 @@ ROW_KEYS = {
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
     "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none", "limpets_low", "hold_nearly_full", "hold_full"), "prospect": ("prospect_hit", "motherlode"),
-    "uploadheld": ("upload_held",), "suit": ("suit_low",),
+    "uploadheld": ("upload_held",), "suit": ("suit_low",), "upkeep": ("upkeep_low",),
 }
 DANGER = ("hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop",
           "carrier_departs", "ship_lost", "rig_leash", "suit_low")

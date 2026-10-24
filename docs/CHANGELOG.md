@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Suggestions (G): the carrier, cargo and trade
+- The full Fable review's suggestions, batch G:
+  - **S4-S4: how old the depot reading is** on the carrier form (its hover, a red edge past a week) and the trip head.
+  - **S9-S11: "⚠ last jump it can pay"** on a booked carrier jump that leaves the depot unable to pay a full one after.
+  - **S9-S12: the tritium in your ship counts toward the carrier's shortfall** ("aboard"), and "N t short" gets a buy
+    button into the lookup.
+  - **S9-S13: the carrier's upkeep counted down to today** ("~83 wks upkeep now"), with a card under 4 weeks and a new
+    alerts row, Carrier upkeep low (off until ticked; speech key `upkeep_low`, lines in every personality).
+  - **S9-S14: Sell asks only for the tons you can sell**: stolen cargo is black markets only, mission cargo not at all.
+  - **S2-S3: the Sell/Buy lookup goes on with the journal's commodity name** when Spansh's list cannot be read, and
+    says so. **S5-S4:** Recount says when an added line lacks its name or its tons.
+
 ## 2026-10-24 · Suggestions (F): routes, auto-target and the Map
 - The full Fable review's suggestions, batch F:
   - **S9-S8: ↻ Re-plot from here** on the Highway off its route, or when it was plotted for another ship ("its fuel stops

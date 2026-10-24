@@ -2273,6 +2273,26 @@
     "{name}. Carrier jump complete. {system}."
    ]
   },
+  "upkeep_low": {
+   "vulcan": [
+    "{carrier}'s balance covers approximately {weeks} of upkeep.",
+    "{name}. The carrier bank is low. An estimated {weeks} of upkeep remain.",
+    "Advisory. {carrier} can meet its upkeep for roughly {weeks}. I recommend a deposit.",
+    "By my estimate, {carrier} has {weeks} of upkeep remaining. A transfer of credits would be logical.",
+    "Carrier funds are below the warning level. Approximately {weeks}.",
+    "{name}, a carrier that cannot pay its upkeep loses its services, and is eventually decommissioned. {carrier} has about {weeks}.",
+    "The carrier management screen accepts deposits. {carrier} has roughly {weeks} of upkeep.",
+    "I note that {carrier} has approximately {weeks} of funds. Humans call this running on fumes. The carrier has no fumes.",
+    "Estimated upkeep remaining for {carrier}: {weeks}.",
+    "{name}. It would be prudent to move credits into the carrier bank. About {weeks} remain.",
+    "The estimate is imprecise, but {carrier} covers roughly {weeks} of upkeep. That is insufficient.",
+    "Carrier upkeep: approximately {weeks}. Logic favours a deposit.",
+    "{carrier} is short of funds, {name}. Roughly {weeks}.",
+    "I recommend a deposit. {carrier}'s upkeep is covered for about {weeks}.",
+    "Your carrier's funds will last approximately {weeks}. I assume you intend to act.",
+    "Advisory. {carrier}'s bank holds roughly {weeks} of upkeep. I would not let it reach zero."
+   ]
+  },
   "autotarget_nothing": {
    "vulcan": [
     "Nothing to target. {why}.",
