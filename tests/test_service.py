@@ -22,11 +22,11 @@ class Calls:
     """A fake subprocess.run for systemctl: records each command, answers `code`."""
 
     def __init__(self, code=0, stderr=""):
-        self.cmds, self.code, self.stderr = [], code, stderr
+        self.cmds, self.code, self.stderr, self.stdout = [], code, stderr, ""
 
     def __call__(self, cmd, **kw):
         self.cmds.append(cmd)
-        return argparse.Namespace(returncode=self.code, stdout="", stderr=self.stderr)
+        return argparse.Namespace(returncode=self.code, stdout=self.stdout, stderr=self.stderr)
 
 
 class Base(unittest.TestCase):
@@ -139,7 +139,8 @@ class Unit(Base):
         with open(path, encoding="utf-8") as f:
             self.assertIn('"--port" "8026"', f.read())
         self.assertEqual(self.calls.cmds, [["systemctl", "--user", "daemon-reload"],
-                                           ["systemctl", "--user", "enable", S.UNIT_NAME]])
+                                           ["systemctl", "--user", "enable", S.UNIT_NAME],
+                                           ["systemctl", "--user", "show-environment"]])   # S4-S7: the display passed?
         self.assertTrue(S.status("systemd", None, env={})["installed"])
         self.calls.cmds.clear()
         lines = S.uninstall("systemd", None, env={S.SERVICE_ENV: "systemd"})
@@ -149,6 +150,15 @@ class Unit(Base):
         self.assertIn("keeps running until it stops", lines[-1])
         self.assertFalse(os.path.exists(path))
         self.assertIn("not installed", S.uninstall("systemd", None, env={})[0])
+
+    def test_a_desktop_that_does_not_pass_its_display_is_said(self):
+        """Review 2026-10-23 S4-S7: sway, i3 and lighter sessions do not import DISPLAY into the user manager; a
+        service started there has no display (overlay, clipboard, the game to the front): installing says how to fix it."""
+        lines = S.install(self.root, [], "systemd", None, bash="/bin/bash", env={})
+        self.assertIn(S.DISPLAY_HINT, lines)                              # the fake answers an empty environment
+        self.calls.stdout = "HOME=/home/p\nWAYLAND_DISPLAY=wayland-0\n"
+        self.assertNotIn(S.DISPLAY_HINT, S.install(self.root, [], "systemd", None, bash="/bin/bash", env={}))
+        self.assertNotIn(S.DISPLAY_HINT, S.install(self.root, [], "systemd", None, graphical=False, bash="/bin/bash", env={}))
 
     def test_journals_from_the_environment_go_along(self):
         S.install(self.root, [], "systemd", None, bash="/bin/bash", env={"ED_JOURNALS": "/srv/journals"})

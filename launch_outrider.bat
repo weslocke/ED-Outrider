@@ -26,6 +26,7 @@ set "CERTSTAMP=%VENV%\.certifi-checked"
 
 :check
 if not exist "%VPY%" goto create
+if defined OUTRIDER_REINSTALL goto install
 rem installs again when requirements.txt changed since (or the stamp is missing), or the environment is broken
 rem (no aiohttp); compared in Python, not with fc, which is unreliable outside Windows (Wine)
 "%VPY%" -c "import aiohttp, sys; sys.exit(open('requirements.txt', 'rb').read() != open(r'%STAMP%', 'rb').read())" >nul 2>&1 || goto install
@@ -69,9 +70,12 @@ goto create
 :pipok
 echo Installing ED Outrider's requirements into %VENV%
 "%VPY%" -m pip install --quiet --upgrade pip
-"%VPY%" -m pip install --quiet -r requirements.txt && goto stamp
-echo Installing the requirements failed (the messages above say why). Piper's line in requirements.txt can be
-echo removed to do without the natural voice. Then run this again.
+rem one line at a time when all at once fails (scripts\install_requirements.py: 0 all, 2 optional ones missing,
+rem 3 offline with a working environment: start without a new stamp, 1 cannot run)
+"%VPY%" scripts\install_requirements.py requirements.txt
+if %errorlevel% equ 0 goto stamp
+if %errorlevel% equ 2 goto stamp
+if %errorlevel% equ 3 goto run
 goto fail
 
 :stamp

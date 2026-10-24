@@ -15,6 +15,7 @@ RESTART_EXIT already). Docker (the container is the service: compose's restart p
 Nothing here runs at import. Tests point TARGET_DIR at a scratch folder and RUNNER at a fake (tests/support.py does
 it for every test), so the real ~/.config, Startup folder and systemctl are never touched."""
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -143,6 +144,22 @@ def _run(cmd):
     return True, ""
 
 
+def user_environment():
+    """`systemctl --user show-environment`'s output, or None when it cannot be asked."""
+    try:
+        r = (RUNNER or subprocess.run)(["systemctl", "--user", "show-environment"], capture_output=True, text=True,
+                                       timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+DISPLAY_HINT = ("your desktop does not pass its display to user services: the overlay window, the clipboard and bringing "
+                "the game to the front need it. Run `systemctl --user import-environment DISPLAY WAYLAND_DISPLAY "
+                "XAUTHORITY` from the desktop (or add it to your session's autostart), then systemctl --user restart "
+                "ed-outrider")
+
+
 def status(how=None, why=None, env=None):
     """{kind, can, why, installed, path, running}: installed = the unit or .cmd is there; running = this Outrider was
     started by the systemd unit."""
@@ -190,9 +207,16 @@ def install(root, args=(), how=None, why=None, graphical=True, env=None, bash=No
                 pass
             raise ServiceError(f"the unit could not be enabled ({words}), so it was removed again: {path}")
     when = "when you log in to your desktop" if graphical else "with your user's systemd (at boot too after: loginctl enable-linger)"
-    return out + [f"enabled: ED Outrider starts {when}. To switch to it now, stop the Outrider you started by hand, then "
-                  "run: systemctl --user start ed-outrider",
-                  "its output: journalctl --user -u ed-outrider -f"]
+    out += [f"enabled: ED Outrider starts {when}. To switch to it now, stop the Outrider you started by hand, then "
+            "run: systemctl --user start ed-outrider",
+            "its output: journalctl --user -u ed-outrider -f"]
+    if graphical:
+        # GNOME and KDE import DISPLAY / WAYLAND_DISPLAY into the user manager at login; sway, i3/startx and lighter
+        # sessions do not, and a service started there has no display (review 2026-10-23 S4-S7)
+        shown = user_environment()
+        if shown is not None and not re.search(r"^(DISPLAY|WAYLAND_DISPLAY)=", shown, re.M):
+            out.append(DISPLAY_HINT)
+    return out
 
 
 def uninstall(how=None, why=None, env=None):

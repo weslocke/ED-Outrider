@@ -7309,7 +7309,8 @@ const releasePayloads = async () => {
     const answers = [{status: 200, body: starting}, {status: 200, body: {phase: "ready"}}];
     const sw = new JSDOM(await (await fetch(base + "static/starting.html")).text(), {url: base, runScripts: "dangerously",
       beforeParse(x) {
-        x.fetch = () => { const a = answers.length > 1 && !x.__ready ? answers[0] : answers[1];
+        x.fetch = () => { if (x.__down) return Promise.reject(new Error("down"));
+          const a = answers.length > 1 && !x.__ready ? answers[0] : answers[1];
           return Promise.resolve({ok: true, status: a.status, json: async () => a.body}); };
         x.addEventListener("error", e => errors.push("starting page: " + e.message));
       }}).window;
@@ -7317,6 +7318,15 @@ const releasePayloads = async () => {
     await sleep(300);
     got.page = JSON.parse(sw.eval(`JSON.stringify([document.getElementById("text").textContent, document.querySelector("#bar > i").style.width,
       document.getElementById("logBtn").hidden, window.__reloaded || 0])`));
+    // review 2026-10-23 S5-S1: no answer for 20 s says Outrider may have stopped, and an answer again carries on
+    sw.__down = true;
+    sw.eval("lastAnswer = Date.now() - 25000");
+    await sleep(1200);
+    got.quiet = [/has not answered for 2\d s/.test(sw.eval(`document.getElementById("text").textContent`)),
+                 /may have stopped/.test(sw.eval(`document.getElementById("readyHint").textContent`))];
+    sw.__down = false;
+    await sleep(1200);
+    got.quiet.push(/opens by itself when Outrider is ready/.test(sw.eval(`document.getElementById("readyHint").textContent`)));
     sw.__ready = true;
     await sleep(1500);
     got.reloaded = sw.eval(`window.__reloaded || 0`);
@@ -7326,7 +7336,7 @@ const releasePayloads = async () => {
                   removeAsked: [1, ["install"]], otherDevice: [false, true],
                   copied: [["cd /o && ./launch_outrider.sh --uninstall-service", "the command"]], refused: "Not here: not on macOS yet",
                   starting: ["starting · 41%", false, "Restarting… Reading your journals: March 2024, 41%"], back: [null, false], slowSystemd: true,
-                  page: ["Reading your journals: March 2024, 41%", "41%", false, 0], reloaded: 1};
+                  page: ["Reading your journals: March 2024, 41%", "41%", false, 0], quiet: [true, true, true], reloaded: 1};
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| service and starting S70 S9 |", good ? "Start with this computer (install, remove asks, another device, refused); 503 starting is starting; the starting page reloads when ready" : JSON.stringify({got, want}), errors.slice(before));

@@ -78,5 +78,67 @@ class ServerFixes(unittest.TestCase):
         self.assertEqual((honker.opened, honker.closed), (["boxel"], ["boxel"]))   # it holds the keyboard while on
 
 
+    def test_a_journal_folder_that_goes_away_is_said(self):
+        """Review 2026-10-23 S9-S21: a share that dropped while Outrider ran showed "linked · no game" with nothing saying
+        why. Two looks missing: a card; back: gone. A folder never seen is the start-up's to say."""
+        import contextlib
+        import io
+        there = {"/srv/j": True, "/never": False}
+        with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", list(there)), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            look = lambda: self.state.journals_reachable(isdir=lambda d: there[d])
+            look()
+            there["/srv/j"] = False
+            look()
+            self.assertEqual(self.state.notices.active(), [])           # one look: not yet
+            look()
+            self.assertEqual([n["key"] for n in self.state.notices.active()], ["journals_gone:/srv/j"])
+            there["/srv/j"] = True
+            look()
+            self.assertEqual(self.state.notices.active(), [])
+
+    def test_a_plot_behind_another_says_it_is_waiting(self):
+        """Review 2026-10-23 S1-S2: Spansh's plots go one at a time; the second sat on "Asking Spansh…" for the whole of
+        the first. Its record says waiting while the other holds the turn."""
+        import asyncio
+        from support import _HwSession
+        sp = ed_outrider.Spansh(self.db)
+        sp.session = _HwSession([(200, {"job": "j1", "status": "ok", "result": {"system_jumps": []}})])
+        rec = {"state": "running"}
+
+        async def go():
+            await sp.sem_plot.acquire()   # another plot holds the turn
+            task = asyncio.ensure_future(sp.plot("https://spansh.co.uk/api/route", {}, poll=0.01, waiting=rec))
+            await asyncio.sleep(0.05)
+            seen = rec.get("waiting")
+            sp.sem_plot.release()
+            await task
+            return seen
+        self.assertTrue(asyncio.run(go()))
+        self.assertFalse(rec["waiting"])
+
+    def test_a_cancelled_search_stops_its_worker(self):
+        """Review 2026-10-23 S4-S6: start() cancelled the task, but the worker thread matching every cached system went
+        on to the end; a newer search sets the older one's stop event, and the matching stops."""
+        import asyncio
+        s = ed_outrider.Searcher(self.state)
+        stop = threading.Event()
+        stop.set()
+        crit = {"bio": None, "mining": None}
+        systems = {i: (f"S{i}", 0.0, 0.0, 0.0, []) for i in range(10)}
+        with self.assertRaises(ed_outrider.SearchStopped):
+            s.match(self.db, {"x": 0, "y": 0, "z": 0}, "online", 10, crit, [], systems, 10, None, stop=stop)
+        with unittest.mock.patch.object(ed_outrider, "match_system", lambda name, records, crit: {}):
+            self.assertEqual(len(s.match(self.db, {"x": 0, "y": 0, "z": 0}, "online", 10, crit, [], systems, 10, None)[0]), 10)
+
+        async def go():
+            with unittest.mock.patch.object(s, "_run", lambda seq, params, stop: asyncio.sleep(1)):
+                s.start({})
+                first = s.stop
+                s.start({})
+                s.task.cancel()
+                return first.is_set(), s.stop.is_set()
+        self.assertEqual(asyncio.run(go()), (True, False))
+
 if __name__ == "__main__":
     unittest.main()

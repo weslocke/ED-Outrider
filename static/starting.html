@@ -38,7 +38,7 @@
     <div id="text" role="status">Starting…</div>
     <div class="bar busy" id="bar"><i></i></div>
     <div class="hint" id="why"></div>
-    <div class="hint">The page opens by itself when Outrider is ready.</div>
+    <div class="hint" id="readyHint">The page opens by itself when Outrider is ready.</div>
     <button type="button" id="logBtn" hidden>Show log</button>
     <div id="log"></div>
   </div>
@@ -49,6 +49,10 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 let logOpen = false, logAfter = 0, logRun = null;
 let reloadPage = () => location.reload();   // the smoke test replaces it
+// no answer for this long: Outrider has most likely stopped (a damaged database, a full disk, a port taken): said, and
+// the page keeps asking, so a slow start that answers again carries on (review 2026-10-23 S5-S1)
+const QUIET_MS = 20000;
+let lastAnswer = Date.now();
 function draw(s) {
   $("text").textContent = s.text || "Starting…";
   const pct = typeof s.pct === "number" ? s.pct : null;
@@ -64,9 +68,18 @@ async function tick() {
     if (r.ok) {
       const s = await r.json();
       if (s.phase === "ready") { reloadPage(); return; }
+      lastAnswer = Date.now();
+      $("readyHint").textContent = "The page opens by itself when Outrider is ready.";
       draw(s);
     }
   } catch {}   // between the two apps for a moment, or Outrider stopped: ask again
+  const quiet = Date.now() - lastAnswer;
+  if (quiet > QUIET_MS) {
+    $("bar").classList.remove("busy");
+    $("text").textContent = `Outrider has not answered for ${Math.round(quiet / 1000)} s`;
+    $("readyHint").textContent = "It may have stopped: its terminal (or data/outrider.log beside the database) says why. " +
+      "This page keeps asking and opens by itself if it comes back.";
+  }
   if (logOpen) await pollLog();
   setTimeout(tick, 1000);
 }

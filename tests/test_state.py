@@ -1414,9 +1414,9 @@ class Batch3Server(unittest.TestCase):
             seen = []
             real = s.match
 
-            def match(conn, *a):
+            def match(conn, *a, **kw):
                 seen.append((threading.current_thread() is threading.main_thread(), conn is db))
-                return real(conn, *a)
+                return real(conn, *a, **kw)
             s.match = match
 
             async def go():

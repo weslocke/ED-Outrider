@@ -111,5 +111,27 @@ class JournalFixes(unittest.TestCase):
         self.assertEqual(say(ev("t", "Disembark", Taxi=True)), "Disembarked from a taxi")
 
 
+    def test_a_line_thrown_away_is_said(self):
+        """Review 2026-10-23 S1-S1: a ValueError a handler raised on a well-formed line was swallowed with the lines that
+        are not JSON; now it is printed like a KeyError, and the not-JSON lines are said once per file."""
+        d = tempfile.mkdtemp()
+        self.addCleanup(lambda: [os.remove(os.path.join(d, f)) for f in os.listdir(d)] and os.rmdir(d))
+        path = os.path.join(d, "Journal.2026-01-01T000000.01.log")
+        jump = json.dumps(ev("2026-01-01T00:00:00Z", "FSDJump", StarSystem="A", SystemAddress=1, StarPos=[0, 0, 0]), separators=(",", ":"))
+        with open(path, "w", encoding="utf-8") as f:
+            f.write('{"event":"FSDJump", "Star\n{"event":"FSDJump", "Sys\n' + jump + "\n")   # cut short: not JSON
+        err = io.StringIO()
+        real = self.j.handle
+
+        def handle(e):
+            if e.get("event") == "FSDJump":
+                raise ValueError("an odd timestamp")
+            return real(e)
+        with unittest.mock.patch.object(self.j, "handle", handle), contextlib.redirect_stderr(err):
+            self.j.scan_dir(d)
+        out = err.getvalue()
+        self.assertEqual(out.count("(not JSON)"), 1)
+        self.assertIn("journal line skipped (ValueError: an odd timestamp)", out)
+
 if __name__ == "__main__":
     unittest.main()

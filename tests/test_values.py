@@ -99,6 +99,19 @@ class UnsoldEstimate(unittest.TestCase):
             del os.environ["ED_JOURNALS"]
         self.assertEqual(live, [os.getcwd()])
 
+    def test_a_moved_saved_games_folder_is_found(self):
+        """Review 2026-10-23 S9-S35: Windows lets Saved Games move to another drive; the game writes there and the first
+        start said no journal folder was found. The known folder comes first, the profile's as before."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as moved:
+            journals = os.path.join(moved, "Frontier Developments", "Elite Dangerous")
+            os.makedirs(journals)
+            os.environ.pop("ED_JOURNALS", None)
+            live, _legacy = outrider.unsold.find_journal_dirs(saved_games=lambda: moved)
+            self.assertEqual(live[0], journals)
+            self.assertEqual(live.count(journals), 1)
+            self.assertNotIn(journals, outrider.unsold.find_journal_dirs(saved_games=lambda: None)[0])
+
 
 class FirstsAndRings(unittest.TestCase):
     def setUp(self):

@@ -2,6 +2,28 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Suggestions (A): start-up, launchers and running it
+- The full Fable review's suggestions, batch A (project/PLAN-review-suggestions-2026-10-23.md):
+  - **S4-S2: a database that cannot be opened says what to do**: the restore command, in the terminal and on the
+    starting page for 20 s, then exit 1 (it was a traceback and "not reachable").
+  - **S5-S1: the starting page says when Outrider has stopped answering** (20 s), pointing at its terminal and
+    outrider.log, and carries on if it answers again.
+  - **S9-S24: a `[server] host` that is no longer this PC's address listens on 127.0.0.1 with a notice**, instead of
+    failing every start (a silent crash loop under the service). A port in use still stops it.
+  - **S7-S3, S9-S25: the launchers start when a package will not install**: an optional one (evdev, piper-tts) is said
+    with how to add it (`OUTRIDER_REINSTALL=1`); offline after an update, the installed packages are used and the new
+    ones installed next time (scripts/install_requirements.py, both launchers). **S7-S4:** the Dockerfile installs
+    requirements.txt itself, not a hand copy.
+  - **S4-S7:** installing the service says when the desktop does not pass its display to user services, and how.
+  - **S9-S22:** the restore command for the systemd service stops and starts it around the restore; the refusal says so.
+  - **S9-S23:** your own personality files go into the backup zip.
+  - **S9-S36:** Backups say what they take on the disk (zips, journal archive, pre-restore copies) and the free space;
+    a backup is refused in words when the disk cannot hold it; a card while it holds under two.
+  - **S9-S21:** a card when the journal folder goes away while Outrider runs (a share dropped), gone when it is back.
+  - **S9-S35:** Windows: the journals are found when the Saved Games folder was moved.
+  - **S1-S1:** a journal line that is not JSON is said once per file; any other ValueError is printed, not swallowed.
+  - **S1-S2:** a plot waiting behind another one says so. **S4-S6:** a cancelled search stops its worker thread.
+
 ## 2026-10-24 · A finished route clears itself at the next jump out
 - The author: once a route is complete (the Highway, Road to Riches, Exomastery, the worlds' routes, a sweep, a trade
   route), jumping out of the system where it finished clears it, as ✕ Clear does; until then it stays, marked complete.

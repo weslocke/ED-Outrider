@@ -1985,7 +1985,11 @@ def open_db(path, rescan=False, on_reread=None, before_reset=None, reset=True):
     so the starting page answers during the backup (S9)."""
     db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
-    db.executescript(SCHEMA + outrider.uploads.SCHEMA)
+    try:
+        db.executescript(SCHEMA + outrider.uploads.SCHEMA)
+    except sqlite3.DatabaseError:   # not a database, or a damaged one (run() says what to do: S4-S2): closed, not leaked
+        db.close()
+        raise
     migrate_sale_events(db)
     migrate_bio_sales(db)
     # Columns added to an existing table since the database was created: add them.
@@ -2809,6 +2813,7 @@ class Journals:
         # lat, lon, target: ("rig" | "site", id), n, minerals {name: tons}, tons, said}
         self.burst = None
         self._hw_rows = (None, [])   # (route id, highway_route rows): the Highway's route, read once per plot
+        self.bad_json_said = set()   # journal files a line that is not JSON was said of (once each)
         self._rc_rows = (None, [])   # (route id, riches_route rows with their bodies): Road to Riches, read once per plot
         self.cargo_version = 0     # bumped by every cargo change (the ship's hold, a carrier event or market read)
         # bumped by your carrier's history only (a cargo_events row, a carrier Market.json): State.carrier_cargo's fold is
@@ -3552,11 +3557,18 @@ class Journals:
                 # tells apart sale pages written in the same second (sale_events)
                 self.line_source = f"{b}:{at}"
                 try:
-                    self.handle(json.loads(line))
-                except ValueError:
-                    pass
-                except (KeyError, TypeError, AttributeError, IndexError) as e:
-                    # an event missing a field we index: skip it, not the file (database errors
+                    try:
+                        ev = json.loads(line)
+                    except ValueError:
+                        # not JSON (a line cut by a crash, a stray byte): said once per file, the line left out
+                        if b not in self.bad_json_said:
+                            self.bad_json_said.add(b)
+                            print(f"journal line skipped (not JSON) in {b}: {line[:120]!r}", file=sys.stderr)
+                        continue
+                    self.handle(ev)
+                except (KeyError, TypeError, AttributeError, IndexError, ValueError) as e:
+                    # an event missing a field we index, or of another shape (review 2026-10-23 S1-S1: a ValueError
+                    # a handler raised was swallowed with the not-JSON ones): skip it, not the file (database errors
                     # propagate so the tick is rolled back and retried with the offset unchanged)
                     print(f"journal line skipped ({type(e).__name__}: {e}): {line[:200]!r}", file=sys.stderr)
                 finally:
@@ -6881,16 +6893,22 @@ class Spansh:
             raise ClientError("Spansh sent no commodity names")
         return names
 
-    async def plot(self, url, params, poll=None, timeout=None, method="GET"):
+    async def plot(self, url, params, poll=None, timeout=None, method="GET", waiting=None):
         """A Spansh route job (the neutron or the exact plotter): submit it, then ask for its result every `poll` s
         (HIGHWAY_POLL_S) until it is done or `timeout` s (HIGHWAY_PLOT_TIMEOUT) pass. One plot at a time. The result
         dict, or HighwayError in words for the page (Spansh's own error, unreachable, timed out). method: how the job
-        is submitted ("GET" with the query, "POST" with form fields); the results are always asked with GET."""
+        is submitted ("GET" with the query, "POST" with form fields); the results are always asked with GET. waiting:
+        the caller's plotting record, marked waiting=True while another plot holds the turn (review 2026-10-23 S1-S2:
+        the second sat on "Asking Spansh…" for the whole of the first, its clock running)."""
         poll = HIGHWAY_POLL_S if poll is None else poll
         timeout = HIGHWAY_PLOT_TIMEOUT if timeout is None else timeout
         if self.session is None:
             raise HighwayError("Spansh cannot be reached (no network session)")
+        if waiting is not None and self.sem_plot.locked():
+            waiting["waiting"] = True
         async with self.sem_plot:
+            if waiting is not None:
+                waiting["waiting"] = False
             loop = asyncio.get_running_loop()
             deadline = loop.time() + timeout
             d = await self._plot_get(url, params, method)
@@ -7285,8 +7303,60 @@ def backup_extras(speech_path, config_path, pronounce_path):
     """The files a backup zip holds beside the database (your lines, the ones you banned, your settings and your
     pronunciations): (path, name in the zip); write_backup leaves out the ones that do not exist."""
     banned = outrider.speech.banned_path(speech_path) if speech_path else None
+    # your own personality files too (review 2026-10-23 S9-S23: thousands of lines, the most laborious file of all, and
+    # the one the backup left out); the shipped ones come with Outrider
+    own = []
+    if speech_path:
+        mine = outrider.speech.personality_dirs(speech_path)[1]
+        try:
+            own = [(os.path.join(mine, n), f"{outrider.speech.PERSONALITIES}/{n}") for n in sorted(os.listdir(mine))
+                   if n.endswith(".json") and os.path.isfile(os.path.join(mine, n))]
+        except OSError:
+            own = []
     return [(speech_path, "speech.json"), (banned, outrider.speech.BANNED_FILE), (config_path, "ed_outrider.toml"),
-            (pronounce_path, "pronounce.json")]
+            (pronounce_path, "pronounce.json"), *own]
+
+
+BACKUP_FREE_FACTOR = 1.2   # free space a backup needs: the database's size times this (its copy, then the zip)
+
+
+def folder_size(path):
+    """Bytes under `path` (0 when it is not there)."""
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for n in files:
+            try:
+                total += os.path.getsize(os.path.join(root, n))
+            except OSError:
+                pass
+    return total
+
+
+def disk_free(path):
+    """Free bytes on the disk `path` is on (its nearest existing parent), or None."""
+    import shutil
+    p = os.path.abspath(path)
+    while p and not os.path.exists(p):
+        p = os.path.dirname(p) if os.path.dirname(p) != p else ""
+    try:
+        return shutil.disk_usage(p or ".").free
+    except OSError:
+        return None
+
+
+def backup_space(db_path, folder):
+    """Settings -> Server -> Backups' disk line (review 2026-10-23 S9-S36): what the zips, the journal archive and the
+    pre-restore copies take, the free space, the database's size, and `low` when the disk holds under two backups."""
+    zips = sum(os.path.getsize(os.path.join(folder, n)) for n in os.listdir(folder)
+               if n.endswith(".zip") and os.path.isfile(os.path.join(folder, n))) if os.path.isdir(folder) else 0
+    base = os.path.dirname(os.path.abspath(db_path))
+    aside = [{"path": os.path.join(base, n), "size": os.path.getsize(os.path.join(base, n))}
+             for n in sorted(os.listdir(base)) if n.startswith(os.path.basename(db_path) + ".pre-restore-")] \
+        if os.path.isdir(base) else []
+    db = os.path.getsize(db_path) if os.path.exists(db_path) else 0
+    free = disk_free(folder)
+    return {"zips": zips, "journals": folder_size(os.path.join(folder, "journals")), "pre_restore": aside, "db": db,
+            "free": free, "low": free is not None and db > 0 and free < 2 * BACKUP_FREE_FACTOR * db}
 
 
 def write_backup(db_path, folder, keep, extras=(), live_dirs=(), tag=""):
@@ -7305,6 +7375,13 @@ def write_backup(db_path, folder, keep, extras=(), live_dirs=(), tag=""):
     backup_before_reread) both use it."""
     import zipfile
     os.makedirs(folder, exist_ok=True)
+    # refused in words before anything is written when the disk cannot hold it (S9-S36: found only when it failed half
+    # way, the pre-reread backup included)
+    free, size = disk_free(folder), os.path.getsize(db_path) if os.path.exists(db_path) else 0
+    if free is not None and size and free < BACKUP_FREE_FACTOR * size:
+        raise RuntimeError(f"not enough free space for a backup in {folder}: {free / 1e6:,.0f} MB free, about "
+                           f"{BACKUP_FREE_FACTOR * size / 1e6:,.0f} MB needed (old backups or the pre-restore copies "
+                           "beside the database can go)")
     name = backup_name(db_path, tag=tag)
     path = os.path.join(folder, name)
     tmp_db = os.path.join(folder, f".db-{name[:-4]}.sqlite")
@@ -8760,9 +8837,14 @@ class State:
         "manual"), so the rest have None. command: restore_command for it. No restore from the page: Outrider has to
         be stopped for that."""
         out = {"folder": BACKUP_DIR, "every_days": BACKUP_EVERY_DAYS, "keep": BACKUP_KEEP, "install": self.install,
-               "running": bool(self.backup_task and not self.backup_task.done()), "backups": [], "error": None}
+               "running": bool(self.backup_task and not self.backup_task.done()), "backups": [], "error": None,
+               "space": None}
         if not self.db_path:
             return dict(out, error="no database path")
+        try:
+            out["space"] = backup_space(self.db_path, BACKUP_DIR)   # what they take and the room left (S9-S36)
+        except OSError:
+            pass
         try:
             zips = backup_zips(BACKUP_DIR, self.db_path)
         except FileNotFoundError:
@@ -8804,6 +8886,7 @@ class State:
                   f"{out['kept']} kept; {out['copied']} journal{'' if out['copied'] == 1 else 's'} archived)")
             if out.get("warning"):
                 print(f"backup: {out['warning']}", file=sys.stderr)
+            self.backup_space_notice()
         except Exception as e:
             # the last good backup's fields stay (its time and path); the error turns the Data tile red
             meta_set(self.db, "last_backup", dict(meta_get(self.db, "last_backup") or {}, auto=auto,
@@ -8812,6 +8895,19 @@ class State:
             print(f"backup failed: {type(e).__name__}: {e}", file=sys.stderr)
         self.backup_done_at = time.monotonic()
         self.bump()
+
+    def backup_space_notice(self):
+        """A card while the backups' disk holds under two more backups (S9-S36), gone once there is room."""
+        try:
+            sp = backup_space(self.db_path, BACKUP_DIR) if self.db_path else None
+        except OSError:
+            sp = None
+        if sp and sp["low"]:
+            self.notices.set("backup_disk", f"The disk the backups are on is nearly full ({sp['free'] / 1e6:,.0f} MB free; "
+                             f"a backup needs about {BACKUP_FREE_FACTOR * sp['db'] / 1e6:,.0f} MB): old backups or the "
+                             "pre-restore copies can go (Settings -> Server -> Backups).", "warn", "open:server")
+        else:
+            self.notices.clear("backup_disk")
 
     def bio_colours_check(self):
         """S7: the banner's card while ExploData's colour tables are missing (the first start's download failed, or
@@ -16560,7 +16656,7 @@ class State:
                 # the neutron plotter names
                 params = dict(params, **({"source": src["id64"], "destination": dst["id64"]} if plotter == "exact"
                                          else {"from": src["name"], "to": dst["name"]}))
-                rows = highway_rows(plotter, await self.spansh.plot(url, params))
+                rows = highway_rows(plotter, await self.spansh.plot(url, params, waiting=self.highway_plotting))
             rows = splice_route(rows, plotter, reach, start, end)
             if note:
                 meta = dict(meta, stand_in=note)
@@ -16906,7 +17002,7 @@ class State:
             url = globals()[k_.url]   # looked up now: verify.sh and the tests point these elsewhere
             timeout = TRADE_PLOT_TIMEOUT if trade else None
             try:
-                result = await self.spansh.plot(url, params, method=RICHES_METHOD, timeout=timeout)
+                result = await self.spansh.plot(url, params, method=RICHES_METHOD, timeout=timeout, waiting=self.riches_plotting)
             except HighwayError as e:
                 # a sweep's system Spansh does not know yet (a fresh discovery among your lost firsts): refused as a
                 # whole, so plotted again without it, said in the note
@@ -16917,7 +17013,7 @@ class State:
                 if len(gone) == len(asked):
                     raise HighwayError("Spansh doesn't know any of these systems yet") from e
                 params = dict(params, destination=tuple(n for n in asked if n not in gone))
-                result = await self.spansh.plot(url, params, method=RICHES_METHOD, timeout=timeout)
+                result = await self.spansh.plot(url, params, method=RICHES_METHOD, timeout=timeout, waiting=self.riches_plotting)
                 left_out = (f"Spansh doesn't know {len(gone)} of the systems yet, left out: {', '.join(gone)}." if len(gone) > 1
                             else f"Spansh doesn't know {gone[0]} yet: left out.")
                 note = f"{note} {left_out}" if note else left_out
@@ -17216,7 +17312,7 @@ class State:
     async def _carrier_trip_plot(self, params, request):
         p = self.carrier_trip_plotting
         try:
-            result = await self.spansh.plot(globals()["SPANSH_FC"], params, method="POST")
+            result = await self.spansh.plot(globals()["SPANSH_FC"], params, method="POST", waiting=p)
             got = outrider.cargo.carrier_route_legs(result, request["fuel"], request["hold"])
             if not got:
                 raise HighwayError("Spansh's answer was no carrier route")
@@ -18446,6 +18542,7 @@ class State:
         pins_before = (self._pin_seen, self._pin_key)   # #16: rolled back with the moments it raised (sweep 2026-10-17)
         try:
             late = None
+            self.journals_reachable()   # a share that dropped while running is said (S9-S21)
             for d in LIVE_DIRS:
                 if self.journals.scan_dir(d, upload="live", quick=True):
                     self.unsold_dirty = True
@@ -18589,6 +18686,28 @@ class State:
         meta_set(self.db, "revoked_sessions", revoked[-REVOKED_KEEP:])
         self.db.commit()
         return True
+
+    JOURNALS_GONE_TICKS = 2   # looks in a row a journal folder seen before is missing, before it is said
+
+    def journals_reachable(self, isdir=os.path.isdir):
+        """A live journal folder that was there and is gone for JOURNALS_GONE_TICKS looks (a NAS or the game PC
+        rebooting, a CIFS timeout, autofs letting go): a card saying so (review 2026-10-23 S9-S21: the page only showed
+        "linked · no game" and the alerts stopped, with nothing saying why), cleared when it is back."""
+        seen = self.__dict__.setdefault("_journals_seen", {})
+        for d in LIVE_DIRS:
+            if isdir(d):
+                if seen.get(d, 0) > 0 and seen[d] >= self.JOURNALS_GONE_TICKS:
+                    print(f"journals: {d} is reachable again")
+                seen[d] = 0
+                self.notices.clear(f"journals_gone:{d}")
+            elif d in seen:
+                seen[d] += 1
+                if seen[d] == self.JOURNALS_GONE_TICKS:
+                    print(f"journals: {d} cannot be reached", file=sys.stderr)
+                    self.notices.set(f"journals_gone:{d}", f"The journal folder {d} cannot be reached since "
+                                     f"{time.strftime('%H:%M')}: is the share mounted, or the game PC on? Outrider "
+                                     "goes on as soon as it is back.", "bad",
+                                     None if self.install == "docker" else "open:server:journals")
 
     def follow_up_failed(self, name, e, rollback=True):
         """One of tick()'s follow-ups raised: its traceback printed once (not every second), what it wrote rolled
@@ -18935,21 +19054,34 @@ def ggg_nearest(db, pos, radius):
     return rows, sum(1 for *_, recs in systems.values() if recs)
 
 
+class SearchStopped(Exception):
+    """A search's worker thread told to stop (a newer search started): its result was going to be discarded."""
+
+
+SEARCH_STOP_EVERY = 200   # systems matched between two looks at the stop event
+
+
 class Searcher:
     def __init__(self, state):
         self.state, self.db, self.spansh = state, state.db, state.spansh
         self.seq = 0
         self.task = None
+        self.stop = None   # the running search's threading.Event: its worker thread stops when set (S4-S6)
         self.found = {}            # id64 -> (name, x, y, z) for bookmarking results
         self.result = {"seq": 0, "running": False, "status": "", "results": [], "params": None}
 
     def start(self, params):
         if self.task and not self.task.done():
             self.task.cancel()
+        if self.stop is not None:
+            # the cancelled task's worker thread stops too (review 2026-10-23 S4-S6: it went on matching every cached
+            # system of a 5,000 ly box, two or three of them at once for a player re-clicking Search)
+            self.stop.set()
+        self.stop = threading.Event()
         self.seq += 1
         self.result = {"seq": self.seq, "running": True, "status": "searching…",
                        "results": [], "params": params}
-        self.task = asyncio.create_task(self.run(self.seq, params))
+        self.task = asyncio.create_task(self.run(self.seq, params, self.stop))
 
     def update(self, seq, **kw):
         if seq != self.seq:
@@ -18958,15 +19090,17 @@ class Searcher:
             return  # a late progress message from a sibling of a failed query
         self.result.update(kw)
 
-    async def run(self, seq, params):
+    async def run(self, seq, params, stop=None):
         try:
-            await self._run(seq, params)
+            await self._run(seq, params, stop)
         except asyncio.CancelledError:
             raise
+        except SearchStopped:
+            return
         except Exception as e:
             self.update(seq, running=False, status=f"search failed: {e}")
 
-    async def _run(self, seq, params):
+    async def _run(self, seq, params, stop=None):
         # S49: around another system (params' "around": destination, carrier, next_stop or an id64; State.search_origin),
         # the distances from there; `you` keeps where you are for each result's distance from you
         you = self.state.journals.pos
@@ -19003,7 +19137,7 @@ class Searcher:
         # over a big radius: a worker thread with its own read-only connection, so tailing, long polls and
         # the auto honk carry on meanwhile
         results, coverage, note, sparse, found = await self.off_loop(
-            lambda db: self.match(db, pos, source, radius, crit, sections, systems, coverage, note, you))
+            lambda db: self.match(db, pos, source, radius, crit, sections, systems, coverage, note, you, stop=stop))
         results.sort(key=lambda r: r["distance"])
         self.keep_found(found, results)
         total = len(results)
@@ -19048,14 +19182,14 @@ class Searcher:
         while len(self.found) > 2 * SEARCH_MAX_RESULTS:
             self.found.pop(next(iter(self.found)))
 
-    def match(self, db, pos, source, radius, crit, sections, systems, coverage, note, you=None):
+    def match(self, db, pos, source, radius, crit, sections, systems, coverage, note, you=None, stop=None):
         """The systems meeting every ticked section: (results, coverage, note, sparse, found). A local
         search reads its systems from `db` first. Runs on a worker thread: only `db`, no shared state. pos: the place
         searched around (S49: yours or another system's); you: where you are when that is elsewhere (each result's
         `from_you`), else None."""
         sparse = False
         if source == "local":
-            systems = self.local(pos, radius, db)
+            systems = self.local(pos, radius, db, stop)
             n = sum(1 for *_, recs in systems.values() if recs)
             n_rings = sum(1 for *_, recs in systems.values() if any(r.get("rings") for r in recs))
             n_hot = sum(1 for *_, recs in systems.values()
@@ -19074,7 +19208,9 @@ class Searcher:
                                 (mineral,)):
                 mined.setdefault(r[0], []).append((r[1], r[2]))
         results, found = [], {}
-        for id64, (name, x, y, z, records) in systems.items():
+        for k, (id64, (name, x, y, z, records)) in enumerate(systems.items()):
+            if stop is not None and k % SEARCH_STOP_EVERY == 0 and stop.is_set():
+                raise SearchStopped()
             d = dist(pos, {"x": x, "y": y, "z": z})
             if d > coverage:
                 continue
@@ -19104,7 +19240,7 @@ class Searcher:
         return results, coverage, note, sparse, found
 
     @staticmethod
-    def local(pos, r, db):
+    def local(pos, r, db, stop=None):
         """Every system in the database within r: cached Spansh data merged with your own scans."""
         box = (pos["x"] - r, pos["x"] + r, pos["y"] - r, pos["y"] + r, pos["z"] - r, pos["z"] + r)
         found = {}
@@ -19121,7 +19257,9 @@ class Searcher:
             if v["id64"] not in found:
                 found[v["id64"]] = (v["name"], v["x"], v["y"], v["z"], [])
         out = {}
-        for id64, (name, x, y, z, records) in found.items():
+        for k, (id64, (name, x, y, z, records)) in enumerate(found.items()):
+            if stop is not None and k % SEARCH_STOP_EVERY == 0 and stop.is_set():
+                raise SearchStopped()
             if dist(pos, {"x": x, "y": y, "z": z}) > r:
                 continue
             own, hotspots, _ = own_data(db, id64, name)
@@ -21100,8 +21238,10 @@ def make_app(state, hosts=None):
 # {error, code: "starting"} (the page shows "starting", not "not connected"). The same Host / other-site checks as the
 # real app; with a password, a device that is not signed in learns only that Outrider is starting ----
 STARTING_PAGE = os.path.join(SCRIPT_DIR, "static", "starting.html")
+STARTING_FAILED_SHOW_S = 20   # s the starting page shows why Outrider could not start, before it exits (S4-S2)
 STARTING_WORDS = {"start": "Opening the database", "backup": "Backing up your database before reading every journal again",
-                  "journals": "Reading your journals", "setup": "Getting ready", "ready": "Ready"}
+                  "journals": "Reading your journals", "setup": "Getting ready", "ready": "Ready",
+                  "failed": "ED Outrider could not start"}
 
 
 class Starting:
@@ -21509,7 +21649,16 @@ def db_in_use(db_path):
     return False
 
 
-def restore_command(name, install, windows=False, root=None, extra=()):
+def systemd_service_installed():
+    """Whether Outrider runs, or is installed to run, as the systemd user service (S70): the restore must stop it first."""
+    try:
+        return os.environ.get(outrider.service.SERVICE_ENV) == "systemd" or (
+            outrider.service.kind()[0] == "systemd" and outrider.service.status("systemd", None)["installed"])
+    except Exception:  # noqa: BLE001 -- a guess for a command's words: never fails a page
+        return False
+
+
+def restore_command(name, install, windows=False, root=None, extra=(), service=None):
     """S44: the command that puts the backup zip `name` back (None: --restore's newest), for this install. Docker: stop
     the container, restore in a one-off one (the entrypoint passes the config; its port is the container's own, so
     only the stop and the database's lock keep it from running beside the server), start it again: one line, each
@@ -21524,7 +21673,12 @@ def restore_command(name, install, windows=False, root=None, extra=()):
         args = " ".join(q(a) for a in [*extra, "--restore", *([name] if name else [])])
         return f"cd /d {q(root)} && launch_outrider.bat {args}"
     args = " ".join(shlex.quote(a) for a in [*extra, "--restore", *([name] if name else [])])
-    return f"cd {shlex.quote(root)} && ./launch_outrider.sh {args}"
+    cmd = f"cd {shlex.quote(root)} && ./launch_outrider.sh {args}"
+    # the systemd service holds the database while it runs: stopped first and started again after, one line, each step
+    # only when the one before worked, as Docker's (review 2026-10-23 S9-S22)
+    if systemd_service_installed() if service is None else service:
+        cmd = f"systemctl --user stop ed-outrider && {cmd} && systemctl --user start ed-outrider"
+    return cmd
 
 
 def list_backups(folder, db_path):
@@ -21580,7 +21734,8 @@ def restore_backup(zip_path, db_path, host, port, now=None):
     import zipfile
     if db_in_use(db_path):   # whatever port or container it runs in (S44)
         raise RuntimeError(f"ED Outrider is running with {db_path} (it holds {os.path.basename(db_path)}{DB_LOCK_SUFFIX}): "
-                           "stop it first")
+                           "stop it first" + (" (it runs as the service: systemctl --user stop ed-outrider, and start it "
+                                              "again after)" if systemd_service_installed() else ""))
     problem = listen_problem(host, port)
     if problem and "already in use" in problem:   # only a port in use means a running Outrider may hold the database
         raise RuntimeError(f"port {port} is in use: stop ED Outrider first (a running one holds the database open)")
@@ -21735,6 +21890,15 @@ async def run(args, st):
         for i, line in enumerate(nfs_cache_warnings(LIVE_DIRS)):
             outrider.notices.warn(f"nfs{i}", line)
     problem = listen_problem(args.host, args.port)
+    if problem and "[server] host this machine" in problem and loopback_too(args.host) \
+            and listen_problem("127.0.0.1", args.port) is None:   # (loopback_too: one address, not this PC's own)
+        # an address that is no longer this PC's (DHCP gave it another): this PC only until it is fixed, rather than a
+        # start that fails every time, a silent crash loop under the service, and no page to fix it from (S9-S24).
+        # Loopback widens nothing; a port in use still stops it
+        outrider.notices.warn("host_fallback", f"warning: [server] host {args.host} is not an address of this PC: "
+                              "listening on 127.0.0.1 only (this PC) until it is fixed in Settings -> Server",
+                              action="open:server")
+        args.host, problem = "127.0.0.1", None
     if problem:
         print(problem, file=sys.stderr)
         raise SystemExit(1)
@@ -21780,7 +21944,24 @@ async def run(args, st):
         if lock:
             lock.close()
         print(f"stopped during start-up ({what})")
-    db = open_db(args.db, reset=False)
+    try:
+        db = open_db(args.db, reset=False)
+    except sqlite3.DatabaseError as e:
+        # a damaged database (review 2026-10-23 S4-S2: a traceback, and the starting page went "not reachable"): what to
+        # do, in the terminal and on the starting page for a little while, then the exit
+        why = (f"The database {args.db} cannot be opened ({e}). A backup can be put back: "
+               f"{restore_command(None, install_kind(), os.name == 'nt', extra=restore_extra)} "
+               "(--list-backups lists them; the restore keeps the damaged file beside it).")
+        print(f"cannot start: {why}", file=sys.stderr)
+        starting.phase, starting.why = "failed", why
+        try:
+            await asyncio.wait_for(stop.wait(), STARTING_FAILED_SHOW_S)
+        except asyncio.TimeoutError:
+            pass
+        await starting_runner.cleanup()
+        if lock:
+            lock.close()
+        raise SystemExit(1)
     starting.db = db
     due, old = reread_due(db, args.rescan)
     if due:   # says why when every journal is read again, and backs the database up first (S4: even with backup_every_days = 0)
@@ -21965,6 +22146,7 @@ async def run(args, st):
     state.upload_session = ClientSession(timeout=ClientTimeout(total=20), connector=outrider.tls.connector(),
                                          headers={"User-Agent": f"ED-Outrider/{outrider.__version__}"})
     state.start_uploads()
+    state.backup_space_notice()   # the backups' disk nearly full: said at start too (S9-S36)
     print("update check: " + ("on (GitHub's latest release, once a day)" if st["update_check"] else "off ([server] update_check)"))
     print("firsts watch: " + ("on (your unsold firsts on Spansh: one request every 10-30 s, each system once a day)"
                               if st["watch_firsts"] else "off ([spansh] watch_firsts)"))

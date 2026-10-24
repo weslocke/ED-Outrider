@@ -7786,17 +7786,19 @@ function setHwyStatus(text, cls = "") { H.status = {text, cls}; drawHwyStatus();
 function drawHwyStatus() {
   const el = hEl("hwyStatus"), p = H.data && H.data.plotting, rp = R.data && R.data.plotting;
   let text = "", cls = "";
+  // a plot behind another one (Spansh's plots go one at a time): said, not a clock that seems stuck (S1-S2)
+  const behind = x => x && x.waiting ? " (waiting for the other plot to finish)" : "";
   const fp = data && data.carrier_trip && data.carrier_trip.plotting;
   if (fp && fp.state === "running") {
     const secs = fp.started ? Math.max(0, Math.round((Date.now() - new Date(fp.started)) / 1000)) : null;
-    text = `Asking Spansh's carrier router: ${fp.from} → ${fp.to}…${secs != null ? ` ${secs} s` : ""}`; cls = "busy";
+    text = `Asking Spansh's carrier router: ${fp.from} → ${fp.to}…${secs != null ? ` ${secs} s` : ""}${behind(fp)}`; cls = "busy";
   } else if (fp && fp.state === "failed" && hwyPlotter() === "carrier") { text = `Could not plot the carrier's trip: ${fp.error}.`; cls = "err"; }
   else if (rp && rp.state === "running") {
     const secs = rp.started ? Math.max(0, Math.round((Date.now() - new Date(rp.started)) / 1000)) : null;
-    text = `Asking Spansh for ${surveyOf(rp.kind).a} from ${rp.from}…${secs != null ? ` ${secs} s` : ""}`; cls = "busy";
+    text = `Asking Spansh for ${surveyOf(rp.kind).a} from ${rp.from}…${secs != null ? ` ${secs} s` : ""}${behind(rp)}`; cls = "busy";
   } else if (p && p.state === "running") {
     const secs = p.started ? Math.max(0, Math.round((Date.now() - new Date(p.started)) / 1000)) : null;
-    text = `Plotting ${p.from} → ${p.to} with Spansh (${p.plotter} plotter)…${secs != null ? ` ${secs} s` : ""}`; cls = "busy";
+    text = `Plotting ${p.from} → ${p.to} with Spansh (${p.plotter} plotter)…${secs != null ? ` ${secs} s` : ""}${behind(p)}`; cls = "busy";
   } else if (H.status) ({text, cls} = H.status);
   else if (p && p.state === "failed") { text = p.error === "cancelled" ? "The plot was cancelled." : `Could not plot the route: ${p.error}.`; cls = "err"; }
   else if (H.error) { text = `Could not load the highway: ${hwyErr(H.error)}.`; cls = "err"; }
@@ -13400,6 +13402,16 @@ async function loadBackups() {
   bk.list = r || {error: "?"};
   renderBackups();
 }
+// what the backups take on the disk and the room left (S9-S36): the zips, the journal archive, the copies a restore
+// kept beside the database (their paths in the hover: delete one by hand when you are sure), the free space
+function backupSpaceHtml(sp) {
+  if (!sp) return "";
+  const mb = n => n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6).toLocaleString()} MB`;
+  const aside = sp.pre_restore || [], asideN = aside.reduce((n, a) => n + a.size, 0);
+  return `<div class="hint${sp.low ? " warnc" : ""}">On the disk: zips ${mb(sp.zips)} · journal archive ${mb(sp.journals)}` +
+    (aside.length ? ` · <span title="${esc(aside.map(a => a.path).join("\n"))}">${aside.length} pre-restore cop${aside.length === 1 ? "y" : "ies"} ${mb(asideN)}</span>` : "") +
+    (sp.free != null ? ` · ${mb(sp.free)} free${sp.low ? `: under two backups' worth (each needs about ${mb(sp.db * 1.2)})` : ""}` : "") + `</div>`;
+}
 function renderBackups() {
   const box = document.getElementById("srvBackupsBody"), r = bk.list;
   if (!box || !r) return;
@@ -13411,7 +13423,7 @@ function renderBackups() {
   box.innerHTML = (r.folder ? `<div class="hint">In <code>${esc(r.folder)}</code>, newest first: the newest ${esc(r.keep)} are kept. ` +
       (every > 0 ? `Automatic at start when the last is over ${every} day${every === 1 ? "" : "s"} old, and when the game quits;` : "Automatic backups are off;") +
       ` one is always taken before a journal re-read.</div>` : "") +
-    (r.error ? `<div class="hint warnc">Cannot list the backups: ${esc(r.error)}</div>` : "") +
+    (r.error ? `<div class="hint warnc">Cannot list the backups: ${esc(r.error)}</div>` : "") + backupSpaceHtml(r.space) +
     (rows.length ? `<table class="bklist"><thead><tr><th>Backup</th><th>Made</th><th>Size</th></tr></thead><tbody>` + rows.map(b => {
       const k = BK_KIND[b.kind];
       return `<tr data-bk="${esc(b.name)}"${b.name === bk.pick ? ` class="sel" aria-selected="true"` : ""} tabindex="0" title="click: the command below restores this one">` +

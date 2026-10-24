@@ -53,6 +53,11 @@ update Outrider.
   nothing extra for the first three). It is built from
   source, so it needs your distribution's Python development headers.
 
+If one of these will not install, the launcher still starts Outrider without it and says what is off and how to add
+it; once you have fixed that (say `sudo apt install python3-dev`), start it with `OUTRIDER_REINSTALL=1
+./launch_outrider.sh` (Windows: `set OUTRIDER_REINSTALL=1` first) to install it. Offline after an update, the launcher
+starts with the packages already installed and installs the new ones at the next start.
+
 Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste) need **`xclip`**
 (used wherever there is an X display: X11, and Wayland desktops with XWayland, which the game runs under) or
 **`wl-copy`** (the `wl-clipboard` package, for Wayland without one), from your distribution, e.g. `sudo apt install
@@ -285,6 +290,7 @@ To get the database back (bookmarks, the Spansh cache, your settings), stop Outr
 | Install | Restore the newest zip (or add its name: `--restore outrider-ed_outrider-20260930-181500Z.zip`) |
 |---|---|
 | Linux, macOS | `./launch_outrider.sh --restore` |
+| Linux, as the service (Start with your computer) | `systemctl --user stop ed-outrider`, then `./launch_outrider.sh --restore`, then `systemctl --user start ed-outrider` |
 | Windows | `launch_outrider.bat --restore` |
 | Docker (from the folder with `docker-compose.yml`) | `docker compose stop`, then `docker compose run --rm outrider --restore`, then `docker compose up -d` |
 

@@ -15,6 +15,9 @@ import ed_outrider  # noqa: E402
 # Never the player's own journal folders: the server auto-detects them at import, and anything that writes into a live
 # folder (the uploads' lease files) would write into the real one. A test that needs folders sets its own.
 ed_outrider.LIVE_DIRS[:] = []
+# whether this machine runs Outrider as the systemd service changes the restore command's words: never in a test
+# (a test that wants it says so)
+ed_outrider.systemd_service_installed = lambda: False
 ed_outrider.LEGACY_DIRS[:] = []
 # ...nor the player's config file: the Uploads switch writes [eddn]/[edsm] enabled into it
 import tempfile  # noqa: E402

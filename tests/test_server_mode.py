@@ -149,7 +149,7 @@ class Packaging(unittest.TestCase):
         self.assertTrue(os.access(path, os.X_OK))
         self.assertEqual(subprocess.run(["bash", "-n", path], capture_output=True).returncode, 0)
         script = self.read("launch_outrider.sh")
-        for part in ("hashlib.sha256(open(\"requirements.txt\"", ".requirements.sha256", "import aiohttp", "pip install --quiet -r requirements.txt",
+        for part in ("hashlib.sha256(open(\"requirements.txt\"", ".requirements.sha256", "import aiohttp", "scripts/install_requirements.py requirements.txt",
                      'exec python "$HERE/ed_outrider.py" "$@"', "upgrade pip || true", "sys.version_info < (3, 11)",
                      "command -v wl-copy", "command -v xclip"):   # the clipboard tools pip cannot install: a hint
             self.assertIn(part, script)
@@ -210,7 +210,7 @@ class Packaging(unittest.TestCase):
         self.assertEqual(raw.count(b"\n"), raw.count(b"\r\n"))   # every line ends in CRLF
         self.assertIn("*.bat text eol=crlf", self.read(".gitattributes").splitlines())
         script = raw.decode("ascii")
-        for part in ("sys.version_info < (3, 11)", "py -3", '-m venv "%VENV%"', "pip install --quiet -r requirements.txt",
+        for part in ("sys.version_info < (3, 11)", "py -3", '-m venv "%VENV%"', "scripts\\install_requirements.py requirements.txt",
                      "import aiohttp, sys; sys.exit(open('requirements.txt', 'rb').read() != open(r'%STAMP%', 'rb').read())",
                      "copy /y requirements.txt", '"%HERE%\\%VPY%" "%HERE%\\ed_outrider.py" %*', 'set "CALLER=%CD%"', "pause"):
             self.assertIn(part, script)
@@ -713,6 +713,49 @@ class CertifiWeekly(unittest.TestCase):
             with open(path, "w") as f:
                 f.write("garbage")
             self.assertFalse(fresh())
+
+    def test_the_image_installs_requirements_txt(self):
+        """Review 2026-10-23 S7-S4: the Dockerfile kept a hand copy of the packages; a new line in requirements.txt was
+        missing from the image. It installs requirements.txt, evdev (game-PC only) left out, piper-tts optional."""
+        df = self.read("Dockerfile")
+        self.assertIn("COPY requirements.txt /tmp/requirements.txt", df)
+        self.assertIn("pip install --no-cache-dir -r /tmp/req-server.txt", df)
+        self.assertNotIn('"aiohttp>=', df)
+        self.assertLess(df.index("COPY requirements.txt"), df.index("COPY . ."))   # cached until requirements.txt changes
+        reqs = [l.split("#")[0].strip() for l in self.read("requirements.txt").splitlines() if l.strip() and not l.startswith("#")]
+        self.assertIn("evdev", " ".join(reqs))
+        self.assertIn("piper-tts", " ".join(reqs))
+
+    def test_the_launchers_install_one_line_at_a_time_when_one_fails(self):
+        """S7-S3 / S9-S25: an optional package that will not build, or no network after a git pull with the environment
+        still working, no longer stops the start (scripts/install_requirements.py), in both launchers."""
+        import importlib.util
+        import types
+        spec = importlib.util.spec_from_file_location("install_requirements", os.path.join(self.ROOT, "scripts", "install_requirements.py"))
+        ir = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ir)
+        req = os.path.join(self.ROOT, "requirements.txt")
+
+        def runner(fails, imports=True):
+            def run(cmd, **kw):
+                if cmd[1] == "-c":
+                    return types.SimpleNamespace(returncode=0 if imports else 1)
+                bad = cmd[-1] == req or any(cmd[-1].lower().startswith(f) for f in fails)
+                return types.SimpleNamespace(returncode=1 if bad and (cmd[-1] != req or fails) else 0)
+            return run
+        said = []
+        self.assertEqual(ir.install(req, runner([]), said.append), 0)
+        self.assertEqual(ir.install(req, runner(["evdev"]), said.append), 2)              # optional: starts, said
+        self.assertTrue(any("evdev: " in x and "python3-dev" in x for x in said))
+        self.assertEqual(ir.install(req, runner(["aiohttp"]), said.append), 3)            # offline, the env works
+        self.assertEqual(ir.install(req, runner(["aiohttp"], imports=False), said.append), 1)
+        sh, bat = self.read("launch_outrider.sh"), self.read("launch_outrider.bat")
+        self.assertIn("scripts/install_requirements.py requirements.txt", sh)
+        self.assertIn("0|2) echo \"$want\" > \"$STAMP\" ;;", sh)
+        self.assertIn('[ -n "${OUTRIDER_REINSTALL:-}" ] && return 0', sh)
+        self.assertIn("scripts\\install_requirements.py requirements.txt", bat)
+        self.assertIn("if %errorlevel% equ 3 goto run", bat)
+        self.assertIn("if defined OUTRIDER_REINSTALL goto install", bat)
 
     def test_docker_build_asks_for_the_newest(self):
         """The image needs no weekly check (it is built at each release), but Docker's layer cache would keep the

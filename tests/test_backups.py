@@ -123,6 +123,26 @@ class BackupBeforeReread(Scratch):
         self.assertEqual(db.execute("SELECT count(*) FROM visits").fetchone()[0], 0)   # and the re-read went on
         self.assertEqual(board.active(), [])
 
+    def test_your_own_personalities_go_in_the_zip(self):
+        """Review 2026-10-23 S9-S23: the backup carried every other hand-written file but your own personality files
+        (data/personalities/, thousands of lines); a shipped one never goes in."""
+        speech = os.path.join(self.tmp, "speech.json")
+        with open(speech, "w") as f:
+            f.write("{}")
+        mine = os.path.join(self.tmp, "personalities")
+        os.makedirs(mine)
+        for n in ("pirate.json", "notes.txt"):
+            with open(os.path.join(mine, n), "w") as f:
+                f.write("{}")
+        extras = ed_outrider.backup_extras(speech, None, None)
+        self.assertIn((os.path.join(mine, "pirate.json"), "personalities/pirate.json"), extras)
+        self.assertNotIn("personalities/notes.txt", [n for _, n in extras])
+        self.assertFalse([n for _, n in extras if "resources" in n])
+        self.used_db(visits=1)
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = ed_outrider.write_backup(self.dbp, self.out, 7, extras)
+        self.assertIn("personalities/pirate.json", got["files"])
+
     def test_a_failed_backup_says_so_and_the_reread_goes_on(self):
         self.used_db(visits=1)
         open(self.out, "w").close()   # the backups folder is a file: nothing can be written there
@@ -190,6 +210,17 @@ class DatabaseLock(Scratch):
 class RestoreCommand(unittest.TestCase):
     """S44: the command that works on each install (install.md says the same)."""
 
+    def test_the_service_is_stopped_and_started_around_it(self):
+        """Review 2026-10-23 S9-S22: under the systemd service the command could not work (the unit holds the database)
+        and the refusal did not say how to stop it."""
+        name = "outrider-ed_outrider-20261001-120000Z.zip"
+        self.assertEqual(ed_outrider.restore_command(name, "git", root="/o", service=True),
+                         f"systemctl --user stop ed-outrider && cd /o && ./launch_outrider.sh --restore {name} && "
+                         "systemctl --user start ed-outrider")
+        with unittest.mock.patch.object(ed_outrider, "systemd_service_installed", lambda: True):
+            self.assertTrue(ed_outrider.restore_command(None, "download", root="/o").startswith("systemctl --user stop"))
+        self.assertFalse(ed_outrider.restore_command(None, "download", root="/o").startswith("systemctl"))
+
     def test_each_install(self):
         cmd = ed_outrider.restore_command
         name = "outrider-ed_outrider-20261001-120000Z.zip"
@@ -256,6 +287,41 @@ class BackupsList(Scratch):
             with unittest.mock.patch.object(outrider.auth, "is_loopback", lambda remote: False):   # another device
                 lan = (await c.get("/api/backups")).status
         return {"ok": ok, "lan": lan}
+
+
+class BackupSpace(Scratch):
+    """Review 2026-10-23 S9-S36: a full disk was found only when a backup failed half way (the pre-reread one too); the
+    Backups box says what they take and the room left, a backup is refused in words first, a card when it runs low."""
+
+    def test_refused_in_words_and_said(self):
+        self.used_db(visits=50)
+        size = os.path.getsize(self.dbp)
+        with unittest.mock.patch.object(ed_outrider, "disk_free", lambda p: size):   # under 1.2 x the database
+            with self.assertRaises(RuntimeError) as e:
+                ed_outrider.write_backup(self.dbp, self.out, 7)
+        self.assertIn("not enough free space for a backup", str(e.exception))
+        self.assertFalse([n for n in os.listdir(self.out) if n.endswith(".zip")])    # nothing written, nothing rotated
+        with contextlib.redirect_stdout(io.StringIO()):
+            ed_outrider.write_backup(self.dbp, self.out, 7)
+        aside = self.dbp + ".pre-restore-20261001-120000"
+        with open(aside, "wb") as f:
+            f.write(b"x" * 1000)
+        sp = ed_outrider.backup_space(self.dbp, self.out)
+        self.assertGreater(sp["zips"], 0)
+        self.assertEqual((sp["pre_restore"], sp["db"], sp["low"]), ([{"path": aside, "size": 1000}], size, False))
+        with unittest.mock.patch.object(ed_outrider, "disk_free", lambda p: size * 2):
+            self.assertTrue(ed_outrider.backup_space(self.dbp, self.out)["low"])     # under two backups' worth
+            db = ed_outrider.open_db(self.dbp)
+            self.addCleanup(db.close)
+            st = ed_outrider.State(db, ed_outrider.Journals(db), types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+            st.db_path = self.dbp
+            with unittest.mock.patch.object(ed_outrider, "BACKUP_DIR", self.out):
+                st.backup_space_notice()
+                self.assertEqual([n["key"] for n in st.notices.active()], ["backup_disk"])
+                self.assertIn("space", st.backup_list())
+        with unittest.mock.patch.object(ed_outrider, "BACKUP_DIR", self.out):
+            st.backup_space_notice()
+        self.assertEqual(st.notices.active(), [])                                   # room again: gone
 
 
 class FirstRunNoJournals(Scratch):

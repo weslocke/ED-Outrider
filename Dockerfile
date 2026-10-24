@@ -14,8 +14,12 @@ WORKDIR /app
 # Piper (the voice, about 100 MB with onnxruntime) is in by default; --build-arg WITH_PIPER=0 leaves it out (the
 # pages then speak with the browser's voice)
 ARG WITH_PIPER=1
-RUN pip install --no-cache-dir "aiohttp>=3.9" "certifi>=2024.7.4" \
- && if [ "$WITH_PIPER" = "1" ]; then pip install --no-cache-dir "piper-tts>=1.3"; fi
+# requirements.txt itself (review 2026-10-23 S7-S4: a hand copy missed a new package): every line but evdev (key presses
+# on the game PC only) and, with WITH_PIPER=0, piper-tts; copied alone first, so the layer stays cached until it changes
+COPY requirements.txt /tmp/requirements.txt
+RUN grep -v -i -E '^(evdev|piper-tts)' /tmp/requirements.txt > /tmp/req-server.txt \
+ && pip install --no-cache-dir -r /tmp/req-server.txt \
+ && if [ "$WITH_PIPER" = "1" ]; then pip install --no-cache-dir "$(grep -i -E '^piper-tts' /tmp/requirements.txt | sed 's/[[:space:]]*#.*//')"; fi
 # certifi (the root certificates every HTTPS request also trusts) as new as the build: the layer above stays in
 # Docker's cache while this file and the base image are unchanged, keeping the certifi of the first build.
 # scripts/docker_bundle.sh passes the day's date, so a release's build always asks for the newest

@@ -342,5 +342,70 @@ class Run(unittest.TestCase):
         self.assertTrue(ed_outrider.port_free("127.0.0.1", port))   # the starting app let the port go
 
 
+    def test_a_database_that_cannot_be_opened_says_what_to_do(self):
+        """Review 2026-10-23 S4-S2: a damaged database ended the start with a traceback and the starting page going
+        "not reachable"; it says what to do (the restore command), there and on the page, and exits 1."""
+        import socket
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        cfg = os.path.join(self.tmp.name, "scratch.toml")
+        with open(cfg, "w", encoding="utf-8") as f:
+            f.write(f'[server]\nbackup_dir = "{self.tmp.name}/backups"\nbackup_every_days = 0\n'
+                    f'[spansh]\nwatch_firsts = false\n[speech]\nserver_player = "off"\n')
+        db = os.path.join(self.tmp.name, "broken.sqlite")
+        with open(db, "wb") as f:
+            f.write(b"this is not a database" * 400)
+        made = []
+
+        class Recorded(ed_outrider.Starting):
+            def __init__(self, *a, **kw):
+                super().__init__(*a, **kw)
+                made.append(self)
+        out = io.TextIOWrapper(io.BytesIO(), encoding="utf-8")
+        with unittest.mock.patch.object(ed_outrider, "Starting", Recorded), \
+                unittest.mock.patch.object(ed_outrider, "STARTING_FAILED_SHOW_S", 0.2), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(out), self.assertRaises(SystemExit) as e:
+            ed_outrider.main(["--config", cfg, "--db", db, "--port", str(port), "--host", "127.0.0.1",
+                              "--journals", self.tmp.name])
+        out.seek(0)
+        log = out.read()
+        self.assertEqual(e.exception.code, 1)
+        self.assertRegex(log, r"cannot start: +The database .* cannot be opened")
+        self.assertIn("--restore", log)
+        self.assertNotIn("Traceback", log)
+        self.assertEqual((made[0].phase, made[0].info()["text"]), ("failed", "ED Outrider could not start"))
+        self.assertIn("--restore", made[0].info()["why"])
+        self.assertTrue(ed_outrider.port_free("127.0.0.1", port))   # the starting app let the port go
+
+    def test_a_host_no_longer_this_pcs_falls_back_to_this_pc(self):
+        """Review 2026-10-23 S9-S24: [server] host set to a LAN address DHCP has since changed made every start fail (a
+        silent crash loop under the service, no page to fix it from): it listens on 127.0.0.1 with a notice instead. A
+        port in use still stops it. (A damaged database ends this start right after: no server is run.)"""
+        import socket
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        cfg = os.path.join(self.tmp.name, "scratch.toml")
+        with open(cfg, "w", encoding="utf-8") as f:
+            f.write(f'[server]\nbackup_dir = "{self.tmp.name}/backups"\nbackup_every_days = 0\n[spansh]\nwatch_firsts = false\n')
+        db = os.path.join(self.tmp.name, "broken.sqlite")
+        with open(db, "wb") as f:
+            f.write(b"this is not a database" * 400)
+        real = ed_outrider.listen_problem
+        gone = lambda h, p: (f'cannot listen on {h}:{p}: Cannot assign requested address (is [server] host this machine\'s '
+                             'address or name? ...)') if h == "192.168.1.250" else real(h, p)
+        out = io.TextIOWrapper(io.BytesIO(), encoding="utf-8")
+        with unittest.mock.patch.object(ed_outrider, "listen_problem", gone), \
+                unittest.mock.patch.object(ed_outrider, "STARTING_FAILED_SHOW_S", 0.1), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(out), self.assertRaises(SystemExit):
+            ed_outrider.main(["--config", cfg, "--db", db, "--port", str(port), "--host", "192.168.1.250",
+                              "--journals", self.tmp.name])
+        out.seek(0)
+        log = out.read()
+        self.assertIn("listening on 127.0.0.1 only", log)
+        self.assertIn(f"http://127.0.0.1:{port}/", log)                  # the starting page came up on this PC
+        self.assertEqual([n["key"] for n in ed_outrider.outrider.notices.BOARD.active()], ["host_fallback"])
+
 if __name__ == "__main__":
     unittest.main()

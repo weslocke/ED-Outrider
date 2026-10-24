@@ -45,6 +45,7 @@ want=$("$HASHPY" -c 'import hashlib; print(hashlib.sha256(open("requirements.txt
 have=$(cat "$STAMP" 2>/dev/null || true)
 
 needs_install() {
+    [ -n "${OUTRIDER_REINSTALL:-}" ] && return 0   # asked for (an optional package that could not be built before)
     [ ! -x "$VENV/bin/python" ] && return 0
     [ "$want" != "$have" ] && return 0
     "$VENV/bin/python" -c "import aiohttp" 2>/dev/null || return 0   # a broken or emptied environment
@@ -81,13 +82,16 @@ if needs_install; then
     fi
     echo "Installing ED Outrider's requirements into $VENV"
     "$VENV/bin/python" -m pip install --quiet --upgrade pip || true   # offline or refused: the installed pip will do
-    if ! "$VENV/bin/python" -m pip install --quiet -r requirements.txt; then
-        echo "Installing the requirements failed. evdev (auto honk, the co-pilot button) is built from source and needs" >&2
-        echo "your Python's development headers (Debian/Ubuntu: sudo apt install python3-dev); or remove its line from" >&2
-        echo "requirements.txt to do without it. Then run this again." >&2
-        exit 1
-    fi
-    echo "$want" > "$STAMP"
+    # one line at a time when all at once fails: an optional package that will not build (evdev without the headers),
+    # or no network after a git pull while the environment still works, no longer stops the start (scripts/
+    # install_requirements.py: 0 all, 2 optional ones missing, 3 offline with a working environment, 1 cannot run)
+    code=0
+    "$VENV/bin/python" scripts/install_requirements.py requirements.txt || code=$?
+    case $code in
+        0|2) echo "$want" > "$STAMP" ;;
+        3) ;;   # the stamp left as it was: the next start tries again
+        *) exit 1 ;;
+    esac
 fi
 
 # certifi (the root certificates every HTTPS request also trusts, outrider/tls.py) upgraded once a week: pip never

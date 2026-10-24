@@ -29,7 +29,41 @@ from glob import glob, escape as glob_escape
 ED_SUFFIX = os.path.join("Saved Games", "Frontier Developments", "Elite Dangerous")
 
 
-def find_journal_dirs():
+SAVED_GAMES_GUID = "{4C5C32FF-BB9D-43B0-B5B4-2D72E54EAAA4}"   # FOLDERID_SavedGames
+
+
+def saved_games_dir():
+    """Windows' Saved Games folder where it really is (a player can move it to another drive; the game writes there,
+    review 2026-10-23 S9-S35), or None: the known-folder call, else the registry's User Shell Folders. Read only."""
+    if os.name != "nt":
+        return None
+    try:   # SHGetKnownFolderPath(FOLDERID_SavedGames)
+        import ctypes
+        import uuid
+        from ctypes import wintypes
+
+        class GUID(ctypes.Structure):
+            _fields_ = [("Data1", wintypes.DWORD), ("Data2", wintypes.WORD), ("Data3", wintypes.WORD), ("Data4", ctypes.c_ubyte * 8)]
+        u = uuid.UUID(SAVED_GAMES_GUID)
+        g = GUID(u.fields[0], u.fields[1], u.fields[2], (ctypes.c_ubyte * 8)(*u.bytes[8:]))
+        out = ctypes.c_wchar_p()
+        if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(g), 0, None, ctypes.byref(out)) == 0:
+            path = out.value
+            ctypes.windll.ole32.CoTaskMemFree(out)
+            if path:
+                return path
+    except Exception:  # noqa: BLE001 -- the registry next, then the profile folder as before
+        pass
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                            r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders") as k:
+            return os.path.expandvars(winreg.QueryValueEx(k, SAVED_GAMES_GUID)[0])
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def find_journal_dirs(saved_games=saved_games_dir):
     """(live, legacy) journal directories on this machine.
 
     ED_JOURNALS (os.pathsep-separated) overrides everything. Otherwise: the Windows save
@@ -43,9 +77,12 @@ def find_journal_dirs():
     live, legacy = [], []
     home = os.path.expanduser("~")
     win = os.path.join(os.environ.get("USERPROFILE", home), ED_SUFFIX)
-    if os.path.isdir(win):
-        live.append(win)
-    seen = {os.path.realpath(win)}   # the same folder twice would be tailed twice (a symlinked save folder)
+    seen = set()   # the same folder twice would be tailed twice (a symlinked save folder)
+    moved = saved_games()
+    for d in ([os.path.join(moved, *ED_SUFFIX.split(os.sep)[1:])] if moved else []) + [win]:
+        if os.path.realpath(d) not in seen and os.path.isdir(d):
+            live.append(d)
+        seen.add(os.path.realpath(d))
     roots = [os.path.expanduser(r) for r in ("~/.local/share/Steam", "~/.steam/steam", "~/.steam/root",
                                              "~/.var/app/com.valvesoftware.Steam/.local/share/Steam")]
     libs = []
