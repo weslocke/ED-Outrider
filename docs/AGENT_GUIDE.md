@@ -346,7 +346,13 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
   retry announces things twice. A journal line that lacks a field is skipped with a log line
   (`KeyError`/`TypeError` are caught per line); database errors must propagate so the tick is retried. The
   follow-ups after the commit run one by one: an exception is reported (`follow_up_failed`: the traceback once, the
-  error on the page) and the next one still runs; `sqlite3.Error` propagates.
+  error on the page; rolled back and reloaded only when the step left a transaction open) and the next one still runs,
+  each step's writes committed when it ends; `sqlite3.Error` propagates. The steps before the commit (`settle_carrier`,
+  `carrier_trip_follow`, `pin_watch`, `chatter_watch`, `uploads_hub.idle`, `rail_device`) go through
+  `pre_commit_step`: reported the same way, without the rollback, so the lines still commit. `watch()` survives an
+  error out of `tick()` itself (notice `tick_failed`), and every long-lived task is started through
+  `State.watch_task(task, name)`: one that ends with an error prints it and raises a `task_died:<name>` notice (a new
+  watcher or sender gets the same, and a name in `TASK_NAMES`). Full review 2026-10-23, fix batch 1.
 - **Outgoing HTTPS goes through `outrider/tls.py`**: a new aiohttp session is `ClientSession(...,
   connector=outrider.tls.connector())`, a urllib download `outrider.tls.urlopen(url, timeout=)` (issue #9: the system
   store plus certifi's). `tests/test_tls.py` walks the source and fails on one that forgets.

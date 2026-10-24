@@ -345,6 +345,7 @@ HIGHWAY_DONE = 20           # ...and done rows above them (the most recent)
 BOXEL_SPANSH_CHUNK = 300   # names per Spansh request (an exact list of a boxel's names)
 BOXEL_SPANSH_MAX = 3000    # names asked about at most for one boxel
 BOXEL_SPANSH_MAX_AGE = 86400   # s: Spansh's list of a boxel is asked again after a day
+BOXEL_SPANSH_RETRY_S = 120     # s: after a failed ask, the wait before the next (review 2026-10-23 S3-B1: it looped)
 BOXEL_NEAR_SHOW = 3        # recommended boxels per mass code
 BOXEL_NEAR_LOOK = 12       # ...looked through for them (done and complete ones are passed over)
 BOXEL_GRID_CODES = "bcdefgh"  # the sector grid's mass codes (a: 128 x 128 boxels a layer, too many to show)
@@ -619,6 +620,17 @@ def in_container(dockerenv="/.dockerenv", env=None):
     """Whether this runs inside a container: Docker's /.dockerenv, or OUTRIDER_CONTAINER=1 (the image sets it)."""
     env = os.environ if env is None else env
     return os.path.exists(dockerenv) or env.get("OUTRIDER_CONTAINER") == "1"
+
+
+# Whether a loopback request (with no forwarding header) is this PC itself, and so needs no session. Never inside a
+# container (review 2026-10-23 S4-B2): rootless Docker's and Podman's port forwarding deliver every outside connection
+# from 127.0.0.1, so with it every device on the network passed as "this PC" and the password was skipped.
+LOOPBACK_TRUSTED = not in_container()
+
+
+def this_pc(request):
+    """Whether a request is this PC's own (outrider.auth.from_this_pc), where loopback can be trusted to mean it."""
+    return LOOPBACK_TRUSTED and outrider.auth.from_this_pc(request.remote, request.headers)
 
 
 def resolve_game_pc(setting, container=None):
@@ -9237,7 +9249,10 @@ class State:
         """Keep the overlay window running while it is wanted (OverlayRunner.tick every OVERLAY_TICK_S)."""
         last = None
         while True:
-            last = self.overlay_window_tick(last)
+            try:
+                last = self.overlay_window_tick(last)
+            except Exception as e:  # noqa: BLE001 -- as the other watchers: said, and tried again (review S7-S7)
+                print(f"overlay window: {type(e).__name__}: {e}", file=sys.stderr)
             await asyncio.sleep(OVERLAY_TICK_S)
 
     def overlay_window_tick(self, last, now=None):
@@ -14337,14 +14352,39 @@ class State:
             parts[2] += f" (development mode: {outrider.inara.DEV_ENV} is set)"
         return "uploads: " + ", ".join(parts) + ("" if self.simulate else " (change them in Settings -> Uploads)")
 
+    TASK_NAMES = {"watch": "Reading the journals", "watch_firsts": "The firsts watch", "watch_updates": "The update check",
+                  "watch_codex_images": "The checklists' picture links", "watch_overlay_window": "The overlay window",
+                  "button": "The co-pilot button", "bio_rules": "The exobiology rules check", "leases": "The upload leases",
+                  "edsm_discard": "EDSM's discard list", "upload:eddn": "EDDN sending", "upload:edsm": "EDSM sending",
+                  "upload:inara": "Inara sending", "upload:edsm_bf": "The EDSM backfill"}
+
+    def watch_task(self, task, name):
+        """A long-lived task that must never end on its own: if it does, with an error, the traceback is printed and a
+        notice says what stopped (review 2026-10-23 S4-B11, S7-B1: they died silently, a growing upload queue the only
+        sign). -> the task."""
+        def done(t):
+            if t.cancelled():
+                return
+            e = t.exception()
+            if e is None:
+                return
+            import traceback
+            traceback.print_exception(type(e), e, e.__traceback__)
+            what = self.TASK_NAMES.get(name, name)
+            self.notices.set(f"task_died:{name}", f"{what} stopped after an error ({type(e).__name__}: {e}): restart "
+                             "Outrider to start it again. Show log has the details.", "bad", "open:log")
+        task.add_done_callback(done)
+        return task
+
     def start_uploads(self):
         """The sending loops (one per service with a sender), and the lease watch, started in run()."""
         self.refresh_leases()
         self.catch_up_uploads()
         if self.lease_task is None:
-            self.lease_task = asyncio.get_running_loop().create_task(self.watch_leases())
+            self.lease_task = self.watch_task(asyncio.get_running_loop().create_task(self.watch_leases()), "leases")
         if self.edsm_discard_task is None:
-            self.edsm_discard_task = asyncio.get_running_loop().create_task(self.watch_edsm_discard())
+            self.edsm_discard_task = self.watch_task(asyncio.get_running_loop().create_task(self.watch_edsm_discard()),
+                                                     "edsm_discard")
         for service, send in self.upload_senders.items():
             if service not in self.upload_tasks:
                 batch = {"eddn": 1, "inara": outrider.inara.BATCH}.get(service, outrider.edsm.BATCH)   # EDDN: one per request
@@ -14355,6 +14395,7 @@ class State:
                     report=self.edsm_bf_report if bf else self.upload_report, batch=batch,
                     min_gap=outrider.backfill.SEND_GAP_S if bf else 0,
                     gate=self.inara_gate if service == "inara" else None, wake=self.upload_wake[service]))
+                self.watch_task(self.upload_tasks[service], f"upload:{service}")
 
     def set_autohonk(self, enabled):
         """Switch auto honk on or off (the page's toggle; remembered over restarts)."""
@@ -15360,10 +15401,18 @@ class State:
                 "auto": auto, "skip_known": skip}
 
     def boxel_spansh_due(self, prefix, now=None):
-        """Whether Spansh's list of this boxel is older than BOXEL_SPANSH_MAX_AGE (or was never asked for)."""
+        """Whether Spansh's list of this boxel is older than BOXEL_SPANSH_MAX_AGE (or was never asked for), and no ask
+        failed within BOXEL_SPANSH_RETRY_S: a failure keeps the list's old ts, so without the wait every look (the page
+        refetching on the answer) asked again at once, round after round while Spansh was down (review S3-B1)."""
         cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
+        now = time.time() if now is None else now
         try:
-            return (time.time() if now is None else now) - ts_seconds(cache["ts"]) > BOXEL_SPANSH_MAX_AGE
+            if cache.get("error_ts") and now - ts_seconds(cache["error_ts"]) < BOXEL_SPANSH_RETRY_S:
+                return False
+        except (TypeError, ValueError):
+            pass
+        try:
+            return now - ts_seconds(cache["ts"]) > BOXEL_SPANSH_MAX_AGE
         except (KeyError, TypeError, ValueError):
             return True
 
@@ -15401,7 +15450,7 @@ class State:
         allc = meta_get(self.db, "boxel_spansh") or {}
         old = allc.get(prefix) or {}
         allc[prefix] = {"ts": iso_ts(time.time()) if not err else old.get("ts"), "systems": found if not err else old.get("systems") or {},
-                        "error": err}
+                        "error": err, "error_ts": iso_ts(time.time()) if err else None}
         for k in sorted(allc, key=lambda k: str((allc[k] or {}).get("ts") or ""))[:-BOXEL_SPANSH_KEEP]:
             allc.pop(k, None)
         meta_set(self.db, "boxel_spansh", allc)
@@ -15539,8 +15588,11 @@ class State:
                                         # your scans here (a boxel row's summary), not every journal line
                                         (self.db.execute("SELECT max(ts) FROM own_bodies WHERE system=?",
                                                          (pos.get("id64"),)).fetchone() or [None])[0],
-                                        len(self._boxel_fetching), json.dumps(meta_get(self.db, "boxel_ends")),
-                                        json.dumps({k: (v or {}).get("ts") for k, v in (meta_get(self.db, "boxel_spansh") or {}).items()}),
+                                        # Spansh's answers (a list, or a failure), never the asking itself: the key going
+                                        # there and back made the page look again and a failed ask start over (S3-B1)
+                                        json.dumps(meta_get(self.db, "boxel_ends")),
+                                        json.dumps({k: [(v or {}).get("ts"), (v or {}).get("error_ts")]
+                                                    for k, v in (meta_get(self.db, "boxel_spansh") or {}).items()}),
                                         meta_get(self.db, "boxel_auto"), meta_get(self.db, "boxel_skip_known"),
                                         json.dumps(meta_get(self.db, "boxel_done"))))
         if self._boxel_next[0] != key:
@@ -18117,6 +18169,7 @@ class State:
             return
         said[pos["id64"]] = None
         meta_set(self.db, "curious_said", list(said)[-CURIOUS_KEEP:])
+        self.db.commit()   # after the tick's commit: left open, a later failure's rollback took it (review S1x-B1)
         self.journals.moment("curious", iso_ts(time.time()), system=str(pos["id64"]), bodies=bodies[:6])
         self.bump()
 
@@ -18165,10 +18218,24 @@ class State:
         return True
 
     async def watch(self):
-        """Tail the live journals and NavRoute.json forever."""
-        route_mtimes = {}
+        """Tail the live journals and NavRoute.json forever. An error out of tick() itself (its own handler failing: a
+        meta value that no longer parses while it reloads) is printed once and said in a notice, and the tailing goes on
+        (review 2026-10-23 S4-S5: it ended the task, silently)."""
+        route_mtimes, seen = {}, set()
         while True:
-            self.tick(route_mtimes)
+            try:
+                self.tick(route_mtimes)
+            except Exception as e:  # noqa: BLE001 -- the journal must keep being read
+                key = (type(e).__name__, str(e))
+                if key not in seen:
+                    seen.add(key)
+                    import traceback
+                    traceback.print_exc()
+                self.notices.set("tick_failed", f"Reading the journals failed ({type(e).__name__}: {e}); "
+                                 "Outrider keeps trying. Show log has the details.", "bad", "open:log")
+                self.tail_error = f"{type(e).__name__}: {e}"
+            else:
+                self.notices.clear("tick_failed")
             await asyncio.sleep(POLL_SECONDS)
 
     def tick(self, route_mtimes):
@@ -18232,15 +18299,18 @@ class State:
                         self.bump()
             if self.journals.offsets:   # a first journal read at last (S43): its banner goes
                 self.notices.clear("no_journal_files")
-            settled = self.journals.settle_carrier(time.time())
-            if self.carrier_trip_follow() or settled:   # #19: the trip follows the carrier (both always run)
+            # each of these on its own as well (review S1x-S1): one that keeps raising must not roll the journal's lines
+            # back every second; it is reported and the lines still commit. They stay inside the transaction, so their
+            # moments go with the lines on a rollback (sweep 2026-10-17); a database error still stops the tick.
+            settled = self.pre_commit_step("settle_carrier", lambda: self.journals.settle_carrier(time.time()))
+            if self.pre_commit_step("carrier_trip_follow", self.carrier_trip_follow) or settled:   # #19: the trip follows the carrier (both always run)
                 self.bump()
-            if self.pin_watch():   # #16: the active pin's distance and turn, said at its bands and on arrival
+            if self.pre_commit_step("pin_watch", self.pin_watch):   # #16: the active pin's distance and turn, said at its bands and on arrival
                 self.bump()
-            if self.chatter_watch():   # #15: every tick, not only on a Status.json read: a Shutdown silences it (2026-10-17)
+            if self.pre_commit_step("chatter_watch", self.chatter_watch):   # #15: every tick, not only on a Status.json read: a Shutdown silences it (2026-10-17)
                 self.bump()
-            self.uploads_hub.idle()   # EDDN: a companion file written after its line, signals after a quiet spell
-            self.rail_device()
+            self.pre_commit_step("uploads_hub.idle", self.uploads_hub.idle)   # EDDN: a companion file written after its line, signals after a quiet spell
+            self.pre_commit_step("rail_device", self.rail_device)
             self.db.commit()
             committed = True
             # after the commit: its moments (scoop ended, FSS closed early) are live only and it consumes what
@@ -18260,6 +18330,8 @@ class State:
                                ("maybe_boxel_autotarget", self.maybe_boxel_autotarget), ("docking_release", self.docking_release)):
                 try:
                     step()
+                    if self.db.in_transaction:   # its writes kept: a later step's rollback takes only its own (S1x-B1)
+                        self.db.commit()
                 except sqlite3.Error:
                     raise
                 except Exception as e:  # noqa: BLE001 -- reported on the page; the next follow-up still runs
@@ -18321,23 +18393,38 @@ class State:
         self.db.commit()
         return True
 
-    def follow_up_failed(self, name, e):
+    def follow_up_failed(self, name, e, rollback=True):
         """One of tick()'s follow-ups raised: its traceback printed once (not every second), what it wrote rolled
         back and the reader's memory reloaded (the sales already read are kept for note_sale_estimates), and the
-        error shown on the page, as a failed tick does."""
+        error shown on the page, as a failed tick does. Nothing to roll back (the step wrote nothing): no reload either
+        (review 2026-10-23 S4-B14: one that kept raising reloaded the whole reader every second). rollback False: a
+        step before the tick's commit (pre_commit_step), whose transaction holds the journal's lines."""
         import traceback
         key = (name, type(e).__name__, str(e))
         if key not in self._follow_up_seen:
             self._follow_up_seen.add(key)
             traceback.print_exc()
-        sales = self.journals.new_sales
-        try:
-            self.db.rollback()
-            self.journals.reload()
-        except sqlite3.Error:
-            pass
-        self.journals.new_sales = sales
+        if rollback and self.db.in_transaction:
+            sales = self.journals.new_sales
+            try:
+                self.db.rollback()
+                self.journals.reload()
+            except sqlite3.Error:
+                pass
+            self.journals.new_sales = sales
         self.tail_error = f"{name}: {type(e).__name__}: {e}"
+
+    def pre_commit_step(self, name, step):
+        """One of tick()'s steps before its commit, on its own (review S1x-S1): an error is reported (follow_up_failed,
+        without the rollback) and the tick goes on to commit the lines; a database error still goes to tick()'s
+        handler. -> the step's answer, None when it failed."""
+        try:
+            return step()
+        except sqlite3.Error:
+            raise
+        except Exception as e:  # noqa: BLE001 -- reported on the page; the lines still commit
+            self.follow_up_failed(name, e, rollback=False)
+            return None
 
 
 def unsold_total_at(ts):
@@ -18902,11 +18989,17 @@ class Searcher:
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 
+def inline_json(value):
+    """`value` as JSON to inline into the page's <script>: "<" escaped, so a value holding "</script>" (a mineral's
+    name, a browser default) cannot end the script element (review 2026-10-23 S4-B17)."""
+    return json.dumps(value).replace("<", "\\u003c")
+
+
 def sounds_json():
     """static/sounds.json for inlining into the page (the alert sounds, which the server can also play), or
     "null" when it cannot be read: the page then plays no sounds."""
     try:
-        return json.dumps(outrider.tts.load_sounds()).replace("<", "\\u003c")
+        return inline_json(outrider.tts.load_sounds())
     except (OSError, ValueError) as e:
         print(f"sounds: {e}", file=sys.stderr)
         return "null"
@@ -19255,7 +19348,13 @@ def request_guard(allowed):
             site = request.headers.get("Sec-Fetch-Site")
             if site and site not in ("same-origin", "none"):
                 return web.json_response({"error": "refused: the request came from another web site"}, status=403)
-        return await handler(request)
+        resp = await handler(request)
+        if getattr(resp, "content_type", None) == "text/html":
+            # no other site may frame a page (review 2026-10-23 S4-B16: the loopback page, signed in by being this
+            # PC, could be clickjacked from any http site into pressing its buttons)
+            resp.headers.setdefault("Content-Security-Policy", "frame-ancestors 'self'")
+            resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        return resp
     return guard
 
 
@@ -19291,7 +19390,7 @@ def make_app(state, hosts=None):
         except AUTH_OPEN and the overlays' OPEN_GETS. This PC itself (loopback) never needs one: the desktop page,
         curl, OBS and the MCP bridge work as before; a request a reverse proxy on this PC forwarded is another device's
         (outrider.auth.from_this_pc). request_guard's checks run first, whatever the session."""
-        if not state.password or outrider.auth.from_this_pc(request.remote, request.headers) or request.path in AUTH_OPEN \
+        if not state.password or this_pc(request) or request.path in AUTH_OPEN \
                 or request.path in OPEN_GETS:
             return await handler(request)
         if state.session_ok(outrider.auth.request_token(request.headers, request.cookies)):
@@ -19311,7 +19410,7 @@ def make_app(state, hosts=None):
     def signed_in(request):
         """What /api/version reports: whether this request may use Outrider now (no password asked of it, or a
         live session)."""
-        return not state.password or outrider.auth.from_this_pc(request.remote, request.headers) or \
+        return not state.password or this_pc(request) or \
             state.session_ok(outrider.auth.request_token(request.headers, request.cookies))
 
     async def version_view(request):
@@ -19374,14 +19473,14 @@ def make_app(state, hosts=None):
 
     async def index(request):
         # the mineral list is the survey's plus what you have refined (S38): read for each page load
-        options = json.dumps(dict(SEARCH_OPTIONS, mining=searchable_minerals(state.db)))
-        # the browser defaults go into the page itself, so they are there before page.js reads its settings
-        # ("<" escaped: a value holding "</script>" cannot end the script element)
+        options = inline_json(dict(SEARCH_OPTIONS, mining=searchable_minerals(state.db)))
+        # the browser defaults go into the page itself, so they are there before page.js reads its settings (every
+        # inlined value through inline_json: "<" escaped)
         saved = read_browser_defaults(browser_defaults_path(state.db_path)) if state.db_path else None
         return web.Response(text=load_page(tablet=request.path == "/tablet").replace("/*SEARCH_OPTIONS*/null", options)
-                            .replace("/*SERVER_DEFAULTS*/null", json.dumps(saved).replace("<", "\\u003c"))
+                            .replace("/*SERVER_DEFAULTS*/null", inline_json(saved))
                             .replace("/*SOUNDS*/null", sounds_json())
-                            .replace("/*PAGE_STAMP*/null", json.dumps(stamps(fresh=True)["page"])),
+                            .replace("/*PAGE_STAMP*/null", inline_json(stamps(fresh=True)["page"])),
                             content_type="text/html")
 
     async def defaults_get(_):
@@ -20118,7 +20217,7 @@ def make_app(state, hosts=None):
     def paste_device(request):
         """The 📋 buttons (NEXT-VERSION #5) are for this PC's own browser and the Android app (its WebView's User-Agent
         says OutriderApp/), not any other browser on the network (the author, 2026-10-14): a filter, not a lock."""
-        return outrider.auth.from_this_pc(request.remote, request.headers) \
+        return this_pc(request) \
             or "OutriderApp/" in (request.headers.get("User-Agent") or "")
 
     async def clipboard_view(request):
@@ -20132,13 +20231,13 @@ def make_app(state, hosts=None):
 
     async def service_view(request):
         """GET /api/service (S70): Settings -> Server's Start with this computer."""
-        return web.json_response(state.service_info(outrider.auth.from_this_pc(request.remote, request.headers)))
+        return web.json_response(state.service_info(this_pc(request)))
 
     async def service_post_view(request):
         """POST /api/service {action}: install or remove the service, from this PC only (S70)."""
         body = await json_object(request)
         out, status = await state.service_set((body or {}).get("action"),
-                                              outrider.auth.from_this_pc(request.remote, request.headers))
+                                              this_pc(request))
         return web.json_response(out, status=status)
 
     async def config_get_view(_):
@@ -20840,7 +20939,7 @@ class Starting:
         return outrider.auth.check_token(sec, self.password, token, set(revoked))
 
     def signed_in(self, request):
-        return not self.password or outrider.auth.from_this_pc(request.remote, request.headers) or \
+        return not self.password or this_pc(request) or \
             self.session_ok(outrider.auth.request_token(request.headers, request.cookies))
 
 
@@ -21586,7 +21685,7 @@ async def run(args, st):
         cp = st["copilot"]
         state.button = outrider.button.ButtonWatch(cp["device"], cp["button"], lambda g: state.copilot_gesture(g),
                                              cp["hold_ms"], cp["double_ms"], on_press=lambda: state.copilot_press())
-        button_task = asyncio.create_task(state.button.run())
+        button_task = state.watch_task(asyncio.create_task(state.button.run()), "button")
     print("co-pilot button: " + (f"{st['copilot']['button'] or '?'} on {st['copilot']['device'] or '?'}"
                                  if st["copilot"]["enabled"] else "off ([copilot] enabled)"))
     state.highway_cfg = dict(st["highway"])
@@ -21631,18 +21730,18 @@ async def run(args, st):
     state.speech_notice(sp)
     if st["voices_preload"]:   # the journals are read: the voices in use load now, one at a time, behind the main one
         state.speaker.preload(state.voices_in_use())
-    rules_task = asyncio.create_task(check_bio_rules(state)) if outrider.bio else None
-    watcher = asyncio.create_task(state.watch())
+    rules_task = state.watch_task(asyncio.create_task(check_bio_rules(state)), "bio_rules") if outrider.bio else None
+    watcher = state.watch_task(asyncio.create_task(state.watch()), "watch")
     state.firsts_watch_on = st["watch_firsts"]
-    firsts_task = asyncio.create_task(state.watch_firsts()) if st["watch_firsts"] else None
-    update_task = asyncio.create_task(state.watch_updates()) if st["update_check"] else None
-    images_task = asyncio.create_task(state.watch_codex_images())   # the checklists' picture links, once a day
+    firsts_task = state.watch_task(asyncio.create_task(state.watch_firsts()), "watch_firsts") if st["watch_firsts"] else None
+    update_task = state.watch_task(asyncio.create_task(state.watch_updates()), "watch_updates") if st["update_check"] else None
+    images_task = state.watch_task(asyncio.create_task(state.watch_codex_images()), "watch_codex_images")   # the checklists' picture links, once a day
     # the in-game overlay's window, run by Outrider on the game PC while the overlay is wanted (never on a server,
     # under --simulate or with OUTRIDER_NO_OVERLAY_WINDOW: verify.sh's scratch server)
     overlay_task = None
     if state.game_pc and not state.simulate and not os.environ.get(outrider.overlay_runner.NO_WINDOW_ENV):
         state.overlay_runner = outrider.overlay_runner.OverlayRunner(f"http://127.0.0.1:{args.port}")
-        overlay_task = asyncio.create_task(state.watch_overlay_window())
+        overlay_task = state.watch_task(asyncio.create_task(state.watch_overlay_window()), "watch_overlay_window")
     # uploads: their own session (never queued behind Spansh), named and versioned as EDDN asks of a sender
     state.upload_session = ClientSession(timeout=ClientTimeout(total=20), connector=outrider.tls.connector(),
                                          headers={"User-Agent": f"ED-Outrider/{outrider.__version__}"})

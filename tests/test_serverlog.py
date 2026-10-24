@@ -69,6 +69,14 @@ class ServerLog(unittest.TestCase):
         t = L.Tee(None, log, "out")
         self.assertEqual(t.write("x\n"), 2)
         self.assertEqual(log.since(3)["lines"][0]["text"], "x")
+        # a terminal that went away (a closed pipe): the print does not raise, the log keeps it (review S4-B11)
+        class Gone:
+            def write(self, _):
+                raise OSError(32, "Broken pipe")
+        t = L.Tee(Gone(), log, "out")
+        self.assertEqual(t.write("y\n"), 2)
+        self.assertIsNone(t.stream)
+        self.assertEqual(log.since(4)["lines"][0]["text"], "y")
 
     def test_the_terminal_shows_times_and_lines_up(self):
         """The terminal's lines (the author, 2026-10-16): the time first, the date before the first line and when the

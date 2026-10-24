@@ -832,7 +832,11 @@ async def upload_loop(service, db, send, on, clock=time.time, sleep=None, report
         held = any(state == "held" for _, state, _, _ in results)
         pause = max(IDLE_S * 15, min_gap) if held else max(wait or GAP_S, min_gap)
         if report:
-            report(service, {"error": error, "results": results, "at": now, "raised": raised, "wait": pause})
+            try:
+                report(service, {"error": error, "results": results, "at": now, "raised": raised, "wait": pause})
+            except Exception as e:  # noqa: BLE001 -- the rows are settled: a lost report costs one Recent entry, never the
+                # loop (review 2026-10-23 S7-B1: a locked database there ended that service's sending for the session)
+                print(f"{service}: the round's report failed ({type(e).__name__}: {e})")
         # held: waiting on the player (a refused key); on() says no until the key changes or Try again
         await nap(pause)
 

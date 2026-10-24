@@ -3,6 +3,7 @@ addresses are real ones from the author's journals (in-game data).
 
 Run all: python3 -m unittest discover tests (or scripts/verify.sh).
 """
+import time
 import unittest
 
 from support import ed_outrider  # noqa: F401  (puts the repository root on sys.path)
@@ -159,6 +160,35 @@ class Server(unittest.TestCase):
         self.assertIsNone(self.state.boxel_finished("Drojau TF-H c13-"))
         self.assertTrue(self.state.boxel_not_found(self.state.boxel_target(15)[0], {"ok": False, "why": "no system was targeted"}))
         self.assertEqual(self.state.boxel_view()["end"], 15)
+
+    def test_a_failed_spansh_ask_waits_before_the_next(self):
+        """Review 2026-10-23 S3-B1: with Spansh unreachable a failed ask kept the boxel due (the failure keeps the old,
+        missing ts) and moved the payload's boxel key there and back, so the page looked again and the look asked again,
+        round after round. A failure now waits BOXEL_SPANSH_RETRY_S, and only an answer moves the key."""
+        import asyncio
+        from aiohttp import ClientError
+        posts = []
+
+        class Down:
+            def post(self, *a, **k):
+                posts.append(a)
+                raise ClientError("down")
+        self.state.spansh.session, self.state.spansh.sem_fast = Down(), asyncio.Semaphore(1)
+        self.jump(0, REAL[0])
+        prefix = "Drojau TF-H c13-"
+        key0 = self.state.payload()["boxel"]["key"]
+        self.assertTrue(self.state.boxel_spansh_due(prefix))
+        asyncio.run(self.state.boxel_spansh_fetch(prefix))
+        self.assertEqual(len(posts), 1)
+        c = ed_outrider.meta_get(self.db, "boxel_spansh")[prefix]
+        self.assertEqual((c["ts"], c["systems"], bool(c["error"]), bool(c["error_ts"])), (None, {}, True, True))
+        key1 = self.state.payload()["boxel"]["key"]
+        self.assertNotEqual(key1, key0)                                   # the answer (a failure) shows once
+        self.assertFalse(self.state.boxel_spansh_due(prefix))            # and is not asked again at once
+        self.assertTrue(self.state.boxel_spansh_due(prefix, time.time() + ed_outrider.BOXEL_SPANSH_RETRY_S + 1))
+        self.state._boxel_fetching.add(prefix)                            # asking moves no key
+        self.assertEqual(self.state.payload()["boxel"]["key"], key1)
+        self.state._boxel_fetching.discard(prefix)
 
     def test_next_for_now(self):
         """The payload's boxel Next (for Now and the overlay's Now panel) is the list's, worked out without the list,

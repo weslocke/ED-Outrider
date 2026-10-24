@@ -227,7 +227,10 @@ class Tee:
                         shown = self.shown(str(text))
                     except Exception:  # noqa: BLE001 -- the times must never break a print
                         shown = text
-                self.stream.write(shown)
+                try:
+                    self.stream.write(shown)
+                except (OSError, ValueError):   # the terminal went away (a closed pipe, a closed console): the log
+                    self.stream = None          # alone from here, as under pythonw; a print never raises (S4-B11)
             return len(text)
         finally:
             try:

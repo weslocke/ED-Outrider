@@ -959,6 +959,39 @@ class LoopFixes(unittest.TestCase):
             self.run_loop(send, rounds=3)
         self.assertTrue(sent)                              # went on after the error
 
+    def test_a_report_that_raises_does_not_end_the_sender(self):
+        """Review 2026-10-23 S7-B1: report() ran bare, so one database error in it (a locked database while the round's
+        Recent entry was written) ended the service's sending for the session, silently."""
+        import asyncio
+        import sqlite3
+        clock, slept, sent, reports = [1000.0], [], [], []
+
+        async def sleep(secs):
+            slept.append(secs)
+            clock[0] += max(secs, 0.5)
+            if len(slept) >= 3:
+                raise asyncio.CancelledError
+
+        async def send(rows):
+            sent.append(rows[0]["id"])
+            return [(rows[0]["id"], "sent", "200 OK", None)]
+
+        def report(service, r):
+            reports.append(service)
+            if len(reports) == 1:
+                raise sqlite3.OperationalError("database is locked")
+
+        async def go():
+            try:
+                await U.upload_loop("eddn", self.db, send, lambda s: True, report=report, clock=lambda: clock[0],
+                                    sleep=sleep, batch=1)
+            except asyncio.CancelledError:
+                pass
+        with unittest.mock.patch("builtins.print") as said:
+            asyncio.run(go())
+        self.assertGreaterEqual(len(sent), 2)              # the next round still went
+        self.assertIn("report failed", " ".join(str(c) for c in said.call_args_list))
+
 
 class FableUploads(MarksAndCatchUp):
     """The Fable sweep of 2026-10-09: the uploads."""

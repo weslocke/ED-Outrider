@@ -186,6 +186,38 @@ class Auth(Base):
         self.assertEqual(A.client_key("127.0.0.1", {"Forwarded": 'for=10.0.0.1, for="[2001:db8::7]:4711"'}), "2001:db8::7")
         self.assertEqual(A.client_key("127.0.0.1", {"Forwarded": "proto=https"}), "forwarded")
 
+    def test_inside_a_container_loopback_is_not_this_pc(self):
+        """Review 2026-10-23 S4-B2: rootless Docker's and Podman's port forwarding deliver every outside connection from
+        127.0.0.1 with no forwarding header, so with a password set every device on the network passed as this PC."""
+        async def go(c):
+            r = await c.get("/api/nearby")
+            v = await (await c.get("/api/version")).json()
+            return r.status, v["signed_in"], (await c.get("/api/version")).status
+        with unittest.mock.patch.object(ed_outrider, "LOOPBACK_TRUSTED", False):
+            self.assertEqual(self.client(go), (401, False, 200))         # signs in like any device; /api/version open
+        self.assertEqual(self.client(go), (200, True, 200))              # on a PC: this PC, as before
+
+    def test_pages_cannot_be_framed_and_inlined_values_cannot_end_the_script(self):
+        """Review 2026-10-23 S4-B16: no frame-ancestors / X-Frame-Options, so another site could frame the loopback page
+        (signed in by being this PC) and steer clicks; S4-B17: the search options were inlined unescaped, so a refined
+        mineral's name holding "</script>" ended the page's script."""
+        self.db.execute("INSERT INTO own_mined (system, body_id, commodity, name, tons) VALUES (1, 2, 'x', '</script><b>x', 5)")
+
+        async def go(c):
+            out = {}
+            for path in ("/", "/tablet", "/api/version"):
+                r = await c.get(path)
+                out[path] = (r.headers.get("Content-Security-Policy"), r.headers.get("X-Frame-Options"),
+                             await r.text() if path == "/" else None)
+            return out
+        got = self.client(go)
+        for path in ("/", "/tablet"):
+            self.assertEqual(got[path][:2], ("frame-ancestors 'self'", "SAMEORIGIN"))
+        self.assertEqual(got["/api/version"][:2], (None, None))
+        page = got["/"][2]
+        self.assertNotIn("</script><b>x", page)
+        self.assertIn("\\u003c/script>\\u003cb>x", page)
+
     def test_rate_limit_forgets_quiet_addresses(self):
         """Review 2026-10-11: an address that never tries again was kept for the life of the process."""
         now = [0.0]

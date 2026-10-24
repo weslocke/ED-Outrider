@@ -121,15 +121,17 @@ class Pins(unittest.TestCase):
         self.state.pin_watch()
         self.state.pin_watch()                     # unmoved: B's 810 m was just said with the arrival
         self.assertEqual(self.said(), [("set", "A"), ("arrived", "A")])
-        # a tick that fails after pin_watch: its moment goes back, and so does the memory of having said it
+        # a tick that fails after pin_watch: its moment goes back, and so does the memory of having said it (a database
+        # error: any other error in a step before the commit is reported and the lines still commit, review S1x-S1)
         import contextlib
         import io
+        import sqlite3
         import unittest.mock
         self.db.commit()                           # (the real tick commits what pin_watch marked)
         self.at(0.0, lon_for(1250))                # 50 m from B, on foot: arrived
         n = len(self.said())
         with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", []), \
-                unittest.mock.patch.object(self.state.uploads_hub, "idle", side_effect=[RuntimeError("boom"), None]), \
+                unittest.mock.patch.object(self.state.uploads_hub, "idle", side_effect=[sqlite3.OperationalError("database is locked"), None]), \
                 contextlib.redirect_stderr(io.StringIO()):
             self.state.tick({})
             self.assertEqual(len(self.said()), n)     # rolled back

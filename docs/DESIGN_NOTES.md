@@ -322,7 +322,12 @@ upstream project's choices, not rules of the game.
   Android app's own calls). Loopback never does, so the desktop page, curl, OBS and a local MCP bridge work as before;
   but a loopback request carrying a forwarding header is a reverse proxy on this PC serving another device, so it
   needs a session too (`outrider.auth.from_this_pc`; wrong passwords count against the client the proxy names). No
-  setting: nothing on the PC itself sends those headers (review 2026-10-08 #3: the password was bypassed).
+  setting: nothing on the PC itself sends those headers (review 2026-10-08 #3: the password was bypassed). **Inside a
+  container loopback is never this PC** (`LOOPBACK_TRUSTED`, `this_pc(request)`; review 2026-10-23 S4-B2): rootless
+  Docker's and Podman's port forwarding deliver every outside connection from 127.0.0.1 with no header. A TCP-level
+  forwarder on a PC (stunnel, ssh, socat) does the same; the guide warns (the author chose a warning over a setting).
+  HTML answers carry `frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN` (S4-B16); every value inlined into the
+  page goes through `inline_json` ("<" escaped, S4-B17).
   A token is `<id>.<HMAC>` under a key made from the password and a per-install secret (DB meta `session_secret`),
   so sessions survive a restart with nothing kept in memory, all end when the password changes, and signing out
   revokes one id (meta `revoked_sessions`, the last 500). Plain http: the password crosses the network in clear,

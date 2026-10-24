@@ -245,7 +245,10 @@ An HTTPS reverse proxy on your own network (Caddy, nginx, a NAS's) works too: pu
 `[server] allowed_hosts` (say `outrider.lan`); Outrider answers it with or without a port and accepts its `https://`
 pages. A proxy running on the Outrider PC itself is fine with a password too: Outrider sees its forwarding header
 (`X-Forwarded-For`, `Forwarded` or `X-Real-IP`, which Caddy and nginx add) and asks each device to sign in, as it
-would without the proxy.
+would without the proxy. A **TCP-level** forwarder on the Outrider PC (stunnel, an ssh or socat tunnel, HAProxy in tcp
+mode) adds no such header: every device it serves looks like this PC and skips the password, so do not put one in
+front of Outrider (in Docker, Outrider never counts loopback as this PC, so the container's own port forwarding is
+safe).
 
 > [!CAUTION]
 > **Do not expose Outrider to the internet** (no port forwarding, no public name, no tunnel). It serves your

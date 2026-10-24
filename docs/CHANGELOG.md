@@ -2,6 +2,33 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Review fixes (1) and (2): the Boxel ask that looped, nothing stops silently, the password in Docker
+- Both batches in one commit (the first's check ran while the second was being written).
+- **Fix batch 2, security** (the full review's S4-B2, S4-B16, S4-B17):
+  - **S4-B2: inside a container the password is never skipped.** Rootless Docker's and Podman's port forwarding
+    deliver every outside connection from 127.0.0.1 with no forwarding header, so with a password set every device on
+    the network passed as "this PC". In a container loopback no longer counts (`LOOPBACK_TRUSTED`); on a PC it still
+    does, and install.md warns against a TCP-level forwarder (stunnel, ssh, socat) in front of Outrider.
+  - **S4-B16: no other site can frame the page** (`Content-Security-Policy: frame-ancestors 'self'`,
+    `X-Frame-Options: SAMEORIGIN` on every HTML answer).
+  - **S4-B17: every value inlined into the page is escaped** (`inline_json`): a refined mineral named "</script>" in
+    Search's options no longer ends the page's script.
+- **Fix batch 1** (the full Fable review of 2026-10-23, project/review-2026-10-23/FINAL.md):
+  - **S3-B1 (high): a failed Spansh ask about a boxel no longer loops.** A failure kept the boxel "due" and moved the
+    payload's boxel key there and back, so the page looked again and the look asked again, round after round while
+    Spansh was down. A failure now waits `BOXEL_SPANSH_RETRY_S` (2 min), and only an answer moves the key.
+  - **S7-B1: an error in an upload round's report no longer ends that service's sending** for the session (a locked
+    database there stopped EDDN, EDSM or Inara silently, the queue growing).
+  - **S4-B11: every long-lived task says when it stops**: the journal watcher, the firsts watch, the update check, the
+    overlay window, the co-pilot button and the upload senders print the error and raise a notice ("EDDN sending
+    stopped after an error: restart Outrider"); a print to a terminal that went away no longer raises.
+  - **S1x-B1: the curious-find call-out's "said" mark is kept** (it rode on the next tick's transaction, and a failure
+    there rolled it back while memory kept it); each follow-up's writes are committed when it ends.
+  - **S4-B14: a follow-up that keeps failing no longer reloads the whole reader every second** when it wrote nothing.
+  - Folded suggestions: the steps before the tick's commit are each guarded (S1x-S1: one that keeps raising no longer
+    holds the journal's lines back), `watch()` survives an error out of `tick()` itself (S4-S5), the overlay watcher is
+    guarded like the others (S7-S7).
+
 ## 2026-10-23 · The clipboard: xclip first where there is an X display
 - The author's auto-target paste came out empty, and the retry by typing then found Elite no longer the active window.
   GNOME's Wayland has no data-control protocol, so `wl-copy` sets the clipboard by opening a surface of its own that
