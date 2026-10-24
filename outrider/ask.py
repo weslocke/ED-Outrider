@@ -1,9 +1,11 @@
 """Questions to Outrider by voice (tablet plan phase 6): the tablet app hears "hey Vespa ..." (or a tap), turns the
 question into text and sends it to POST /api/ask; the answer is said on the PC and shown as a caption everywhere.
 
-First the fixed commands, matched without any AI (resources/ask.json: editable phrases): status report, fuel,
-unsold, next jump, what's left here, nearest unvisited, nearest station (or carrier, Vista, repair...), nearest
-green gas giant, FSD injections, how far today, this body, left behind nearby, hush (for a set time: S32), unhush.
+First the fixed commands, matched without any AI (resources/ask.json: editable phrases): where am I, status report,
+fuel (and the jump range), unsold, next stop (of whichever route you follow: route_next), what's left here, nearest
+unvisited, nearest station (or carrier, Vista, repair...), nearest green gas giant, FSD injections, how far today, this
+body, left behind nearby, bookmark this system / remove the bookmark, say that again, show a page on the tablet, hush
+(for a set time: S32), unhush.
 Their answers come from the same read-only tools
 the MCP bridge serves (outrider/tools.py), called in-process. Then, only when [assistant] enabled is true, an optional
 AI layer for anything else: an OpenAI-compatible chat-completions endpoint (Ollama, Venice.ai, OpenAI...) given those

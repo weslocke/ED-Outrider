@@ -7,8 +7,8 @@
 The **Plot Route** tab plots a route with [Spansh](https://spansh.co.uk), using neutron stars as boosts (or a
 Road to Riches, an Exomastery, an Earth-like, ammonia or terraformable world route, a sweep or a trade route, below), and follows it as
 you fly. Two routes are kept (following them needs no network): one Highway route (Exact or Neutron) and one survey
-route (any of the others but Carrier), each until you plot another of its kind or **Clear route**; a carrier trip is
-kept apart from both.
+route (any of the others but Carrier), each until you plot another of its kind, **Clear route**, or jump out of the
+system where it finished; a carrier trip is kept apart from both.
 
 <p align="center">
   <img src="../images/highway.png" alt="The Plot Route tab: the jump list, and the route on a map of the galaxy's regions" width="900">
@@ -67,8 +67,8 @@ arrive there: "The next 3
   the tiles (and on Now) shows the next stop ("🛣 Next: Hwy Stop 38 · ⚡ neutron · 4.2 ly · 38 of 399 · refuel in 3 jumps").
   The route's head says how long the jumps left take at this login's pace ("about 1 h 40 at your pace": the median gap
   of your last jumps, breaks left out), and the status report says it too.
-- **Permits.** Each plotted route is checked against Spansh's records: a stop or destination that needs a permit is
-  marked 🔒 and the head says so ("Sol needs a permit you may not have: the route ends there").
+- **Permits.** Each Highway route (Exact or Neutron) is checked against Spansh's records: a stop or destination that
+  needs a permit is marked 🔒 and the head says so ("Sol needs a permit you may not have: the route ends there").
 - **Clipboard.** On arrival the next system's name goes on the desktop clipboard for the galaxy map (Linux:
   `wl-copy` or `xclip`, see [Getting started](install.md#-getting-started); Windows: built in; on the game PC only).
 - **The voice:** "Next Neutron Highway Stop: Hwy Stop 38, with three jumps left to refuel. Boost your FSD to
@@ -97,6 +97,9 @@ avoiding Thargoid-hit systems. It shares Road
 to Riches' place (and the other survey routes'): one of them at a time, a new plot replaces it. Each body lists its species with their
 value, ✓ once you have sampled them and ✦ when one would be new to your codex in that region; the voice says on
 arrival how many species are left on how many bodies and the best of them, and the next stop once they are sampled.
+While **Codex finds count** is ticked (⚙ Settings, see [Voice and alerts](voice-and-alerts.md#-alerts)), the arrival
+line adds the species new to your codex there ("two would be new to your codex: the best, Frutexa Flammasis") and Next
+counts them ("3 species to sample there, 2 new ✦").
 It is known life, so first footfall (×5) is unlikely: the values shown are the base ones.
 
 **Earth-like, Ammonia and Terraformable.** Three more plotters ask Spansh for a chain of systems with Earth-like worlds
@@ -120,7 +123,10 @@ same place as the survey routes (one of them at a time). See [Trading](cargo-and
 **Carrier.** Your fleet carrier's trip, from Spansh's carrier router. It is planning only: the game books one carrier
 jump at a time, so you still set each in the carrier's galaxy map. Its own form: the depot, the tritium in the hold
 and the cargo in use (filled in from your journal, all changeable), the carrier's type, **To me** (your system as the
-destination) and **+ via** for a stop on the way. The plan, folded under the form: each leg with its light years and
+destination) and **+ via** for a stop on the way. The depot field's hover says when the depot was read (it moves only
+when you open the carrier's management panel), with a red edge once the reading is over a week old; the trip's head
+says it too ("· depot read 3 d ago"). With no depot read yet and none typed, the plot is refused: "open the carrier's
+management panel once". The plan, folded under the form: each leg with its light years and
 tritium, and what to do first ("move 300 t from the hold into the depot first", "buy 400 t here"); at the top, the
 legs, about how long (20 minutes a leg: the countdown and the cooldown; longer in busy systems) and the tritium
 needed against what you have. It never replaces your ship's route, and 🎯 never targets it.
@@ -152,10 +158,10 @@ on a server, without the keyboard, or while the box below lists a missing bindin
 is greyed out too, and a failed row gets no ⟳ Retry).
 
 **🎯 and Plot route anywhere.** A 🎯 also sits beside each bookmark, the header's next stop, the Nearest finder's rows,
-Search's results and the Exo-Biology checklist's "🔍 nearby" rows (never your own system), and left of each system's name in Nearby
-(the Overview's too, in a column of their own). **Plot route** beside a bookmark or
-the next stop puts the system in To and opens the form; it plots at once when you follow no route, and with one it
-waits for your Plot (a new plot replaces the route you follow). A click on a system in the Map tab targets it the same
+Search's results and the Exo-Biology and Geology checklists' "🔍 nearby" rows (never your own system), and left of
+each system's name in Nearby (the Overview's too, in a column of their own). **Plot route** beside a bookmark or the
+next stop (or on the Map's tapped card) puts the system in To and opens the form; it plots at once when you follow no
+route, and with one it waits for your Plot (a new plot replaces the route you follow). A click on a system in the Map tab targets it the same
 way when auto-target can work on this PC, else copies its name (see [the Map](views.md)).
 
 **Is the right system targeted?** The route line (under the tiles, on Now and in the tab) checks what the game has
@@ -190,8 +196,8 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   under X11, and under XWayland on a Wayland desktop (tried on GNOME; KDE Plasma should work, untried). On Windows it
   is untried. The box says whether it does, or why not.
   - When the game does not come to the front, 🎯, Target next and Test now count down 5 s instead ("Elite is not the
-    active window: click into the game") and still check before the first key; the automatic run and the co-pilot
-    button's say so and press nothing.
+    active window: click into the game", or "no game window found" when there is none to bring forward) and still
+    check before the first key; the automatic run and the co-pilot button's say so and press nothing.
   - Where it cannot see the game's window (no `wmctrl`; the game as a native Wayland window, Proton's Wayland driver;
     Sway, Hyprland and window managers that refuse focus stealing ignore it): the 5 s countdown as before, and then
     **the keys go to whichever window has focus**: stay in the game until it is done.

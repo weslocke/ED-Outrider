@@ -12,8 +12,8 @@ a dotted line has more in its hover. On the game PC the [in-game overlay](overla
 the game too, for a few seconds each:
 
 - a new discovery targeted, or arriving somewhere nobody has been
-- leaving with mapping or bio over your levels undone, or a first-discovered Earth-like, water, ammonia or
-  terraformable world unmapped
+- leaving with mapping or bio over your levels undone, a first-discovered Earth-like, water, ammonia or
+  terraformable world unmapped, or first-discovery scans lost with a ship still to redo
 - a valuable body the moment the FSS resolves it, and a new codex entry. A body someone else has already mapped is
   never pointed out (nor warned about when you leave): the first one in a system gets one line instead, "Already
   mapped, but there are still valuable bodies to map if you want to jump on the train"
@@ -55,13 +55,16 @@ the game too, for a few seconds each:
 - hull damage, heat damage, interdiction, and unsold data past a threshold
 - on foot on a planet, your suit's oxygen or health running low while data is aboard: what a death would lose and how
   far your ship is ("Suit oxygen low. 412M aboard; the ship is 640 metres away."), once each time it runs low; quiet in a
-  station or with nothing aboard
+  station or with nothing aboard (read from Status.json as Frontier documents it: not yet tried in a live game)
 - someone else's scans of a system holding your unsold first discoveries reached Spansh (the firsts watch, see
   [My firsts](views.md)): a card and a notification each time, "👁 Someone else scanned your unsold Drojau LL-O
   b26-3: 3 bodies reached Spansh 12 days after you (your scan 15 days ago) · 14.2M cr at stake", and spoken at most
   once in 30 minutes ("Heads up, someone else is scanning your unsold systems. Time to head back to sell before they
   poach your discoveries!"); a first look through many systems adds "3 systems so far today"
 - your carrier arriving somewhere new or leaving without you
+- your carrier's upkeep under 4 weeks (its balance counted down a week at a time from its last stats; nothing while it
+  is being decommissioned): the card at the top of the page always; the notification and a spoken line (the
+  Quartermaster) only once you tick its row, **Carrier upkeep low**
 - a Rhino mining rig nearing the 5 km leash (see The surface map)
 - **rings to mine**: a body you scan has a ring of a type you watch for, "A 3 has a pristine metallic ring" (Settings
   → Mining: tick Icy, Rocky, Metallic or Metal Rich, and **pristine only** if you laser-mine). Said as the FSS resolves
@@ -96,7 +99,8 @@ Neutron Highway's next stop, auto-target's result, the jump line, auto honk's re
 co-pilot button's confirmations, what a rig collected, rigs still marked out when you dock the Rhino). Discovery
 streaks (ten known systems in a row, or five undiscovered) are part of the arrival alert, which is notified. Not
 spoken until ticked: scooping stopped early, supercharge and the body brief on approach (they repeat what the game or
-another alert already said). Off until ticked: **jumponium** (see the voice, below).
+another alert already said). Off until ticked: **jumponium** (see the voice, below), **Upload on hold** and **Carrier
+upkeep low** (their cards come either way).
 
 ⚙ Settings also holds the thresholds. Your browser remembers them; the config file sets what a new
 browser starts with.
@@ -221,7 +225,8 @@ Sound: Allow; Firefox: Autoplay: Allow Audio and Video).
   A problem in a file is shown in Settings, and the file's last good copy stays in use. To share a personality, share
   its file. To start one, `python3 -m outrider.speech --skeleton "Pirate" --profane` (`--names "Cap'n, Skipper"` for
   how it calls you) writes `data/personalities/pirate.json` with every alert in it, each with its `"_when"` (when it is
-  said, and its placeholders) and empty lists to fill; it never writes over a file that is there.
+  said, and its placeholders) and empty lists to fill; it never writes over a file that is there, and refuses the name
+  of a personality Outrider ships (yours would be left out: copy that one's own file instead).
 - **A voice per personality.** ⚙ Settings → Voice → **Personality voices** gives each personality a voice of its own,
   or another person of a several-person voice: pick the voice (and the speaker, for a voice of many people), **▶** to
   hear one of its lines, **reset** for what the lines file says again. Outrider keeps them, so every browser and the
@@ -251,8 +256,8 @@ the sentence ends:
 | Science Officer | target verdicts, arrivals, the honk, briefings, the FSS, mapped planets, high-g approaches, bio bodies ahead, leaving with work left, codex, phenomena, green gas giants, rare stars, surface sites, signals, curiosities |
 | Exobiologist | valuable bodies, sampling, Exomastery routes |
 | Chief Engineer | fuel, tank full, scooping stopped, jumponium, hull and heat, the suit running low |
-| Quartermaster | sales, unsold data, your carrier and its trips, losses |
-| Comms Officer | the game's start and exit, someone scanning your firsts, docking pads and refusals, other players' chat (read aloud, below) |
+| Quartermaster | sales, unsold data, your carrier, its upkeep and its trips, losses |
+| Comms Officer | the game's start and exit, someone scanning your firsts, an upload on hold, docking pads and refusals, other players' chat (read aloud, below) |
 | Tactical | every danger line (while Danger lines always in Tactical's voice is on) |
 | Mining Officer | the Rhino's rigs, rings to mine, limpets and the hold (nearly full, full, where to sell), the prospector call-out and motherlodes |
 
@@ -302,11 +307,13 @@ the sentence ends:
 **What it says**
 
 - **Arrival briefing.** One sentence after the honk: "Known. 12 bodies. Scoopable M star. The Earth-like
-  world at A 2 is unmapped, 1.4 million." Entering a new galactic region opens it ("Entering the Norma Arm.").
+  world at A 2 is unmapped, 1.4 million." Entering a new galactic region opens it ("Entering the Norma Arm."). Back
+  where first-discovery scans died with a ship, it names them ("You lost 12 scans here: rescan them, 4.1M."), and the
+  FSS debrief puts them first.
 - **Routine systems: sound only** (a tick, off by default) plays a soft two-note sound instead of the
-  briefing where there is nothing to do. A system whose Spansh data predates Odyssey is never routine until your own
-  scans have every body: its briefing ends "Spansh's data here is from February 2019, before Odyssey: worth a
-  rescan" (and how many thin-atmosphere worlds may hold life), since "everything known" there means little.
+  briefing where there is nothing to do. A system with lost scans to redo is never routine, nor is one whose Spansh
+  data predates Odyssey until your own scans have every body: its briefing ends "Spansh's data here is from February
+  2019, before Odyssey: worth a rescan" (and how many thin-atmosphere worlds may hold life), since "everything known" there means little.
 - **FSS debrief:** what is worth doing once every body is found. **Signals** as the FSS finds them.
   **The jump line** in the hyperspace tunnel, with whether the star ahead is scoopable, and any hazard.
 - **Greeting and goodbye:** what is at stake after a long break (and any core module under your level), and a
@@ -463,10 +470,10 @@ your model with real questions: tool calling varies, and a slow model runs into 
 An AI client you already use (Claude Code, the Claude desktop app, or any other MCP client) can ask Outrider questions
 in plain language: "what's worth landing on here?", "how much am I carrying unsold?", "what's left within 50 ly?",
 "how far to the next refuel on the highway?". Your client starts `python3 -m outrider.mcp` when it needs it (nothing
-to run or switch on in Outrider), which reads your running Outrider and answers through twelve read-only tools: current
-status, this system, nearby systems, the nearest unvisited system, the nearest place to dock, the nearest potential
-green gas giants, one body, unsold data,
-work left behind, the Highway route, travel history and materials. It can only read: it never presses keys, plots, bookmarks or hushes
+to run or switch on in Outrider), which reads your running Outrider and answers through thirteen read-only tools:
+current status, this system, nearby systems, the nearest unvisited system, the nearest place to dock, the nearest
+potential green gas giants, one body, unsold data, work left behind, the Highway route, the next stop of whichever
+route you follow, travel history and materials. It can only read: it never presses keys, plots, bookmarks or hushes
 anything. Nothing extra to install.
 
 - **Claude Code**, from the Outrider folder: `claude mcp add --transport stdio outrider -- python3 -m outrider.mcp`

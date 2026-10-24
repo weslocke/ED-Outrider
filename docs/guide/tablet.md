@@ -25,7 +25,7 @@ for this: see [Other devices on your network](install.md#-other-devices-on-your-
   Search, Map, Plot Route) and Records (History, Log, Materials, CMDR, My firsts). There is no Overview.
 - **Tap a row** in a table for all of its facts, including the columns too narrow to show, with Show in Here,
   Bookmark and, on a route's row, a bookmark or a Nearby row (game PC), **Target** (the galaxy map's destination marker). On the galaxy map a tap on a system shows its card,
-  with **Target** when auto-target works on the game PC, and Copy name.
+  with **Target** when auto-target works on the game PC, Copy name and **Plot route**.
 - **The maps by touch:** on the galaxy map one finger rotates, two fingers move it and a pinch zooms; on Plot Route's
   map two fingers move and pinch.
 - **On a planet** the tablet switches to Now when the surface map appears (the Now button says MAP) and back to your

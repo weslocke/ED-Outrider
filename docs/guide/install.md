@@ -41,7 +41,11 @@ update Outrider.
 > reads what's new. When an update changes how journals are read, its first start reads them all again once (after a
 > backup), and the start-up log says so first, with why. Meanwhile the page already answers: "Reading your journals:
 > March 2024, 41%", with Show log, and it opens by itself when Outrider is ready (a page left open says "starting").
-> Journal folders are found automatically on Windows and Steam/Proton. When none is found, or the folder holds no
+> If Outrider stops answering for 20 s, the starting page says so and points at its terminal and `data/outrider.log`;
+> it opens by itself if Outrider comes back. A database that cannot be opened is said there and in the terminal, with
+> the command that puts a backup back.
+> Journal folders are found automatically on Windows (also when the Saved Games folder was moved to another drive)
+> and Steam/Proton. When none is found, or the folder holds no
 > journals yet, the Data tile and a line at the top of the page say so, and **set the journal folder** opens ⚙
 > Settings → Server at `[journals] live`. A browser needs one click on the
 > page before it plays sound: the red **Click Here To Allow Audio** pill asks for it.
@@ -113,7 +117,10 @@ switch to it now with `systemctl --user start ed-outrider` after stopping the Ou
 `journalctl --user -u ed-outrider -f`, and Show log as always. It comes back by itself after a crash, and Settings'
 **Restart** goes through it. systemd stops starting it after 30 starts in 10 minutes (a crash loop); after that,
 `systemctl --user reset-failed ed-outrider` and `systemctl --user start ed-outrider`. If it does not start at login, your desktop does not start `graphical-session.target`
-(GNOME and KDE do). On a Linux server (`[server] game_pc = false`) it starts with your user's systemd instead; `loginctl
+(GNOME and KDE do). When your desktop does not pass its display to user services (the overlay, the clipboard and
+bringing the game to the front need it), the install says so and gives the command: `systemctl --user
+import-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY` from the desktop, then `systemctl --user restart ed-outrider`.
+On a Linux server (`[server] game_pc = false`) it starts with your user's systemd instead; `loginctl
 enable-linger` starts it at boot. On Windows it is `ED Outrider.cmd` in your Startup folder (`shell:startup`), which
 starts `launch_outrider.bat` minimised when you sign in. Not in Docker (the container's restart policy already is the
 service) and not on macOS yet (add `launch_outrider.sh` to Login Items).
@@ -131,7 +138,8 @@ commander with the most journals: Outrider sets `[journals] commander`, restarts
 To keep another one, or to change your mind, set ⚙ Settings → Server → Files and backups → `[journals] commander`
 yourself (the FID or the name as the game shows it, blank for every commander); every journal is read again at the next
 start. While the other commander plays, this Outrider stands down: the page says "CMDR B is playing: not tracked here",
-Status.json is not read, and auto-target presses nothing. Uploads still go per commander, each with its own key.
+Status.json, NavRoute.json, Cargo.json and ShipLocker.json are not read, and auto-target presses nothing. Uploads
+still go per commander, each with its own key.
 
 To track the alt too, run a second Outrider with its own port, database and config file (`--port 8027 --db
 data/alt.sqlite --config alt.toml`) and `[journals] commander` set to that commander: each is live only while its
@@ -181,7 +189,8 @@ turns the automation off inside a container by itself; `false` does the same on 
 - Or let Docker mount it: `docker-compose.yml` has NFS and CIFS volume examples.
 - Every second Outrider lists the folder and checks only the newest journals and those still growing: a long journal
   history costs the share no more than a short one. Each older file is checked once a minute, so a sync tool that adds
-  to one is still read.
+  to one is still read. If the folder goes away while Outrider runs (the share dropped, the game PC off), a red card
+  at the top of the page says so, and goes when the folder is back.
 
 **2. Install,** as the user who will own the files, one of three ways:
 
@@ -250,7 +259,9 @@ note folder in the journal share.
 ## 🌐 Other devices on your network
 
 Outrider listens on 127.0.0.1 only unless `[server] host` says otherwise (`"0.0.0.0"` for your network; ⚙ Settings →
-Server, or the config file). It answers to any IP address, but by name only to `localhost`, the configured host and
+Server, or the config file). A host that is no longer an address of this PC (the router gave it another) does not
+stop Outrider: it listens on 127.0.0.1 only, with a card saying so, until you fix it in Settings. A port already in
+use still stops it. It answers to any IP address, but by name only to `localhost`, the configured host and
 this machine's name; add others (a router's `mypc.lan`, say) to `[server] allowed_hosts`. This, and refusing changes
 sent by other web sites, stops a malicious page from reading your journals or pressing keys.
 
@@ -283,19 +294,22 @@ Outrider backs itself up at start when the last backup is over a day old, and a 
 the game. **Back up now** in the Data tile, or in ⚙ Settings → Server → **Backups**, does it on demand.
 
 - Each backup is a dated zip in `data/backups/` holding the database, `browser_defaults.json`, the speech files,
-  your config file and your own pronunciations (`pronounce.json`). The newest 7 are kept (`backup_keep`). Your own
-  personality files in `data/personalities/` are not in it: copy them yourself.
+  your config file, your own pronunciations (`pronounce.json`) and your own personality files (from
+  `data/personalities/`, under `personalities/` in the zip). The newest 7 are kept (`backup_keep`).
 - Every journal is also copied into `data/backups/journals/` and never deleted. Under Steam/Proton an uninstall
   deletes your journals, so this copy matters.
 - Every backup is checked before it counts; a bad one never rotates a good one out.
 - The Data tile reads "backed up 3 h ago · verified · 7 kept", amber when overdue, red when one failed.
+- A backup the disk cannot hold is refused in words before anything is written ("not enough free space for a
+  backup…"). While the disk has room for fewer than two more, a card at the top of the page says so.
 - `backup_every_days = 0` turns automatic backups off.
 - Before a journal re-read (after an update that changes how journals are read, or `--rescan`) the database is always
   backed up first, even with `backup_every_days = 0`: the zip's name ends in `-pre-reread`, and it rotates out with
   the others. If more than half the journals the database was read from are gone, Outrider says so at the top of the
   page.
 - ⚙ Settings → Server → **Backups** lists the zips, newest first (marked "automatic", "by hand" or "before a re-read"
-  where that is known), with the command that restores the one you click and a **Copy** button.
+  where that is known), with the command that restores the one you click and a **Copy** button. Under the list it
+  says what they take on the disk (the zips, the journal archive, any pre-restore copies) and the space left free.
 
 **Restoring.** The journals alone can rebuild everything:
 `python3 ed_outrider.py --legacy data/backups/journals` reads them into a fresh database.
@@ -313,8 +327,8 @@ Settings → Server → Backups gives the exact command for the zip you pick, wi
 was started with them. `--restore` refuses while Outrider is running (it holds `ed_outrider.sqlite.lock` beside the
 database, in any container or on any port), checks the zip first, and keeps the database it replaces as
 `ed_outrider.sqlite.pre-restore-<date-time>`. `--list-backups` lists the zips; add `--db` for a second database.
-`--restore` leaves `speech.json`, `speech_banned.json`, `pronounce.json` and `ed_outrider.toml` alone: unzip those by
-hand if you need them (an old `speech.json` lacks newer lines).
+`--restore` leaves `speech.json`, `speech_banned.json`, `pronounce.json`, `ed_outrider.toml` and your personality files
+alone: unzip those by hand if you need them (an old `speech.json` lacks newer lines).
 
 ---
 

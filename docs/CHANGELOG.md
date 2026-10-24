@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · The docs brought up to date with the review's work
+- A read-only audit of every doc against the code since 02bf77c found about 75 places behind it; all fixed: the user
+  guide (the features of the review's fixes and suggestions where a player looks, a few lines that no longer held:
+  backups now carry your personality files, thirteen AI tools, the permit check is the Highway's, the upkeep "now"),
+  AGENT_GUIDE (the commander filter in the data flow and its stand-down as a rule, the new endpoints, commands and
+  helpers, `SERVER_LINE_KEYS`, `CONFIG_RANGES`, `this_pc`, 72 test files), DESIGN_NOTES and JOURNAL_REFERENCE (the
+  decisions and game data the new work relies on), CLAUDE.md's keep-in-step line, `[journals] commander` in
+  ed_outrider.toml.example, the ask.json status report's description, the skeleton's and the Map's touch hint's words.
+
 ## 2026-10-24 · Bug check fixes: what the Fable check of the review's work found (PARSER_VERSION 60)
 - A multi-agent Fable bug check of everything since 02bf77c (project/review-2026-10-24, git-ignored) confirmed 31 bugs;
   two of them (the voice's "where am I" said to crash on the region and read the body as an object) were not: the

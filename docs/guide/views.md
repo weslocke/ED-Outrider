@@ -71,8 +71,8 @@ systems ringed amber (at its own radius), lost firsts to rescan red, unsold firs
 pinch zooms); tick <i>boost stars</i> for neutron stars and white dwarfs. The route ahead is dashed: the one plotted in
 game, and the route Outrider follows (Plot Route's) from where you are, with ◎ on its next stop (else your next stop);
 hover a stop for which it is. A click on a system targets it in the galaxy
-map when auto-target can work on this PC, else copies its name (the card says which; a tap shows the card with **Target**
-and Copy name).
+map when auto-target can work on this PC, else copies its name (the card says which; a tap shows the card with
+**Target**, Copy name and **Plot route**).
 <br><br><img src="../images/map.png" alt="The 3D map">
 </td>
 <td width="50%" valign="top">
@@ -95,8 +95,9 @@ checklists</a>.
 </td>
 <td width="50%" valign="top">
 <b>Log</b> — every journal event, newest first, one readable line each. Filter by category and time,
-search any text, click a row for the raw event. With uploads on, each line shows what they made of it (✓ EDDN · ⏳ EDSM,
-<a href="uploads.md#upload-marks-in-the-log">upload marks</a>), and <b>not sent</b> lists what is waiting or was refused.
+search any text, click a row for the raw event. A search answers in parts ("searching… 12 so far") and keeps looking
+by itself, so a search that matches little shows what it has found while it goes on. With uploads on, each line
+shows what they made of it (✓ EDDN · ⏳ EDSM, <a href="uploads.md#upload-marks-in-the-log">upload marks</a>), and <b>not sent</b> lists what is waiting or was refused.
 <br><br><img src="../images/log.png" alt="The log">
 </td>
 </tr>
@@ -135,7 +136,8 @@ filter on them); 🎯 after a result's name targets it in the galaxy map, where 
 then EDSM, then Spansh when EDSM is down or doesn't know it) and opens it in Here, where ☆ bookmarks it or makes it the
 next stop. <i>Within N ly of</i> searches around you, your destination in game, your carrier, your next stop or a
 system you name: the distances are from there, and a result's hover says how far it is from you (remembered on this
-device).
+device). Tick results to fly them as a <a href="plot-route.md">sweep</a>, with Left behind's, My firsts' and Bookmarks'
+ticks.
 <br><br><img src="../images/search.png" alt="Search">
 </td>
 <td width="50%" valign="top">
@@ -147,7 +149,8 @@ rescan checklist for data lost with a ship, nearest first, priced by what is lef
 runs that died with you ("+ 2 sample runs lost, 24M", a system with only those listed too). Back in such a system, Now's
 Next line, the leaving warning, the status report and the arrival briefing name the scans still to redo ("Next: rescan
 12 lost scans in the FSS"), never "nothing worth staying for". <b>Left behind</b> lists nearby systems with work over your
-thresholds, nearest first; a click on Worth sorts the most valuable first (kept per device).
+thresholds, nearest first; a click on System, Dist or Worth sorts by it (Worth: the most valuable first), kept per
+device.
 <br><br><img src="../images/firsts.png" alt="My firsts">
 </td>
 </tr>
@@ -243,8 +246,9 @@ The **header** shows the galactic region, ranks, fuel, hull, any core module und
 🎯 beside its system, when it is elsewhere, puts it in the galaxy map; one movement line: a carrier trip's leg (see
 [Plot Route](plot-route.md)), else a booked jump's countdown, else the jumps between you and it with the tritium for
 its trip to you; "UC ✓ · Vista ✓ · Tritium: 668t/14,199t" (the depot, then all of it with the hold; a suspended UC or
-Vista a red ✗); and its balance and weeks of upkeep: "Balance 1.33B · ~96 wks upkeep"), the nearest places to sell (your carrier among them while its UC or Vista is on),
-and the last backup.
+Vista a red ✗; "Tritium: ≈534t" for the depot between readings, its burn since taken off); and its balance and weeks
+of upkeep, counted down to today: "Balance 1.33B · ~83 wks upkeep now"), the nearest places to sell (your carrier
+among them while its UC or Vista is on), and the last backup.
 
 The **In-Game Route:** line under the tiles is the route the game plotted in the galaxy map (a route of more than one
 jump: a system targeted next door has no line, the target says it; a longer route keeps its line to its last jump): its jumps and light years,
@@ -262,7 +266,8 @@ never writes the route's file (NavRoute.json); Outrider then waits a minute for 
 or fuel figures. If the line stays like that, clear the route in the galaxy map and plot a different destination: the
 game writes the file again.
 
-The **Data tile** says how fresh your journal is, the last backup, the uploads in use, and whether the outside lookups
+The **Data tile** says how fresh your journal is (the newer of the journal and Status.json, so a quiet journal in
+supercruise or on foot does not turn it amber), the last backup, the uploads in use, and whether the outside lookups
 answer: "Spansh ok", or just "Spansh unavailable" (EDSM, GitHub... the same) while one does not, and "No internet
 connection" when two or more fail because this PC has no network. Meanwhile the lists show what Outrider kept from
 earlier, and it asks again by itself. If Spansh or EDSM stays unavailable for 10 minutes, or this PC has no network,

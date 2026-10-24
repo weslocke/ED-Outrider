@@ -57,8 +57,9 @@ Docker), where the HOTAS is plugged in:
   (see [auto-target](plot-route.md)). It works whether or not
   auto-target after a supercharge is on: leave that off and tap the button when you are ready instead.
 - **Double tap:** a status report: fuel and jumps (and any core module under your level), on a Highway route the
-  boost and the next route system, the next stop, what is aboard against your rebuy (only what is aboard for a ship
-  bought with Arx, whose hull has no credit value), and the nearest unvisited
+  boost, the next route system and the time left ("about 1 hour 40 to go at your pace"), what to do next here (scans
+  lost with a ship and still to redo come first: "Next: 12 lost scans to redo in the FSS"), the next stop, what is
+  aboard against your rebuy (only what is aboard for a ship bought with Arx, whose hull has no credit value), and the nearest unvisited
   system (left out while you follow a route). With a body targeted it leads with that body
   ("A 3: 2.4 g, thin ammonia, 3 bio signals, up to 19 million, about 2 minutes, worth it"); mid-run on a body, the
   sampling. A double tap mid-line cuts it short.

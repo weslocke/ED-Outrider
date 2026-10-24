@@ -22,8 +22,8 @@ switch them (they are not among the Server settings).
     per in-game commander, set in Settings → Uploads. The key stays on this Outrider: the page shows only its first
     and last four characters, to compare with edsm.net.
   - The commander you are playing, with no key saved yet, is held, not dropped: what you play waits in the outbox
-    and goes once you save the key (switching EDSM on before adding the key loses nothing). Another commander with
-    no key sends nothing, and Settings says so.
+    and goes once you save the key (switching EDSM on before adding the key loses nothing); once another commander
+    plays, what was held is dropped. Another commander with no key sends nothing, and Settings says so.
   - A key EDSM refuses stops the sending (not the recording) until you change the key, press **Try again** in
     Settings → Uploads, or switch EDSM off and on: what you played meanwhile then goes.
   - **Check** beside the key asks EDSM whether it takes that name and key (the one typed, else the one saved), without
@@ -48,9 +48,10 @@ switch them (they are not among the Server settings).
   - It needs your Inara API key ([inara.cz → Settings → API key](https://inara.cz/elite/cmdr-settings-api/)), per
     in-game commander, set in Settings → Uploads. The key stays on this Outrider: the page shows only its first and
     last four characters.
-  - The commander you are playing, with no key saved yet, is held until you save one, as for EDSM; another
-    commander with no key sends nothing, and Settings says so. Once you enter a key (or another one), your ranks,
-    ship, inventory and the rest go whole again the next time the game writes them, most of it at your next login.
+  - The commander you are playing, with no key saved yet, is held until you save one (and dropped once another
+    commander plays), as for EDSM; another commander with no key sends nothing, and Settings says so. Once you enter
+    a key (or another one), your ranks, ship, inventory and the rest go whole again the next time the game writes
+    them, most of it at your next login.
   - **Switch Inara off in any other app first** (EDMC, EDDI, EDDiscovery, EDDLite): two apps sending can get your key
     revoked. Outrider sees EDMC's setting on this PC and holds its own while EDMC sends; it cannot see the others.
   - A key or app Inara refuses stops the sending (not the recording) with Inara's words in Settings, until you change

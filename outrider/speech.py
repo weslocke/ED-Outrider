@@ -917,7 +917,7 @@ def main(argv=None):
     if why:
         print(why, file=__import__("sys").stderr)
         return 1
-    print(f"written: {path} ({len(spoken_keys())} alerts to fill in; Outrider reads it at its next start)")
+    print(f"written: {path} ({len(spoken_keys())} alerts to fill in; Settings -> Voice shows it as soon as it is there)")
     return 0
 
 

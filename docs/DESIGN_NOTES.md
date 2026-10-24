@@ -335,10 +335,18 @@ upstream project's choices, not rules of the game.
   and the docs say so rather than pretending otherwise (TLS on a LAN means certificate pain for little gain). Five
   failed sign-ins a minute per address, then 429. `/api/version`, the sign-in page and calls, the tab icon and
   `OPEN_GETS` stay open (the app must learn whether a password is wanted before it has one).
+  **A `[server] host` that is no longer this PC's address falls back to 127.0.0.1** (S9-S24), with a notice pointing at
+  Settings → Server (`host_fallback`): a DHCP lease that moved made every start fail, a silent crash loop under the
+  service with no page to fix it from. Loopback widens nothing, so it is safe to take; a port in use still stops the
+  start.
 - **Settings writes the config file** (the author, 2026-10-03: Outrider is becoming an always-on service). Server
   settings lists every key `config_text` knows, so nothing is left out and no second list drifts; a save edits only
   the changed keys in place (the file's comments and unknown keys stay), keeps the old file as `.bak`, and writes
-  nothing unless the result reads back and settings_from finds nothing new wrong. Server settings' changes apply at
+  nothing unless the result reads back and settings_from finds nothing new wrong. A number out of range is refused in
+  words when saved ("[highway] efficiency must be 1 to 100 %": `CONFIG_RANGES`, one table for every number
+  settings_from clamps, feeding `CONFIG_CHECKS`; review 2026-10-23 S1-B1), never written and then clamped silently,
+  which left the field showing a number nobody typed; a hand-edited file is still clamped when read.
+  Server settings' changes apply at
   the next start, except the keys in `State.LIVE_CONFIG` (the speech loading keys and `pad_delay`, auto honk's delay and
   skip, every `[highway] autotarget_*`), applied at once by `config_live` (the answer's `restart` says when a restart is
   still needed); the Settings → Uploads switches apply at once and are written into the file too. Secrets (the password, the AI key) never leave the server.
@@ -360,8 +368,11 @@ upstream project's choices, not rules of the game.
   a banner there. But a Docker server often has no browser open at all (the author, 2026-10-04), so the tablet's
   Settings can make it speak and play sounds itself, deliberately outside the one-speaker lock: doubling is the
   user's to avoid, by turning one off. It has its own alert choices (Choose alerts…).
-- **One automatic page switch on the tablet:** to Now when the surface map shows, back when it hides (only if you
-  are still on Now and chose no page meanwhile). Anything more would take the page from under your finger.
+- **The tablet changes page by itself only for a reason:** to Now when the surface map shows, back when it hides (only
+  if you are still on Now and chose no page meanwhile); and the page you ask for by voice ("show Nearby", "open Bio",
+  "back to Now": S9-S16, `ask.page_named`, the co-pilot channel's `show` → page.js `tabShowPage`), taken as a page you
+  tapped, with no way back by itself (you asked, so it is yours). The desktop page never follows a voice's page: it is
+  the PC's own screen, in use beside the game. A switch with no reason would take the page from under your finger.
 - **Fonts are OFL and shipped; fan fonts never are.** Antonio and Barlow Condensed (SIL OFL 1.1) live in
   `static/fonts/` with their licences. Fonts like "Euro Caps" or LCARS fan fonts have unclear redistribution terms:
   the player may drop one into `data/fonts/` (served at `/userfonts/`), and the theme uses it first.
@@ -376,9 +387,9 @@ upstream project's choices, not rules of the game.
   line (status report, say again, replay, an answer) is said in Piper or not at all, never in the browser's own voice
   (`speak(..., {piperOnly: true})`; the author's choice, 2026-10-04): the caption is there either way. `spoken` says
   whether a window that speaks has asked for the payload in the last minute (S24: its long poll says `speaker=1`).
-  Vespa's "status report" is composed on the server (system, fuel, unsold, the Highway's next stop), not the page's
-  report: that one depends on each browser's thresholds (S23). The AI layer is off by default and sees only the
-  read-only tools; hush and unhush are fixed commands, never AI tools.
+  Vespa's "status report" is composed on the server (system, fuel, unsold, the next stop of the route you follow:
+  `route_next`, S9-S2), not the page's report: that one depends on each browser's thresholds (S23). The AI layer is
+  off by default and sees only the read-only tools; hush and unhush are fixed commands, never AI tools.
 - **The voice's own questions follow the server's settings** (S14, S32, 2026-10-13). "Left behind nearby" keeps what
   is over `body_highlight_level` and `bio_min` from ed_outrider.toml, not a browser's (the page's Left behind keeps
   its own); the AI's left_behind tool filters nothing and gives the values. "How far today" counts the sessions that
@@ -457,6 +468,23 @@ upstream project's choices, not rules of the game.
 - **Parked:** nearest neutron star and a wasted-charge warning (now that the Highway exists, the next candidates).
 - **The Highway keeps one active route.** A new plot replaces it; waypoints may come later. It is live-only data
   (`highway_route`), kept through a journal re-read and carried by backups.
+- **A ship with no fuel scoop on the Highway's exact plotter is warned, never refused** (S9-S31): the plot answers 400
+  `no_scoop` with the reason (the exact plotter plans a refuel at every scoopable star) and the page offers "plot
+  anyway" (`allow_no_scoop`); the route's head then says so (`options.no_scoop`, a neutron plot's too). A ship with no
+  Loadout to read (`ship_scoop` None) is not warned. Re-plot keeps a "plot anyway" once given (bug check #29).
+- **The Highway's pace is this login's median jump gap** (S9-S9, `jump_pace`): the gaps between your own last 10
+  FSDJumps (`JUMP_PACE_N`; rides on your carrier left out), a gap over 15 minutes dropped (`JUMP_PACE_GAP_MAX`: a break,
+  a long stop), nothing said under 3 gaps (`JUMP_PACE_MIN`). Honks, scoops and stops stay in: that is the pace.
+- **The permit check never loses the route** (S9-S32, `route_permits`): after a Highway plot (Exact or Neutron, not the
+  survey slot's routes) its stops are looked up in Spansh's system records (`needs_permit`, `PERMIT_BATCH` id64s a
+  search) for 🔒 on the row and a note under the head (`permit_note`); a failed ask leaves the route as plotted, with no
+  note. The system you plot from is never flagged (bug check #30: Shinrarta Dezhra, a common home, flagged every plot
+  from it).
+- **Re-plot from here is the same plot with the ship you fly now** (S9-S8, POST `/api/highway/replot`): the route's
+  own plotter and options (injections, secondary stars, neutron boosts, the conservative margin; the neutron plotter's
+  efficiency and multiplier, and its typed range when it had no ship), from where you are to its destination, through
+  the plot's own checks and answers. Offered off the route, or when the route was plotted for another ship (its fuel
+  stops and warnings do not apply).
 - **A finished route clears itself at the next jump out** (the author, 2026-10-24: "when you jump out of that system
   the route should auto-clear"; an option only if players find it annoying): the Highway or the survey slot (Road to
   Riches, Exomastery, the worlds' routes, a sweep, a trade route), each on its own, once `done_ts` is set, at the
@@ -469,10 +497,12 @@ upstream project's choices, not rules of the game.
   the nearest route system marked is the CLOSEST one, passed or not (the author's rule, 2026-10-03: getting back on
   the highway is the fastest way on). Arrivals count when newer than the position the route was plotted at (its
   journal time, not the wall clock), so a jump read just after the plot finished still moves the route.
-- **The status report and welcome back say the Highway** (review S2): one clause right after the fuel ("Highway: boost
-  here, then Hwy Stop 38, 4.2 light-years, refuel in 3 jumps"), led by the too-much-fuel warning when it is set, the
-  closest route system when off the route; the report's "Nearest unvisited" is left out while a route is followed.
-  No position "38 of 399" (the index and total are easy to say one off).
+- **The page's status report and welcome back say the Highway** (review S2): one clause right after the fuel
+  ("Highway: boost here, then Hwy Stop 38, 4.2 light-years, refuel in 3 jumps", and in the report "about 1 hour 40 to
+  go at your pace" once the pace is known: S9-S9), led by the too-much-fuel warning when it is set, the closest route
+  system when off the route; the report's "Nearest unvisited" is left out while a route is followed. No position "38 of
+  399" (the index and total are easy to say one off). Vespa's server-side report is not this one: it names the next
+  stop of whichever route you follow (`route_next`, S9-S2; "Two status reports" below).
 - **The Highway's cargo is not remembered.** The form takes the cargo aboard from the journals each time (a
   remembered figure would be stale the next day); only the plotter and its options are per-browser settings.
 - **Road to Riches is a route type of Plot Route, not a tab** (thshurka's PR #1 gave it its own; moved 2026-10-06):
@@ -542,7 +572,10 @@ upstream project's choices, not rules of the game.
   would aim at.
   Guards (review batch 4): the keyboard's owners (who keeps the device open) and a run's cancel token are separate,
   so switching auto-target or auto honk off stops that feature's run even while the other keeps the device open;
-  clearing or replacing the Highway route stops a pending or running auto-target too. Everything is checked again
+  clearing or replacing the Highway route stops a pending or running auto-target too, except the boxel's automatic
+  run (review 2026-10-23 S4-B9): it has its own cancel token (`_boxel_cancel`), stopped only by its own switch (meta
+  `boxel_auto`) or another boxel, never by the Highway's switch or a cleared route, and its switch holds the keyboard
+  while it is on (owner "boxel"), so it works without the Highway's switch or auto honk. Everything is checked again
   under the keyboard's lock before the first key (the wait for it can be long: one feature holds it for its whole
   sequence), against the system the run was decided in rather than wherever you are when it starts. "Already
   targeted" is checked before anything else (a panel open does not make it an error), and the check after the plot
@@ -927,15 +960,27 @@ upstream project's choices, not rules of the game.
   the journal and nothing of that stretch is caught up later; EDDN's waits are dropped (`eddn.quiet`). A *held*
   service (a key EDSM refused) is different: it keeps queueing and sends once the key is fixed, since nobody else sent
   that stretch (the author lost twelve events before this).
+- **No key saved yet: the commander you play is held, another dropped** (S3-S1, `State.no_key_hold`): switching EDSM or
+  Inara on before adding the key lost the session, so the rows of the commander playing now wait in the outbox
+  (`upload_no_key`) and go once the key is saved (`clear_key_hold`, the helper a new key goes through). Another
+  commander's rows with no key are still dropped (an old alt's lines are not kept forever), and the hold ends by itself
+  when another commander plays (`upload_on`: the held commander's rows are then dropped and the queue goes on).
+- **A hold is not an outage: it has its own card and alerts row, which may speak** (S9-S20, `upload_hold_said` /
+  `upload_hold_gone`): a hold waits on the player (a key refused or not saved, a kind of EDDN message refused), so
+  unlike an outage it is worth hearing. A card at the top of the page once per hold (notice `upload_held:<key>`, the
+  key the service or `eddn:<schema>`), gone when the hold ends (Try again, a new key, the switch), and an
+  `upload_held` moment under its own row, **Upload on hold** (`uploadheld`, the Comms Officer's), off until ticked:
+  ticked, it notifies and speaks (speech key `upload_held`). The card comes either way.
 - **The upload switches live only in Settings → Uploads**, written to `[eddn]`/`[edsm] enabled` (hidden from the Server
   settings).
 - **An upload outage gets a card and a notification, never speech** (S3, the author's default, 2026-10-12): an upload
   that is on, has messages waiting and has failed for 15 minutes (`UPLOAD_DOWN_S`; checked each minute by
   `watch_leases`) puts a card on the notices banner and a moment the page notifies under its own alerts row
-  (`uploads`, never spoken: no speech.json key, plain words as the Highway's). Once per outage; the first round the
-  service answers clears the card and says "sending again after N min", not "reachable again": after a long backoff
-  (up to 30 minutes) the service may have been back for a while. An outage starts with a raised round or one the
-  service only asked to retry; a held key and a row settled here (no key, an hour old) neither start nor end one
+  (`uploads`, never spoken: no speech.json key, plain words as the Highway's; a hold is another matter, above). Once
+  per outage; the first round the service answers clears the card and says "sending again after N min", not
+  "reachable again": after a long backoff (up to 30 minutes) the service may have been back for a while. An outage starts with a raised round or one the
+  service only asked to retry; a hold (above: a held key, a held commander with no key) and a row settled here
+  (another commander's row with no key, one over an hour old: `uploads.local_status`) neither start nor end one
   (`uploads.Recent`). Inara's own hour-long pause after "too many requests" is worded "asked Outrider to slow down".
 - **Settings → Uploads' Recent list lives in memory** (`uploads.Recent`, the last 50 rounds per service; a restart
   empties it): the outbox keeps every row a week, but not the rounds, the errors or the backoff. Try again clears a
@@ -1233,8 +1278,9 @@ upstream project's choices, not rules of the game.
   A voice's own phoneme map is checked at speaking time (`apply(known=...)`): a word needing a sound the voice lacks
   is left as text, so a future voice trained another way never loses a sound silently.
 - **Two status reports** (review S23, done): Vespa's "status report" is composed on the server (`outrider/ask.py`:
-  the system, fuel, unsold, the Highway's next stop); the co-pilot button's double tap and the Now bar ask the window
-  that speaks for the page's, which depends on each browser's thresholds and plan logic.
+  the system, fuel, unsold, the next stop of the route you follow: `route_next`, S9-S2, the Highway or the survey slot
+  with what is left, else your next stop, else the game's route); the co-pilot button's double tap and the Now bar
+  ask the window that speaks for the page's, which depends on each browser's thresholds and plan logic.
 - **Header tiles: tooltips on cut lines, no wrapping yet** (review S17): wrapping or click-to-expand would change the
   header's height and the app layout; left for the author. The tiles' fold has a per-device mode (S44): auto (a
   small window), six, line, or none, which follows the shared `tilesCollapsed` that ▴/▾ sets; ▴/▾ also makes its
@@ -1281,7 +1327,15 @@ upstream project's choices, not rules of the game.
   is 1 until the carrier's own past jumps give a factor (S13 B). A plain average of past jumps would be worse: the burn
   depends on the distance and the mass. Red when the depot lacks it; amber when a confirmed tritium line covers it
   (`trip_top_up`: "before" the jumps while the 1,000 t depot can take it all, else "on the way" when `carrier_jumps`,
-  which tops up as the depot runs down, still reaches the trip's jumps; the Fable sweep, 2026-10-13).
+  which tops up as the depot runs down, still reaches the trip's jumps; the Fable sweep, 2026-10-13). The tritium in
+  your ship counts too, as "aboard" (S9-S12: deposit it into the depot when you dock), only when `trip_top_up`'s own
+  rules say the hold's and the ship's tons together cover the trip, the ship's tons weighing in the carrier's mass
+  too: a plain sum is not enough (bug check #20: the depot takes 1,000 t). "N t short" gets a buy button into the
+  Buy lookup, less the tritium the hold already has on a sell order.
+- **"⚠ last jump it can pay" on a booked jump** (S9-S11): after the booked jump's burn, the depot (topped up from a
+  confirmed tritium sell order in the hold, to the depot's 1,000 t at most) is checked against one more full 500 ly
+  jump (`CARRIER_JUMP_LY`) at the same mass and scale; short of it, the booking is flagged, with the hold's tritium to
+  move in or "buy some before you go": that booking is the one that strands a carrier in deep space.
 - **The carrier's own jumps scale the formula, never replace it** (S13 B): `carrier_burns` measures each jump booked
   and confirmed (a CarrierJumpRequest, not cancelled, then a CarrierLocation or CarrierJump in that system) that has
   one depot reading on each side (CarrierStats' FuelLevel; a CarrierDepositFuel is a reading too, Total − Amount before
@@ -1303,9 +1357,16 @@ upstream project's choices, not rules of the game.
 - **Upkeep at the published rates, said so** (S61): the journal has no upkeep figure, so `CARRIER_UPKEEP` (the core
   5M a week, each service active or suspended) is the community wiki's, not checked against the game's Finance
   screen; the tile's title says "published rates" until the author confirms them. Weeks = the balance ÷ the week's
-  upkeep (upkeep is drawn from the balance: the reserve stayed put while the balance fell); amber under 4 weeks (the
-  author's default). On the author's carrier the table gives 13.70M a week against a 13.58M fall in the balance over
-  an upkeep day: close, not proof (the market moves the balance too).
+  upkeep (upkeep is drawn from the balance: the reserve stayed put while the balance fell), **counted down to today**
+  (S9-S13, `carrier_finance`'s `weeks_now`: one week's upkeep off the balance for each whole week since the reading,
+  "~83 wks upkeep now"; an estimate, the market moves the balance too); amber under 4 weeks (the author's default,
+  `UPKEEP_WARN_WEEKS`). The reading is the last CarrierStats' Finance, or a later `CarrierBankTransfer`'s balance (a
+  deposit or withdrawal: the stats are written when the management panel opens, before the deposit; the reserve stays
+  the stats'; bug check #22, PARSER_VERSION 60). Under 4 weeks counted down, `check_upkeep` (each tick) puts a card
+  on the banner while it holds (dismissible), and an `upkeep_low` moment once per reading (meta `upkeep_said`, the
+  reading's time): the **Carrier upkeep low** row (the Quartermaster's), off until ticked; the card comes either way.
+  Nothing while the carrier is being decommissioned or is gone (bug check #19). On the author's carrier the table gives
+  13.70M a week against a 13.58M fall in the balance over an upkeep day: close, not proof.
 - **A carrier's services: the newer word wins** (S55 B): the last Docked's StationServices (a suspended service is not
   listed) or the crew (CarrierStats' Crew, then each CarrierCrewServices), whichever is newer; only the crew says
   "suspended". Your carrier among the nearest places to sell (S55 A) is the journal's, never Spansh's report of your
@@ -1352,7 +1413,10 @@ upstream project's choices, not rules of the game.
   `--legacy <backups>/journals`.
 - **Backups are listed, never restored, from the page** (S44): a restore replaces the database Outrider has open, so it
   needs Outrider stopped; the page gives the command for this install (the launcher, the .bat, or Docker's stop, a
-  one-off `run --rm`, `up -d`) with Copy. Whether a zip was automatic or by hand is not in its name: only the latest
+  one-off `run --rm`, `up -d`) with Copy. Under the systemd service (S70) the launcher's command is wrapped in
+  `systemctl --user stop ed-outrider` and `start` (S9-S22, `restore_command`: one line, each step only when the one
+  before worked, as Docker's), since the service holds the database while it runs; `--restore` refused for that
+  reason names the same two commands. Whether a zip was automatic or by hand is not in its name: only the latest
   is known (`last_backup.auto`), the rest say nothing rather than guess. `--restore` refuses while `<db>.lock` is held
   (an OS lock held by run(), gone with the process however it ends), which the port check cannot see from another
   container or another port; the lock file itself stays (deleting a lock file races whoever opens it next). Two

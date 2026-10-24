@@ -34,6 +34,11 @@
 # legacy = []  turns off the auto-detected legacy folders. A missing live auto-detects; a missing legacy auto-detects
 # only while live is missing too: once you set live (here, --journals or ED_JOURNALS), list your legacy folders here.
 
+# Only this commander's journals (the FID, or the name as the game shows it), when another commander (an alt, someone
+# else's account on the same login) writes into the same folder; "" = every commander. Changing it reads every journal
+# again at the next start. Settings -> Server -> Files and backups has it too.
+# commander = ""
+
 [server]
 # host = "127.0.0.1"   # "0.0.0.0" makes the page reachable from other devices on your network
                        # (without a password below, anyone on it can read your journals' contents and do whatever

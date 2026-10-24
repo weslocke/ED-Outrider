@@ -31,7 +31,7 @@
     "left_behind": "The nearest one or two systems within 100 light years with work worth going back for: bodies not found, planets worth mapping, biology.",
     "this_body": "The body you are on or near, else the one targeted: its type, gravity, value now and if mapped, and its biological and geological signals.",
     "next_jump": "The next stop of the route you follow (the Highway, Road to Riches, Exomastery, a world, sweep or trade route, the one plotted last; else your next stop, else the route plotted in the game): how far, a neutron star or not, what is left and the next refuel.",
-    "status_report": "Where you are, fuel, unsold credits and the Highway's next stop.",
+    "status_report": "Where you are, fuel, unsold credits and the next stop of the route you follow (the Highway or a survey route, with what is left; else your next stop or the route plotted in the game).",
     "fuel": "Fuel in percent, about how many jumps it lasts at full range, and your jump range (supercharged too, when you are).",
     "unsold": "The credits of the cartographic and exobiology data aboard, not yet sold.",
     "whats_left": "What is still to do in this system: honk it, bodies to find, biology to sample, planets worth mapping.",

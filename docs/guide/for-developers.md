@@ -24,7 +24,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/tts.py` | Spoken alerts with Piper (optional), and playing lines and sounds on the PC |
 | `resources/speech.json` | The spoken lines, yours to edit (bans go in `data/speech_banned.json`) |
 | `resources/personalities/` | The shipped personality files (naval, Vulcan, Klingon...), one each in `speech.json`'s format; yours go in `data/personalities/` |
-| `outrider/speech.py` | Loads and checks `speech.json` |
+| `outrider/speech.py` | Loads and checks `speech.json`; `--skeleton "Name"` writes a personality file to fill in |
 | `outrider/chatter.py` | Space chatter: idle talk in quiet supercruise or on a planet, its line keys and topics, and where you are for it |
 | `outrider/pronounce.py`, `resources/pronounce.json` | How Piper says the exobiology names: respellings turned into Piper's phonemes (English voices); yours go in `data/pronounce.json` |
 | `outrider/button.py` | The co-pilot button (Linux, optional); `--listen` |
@@ -75,7 +75,8 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `tests/` | `python3 -m unittest discover tests`; `node tests/page_smoke.js <port> [path to node_modules with jsdom]` for the page, against a scratch server only (it refuses 8025 and a missing port) |
 | `tests/fixtures/` | Synthetic sample journals (a made-up commander and systems) for tests and scratch servers |
 | `Dockerfile`, `docker-compose.yml`, `docker/` | Running Outrider as a server in Docker (see [Running as a server](install.md#-running-as-a-server-docker)); `docker/entrypoint.sh` writes the first config and checks the folders can be written |
-| `launch_outrider.sh`, `launch_outrider.bat` | Start Outrider (Linux and macOS; Windows), making `.venv` and installing `requirements.txt` first when needed, checking for a newer certifi once a week, and PyQt6 when the in-game overlay is on |
+| `launch_outrider.sh`, `launch_outrider.bat` | Start Outrider (Linux and macOS; Windows), making `.venv` and installing `requirements.txt` first when needed (`OUTRIDER_REINSTALL=1` installs again), checking for a newer certifi once a week, and PyQt6 when the in-game overlay is on |
+| `scripts/install_requirements.py` | The launchers' install step: all of `requirements.txt` at once, else one line at a time, so an optional package that will not build (evdev, piper-tts) or no network does not stop Outrider starting. Exit 0 all installed, 2 only optional ones missing, 3 a required one failed but the installed packages still run Outrider (offline), 1 Outrider cannot run |
 | `scripts/verify.sh` | Every check in one go: unit tests, lint, `node --check static/page.js` (the page's JavaScript syntax), the page smoke test on a throwaway server (and a clean stop) |
 | `scripts/install.sh` | Sets up `.venv` with `requirements.txt` and downloads the spoken-alert voices, without starting Outrider |
 | `scripts/docker_bundle.sh` | A Docker release bundle in `dist/` (git-ignored): the built image saved with a compose file that runs it (no checkout or build on the server) |
@@ -87,14 +88,14 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `scripts/trader_probe.py`, `scripts/exact_probe.py` | One-off probes of Spansh's material-trader fields and of its exact plotter's jumps; save the answers; not part of the tests |
 | `scripts/build_blueprints.py` | Rebuilds `resources/blueprints.json` from EDCD's coriolis-data at its pinned commit |
 | `scripts/dark_icons.py` | Writes the tablet's Dark theme icons (Lucide, ISC) into `static/themes/dark.css` |
-| `data/` | Your own files, git-ignored: the database, `browser_defaults.json`, `speech_banned.json`, `pronounce.json`, `backups/`, `piper-voices/`, `fonts/` |
+| `data/` | Your own files, git-ignored: the database, `browser_defaults.json`, `speech_banned.json`, `pronounce.json`, `personalities/`, `backups/`, `piper-voices/`, `fonts/` |
 | `docs/` | Notes for contributors and their coding agents (code map, rules, journal traps, design notes, changelog); `guide/` is this user guide, `images/` its screenshots |
 
 For overlays, `GET /api/status` returns a compact JSON status and
 `GET /api/status.txt?fields=system,region,fuel,target,unsold,body,sampling` one line for an OBS text
 source. Both are read-only, and they are the only parts of `/api/` another web site's page may read: every
 other request a browser labels as coming from another site is refused (curl and scripts send no such label and
-pass).
+pass). No other site may show the page in a frame.
 
 </details>
 

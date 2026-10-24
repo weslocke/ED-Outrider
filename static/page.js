@@ -14361,7 +14361,7 @@ function tabSetup() {
   // before the page's own handlers (a name's click copies it, which means nothing on a tablet)
   document.addEventListener("click", tabRowTap, true);
   const hint = document.querySelector("#mapView .hint");   // the galaxy map by touch
-  if (hint) hint.textContent = "One finger rotates · two fingers move · pinch to zoom · tap a system for its card (Target when auto-target works here, Copy name). " +
+  if (hint) hint.textContent = "One finger rotates · two fingers move · pinch to zoom · tap a system for its card (Target when auto-target works here, Copy name, Plot route). " +
     "The grid is the galactic plane through your position; stalks drop each system onto it.";
   tabDrawNav(); tabDrawCaption(); tabDrawAsk();
 }

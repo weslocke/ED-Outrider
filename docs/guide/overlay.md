@@ -82,7 +82,8 @@ before.
   aboard stands to lose once it passes your `unsold_warn` level: 🗺 and 🧬, how many times your rebuy it is ("× rebuy";
   none for a ship bought with Arx, whose hull has no credit value) and how long since you sold ("3 days unsold"; from a
   week "2 weeks 2 days since sold", or "2wk2d since sold" when that would not fit; whole days). Then, on a body,
-  each genus there with its samples and how far the next sample must be; elsewhere **Next**, the first item of Here's
+  each genus there with its samples and how far the next sample must be; elsewhere **Next**: first any scans lost
+  with a ship still to redo ("rescan 12 lost scans in the FSS (4.1M)"), else the first item of Here's
   suggested order with what it pays, the supercruise time and how many more, and the body you have targeted when it is
   not that one. Last, this session's figures.
 - **Bio signals** (optional): every body in the system with bio signals, whether it meets your levels or not. A body
@@ -93,8 +94,8 @@ before.
 - **Alerts** (optional): the page's alerts for a few seconds each, under the system strip at the top: what you
   would hear or see as a notification ("B 1: Earth-like world", "Fuel low", "Interdicted"), its title and a line or two
   of its text, newest first, three at most. Each stays 8 seconds; danger (hull, heat, interdiction, fuel, a rig too far,
-  the ship lost, the carrier leaving without you) stays 15 seconds, in red with a red frame. It shows every alert
-  switched on in **Settings → Alerts** (mining's in **Settings → Mining**) in the browser that saw it (any of notify, sound or speak ticked), even while
+  the suit running low, the ship lost, the carrier leaving without you) stays 15 seconds, in red with a red frame. It
+  shows every alert switched on in **Settings → Alerts** (mining's in **Settings → Mining**) in the browser that saw it (any of notify, sound or speak ticked), even while
   the voice is off or hushed. The alerts are worded by Outrider's page, so a page must be open somewhere (a browser
   window, the second screen or the tablet): with none open, the panel stays empty. Several windows open count once.
 

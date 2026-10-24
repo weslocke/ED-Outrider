@@ -52,15 +52,19 @@ the command.
 
 **Notices.** What Outrider finds wrong when it starts (a journal folder not found, problems in the config file or the
 spoken lines file, listening on your network with no password, journals on a share that shows them late, the in-game
-overlay's address taken) shows as a line under the header, in every window and on the tablet, with a button where one
-helps (Server settings, Show log). ✕ hides it everywhere until Outrider restarts, or until the message changes.
+overlay's address taken, a `[server] host` that is no longer this PC's address) shows as a line under the header, in
+every window and on the tablet, with a button where one helps (Server settings, Show log). Others come while Outrider
+runs, and go once the cause does: the journal folder cannot be reached, the backups' disk is nearly full, a second
+commander in the journal folder (or another commander playing), an upload on hold, your carrier's upkeep running low.
+✕ hides it everywhere until Outrider restarts, or until the message changes.
 
 You can also edit the file by hand: copy `ed_outrider.toml.example` to `ed_outrider.toml` next to the script and
 edit the lines you need. The example explains every key. Relative paths in it (`db`, `backup_dir`, `speech_file`, `sound_dir`,
 `background_image`) are relative to the Outrider folder; the first three default to `data/ed_outrider.sqlite`, `data/backups`
 and `resources/speech.json`.
 `python3 ed_outrider.py --write-config` writes one with the settings in effect. Switches take a bare `true` or
-`false`; a wrong value is reported at start and the default kept.
+`false`; a wrong value is reported at start and the default kept. A number out of its range is refused in words when
+you save it in Settings ("[highway] efficiency must be 1 to 100 %"); in a file edited by hand it is brought into range.
 
 > [!IMPORTANT]
 > **Windows paths in the file:** use forward slashes, `"C:/Users/you/Saved Games/..."`, or single quotes,

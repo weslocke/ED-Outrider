@@ -23,7 +23,8 @@ The **Materials** tab starts with your **Cargo**.
   - ✎ **entered**: a count you typed in. **Recount…** lists the lines Outrider cannot confirm; the game's Inventory
     screen at your carrier shows them all. **+ Add a commodity** takes the names your journal has given and those
     Spansh lists; anything else (a typo) is refused with the closest names: "Not a commodity: “Titanum”. Did you mean:
-    Titanium Tritium", a click puts one in.
+    Titanium Tritium", a click puts one in. A new line with no name, or no tons, is said on Save ("the new line needs a
+    commodity name"), not dropped.
   - The total is checked against the carrier's own ("✓ in sync: 16,085 t", or the tons not accounted for).
   - This is the only way to track a carrier's cargo without signing in to Frontier's servers (their companion API,
     as EDMC and Inara do). Outrider deliberately never does that: it reads your own journal files and queries only
@@ -50,10 +51,12 @@ The **Materials** tab starts with your **Cargo**.
   "Redemption office ✗"; "suspended" on hover), beside "Vista ✓" for one that is on, from its last stats or the newer of them and your last docking there. Under them,
   "balance 1.33B · ~83 wks upkeep now", counted down a week of upkeep for each week since its stats (an estimate: the
   market moves the balance too; the hover has the stats' own figure and how old they are), amber under 4 weeks; then a
-  card says so too, and the **Carrier upkeep low** alert row (off until you tick it) adds a notification and a line. The
+  card says so too, and the **Carrier upkeep low** alert row (off until you tick it) adds a notification and a line;
+  none of it while the carrier is being decommissioned. The
   journal has no upkeep figure: the week's upkeep is worked out from the services installed at the **published rates**
   (the core and each service, a suspended one at its lower rate), not yet checked against the game's Finance screen;
-  hover for the figure. Opening the carrier's management refreshes the stats.
+  hover for the figure. Opening the carrier's management refreshes the stats; a deposit into its bank, or a withdrawal,
+  refreshes the balance.
 - **Your carrier among the nearest places to sell** (the Unsold tile's "sell:" line and its details): while it has
   Universal Cartographics (or Vista Genomics) on, where it is now from your journal, never an old report of it, with
   "≈ 3 carrier jumps to you"; not while the service is suspended, nor once it is decommissioned.
@@ -76,13 +79,15 @@ players last reported, so the newer the data, the safer the trip.
 </p>
 
 - **Sell / Buy** on any line of your Cargo asks where to sell all of it (or buy that much): best price or closest,
-  only the tons you can sell (stolen cargo needs a black market, and is asked for on its own with only black markets
-  listed, at the legal market's price; mission cargo is not yours to sell, so a line of only that has no Sell),
+  only the tons you can sell (the legal ones; stolen cargo needs a black market, so a line with only stolen tons asks
+  for those with only black markets listed, at the legal market's price; mission cargo is not yours to sell, so a line
+  of only that has its Sell greyed out; Sell's hover says what is left out),
   within a distance, data under an age, your ship's pad size, fleet carriers left out unless ticked (their orders
   are often years old). Each station shows how far it is (and how far from its star), the price, demand or supply,
   what your load earns and the profit over what you paid. Opened, it lists what else it buys from your hold and its
   services (and whether it buys exploration data and samples too), with Copy, Bookmark and **Plot route here**.
-  **Buy something else** looks up any commodity. While mining, a full hold runs this lookup for the most you carry and
+  **Buy something else** looks up any commodity. When Spansh's commodity list cannot be read, the lookup goes on
+  with the journal's own name for it and says so. While mining, a full hold runs this lookup for the most you carry and
   says where to sell it ([Voice and alerts](voice-and-alerts.md)).
 - **One shipload or all of it:** when a line is more than your ship's hold (its size, not what is free), the bar
   switches between "All 16,000 t" and "One shipload 720 t" ("≈ 23 shiploads for all of it"); a shipload asks for
