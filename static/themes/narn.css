@@ -18,11 +18,11 @@
   --tb-case: uppercase; --tb-track: 1px; --tb-size: 17px;
   --tb-title: var(--nn-ochre);
   --tb-chip-bg: var(--nn-panel); --tb-chip-k: var(--nn-ochre); --tb-chip-v: var(--nn-text); --tb-chip-radius: 0;
-  --tb-group-bg: var(--nn-rust2); --tb-group-fg: var(--nn-text); --tb-group-open-bg: var(--nn-rust); --tb-group-open-fg: var(--nn-bg);
+  --tb-group-bg: var(--nn-rust2); --tb-group-fg: var(--nn-text); --tb-group-open-bg: #9A2E14; --tb-group-open-fg: var(--nn-text);
   --tb-group-radius: 0; --tb-page-radius: 0;
   --tb-page-bg: var(--nn-panel); --tb-page-fg: var(--nn-text); --tb-page-on-bg: var(--nn-ochre); --tb-page-on-fg: var(--nn-bg);
   --tb-fill: var(--nn-rust2);
-  --tb-btn-bg: var(--nn-rust); --tb-btn-fg: var(--nn-bg); --tb-btn-on-bg: var(--nn-ochre); --tb-btn-on-fg: var(--nn-bg); --tb-btn-radius: 0;
+  --tb-btn-bg: #9A2E14; --tb-btn-fg: var(--nn-text);   /* the dark text on rust was 3.4:1 (S5-B13) */ --tb-btn-on-bg: var(--nn-ochre); --tb-btn-on-fg: var(--nn-bg); --tb-btn-radius: 0;
   --tb-link-ok: var(--nn-ochre); --tb-link-stale: var(--nn-amber); --tb-link-none: #FF7A5C;
   --tb-rail-border: var(--nn-line); --tb-sheet-bg: #180A07; --tb-sheet-border: var(--nn-rust); --tb-sheet-radius: 0;
   --tb-banner-bg: #180A07; --tb-banner-fg: var(--nn-text); --tb-banner-border: var(--nn-rust); --tb-danger: var(--nn-amber);

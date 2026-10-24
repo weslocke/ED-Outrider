@@ -20,14 +20,14 @@
   --tb-chip-bg: var(--dk-card); --tb-chip-k: var(--dk-muted); --tb-chip-v: var(--dk-text); --tb-chip-radius: 10px;
   --tb-group-bg: transparent; --tb-group-fg: var(--dk-muted); --tb-group-open-bg: var(--dk-raised); --tb-group-open-fg: var(--dk-text);
   --tb-group-radius: 10px; --tb-page-radius: 10px;
-  --tb-page-bg: transparent; --tb-page-fg: var(--dk-text); --tb-page-on-bg: var(--dk-accent); --tb-page-on-fg: var(--dk-on-accent);
+  --tb-page-bg: transparent; --tb-page-fg: var(--dk-text); --tb-page-on-bg: var(--dk-accent); --tb-page-on-fg: var(--dk-bg);
   --tb-maptag-bg: var(--dk-accent); --tb-maptag-fg: var(--dk-bg);   /* white-on-blue swapped was 3.2:1 */
   --tb-fill: transparent;
-  --tb-btn-bg: var(--dk-btn); --tb-btn-fg: var(--dk-text); --tb-btn-on-bg: var(--dk-accent); --tb-btn-on-fg: var(--dk-on-accent); --tb-btn-radius: 10px;
+  --tb-btn-bg: var(--dk-btn); --tb-btn-fg: var(--dk-text); --tb-btn-on-bg: var(--dk-accent); --tb-btn-on-fg: var(--dk-bg); --tb-btn-radius: 10px;
   --tb-link-ok: var(--dk-good); --tb-link-stale: var(--dk-warn); --tb-link-none: var(--dk-bad);
   --tb-rail-border: var(--dk-line); --tb-sheet-bg: var(--dk-card); --tb-sheet-border: var(--dk-line); --tb-sheet-radius: 12px;
   --tb-banner-bg: var(--dk-raised); --tb-banner-fg: var(--dk-text); --tb-banner-border: var(--dk-accent); --tb-danger: var(--dk-bad);
-  --tb-rb-on-bg: var(--dk-accent); --tb-rb-on-fg: var(--dk-on-accent); --tb-rb-off-bg: var(--dk-btn); --tb-rb-off-fg: var(--dk-text);
+  --tb-rb-on-bg: var(--dk-accent); --tb-rb-on-fg: var(--dk-bg);   /* white on the blue was 3.2:1 (S5-B13) */ --tb-rb-off-bg: var(--dk-btn); --tb-rb-off-fg: var(--dk-text);
   --tb-rb-high-bg: #7DAAFF; --tb-rb-pend-bg: var(--dk-card); --tb-rb-pend-fg: var(--dk-accent); --tb-rb-unk-border: var(--dk-line);
   --tb-rb-unk-fg: var(--dk-muted); --tb-rb-dim: var(--dk-line); --tb-rb-dim-fg: #6B7380; --tb-rb-amber: var(--dk-warn); --tb-rb-radius: 12px;
   color-scheme: dark;

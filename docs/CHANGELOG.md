@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Review fixes (7): CSS and themes
+- The full Fable review of 2026-10-23, fix batch 7:
+  - **S5-B1 (medium): the light Default's marks read on white**: the dozen literal dark-page colours (the AW and bio
+    purple, the boost cyan, the green gas giant, the bookmark star, the neutron and current marks, geology, mining,
+    volcanism, the first-discovery block) are tokens with light values (1.5 to 2.7:1 before, 4.5:1 now, 3:1 for the star
+    and the block); a theme keeps the dark ones.
+  - **S5-B12:** a dark theme on a light OS no longer gets the light Default's Now system name and Here's values.
+  - **S5-B13:** the tablet's "on" pages, buttons and rail buttons, and Narn's buttons, reach 4.5:1 in Dark, Sith and
+    Narn; the theme contrast test checks every theme's filled states.
+  - **S5-B14:** the small tablet's LCARS page indent applies. **S5-B15:** Silent running's amber ring shows in the
+    cut-corner themes (drawn inside the button). **S5-B16:** Nearby's 🎯 buttons are not dimmed where nothing hovers.
+  - **S5-B17:** a body panel's heading no longer parks over the header on a 641-899 px window. **S5-B18:** a Nearby
+    row that is the next stop and the nearest scoopable says both.
+
 ## 2026-10-24 · Review fixes (6): the page's behaviour
 - The full Fable review of 2026-10-23, fix batch 6:
   - **S5-B2: the Data tile is coloured by the newer of the journal and Status.json**: a quiet journal in supercruise,

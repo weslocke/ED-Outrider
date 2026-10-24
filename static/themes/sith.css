@@ -21,16 +21,16 @@
   --tb-case: uppercase; --tb-track: 1.5px; --tb-size: 18px;
   --tb-title: var(--sh-steel); --tb-frame: var(--sh-red);   /* the tablet keeps its crimson frame (the page accent is lighter) */
   --tb-chip-bg: transparent; --tb-chip-k: #8B919B; --tb-chip-v: var(--sh-steel); --tb-chip-radius: 0;
-  --tb-group-bg: transparent; --tb-group-fg: var(--sh-text); --tb-group-open-bg: var(--sh-red); --tb-group-open-fg: #000;
+  --tb-group-bg: transparent; --tb-group-fg: var(--sh-text); --tb-group-open-bg: var(--sh-red); --tb-group-open-fg: #fff;
   --tb-group-radius: 0; --tb-page-radius: 0;
   --tb-page-bg: transparent; --tb-page-fg: var(--sh-text); --tb-page-on-bg: rgba(208, 2, 27, .18); --tb-page-on-fg: var(--sh-steel);
   --tb-maptag-bg: var(--sh-steel); --tb-maptag-fg: #000;   /* the see-through page colour would be faint on steel */
   --tb-fill: transparent;
-  --tb-btn-bg: transparent; --tb-btn-fg: var(--sh-text); --tb-btn-on-bg: var(--sh-red); --tb-btn-on-fg: #000; --tb-btn-radius: 0;
+  --tb-btn-bg: transparent; --tb-btn-fg: var(--sh-text); --tb-btn-on-bg: var(--sh-red); --tb-btn-on-fg: #fff; --tb-btn-radius: 0;
   --tb-link-ok: var(--sh-steel); --tb-link-stale: var(--sh-amber); --tb-link-none: #FF5A6A;
   --tb-rail-border: var(--sh-line); --tb-sheet-bg: #050506; --tb-sheet-border: var(--sh-red); --tb-sheet-radius: 0;
   --tb-banner-bg: #050506; --tb-banner-fg: var(--sh-steel); --tb-banner-border: var(--sh-red); --tb-danger: var(--sh-amber);
-  --tb-rb-on-bg: var(--sh-red); --tb-rb-on-fg: #000; --tb-rb-off-bg: transparent; --tb-rb-off-fg: var(--sh-text);
+  --tb-rb-on-bg: var(--sh-red); --tb-rb-on-fg: #fff;   /* black on the crimson was 3.7:1 (S5-B13) */ --tb-rb-off-bg: transparent; --tb-rb-off-fg: var(--sh-text);
   --tb-rb-high-bg: #FF4A5E; --tb-rb-pend-bg: transparent; --tb-rb-pend-fg: var(--sh-steel); --tb-rb-unk-border: var(--sh-line);
   --tb-rb-unk-fg: #8B919B; --tb-rb-dim: #1E2025; --tb-rb-dim-fg: #6A7079; --tb-rb-amber: var(--sh-amber); --tb-rb-radius: 0;
   color-scheme: dark;

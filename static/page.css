@@ -2,6 +2,10 @@
   --bg: #0d0f12; --panel: #161a20; --line: #262c35; --text: #d8dde4; --muted: #7d8794;
   --accent: #ff8c1a; --good: #5cc98a; --warn: #e3b341; --bad: #e05d5d; --info: #6aa8ff;
   --hot: #9df0b4; --biohot: #d9a8ff;
+  /* the marks' own colours (review 2026-10-23 S5-B1: they were literals, pale pastel on white in the light Default) */
+  --mark-aw: #c77dff; --mark-boost: #5ce1e6; --mark-ggg: #3FBF6A; --mark-star: #f2c94c; --mark-nsp: #7fd3ff;
+  --mark-cur: #d6b3ff; --mark-geo: #d9a066; --mark-mine: #b9a58a; --mark-volc: #e8875a; --mark-volc-land: #ff9a5c;
+  --mark-first: #f2c230;
   /* the CMDR tab's Earnings chart: cartography, exobiology, mining (a theme whose own colours are too alike sets its own) */
   --earn-carto: var(--info); --earn-bio: var(--good); --earn-mine: var(--accent);
 }
@@ -9,6 +13,12 @@
   --bg: #f5f6f8; --panel: #ffffff; --line: #dde1e6; --text: #1d2228; --muted: #69727d;
   --accent: #c25e00; --good: #1d8a4a; --warn: #9a6b00; --bad: #b83232; --info: #2463c9;
   --hot: #13823a; --biohot: #8a3fc4;
+}}
+/* the Default only: a theme is dark whatever the OS says, and keeps the dark marks (and its own tokens) */
+@media (prefers-color-scheme: light) { :root:not([data-theme]) {
+  --mark-aw: #7b2cbf; --mark-boost: #0e7490; --mark-ggg: #1e7a3c; --mark-star: #9a7400; --mark-nsp: #0b6fa4;
+  --mark-cur: #7a3fc4; --mark-geo: #9a5b14; --mark-mine: #7a6648; --mark-volc: #b5471a; --mark-volc-land: #c2410c;
+  --mark-first: #9a7400;
 }}
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -61,10 +71,10 @@ body.disconnected main { opacity: .5; }
 tr.scoopnext td.name::after { content: " ⛽ nearest scoopable"; color: var(--good); font-size: 11px; }
 .notable { font-size: 12px; }
 .notable .nb { display: inline-block; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-right: 3px; }
-.notable .bio { color: #c77dff; }
+.notable .bio { color: var(--mark-aw); }
 .notable .old { color: var(--muted); border-style: dashed; cursor: help; } .old { cursor: help; }
 #firstsLine .seen, td.seen span { color: var(--warn); cursor: help; }
-.notable .ELW { color: var(--good); } .notable .WW { color: var(--info); } .notable .AW { color: #c77dff; } .notable .T { color: var(--warn); }
+.notable .ELW { color: var(--good); } .notable .WW { color: var(--info); } .notable .AW { color: var(--mark-aw); } .notable .T { color: var(--warn); }
 .badge.s-edsm { color: var(--info); margin-left: 4px; }
 #hereHead { font-size: 15px; margin: 12px 0 4px; } #hereHead b { color: var(--accent); }
 #hereLeaving { font-size: 13px; margin-bottom: 8px; } #hereLeaving .ok { color: var(--good); } #hereLeaving .todo { color: var(--warn); }
@@ -74,7 +84,7 @@ tr.scoopnext td.name::after { content: " ⛽ nearest scoopable"; color: var(--go
 /* a species' colour word in that colour (hereBio().colours), mixed with the text colour so it reads on either theme;
    its own rule, so a row's colour (done green, the bio highlight's purple) never covers it */
 #hereTable .vc { color: color-mix(in srgb, var(--vc) 80%, var(--text)); }
-@media (prefers-color-scheme: light) { #hereTable .vc { color: color-mix(in srgb, var(--vc) 55%, var(--text)); } }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) #hereTable .vc { color: color-mix(in srgb, var(--vc) 55%, var(--text)); } }
 #hereTable td.rings { white-space: normal; }   /* "2", "2 mapped", "1 hotspot" stacked: no wider than its heading */
 tr.main td { font-weight: 500; }
 #histView { margin-top: 12px; } #histView .exports a { color: var(--info); }
@@ -85,7 +95,7 @@ tr.main td { font-weight: 500; }
 #histRows td.systems .name { cursor: copy; color: var(--text); }
 #bmTools { margin-top: 8px; } #bmTools .exports a { color: var(--info); }
 #bmImportMsg { color: var(--muted); font-size: 0.9em; } #bmImportMsg.err { color: var(--bad); }
-.mapbar .boost { color: #5ce1e6; }
+.mapbar .boost { color: var(--mark-boost); }
 #arrival .yes { color: var(--good); } #arrival .no { color: var(--warn); }
 tr.far td.name { font-weight: 400; }
 tr.target td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
@@ -104,7 +114,7 @@ tr.prev.visited td { opacity: .7; }
 .ic { display: inline-flex; align-items: center; gap: 3px; }
 .ic svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .ic.star svg { fill: currentColor; stroke: none; color: var(--warn); }
-.ic.ring svg { color: var(--info); } .ic.hot svg { color: #c77dff; } .ic.plain svg { color: var(--muted); }
+.ic.ring svg { color: var(--info); } .ic.hot svg { color: var(--mark-aw); } .ic.plain svg { color: var(--muted); }
 .ic.mine { font-size: 0.85em; color: var(--muted); }   /* ⛏ N: mining locations on Rhino-worthy ground (S4) */
 .scoop { color: var(--good); font-weight: 600; } .noscoop { color: var(--bad); }
 .unk { color: var(--muted); }
@@ -224,7 +234,9 @@ main > #hereView.detail > #bodyPanel { position: sticky; top: calc(var(--head-h,
 #bodyPanel tr.hs ul { margin: 0; padding: 0; list-style: none; } #bodyPanel tr.hs li b { color: var(--text); font-weight: 500; }
 #bodyPanel tr.ring td { border-bottom: 0; }
 @media (max-width: 900px) { #overView.side #ovPanes { display: block; } #overView.side #ovDivider { display: none; } main > #hereView.detail { display: block; }
-  main > #hereView.detail > #bodyPanel { position: static; max-height: none; border-left: 0; padding-left: 0; } }
+  main > #hereView.detail > #bodyPanel { position: static; max-height: none; border-left: 0; padding-left: 0; }
+  /* no scroll box of its own: a sticky heading would park over the page's sticky header (review S5-B17) */
+  main > #hereView.detail > #bodyPanel h3 { position: static; } }
 #sell { margin-top: 4px; font-size: 13px; color: var(--good); font-weight: 600; }
 #sell.urgent { color: var(--bad); }
 #sell.left { color: var(--warn); }   /* a sale that left data aboard */
@@ -281,7 +293,7 @@ body.viewwin .views { display: none; }
 #nearStrip .nscentre { font-weight: 600; cursor: pointer; }
 .bxhead { margin: 6px 0; } .bxhead .bxname { font-weight: 600; } .bxhead .bxkind { color: var(--muted); }
 /* a green gas giant (sure) or the ladder model's guess (?) */
-.ggg { display: inline-flex; align-items: center; gap: 1px; color: #3FBF6A; font-weight: 700; font-size: .95em; white-space: nowrap; cursor: help; }
+.ggg { display: inline-flex; align-items: center; gap: 1px; color: var(--mark-ggg); font-weight: 700; font-size: .95em; white-space: nowrap; cursor: help; }
 .ggg svg { vertical-align: -2px; }
 .bxfin { font-weight: 600; margin-right: 4px; }
 .bxwarn { color: var(--warn); font-size: 12px; margin-left: 1.2em; }   /* beside "you have visited · Spansh knows" */
@@ -342,7 +354,7 @@ td.matches .mlbl { color: var(--muted); font-size: 11px; text-transform: upperca
 .badge.s-old { color: var(--warn); margin-left: 4px; }   /* #11: Spansh's data predates Odyssey: worth a rescan */
 .badge.s-visited { color: var(--muted); margin-left: 6px; }
 .bm { cursor: pointer; color: var(--muted); font-size: 15px; user-select: none; }
-.bm.on { color: #f2c94c; }
+.bm.on { color: var(--mark-star); }
 td.bmcell { width: 1.5em; padding-right: 0; }
 #here .bm { font-size: 16px; margin-left: 6px; }
 td.note { white-space: normal; max-width: 420px; color: var(--muted); }
@@ -627,7 +639,7 @@ h3.subhead { font-size: 13px; font-weight: 600; color: var(--muted); text-transf
 .sname .belt { color: var(--muted); margin-left: 3px; }
 .badges { font-size: 11px; min-height: 1em; line-height: 1.3; }
 .badges .nb { display: inline-block; border: 1px solid currentColor; border-radius: 3px; padding: 0 2px; font-size: 10px; margin: 0 1px; }
-.badges .nb.ELW { color: var(--good); } .badges .nb.WW { color: var(--info); } .badges .nb.AW { color: #c77dff; } .badges .nb.T { color: var(--warn); }
+.badges .nb.ELW { color: var(--good); } .badges .nb.WW { color: var(--info); } .badges .nb.AW { color: var(--mark-aw); } .badges .nb.T { color: var(--warn); }
 .sval { font-size: 11px; font-variant-numeric: tabular-nums; } .sdist { font-size: 10.5px; color: var(--muted); }
 main.nearPinned #hereSchematic .sbody { width: 64px; }
 /* S30: the suggested order's stops on the schematic (a tap: that body first), the faint path between them below the
@@ -667,9 +679,9 @@ body.app #hereMain.halves > #hereSchematic { border-top: 2px solid var(--line); 
 .sbody.biohot .sname::before { content: "🧬"; font-size: 10px; margin-right: 2px; }
 
 /* ---- geology ---- */
-.sp.geo { color: #d9a066; }
-#hereTable td.mine { white-space: nowrap; } .minec { cursor: help; color: #b9a58a; font-size: 12px; } .minec.nodds { cursor: default; } .mined { margin-top: 4px; }
-.volc { cursor: help; color: #e8875a; font-size: 12px; white-space: nowrap; } .volc.land { color: #ff9a5c; font-weight: 600; }
+.sp.geo { color: var(--mark-geo); }
+#hereTable td.mine { white-space: nowrap; } .minec { cursor: help; color: var(--mark-mine); font-size: 12px; } .minec.nodds { cursor: default; } .mined { margin-top: 4px; }
+.volc { cursor: help; color: var(--mark-volc); font-size: 12px; white-space: nowrap; } .volc.land { color: var(--mark-volc-land); font-weight: 600; }
 
 #radiusSel { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12px; padding: 0 2px; }
 
@@ -684,7 +696,8 @@ body.app #hereMain.halves > #hereSchematic { border-top: 2px solid var(--line); 
 #sMain.detail #sRows td.matches { white-space: normal; }
 #sBodyPanel { position: sticky; top: calc(var(--head-h, 130px) + 8px); max-height: calc(100vh - var(--head-h, 130px) - 24px);
   overflow: auto; border-left: 1px solid var(--line); padding-left: 12px; margin-top: 8px; }
-@media (max-width: 900px) { #sMain.detail { display: block; } #sBodyPanel { position: static; max-height: none; border-left: 0; padding-left: 0; } }
+@media (max-width: 900px) { #sMain.detail { display: block; } #sBodyPanel { position: static; max-height: none; border-left: 0; padding-left: 0; }
+  #sBodyPanel h3 { position: static; } }
 
 /* the Search body panel shares the Here panel's look */
 #sBodyPanel h3 { margin: 0 0 6px; padding: 6px 0; font-size: 15px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
@@ -755,9 +768,9 @@ table .sub2 { margin-top: 2px; font-weight: 400; font-size: 12px; }
 body.nowmode .cxnew::after { content: " new codex"; font-weight: 600; }
 body.nowmode .cxnew.cxgal::after { content: " new anywhere"; }
 
-.boosted { color: #5ce1e6; } .hazard { color: var(--warn); }
+.boosted { color: var(--mark-boost); } .hazard { color: var(--warn); }
 
-.nb.nsp { color: #7fd3ff; border-color: currentColor; } .nb.nsp.done { opacity: .5; }
+.nb.nsp { color: var(--mark-nsp); border-color: currentColor; } .nb.nsp.done { opacity: .5; }
 
 /* Here: checklist, destination; header: on-body strip */
 ul.checklist { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 18px; font-size: 13px; }
@@ -784,12 +797,13 @@ body.canpaste input[hidden] + .pastebtn { display: none; }
 #leftRows td.left-what { white-space: normal; font-size: 13px; }
 #lbRadius { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12px; }
 
-.nb.cur { color: #d6b3ff; border-color: currentColor; } td.name .cur { cursor: help; font-size: 12px; }
+.nb.cur { color: var(--mark-cur); border-color: currentColor; } td.name .cur { cursor: help; font-size: 12px; }
 
 .srcTable { font-size: 13px; width: auto; } .srcTable td { padding: 3px 10px; white-space: normal; } #matSources .name { cursor: copy; }
 #matSites .name { cursor: copy; } .sitesTable td.num { white-space: nowrap; }
 
 tr.nextstop td.name::after { content: " ⚑ next stop"; color: var(--info); font-size: 11px; }
+tr.scoopnext.nextstop td.name::after { content: " ⚑ next stop · ⛽ nearest scoopable"; }   /* both (review S5-B18) */
 
 #routeStrip { margin-top: 4px; font-size: 13px; } #routeStrip:empty { display: none; }
 #routeStrip .hops { display: inline-flex; flex-wrap: wrap; gap: 2px; vertical-align: middle; margin-left: 6px; }
@@ -813,6 +827,7 @@ tr.nextstop td.name::after { content: " ⚑ next stop"; color: var(--info); font
 .hwyaim.icon { margin-left: 6px; padding: 0 4px; font-size: 11px; opacity: .55; }
 .hwyaim.icon .mk { width: 1.4em; height: 1.4em; vertical-align: -0.3em; }
 tr:hover .hwyaim.icon, .hwyaim.icon:focus-visible, .hwyaim.icon:disabled { opacity: 1; }
+@media (hover: none) { .hwyaim.icon { opacity: 1; } }   /* a touch screen never hovers: not dimmed (review S5-B16) */
 /* Nearby's 🎯 before the name: a fixed-width slot, empty on your own system's row, so the names stay in line */
 td.name .nearaim { display: inline-block; width: 2.1em; } td.name .nearaim .hwyaim.icon { margin-left: 0; }
 .hwyoff { color: var(--warn); font-weight: 600; } .hwydone { color: var(--good); font-weight: 600; }
@@ -879,7 +894,7 @@ td.name .nearaim { display: inline-block; width: 2.1em; } td.name .nearaim .hwya
 .hwylayers button[aria-pressed="true"] { color: var(--text); border-color: var(--info); opacity: 1; }
 .hwymapnote { position: absolute; left: 10px; top: 8px; right: 220px; font-size: 11px; color: var(--muted); pointer-events: none;
   display: flex; flex-wrap: wrap; gap: 2px 10px; }
-.hwymapnote .lg-ahead, .hwymapnote .lg-you { color: var(--accent); } .hwymapnote .lg-n { color: #5ce1e6; } .hwymapnote .lg-f { color: var(--good); }
+.hwymapnote .lg-ahead, .hwymapnote .lg-you { color: var(--accent); } .hwymapnote .lg-n { color: var(--mark-boost); } .hwymapnote .lg-f { color: var(--good); }
 
 /* ---- Now mode: big text for a second monitor ---- */
 body.nowmode header, body.nowmode main { display: none; }
@@ -917,7 +932,7 @@ body.nowmode header, body.nowmode main { display: none; }
 .now-padmap .pm-red { stroke: #e0453a; stroke-width: 4; } .now-padmap .pm-green { stroke: #3ad16b; stroke-width: 4; }
 .now-padmap text { font: 600 11px system-ui, sans-serif; text-anchor: middle; }
 .now-padmap .pm-num { fill: var(--bg); } .now-padmap .pm-lbl { fill: var(--muted); font-weight: 400; }
-@media (prefers-color-scheme: light) { #nowView .now-sys { color: #9a4a00; } }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) #nowView .now-sys { color: #9a4a00; } }
 
 .synth .boostline { font-size: 12px; margin-top: 1px; }
 .sstyles label { margin-right: 10px; white-space: nowrap; }
@@ -1090,7 +1105,7 @@ body.nowmode header, body.nowmode main { display: none; }
 .badc { color: var(--bad); font-weight: 600; }
 .streak { display: inline-flex; gap: 2px; vertical-align: middle; }
 .streak .sk { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--line); cursor: help; }
-.streak .sk.new { background: #f2c230; border-color: #f2c230; }             /* first discovery */
+.streak .sk.new { background: var(--mark-first); border-color: var(--mark-first); }             /* first discovery */
 .streak .sk.partial { background: var(--warn); border-color: var(--warn); opacity: .75; }   /* known, bodies unreported */
 .streak .sk.complete { background: var(--info); border-color: var(--info); }   /* fully reported */
 .streak .sk.visited { background: var(--muted); border-color: var(--muted); opacity: .6; }

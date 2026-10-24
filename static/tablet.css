@@ -99,7 +99,8 @@ a.tb-btn { display: inline-flex; align-items: center; text-decoration: none; }  
 .tb-rb.notconf { background: var(--tb-rb-pend-bg); border: 2px dashed var(--tb-danger); color: var(--tb-danger); }
 .tb-rb.unknown, .tb-rb.na { background: var(--bg); border-color: var(--tb-rb-unk-border); color: var(--tb-rb-unk-fg); }
 .tb-rb.bind, .tb-rb.nolink { background: var(--bg); border: 2px dashed var(--tb-rb-dim); color: var(--tb-rb-dim-fg); cursor: not-allowed; }
-.tb-rb.amber { outline: 2px solid var(--tb-rb-amber); outline-offset: 3px; margin: 3px 0; }
+/* inside the button: the cut-corner themes' clip-path clipped an outline outside it away (review 2026-10-23 S5-B15) */
+.tb-rb.amber { box-shadow: inset 0 0 0 3px var(--tb-rb-amber); }
 .tb-rb:disabled { cursor: not-allowed; }
 .tb-railrows { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .tb-railrows li { display: flex; align-items: center; gap: 8px; }
@@ -256,7 +257,7 @@ body.tablet.tb-norail #tabRail { display: none !important; }
   .tb-group { min-height: 44px; padding: 0 10px 5px; font-size: 16px; }
   .tb-page { min-height: 42px; padding: 0 10px; font-size: 15px; }
   .tb-nav :is(.tb-group, .tb-page) { letter-spacing: min(var(--tb-track), .6px); }
-  [data-theme="lcars"] .tb-pages .tb-page { margin-left: 18px; }
+  :root[data-theme="lcars"] .tb-pages .tb-page { margin-left: 18px; }   /* beats lcars.css's 28 px, linked after (S5-B14) */
   .tb-rail, .tb-raillist { gap: 5px; }
   .tb-railhead { min-height: 34px; }
   .tb-railhead .tb-btn { min-height: 32px; padding: 0 10px; }

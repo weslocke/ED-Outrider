@@ -118,6 +118,53 @@ class Tablet(unittest.TestCase):
             for k in ("--text", "--muted", "--accent", "--good", "--warn", "--bad", "--info"):
                 for ground in ("--bg", "--panel"):
                     self.assertGreaterEqual(round(ratio(c[k], c[ground]), 2), 4.5, f"{t}: {k} {c[k]} on {ground} {c[ground]}")
+        # the tablet shell's filled states: an "on" page, button or rail button, an open group (review 2026-10-23 S5-B13:
+        # Dark, Sith and Narn were 3.2 to 3.7:1); a see-through ground is the page's and checked above
+        pairs = (("--tb-page-on-fg", "--tb-page-on-bg"), ("--tb-btn-on-fg", "--tb-btn-on-bg"), ("--tb-btn-fg", "--tb-btn-bg"),
+                 ("--tb-rb-on-fg", "--tb-rb-on-bg"), ("--tb-rb-off-fg", "--tb-rb-off-bg"), ("--tb-group-open-fg", "--tb-group-open-bg"))
+        solid = lambda v: re.fullmatch(r"#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}", v or "") is not None
+        for t, block in blocks.items():
+            c = colours(block)
+            for fg, bg in pairs:
+                if solid(c.get(fg)) and solid(c.get(bg)):
+                    full = lambda h: "#" + "".join(x * 2 for x in h[1:]) if len(h) == 4 else h
+                    self.assertGreaterEqual(round(ratio(full(c[fg]), full(c[bg])), 2), 4.5, f"{t}: {fg} {c[fg]} on {bg} {c[bg]}")
+        # the light Default's marks (S5-B1: they were the dark page's, 1.5 to 2.7:1 on white): text 4.5:1, the star and
+        # the first-discovery block (shapes, not text) 3:1, on the light ground and panel
+        with open(os.path.join(ed_outrider.STATIC_DIR, "page.css"), encoding="utf-8") as f:
+            css = f.read()
+        light = colours(re.search(r"@media \(prefers-color-scheme: light\) \{ :root \{(.*?)\}\}", css, re.S).group(1))
+        marks = colours(re.search(r"@media \(prefers-color-scheme: light\) \{ :root:not\(\[data-theme\]\) \{(.*?)\}\}", css, re.S).group(1))
+        self.assertEqual(set(marks), {k for k in colours(blocks["default"]) if k.startswith("--mark-")})   # every mark has a light value
+        for k, v in marks.items():
+            for ground in ("--bg", "--panel"):
+                need = 3.0 if k in ("--mark-star", "--mark-first") else 4.5
+                self.assertGreaterEqual(round(ratio(v, light[ground]), 2), need, f"light {k} {v} on {ground}")
+        rules = "\n".join(line for line in css.splitlines() if "--mark-" not in line or "var(--mark-" in line)
+        self.assertNotRegex(rules, r"#(?:c77dff|5ce1e6|3FBF6A|f2c94c|7fd3ff|d6b3ff|d9a066|b9a58a|e8875a|ff9a5c|f2c230)\b",
+                            "a mark's literal colour outside its token")
+
+    def test_review_css_fixes(self):
+        """The full review of 2026-10-23, fix batch 7, each a rule the stylesheets must keep: S5-B12 the light-only rules
+        are the Default's (a dark theme on a light OS kept them: dark brown on black); S5-B14 the small tablet's LCARS
+        indent beats lcars.css; S5-B15 the amber ring drawn inside the rail button (a clip-path cut it away); S5-B16 no
+        dimmed target buttons where nothing hovers; S5-B17 no sticky body-panel heading over the header under 900 px;
+        S5-B18 both marks on a row that is the next stop and the nearest scoopable."""
+        def read(*p):
+            with open(os.path.join(ed_outrider.STATIC_DIR, *p), encoding="utf-8") as f:
+                return f.read()
+        page, tablet = read("page.css"), read("tablet.css")
+        self.assertNotRegex(page, r"prefers-color-scheme: light\) \{ #(nowView|hereTable)")
+        self.assertIn(":root:not([data-theme]) #nowView .now-sys", page)
+        self.assertIn(":root:not([data-theme]) #hereTable .vc", page)
+        self.assertIn(':root[data-theme="lcars"] .tb-pages .tb-page { margin-left: 18px; }', tablet)
+        amber = re.search(r"\.tb-rb\.amber \{([^}]*)\}", tablet).group(1)
+        self.assertNotIn("outline", amber)
+        self.assertIn("inset", amber)
+        self.assertIn("@media (hover: none) { .hwyaim.icon { opacity: 1; } }", page)
+        self.assertIn("main > #hereView.detail > #bodyPanel h3 { position: static; }", page)
+        self.assertIn("#sBodyPanel h3 { position: static; }", page)
+        self.assertIn('tr.scoopnext.nextstop td.name::after { content: " ⚑ next stop · ⛽ nearest scoopable"; }', page)
 
     def test_map_pill_reads_in_every_theme(self):
         """Now's Map pill on the tablet (Kurbo26, 2026-10-16: cyan on cyan in the Elite theme): its colours are solid in
