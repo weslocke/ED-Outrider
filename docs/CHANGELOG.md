@@ -2,6 +2,21 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Review fixes (6): the page's behaviour
+- The full Fable review of 2026-10-23, fix batch 6:
+  - **S5-B2: the Data tile is coloured by the newer of the journal and Status.json**: a quiet journal in supercruise,
+    on a walk or a drive (Status.json still moving) no longer turns it amber after 3 min and red after 10.
+  - **S5-B3: the carrier tile (and the folded tiles line) is rewritten only when it changed**: the countdowns update in
+    place, so a hover stays open and ✕, re-plot and the copy take their click during a trip or a booked jump.
+  - **S5-B4:** Here's checklist says "mapped by others" apart from "small, under your level". **S5-B5:** a pinned
+    system's heading measures from you, not from Nearby's centre.
+  - **S5-B6:** the Boxel views keep the newest answer and look again when the key moved during a fetch.
+  - **S5-B7:** your hotspot record shows for a ring of the system's lone main star.
+  - **S5-B8:** the header's route line moves on to the route still followed when the one shown is finished.
+  - **S5-B9: a chat message that mentions you is always read**, never folded into "And N more".
+  - **S5-B10:** Show log (and the starting page's log) starts afresh after a restart, whatever the line counts.
+  - **S5-B11:** Settings -> Server keeps what you typed and did not save through a redraw.
+
 ## 2026-10-24 · Review fixes (5): the rest of the server
 - The full Fable review of 2026-10-23, fix batch 5:
   - **S1-B1: every number Settings saves is refused out of range in words** ("[highway] efficiency must be 1 to 100

@@ -1046,10 +1046,13 @@ const releasePayloads = async () => {
       // --simulate: the game reads as running with an hours-old journal, which is no fault (no red Data tile)
       const fz = data.freshness, fst = data.status, fh = data.health, oldJ = new Date(Date.now() - 5 * 3600000).toISOString();
       data.status = ""; data.health = null;   // offline here: "Spansh unavailable" would colour the tile whatever the journal's age
-      data.freshness = Object.assign({}, fz, {journal: oldJ, live: true, simulated: true}); renderStrip();
+      data.freshness = Object.assign({}, fz, {journal: oldJ, status: oldJ, live: true, simulated: true}); renderStrip();
       const simCls = document.getElementById("tData").className;
-      data.freshness = Object.assign({}, fz, {journal: oldJ, live: true, simulated: false}); renderStrip();
-      o.simFresh = !/urgent/.test(simCls) && /urgent/.test(document.getElementById("tData").className);
+      data.freshness = Object.assign({}, fz, {journal: oldJ, status: oldJ, live: true, simulated: false}); renderStrip();
+      const hungCls = document.getElementById("tData").className;
+      // review 2026-10-23 S5-B2: a quiet journal while Status.json keeps moving (supercruise, a walk) is no fault
+      data.freshness = Object.assign({}, fz, {journal: oldJ, status: new Date().toISOString(), live: true, simulated: false}); renderStrip();
+      o.simFresh = !/urgent/.test(simCls) && /urgent/.test(hungCls) && !/urgent|warn/.test(document.getElementById("tData").className);
       data.freshness = fz; data.status = fst; data.health = fh; renderStrip();
       // F30, F33: a run under way prices the logged species; gravity reds at your high-g level
       const hd = hereData, hk = hereKey, hg = localStorage.getItem("highG");
@@ -10029,6 +10032,79 @@ const releasePayloads = async () => {
     allOk = allOk && goodCH;
     console.log(goodCH ? "OK" : "FAIL", "| space chatter |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "who may talk to whom, a dialogue in order with names in the captions (dropped after an alert), monologues in space, landed and in orbit, no half-filled line, the clocks and what keeps it quiet, Settings posting", errors.slice(before));
+  }
+  {   // the full Fable review of 2026-10-23, fix batch 6: the page's behaviour (S5-B3..B9, B11)
+    const w = dom.window, d = w.document, before = errors.length, got = {};
+    {
+      // S5-B3: a tile redrawn each second keeps its nodes when only a countdown moved
+      try {
+      got.live = w.eval(`(() => { const el = document.createElement("div");
+        setLive(el, '<b class="cd">1:00</b> <button>x</button>'); const b = el.querySelector("button");
+        setLive(el, '<b class="cd">0:59</b> <button>x</button>'); const same = el.querySelector("button") === b, cd = el.querySelector(".cd").textContent;
+        setLive(el, '<b class="cd">0:58</b> <button>y</button>');
+        return [same, cd, el.querySelector("button") !== b]; })()`);
+      } catch (e) { got.live = String(e); }
+      // S5-B4: a body others mapped is not "small, under your level"
+      try {
+      got.byOthers = w.eval(`(() => { const u = {body: "A 1", increment: 5000000, mapped_before: true, dist_ls: 10};
+        const l = {honked: true, unscanned: 0, all_found: true, unmapped: [u], bio_pending: [], body_count: 2, base_known: 2};
+        const h = checklistHtml(l); return [/1 mapped by others/.test(h), /small/.test(h)]; })()`);
+      } catch (e) { got.byOthers = String(e); }
+      // S5-B5: Here's pinned heading measures from you
+      try {
+      got.fromYou = /const away = row \? lyFromYou\(row\)/.test(w.eval("renderHere.toString()"));
+      } catch (e) { got.fromYou = String(e); }
+      // S5-B7: a ring of the lone main star
+      try {
+      got.ring = w.eval(`(() => { const hd = hereData, md = MINING.d;
+        hereData = {name: "Sys", id64: 1}; MINING.d = {hotspots: [{system: "1", ring: "A Ring"}]};
+        try { return Object.keys(ringRecord({name: "Sys", ring_details: [{name: "A Ring"}]}, 1)); }
+        finally { hereData = hd; MINING.d = md; } })()`);
+      } catch (e) { got.ring = String(e); }
+      // S5-B8: the header's line follows the route still followed
+      try {
+      got.line = w.eval(`(() => { const p = store.get("hwyShow", ""); store.set("hwyShow", "");
+        try { return [lineKind({created_ts: "2", complete: true}, {created_ts: "1", complete: false}),
+                      lineKind({created_ts: "2", complete: false}, {created_ts: "1", complete: false})]; }
+        finally { store.set("hwyShow", p); } })()`);
+      } catch (e) { got.line = String(e); }
+      // S5-B9: a mention waiting behind others is read, never summed up
+      try {
+      got.chat = w.eval(`(() => { const said = [], real = chatSay, q = CHATQ.queue.splice(0), at = CHATQ.spokenAt;
+        chatSay = (g, extra) => said.push([g.map(m => m.text).join("|"), extra]);
+        const m = (sender, text, mention) => ({at: Date.now(), m: {sender, channel: "squadron", text, mention}});
+        CHATQ.queue.push(m("A", "one"), m("B", "two"), m("C", "three"), m("D", "four"), m("E", "hey you", true));
+        CHATQ.spokenAt = 0;   // due: the oldest goes with the summary, the mention waits for the next pump
+        try { chatPump(); chatPump(); return said; } finally { chatSay = real; CHATQ.queue.splice(0, CHATQ.queue.length, ...q); CHATQ.spokenAt = at; } })()`);
+      } catch (e) { got.chat = String(e); }
+      // S5-B6: two Boxel nearby answers out of order: the newest kept
+      try {
+      got.boxel = await w.eval(`(async () => { const real = fetch, saved = boxelNear; const waits = [];
+        fetch = () => new Promise(r => waits.push(r));
+        const a = loadBoxelNear(), b = loadBoxelNear();
+        const answer = v => ({ok: true, json: async () => v});
+        waits[1](answer({n: "newer", boxels: []})); await b;
+        waits[0](answer({n: "older", boxels: []})); await a;
+        const n = boxelNear && boxelNear.n; fetch = real; boxelNear = saved; return n; })()`);
+      } catch (e) { got.boxel = String(e); }
+      // S5-B11: an unsaved Server edit survives a redraw
+      try {
+      got.srv = await w.eval(`(async () => { const real = apiJson;
+        apiJson = async () => ({path: "x.toml", exists: true, problems: [], groups: [{group: "net", title: "Network",
+          keys: [{section: "server", key: "port", value: 8025, kind: "int", set: true}]}]});
+        try { await loadServerSettings(); const f = document.getElementById("srv-server-port"); f.value = "8030";
+              await loadServerSettings(); const g = document.getElementById("srv-server-port");
+              return [g.value, g.dataset.orig, JSON.stringify(srvChanges())]; }
+        finally { apiJson = real; } })()`);
+      } catch (e) { got.srv = String(e); }
+    }
+    const want = {live: [true, "0:59", true], byOthers: [true, false], fromYou: true, ring: ["A Ring"], line: ["rich", "hwy"],
+      chat: [["one", " And 3 more on Squadron."], ["hey you", ""]], boxel: "newer", srv: ["8030", "8025", JSON.stringify({server: {port: "8030"}})]};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const good = !bad.length && !got.error && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| review fixes (6) |", bad.length || got.error ? `failed ${bad.join(", ")} ${got.error || ""}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
+      : "countdowns update in place, mapped by others, from you, the lone star's ring, the line on the followed route, a mention read, the newest Boxel answer, an unsaved edit kept", errors.slice(before));
   }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
   const post = origin => fetch(base + "api/radius", {method: "POST", body: "{}",

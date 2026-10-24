@@ -492,10 +492,11 @@ function renderCarrier() {
   document.getElementById("tCarrier").hidden = none;
   document.getElementById("tiles").classList.toggle("nocarrier", none);
   tileCols();
-  if (!c) { cl.innerHTML = val(`<span class="unk">none seen</span>`); return; }
+  if (!c) { cl.innerHTML = val(`<span class="unk">none seen</span>`); cl._liveKey = null; return; }
   // decommissioned (or being): in red with the date, rather than the tile vanishing (a mistake would go unseen)
   const dc = c.decommission;
   if (dc && dc.done) {
+    cl._liveKey = null;
     cl.innerHTML = val(esc(c.name || c.callsign || "your carrier"), esc(c.callsign || "")) +
       ln(`<span class="noscoop" title="its decommissioning was requested ${esc(shortDay(dc.ts || ""))}; a carrier bought since shows here instead">Decommissioned ${esc(shortDay(dc.scrap_ts || dc.ts || ""))}</span>`);
     return;
@@ -523,7 +524,7 @@ function renderCarrier() {
     const left = (Date.parse(pl.departure) - Date.now()) / 1000;
     const mmss = t => t >= 3600 ? `${Math.floor(t / 3600)} h ${Math.floor(t % 3600 / 60)} min` : `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
     const urgent = left > 0 && left < 300 && !c.aboard;
-    plan = `<span class="${urgent ? "noscoop" : ""}">${left > 0 ? `departs for <b>${esc(pl.system)}</b> in <b>${mmss(left)}</b>` : `jumping to <b>${esc(pl.system)}</b>`}</span>` +
+    plan = `<span class="${urgent ? "noscoop" : ""}">${left > 0 ? `departs for <b>${esc(pl.system)}</b> in <b class="cd">${mmss(left)}</b>` : `jumping to <b>${esc(pl.system)}</b>`}</span>` +
       (pl.jump_ly ? ` <span class="unk">(${fmtLy(pl.jump_ly)} ly jump${carrierPlanBurn(pl, c.burn_factor)}${pl.distance_from_you != null ? `${pl.burn != null ? ";" : ","} then ${fmtLy(pl.distance_from_you)} ly from you` : ""})</span>` : "");
     if (urgent && carrierWarned !== pl.departure) {   // once per booking, only if you are not aboard
       carrierWarned = pl.departure;
@@ -553,8 +554,18 @@ function renderCarrier() {
   const trit = depot == null ? "" : ` · <span id="carrierTrit" title="${esc(tritTitle)}">Tritium: <b>${est ? "≈" : ""}${depot.toLocaleString()}t</b>${tr ? `/${tr.total.toLocaleString()}t` : ""}${low ? ` <span class="warnc">⚠</span>` : ""}</span>`;
   drawFcTrip();
   if (typeof hForm !== "undefined" && hwyPlotter() === "carrier") { fillFcForm(); drawHwyStatus(); }
-  cl.innerHTML = val(mk("fleet-carrier") + esc(c.name), esc(c.callsign || "")) + ln(dcLine) + ln(where) + ln(move) +
-    ln(carrierServicesHtml(c) + trit) + ln(carrierFinanceHtml(c.finance));
+  setLive(cl, val(mk("fleet-carrier") + esc(c.name), esc(c.callsign || "")) + ln(dcLine) + ln(where) + ln(move) +
+    ln(carrierServicesHtml(c) + trit) + ln(carrierFinanceHtml(c.finance)));
+}
+// a tile the 1 s interval redraws (the carrier's, the folded tiles line): written whole only when anything but its
+// countdowns (class "cd") changed, else only those figures, so a hover stays open and a button under the pointer takes
+// its click (review 2026-10-23 S5-B3: rebuilt every second for a whole carrier trip)
+function setLive(el, html) {
+  const cd = /<(b|span) class="cd">([^<]*)<\/\1>/g, key = html.replace(cd, "§"), figs = [...html.matchAll(cd)].map(m => m[2]);
+  const nodes = el._liveKey === key ? el.querySelectorAll(".cd") : null;
+  if (nodes && nodes.length === figs.length) { nodes.forEach((n, i) => { if (n.textContent !== figs[i]) n.textContent = figs[i]; }); return; }
+  el.innerHTML = html;
+  el._liveKey = key;
 }
 // ---- carrier trips (#19, the author 2026-10-17): planned in Plot Route (the Carrier plotter: Spansh's carrier router),
 // followed here, one line: "Leg 2/6 → system 📋 · departs 12:30 ✕". The leg moves on as the carrier does (the server's
@@ -572,10 +583,10 @@ function carrierTripLineHtml(t, pl, c) {
   let when = "";
   if (pl && pl.departure) {
     const left = (Date.parse(pl.departure) - Date.now()) / 1000;
-    when = left > 0 ? ` · departs <b>${mmss(left)}</b>` : " · jumping";
+    when = left > 0 ? ` · departs <b class="cd">${mmss(left)}</b>` : " · jumping";
   } else if (t.ready_at) {
     const left = t.ready_at - Date.now() / 1000;
-    when = left > 0 ? ` · <span title="the cooldown after a jump (busy systems can take longer)">cooldown ${mmss(left)}</span>`
+    when = left > 0 ? ` · <span title="the cooldown after a jump (busy systems can take longer)">cooldown <span class="cd">${mmss(left)}</span></span>`
       : t.sure ? " · <b>ready</b>" : ` · <span title="should be ready to jump: only the booked jump says it moved (busy systems can delay it)">ready?</span>`;
   }
   const leg = `Leg ${t.at + 1}/${t.n} → <span class="copy" data-name="${esc(nx.system)}" title="click to copy, then paste it in the carrier's galaxy map">${esc(nx.system)} 📋</span>`;
@@ -804,8 +815,12 @@ function renderStrip() {
   let dot = "", text = "", tcls = "";
   if (fr && fr.journal) {
     const age = Math.max(0, (Date.now() - Date.parse(fr.journal)) / 60000);
-    // a quiet journal with the game running is a fault; under --simulate (screenshots) the journal is old by design
-    const stale = fr.live && !fr.simulated, cls = stale && age > 10 ? "bad" : stale && age > 3 ? "warn" : "";
+    // a quiet journal with the game running is a fault; under --simulate (screenshots) the journal is old by design.
+    // Coloured by the newer of the journal and Status.json: supercruise, a walk or a drive writes no journal line for
+    // minutes while Status.json keeps moving, and a hung game freezes both (review 2026-10-23 S5-B2)
+    const st = fr.status ? Date.parse(fr.status) : NaN;
+    const quiet = isNaN(st) ? age : Math.max(0, (Date.now() - Math.max(Date.parse(fr.journal), st)) / 60000);
+    const stale = fr.live && !fr.simulated, cls = stale && quiet > 10 ? "bad" : stale && quiet > 3 ? "warn" : "";
     dot = cls; tcls = cls === "bad" ? "urgent" : cls;
     text = `journal ${esc(fr.journal.slice(11, 16))} UTC` + (age >= 1 ? ` · ${age < 90 ? Math.round(age) + " min" : Math.round(age / 60) + " h"} ago` : "") + (fr.live ? "" : " · game off");
   } else if (fr && fr.missing) {
@@ -989,7 +1004,7 @@ function tilesLineHtml() {
 function renderTilesLine() {
   if (!data) return;
   const el = document.getElementById("tilesLine"), fk = focusKey("tilesLine");
-  el.innerHTML = tilesLineHtml();
+  setLive(el, tilesLineHtml());
   refocus("tilesLine", fk);
 }
 // Per-browser override of the bio threshold; null follows bio_min in ed_outrider.toml (reset = null).
@@ -1126,8 +1141,12 @@ function checklistHtml(l) {
   if (plan.length > 1) items.push(`<li class="unk" title="nearest to the arrival star first, then the best value per minute of supercruise; a rough guide, not a route">${plan[0].first ? "your first stop, then the suggested order:" : "suggested order:"}${plan[0].first ? planResetHtml(l) : ""}</li>`);
   // numbered as on the schematic (S30), when there is an order to number
   plan.forEach((it, i) => items.push(item(false, (plan.length > 1 ? `<span class="stopn">${stopGlyph(i + 1)}</span> ` : "") + planText(it) + planCost(it))));
-  const smallMaps = (l.unmapped || []).length - w.maps.length;
-  if (!w.maps.length) items.push(item(true, "no mapping worth doing" + (smallMaps ? ` <span class="unk">(${smallMaps} small, under your ${credits(hlLevel("body"))} level)</span>` : "")));
+  // the two reasons apart: another commander mapped it, or it is small (review 2026-10-23 S5-B4: an Earth-like someone
+  // else mapped was called "small, under your level")
+  const byOthers = (l.unmapped || []).filter(u => u.mapped_before && !w.maps.includes(u)).length;
+  const smallMaps = (l.unmapped || []).length - w.maps.length - byOthers;
+  const why = [byOthers ? `${byOthers} mapped by others` : "", smallMaps ? `${smallMaps} small, under your ${credits(hlLevel("body"))} level` : ""].filter(Boolean).join(" · ");
+  if (!w.maps.length) items.push(item(true, "no mapping worth doing" + (why ? ` <span class="unk">(${why})</span>` : "")));
   const smallBio = l.bio_pending.length - w.bio_pending.length;
   if (!w.bio_pending.length) items.push(item(true, "no bio worth sampling" + (smallBio ? ` <span class="unk">(${smallBio} under your ${credits(bioMinNow())} threshold)</span>` : "")));
   return `<ul class="checklist">${items.join("")}</ul>`;
@@ -3297,7 +3316,11 @@ function ringRecord(b, sys) {
   const out = {};
   for (const g of (MINING.d && MINING.d.hotspots) || []) {
     if (g.system !== String(sys)) continue;
-    for (const r of b.ring_details || []) if (g.ring === `${b.name} ${r.name}`) (out[r.name] = out[r.name] || []).push(g);
+    // a ring of the system's lone main star: the body keeps the system's own name and the stint's ring is short ("A Ring",
+    // as the server's split_ring_name has it: review 2026-10-23 S5-B7)
+    const lone = !!hereData && b.name === hereData.name;
+    for (const r of b.ring_details || [])
+      if (g.ring === `${b.name} ${r.name}` || (lone && g.ring === r.name)) (out[r.name] = out[r.name] || []).push(g);
   }
   return out;
 }
@@ -4137,15 +4160,23 @@ function renderNearAround() {
 const nearMode = () => store.get("nearMode", "standard") === "boxel" ? "boxel" : "standard";
 let boxelData = null, boxelKey = null, boxelNear = null, boxelNearKey = null, boxelLoading = false;
 document.querySelectorAll("input[name=nearMode]").forEach(r => r.onchange = () => { store.set("nearMode", r.value); boxelKey = null; render(); });
+// each loader keeps the newest answer only, and one that ran while the key moved looks again (review 2026-10-23 S5-B6:
+// a key change during a fetch was dropped, and two overlapping fetches could land in the wrong order)
 async function loadBoxel() {
   if (boxelLoading) return;
   boxelLoading = true;
+  const k = boxelKey;
   try { const r = await fetch("api/boxel"); if (r.ok) boxelData = await r.json(); } catch {}
   boxelLoading = false;
   drawBoxel();
+  if (boxelKey !== k) loadBoxel();
 }
 async function loadBoxelNear() {
-  try { const r = await fetch("api/boxel/nearby"); if (r.ok) boxelNear = await r.json(); } catch {}
+  const g = newRequest("boxelNear");
+  let got = null;
+  try { const r = await fetch("api/boxel/nearby"); if (r.ok) got = await r.json(); } catch {}
+  if (!isNewest("boxelNear", g)) return;
+  if (got) boxelNear = got;
   drawBoxel();
 }
 async function boxelPost(body) {
@@ -4178,7 +4209,11 @@ async function loadBoxelGrid() {
   const q = new URLSearchParams(), mc = store.get("bxGridMc", "");
   if (mc) q.set("mc", mc);
   if (bxGridLayer != null) q.set("layer", bxGridLayer);
-  try { const r = await fetch(`api/boxel/sector?${q}`); if (r.ok) boxelGrid = await r.json(); } catch {}
+  const g = newRequest("boxelGrid");
+  let got = null;
+  try { const r = await fetch(`api/boxel/sector?${q}`); if (r.ok) got = await r.json(); } catch {}
+  if (!isNewest("boxelGrid", g)) return;
+  if (got) boxelGrid = got;
   drawBoxel();
 }
 function bxLetters(bx, by, bz) {
@@ -4606,7 +4641,8 @@ function renderHere() {
   }
   const pinned = !!pinnedSystem, row = pinned && data.systems.find(s => s.id === pinnedSystem);
   // a system opened by name from Search may be far outside the sphere: its distance is the lookup's
-  const away = row ? row.distance : pinned && foundSys[pinnedSystem] ? foundSys[pinnedSystem].distance : null;
+  // from you, not from Nearby's centre when Nearby is around another system (review 2026-10-23 S5-B5)
+  const away = row ? lyFromYou(row) : pinned && foundSys[pinnedSystem] ? foundSys[pinnedSystem].distance : null;
   head.innerHTML = (pinned ? `<button type="button" class="unpin" onclick="unpinSystem()" title="back to the system you are in">✕</button><span class="pintag">viewing</span> ` : "") +
     // the bookmark star (its dialog also sets the next stop) for a viewed system, which may be in no other list
     (pinned ? bmIcon(pinnedSystem, h.name, bmMap()) + " " : "") +
@@ -7450,8 +7486,11 @@ function renderHwyLine() {
 function lineKind(hw, sv) {
   if (hw && sv) {
     const pick = store.get("hwyShow", "");
-    if (pick === "hwy" || pick === "rich") return pick;
-    return String(sv.created_ts || "") > String(hw.created_ts || "") ? "rich" : "hwy";
+    const k = pick === "hwy" || pick === "rich" ? pick : String(sv.created_ts || "") > String(hw.created_ts || "") ? "rich" : "hwy";
+    // the one picked (or the newer) finished while the other is still followed: the line follows that one (review
+    // 2026-10-23 S5-B8: it stuck on the finished route); the Plot Route tab's own radio keeps its pick
+    const done = x => !!(x === "rich" ? sv : hw).complete, other = k === "rich" ? "hwy" : "rich";
+    return done(k) && !done(other) ? other : k;
   }
   return sv ? "rich" : "hwy";
 }
@@ -10822,15 +10861,18 @@ function chatPump(now = Date.now()) {
   if (!q.length) return false;
   const mi = q.findIndex(x => x.m.mention), due = now - CHATQ.spokenAt >= CHAT_GAP;
   if (mi < 0 && !due) return false;
+  // a message that mentions you is never folded into the summary below (review 2026-10-23 S5-B9: a mention behind
+  // three others was summed up as "And 3 more" and never read): it stays queued, and the next pump says it
   let i = mi >= 0 && !due ? mi : 0;
   const head = q[i].m, group = [];
   while (i < q.length && q[i].m.sender === head.sender && q[i].m.channel === head.channel) group.push(q.splice(i, 1)[0].m);
-  // too many waiting: the rest summed up by channel, shown in the captions
+  // too many waiting: the rest summed up by channel, shown in the captions (mentions stay queued: the next pump)
   let extra = "";
   if (q.length >= CHAT_SUMMARY) {
-    const by = {};
-    for (const x of q.splice(0)) { by[CHAT_WORD[x.m.channel] || x.m.channel] = (by[CHAT_WORD[x.m.channel] || x.m.channel] || 0) + 1; addCaption(`${x.m.sender}: ${chatClean(x.m.text, x.m.more)}`, null, true); }
-    extra = " And " + Object.entries(by).map(([w, n]) => `${n} more ${w === "direct" ? "directly" : "on " + w}`).join(", ") + ".";
+    const by = {}, keep = q.filter(x => x.m.mention);
+    for (const x of q.splice(0).filter(x => !x.m.mention)) { by[CHAT_WORD[x.m.channel] || x.m.channel] = (by[CHAT_WORD[x.m.channel] || x.m.channel] || 0) + 1; addCaption(`${x.m.sender}: ${chatClean(x.m.text, x.m.more)}`, null, true); }
+    q.push(...keep);
+    if (Object.keys(by).length) extra = " And " + Object.entries(by).map(([w, n]) => `${n} more ${w === "direct" ? "directly" : "on " + w}`).join(", ") + ".";
   }
   CHATQ.spokenAt = now;
   chatSay(group, extra);
@@ -13207,6 +13249,13 @@ async function loadServerSettings() {
     if (k.kind === "table") return `<textarea rows="2" ${data} placeholder='{"Name": "KEY_..."}'>${esc(Object.keys(v).length ? JSON.stringify(v) : "")}</textarea>`;
     return `<input type="text" ${data} value="${esc(v)}">`;
   };
+  // what was typed and not saved yet survives the redraw (reopening the section, Find a setting, a notice's button:
+  // review 2026-10-23 S5-B11 found it wiped); the field's "orig" stays the file's value, so Save still sees a change
+  const typed = {}, cleared = new Set();
+  box.querySelectorAll("[data-key]").forEach(el => {
+    if (el.id && el.dataset.orig !== undefined && String(srvValue(el)) !== el.dataset.orig) typed[el.id] = srvValue(el);
+  });
+  box.querySelectorAll("[data-clear]").forEach(el => { if (el.checked) cleared.add(el.dataset.clear); });
   box.innerHTML = (data && data.game_pc === false ? `<div class="hint warnc">This Outrider is a server, not the PC the game runs on ([server] game_pc): auto honk,
     auto-target, the tablet's rail, the co-pilot button, the clipboard and playing on this PC are off and left out of the pages.</div>` : "") +
     `<div class="hint">Saved in <code>${esc(c.path)}</code>${c.exists ? "" : " (made when you first save)"}. Outrider uses them from its next start;
@@ -13222,7 +13271,15 @@ async function loadServerSettings() {
           `${k.help ? `<div class="hint">${esc(k.help)}</div>` : ""}</div></div>`).join("") + `</details>`;
     }).join("") +
     `<div class="btns"><button type="button" id="srvSave" class="primary">Save server settings</button><span id="srvMsg" class="hint"></span></div>`;
-  box.querySelectorAll("[data-key]").forEach(el => { el.dataset.orig = srvValue(el); });
+  box.querySelectorAll("[data-key]").forEach(el => {
+    el.dataset.orig = srvValue(el);
+    if (el.id in typed) {
+      if (el.dataset.kind === "bool" && !el.dataset.secret) el.checked = typed[el.id]; else el.value = typed[el.id];
+      const sec = el.closest("details.srvsec");
+      if (sec) sec.open = true;   // an edit waiting to be saved is not folded away
+    }
+  });
+  box.querySelectorAll("[data-clear]").forEach(el => { if (cleared.has(el.dataset.clear)) el.checked = true; });
   box.querySelectorAll("details.srvsec").forEach(d => d.addEventListener("toggle", () => { if (!SF.active) SRV_SET_OPEN[d.dataset.srvsec] = d.open; }));
   document.getElementById("srvSave").onclick = saveServerConfig;
   const focus = srvFocus && document.getElementById(srvFocus);
@@ -13540,12 +13597,12 @@ document.getElementById("autoHonkReady").addEventListener("click", e => {
 // LOG_POLL_MS while the dialog is open. Newest at the bottom, followed only while you are at the bottom; the error
 // stream's lines amber. A restarted Outrider numbers its lines afresh: the dialog starts again.
 const LOG_POLL_MS = 2000, LOG_KEEP = 2000;
-const srvLog = {gen: 0, last: 0, lines: [], timer: null};
+const srvLog = {gen: 0, last: 0, lines: [], timer: null, run: null};
 const logTime = t => new Date(t * 1000).toTimeString().slice(0, 8);
 const logLineHtml = l => `<div class="logln${l.kind === "err" ? " err" : ""}"><span class="logt">${esc(logTime(l.t))}</span> ${esc(l.text)}</div>`;
 const logText = () => srvLog.lines.map(l => `${logTime(l.t)} ${l.kind === "err" ? "!" : "|"} ${l.text}`).join("\n");
 function logReset() {
-  srvLog.last = 0; srvLog.lines = [];
+  srvLog.last = 0; srvLog.lines = []; srvLog.run = null;
   document.getElementById("logLines").innerHTML = "";
 }
 async function pollServerLog(gen) {
@@ -13556,7 +13613,9 @@ async function pollServerLog(gen) {
   if (gen !== srvLog.gen || !dlg.open) return;
   const foot = document.getElementById("logFoot");
   if (r && !r.error) {
-    if (r.last < srvLog.last) { logReset(); srvLog.timer = setTimeout(() => pollServerLog(gen), 0); return; }   // restarted
+    // restarted: another run (S5-B10: one that had printed more lines already looked like the same run), or fewer lines
+    if ((srvLog.run && r.run && r.run !== srvLog.run) || r.last < srvLog.last) { logReset(); srvLog.timer = setTimeout(() => pollServerLog(gen), 0); return; }
+    srvLog.run = r.run || null;
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 24;
     if (r.lines.length) {
       srvLog.lines.push(...r.lines);

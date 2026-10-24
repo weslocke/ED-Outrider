@@ -69,6 +69,9 @@ class ServerLog(unittest.TestCase):
         t = L.Tee(None, log, "out")
         self.assertEqual(t.write("x\n"), 2)
         self.assertEqual(log.since(3)["lines"][0]["text"], "x")
+        # which run this is: a page reading the log starts afresh on another (review 2026-10-23 S5-B10)
+        self.assertEqual(log.since()["run"], log.since(2)["run"])
+        self.assertNotEqual(L.ServerLog(clock=lambda: 5.0).since()["run"], L.ServerLog(clock=lambda: 6.0).since()["run"])
         # a terminal that went away (a closed pipe): the print does not raise, the log keeps it (review S4-B11)
         class Gone:
             def write(self, _):

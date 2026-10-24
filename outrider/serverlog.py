@@ -68,6 +68,9 @@ class ServerLog:
         self.partial = {"out": "", "err": ""}
         self.lock = threading.RLock()
         self.path, self.file, self.size, self.rotate_at, self.file_error = None, None, 0, max_bytes, None
+        # which run of Outrider this is: a page reading the log starts afresh when it changes (a restart can already
+        # have printed more lines than the run before: review 2026-10-23 S5-B10)
+        self.run = f"{os.getpid()}-{int(clock() * 1000)}"
 
     def feed(self, kind, text):
         """Part of a stream's output: complete lines are kept, the rest waits for its newline."""
@@ -148,7 +151,7 @@ class ServerLog:
             rows = [r for r in self.lines if r[0] > after] if after < self.seq else []
             return {"lines": [{"seq": s, "t": round(t, 3), "kind": k, "text": x} for s, t, k, x in rows],
                     "last": self.seq, "first": self.lines[0][0] if self.lines else self.seq + 1,
-                    "path": self.path, "file_error": self.file_error}
+                    "path": self.path, "file_error": self.file_error, "run": self.run}
 
 
 # a line's subject: a few lower-case words before its first ": " ("auto honk", "co-pilot button"); never a path, an

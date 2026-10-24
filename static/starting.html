@@ -47,7 +47,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-let logOpen = false, logAfter = 0;
+let logOpen = false, logAfter = 0, logRun = null;
 let reloadPage = () => location.reload();   // the smoke test replaces it
 function draw(s) {
   $("text").textContent = s.text || "Starting…";
@@ -75,6 +75,8 @@ async function pollLog() {
     const r = await fetch(`api/serverlog?after=${logAfter}`, {cache: "no-store"});
     if (!r.ok) return;
     const j = await r.json(), box = $("log"), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 4;
+    if (logRun && j.run && j.run !== logRun) { box.innerHTML = ""; logAfter = 0; logRun = j.run; return pollLog(); }   // a new run (S5-B10)
+    logRun = j.run || null;
     for (const l of j.lines || []) {
       box.insertAdjacentHTML("beforeend", `<div${l.kind === "err" ? ' class="err"' : ""}>${esc(l.text)}</div>`);
       logAfter = Math.max(logAfter, l.seq);
