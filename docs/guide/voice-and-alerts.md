@@ -219,7 +219,9 @@ Sound: Allow; Firefox: Autoplay: Allow Audio and Video).
   hear its lines and cut the ones you don't like. Outrider's own personality files are in `resources/personalities/`:
   a copy of one in `data/personalities/` under the same name replaces it, so an update never overwrites your changes.
   A problem in a file is shown in Settings, and the file's last good copy stays in use. To share a personality, share
-  its file.
+  its file. To start one, `python3 -m outrider.speech --skeleton "Pirate" --profane` (`--names "Cap'n, Skipper"` for
+  how it calls you) writes `data/personalities/pirate.json` with every alert in it, each with its `"_when"` (when it is
+  said, and its placeholders) and empty lists to fill; it never writes over a file that is there.
 - **A voice per personality.** ⚙ Settings → Voice → **Personality voices** gives each personality a voice of its own,
   or another person of a several-person voice: pick the voice (and the speaker, for a voice of many people), **▶** to
   hear one of its lines, **reset** for what the lines file says again. Outrider keeps them, so every browser and the
@@ -418,7 +420,10 @@ puts it on the clipboard.
 
 The Android app asks Outrider a question out loud, after its wake word or a tap on Ask. The answer is said in your
 Piper voice by the window that speaks (a PC browser, or the tablet with Play alerts here) and shown as a caption on
-every open page. Outrider knows these without any AI: **status report, fuel, unsold, next jump, what's left here,
+every open page. Outrider knows these without any AI: **where am I** (the system, its region and the body you are on
+or near), **status report, fuel** (with your jump range: "how far can I jump"), **unsold, next stop** (of whichever
+route you follow: the Highway, Road to Riches, Exomastery, a world, sweep or trade route, the one plotted last; else
+your next stop, else the route plotted in the game), **what's left here,
 nearest unvisited, nearest station** (or carrier, Vista, cartographics, repair, refuel, shipyard, material trader,
 raw material trader, "where can I sell": see
 [Nearest place to dock](plot-route.md#-nearest-place-to-dock); a place further than 500 ly also gets a neutron route
@@ -428,7 +433,9 @@ Outrider has cached: see [Potential green gas giants](views.md#-potential-green-
 **how far today** (jumps, light years, first discoveries, maps and samples since midnight; "how far this session"
 for the latest session), **this body** (the body you are on, fly near or have targeted: its type, gravity, value,
 biology and geology), **left behind** (the nearest one or two systems within 100 ly with work over your
-`body_highlight_level` and `bio_min`), **hush** and **unhush**. A hush can take a time: "hush for ten minutes",
+`body_highlight_level` and `bio_min`), **bookmark this system** (any words after it are its note: "bookmark this
+system ringed water world") and **remove the bookmark**, **say that again** (the last line, again, in the window that
+speaks), **show** a page on the tablet ("show Nearby", "open Bio", "back to Now"), **hush** and **unhush**. A hush can take a time: "hush for ten minutes",
 "quiet until the next jump" (30 minutes when you say none; another time gets the nearest of 10, 30 minutes or the
 next jump). Their phrases are in `resources/ask.json`; edit them freely (Outrider reads them at start).
 

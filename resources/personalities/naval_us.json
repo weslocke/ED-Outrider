@@ -117,6 +117,44 @@
     "Back on the line, Skipper. Shit, I needed that."
    ]
   },
+  "bookmarked": {
+   "naval_us": [
+    "Bookmarked: {system}.",
+    "Aye aye, {name}. {system} is bookmarked.",
+    "{system}, logged to the bookmarks.",
+    "Bookmark set. {system}.",
+    "Copy that, {name}. {system} is in the bookmarks.",
+    "Aye, Skipper. {system}, marked for later.",
+    "{system} bookmarked, {name}.",
+    "Wilco, {name}. Bookmark saved for {system}.",
+    "Done. {system} is on the chart for later.",
+    "Roger, {name}. {system}, bookmarked.",
+    "{system}, entered in the bookmarks.",
+    "Bookmarked, Skipper. {system}. We can find it again any time.",
+    "Aye aye. {system} is saved.",
+    "Bookmark logged: {system}, {name}.",
+    "Understood. {system}, marked and logged.",
+    "{system}, bookmarked. {navigator} has it for later."
+   ],
+   "naval_us_profane": [
+    "Bookmarked: {system}. Damn good.",
+    "Aye aye, {name}. {system} is bookmarked. Hell yes.",
+    "{system}, logged to the damn bookmarks.",
+    "Bookmark set. {system}. Hell of a place to remember.",
+    "Copy that, {name}. {system} is in the damn bookmarks.",
+    "Aye, Skipper. {system}, marked for later. Damn straight.",
+    "{system} bookmarked, {name}. Done and done, damn it.",
+    "Wilco, {name}. Bookmark saved for {system}. Hell, easy one.",
+    "Hell yes. {system} is on the chart for later.",
+    "Roger, {name}. {system}, bookmarked. Damn fine call.",
+    "{system}, entered in the bookmarks. Damn fine.",
+    "Bookmarked, Skipper. {system}. We can find the damn place again any time.",
+    "Aye aye. {system} is saved. No way in hell we lose it now.",
+    "Bookmark logged: {system}. Son of a bitch, that was quick.",
+    "Understood. {system}, marked. Hell, worth coming back to.",
+    "{system}, bookmarked. {navigator} has it locked down, damn it."
+   ]
+  },
   "game_start": {
    "naval_us": [
     "Show a leg, Skipper. Coffee's on and {ship} is ready.",

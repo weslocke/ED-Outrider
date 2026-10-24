@@ -79,7 +79,7 @@ class Phrases(unittest.TestCase):
 
     def test_fixed_answers(self):
         go = lambda c: asyncio.run(ask.fixed_answer(c, fake_get()))   # noqa: E731
-        self.assertEqual(go("fuel"), "Fuel at 41 percent, about 6 jumps at max range.")
+        self.assertEqual(go("fuel"), "Fuel at 41 percent, about 6 jumps at max range, range 72.5 light years.")
         self.assertEqual(go("unsold"), "About 900 credits unsold: 600 cartographic and 300 exobiology.")
         self.assertEqual(go("next_jump"), "Next highway stop: Neu, 400 light years, a neutron star. 42 jumps left, refuel in 3.")
         self.assertEqual(go("nearest_unvisited"), "Nearest unvisited: Near New, 7.0 light years.")
@@ -91,7 +91,8 @@ class Phrases(unittest.TestCase):
         # one jump is "1 jump" (the tablet's Now header said "1 jumps", and so did these)
         async def one(name, args, get, rows):
             return {"current_status": {"system": "Sol", "fuel_pct": 9, "fuel_jumps": 1},
-                    "highway_route": {"route": True, "next": {"system": "Neu", "distance_ly": 40}, "jumps_left": 1}}[name]
+                    "route_next": {"kind": "highway", "route": "Neutron Highway", "next": {"system": "Neu", "distance_ly": 40},
+                                   "jumps_left": 1}}[name]
         with unittest.mock.patch.object(ask.tools, "call", one):
             self.assertEqual(go("fuel"), "Fuel at 9 percent, about 1 jump at max range.")
             self.assertEqual(go("status_report"), "Sol. Fuel 9 percent, 1 jump. Highway: next Neu, 1 jump left.")
@@ -472,6 +473,82 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class VoiceBatchH(unittest.TestCase):
+    """The full Fable review's batch H: the voice follows whichever route you follow (S9-S2), "say that again"
+    (S9-S15), the tablet's page by voice (S9-S16), "where am I" and the jump range (S9-S18), bookmarking by voice
+    (S9-S34)."""
+
+    def setUp(self):
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, None, 25)
+
+    def test_matching(self):
+        ph = ask.load_phrases()
+        cases = {"say that again": "again", "what did you say": "again", "speak again": "unhush",
+                 "where am i": "where_am_i", "what system is this": "where_am_i", "where am i going": "next_jump",
+                 "bookmark this system quiet ringed water world": "bookmark_here", "remove the bookmark": "bookmark_remove",
+                 "show nearby": "show_page", "Vespa, open my firsts": "show_page", "back to now": "show_page",
+                 "show me the nearest station": "nearest_dock", "show me something nice": None,
+                 "jump range": "fuel", "how far can i jump": "fuel"}
+        for text, want in cases.items():
+            self.assertEqual(ask.match(text, ph), want, text)
+        self.assertEqual((ask.page_named("open my firsts"), ask.page_named("show the galaxy map"), ask.page_named("open sesame")),
+                         ("firsts", "map", None))
+        self.assertEqual(ask.bookmark_note("Vespa, bookmark this system ringed water world", "bookmark this system"),
+                         "ringed water world")
+
+    def test_route_next_follows_the_route_you_follow(self):
+        def payload(**p):
+            async def get(path, params):
+                return p
+            return get
+        call = lambda **p: asyncio.run(ask.tools.call("route_next", {}, payload(**p), 10))   # noqa: E731
+        hw = {"created_ts": "2026-10-01T00:00:00Z", "complete": False, "next": {"name": "Neu", "distance": 40.0}, "jumps_left": 9}
+        sv = {"kind": "riches", "created_ts": "2026-10-02T00:00:00Z", "complete": False, "index": 3, "total": 8,
+              "next": {"name": "Rich Stop", "distance": 38.0, "jumps": 1}}
+        self.assertEqual(call(highway=hw)["kind"], "highway")
+        r = call(highway=hw, survey=sv)   # both: the one plotted last
+        self.assertEqual((r["kind"], r["next"]["system"], r["stops_left"]), ("survey", "Rich Stop", 6))
+        self.assertEqual(ask.route_words(r), "Next stop on your Road to Riches route: Rich Stop, 38.0 light years. 6 stops left.")
+        r = call(next_stop={"name": "Marked", "distance": 12.5})
+        self.assertEqual(ask.route_words(r), "Your next stop: Marked, 12.5 light years.")
+        r = call(route={"hops": [{"name": "Hop A", "ly": 20.0}, {"name": "Far End", "ly": 30.0}], "ly": 50})
+        self.assertEqual(ask.route_words(r), "Next on the route plotted in the game: Hop A, 20.0 light years, 2 jumps to Far End.")
+        self.assertEqual(ask.route_words(call()), "No route plotted.")
+        self.assertEqual(ask.route_words(call(highway=dict(hw, complete=True))), "The route is complete, and no other is plotted.")
+
+    def test_where_am_i_and_the_range(self):
+        async def status(name, args, get, rows):
+            return {"system": "Drojau LL-O b26-3", "region": "Inner Orion Spur", "on_body": "B 3", "fuel_pct": 50,
+                    "fuel_jumps": 4, "jump_range": 58.0, "boost": 4}
+        with unittest.mock.patch.object(ask.tools, "call", status):
+            self.assertEqual(asyncio.run(ask.fixed_answer("where_am_i", None)), "Drojau LL-O b26-3, in the Inner Orion Spur, on B 3.")
+            self.assertEqual(asyncio.run(ask.fixed_answer("fuel", None)),
+                             "Fuel at 50 percent, about 4 jumps at max range, range 58.0 light years, 232 supercharged.")
+
+    def test_bookmark_by_voice(self):
+        self.j.pos = {"id64": 7, "name": "Sys", "x": 1.0, "y": 2.0, "z": 3.0}
+        with unittest.mock.patch.object(self.state, "locate", lambda i: ("Sys", 1.0, 2.0, 3.0)):
+            words, line = self.state.voice_bookmark("bookmark_here", "ringed water world")
+            self.assertEqual((words, line["key"], line["fills"]), ("Bookmarked Sys. Note: ringed water world.", "bookmarked", {"system": "Sys"}))
+            self.assertEqual(self.db.execute("SELECT note FROM bookmarks WHERE id64=7").fetchone()[0], "ringed water world")
+            self.assertEqual(self.state.voice_bookmark("bookmark_here", ""), ("Sys is bookmarked already.", None))
+            self.assertEqual(self.state.voice_bookmark("bookmark_remove", "")[0], "Bookmark of Sys removed.")
+            self.assertEqual(self.state.voice_bookmark("bookmark_remove", "")[0], "Sys has no bookmark.")
+
+    def test_again_and_show_go_through_the_copilot(self):
+        async def go(text):
+            return await self.state.ask(text, None)
+        out, _ = asyncio.run(go("say that again"))
+        self.assertEqual((self.state.copilot["action"], out["command"]), ("again", "again"))
+        self.assertIn("nothing to say again", out["answer"])   # no window speaks
+        out, _ = asyncio.run(go("show Nearby"))
+        self.assertEqual((self.state.copilot["action"], self.state.copilot["page"], out["answer"], out["spoken"]),
+                         ("show", "near", "Nearby.", False))
+
+
 class VoiceCommands(unittest.TestCase):
     """The list of voice commands (GET /api/ask/commands: Settings → Voice, the tablet's Voice commands…): every fixed
     command with what it does and the phrases that ask it, from resources/ask.json, and the words that narrow one."""
@@ -501,7 +578,8 @@ class VoiceCommands(unittest.TestCase):
             self.assertEqual(sorted({ask.norm(p) for p in r["phrases"]}), sorted(set(phrases[c])), c)
             self.assertEqual(len(r["phrases"]), len(set(phrases[c])), c)
             for p in r["phrases"]:   # and each one asks this command, not an earlier one: the list never misleads
-                self.assertEqual(ask.match(p, phrases), c, p)
+                q = f"{p} nearby" if c == "show_page" else p   # S9-S16: a page's name after it, or no page switch
+                self.assertEqual(ask.match(q, phrases), c, p)
         self.assertIn("what's left", rows["whats_left"]["phrases"])
         self.assertNotIn("whats left", rows["whats_left"]["phrases"])
         # an edited file: a new phrase shows, a command with none left is not listed, no description is None

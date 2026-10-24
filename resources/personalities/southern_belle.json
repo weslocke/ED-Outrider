@@ -118,6 +118,44 @@
     "Alerts on, honey. It was so damn quiet I could hear the hull settlin'."
    ]
   },
+  "bookmarked": {
+   "southern_belle": [
+    "Bookmarked, sugar. {system}.",
+    "{system} is saved, {name}. We'll find our way back, sure as sunrise.",
+    "Why, of course, {name}. {system} is in the bookmarks.",
+    "{system}, tucked away like Grandmama's recipe card.",
+    "Done, honey. {system} is bookmarked.",
+    "Well, aren't you thoughtful, {name}. {system}, saved.",
+    "Bookmark's set, sugar. {system}.",
+    "{system} is in the book now, darlin'. Pretty as a pressed flower.",
+    "You got it, {name}. {system}, saved for later.",
+    "Lord have mercy, I do love a keepsake. {system}, bookmarked.",
+    "{name}, {system} is bookmarked. Grandmama always said keep track of the places that matter.",
+    "There we are, sugar. {system} ain't goin' anywhere.",
+    "{system}, saved, darlin'. Like a light left on in the window.",
+    "All done, honey. {system} is in the bookmarks.",
+    "Bookmarked {system}, {name}. Just as sure as sweet tea.",
+    "{system}, saved, sugar. {navigator} can lead us back whenever you please."
+   ],
+   "southern_belle_profane": [
+    "Bookmarked, sugar. {system}. Hot damn.",
+    "{system} is saved, {name}. We'll find our way back, sure as hell.",
+    "Why, of course, {name}. {system} is in the damn bookmarks.",
+    "{system}, tucked away like Grandmama's damn recipe card.",
+    "Done, honey. {system} is bookmarked, and damn right too.",
+    "Well, aren't you thoughtful, {name}. {system}, saved. Hell, I'm touched.",
+    "Bookmark's set, sugar. {system}. Damn right.",
+    "{system} is in the book now, darlin'. Pretty as a damn pressed flower.",
+    "You got it, {name}. {system}, saved for later. Hell yes.",
+    "Hell, I do love a keepsake. {system}, bookmarked.",
+    "{name}, {system} is bookmarked. Grandmama said keep track of the places that matter, and she was damn well right.",
+    "There we are, sugar. {system} ain't goin' a damn place.",
+    "{system}, saved, darlin'. Like a light left on in the window, by God.",
+    "All done, honey. {system} is in the damn bookmarks.",
+    "Bookmarked {system}. Sure as shit and sweet tea.",
+    "{system}, saved, sugar. {navigator} can lead us back whenever you damn well please."
+   ]
+  },
   "game_start": {
    "southern_belle": [
     "Well, look who's here. Welcome back, {name}. {ship} has been waitin' on you like a porch light.",

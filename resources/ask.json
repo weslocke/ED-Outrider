@@ -1,6 +1,9 @@
 {
   "_note": "What a question to Outrider (POST /api/ask: the tablet app's voice) is matched to, without any AI. Each command lists phrases; a question matches the first command, in this order, that has one of its phrases as whole words in it (case and punctuation ignored; a leading \"hey vespa\" or \"vespa\" is dropped). Hush takes a time from the question (\"hush for ten minutes\", \"quiet until the next jump\"). Edit freely: a command's phrases can change, but its name stays (it picks the answer). Unmatched questions go to the AI layer when [assistant] enabled is true. \"descriptions\": what each command does, for the list of voice commands (Settings → Voice, the tablet's Voice commands…).",
   "commands": {
+    "bookmark_remove": ["remove the bookmark", "delete the bookmark", "remove this bookmark", "delete this bookmark", "unbookmark", "forget this system"],
+    "bookmark_here": ["bookmark this system", "bookmark here", "bookmark it", "remember this system", "save this system"],
+    "again": ["say again", "say that again", "repeat that", "repeat it", "what did you say", "come again", "once more", "pardon"],
     "unhush": ["unhush", "un hush", "voice back", "unmute", "speak again", "you can talk", "end the hush", "cancel the hush", "stop the hush"],
     "hush": ["hush", "be quiet", "quiet", "shut up", "mute", "silence", "stop talking"],
     "nearest_ggg": ["nearest green gas giant", "green gas giant", "green gas giants", "green giant", "nearest green giant"],
@@ -10,11 +13,13 @@
     "left_behind": ["left behind", "go back for", "worth going back", "worth going back to", "unfinished systems", "unfinished nearby"],
     "this_body": ["this body", "this planet", "this moon", "this world", "this rock", "the body below", "the planet below", "body below me", "planet below me", "body im on", "planet im on", "targeted body", "target body", "targeted planet"],
     "next_jump": ["next jump", "next stop", "next system", "next waypoint", "highway", "route", "where am i going"],
+    "where_am_i": ["where am i", "what system is this", "which system is this", "what system am i in", "my position", "where are we"],
     "status_report": ["status report", "status", "report", "sitrep", "how are we doing"],
-    "fuel": ["fuel", "tank", "how far can i go", "jumps left"],
+    "fuel": ["fuel", "tank", "how far can i go", "jumps left", "jump range", "my range", "how far can i jump"],
     "unsold": ["unsold", "carrying", "on board", "aboard", "data worth", "how much data", "how much am i carrying"],
     "whats_left": ["what's left", "whats left", "what is left", "left here", "left to do", "to do here", "anything else here", "worth staying", "worth landing", "this system"],
-    "nearest_unvisited": ["nearest unvisited", "unvisited", "new system", "where next", "nearest unexplored", "never been"]
+    "nearest_unvisited": ["nearest unvisited", "unvisited", "new system", "where next", "nearest unexplored", "never been"],
+    "show_page": ["show", "show me", "open", "switch to", "go to", "back to", "take me to"]
   },
   "descriptions": {
     "unhush": "Ends a hush: the voice speaks again.",
@@ -25,11 +30,16 @@
     "travel_today": "Jumps, light years, first discoveries, bodies mapped and samples since midnight; with \"session\" in the question, the latest session alone.",
     "left_behind": "The nearest one or two systems within 100 light years with work worth going back for: bodies not found, planets worth mapping, biology.",
     "this_body": "The body you are on or near, else the one targeted: its type, gravity, value now and if mapped, and its biological and geological signals.",
-    "next_jump": "The Highway route's next stop: how far, a neutron star or not, the jumps left and the next refuel.",
+    "next_jump": "The next stop of the route you follow (the Highway, Road to Riches, Exomastery, a world, sweep or trade route, the one plotted last; else your next stop, else the route plotted in the game): how far, a neutron star or not, what is left and the next refuel.",
     "status_report": "Where you are, fuel, unsold credits and the Highway's next stop.",
-    "fuel": "Fuel in percent and about how many jumps it lasts at full range.",
+    "fuel": "Fuel in percent, about how many jumps it lasts at full range, and your jump range (supercharged too, when you are).",
     "unsold": "The credits of the cartographic and exobiology data aboard, not yet sold.",
     "whats_left": "What is still to do in this system: honk it, bodies to find, biology to sample, planets worth mapping.",
-    "nearest_unvisited": "The nearest system you have never visited, how far it is and whether its star is scoopable."
+    "nearest_unvisited": "The nearest system you have never visited, how far it is and whether its star is scoopable.",
+    "bookmark_remove": "Removes the bookmark of the system you are in.",
+    "bookmark_here": "Bookmarks the system you are in; any words after it are its note (\"bookmark this system ringed water world\").",
+    "again": "Says the last line again, in the window that speaks.",
+    "where_am_i": "The system you are in, its galactic region and the body you are on or near.",
+    "show_page": "Shows a page on the tablet (\"show Nearby\", \"open Bio\", \"back to Now\"): only with a page's name after it. Desktop windows stay where they are."
   }
 }

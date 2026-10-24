@@ -3157,6 +3157,7 @@ const LINE_SAMPLES = {
   upload_held: {service: "EDSM"},
   suit_low: {what: "oxygen", value: "412M", distance: "640 metres"},
   upkeep_low: {carrier: "Deep Wanderer", weeks: "3 weeks"},
+  bookmarked: {system: "Drojau LL-O b26-3"},
   surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
   fuel_topup: {rate: "8 of the last 20 stars were scoopable", jumps: "about 6 jumps"}, hull: {pct: 42}, interdicted: {by: "someone"},
@@ -9653,6 +9654,8 @@ function takeCopilot(cp, first) {
   if (!cp || typeof cp.seq !== "number") return;
   const fresh = !first && cp.seq > lastCopilotSeq;
   lastCopilotSeq = cp.seq;
+  // S9-S16: "show Nearby" by voice: the tablet's windows switch to that page (as a page you chose); the desktop stays
+  if (cp.action === "show") { if (fresh && TABLET && cp.page) tabShowPage(cp.page); return; }
   // spoken only where the poll told Outrider a voice is (speechOn && speakerHere): with 🗣 off the server answered
   // spoken: false, so the app said it too and it was heard twice (the Fable sweep, 2026-10-09)
   if (fresh && speechOn && speakerHere()) copilotDo(cp);
@@ -9661,6 +9664,17 @@ function takeCopilot(cp, first) {
 }
 // Every line here is said in Piper or not at all (never the browser's own voice: the author's choice); each is shown as
 // a caption too, so a line Piper could not say is still there to read.
+// the speech keys a voice answer may name for its line (the server's copilot `line`): only these are said so
+const SERVER_LINE_KEYS = ["bookmarked"];
+// S9-S16: the tablet shows a page asked for by voice, as one tapped in its nav (no automatic way back from it)
+function tabShowPage(page) {
+  const b = document.querySelector(`#tabNav [data-view="${page}"]`) || document.querySelector(`[data-view="${page}"]`);
+  if (!b) return false;
+  TB.beforeMap = null; TB.group = null;
+  b.click();
+  if (typeof tabDrawNav === "function") tabDrawNav();
+  return true;
+}
 function copilotDo(cp) {
   if (cp.action === "status") {   // a tap while something is being said cuts it short (danger excepted)
     if (speechNow && speechNow.prio !== 0) { setFate(speechPlaying, "cut short: a status report was asked for"); speechNow.stop(); }
@@ -9673,7 +9687,9 @@ function copilotDo(cp) {
   } else if (cp.action === "replay" && cp.words) { speak(cp.words, {kind: "manual", piperOnly: true, private: !!cp.private}); addCaption(cp.words, null, !!cp.private); }
   // an answer to a question by voice (POST api/ask): said here, as a line you asked for (a hush's answer too, onHush
   // leaving it the news); "caption": shown only (unhush's: the end of the hush is announced)
-  else if (cp.action === "say" && cp.words) { speak(cp.words, {kind: "manual", piperOnly: true}); addCaption(cp.words); }
+  // S9-S34: a personality line in place of the words where the server sent one (the caption keeps the words)
+  else if (cp.action === "say" && cp.words) { speak(cp.line && SERVER_LINE_KEYS.includes(cp.line.key) ? line(cp.line.key, cp.line.fills || {}, cp.words) + (cp.line.after || "") : cp.words,
+                                                     {kind: "manual", piperOnly: true}); addCaption(cp.words); }
   else if (cp.action === "caption" && cp.words) addCaption(cp.words);
 }
 function onData() {

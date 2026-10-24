@@ -264,6 +264,27 @@ class Speech(unittest.TestCase):
             self.assertLessEqual(outrider.speech.fills(key) - set(outrider.speech.ALWAYS),
                                  set(outrider.speech.SAMPLES.get(key, {})) | set(outrider.speech.CREW_SAMPLES), key)
 
+    def test_a_personality_skeleton(self):
+        """S9-S17: `python3 -m outrider.speech --skeleton "Sea Dog" --profane` writes every alert to fill in, reads clean,
+        is shown 0 % covered, and is never written over an existing file."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as d, unittest.mock.patch("sys.stdout"):
+            self.assertEqual(outrider.speech.main(["--skeleton", "Sea Dog", "--profane", "--names", "Cap'n, Skipper", "--folder", d]), 0)
+            path = os.path.join(d, "sea_dog.json")
+            with open(path, encoding="utf-8") as f:
+                doc = json.load(f)
+            self.assertEqual(outrider.speech.check(doc), [])
+            self.assertEqual(set(doc["lines"]), set(outrider.speech.spoken_keys()))
+            self.assertEqual(doc["lines"]["fuel_low"], {"_when": outrider.speech.KEYS["fuel_low"], "sea_dog": [], "sea_dog_profane": []})
+            self.assertEqual(doc["styles"], {"sea_dog": {"label": "Sea Dog", "names": ["Cap'n", "Skipper"]}})
+            with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", "speech.json"),
+                      encoding="utf-8") as f:
+                base = json.load(f)
+            _, notes, info = outrider.speech.merge_personalities(base, [("own", "sea_dog.json", doc)])
+            self.assertEqual([i["covers"] for i in info], [0])
+            with unittest.mock.patch("sys.stderr"):
+                self.assertEqual(outrider.speech.main(["--skeleton", "Sea Dog", "--folder", d]), 1)   # never overwritten
+
     def test_shipped_lines(self):
         # speech.json covers every alert in every personality, and the page asks for exactly those alerts
         here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -300,6 +321,8 @@ class Speech(unittest.TestCase):
             js = f.read()
         import re
         used = set(re.findall(r'line\("(\w+)"', js)) | set(re.findall(r'"(unsold_\w+)"', js))
+        # the keys a voice answer names for its line (S9-S34's copilot `line`), the page's SERVER_LINE_KEYS
+        used |= set(re.findall(r'"(\w+)"', js[js.index("const SERVER_LINE_KEYS"):].split("\n", 1)[0]))
         # every key is spoken by the page (RESERVED would list any with lines written ahead of their trigger); the
         # chatter's by their names (the monologues, the last word) and the topics' asks and answers from the server's list
         chatter = set(outrider.speech.CHATTER_KEYS)

@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Suggestions (H): voice, tablet and personalities
+- The full Fable review's suggestions, batch H:
+  - **S9-S2: the voice's "next stop" and status report follow whichever route you follow**: the Highway or the survey
+    slot (the one plotted last), else your next stop, else the game's own route (a new read-only tool, `route_next`).
+  - **S9-S15: "say that again"** by voice (the window that speaks repeats its last line).
+  - **S9-S16: "show Nearby", "open Bio", "back to Now"** switch the tablet's page (the desktop stays); tablet.md no longer
+    says nothing else switches pages.
+  - **S9-S18: "where am I"** (the system, region and body), and the jump range in the fuel answer.
+  - **S9-S34: "bookmark this system"** (with a note after it) and "remove the bookmark"; a new speech key `bookmarked`
+    with lines in every personality.
+  - **S9-S17: `python3 -m outrider.speech --skeleton "Name"`** writes a personality file to fill in, never over one.
+
 ## 2026-10-24 · Suggestions (G): the carrier, cargo and trade
 - The full Fable review's suggestions, batch G:
   - **S4-S4: how old the depot reading is** on the carrier form (its hover, a red edge past a week) and the trip head.

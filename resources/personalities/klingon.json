@@ -121,6 +121,44 @@
     "Spoken alerts on! I had a curse for every star I passed in silence. You will hear them all, {name}!"
    ]
   },
+  "bookmarked": {
+   "klingon": [
+    "Bookmarked! {system}!",
+    "{system} is marked, {name}! Another trophy for our wall!",
+    "Done, {name}! {system} is in the bookmarks!",
+    "Ha! {system}! We claim it, and we will return!",
+    "{system}, bookmarked! Let it remember who passed this way!",
+    "As you command, {name}! {system} is saved!",
+    "The mark is made, {name}! {system}!",
+    "{system}! Recorded, like a victory in the songs!",
+    "Bookmarked, {name}! {system}! A warrior remembers the ground of every hunt!",
+    "{system}. Saved. The hunt may lead us back here!",
+    "Kapla! {system} is bookmarked!",
+    "We stake our claim! {system}!",
+    "{system} is in the bookmarks. A worthy name for the list!",
+    "{name}! {system}, marked for later!",
+    "It is done! {system} will not escape us!",
+    "{system}, bookmarked! {navigator} will guide us back for the next hunt!"
+   ],
+   "klingon_profane": [
+    "Bookmarked! {system}! Hell yes!",
+    "{system} is marked, {name}! Another damn trophy for our wall!",
+    "Done, {name}! {system} is in the damn bookmarks!",
+    "Ha! {system}! We claim it, and any son of a targ who argues can go to hell!",
+    "{system}, bookmarked! Let the damn place remember who passed this way!",
+    "As you command, {name}! {system} is saved! Hell yes!",
+    "The mark is made, {name}! {system}! Damn right!",
+    "{system}! Recorded, like a victory in the songs, by hell!",
+    "Bookmarked! {system}! Only a damn Ferengi forgets where he has been!",
+    "{system}. Saved. The hunt may drag us back to this bloody place!",
+    "Kapla, damn it! {system} is bookmarked!",
+    "We stake our claim! {system}! Let the cowardly sons of targs find their own damn worlds!",
+    "{system} is in the bookmarks. A worthy name for the damn list!",
+    "{name}! {system}, marked for later! Hell, yes!",
+    "It is done! {system} will not escape us, by hell!",
+    "{system}, bookmarked! {navigator} will guide us back for the next damn hunt!"
+   ]
+  },
   "game_start": {
    "klingon": [
     "{name}! You are back! The hunt resumes!",

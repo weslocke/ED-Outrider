@@ -68,6 +68,26 @@
     "Voice alerts engaged. Logic will be delivered aloud from now on, {name}."
    ]
   },
+  "bookmarked": {
+   "vulcan": [
+    "Bookmarked. {system}.",
+    "{system} has been added to the bookmarks, {name}.",
+    "Acknowledged, {name}. {system} is recorded for future reference.",
+    "Done, {name}. Memory is fallible. Bookmarks are not.",
+    "{system}, bookmarked. A logical precaution.",
+    "As requested, {name}. {system} is saved.",
+    "The bookmark is set. {system}.",
+    "{system} is recorded. I would have remembered it regardless, but I understand the human need for lists.",
+    "Bookmark created for {system}. You may return whenever logic dictates.",
+    "Noted, {name}. {system} has been catalogued among the bookmarks.",
+    "{system}. Saved. I assume you have a reason.",
+    "Acknowledged. {system} is preserved for later retrieval.",
+    "Bookmarked, {name}. I believe the human phrase is to keep a place. The place has not been moved.",
+    "{system} is now in the bookmarks. Efficient.",
+    "Recorded. {system}. A sensible request.",
+    "{system}, bookmarked. {navigator} may now locate it without relying on your recollection."
+   ]
+  },
   "game_start": {
    "vulcan": [
     "Welcome aboard, {name}. {ship} is ready. As am I.",

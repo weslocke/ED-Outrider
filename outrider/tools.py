@@ -15,6 +15,7 @@ import re
 import urllib.parse
 
 import outrider.dock as dock
+import outrider.riches as riches
 
 # the GET routes a tool may read (path prefixes); /api/find is left out on purpose: it can store an EDSM hit
 READ_ROUTES = ("/api/status", "/api/nearby", "/api/system/", "/api/body", "/api/firsts", "/api/left", "/api/highway",
@@ -322,6 +323,48 @@ async def highway_route(get, args, rows):
             "off_route": s.get("off_route"), "nearest_route_system": (s.get("nearest") or {}).get("name") if s.get("off_route") else None,
             "complete": s.get("complete"),
             **capped(({k: v for k, v in x.items() if v is not None} for x in ahead), rows, "ahead")}
+
+
+def _newer(a, b):
+    """The route of two summaries (the Highway's, the survey slot's) plotted last that is not finished, else None."""
+    live = [x for x in (a, b) if x and not x.get("complete")]
+    return max(live, key=lambda x: x.get("created_ts") or "") if live else None
+
+
+@tool("route_next", "The next stop of whichever route the commander follows: the Neutron Highway, a Road to Riches, "
+      "Exomastery, world, sweep or trade route (the one plotted last), else the header's next stop (a bookmark), else the "
+      "route plotted in the game; its distance, jumps, how much is left and whether the commander is off it.")
+async def route_next(get, args, rows):
+    p = await get("/api/nearby")
+    hw, sv = p.get("highway"), p.get("survey")
+    pick = _newer(hw, sv)
+    if pick is not None:
+        nx = pick.get("next") or {}
+        kind = "highway" if pick is hw else "survey"
+        sk = riches.survey_kind(pick.get("kind")) if kind == "survey" else None
+        out = {"kind": kind, "route": "Neutron Highway" if kind == "highway" else sk.what, "destination": pick.get("destination"),
+               "next": {"system": nx.get("name"), "distance_ly": nx.get("distance"), "jumps": nx.get("jumps"),
+                        "neutron": nx.get("neutron"), "refuel_there": nx.get("refuel")} if nx else None,
+               "off_route": pick.get("off_route"),
+               "nearest_route_system": (pick.get("nearest") or {}).get("name") if pick.get("off_route") else None}
+        if kind == "highway":
+            out.update(jumps_left=pick.get("jumps_left"), refuel_in_jumps=pick.get("refuel_in"))
+        else:
+            index, total = pick.get("index"), pick.get("total")
+            out["stops_left"] = total - index + 1 if index is not None and total is not None else None
+        return out
+    done = [x for x in (hw, sv) if x and x.get("complete")]
+    ns = p.get("next_stop")
+    if ns and ns.get("name"):
+        return {"kind": "next_stop", "route": "your next stop", "next": {"system": ns["name"], "distance_ly": ns.get("distance")},
+                "complete_route": bool(done)}
+    gr = p.get("route") or {}
+    hops = gr.get("hops") or []
+    if hops:
+        return {"kind": "game_route", "route": "the route plotted in the game", "destination": hops[-1].get("name"),
+                "next": {"system": hops[0].get("name"), "distance_ly": hops[0].get("ly"), "scoopable": hops[0].get("scoopable")},
+                "jumps_left": len(hops), "ly_left": gr.get("ly"), "complete_route": bool(done)}
+    return {"kind": None, "next": None, "complete_route": bool(done)}
 
 
 @tool("travel_history", "The commander's play sessions in the last N days: jumps, light years, first discoveries, "

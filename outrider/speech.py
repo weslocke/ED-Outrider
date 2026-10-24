@@ -114,6 +114,8 @@ KEYS = {
     "firsts_seen": "the firsts watch found, for the first time, that someone else's scans of a system holding your unsold "
                    "first discoveries reached Spansh (said at most once in 30 minutes; never 'stolen'): {system} (its name), "
                    "{value} (its unsold cartographic value, e.g. '14.2M')",
+    "bookmarked": "you asked the voice to bookmark the system you are in (a whole spoken phrase such as 'bookmark this "
+                  "system'), and it did: {system} (its name)",
     "upkeep_low": "your fleet carrier's balance, counted down week by week from its last stats (an estimate), now covers "
                   "less than four weeks of upkeep (once per stats reading): {carrier} (its name), {weeks} (the weeks of "
                   "upkeep left, in words, e.g. '3 weeks')",
@@ -664,6 +666,7 @@ SAMPLES = {
     "upload_held": {"service": "EDSM"},
     "suit_low": {"what": "oxygen", "value": "412M", "distance": "640 metres"},
     "upkeep_low": {"carrier": "Deep Wanderer", "weeks": "3 weeks"},
+    "bookmarked": {"system": "Drojau LL-O b26-3"},
     "carrier_departs": {"minutes": 4, "carrier": "Out Of The Blue"},
     "autotarget_nothing": {"why": "no route is plotted"},
     "wrong_target": {"system": "Smojooe AR-E b25-8", "next": "Pru Aim XY-Z d1"},
@@ -839,3 +842,61 @@ def spoken_text(text):
     # as the page's spokenText does; a carrier id (K7F-3XZ) or a hand-named system does not match
     t = _PROC_NAME.sub(lambda m: f"{m[1]} {m[2]} {m[3]}, {m[4]} {m[5]}" + (f" {m[6]}" if m[6] else ""), t)
     return re.sub(r"\s+", " ", t).strip()
+
+
+# ---- S9-S17: a personality skeleton to start your own from (python3 -m outrider.speech --skeleton "Pirate") ----
+
+def skeleton(label, profane=False, names=None):
+    """A personality file with every spoken alert (spoken_keys) as an empty list to fill: {"_readme", "styles",
+    "lines": {key: {"_when": what it is said for and its {placeholders}, <id>: [], <id>_profane: []}}}. check() reads
+    it clean (its "_when" is skipped as "when" is); Settings shows it 0 % covered until lines are written."""
+    sid = re.sub(r"[^a-z0-9]+", "_", str(label).lower()).strip("_") or "mine"
+    lists = [sid] + ([sid + "_profane"] if profane else [])
+    readme = [f"{label}: your own personality. Write lines under each alert, in its own voice: one or two sentences, "
+              "said aloud, no emoji or markdown.",
+              "Placeholders in {braces} are filled in when the line is said: each alert's own (its _when names them), "
+              "and always {name} (what you asked to be called), {ship} and {here}; {" + "}, {".join(CREW_WORDS) +
+              "} name another crew member (never the one who says the alert).",
+              "Ten lines or more an alert keeps them from repeating. See docs/guide/voice-and-alerts.md, Your own personality."]
+    style = {"label": str(label)}
+    if names:
+        style["names"] = list(names)
+    return sid, {"_readme": readme, "styles": {sid: style},
+                 "lines": {k: dict({"_when": KEYS[k]}, **{x: [] for x in lists}) for k in spoken_keys()}}
+
+
+def write_skeleton(label, profane=False, names=None, folder=None):
+    """S9-S17: the skeleton written to <folder>/<id>.json (data/personalities/ by default), never over a file there.
+    (path, None) or (None, why not)."""
+    sid, doc = skeleton(label, profane, names)
+    folder = folder or os.path.join(DATA_DIR, "personalities")
+    path = os.path.join(folder, f"{sid}.json")
+    if os.path.exists(path):
+        return None, f"{path} is there already: nothing written (move it, or pick another name)"
+    os.makedirs(folder, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=1, ensure_ascii=False)
+        f.write("\n")
+    return path, None
+
+
+def main(argv=None):
+    import argparse
+    ap = argparse.ArgumentParser(prog="python3 -m outrider.speech", description="ED Outrider's spoken lines: start a "
+                                 "personality file of your own (S9-S17).")
+    ap.add_argument("--skeleton", metavar="NAME", required=True, help='the personality\'s name, e.g. "Pirate"')
+    ap.add_argument("--profane", action="store_true", help="a swearing list too (<id>_profane)")
+    ap.add_argument("--names", help='what it calls you, comma separated (e.g. "Captain, Skipper")')
+    ap.add_argument("--folder", help="where to write it (default: data/personalities/)")
+    a = ap.parse_args(argv)
+    names = [x.strip() for x in a.names.split(",") if x.strip()] if a.names else None
+    path, why = write_skeleton(a.skeleton, a.profane, names, a.folder)
+    if why:
+        print(why, file=__import__("sys").stderr)
+        return 1
+    print(f"written: {path} ({len(spoken_keys())} alerts to fill in; Outrider reads it at its next start)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

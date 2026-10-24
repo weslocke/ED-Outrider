@@ -8397,14 +8397,24 @@ class State:
         cmd, phrase = outrider.ask.match_phrase(text, self.ask_phrases)
         log = functools.partial(self.ask_record, text, source=source, started=started, command=cmd, phrase=phrase)
         try:
-            return await self._ask(text, get, cmd, log)
+            return await self._ask(text, get, cmd, log, phrase)
         except Exception as e:   # a fixed answer's own failure (the AI layer's are its own): kept, then a 500 as before
             log("error", error=f"the answer failed ({type(e).__name__})", code="server_error")
             raise
 
-    async def _ask(self, text, get, cmd, log):
-        matched, action, hush, trace = "fixed", "say", None, None
-        if cmd == "hush":   # S32: "hush for ten minutes", "quiet until the next jump"; 30 minutes when no time is said
+    async def _ask(self, text, get, cmd, log, phrase=None):
+        matched, action, hush, trace, line, page = "fixed", "say", None, None, None, None
+        if cmd == "again":   # S9-S15: the window that speaks says its last line again
+            action = "again"
+            words = "Saying it again." if self.speaker_present() else \
+                "No window is speaking aloud just now, so there is nothing to say again."
+        elif cmd in ("bookmark_here", "bookmark_remove"):   # S9-S34: a fixed command that acts, as hush does
+            words, line = self.voice_bookmark(cmd, outrider.ask.bookmark_note(text, phrase) if phrase else "")
+        elif cmd == "show_page":   # S9-S16: the tablet's windows show that page; the desktop stays where it is
+            page = outrider.ask.page_named(text)
+            name = outrider.ask.PAGE_NAMES[page]
+            action, words = "show", f"{name[:1].upper()}{name[1:]}."
+        elif cmd == "hush":   # S32: "hush for ten minutes", "quiet until the next jump"; 30 minutes when no time is said
             mode, words = outrider.ask.hush_words(text)
             hush = mode
             self.set_hush(mode)
@@ -8439,10 +8449,34 @@ class State:
             matched = "none"
             words = outrider.ask.known_questions()
         words = outrider.tts.clip_text(words)
-        self.copilot_action(action, words, hush=hush)
-        spoken = self.speaker_present()
+        self.copilot_action(action, words, hush=hush, line=line, page=page)
+        spoken = self.speaker_present() and action != "show"
         log(matched, answer=words, spoken=spoken, hush=hush, ai=trace)
         return {"answer": words, "spoken": spoken, "matched": matched, "command": cmd}, 200
+
+    def voice_bookmark(self, cmd, note=""):
+        """S9-S34: "bookmark this system" (any words after it its note) and "remove the bookmark", for the system you
+        are in: (the answer, the personality line for a new bookmark {key, fills, after} or None). An existing bookmark
+        keeps its note unless one is said."""
+        pos = self.journals.pos
+        if not pos or pos.get("id64") is None:
+            return "I don't know where you are yet.", None
+        name = pos.get("name") or "this system"
+        row = self.db.execute("SELECT note FROM bookmarks WHERE id64=?", (pos["id64"],)).fetchone()
+        note = note[:BOOKMARK_NOTE_MAX]
+        if cmd == "bookmark_remove":
+            if not row:
+                return f"{name} has no bookmark.", None
+            self.remove_bookmark(pos["id64"])
+            return f"Bookmark of {name} removed.", None
+        if row and not note:
+            return f"{name} is bookmarked already.", None
+        if not self.set_bookmark(pos["id64"], note or (row["note"] if row else "")):
+            return "I could not bookmark it: its position is not known yet.", None
+        after = f" Note: {note}." if note else ""
+        if row:
+            return f"{name}'s bookmark note is now: {note}.", None
+        return f"Bookmarked {name}.{after}", {"key": "bookmarked", "fills": {"system": name}, "after": after}
 
     def voice_plot(self, place):
         """D4 (option A, the author): the voice's "nearest ..." plots a neutron route to the place it named when that is
@@ -8490,14 +8524,17 @@ class State:
         return {"mode": h["mode"], "until": h["until"], "left": round(h["until"] - time.time(), 1) if h["until"] else None,
                 "sys": str(h["sys"]) if h["sys"] is not None else None}
 
-    def copilot_action(self, action, words=None, hush=None, private=False):
+    def copilot_action(self, action, words=None, hush=None, private=False, line=None, page=None):
         """A co-pilot request for the speaking window. "hush" is done here: a hold starts a hush until the next jump,
         and another hold (while any hush runs) ends it. `hush`: the mode a voice question set (S32), whose answer the
-        page says in place of its own news of that hush."""
+        page says in place of its own news of that hush. `line` (S9-S34): {key, fills, after}, a personality line the
+        speaking window says in place of `words` (they stay the caption); `page` (S9-S16): the page "show" switches the
+        tablet to."""
         if action == "hush":
             self.set_hush("off" if self.hush_info() else "jump")
         # private (#17): a replayed chat line, kept private by the speaking window too (sweep 2026-10-17)
-        self.copilot = {"seq": self.copilot["seq"] + 1, "action": action, "words": words, "hush": hush, "private": bool(private)}
+        self.copilot = {"seq": self.copilot["seq"] + 1, "action": action, "words": words, "hush": hush, "private": bool(private),
+                        "line": line, "page": page}
         self.bump()
 
     COPILOT_TARGET_DELAY_S = 0.5   # after a single press is known to be one, before the keys (your hands off the controls)

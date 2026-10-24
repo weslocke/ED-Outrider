@@ -24,6 +24,10 @@ FIX = {
                     "unsold": {"total": 900, "carto": {"estimated_payout": 600, "systems": 2, "bodies": 9,
                                                        "first_discoveries": 2, "mapped": 1}, "bio": {"estimated_value": 300, "samples": 1}},
                     "since_sale": {"days": 3.5, "jumps": 40},
+                    # highway_summary's shape (S9-S2's route_next reads the payload's routes)
+                    "highway": {"destination": "Colonia", "created_ts": "2026-10-01T00:00:00Z", "complete": False, "off_route": False,
+                                "next": {"name": "Neu", "distance": 400.2, "neutron": True, "refuel": False},
+                                "jumps_left": 42, "refuel_in": 3},
                     "systems": [{"id": SYS, "name": "Start", "distance": 0, "visited": True},
                                 {"id": "2", "name": "Far Rich", "distance": 20.5, "visited": False, "value_max": 9000000, "main_class": "K",
                                  "main_scoopable": True, "bodies_known": 4, "body_count": 9, "status": "partial"},

@@ -27,8 +27,12 @@ TEXT_MAX = 500
 # in the order questions are matched: nearest_dock before fuel, unsold, next_jump and whats_left, whose single words
 # ("fuel") are in its questions too ("nearest station with fuel" asked for the fuel gauge: the sweep of 2026-10-09)
 # S14's four before next_jump and status_report ("status of this body" is this_body; "what's left behind" is not whats_left)
-COMMANDS = ("unhush", "hush", "nearest_ggg", "nearest_dock", "fsd_injection", "travel_today", "left_behind", "this_body",
-            "next_jump", "status_report", "fuel", "unsold", "whats_left", "nearest_unvisited")
+# The review's batch H (2026-10-24): the bookmark commands first (a note after "bookmark this system" may hold any
+# word: "quiet", "this system"); "again" before unhush ("say again" is no unhush, "speak again" is); where_am_i after
+# next_jump ("where am i going" stays next_jump's); show_page last, and only with a page's name after it (page_named)
+COMMANDS = ("bookmark_remove", "bookmark_here", "again", "unhush", "hush", "nearest_ggg", "nearest_dock", "fsd_injection",
+            "travel_today", "left_behind", "this_body", "next_jump", "where_am_i", "status_report", "fuel", "unsold",
+            "whats_left", "nearest_unvisited", "show_page")
 # what the voice says it knows when nothing matched: one label per command, in the order said (a test checks every
 # command has one, so a new command is never left out of the list)
 LABELS = {"status_report": "a status report", "fuel": "fuel", "unsold": "unsold data", "next_jump": "the next jump",
@@ -36,7 +40,37 @@ LABELS = {"status_report": "a status report", "fuel": "fuel", "unsold": "unsold 
           "nearest_dock": "the nearest station, carrier or material trader",
           "nearest_ggg": "the nearest potential green gas giant", "fsd_injection": "FSD injections",
           "travel_today": "how far today", "this_body": "this body", "left_behind": "what's left behind nearby",
-          "hush": "hush", "unhush": "unhush"}
+          "hush": "hush", "unhush": "unhush", "again": "say that again", "where_am_i": "where am I",
+          "bookmark_here": "bookmark this system", "bookmark_remove": "remove the bookmark", "show_page": "show a page"}
+
+# S9-S16: the tablet's pages as they can be named after "show", "open", "go to"...: the words -> the page (view) id.
+# Longest first when matched, so "my firsts" wins over "firsts"
+PAGE_WORDS = {"now": "now", "overview": "now", "nearby": "near", "near": "near", "here": "here", "bio": "bio",
+              "biology": "bio", "samples": "bio", "exobiology": "bio", "geology": "bio", "bookmarks": "bm", "search": "search",
+              "map": "map", "galaxy map": "map", "plot route": "hwy", "the highway": "hwy", "routes": "hwy",
+              "history": "hist", "log": "log", "the log": "log", "materials": "mat", "cargo": "mat", "commander": "cmdr",
+              "cmdr": "cmdr", "my firsts": "firsts", "firsts": "firsts"}
+PAGE_NAMES = {"now": "Now", "near": "Nearby", "here": "Here", "bio": "Bio and Geo", "bm": "Bookmarks", "search": "Search",
+              "map": "the Map", "hwy": "Plot Route", "hist": "History", "log": "the Log", "mat": "Materials",
+              "cmdr": "the CMDR page", "firsts": "My firsts"}
+
+
+def page_named(text):
+    """S9-S16: the tablet page a "show ..." question names (a PAGE_WORDS key right after the matched verb's words, or
+    anywhere after it), or None."""
+    t = f" {WAKE.sub('', norm(text)).strip()} "
+    for w in sorted(PAGE_WORDS, key=len, reverse=True):
+        if f" {w} " in t:
+            return PAGE_WORDS[w]
+    return None
+
+
+def bookmark_note(text, phrase):
+    """S9-S34: the words after "bookmark this system" as the bookmark's note ("bookmark this system ringed water
+    world" -> "ringed water world"), '' for none."""
+    t = WAKE.sub("", norm(text)).strip()
+    i = f" {t} ".find(f" {phrase} ")
+    return t[i + len(phrase):].strip() if i >= 0 else ""
 
 
 def known_questions():
@@ -108,6 +142,8 @@ def match_phrase(text, phrases):
     t = WAKE.sub("", norm(text)).strip()
     padded = f" {t} "
     for name, ps in phrases.items():
+        if name == "show_page" and page_named(t) is None:
+            continue   # "show me ..." with no page's name after it is no page switch (S9-S16)
         for p in ps:
             if f" {p} " in padded:
                 return name, p
@@ -400,7 +436,26 @@ async def fixed_answer(command, get, rows=10, text="", limits=None):
             return s["error"]
         if s.get("fuel_pct") is None:
             return "I have no fuel reading yet."
-        return f"Fuel at {s['fuel_pct']} percent" + (f", about {jumps(s['fuel_jumps'])} at max range." if s.get("fuel_jumps") is not None else ".")
+        out = f"Fuel at {s['fuel_pct']} percent" + (f", about {jumps(s['fuel_jumps'])} at max range" if s.get("fuel_jumps") is not None else "")
+        jr = s.get("jump_range")   # S9-S18: the range too ("how far can I jump")
+        if jr:
+            boost = s.get("boost") if isinstance(s.get("boost"), (int, float)) and s.get("boost") > 1 else None
+            out += f", range {ly(jr)} light years" + (f", {ly(jr * boost)} supercharged" if boost else "")
+        return out + "."
+    if command == "where_am_i":   # S9-S18
+        s = await tools.call("current_status", {}, get, rows)
+        if s.get("error"):
+            return s["error"]
+        if not s.get("system"):
+            return "I don't know where you are yet."
+        where = [s["system"]]
+        if s.get("region"):
+            where.append(f"in the {s['region']}" if not s["region"].lower().startswith("the ") else f"in {s['region']}")
+        if s.get("on_body"):
+            where.append(f"on {s['on_body']}")
+        elif s.get("near_body"):
+            where.append(f"near {s['near_body']}")
+        return ", ".join(where) + "."
     if command == "unsold":
         u = await tools.call("unsold_data", {}, get, rows)
         if u.get("error"):
@@ -410,20 +465,11 @@ async def fixed_answer(command, get, rows=10, text="", limits=None):
             return "Nothing unsold aboard."
         parts = [f"{words_cr(c)} cartographic" if c else "", f"{words_cr(b)} exobiology" if b else ""]
         return f"About {words_cr(u.get('total') or c + b)} credits unsold: {' and '.join(p for p in parts if p)}."
-    if command == "next_jump":
-        h = await tools.call("highway_route", {}, get, rows)
-        if h.get("error"):
-            return h["error"]
-        if not h.get("route", True) or not h.get("next"):
-            return "No highway route plotted." if not h.get("complete") else "The highway route is complete."
-        nx = h["next"]
-        out = f"Next highway stop: {nx['system']}, {ly(nx.get('distance_ly'))} light years" + (", a neutron star" if nx.get("neutron") else "") + "."
-        if h.get("off_route"):
-            out = f"You are off the route; the nearest route system is {h.get('nearest_route_system')}. " + out
-        if h.get("jumps_left") is not None:
-            out += f" {jumps(h['jumps_left'])} left"
-            out += f", refuel in {h['refuel_in_jumps']}." if h.get("refuel_in_jumps") else "."
-        return out
+    if command == "next_jump":   # S9-S2: whichever route you follow (route_next)
+        r = await tools.call("route_next", {}, get, rows)
+        if r.get("error"):
+            return r["error"]
+        return route_words(r)
     if command == "nearest_dock":
         return (await nearest_dock(get, text, rows))[0]
     if command == "nearest_ggg":   # S27: Outrider's cache only, a guess from the ladder model (said so)
@@ -467,20 +513,52 @@ async def fixed_answer(command, get, rows=10, text="", limits=None):
             out.append(f"Fuel {s['fuel_pct']} percent" + (f", {jumps(s['fuel_jumps'])}." if s.get("fuel_jumps") is not None else "."))
         if s.get("unsold"):
             out.append(f"{words_cr(s['unsold'])} credits unsold.")
-        h = await tools.call("highway_route", {}, get, rows)
-        if h.get("next"):
-            out.append(f"Highway: next {h['next']['system']}, {jumps(h.get('jumps_left'))} left.")
+        r = await tools.call("route_next", {}, get, rows)   # S9-S2: the route you follow, whichever it is
+        nx = (r.get("next") or {}).get("system") if not r.get("error") else None
+        if nx and r.get("kind") in ("highway", "survey"):
+            left = jumps(r["jumps_left"]) if r.get("jumps_left") is not None else \
+                f"{r['stops_left']} stop{'' if r['stops_left'] == 1 else 's'}" if r.get("stops_left") is not None else None
+            out.append(f"{'Highway' if r['kind'] == 'highway' else r['route'][:1].upper() + r['route'][1:]}: next {nx}"
+                       + (f", {left} left." if left else "."))
+        elif nx:
+            out.append(f"Next stop: {nx}.")
         return " ".join(out)
     raise ValueError(command)
+
+
+def route_words(r):
+    """S9-S2's answer to "next stop" from route_next: "Next stop on your Road to Riches route: X, 38 light years, 6
+    stops left." / the Highway's with its neutron star and refuel / the header's next stop / the game's own route."""
+    nx = r.get("next")
+    if not nx or not nx.get("system"):
+        return "The route is complete, and no other is plotted." if r.get("complete_route") else "No route plotted."
+    dist = f", {ly(nx['distance_ly'])} light years" if nx.get("distance_ly") is not None else ""
+    kind = r.get("kind")
+    if kind == "highway":
+        out = f"Next highway stop: {nx['system']}{dist}" + (", a neutron star" if nx.get("neutron") else "") + "."
+        if r.get("jumps_left") is not None:
+            out += f" {jumps(r['jumps_left'])} left" + (f", refuel in {r['refuel_in_jumps']}." if r.get("refuel_in_jumps") else ".")
+    elif kind == "survey":
+        out = f"Next stop on your {r['route']}: {nx['system']}{dist}" + (f", {jumps(nx['jumps'])}" if nx.get("jumps") and nx["jumps"] > 1 else "") + "."
+        if r.get("stops_left") is not None:
+            out += f" {r['stops_left']} stop{'' if r['stops_left'] == 1 else 's'} left."
+    elif kind == "next_stop":
+        out = f"Your next stop: {nx['system']}{dist}."
+    else:
+        out = f"Next on the route plotted in the game: {nx['system']}{dist}" + \
+              (f", {jumps(r['jumps_left'])} to {r['destination']}." if r.get("jumps_left") and r.get("destination") else ".")
+    if r.get("off_route"):
+        out = f"You are off the route; the nearest route system is {r.get('nearest_route_system')}. " + out
+    return out
 
 
 # ---- the list of voice commands (Settings → Voice, the tablet's Voice commands…: GET /api/ask/commands) ----
 
 # how the list groups the commands (a test checks each command is in exactly one)
-GROUPS = (("Where you are", ("status_report", "fuel", "unsold", "whats_left", "this_body")),
+GROUPS = (("Where you are", ("where_am_i", "status_report", "fuel", "unsold", "whats_left", "this_body")),
           ("Where to go", ("next_jump", "nearest_unvisited", "nearest_dock", "nearest_ggg", "left_behind")),
-          ("Your trip and your materials", ("travel_today", "fsd_injection")),
-          ("The voice", ("hush", "unhush")))
+          ("Your trip and your materials", ("travel_today", "fsd_injection", "bookmark_here", "bookmark_remove")),
+          ("The voice and the tablet", ("again", "hush", "unhush", "show_page")))
 # hush's times as they can be said (S32): (the mode, what it gives, examples); a test checks hush_mode reads each one so
 HUSH_EXAMPLES = (("10m", "10 minutes", ("for ten minutes", "for 10 min", "for a quarter of an hour")),
                  ("30m", "30 minutes (also when no time is said)", ("for half an hour", "for thirty minutes")),
@@ -515,6 +593,13 @@ def narrowing(command):
         return [{"words": list(ex), "means": means} for _, means, ex in HUSH_EXAMPLES]
     if command == "travel_today":
         return [{"words": [SESSION_WORD], "means": "the latest session alone, not all of today"}]
+    if command == "show_page":   # S9-S16: the page's name after the word
+        by = {}
+        for w, v in PAGE_WORDS.items():
+            by.setdefault(v, []).append(w)
+        return [{"words": ws, "means": PAGE_NAMES[v]} for v, ws in by.items()]
+    if command == "bookmark_here":
+        return [{"words": ["(any words after it)"], "means": "the bookmark's note"}]
     return []
 
 

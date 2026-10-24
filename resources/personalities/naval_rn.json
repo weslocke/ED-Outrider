@@ -119,6 +119,44 @@
     "Speech on. Very good. Now where's my bloody tea?"
    ]
   },
+  "bookmarked": {
+   "naval_rn": [
+    "Bookmarked: {system}.",
+    "Very good, {name}. {system} is bookmarked.",
+    "{system}, entered in the bookmarks.",
+    "Bookmark made. {system}.",
+    "Aye aye, {name}. {system} is in the bookmarks.",
+    "Right you are, Skipper. {system}, marked for later.",
+    "{system} bookmarked, {name}.",
+    "Noted and filed. {system}.",
+    "Very good, {name}. {system} is on the chart for another day.",
+    "For the log, {name}: {system}, bookmarked.",
+    "{system}. Marked and filed, Skipper.",
+    "Bookmarked, Skipper. {system}. We can find it again whenever we like.",
+    "Aye aye. {system} is saved.",
+    "Bookmark entered: {system}, {name}.",
+    "Understood. {system}, marked down for later.",
+    "{system}, bookmarked. {navigator} will have it on the chart."
+   ],
+   "naval_rn_profane": [
+    "Bookmarked: {system}. Bloody good.",
+    "Very good, {name}. {system} is bookmarked. Damn fine.",
+    "{system}, entered in the bloody bookmarks.",
+    "Bookmark made. {system}. Damn fine spot to remember.",
+    "Aye aye, {name}. {system} is in the bloody bookmarks.",
+    "Right you are, Skipper. {system}, marked for later. Sod forgetting it.",
+    "{system} bookmarked, {name}. Done, and bloody quick about it.",
+    "Noted and filed. {system}. Damn good.",
+    "Very good, {name}. {system} is on the bloody chart for another day.",
+    "For the log, {name}: {system}, bookmarked. Bollocks to losing it.",
+    "{system}. Marked and filed, Skipper. Bloody tidy.",
+    "Bookmarked, Skipper. {system}. We can find the damn place again whenever we like.",
+    "Aye aye. {system} is saved. Thank Christ for bookmarks.",
+    "Bookmark entered: {system}. Damn sensible, that.",
+    "Understood. {system}, marked down. Bugger trusting memory.",
+    "{system}, bookmarked. {navigator} will have it on the bloody chart."
+   ]
+  },
   "game_start": {
    "naval_rn": [
     "Show a leg, Skipper. {ship} is ready.",

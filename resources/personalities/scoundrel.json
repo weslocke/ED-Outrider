@@ -120,6 +120,44 @@
     "Voice up. Let's see how much trouble we can sell."
    ]
   },
+  "bookmarked": {
+   "scoundrel": [
+    "Bookmarked. {system}. Never know when you need a place to lie low.",
+    "{system}, saved, {name}. Good spot for a rendezvous.",
+    "Done, {name}. {system} is in the little black book.",
+    "{system}, bookmarked. If anybody asks, we were never here.",
+    "Got it, {name}. {system} is saved.",
+    "Bookmark's set. {system}. Could be worth something someday.",
+    "{system}. Saved. I've got a list of places like this. Some of them still want me back.",
+    "Sure thing, {name}. {system}, marked for later.",
+    "{name}, {system} is bookmarked. Remind me to tell you about the last place I bookmarked. Actually, don't.",
+    "{system}, in the book. Right next to the Hutton twins' number.",
+    "Done. {system}. Easy money, if we ever figure out how.",
+    "{system} is saved. Handy for when somebody's looking for us somewhere else.",
+    "Bookmarked, {name}. {system}. You're thinking like a pro now.",
+    "Alright. {system}, saved. No charge. This time.",
+    "{system}. Got it. Every good crook knows his back doors.",
+    "{system}, bookmarked. {navigator} can find it, so we don't have to ask anybody awkward questions."
+   ],
+   "scoundrel_profane": [
+    "Bookmarked. {system}. Never know when you need a damn place to lie low.",
+    "{system}, saved, {name}. Damn good spot for a rendezvous.",
+    "Done, {name}. {system} is in the little black book. Hell yes.",
+    "{system}, bookmarked. If anybody asks, we were never in this damn system.",
+    "Got it, {name}. {system} is saved. Easy as shit.",
+    "Bookmark's set. {system}. Could be worth a hell of a lot someday.",
+    "{system}. Saved. I've got a list of places like this. Half of them want my ass in a cell.",
+    "Sure thing, {name}. {system}, marked for later, damn it.",
+    "{name}, {system} is bookmarked. Remind me to tell you about the last place I bookmarked. Actually, fuck, don't.",
+    "{system}, in the book. Right next to the Hutton twins' number, hell yeah.",
+    "Done. {system}. Easy damn money, if we ever figure out how.",
+    "{system} is saved. Handy as hell when somebody's looking for us somewhere else.",
+    "Bookmarked, {name}. {system}. Damn, you're thinking like a pro now.",
+    "Alright. {system}, saved. No charge. This time, you cheap bastard.",
+    "{system}. Got it. Every good crook knows his goddamn back doors.",
+    "{system}, bookmarked. {navigator} can find the bloody place, so we don't have to ask anybody awkward questions."
+   ]
+  },
   "game_start": {
    "scoundrel": [
     "Look who's back. {ship} kept the seat warm for you, {name}.",

@@ -31,8 +31,9 @@ for this: see [Other devices on your network](install.md#-other-devices-on-your-
 - **On a planet** the tablet switches to Now when the surface map appears (the Now button says MAP) and back to your
   page when it goes.
 - **Docking**: when a station or carrier gives you a pad, the tablet switches to Now (PAD 34, where it is, its
-  diagram) and back to your page once you have docked, unless you chose a page meanwhile. Nothing else switches pages
-  by itself.
+  diagram) and back to your page once you have docked, unless you chose a page meanwhile.
+- **By voice**: "show Nearby", "open Bio", "go to the map", "back to Now" switch the tablet to that page, as a tap in
+  its nav would (the PC's windows stay where they are).
 - **Alerts** are a banner across the top (red for danger), and the footer has Hush, Status report and the last line
   said.
 - **The voice stays on the PC,** unless you tick **Play alerts here** in the tablet's Settings. Then the tablet speaks

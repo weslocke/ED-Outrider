@@ -118,6 +118,44 @@
     "Voice alerts up, {name}. Let's have us a fine old time."
    ]
   },
+  "bookmarked": {
+   "good_ol_boy": [
+    "Bookmarked, partner. {system}.",
+    "{system}, saved, {name}. We'll find our way back easy.",
+    "Done and done, buddy. {system} is in the bookmarks.",
+    "Well, alright, {name}. {system} is marked, like Grandpa's favorite fishin' hole.",
+    "{system}, bookmarked. Ain't nothin' to it.",
+    "You got it, {name}. {system} is saved.",
+    "Bookmark's set, pal. {system}.",
+    "{system} went in the book, partner. We can come on back any ol' time.",
+    "Sure thing, buddy. {system}, saved for later.",
+    "Dang, I like a fella who remembers his spots. {system}, bookmarked.",
+    "{name}, {system} is bookmarked. Grandpa'd carve that on a tree.",
+    "Done, partner. {system} ain't goin' nowhere.",
+    "{system}, saved. Like leavin' a porch light on.",
+    "Alright, {name}. {system} is in the bookmarks.",
+    "Bookmarked {system}, {name}. Sure as Sunday.",
+    "{system}, saved, buddy. {navigator} can holler us back here whenever."
+   ],
+   "good_ol_boy_profane": [
+    "Bookmarked, partner. {system}. Hot damn.",
+    "{system}, saved, {name}. We'll find our way back easy as hell.",
+    "Done and done, buddy. {system} is in the damn bookmarks.",
+    "Well, alright, {name}. {system} is marked, like Grandpa's damn favorite fishin' hole.",
+    "{system}, bookmarked. Ain't a damn thing to it.",
+    "You got it, {name}. {system} is saved, sure as hell.",
+    "Hell yeah, pal. Bookmark's set. {system}.",
+    "{system} went in the book, partner. We can come on back any damn time.",
+    "Sure thing, buddy. {system}, saved for later. Hell of a spot.",
+    "Damn, I like a fella who remembers his spots. {system}, bookmarked.",
+    "{name}, {system} is bookmarked. Grandpa'd carve that on a tree, sure as shit.",
+    "Done, partner. {system} ain't goin' a damn place.",
+    "{system}, saved. Like leavin' the damn porch light on.",
+    "Alright, {name}. {system} is in the damn bookmarks.",
+    "Bookmarked {system}. Hot damn, we're gettin' organized.",
+    "{system}, saved, buddy. {navigator} can holler us back to this damn place whenever."
+   ]
+  },
   "game_start": {
    "good_ol_boy": [
     "Well, there you are, {name}! {ship}'s warmed up and so am I.",

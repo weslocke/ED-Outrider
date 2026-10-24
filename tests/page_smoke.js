@@ -6429,6 +6429,23 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| suggestions G |", good ? "legal tons, the last jump, tritium aboard, the upkeep now, the depot's age" : JSON.stringify({got, want}), errors.slice(before));
   }
+  // Suggestions (H): S9-S16 "show" is the tablet's alone (a desktop window stays on its page); S9-S34 a voice answer's
+  // personality line, only for a key the page lists
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      const o = {}, was = view, seq = lastCopilotSeq;
+      takeCopilot({seq: seq + 1, action: "show", page: "map", words: "The Map."});
+      o.stayed = view === was;
+      o.keys = SERVER_LINE_KEYS.slice();
+      o.sample = !!LINE_SAMPLES.bookmarked;
+      lastCopilotSeq = seq;
+      return JSON.stringify(o); })()`));
+    const want = {stayed: true, keys: ["bookmarked"], sample: true};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| suggestions H |", good ? "show is the tablet's, the bookmarked line" : JSON.stringify({got, want}), errors.slice(before));
+  }
   // S9-S20: an upload on hold gets its own alerts row, off until ticked (the card comes from the server either way),
   // said by Comms; S7-S6: an empty backfill Preview says why ("412 lines left out, the Legacy game ...")
   {
@@ -8822,7 +8839,7 @@ const releasePayloads = async () => {
     const wantGot = {groups: api.groups.map(g => g.name), rows: want.map(c => c.command), full: true, dock: true, hush: 3, ai: true,
       find: [true, true, true, false], after: false};
     const bad = Object.keys(wantGot).filter(k => JSON.stringify(got[k]) !== JSON.stringify(wantGot[k]));
-    const good = !bad.length && rows.length === 14 && errors.length === before;
+    const good = !bad.length && rows.length === want.length && rows.length >= 19 && errors.length === before;   // 19 with batch H's
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| voice commands |", good ? "Settings → Voice lists every command with what it does, its phrases and narrowing words; the filter finds it" :
       `failed ${bad.join(", ")}: ${JSON.stringify(got)} (${rows.length} rows)`, errors.slice(before));

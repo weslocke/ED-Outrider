@@ -115,6 +115,44 @@
     "Talking. Keep up, {name}. I won't fucking repeat myself."
    ]
   },
+  "bookmarked": {
+   "ivanova": [
+    "Bookmarked. {system}. Happy?",
+    "{system}, saved, {name}. Somewhere to come back to, if we live that long.",
+    "Fine, {name}. {system} is in the bookmarks.",
+    "Done, {name}. {system}. My grandmother kept lists of places too. Mostly places to avoid.",
+    "{name}, {system} is bookmarked. Try to remember why.",
+    "Bookmark set. {system}. Now can we go somewhere interesting?",
+    "{system}, saved. Another little flag in the dark.",
+    "Bookmarked, {name}. {system}. I will pretend I am not curious why.",
+    "There. {system} is in the book.",
+    "{system}. Bookmarked. Done. Moving on.",
+    "Saved {system}. If something ever happens here, we will know where to find it.",
+    "{name}, {system} is saved. Mark my words, we will forget it anyway.",
+    "Bookmark done. {system}.",
+    "{system} is bookmarked. My grandmother would call that planning ahead. She also kept a bag packed for the end of the world.",
+    "Fine, {system}. Saved. Let us not make a ceremony of it.",
+    "{system}, bookmarked. Tell {navigator}, so at least one of us remembers."
+   ],
+   "ivanova_profane": [
+    "Bookmarked. {system}. Happy now, damn it?",
+    "{system}, saved, {name}. Somewhere to come back to, if we live that fucking long.",
+    "Fine, {name}. {system} is in the goddamn bookmarks.",
+    "Done, {name}. {system}. My grandmother kept lists of places too. Mostly places to avoid like hell.",
+    "{name}, {system} is bookmarked. Try to remember why, for fuck's sake.",
+    "Bookmark set. {system}. Now can we go somewhere that isn't boring as shit?",
+    "{system}, saved. Another little flag in the damn dark.",
+    "Bookmarked, {name}. {system}. I won't ask why. I'll just wonder like hell.",
+    "There. {system} is in the fucking book.",
+    "{system}. Bookmarked. Done. Moving the fuck on.",
+    "Saved {system}. If shit ever happens here, we'll know where to find it.",
+    "{name}, {system} is saved. We'll forget the damn thing anyway.",
+    "Bookmark done. {system}. Hell, that was the most exciting thing all day.",
+    "{system} is bookmarked. Grandmother called that planning ahead. She also kept a bloody bag packed for the end of the world.",
+    "Fine, {system}. Saved. Let's not make a goddamn ceremony of it.",
+    "{system}, bookmarked. Tell {navigator}, so at least one of us remembers the damn thing."
+   ]
+  },
   "game_start": {
    "ivanova": [
     "Morning, {name}. Or whatever passes for morning out here. I've always had a hard time getting up when it's dark outside.",
