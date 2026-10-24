@@ -1444,11 +1444,13 @@ upstream project's choices, not rules of the game.
   known). Only the active pin is guided or spoken: the others are drawn, never said. The tick refreshes the page as the
   guidance changes (State.pin_watch: a distance step and a 10° turn), so it moves from orbit, above the map's 1,000 m.
 - **One commander per Outrider, by choice** (the full review's S9-S4, 2026-10-24): `[journals] commander` reads one
-  commander's journal files (a file's commander is its first Commander or LoadGame line; another's is skipped whole,
-  a new live file waits for that line, one cut before it is read as before). Blank (the default) reads everyone, as
+  commander's journal files (a file's commander is its first Commander or LoadGame line, a continuation part's its
+  first part's; another's is skipped whole, a new live file waits for that line, one cut before it is read as before). Blank (the default) reads everyone, as
   before; a second FID in the journals gets a card whose button sets the filter to the commander with the most
   journals. A change re-reads every journal at the next start (meta `commander_filter`). While another commander
-  plays, the live layer stands down (Status.json not read, auto-target refused); the uploads still see every line,
+  plays (the newest journal of all the live folders is theirs), the live layer stands down (Status.json, NavRoute.json,
+  Cargo.json and ShipLocker.json not read, auto-target refused, the journal's time not moved); the unsold estimate and the
+  uploads still see every line,
   each commander's going with its own key. Two tracked commanders: two Outriders, each with its own database.
 - **The rescan trip outranks "nothing worth staying for"** (S9-S1): a first discovery whose scan died
   with a ship (`firsts_recovery`'s `todo_scan`) puts "rescan N lost scans in the FSS" first on Now's Next line, the

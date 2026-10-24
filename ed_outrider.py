@@ -1458,7 +1458,7 @@ CARGO_EVENTS = frozenset(CARGO_ONLY) | {"Cargo", "Docked", "Undocked", "CarrierS
 # services the tile and the nearest places to sell use between two CarrierStats (S55); its movements and the tritium
 # you deposit for the jumps it measured (outrider.cargo.carrier_burns, S13 B)
 CARRIER_CARGO_EVENTS = ("CarrierStats", "CarrierTradeOrder", "CargoTransfer", "MarketBuy", "MarketSell",
-                        "CarrierCrewServices", "CarrierDepositFuel") + CARRIER_MOVE_EVENTS
+                        "CarrierCrewServices", "CarrierDepositFuel", "CarrierBankTransfer") + CARRIER_MOVE_EVENTS
 # Earnings (the CMDR tab's, NEXT-VERSION #7), all of them read for other things too: where you are docked, followed line
 # by line for each sale's station (Journals.note_sale_dock, meta sale_dock), and the tons you mined still aboard
 # (Journals.note_mined, meta mined_stock): MiningRefined adds 1 t (the ship's refinery or the SRV's), a jettison takes
@@ -1548,7 +1548,7 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 #     on its way keeps its arrival time through a shipyard list; and a mining stint lasts through a relog in its ring
 #     (one after a long break keeps its hotspot), a legacy folder's stints are not today's ship's
 # 58: each mining session keeps where it mined (play_activity's mining places: the ring, the SRV's body): Sessions' Where
-PARSER_VERSION = 59
+PARSER_VERSION = 60
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1574,6 +1574,7 @@ PARSER_VERSION = 59
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    60: "a deposit into your carrier's bank counts toward its weeks of upkeep (the Fable bug check of 2026-10-24)",
     59: "a death on foot or in the SRV no longer clears the ore you mined (the ship and its hold survive), an older "
         "sample read late no longer replaces a newer one, and a first discovery read late from an older folder keeps "
         "its first scan's details (the full review of 2026-10-23)",
@@ -2883,6 +2884,8 @@ class Journals:
         self.file_cmdrs = {}
         self.other_playing = None
         self._newest = None
+        self._newest_live = {}   # live folder -> its newest journal (who plays: the newest of them all)
+        self.dir_journals, self.dir_had_journals = {}, set()   # journals found at the last scan of a folder; folders that had some
         self.cmdrs_seen = meta_get(db, "commanders_seen") or {}
         self.unsold_touched = False   # a line of a kind outrider.unsold reads was read (State.tick: unsold_dirty)
         self._rc_rows = (None, [])   # (route id, riches_route rows with their bodies): Road to Riches, read once per plot
@@ -3567,8 +3570,15 @@ class Journals:
         # in time order: the old names (Journal.YYMMDDhhmmss.NN.log, before 2023) sort after every new one as text
         paths = sorted(glob(os.path.join(glob_escape(d), "Journal.*.log")), key=outrider.uploads.name_key)
         self._newest = paths[-1] if paths else None
-        if self.upload_mode is not None:   # a live folder (legacy ones are scanned with no upload mode): who plays now
-            who = self.file_commander(paths[-1]) if self.commander_filter and paths else None
+        self.dir_journals[d] = len(paths)   # bug check #26: a share let go keeps its mount point, empty
+        if paths:
+            self.dir_had_journals.add(d)
+        if self.upload_mode is not None:   # a live folder (legacy ones are scanned with no upload mode): who plays now,
+            # by the newest journal of every live folder (bug check #17: with two, the folder scanned last decided)
+            if paths:
+                self._newest_live[d] = paths[-1]
+            newest = max(self._newest_live.values(), key=outrider.uploads.name_key) if self._newest_live else None
+            who = self.file_commander(newest) if self.commander_filter and newest else None
             self.other_playing = (who[1] or who[0]) if who and not commander_matches(self.commander_filter, who) else None
         skip = set()
         if quick:
@@ -3620,9 +3630,10 @@ class Journals:
         twin = self.twins.get(os.path.basename(path))
         return max(self.offsets.get(path, 0), self.offsets.get(twin, 0) if twin else 0)
 
-    def file_commander(self, path):
+    def file_commander(self, path, depth=0):
         """(FID, name) of the commander a journal file belongs to: its first Commander or LoadGame line within its first
-        FILE_CMDR_HEAD bytes, kept by file name; None when it has none yet (not kept: a live file gets one soon)."""
+        FILE_CMDR_HEAD bytes, kept by file name; a continuation (part 2 and later, which carries none) its first
+        part's (bug check #12); None when it has none yet (not kept: a live file gets one soon)."""
         b = os.path.basename(path)
         if b in self.file_cmdrs:
             return self.file_cmdrs[b]
@@ -3640,7 +3651,11 @@ class Journals:
                 if isinstance(ev, dict) and (ev.get("FID") or ev.get("Name") or ev.get("Commander")):
                     who = self.file_cmdrs[b] = (str(ev.get("FID") or ""), str(ev.get("Name") or ev.get("Commander") or ""))
                     return who
-        return None
+        prev = outrider.uploads.continued_from(path) if depth < 20 else None
+        who = self.file_commander(prev, depth + 1) if prev else None
+        if who:
+            self.file_cmdrs[b] = who
+        return who
 
     def file_is_mine(self, path):
         """S9-S4: whether this file's lines are handled under the commander filter: True with no filter, for the
@@ -3678,10 +3693,12 @@ class Journals:
                     print(f"uploads: a line was skipped ({type(e).__name__}: {e})", file=sys.stderr)
             elif self.uploads is not None and self.upload_mode:
                 self.uploads.forget()   # not following now: switched on again, it reads the file from its top
+            if not self.unsold_touched and any(w in line for w in UNSOLD_BYTES):
+                # a line the unsold estimate reads (S6-S1: any line re-ran it); any commander's: the estimate reads them
+                # all (bug check #14)
+                self.unsold_touched = True
             if not mine:
                 continue   # S9-S4: another commander's file (its uploads above go with that commander's own accounts)
-            if not self.unsold_touched and any(w in line for w in UNSOLD_BYTES):
-                self.unsold_touched = True   # a line the unsold estimate reads (S6-S1: any line re-ran it)
             if any(w in line for w in WANTED) or b"Fixed_Event_Life" in line or any(w in line for w in POI_BYTES):
                 # where the line is (the file's name, so a twin copy in another folder gives the same key):
                 # tells apart sale pages written in the same second (sale_events)
@@ -3714,7 +3731,7 @@ class Journals:
         if self.last_play_ts != self._play_saved:   # saved once per file read, not per line
             meta_set(self.db, "last_play_ts", self.last_play_ts)
             self._play_saved = self.last_play_ts
-        if end and b'"timestamp":"' in data[:end]:
+        if mine and end and b'"timestamp":"' in data[:end]:   # another commander's play is not yours (bug check #15)
             ts = data[:end].rsplit(b'"timestamp":"', 1)[-1][:20].decode("ascii", "replace")
             if ts > (self.last_event_ts or ""):
                 self.last_event_ts = ts
@@ -5395,7 +5412,9 @@ class Journals:
                                                    was_footfalled, first_ts, undisc_ts, bio_x5)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                            ON CONFLICT(system, body_id) DO UPDATE SET
-                             undisc_ts = coalesce(excluded.undisc_ts, undisc_ts),
+                             -- the latest unsold pickup never moves back: an older first scan read late is not the rescan
+                             -- that put the data aboard again (bug check #31; SQLite's max() is NULL with a NULL)
+                             undisc_ts = coalesce(max(undisc_ts, excluded.undisc_ts), undisc_ts, excluded.undisc_ts),
                              -- an older line read late (a legacy folder after the live one) is the first scan: its flags
                              -- stand, not the rescan's (review 2026-10-23 S1-B6)
                              name = CASE WHEN excluded.first_ts < first_ts THEN excluded.name ELSE name END,
@@ -9124,21 +9143,20 @@ class State:
         """The command that restores backup `name` (None: the newest) on this install (S44, restore_command)."""
         return restore_command(name, self.install, os.name == "nt", extra=self.restore_extra)
 
-    def backup_list(self):
+    def backup_list(self, space=...):
         """GET /api/backups (Settings -> Server -> Backups, S44): this database's zips in BACKUP_DIR, newest first,
         each {name, size, ts (its file's time), kind, command}. kind: "pre-reread" from the name (S4); whether a zip
         was automatic or made by hand is not in its name, only last_backup's `auto` says it of the latest ("auto" |
         "manual"), so the rest have None. command: restore_command for it. No restore from the page: Outrider has to
-        be stopped for that."""
+        be stopped for that. `space`: backup_space's answer worked out on a worker by the caller (bug check #27: it walks
+        the whole journal archive); left out, it is worked out here. The disk card is judged by it too (#28)."""
         out = {"folder": BACKUP_DIR, "every_days": BACKUP_EVERY_DAYS, "keep": BACKUP_KEEP, "install": self.install,
                "running": bool(self.backup_task and not self.backup_task.done()), "backups": [], "error": None,
                "space": None}
         if not self.db_path:
             return dict(out, error="no database path")
-        try:
-            out["space"] = backup_space(self.db_path, BACKUP_DIR)   # what they take and the room left (S9-S36)
-        except OSError:
-            pass
+        out["space"] = self.backup_space_now() if space is ... else space   # what they take and the room left (S9-S36)
+        self.backup_space_card(out["space"])
         try:
             zips = backup_zips(BACKUP_DIR, self.db_path)
         except FileNotFoundError:
@@ -9180,7 +9198,7 @@ class State:
                   f"{out['kept']} kept; {out['copied']} journal{'' if out['copied'] == 1 else 's'} archived)")
             if out.get("warning"):
                 print(f"backup: {out['warning']}", file=sys.stderr)
-            self.backup_space_notice()
+            self.backup_space_card(await asyncio.get_running_loop().run_in_executor(None, self.backup_space_now))
         except Exception as e:
             # the last good backup's fields stay (its time and path); the error turns the Data tile red
             meta_set(self.db, "last_backup", dict(meta_get(self.db, "last_backup") or {}, auto=auto,
@@ -9190,12 +9208,21 @@ class State:
         self.backup_done_at = time.monotonic()
         self.bump()
 
+    def backup_space_now(self):
+        """backup_space for this database and BACKUP_DIR, or None (no path, an unreadable folder). It walks the journal
+        archive: on a worker away from start (bug check #27)."""
+        try:
+            return backup_space(self.db_path, BACKUP_DIR) if self.db_path else None
+        except OSError:
+            return None
+
     def backup_space_notice(self):
         """A card while the backups' disk holds under two more backups (S9-S36), gone once there is room."""
-        try:
-            sp = backup_space(self.db_path, BACKUP_DIR) if self.db_path else None
-        except OSError:
-            sp = None
+        self.backup_space_card(self.backup_space_now())
+
+    def backup_space_card(self, sp):
+        """The disk card from a backup_space answer: set while it is low, gone once there is room (bug check #28: also
+        whenever the Backups box reads it, so room made there takes it away)."""
         if sp and sp["low"]:
             self.notices.set("backup_disk", f"The disk the backups are on is nearly full ({sp['free'] / 1e6:,.0f} MB free; "
                              f"a backup needs about {BACKUP_FREE_FACTOR * sp['db'] / 1e6:,.0f} MB): old backups or the "
@@ -10627,7 +10654,10 @@ class State:
                 top_up = outrider.cargo.trip_top_up(trip, d, hold, used, k=k)
                 # S9-S12: the tritium you carry in the ship counts too ("aboard": deposit it into the depot when you dock)
                 ship_t = (((self.journals.ship_cargo or {}).get("lines") or {}).get("tritium") or {}).get("count") or 0
-                if not top_up and trip["short"] and ship_t and trip["short"] <= (hold or 0) + ship_t:
+                # by trip_top_up's own rules (the depot takes 1,000 t; the extra tons weigh): not "covered" by a sum
+                # alone (bug check #20)
+                if not top_up and trip["short"] and ship_t and \
+                        outrider.cargo.trip_top_up(trip, d, (hold or 0) + ship_t, used + ship_t, k=k):
                     top_up = "aboard"
                 trip.update(hold=hold, ship=ship_t, covered=bool(top_up), top_up=top_up)
         return {"name": c.get("name"), "callsign": c.get("callsign"), "system": c.get("system"),
@@ -10693,7 +10723,8 @@ class State:
         time), the page's "Carrier upkeep low" row (off until ticked)."""
         c = self.journals.carrier or {}
         fi = self.carrier_finance(self.carrier_cargo(), now) if c.get("id") is not None else None
-        if not fi or not fi["warn"]:
+        # none for a carrier being decommissioned or gone (bug check #19: the card warned for a scrapped one)
+        if not fi or not fi["warn"] or self.carrier_decommission():
             self.notices.clear("carrier_upkeep")
             return
         name = c.get("name") or c.get("callsign") or "your carrier"
@@ -10705,7 +10736,6 @@ class State:
             meta_set(self.db, "upkeep_said", fi["ts"])
             self.journals.moment("upkeep_low", iso_ts(time.time() if now is None else now), carrier=name, weeks=weeks,
                                  balance=fi["balance"], upkeep=fi["upkeep"])
-            self.db.commit()
 
     def carrier_decommission(self):
         """Your carrier's decommissioning, if requested and not cancelled: {ts, refund, scrap_ts, done}."""
@@ -16200,7 +16230,10 @@ class State:
         old = allc.get(prefix) or {}
         allc[prefix] = {"ts": iso_ts(time.time()) if not err else old.get("ts"), "systems": found if not err else old.get("systems") or {},
                         "error": err, "error_ts": iso_ts(time.time()) if err else None}
-        for k in sorted(allc, key=lambda k: str((allc[k] or {}).get("ts") or ""))[:-BOXEL_SPANSH_KEEP]:
+        # the oldest go, by their last ask (a failure's error_ts counts): never the entry just written (bug check #24: a
+        # fresh failure had no ts, sorted first, and was dropped at once, so it was asked again round after round)
+        last = lambda k: str((allc[k] or {}).get("ts") or (allc[k] or {}).get("error_ts") or "")
+        for k in sorted((k for k in allc if k != prefix), key=last)[:max(0, len(allc) - BOXEL_SPANSH_KEEP)]:
             allc.pop(k, None)
         meta_set(self.db, "boxel_spansh", allc)
         self.db.commit()
@@ -17134,7 +17167,7 @@ class State:
         self.bump()
         return {"ok": True, "plotting": self.highway_plotting}, 202
 
-    def highway_replot(self):
+    def highway_replot(self, allow_no_scoop=False):
         """POST /api/highway/replot (S9-S8): the Highway plotted again from where you are to its destination, with the
         ship you fly now and the route's own plotter and options (injections, secondary stars, neutron boosts, the
         conservative margin; the neutron plotter's efficiency and multiplier, and its typed range when it had no ship).
@@ -17146,6 +17179,8 @@ class State:
         body = {"plotter": hw.get("plotter") or "exact", "to": rows[-1]["system"],
                 "conservative": bool(o.get("conservative_ly")),
                 **{k: True for k in ("injections", "exclude_secondary", "no_neutrons") if o.get(k)}}
+        if o.get("no_scoop") or allow_no_scoop:   # bug check #29: confirmed without a scoop once (or now): not asked again
+            body["allow_no_scoop"] = True
         if o.get("conservative_ly"):
             body["conservative_ly"] = o["conservative_ly"]
         if body["plotter"] == "neutron":
@@ -17262,7 +17297,8 @@ class State:
         except Exception as e:  # noqa: BLE001 -- the route stands without the note
             print(f"highway: the permit check failed ({type(e).__name__}: {e})", file=sys.stderr)
             return []
-        return [i for i, r in enumerate(rows) if r.get("id64") in locked]
+        # never the system you plot from (bug check #30: Shinrarta Dezhra, a common home, flagged every plot from it)
+        return [i for i, r in enumerate(rows) if i > 0 and r.get("id64") in locked]
 
     def highway_store(self, rows, meta):
         """A new route replaces the old one: its rows, and its meta with where you are on it now."""
@@ -17858,6 +17894,11 @@ class State:
             via = req.get("via") if req.get("via") and norm_name(req["via"]) not in passed else None
             body = {"to": req.get("to"), "via": via, "type": req.get("type")}
             estimated = d["fuel_estimated"]
+            if d["fuel"] is None and isinstance(req.get("fuel"), int):
+                # never read (the trip was planned from a typed depot): the planned depot less the legs flown since,
+                # said estimated (bug check #23: the button could only ever answer "no carrier statistics read yet")
+                flown = sum(x.get("fuel") or 0 for x in t["legs"][1:at + 1])
+                body["fuel"], estimated = max(0, req["fuel"] - flown), True
         frm, to, via = name(body.get("from")) or d["from"] or "", name(body.get("to")), name(body.get("via"))
         if not frm:
             return {"error": "no carrier seen yet: give the system it is in"}, 400
@@ -17937,6 +17978,10 @@ class State:
         t = meta_get(self.db, "carrier_trip")
         c = self.journals.carrier or {}
         cid = c.get("id64")
+        if t and t.get("done_assumed") and cid is not None and cid == t.get("seen_id64") and not c.get("assumed"):
+            t["done_assumed"] = False   # the journal confirmed the last arrival: the trip is really done (bug check #18)
+            meta_set(self.db, "carrier_trip", t)
+            return True
         if not t or cid is None or cid == t.get("seen_id64"):
             return False
         legs, at = t["legs"], t.get("at") or 0
@@ -17945,7 +17990,8 @@ class State:
             # the carrier moved on after the trip's end: it is over (its "complete" was said once), unless it is on a leg
             # of it, the last jump having only been assumed (settle_carrier) and not made: the trip goes on from there
             # (review 2026-10-23 S4-B5: it was thrown away one leg short)
-            back = next((i for i in range(len(legs) - 2, -1, -1) if hit(i)), None)
+            # only an end that was assumed: one made for real is over wherever the carrier goes after (bug check #18)
+            back = next((i for i in range(len(legs) - 2, -1, -1) if hit(i)), None) if t.get("done_assumed") else None
             if back is None:
                 meta_set(self.db, "carrier_trip", None)
                 return True
@@ -17964,6 +18010,7 @@ class State:
             t.update(at=j, arrived_ts=c.get("moved_ts") or iso_ts(time.time()), off=None)
             if j == len(legs) - 1:
                 t["done_ts"] = iso_ts(time.time())
+                t["done_assumed"] = bool(c.get("assumed"))   # the booked jump taken for done, not yet confirmed
         meta_set(self.db, "carrier_trip", t)
         return True
 
@@ -19142,7 +19189,6 @@ class State:
             late = None
             self.journals_reachable()   # a share that dropped while running is said (S9-S21)
             self.commander_notices()   # S9-S4: another commander playing, or a second one in the folder
-            self.check_upkeep()   # S9-S13: the carrier's upkeep counted down under the warning
             for d in LIVE_DIRS:
                 self.journals.scan_dir(d, upload="live", quick=True)
                 if self.journals.unsold_touched:   # a line the estimate reads, not any line (S6-S1)
@@ -19155,12 +19201,17 @@ class State:
                     m = None
                 if late is None:   # after the first folder's lines: a NavRoute line read this tick counts
                     late = self.navroute_retry(time.time())
-                if m and (route_mtimes.get(nr) != m or late):
+                # S9-S4's stand-down: another commander's route, cargo and locker are not yours (bug check #13); their
+                # times are not noted either, so the files are read once your commander plays again
+                away = bool(self.journals.other_playing)
+                if m and (route_mtimes.get(nr) != m or late) and not away:
                     route_mtimes[nr] = m
                     if self.journals.read_navroute(d):
                         self.bump()
                 for fname, read in (("Cargo.json", self.journals.read_cargo_file), ("Market.json", self.journals.read_market),
                                     ("ShipLocker.json", self.journals.read_locker_file)):
+                    if away and fname != "Market.json":
+                        continue
                     fp = os.path.join(d, fname)
                     try:
                         m = os.path.getmtime(fp)
@@ -19207,6 +19258,9 @@ class State:
                 self.bump()
             self.pre_commit_step("uploads_hub.idle", self.uploads_hub.idle)   # EDDN: a companion file written after its line, signals after a quiet spell
             self.pre_commit_step("rail_device", self.rail_device)
+            # S9-S13: the carrier's upkeep counted down under the warning, committed with the tick's lines (bug check #21:
+            # its own commit kept "said" while a rollback dropped what was said)
+            self.pre_commit_step("check_upkeep", self.check_upkeep)
             self.db.commit()
             committed = True
             # after the commit: its moments (scoop ended, FSS closed early) are live only and it consumes what
@@ -19324,11 +19378,13 @@ class State:
         or "" for every commander), then Outrider restarts itself to read every journal again under it (S9-S4).
         (answer, status): {ok, restart} (restart: the restart's own answer; "restart it yourself" when it cannot)."""
         want = str(commander or "").strip()
-        known = {x for f, e in self.journals.cmdrs_seen.items() for x in (f.lower(), str(e.get("name") or "").lower()) if x}
-        if want and want.lower() not in known:
+        # the commanders the journals named: noted ones, and those of the files the filter skipped (bug check #16: after
+        # a filtered re-read only the filter's own commander is noted)
+        named = [(f, str(e.get("name") or "")) for f, e in self.journals.cmdrs_seen.items()] + list(self.journals.file_cmdrs.values())
+        hit = next((n for n in named if want.lower() in (n[0].lower(), n[1].lower())), None) if want else None
+        if want and not hit:
             return {"error": "commander: an FID or commander name the journals named"}, 400
-        e = next((e for f, e in self.journals.cmdrs_seen.items() if want.lower() in (f.lower(), str(e.get("name") or "").lower())), None)
-        value = (e and e.get("name")) or want   # the name as shown reads best in the file; the FID matches as well
+        value = (hit and hit[1]) or want   # the name as shown reads best in the file; the FID matches as well
         out, status = self.config_save({"journals": {"commander": value}})
         if status != 200:
             return out, status
@@ -19343,8 +19399,12 @@ class State:
         rebooting, a CIFS timeout, autofs letting go): a card saying so (review 2026-10-23 S9-S21: the page only showed
         "linked · no game" and the alerts stopped, with nothing saying why), cleared when it is back."""
         seen = self.__dict__.setdefault("_journals_seen", {})
+        j = self.journals
         for d in LIVE_DIRS:
-            if isdir(d):
+            # an empty folder that had journals is gone too: a share let go (autofs, umount) leaves its mount point
+            # (bug check #26)
+            emptied = d in getattr(j, "dir_had_journals", ()) and getattr(j, "dir_journals", {}).get(d) == 0
+            if isdir(d) and not emptied:
                 if seen.get(d, 0) > 0 and seen[d] >= self.JOURNALS_GONE_TICKS:
                     print(f"journals: {d} is reachable again")
                 seen[d] = 0
@@ -20772,7 +20832,9 @@ def make_app(state, hosts=None):
 
     async def backups_view(_):
         """GET /api/backups: Settings -> Server's Backups list (State.backup_list). Behind the sign-in; not an AI tool."""
-        return web.json_response(state.backup_list())   # a folder listing: quick (and the database is this thread's)
+        # the disk's room walks the journal archive: on a worker (bug check #27); the listing reads the database here
+        space = await asyncio.get_running_loop().run_in_executor(None, state.backup_space_now)
+        return web.json_response(state.backup_list(space=space))
 
     async def highway_view(_):
         return web.json_response(state.highway_view())
@@ -20805,9 +20867,11 @@ def make_app(state, hosts=None):
         out, status = state.highway_start_plot(body)
         return web.json_response(out, status=status)
 
-    async def highway_replot_view(_):
-        """POST /api/highway/replot (S9-S8): the Highway again from here, as it was plotted (State.highway_replot)."""
-        out, status = state.highway_replot()
+    async def highway_replot_view(request):
+        """POST /api/highway/replot (S9-S8): the Highway again from here, as it was plotted (State.highway_replot);
+        {allow_no_scoop: true} after the page's "plot anyway" for a ship with no fuel scoop."""
+        body = await json_object(request) or {}
+        out, status = state.highway_replot(allow_no_scoop=body.get("allow_no_scoop") is True)
         return web.json_response(out, status=status)
 
     async def highway_clear_view(_):
@@ -22665,7 +22729,8 @@ async def run(args, st):
     db.commit()
     if journals.last_event_ts is None:   # first run on an already-read database: look at the newest file's tail
         for d in LIVE_DIRS:
-            files = sorted(glob(os.path.join(glob_escape(d), "Journal.*.log")))
+            # the commander filter's commander only (bug check #15: another's newest file was taken for yours)
+            files = [p for p in sorted(glob(os.path.join(glob_escape(d), "Journal.*.log"))) if journals.file_is_mine(p) is not False]
             if files:
                 with open(files[-1], "rb") as f:
                     f.seek(max(0, os.path.getsize(files[-1]) - 4096))

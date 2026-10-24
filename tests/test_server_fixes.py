@@ -97,6 +97,25 @@ class ServerFixes(unittest.TestCase):
             look()
             self.assertEqual(self.state.notices.active(), [])
 
+    def test_a_share_let_go_with_its_mount_point_left_is_said(self):
+        """Bug check #26: autofs letting go (or an umount) leaves the folder there, empty: a folder that listed
+        journals and lists none now is gone too; a fresh empty one never was."""
+        import contextlib
+        import io
+        with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", ["/srv/j", "/fresh"]), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            look = lambda: self.state.journals_reachable(isdir=lambda d: True)
+            self.j.dir_had_journals.add("/srv/j")
+            self.j.dir_journals.update({"/srv/j": 12, "/fresh": 0})
+            look()
+            self.j.dir_journals["/srv/j"] = 0
+            look()
+            look()
+            self.assertEqual([n["key"] for n in self.state.notices.active()], ["journals_gone:/srv/j"])
+            self.j.dir_journals["/srv/j"] = 12
+            look()
+            self.assertEqual(self.state.notices.active(), [])
+
     def test_a_plot_behind_another_says_it_is_waiting(self):
         """Review 2026-10-23 S1-S2: Spansh's plots go one at a time; the second sat on "Asking Spansh…" for the whole of
         the first. Its record says waiting while the other holds the turn."""

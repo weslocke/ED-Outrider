@@ -3112,6 +3112,9 @@ class JournalsRegistry(unittest.TestCase):
         "commander_version": "a counter the Commander view's lines bump (the page's cue to ask again): a retry only bumps it more",
         "status_json": "the latest Status.json reading: live, re-read from the file, nothing in the database",
         "_newest": "the folder's newest journal, set at the top of each scan: the retry's scan sets it again",
+        "_newest_live": "each live folder's newest journal, set at the top of each scan: the retry's sets it again",
+        "dir_journals": "how many journals a folder listed at its last scan: the retry's scan counts them again",
+        "dir_had_journals": "folders that have listed journals: only ever added to, the retry adds the same",
     }
     # meta key -> why it is NOT cleared by RESET_JOURNAL_DATA
     KEPT_THROUGH_REREAD = {

@@ -12,7 +12,7 @@
     "travel_today": ["how far today", "how far have i gone today", "how far have i come today", "how far did i go today", "how far have i travelled", "how far have i traveled", "travelled today", "traveled today", "jumps today", "light years today", "distance today", "today so far", "how far this session", "this session", "my session"],
     "left_behind": ["left behind", "go back for", "worth going back", "worth going back to", "unfinished systems", "unfinished nearby"],
     "this_body": ["this body", "this planet", "this moon", "this world", "this rock", "the body below", "the planet below", "body below me", "planet below me", "body im on", "planet im on", "targeted body", "target body", "targeted planet"],
-    "next_jump": ["next jump", "next stop", "next system", "next waypoint", "highway", "route", "where am i going"],
+    "next_jump": ["next jump", "next stop", "next system", "next waypoint", "highway", "route", "where am i going", "where are we going", "where are we headed"],
     "where_am_i": ["where am i", "what system is this", "which system is this", "what system am i in", "my position", "where are we"],
     "status_report": ["status report", "status", "report", "sitrep", "how are we doing"],
     "fuel": ["fuel", "tank", "how far can i go", "jumps left", "jump range", "my range", "how far can i jump"],

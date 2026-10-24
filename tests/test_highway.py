@@ -368,6 +368,12 @@ class HighwayH1(unittest.TestCase):
             return {2} if 2 in ids else set()
         self.state.spansh = types.SimpleNamespace(permit_ids=ask)
         self.assertEqual(asyncio.run(self.state.route_permits(rows)), [2])
+
+        async def home(ids):   # bug check #30: the system you plot from is never flagged (a permit home)
+            return {0, 2}
+        self.state.spansh = types.SimpleNamespace(permit_ids=home)
+        self.assertEqual(asyncio.run(self.state.route_permits(rows)), [2])
+        self.state.spansh = types.SimpleNamespace(permit_ids=ask)
         self.assertEqual(ed_outrider.permit_note(rows, [2]), "Sol needs a permit you may not have: the route ends there.")
         self.assertEqual(ed_outrider.permit_note(rows, [1, 2]), "2 stops need a permit you may not have (Mid, Sol).")
         self.assertIsNone(ed_outrider.permit_note(rows, []))
@@ -500,6 +506,14 @@ class HighwayH1(unittest.TestCase):
             self.state.highway_replot()
         self.assertEqual(plot.call_args[0][0], {"plotter": "neutron", "to": rows[-1]["system"], "conservative": False,
                                                 "efficiency": 70, "supercharge_multiplier": 6, "range": 42.0})
+        # bug check #29: a route already confirmed without a fuel scoop re-plots without asking again
+        self.state.highway_store(rows, {"plotter": "exact", "ship": None, "options": {"no_scoop": True}})
+        with unittest.mock.patch.object(self.state, "highway_start_plot", return_value=({"ok": True}, 202)) as plot:
+            self.state.highway_replot()
+            self.assertTrue(plot.call_args[0][0]["allow_no_scoop"])
+            self.state.highway_store(rows, {"plotter": "exact", "ship": None, "options": {}})
+            self.state.highway_replot(allow_no_scoop=True)   # the page's "plot anyway"
+            self.assertTrue(plot.call_args[0][0]["allow_no_scoop"])
         self.db.execute("DELETE FROM highway_route")
         ed_outrider.meta_set(self.db, "highway", None)
         self.assertEqual(self.state.highway_replot()[1], 409)

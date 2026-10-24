@@ -865,10 +865,33 @@ def skeleton(label, profane=False, names=None):
                  "lines": {k: dict({"_when": KEYS[k]}, **{x: [] for x in lists}) for k in spoken_keys()}}
 
 
+def shipped_style_ids(resources=RESOURCES_DIR):
+    """{style id: where it comes from} of the base personalities (resources/speech.json) and the shipped ones
+    (resources/personalities/*.json): ids a file of your own cannot take."""
+    out = {}
+    try:
+        with open(os.path.join(resources, "speech.json"), encoding="utf-8") as f:
+            out.update({k: "a base personality" for k in (json.load(f).get("styles") or {})})
+    except (OSError, ValueError):
+        pass
+    folder = os.path.join(resources, "personalities")
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        try:
+            with open(os.path.join(folder, name), encoding="utf-8") as f:
+                out.update({k: f"the shipped personality {name}" for k in (json.load(f).get("styles") or {})})
+        except (OSError, ValueError):
+            continue
+    return out
+
+
 def write_skeleton(label, profane=False, names=None, folder=None):
     """S9-S17: the skeleton written to <folder>/<id>.json (data/personalities/ by default), never over a file there.
     (path, None) or (None, why not)."""
     sid, doc = skeleton(label, profane, names)
+    taken = shipped_style_ids()
+    if sid in taken:   # bug check #10: merge_personalities leaves out a file taking a base or shipped personality's id
+        return None, (f"{label!r} is the id of {taken[sid]}: Outrider would leave your file out. Pick another name "
+                      "(or copy that personality's own file into data/personalities/ to change it)")
     folder = folder or os.path.join(DATA_DIR, "personalities")
     path = os.path.join(folder, f"{sid}.json")
     if os.path.exists(path):

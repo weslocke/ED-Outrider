@@ -362,6 +362,14 @@ def _move(st, i, delta, why, ts):
 
 def _carrier_event(st, carrier_id, ev, ts):
     name = ev.get("event")
+    if name == "CarrierBankTransfer":   # a deposit or withdrawal: the balance it leaves (bug check #22: the upkeep card asks for one)
+        if ev.get("CarrierID") != carrier_id or not isinstance(ev.get("CarrierBalance"), int):
+            return
+        old = st.get("finance") or {}
+        reserve = old.get("reserve")
+        st["finance"] = {"balance": ev["CarrierBalance"], "reserve": reserve,
+                         "available": ev["CarrierBalance"] - reserve if isinstance(reserve, int) else old.get("available"), "ts": ts}
+        return
     if name == "CarrierStats":
         if ev.get("CarrierID") != carrier_id:
             return

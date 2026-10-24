@@ -187,6 +187,13 @@ def install(root, args=(), how=None, why=None, graphical=True, env=None, bash=No
     else:
         import ntpath   # a Windows path, whatever runs this (the tests)
         text = cmd_text(ntpath.join(root, "launch_outrider.bat"), args)
+    before = None   # a unit there already (a re-install): put back if this one cannot be enabled (bug check #25)
+    try:
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8", newline="") as f:
+                before = f.read()
+    except OSError:
+        before = None
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="") as f:
@@ -200,11 +207,18 @@ def install(root, args=(), how=None, why=None, graphical=True, env=None, bash=No
     for cmd in (["systemctl", "--user", "daemon-reload"], ["systemctl", "--user", "enable", UNIT_NAME]):
         ok, words = _run(cmd)
         if not ok:
-            # not left half installed: Settings would show it Installed while systemd knows nothing of it (S4-B13)
+            # not left half installed: Settings would show it Installed while systemd knows nothing of it (S4-B13); a
+            # unit that was there before (enabled, working) is put back as it was, not deleted
             try:
-                os.remove(path)
+                if before is None:
+                    os.remove(path)
+                else:
+                    with open(path, "w", encoding="utf-8", newline="") as f:
+                        f.write(before)
             except OSError:
                 pass
+            if before is not None:
+                raise ServiceError(f"the new unit could not be enabled ({words}): the previous one was put back: {path}")
             raise ServiceError(f"the unit could not be enabled ({words}), so it was removed again: {path}")
     when = "when you log in to your desktop" if graphical else "with your user's systemd (at boot too after: loginctl enable-linger)"
     out += [f"enabled: ED Outrider starts {when}. To switch to it now, stop the Outrider you started by hand, then "

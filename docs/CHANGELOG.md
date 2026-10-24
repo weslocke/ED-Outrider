@@ -2,6 +2,32 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-24 · Bug check fixes: what the Fable check of the review's work found (PARSER_VERSION 60)
+- A multi-agent Fable bug check of everything since 02bf77c (project/review-2026-10-24, git-ignored) confirmed 31 bugs;
+  two of them (the voice's "where am I" said to crash on the region and read the body as an object) were not: the
+  status it reads already gives names, now pinned by an end-to-end test. The other 29 are fixed:
+  - **The page:** the Map coloured by work left asked for Left behind and My firsts over and over while a load was under
+    way and froze the page; it asks once and redraws when they come. The folded tiles line's departure countdown is
+    updated in place. The carrier's buy button leaves out the tritium the hold already has on a sell order. A voice
+    bookmark's note is said once.
+  - **The voice:** off a survey route, "next stop" no longer says "the nearest route system is None"; "show the map
+    now" is the Map, not Now; a spoken bookmark note keeps its case and punctuation; "where are we going" is the next
+    stop; `--skeleton` refuses a shipped personality's name (the file would be left out).
+  - **The commander filter:** a session's continuation files (part 2 on) take their first part's commander; while
+    another commander plays, their NavRoute.json, Cargo.json and ShipLocker.json are not read either and their lines no
+    longer move the journal's time; their sales still re-run the unsold estimate; the filter can be moved to a commander
+    known only from the files it skipped; with two live folders who plays is judged by the newest journal of all.
+  - **The carrier:** a trip finished for real is no longer brought back when the carrier passes one of its legs; no
+    upkeep warning for a carrier being or already decommissioned; "(aboard)" only when the ship's tritium really covers
+    the trip; the upkeep alert is no longer lost when a tick is rolled back; a deposit into the carrier's bank
+    (CarrierBankTransfer) counts toward its weeks of upkeep (PARSER_VERSION 60: one full re-read); Re-plot from where it
+    is works for a trip planned from a typed depot.
+  - **The rest:** a failed Boxel ask is no longer evicted from a full cache and asked again at once; a failed service
+    re-install puts the working unit back; a journal share let go with its mount point left is said; the backups'
+    disk figure is worked out on a worker and its card goes as soon as the Backups box sees the room made; re-plot keeps
+    "plot anyway" for a ship with no fuel scoop; the permit check leaves out the system you plot from; a first scan read
+    late no longer moves a rescanned body's pickup back (it read as lost).
+
 ## 2026-10-24 · Suggestions (I): the page's polish
 - The full Fable review's suggestions, batch I (the last):
   - **S5-S2: the browser's own widgets follow the page**: `color-scheme` on the Default (dark, and light in its light

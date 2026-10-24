@@ -322,6 +322,18 @@ class BackupSpace(Scratch):
         with unittest.mock.patch.object(ed_outrider, "BACKUP_DIR", self.out):
             st.backup_space_notice()
         self.assertEqual(st.notices.active(), [])                                   # room again: gone
+        # bug check #28: room made from the Backups box takes the card away when the box reads the space again
+        with unittest.mock.patch.object(ed_outrider, "BACKUP_DIR", self.out):
+            with unittest.mock.patch.object(ed_outrider, "disk_free", lambda p: size * 2):
+                st.backup_space_notice()
+            self.assertEqual(len(st.notices.active()), 1)
+            st.backup_list()
+        self.assertEqual(st.notices.active(), [])
+        # bug check #27: the view works the space out on a worker and hands it to the listing
+        seen = []
+        with unittest.mock.patch.object(st, "backup_space_now", lambda: seen.append("worker") or {"low": False}):
+            self.assertEqual(st.backup_list(space={"low": False})["space"], {"low": False})
+        self.assertEqual(seen, [])                                                  # given: not walked again
 
 
 class FirstRunNoJournals(Scratch):

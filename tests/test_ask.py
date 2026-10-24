@@ -549,6 +549,46 @@ class VoiceBatchH(unittest.TestCase):
                          ("show", "near", "Nearby.", False))
 
 
+class BugCheckVoice(unittest.TestCase):
+    """The Fable bug check of 2026-10-24, batch 2 (the voice)."""
+
+    def test_where_am_i_through_the_real_status(self):
+        """The check reported that /api/status gives the region and body as objects: it gives their names
+        (status_small), so the answer is words. Pinned end to end through the server, not a fake."""
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        st = ed_outrider.State(db, j, None, 25)
+        j.handle({"event": "FSDJump", "timestamp": "2026-10-01T00:00:00Z", "StarSystem": "Sol", "SystemAddress": 10477373803,
+                  "StarPos": [0.0, 0.0, 0.0]})
+        db.commit()
+        from aiohttp.test_utils import TestClient, TestServer
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(st))) as c:
+                r = await c.post("/api/ask", json={"text": "where am i"})
+                return r.status, (await r.json())["answer"]
+        self.assertEqual(asyncio.run(go()), (200, "Sol, in the Inner Orion Spur."))
+
+    def test_off_a_survey_route_names_no_none(self):
+        r = {"kind": "survey", "route": "Road to Riches route", "next": {"system": "Rich", "distance_ly": 3.0},
+             "off_route": True, "nearest_route_system": None}
+        self.assertTrue(ask.route_words(r).startswith("You are off the route. Next stop on your Road to Riches route: Rich"))
+
+    def test_the_page_named_first_wins(self):
+        self.assertEqual([ask.page_named(t) for t in ("show the map now", "show bio now", "back to now", "open my firsts")],
+                         ["map", "bio", "now", "firsts"])
+
+    def test_a_spoken_note_keeps_its_case(self):
+        self.assertEqual(ask.bookmark_note("Vespa, Bookmark this system Ringed WW, 3 bio's near A 2.", "bookmark this system"),
+                         "Ringed WW, 3 bio's near A 2")
+        self.assertEqual(ask.bookmark_note("bookmark this system", "bookmark this system"), "")
+
+    def test_where_are_we_going_is_the_next_stop(self):
+        ph = ask.load_phrases()
+        self.assertEqual((ask.match("where are we going", ph), ask.match("where are we", ph)), ("next_jump", "where_am_i"))
+
+
 class VoiceCommands(unittest.TestCase):
     """The list of voice commands (GET /api/ask/commands: Settings → Voice, the tablet's Voice commands…): every fixed
     command with what it does and the phrases that ask it, from resources/ask.json, and the words that narrow one."""

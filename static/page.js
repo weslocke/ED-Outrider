@@ -464,7 +464,9 @@ const carrierTripHtml = (t, f) => !t ? "" :
     : t.top_up === "aboard" ? `the ${t.ship.toLocaleString()} t of tritium in your ship's hold${t.hold ? ` and the ${t.hold.toLocaleString()} t on a sell order in its own` : ""} cover it: deposit it into the depot when you dock`
     : `the ${t.hold.toLocaleString()} t of tritium on a sell order in its hold covers it: move it into the depot before the jumps`}">${t.short.toLocaleString()} t short${t.top_up === "aboard" ? " (aboard)" : ""}</span>` +
     // S9-S12: what is still to buy, straight into the Buy lookup
-    (!t.covered && t.short - (t.ship || 0) > 0 ? ` <button type="button" class="mini" data-buytritium="${t.short - (t.ship || 0)}" title="where to buy ${(t.short - (t.ship || 0)).toLocaleString()} t of tritium near you (Materials → Cargo's lookup)">buy</button>` : "") : "");
+    // (what the ship carries and the hold's sell order already have left out)
+    (!t.covered && tritiumToBuy(t) > 0 ? ` <button type="button" class="mini" data-buytritium="${tritiumToBuy(t)}" title="where to buy ${tritiumToBuy(t).toLocaleString()} t of tritium near you (Materials → Cargo's lookup)">buy</button>` : "") : "");
+const tritiumToBuy = t => Math.max(0, t.short - (t.ship || 0) - (t.hold || 0));
 // a booked jump's burn and the depot after it (S13 A)
 const carrierPlanBurn = (pl, f) => pl.burn == null ? "" : ` ≈ <span title="${esc(carrierBurnTitle(f))}">${pl.burn} t</span>; ` +
   (pl.depot_after < 0 ? `<span class="noscoop">depot ${-pl.depot_after} t short</span>` : `depot after ≈ ${pl.depot_after.toLocaleString()} t`) +
@@ -1005,7 +1007,8 @@ function tilesLineHtml() {
   if (on("carrier") && c) {
     const pl = c.planned, left = pl && pl.departure ? (Date.parse(pl.departure) - Date.now()) / 1000 : null;
     const where = c.aboard ? "aboard" : c.here ? "here" : c.distance != null ? ly(c.distance) : esc(c.system || "");
-    const dep = left != null && left > 0 ? ` · departs in ${left >= 3600 ? `${Math.floor(left / 3600)} h ${Math.floor(left % 3600 / 60)} min` : `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`}` : "";
+    // the countdown in a "cd" span: setLive updates it in place, the line is not rebuilt every second (S5-B3)
+    const dep = left != null && left > 0 ? ` · departs in <span class="cd">${left >= 3600 ? `${Math.floor(left / 3600)} h ${Math.floor(left % 3600 / 60)} min` : `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`}</span>` : "";
     out.push(bit(`${mk("fleet-carrier")}carrier ${where}${dep}`, dep && left < 300 && !c.aboard ? "urgent" : "", c.name || "your fleet carrier") + carrierAim(c));
   }
   const dl = tileLevel("tData");
@@ -5505,7 +5508,10 @@ async function loadFirsts() {
   if (firstsData && firstsData.error) firstsKey = null;   // retried at the next render
   renderFirsts();
 }
+// the Map coloured by work left reads Left behind's and My firsts' answers: drawn again when one comes
+const mapWorkRedraw = () => { if (view === "map" && mSettings.color === "work") drawMap(); };
 function renderFirsts() {
+  mapWorkRedraw();
   const f = firstsData, st = document.getElementById("fStatus"), bms = bmMap();
   if (!f || f.error) { st.textContent = f ? f.error : ""; return; }
   // lost data stays in the database (a rescan earns it again) but is hidden unless asked for. x.sale is the
@@ -5628,6 +5634,7 @@ function leftWorth(r) {
   return {maps, bio, worth: maps.reduce((n, m) => n + m.increment, 0) + bio.reduce((n, b) => n + b.value, 0)};
 }
 function renderLeft() {
+  mapWorkRedraw();
   const el = document.getElementById("leftRows"), d = leftData;
   if (!d || d.error) { el.innerHTML = `<tr><td colspan="4" class="unk">${d ? esc(d.error) : "loading…"}</td></tr>`; return; }
   const rows = d.systems.map(r => {
@@ -7375,9 +7382,12 @@ function mapPopHtml(pt, touch = false) {
 // Asks for what is not loaded yet once, and draws again when it comes.
 function mapWork() {
   const loading = !leftData || !firstsData;
+  // asked once: their own renders draw the Map again when the answers come (bug check 2026-10-24 #1: re-asking from a
+  // .then looped without end while a load already under way returned at once, and the page froze)
   if (loading && !M.workAsked) {
     M.workAsked = true;
-    Promise.allSettled([leftData ? null : loadLeft(), firstsData ? null : loadFirsts()]).then(() => { M.workAsked = false; drawMap(); });
+    if (!leftData) loadLeft();
+    if (!firstsData) loadFirsts();
   }
   const by = {}, add = (id, kind, text) => { const e = by[id] || (by[id] = {kind, bits: []}); e.bits.push(text);
     if (["lost", "left", "unsold"].indexOf(kind) < ["lost", "left", "unsold"].indexOf(e.kind)) e.kind = kind; };
@@ -7782,8 +7792,12 @@ document.addEventListener("click", async e => {
   if (!b) return;
   b.disabled = true;
   let r;
-  try { r = await apiJson("api/highway/replot", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"}); }
-  catch (err) { r = {error: err.message}; }
+  const post = body => apiJson("api/highway/replot", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  try { r = await post({}); } catch (err) { r = {error: err.message}; }
+  // the form's "plot anyway" for a ship with no fuel scoop (bug check #29: the re-plot was a dead end)
+  if (r.code === "no_scoop" && confirm(`${r.error}.\n\nPlot anyway?`)) {
+    try { r = await post({allow_no_scoop: true}); } catch (err) { r = {error: err.message}; }
+  }
   b.disabled = false;
   if (r.error) return toast(`No route plotted: ${hwyErr(r.error)}`);
   toast("⏳ Plotting the route again from here");
@@ -9664,6 +9678,12 @@ function takeCopilot(cp, first) {
 }
 // Every line here is said in Piper or not at all (never the browser's own voice: the author's choice); each is shown as
 // a caption too, so a line Piper could not say is still there to read.
+// a voice answer's personality line and what follows it (a bookmark's note); line() falling back to the words, which
+// hold the note already, says them as they are (bug check #4: the note was said twice)
+function lineWithAfter(cp) {
+  const said = line(cp.line.key, cp.line.fills || {}, cp.words);
+  return said === cp.words ? said : said + (cp.line.after || "");
+}
 // the speech keys a voice answer may name for its line (the server's copilot `line`): only these are said so
 const SERVER_LINE_KEYS = ["bookmarked"];
 // S9-S16: the tablet shows a page asked for by voice, as one tapped in its nav (no automatic way back from it)
@@ -9688,7 +9708,7 @@ function copilotDo(cp) {
   // an answer to a question by voice (POST api/ask): said here, as a line you asked for (a hush's answer too, onHush
   // leaving it the news); "caption": shown only (unhush's: the end of the hush is announced)
   // S9-S34: a personality line in place of the words where the server sent one (the caption keeps the words)
-  else if (cp.action === "say" && cp.words) { speak(cp.line && SERVER_LINE_KEYS.includes(cp.line.key) ? line(cp.line.key, cp.line.fills || {}, cp.words) + (cp.line.after || "") : cp.words,
+  else if (cp.action === "say" && cp.words) { speak(cp.line && SERVER_LINE_KEYS.includes(cp.line.key) ? lineWithAfter(cp) : cp.words,
                                                      {kind: "manual", piperOnly: true}); addCaption(cp.words); }
   else if (cp.action === "caption" && cp.words) addCaption(cp.words);
 }

@@ -6446,6 +6446,29 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| suggestions H |", good ? "show is the tablet's, the bookmarked line" : JSON.stringify({got, want}), errors.slice(before));
   }
+  // Bug check 2026-10-24, batch 1: the Map's work-left colouring asks once (it looped and froze the page); the folded
+  // tiles line's countdown updated in place; the buy button leaves the hold's tritium out; a bookmark's note said once
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => {
+      const o = {}, was = [leftData, firstsData, M.workAsked, loadLeft, loadFirsts, data.carrier];
+      let calls = 0;
+      leftData = null; firstsData = null; M.workAsked = false;
+      loadLeft = () => { calls++; return undefined; }; loadFirsts = () => { calls++; return undefined; };
+      mapWork(); mapWork(); mapWork();
+      o.calls = calls;
+      [leftData, firstsData, M.workAsked, loadLeft, loadFirsts] = was.slice(0, 5);
+      data.carrier = {name: "C", system: "Far", distance: 40, planned: {departure: new Date(Date.now() + 600000).toISOString()}};
+      o.cd = /departs in <span class="cd">/.test(tilesLineHtml());
+      data.carrier = was[5];
+      o.buy = tritiumToBuy({short: 240, ship: 0, hold: 100});
+      o.after = lineWithAfter({line: {key: "no_such_key_here", fills: {}, after: " Note: x."}, words: "Bookmarked S. Note: x."});
+      return JSON.stringify(o); })()`));
+    const want = {calls: 2, cd: true, buy: 140, after: "Bookmarked S. Note: x."};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| bug check 1 |", good ? "the Map asks once, the countdown in place, the buy tons, the note once" : JSON.stringify({got, want}), errors.slice(before));
+  }
   // S9-S20: an upload on hold gets its own alerts row, off until ticked (the card comes from the server either way),
   // said by Comms; S7-S6: an empty backfill Preview says why ("412 lines left out, the Legacy game ...")
   {

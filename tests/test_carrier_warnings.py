@@ -74,6 +74,48 @@ class CarrierWarnings(unittest.TestCase):
             self.state.check_upkeep(now)
         self.assertFalse([n for n in self.state.notices.active() if n["key"] == "carrier_upkeep"])
 
+    def test_aboard_only_when_it_really_covers(self):
+        """Bug check #20: the ship's tritium counts as covering the trip only by trip_top_up's own rules."""
+        t = self.summary(100, ship_tritium=1)["trip"]
+        need = t["short"]
+        with unittest.mock.patch.object(cargo, "trip_top_up", lambda trip, ly, hold, used, k=1.0: None):
+            t = self.summary(100, ship_tritium=need + 5)["trip"]
+        self.assertEqual((t["covered"], t["top_up"]), (False, None))
+
+    def test_no_upkeep_warning_for_a_carrier_decommissioned(self):
+        """Bug check #19."""
+        roles = {"Refuel": "on"}
+        upkeep = cargo.carrier_upkeep(roles)
+        now = 2_000_000_000
+        st = {"finance": {"balance": 2 * upkeep, "reserve": 0, "available": 0, "ts": ed_outrider.iso_ts(now - 60)}, "crew": {"roles": roles}}
+        with unittest.mock.patch.object(self.state, "carrier_cargo", lambda: st), \
+                unittest.mock.patch.object(self.state, "carrier_decommission", lambda: {"done": True}):
+            self.state.check_upkeep(now)
+        self.assertEqual(([m for m in self.j.moments if m["kind"] == "upkeep_low"], self.state.notices.active()), ([], []))
+
+    def test_a_rolled_back_tick_says_the_upkeep_again(self):
+        """Bug check #21: check_upkeep writes with the tick, not on its own: after a rollback its moment comes again."""
+        roles = {"Refuel": "on"}
+        upkeep = cargo.carrier_upkeep(roles)
+        now = 2_000_000_000
+        st = {"finance": {"balance": 2 * upkeep, "reserve": 0, "available": 0, "ts": ed_outrider.iso_ts(now - 60)}, "crew": {"roles": roles}}
+        with unittest.mock.patch.object(self.state, "carrier_cargo", lambda: st):
+            self.state.check_upkeep(now)
+            self.db.rollback()
+            self.assertIsNone(ed_outrider.meta_get(self.db, "upkeep_said"))
+            self.state.check_upkeep(now)
+        self.assertEqual(len([m for m in self.j.moments if m["kind"] == "upkeep_low"]), 2)
+
+    def test_a_bank_deposit_counts(self):
+        """Bug check #22: CarrierBankTransfer's balance replaces the stats' (the deposit the card asks for)."""
+        stats = {"timestamp": "2026-10-01T00:00:00Z", "event": "CarrierStats", "CarrierID": 7, "FuelLevel": 500,
+                 "Finance": {"CarrierBalance": 1000, "ReserveBalance": 100, "AvailableBalance": 900}}
+        dep = {"timestamp": "2026-10-02T00:00:00Z", "event": "CarrierBankTransfer", "CarrierID": 7, "Deposit": 5000,
+               "PlayerBalance": 1, "CarrierBalance": 6000}
+        st = cargo.carrier_fold(7, [(stats["timestamp"], stats), (dep["timestamp"], dep)])
+        self.assertEqual(st["finance"], {"balance": 6000, "reserve": 100, "available": 5900, "ts": "2026-10-02T00:00:00Z"})
+        self.assertIn("CarrierBankTransfer", ed_outrider.CARRIER_CARGO_EVENTS)
+
     def test_the_request_names_the_reading(self):
         """S4-S4: a trip planned from the depot reading carries the reading's time (a typed depot: none)."""
         d = {"from": "Home", "fuel": 800, "hold": 0, "fuel_estimated": False, "fuel_read_ts": "2026-10-01T10:00:00Z",

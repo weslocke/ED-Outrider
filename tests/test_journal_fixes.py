@@ -57,6 +57,18 @@ class JournalFixes(unittest.TestCase):
         row = self.db.execute("SELECT was_discovered, first_ts FROM own_firsts WHERE system=9 AND body_id=4").fetchone()
         self.assertEqual((row["was_discovered"], row["first_ts"]), (0, "2025-06-01T00:00:00Z"))
 
+    def test_a_first_scan_read_late_does_not_move_the_pickup_back(self):
+        """Bug check #31: the first scan (WasDiscovered false) read late moved undisc_ts back before a death the rescan
+        came after, so the body read as lost."""
+        scan = lambda ts: ev(ts, "Scan", ScanType="Detailed", StarSystem="Sys", SystemAddress=9, BodyID=4, BodyName="Sys 4",
+                             PlanetClass="Icy body", DistanceFromArrivalLS=900.0, WasDiscovered=False, WasMapped=False)
+        self.j.handle(ev("2026-01-01T00:00:00Z", "FSDJump", StarSystem="Sys", SystemAddress=9, StarPos=[0, 0, 0]))
+        self.j.handle(scan("2026-01-03T00:00:00Z"))      # the rescan after the death, read first (live)
+        self.j.handle(ev("2026-01-02T00:00:00Z", "Died"))
+        self.j.handle(scan("2026-01-01T00:01:00Z"))      # the first scan, read late (a legacy folder)
+        row = self.db.execute("SELECT undisc_ts, first_ts FROM own_firsts WHERE system=9 AND body_id=4").fetchone()
+        self.assertEqual((row["undisc_ts"], row["first_ts"]), ("2026-01-03T00:00:00Z", "2026-01-01T00:01:00Z"))
+
     def test_a_journal_cut_mid_line_is_not_touched_every_tick(self):
         """S1-B2: a journal whose last line has no newline counted as touched on every look (an unsold recompute every
         15 s and a database write every second)."""

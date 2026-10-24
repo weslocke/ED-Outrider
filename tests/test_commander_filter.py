@@ -7,6 +7,7 @@ import shutil
 import tempfile
 import types
 import unittest
+import unittest.mock
 
 from support import ed_outrider
 import outrider.config_edit  # noqa: E402
@@ -137,6 +138,86 @@ class CommanderFilter(unittest.TestCase):
         self.assertIn("restart Outrider", out["note"])                   # no running server here to restart
         with open(self.state.config_path, encoding="utf-8") as f:
             self.assertIn('commander = "Beta"', f.read())
+
+    # ---- the Fable bug check of 2026-10-24, batch 3 ----
+
+    def continued(self, name, ts, *events):
+        self.write(name, {"timestamp": ts, "event": "Fileheader", "part": 2, "gameversion": "4.2.0.100", "build": "r1 "}, *events)
+
+    def test_a_continuation_file_is_its_first_parts(self):
+        """#12: part 2 of a long session carries no Commander line: it is its first part's, read when that is the
+        filter's commander, skipped when not, and it says who plays."""
+        self.two_commanders()   # the newest: Alpha's of 10-03
+        self.continued("Journal.2026-10-03T100000.02.log", "2026-10-03T14:00:00Z", jump("2026-10-03T14:05:00Z", "Mine Later", 30))
+        self.j.commander_filter = "F1"
+        self.j.scan_dir(self.dir, upload="catchup")
+        self.assertIn("Mine Later", self.visited())
+        self.write("Journal.2026-10-04T100000.01.log", header("2026-10-04T10:00:00Z"), commander("2026-10-04T10:00:01Z", "F2", "Beta"))
+        self.continued("Journal.2026-10-04T100000.02.log", "2026-10-04T14:00:00Z", jump("2026-10-04T14:05:00Z", "Theirs Later", 31))
+        self.j.scan_dir(self.dir, upload="live")
+        self.assertNotIn("Theirs Later", self.visited())
+        self.assertEqual(self.j.other_playing, "Beta")
+
+    def test_the_stand_down_leaves_the_shared_files_alone(self):
+        """#13: while another commander plays, their NavRoute.json, Cargo.json and ShipLocker.json are not read; once
+        yours plays again they are."""
+        import contextlib
+        import io
+        self.two_commanders()
+        self.j.commander_filter = "F1"
+        self.write("Journal.2026-10-05T100000.01.log", header("2026-10-05T10:00:00Z"), commander("2026-10-05T10:00:01Z", "F2", "Beta"))
+        read = []
+        for name in ("read_navroute", "read_cargo_file", "read_locker_file"):
+            setattr(self.j, name, (lambda n: lambda d: read.append(n) or False)(name))
+        for fname in ("NavRoute.json", "Cargo.json", "ShipLocker.json"):
+            with open(os.path.join(self.dir, fname), "w", encoding="utf-8") as f:
+                f.write("{}")
+        mtimes = {}
+        with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", [self.dir]), contextlib.redirect_stderr(io.StringIO()), \
+                unittest.mock.patch.object(self.state, "maybe_unsold", lambda: None):
+            self.state.tick(mtimes)
+            self.assertEqual((self.j.other_playing, read), ("Beta", []))
+            self.write("Journal.2026-10-05T120000.01.log", header("2026-10-05T12:00:00Z"), commander("2026-10-05T12:00:01Z", "F1", "Alpha"))
+            self.state.tick(mtimes)   # Alpha again: the files are read
+            self.state.tick(mtimes)
+        self.assertEqual(sorted(set(read)), ["read_cargo_file", "read_locker_file", "read_navroute"])
+
+    def test_another_commanders_lines_touch_the_estimate_not_the_journal_time(self):
+        """#14: an alt's sale re-runs the unsold estimate (it reads every commander); #15: their lines do not move
+        last_event_ts."""
+        self.write("Journal.2026-10-01T100000.01.log", header("2026-10-01T10:00:00Z"), commander("2026-10-01T10:00:01Z", "F1", "Alpha"))
+        self.write("Journal.2026-10-02T100000.01.log", header("2026-10-02T10:00:00Z"), commander("2026-10-02T10:00:01Z", "F2", "Beta"),
+                   {"timestamp": "2026-10-02T11:00:00Z", "event": "SellExplorationData", "Systems": ["X"], "BaseValue": 100,
+                    "Bonus": 0, "TotalEarnings": 100})
+        self.j.commander_filter = "F1"
+        self.j.unsold_touched = False
+        self.j.scan_dir(self.dir, upload="catchup")
+        self.assertTrue(self.j.unsold_touched)
+        self.assertLess(self.j.last_event_ts or "", "2026-10-02")
+
+    def test_the_filter_moves_to_a_commander_known_only_by_their_files(self):
+        """#16: after a filtered re-read only the filter's commander is noted; the other is still known by the files."""
+        self.two_commanders()
+        self.j.commander_filter = "F1"
+        self.j.scan_dir(self.dir, upload="catchup")
+        self.assertNotIn("F2", self.j.cmdrs_seen)
+        self.state.config_path = os.path.join(self.dir, "ed_outrider.toml")
+        out, status = self.state.set_commander_filter("Beta")
+        self.assertEqual((status, out["commander"]), (200, "Beta"))
+
+    def test_two_live_folders_judge_who_plays_by_the_newest_file(self):
+        """#17: Beta plays in one live folder; the other folder's newest is an older one of Alpha's."""
+        other = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, other)
+        self.write("Journal.2026-10-05T100000.01.log", header("2026-10-05T10:00:00Z"), commander("2026-10-05T10:00:01Z", "F2", "Beta"))
+        with open(os.path.join(other, "Journal.2026-10-01T100000.01.log"), "w", encoding="utf-8", newline="") as f:
+            for e in (header("2026-10-01T10:00:00Z"), commander("2026-10-01T10:00:01Z", "F1", "Alpha")):
+                f.write(json.dumps(e, separators=(", ", ":")) + "\r\n")
+        self.j.commander_filter = "F1"
+        for _ in range(2):
+            self.j.scan_dir(self.dir, upload="live")
+            self.j.scan_dir(other, upload="live")
+            self.assertEqual(self.j.other_playing, "Beta")
 
     def test_the_key_in_the_config_and_the_server_list(self):
         st = ed_outrider.settings_from({"journals": {"commander": " Alpha "}}, types.SimpleNamespace(

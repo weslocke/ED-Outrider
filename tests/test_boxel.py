@@ -161,6 +161,27 @@ class Server(unittest.TestCase):
         self.assertTrue(self.state.boxel_not_found(self.state.boxel_target(15)[0], {"ok": False, "why": "no system was targeted"}))
         self.assertEqual(self.state.boxel_view()["end"], 15)
 
+    def test_a_failure_is_kept_when_the_cache_is_full(self):
+        """Bug check #24: with BOXEL_SPANSH_KEEP boxels cached, a failed ask of a new one was the entry evicted (no ts:
+        it sorted first), so it was due again at once. The oldest other entry goes instead."""
+        import asyncio
+        from aiohttp import ClientError
+
+        class Down:
+            def post(self, *a, **k):
+                raise ClientError("down")
+        self.state.spansh.session, self.state.spansh.sem_fast = Down(), asyncio.Semaphore(1)
+        full = {f"Old Sector AB-C d{i}-": {"ts": f"2026-10-01T00:{i:02d}:00Z", "systems": {}, "error": None, "error_ts": None}
+                for i in range(ed_outrider.BOXEL_SPANSH_KEEP)}
+        ed_outrider.meta_set(self.db, "boxel_spansh", full)
+        prefix = "Drojau TF-H c13-"
+        asyncio.run(self.state.boxel_spansh_fetch(prefix))
+        cache = ed_outrider.meta_get(self.db, "boxel_spansh")
+        self.assertIn(prefix, cache)
+        self.assertNotIn("Old Sector AB-C d0-", cache)   # the oldest went
+        self.assertEqual(len(cache), ed_outrider.BOXEL_SPANSH_KEEP)
+        self.assertFalse(self.state.boxel_spansh_due(prefix))
+
     def test_a_failed_spansh_ask_waits_before_the_next(self):
         """Review 2026-10-23 S3-B1: with Spansh unreachable a failed ask kept the boxel due (the failure keeps the old,
         missing ts) and moved the payload's boxel key there and back, so the page looked again and the look asked again,

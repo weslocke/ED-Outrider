@@ -188,6 +188,55 @@ class Trip(unittest.TestCase):
         t = self.state.carrier_trip_summary()["trip"]
         self.assertEqual((t["at"], t["done"], t["next"]["system"]), (len(legs) - 2, False, "Colonia"))
 
+    def test_a_trip_finished_for_real_stays_finished(self):
+        """Bug check #18: a trip whose last arrival the journal confirmed is over: the carrier passing one of its legs
+        later does not bring it back (only an assumed last jump not made does)."""
+        self.plot({"to": "Colonia"})
+        legs = self.state.carrier_trip_summary()["trip"]["legs"]
+        for i in range(1, len(legs)):
+            self.j.carrier.update(system=legs[i]["system"], id64=legs[i]["id64"], assumed=False)
+            self.state.carrier_trip_follow()
+        self.assertTrue(self.state.carrier_trip_summary()["trip"]["done"])
+        self.j.carrier.update(system=legs[-2]["system"], id64=legs[-2]["id64"], assumed=False)
+        self.state.carrier_trip_follow()
+        self.assertIsNone(self.state.carrier_trip_summary()["trip"])
+
+    def test_an_assumed_end_confirmed_is_done(self):
+        """#18: an assumed last arrival the journal then confirms (assumed False at the same place) is done for good."""
+        self.plot({"to": "Colonia"})
+        legs = self.state.carrier_trip_summary()["trip"]["legs"]
+        for i in range(1, len(legs)):
+            self.j.carrier.update(system=legs[i]["system"], id64=legs[i]["id64"], assumed=i == len(legs) - 1)
+            self.state.carrier_trip_follow()
+        self.j.carrier["assumed"] = False
+        self.state.carrier_trip_follow()
+        self.j.carrier.update(system=legs[-2]["system"], id64=legs[-2]["id64"], assumed=False)
+        self.state.carrier_trip_follow()
+        self.assertIsNone(self.state.carrier_trip_summary()["trip"])
+
+    def test_replot_from_a_typed_depot(self):
+        """Bug check #23: a trip planned from a typed depot (no reading in the journals) re-plots from the planned depot
+        less the legs flown, said estimated."""
+        self.j.carrier.pop("fuel")
+        sent = []
+
+        async def plot(params, request):
+            sent.append((params, request))
+        with unittest.mock.patch.object(self.state, "_carrier_trip_plot", plot), \
+                unittest.mock.patch("asyncio.get_running_loop") as loop:
+            loop.return_value.create_task = lambda coro: coro.close()
+            self.assertEqual(self.state.carrier_trip_plot({"to": "Colonia", "fuel": 700})[1], 202)
+        req = {"from": "Sol", "to": "Colonia", "via": None, "fuel": 700, "hold": 0, "used": 0, "type": "fleet", "estimated": False}
+        legs = [{"system": "Sol", "fuel": 0}, {"system": "A", "fuel": 110}, {"system": "Colonia", "fuel": 110}]
+        ed_outrider.meta_set(self.db, "carrier_trip", {"request": req, "legs": legs, "at": 1, "off": {"system": "Elsewhere"}})
+        self.state.carrier_trip_task = None
+        with unittest.mock.patch.object(self.state, "_carrier_trip_plot", lambda params, request: sent.append((params, request))), \
+                unittest.mock.patch("asyncio.get_running_loop") as loop:
+            loop.return_value.create_task = lambda x: None
+            out, status = self.state.carrier_trip_plot({"replot": True})
+        self.assertEqual(status, 202, out)
+        self.assertEqual((sent[-1][1]["fuel"], sent[-1][1]["estimated"]), (590, True))
+
     def test_a_depot_never_read_is_refused(self):
         """Review 2026-10-23 S4-B3: with no depot reading the plot took the depot as a full 1,000 t."""
         self.j.carrier.pop("fuel")

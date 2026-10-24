@@ -56,21 +56,20 @@ PAGE_NAMES = {"now": "Now", "near": "Nearby", "here": "Here", "bio": "Bio and Ge
 
 
 def page_named(text):
-    """S9-S16: the tablet page a "show ..." question names (a PAGE_WORDS key right after the matched verb's words, or
-    anywhere after it), or None."""
+    """S9-S16: the tablet page a "show ..." question names: the page word that comes first in it (the longer of two at
+    the same place: "my firsts" over "firsts"), so "show the map now" is the Map, not Now (bug check #8), or None."""
     t = f" {WAKE.sub('', norm(text)).strip()} "
-    for w in sorted(PAGE_WORDS, key=len, reverse=True):
-        if f" {w} " in t:
-            return PAGE_WORDS[w]
-    return None
+    found = [(t.find(f" {w} "), -len(w), w) for w in PAGE_WORDS if f" {w} " in t]
+    return PAGE_WORDS[min(found)[2]] if found else None
 
 
 def bookmark_note(text, phrase):
-    """S9-S34: the words after "bookmark this system" as the bookmark's note ("bookmark this system ringed water
-    world" -> "ringed water world"), '' for none."""
-    t = WAKE.sub("", norm(text)).strip()
-    i = f" {t} ".find(f" {phrase} ")
-    return t[i + len(phrase):].strip() if i >= 0 else ""
+    """S9-S34: the words after "bookmark this system" as the bookmark's note, as they were said ("Bookmark this system
+    Ringed WW, A 2" -> "Ringed WW, A 2": the case and punctuation kept, bug check #9), '' for none. The phrase is
+    found word by word in the question itself (any punctuation or apostrophe between its words)."""
+    words = [re.escape(w) for w in phrase.split()]
+    m = re.search(r"(?<![A-Za-z0-9])" + r"[\W_]*".join(words) + r"(?![A-Za-z0-9])", str(text or ""), re.I)
+    return str(text)[m.end():].strip(" \t,.;:-") if m else ""
 
 
 def known_questions():
@@ -547,8 +546,9 @@ def route_words(r):
     else:
         out = f"Next on the route plotted in the game: {nx['system']}{dist}" + \
               (f", {jumps(r['jumps_left'])} to {r['destination']}." if r.get("jumps_left") and r.get("destination") else ".")
-    if r.get("off_route"):
-        out = f"You are off the route; the nearest route system is {r.get('nearest_route_system')}. " + out
+    if r.get("off_route"):   # a survey route names no nearest route system (bug check #7: "... is None")
+        near = r.get("nearest_route_system")
+        out = (f"You are off the route; the nearest route system is {near}. " if near else "You are off the route. ") + out
     return out
 
 

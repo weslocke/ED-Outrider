@@ -284,6 +284,10 @@ class Speech(unittest.TestCase):
             self.assertEqual([i["covers"] for i in info], [0])
             with unittest.mock.patch("sys.stderr"):
                 self.assertEqual(outrider.speech.main(["--skeleton", "Sea Dog", "--folder", d]), 1)   # never overwritten
+            with unittest.mock.patch("sys.stderr"):   # bug check #10: a shipped or base id would be left out
+                self.assertEqual(outrider.speech.main(["--skeleton", "Vulcan", "--folder", d]), 1)
+                self.assertEqual(outrider.speech.main(["--skeleton", "Business", "--folder", d]), 1)
+            self.assertFalse(os.path.exists(os.path.join(d, "vulcan.json")))
 
     def test_shipped_lines(self):
         # speech.json covers every alert in every personality, and the page asks for exactly those alerts

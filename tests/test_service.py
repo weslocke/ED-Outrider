@@ -174,6 +174,19 @@ class Unit(Base):
         # not left half installed: Settings would show it Installed (review 2026-10-23 S4-B13)
         self.assertFalse(os.path.exists(os.path.join(self.tmp.name, S.UNIT_NAME)))
 
+    def test_a_failed_reinstall_puts_the_working_unit_back(self):
+        """Bug check #25: a re-install whose enable fails left an enabled service's unit deleted."""
+        S.install(self.root, ["--port", "8025"], "systemd", None, bash="/bin/bash", env={})
+        path = os.path.join(self.tmp.name, S.UNIT_NAME)
+        with open(path, encoding="utf-8") as f:
+            first = f.read()
+        self.calls.code, self.calls.stderr = 1, "Failed to connect to bus"
+        with self.assertRaises(S.ServiceError) as e:
+            S.install(self.root, ["--port", "9000"], "systemd", None, bash="/bin/bash", env={})
+        self.assertIn("previous one was put back", str(e.exception))
+        with open(path, encoding="utf-8") as f:
+            self.assertEqual(f.read(), first)
+
     def test_windows_startup(self):
         lines = S.install("C:\\Games\\ED Outrider", ["--config", "C:\\Users\\p\\my 50%.toml"], "startup", None, env={})
         path = os.path.join(self.tmp.name, S.CMD_NAME)
