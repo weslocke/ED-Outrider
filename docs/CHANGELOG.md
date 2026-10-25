@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · 📋 The system summary: body names bold
+- The author's paste: "4 c a moon of a moon" read as body 4 c and "a moon of a moon". Body names are bold with a colon
+  after them ("**4 c a**: moon of a moon"), a body's curiosities on one item, and a curiosity's reason only when it adds
+  a figure ("tiny world (183 km in radius)"; "moon of a moon (a moon orbiting a moon)" said it twice).
+
 ## 2026-10-25 · The overlay's surface radar shows with nothing on it
 - The author: hovering at 19 m with no sample run, tagged plant, pin or parked ship, the overlay's radar was gone (it hid
   with nothing to draw), back once landed (the touchdown parks the ship on it), while the page's surface map showed

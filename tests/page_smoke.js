@@ -10060,16 +10060,18 @@ const releasePayloads = async () => {
     got.summary = w.eval(`systemSummaryMd({name: "Sys", region: "Inner Orion Spur", id64: "7", value_now: 31000, value_max: 201700000,
       firsts: {system: true, bodies: 12, mapped: 1, footfall: 1},
       bodies: [{name: "A 4", notable: "ELW", terraformable: true, subtype: "Earth-like world"},
-               {name: "B 3", ggg: {chance: "likely"}, curiosities: [{tag: "shepherd moon", why: "orbits inside B's rings"}]},
+               {name: "B 3", ggg: {chance: "likely"}, curiosities: [{tag: "shepherd moon", why: "orbits inside B's rings"},
+                                                                  {tag: "tiny world", why: "183 km in radius"}]},
+               {name: "4 c a", curiosities: [{tag: "moon of a moon", why: "a moon orbiting a moon"}]},
                {name: "A 7", value_parts: {bio_factor: 5}, genera: ["Bacterium", "Osseus"],
                 organics: [{genus: "Bacterium", species: "Bacterium Aurasus", variant: "Bacterium Aurasus - Emerald", samples: 3, done: true, value: 1000000}]},
                {name: "A 6", ring_details: [{name: "A Ring", type: "Icy", hotspots: {Painite: 2}}]}]}).split("\\n")`);
-    want.summary = ["**Sys** (Inner Orion Spur) · 4 bodies known",
+    want.summary = ["**Sys** (Inner Orion Spur) · 5 bodies known",
       "- Firsts: first to discover the system · 12 bodies first discovered · 1 first mapped · 1 first footfall",
-      "- Notable: A 4 Earth-like world (terraformable)", "- Potential green gas giant: B 3 (likely)",
-      "- Curiosities: B 3 shepherd moon (orbits inside B's rings)",
-      "- Life on A 7 (first footfall ×5): Bacterium Aurasus - Emerald 5.0M; still to sample: Osseus",
-      "- Ring hotspots: A 6 A Ring (Icy): Painite ×2", "- Worth: 31k cr on board, 201.7M cr at most"];
+      "- Notable: **A 4**: Earth-like world (terraformable)", "- Potential green gas giant: **B 3** (likely)",
+      "- Curiosities: **B 3**: shepherd moon, tiny world (183 km in radius); **4 c a**: moon of a moon",
+      "- Life on **A 7** (first footfall ×5): Bacterium Aurasus - Emerald 5.0M; still to sample: Osseus",
+      "- Ring hotspots: **A 6 A Ring** (Icy): Painite ×2", "- Worth: 31k cr on board, 201.7M cr at most"];
     // 7: Search's "at least N" goes with the form (empty is 1); Clear ticks empties it
     got.atLeast = w.eval(`(() => { const k = JSON.stringify(formParams());
       document.getElementById("sPlanetsMin").value = "2"; document.getElementById("sStarsMin").value = "x";

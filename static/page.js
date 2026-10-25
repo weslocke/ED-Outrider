@@ -4750,9 +4750,11 @@ const ringsText = (b, sys = hereData && hereData.id64) => {
 };
 // 📋 beside Here's ⬇ CSV (explorer ideas, item 6): a short Markdown summary of the system for Reddit or Discord, from
 // Here's own answer: firsts, notable worlds, green gas giants, curiosities, life (sampled and still to sample), rings
-// with hotspots, the value. Lists only (Reddit's Markdown: no tables)
+// with hotspots, the value. Lists only (Reddit's Markdown: no tables). Body names bold with a colon after them ("4 c a"
+// read into "a moon of a moon": the author, 2026-10-25); a curiosity's reason only when it adds a figure
 function systemSummaryMd(h) {
   if (!h || h.error) return "";
+  const B = name => `**${name}**`;
   const out = [`**${h.name}**${h.region ? ` (${h.region})` : ""} · ${h.bodies.length} bod${h.bodies.length === 1 ? "y" : "ies"} known`];
   const f = h.firsts, n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
   const firsts = f ? [f.system && "first to discover the system", f.bodies && n(f.bodies, "body first discovered", "bodies first discovered"),
@@ -4760,24 +4762,25 @@ function systemSummaryMd(h) {
   if (firsts.length) out.push(`- Firsts: ${firsts.join(" · ")}`);
   const NOTABLE = {ELW: "Earth-like world", WW: "water world", AW: "ammonia world"};
   const notable = h.bodies.filter(b => b.notable && NOTABLE[b.notable] || b.terraformable)
-    .map(b => `${b.name} ${NOTABLE[b.notable] || b.subtype || ""}${b.terraformable ? " (terraformable)" : ""}`.trim());
+    .map(b => `${B(b.name)}: ${NOTABLE[b.notable] || b.subtype || ""}${b.terraformable ? " (terraformable)" : ""}`.trim());
   if (notable.length) out.push(`- Notable: ${notable.join(", ")}`);
   const ggg = h.bodies.filter(b => b.ggg);
   if (ggg.length) out.push(`- ${ggg.some(b => b.ggg.confirmed) ? "Green gas giant" : "Potential green gas giant"}: ` +
-    ggg.map(b => `${b.name}${b.ggg.confirmed ? "" : ` (${b.ggg.chance})`}`).join(", "));
-  const cur = h.bodies.flatMap(b => (b.curiosities || []).map(c => `${b.name} ${c.tag} (${c.why})`));
+    ggg.map(b => `${B(b.name)}${b.ggg.confirmed ? "" : ` (${b.ggg.chance})`}`).join(", "));
+  const cur = h.bodies.filter(b => (b.curiosities || []).length)
+    .map(b => `${B(b.name)}: ${b.curiosities.map(c => `${c.tag}${/\d/.test(c.why || "") ? ` (${c.why})` : ""}`).join(", ")}`);
   if (cur.length) out.push(`- Curiosities: ${cur.join("; ")}`);
   for (const b of h.bodies) {
     const orgs = (b.organics || []).filter(o => !o.lost), fct = bioFactor(b);
     const left = (b.genera || []).filter(g => !orgs.some(o => o.genus === g && o.done));
     if (!orgs.length && !left.length) continue;
-    out.push(`- Life on ${b.name}${fct === 5 ? " (first footfall ×5)" : ""}: ` + [
+    out.push(`- Life on ${B(b.name)}${fct === 5 ? " (first footfall ×5)" : ""}: ` + [
       orgs.map(o => `${o.variant || o.species}${o.done ? "" : ` ${o.samples}/3`}${o.value ? ` ${credits(o.value * fct)}` : ""}`).join(", "),
       left.filter(g => !orgs.some(o => o.genus === g)).length ? `still to sample: ${left.filter(g => !orgs.some(o => o.genus === g)).join(", ")}` : ""
     ].filter(Boolean).join("; "));
   }
   const rings = h.bodies.flatMap(b => (b.ring_details || []).filter(r => Object.keys(r.hotspots || {}).length)
-    .map(r => `${b.name} ${r.name} (${r.type || "?"}): ${Object.entries(r.hotspots).map(([k, v]) => `${mineral(k)} ×${v}`).join(", ")}`));
+    .map(r => `${B(`${b.name} ${r.name}`)} (${r.type || "?"}): ${Object.entries(r.hotspots).map(([k, v]) => `${mineral(k)} ×${v}`).join(", ")}`));
   if (rings.length) out.push(`- Ring hotspots: ${rings.join("; ")}`);
   out.push(`- Worth: ${credits(h.value_now || 0)} cr on board, ${credits(maxOf(h) || 0)} cr at most`);
   return out.join("\n");
