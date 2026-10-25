@@ -1623,6 +1623,7 @@ PARSER_CHANGES = {
     45: "notable stellar phenomena are counted",
     44: "fixes in the journal reader",
 }
+EDSM_FIRST_KEEP = 200  # systems whose EDSM first reporter is kept in memory (the targets EDSM was asked about)
 CURIOUS_KEEP = 2000   # systems remembered as told about their curiosities (meta curious_said)
 NSP_BURST_S = 5   # s: the FSS's lines for a system's phenomena that count as one listing (they come in the same second)
 # Scans read off a nav beacon (as outrider.unsold.NAV_BEACON_SCANS): their Was* flags are not the game's record of the body.
@@ -7328,7 +7329,8 @@ class Spansh:
         if not isinstance(d, dict) or not d.get("name"):
             return {"known": 0, "count": None, "missing": True}
         bodies = [b for b in d.get("bodies") or [] if isinstance(b, dict) and b.get("type") in ("Star", "Planet")]
-        return {"known": len(bodies), "count": d.get("bodyCount") if isinstance(d.get("bodyCount"), int) else None}
+        return {"known": len(bodies), "count": d.get("bodyCount") if isinstance(d.get("bodyCount"), int) else None,
+                "first": edsm_first(bodies)}
 
     async def edsm_sphere(self, pos, radius):
         """EDSM's systems within `radius` (at most EDSM_SPHERE_MAX: its API's documented limit; a larger radius is
@@ -7868,6 +7870,7 @@ class State:
         self.reported_task = None  # S23: the ask for the species reported in your system (one at a time)
         self.reported_tried = {}   # id64 -> when last asked (or found fresh): not asked again before REPORTED_RETRY_S
         self._records = None       # (key, answer): My firsts' Your records, worked out again when scans or jumps change
+        self.edsm_first = {}       # id64 -> EDSM's first reporter {commander, date}, from the target's EDSM answers
         self.reported_seen = None  # the overlay_detail key of the last look that found no life
         self.route_spansh = {}     # id64 -> (when, has a record): Spansh asked about the game's route hops (in memory only)
         self.route_task = None     # that ask (one at a time)
@@ -11971,6 +11974,7 @@ class State:
             leaving["base_known"] = base_known(base, source)
         return {"id64": str(id64), "name": name, "bodies": out, "tree": tree, "partial": partial, "region": region,
                 "spansh_date": spansh_date(spansh_recs), "spansh_old": spansh_old(spansh_recs),   # Here's header, Now (#11)
+                "edsm_first": self.edsm_first.get(id64),   # EDSM's first reporter, when it was asked as your target
                 "phenomena": phenomena, "rare_stars": rare_stars(out),
                 "pois": [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))],
                 "leaving": leaving,
@@ -13284,6 +13288,10 @@ class State:
                 e = await self.spansh.edsm_bodies(t["name"])
             except Exception:
                 return
+            if e.get("first"):   # kept for Here, once you are there (EDSM_FIRST_KEEP systems)
+                self.edsm_first[id64] = e["first"]
+                while len(self.edsm_first) > EDSM_FIRST_KEEP:
+                    self.edsm_first.pop(next(iter(self.edsm_first)))
             if key == self.target_key and self.target and self.target.get("id64") == id64:
                 self.target = dict(self.target, edsm=e)
                 self.bump()
@@ -19804,6 +19812,18 @@ def bio_hits(db, id64, system, x, y, z, records, threshold):
         hits.append((left or 0, {"t": f"{r['name']} · {left_n} of {signals} unscanned"
                                  + (f" · up to {left / 1e6:.1f}M" if left else " · value unknown"), "body": r["name"]}))
     return [h for _, h in sorted(hits, key=lambda t: -t[0])]
+
+
+def edsm_first(bodies):
+    """Who first reported any of a system's bodies to EDSM, and when (explorer ideas, item 5): {commander, date
+    (YYYY-MM-DD)} from the earliest body `discovery` in EDSM's bodies answer, or None. EDSM's first reporter, never
+    the game's discovery tag: the words say "first reported to EDSM"."""
+    found = [(str(b["discovery"].get("date") or ""), b["discovery"].get("commander")) for b in bodies or []
+             if isinstance(b.get("discovery"), dict) and b["discovery"].get("commander") and b["discovery"].get("date")]
+    if not found:
+        return None
+    date, cmdr = min(found)
+    return {"commander": str(cmdr), "date": date[:10]}
 
 
 def search_min(v):

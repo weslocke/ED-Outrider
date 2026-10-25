@@ -10079,6 +10079,10 @@ const releasePayloads = async () => {
       document.getElementById("sClear").click(); a.push(document.getElementById("sStarsMin").value);
       loadForm(JSON.parse(k)); saveForm(); return a; })()`);
     want.atLeast = [2, 1, "", "3", ""];
+    // 5: EDSM's first reporter, in the target's counts title and Here's header
+    got.edsmFirst = [w.eval(`edsmFirstText({commander: "Vorrash", date: "2016-10-25"})`),
+                     w.eval(`targetCounts({known: 3, count: 12, edsm: {known: 5, count: 12, first: {commander: "V", date: "2016-10-25"}}})`).includes("first reported to EDSM 2016-10-25 by CMDR V")];
+    want.edsmFirst = ["first reported to EDSM 2016-10-25 by CMDR Vorrash", true];
     // (the batch's later items add their checks above this line)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodEX = !bad.length && errors.length === before;

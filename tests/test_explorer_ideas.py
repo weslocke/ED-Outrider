@@ -1,5 +1,5 @@
 """Explorer ideas from EDCodex's Exploration tools (project/PLAN-explorer-ideas-2026-10-25.md), the server's parts:
-Search's "at least N" (7). The page's parts are in tests/page_smoke.js ("explorer ideas"). Fakes only."""
+Search's "at least N" (7), EDSM's first reporter (5). The page's parts are in tests/page_smoke.js ("explorer ideas"). Fakes only."""
 import asyncio
 import time
 import unittest
@@ -67,6 +67,31 @@ class AtLeastN(unittest.TestCase):
         s = ed_outrider.Searcher(ed_outrider.State(db, j, Fake(), 25))
         self.assertEqual(search({"source": "spansh"}), ["X", "Y"])
         self.assertEqual(search({"source": "spansh", "planets_min": 2}), ["X"])
+
+
+class EdsmFirst(unittest.TestCase):
+    """5: who first reported a system's bodies to EDSM, from the bodies answer Outrider already asks for the target."""
+
+    def test_the_earliest(self):
+        bodies = [{"type": "Star", "discovery": {"commander": "Late", "date": "2019-03-01 10:00:00"}},
+                  {"type": "Planet", "discovery": {"commander": "Vorrash", "date": "2016-10-25 12:34:56"}},
+                  {"type": "Planet"}, {"type": "Planet", "discovery": {"commander": None, "date": "2010-01-01 00:00:00"}}]
+        self.assertEqual(ed_outrider.edsm_first(bodies), {"commander": "Vorrash", "date": "2016-10-25"})
+        self.assertIsNone(ed_outrider.edsm_first([{"type": "Planet"}]))
+        self.assertIsNone(ed_outrider.edsm_first(None))
+
+    def test_kept_for_here(self):
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        st = ed_outrider.State(db, ed_outrider.Journals(db), ed_outrider.Spansh(db), 25)
+        base = {"name": "Far", "x": 10.0, "y": 0.0, "z": 0.0,
+                "records": [{"name": "Far", "type": "Star", "subtype": "K (Yellow-Orange) Star", "main": True, "full": True, "body_id": 0}]}
+        db.execute("INSERT INTO spansh_systems (id64, updated_at, summary, fetched_ts, x, y, z) VALUES (42, 'x', ?, ?, 10, 0, 0)",
+                   (ed_outrider.json.dumps(base), time.time()))
+        db.commit()
+        self.assertIsNone(st.system_detail(42)["edsm_first"])                    # EDSM never asked about it
+        st.edsm_first[42] = {"commander": "Vorrash", "date": "2016-10-25"}
+        self.assertEqual(st.system_detail(42)["edsm_first"], {"commander": "Vorrash", "date": "2016-10-25"})
 
 
 if __name__ == "__main__":

@@ -1241,12 +1241,16 @@ function tagText(sm) {
 }
 let clearAnnounced = null, tagAnnounced = null;
 // how much of a targeted system is known: Spansh's bodies of its body count, and EDSM's beside it (SystemStatusOverlay)
+// EDSM's first reporter of a system (explorer ideas, item 5): who first reported one of its bodies to EDSM, never the
+// game's discovery tag
+const edsmFirstText = f => `first reported to EDSM ${f.date} by CMDR ${f.commander}`;
 function targetCounts(t) {
   if (!t) return "";
   const sp = t.count ? `${t.known || 0}/${t.count} known` : t.known ? `${t.known} known` : "";
   const e = t.edsm, ed = !e ? "" : e.missing ? "EDSM: not logged" : `EDSM ${e.known}${e.count ? "/" + e.count : ""}`;
   const parts = [sp, ed].filter(Boolean);
-  return parts.length ? ` <span class="unk" title="bodies Spansh knows of the system's count (and EDSM's own reports)">${esc(parts.join(" · "))}</span>` : "";
+  const first = e && e.first ? `\n${edsmFirstText(e.first)}` : "";
+  return parts.length ? ` <span class="unk" title="bodies Spansh knows of the system's count (and EDSM's own reports)${esc(first)}">${esc(parts.join(" · "))}</span>` : "";
 }
 function renderOnBody() {
   const el = document.getElementById("onbody"), ob = obNow();
@@ -4783,7 +4787,8 @@ function renderHere() {
     `<b>${esc(h.name)}</b>` + (away != null ? ` <span class="unk">· ${away.toFixed(2)} ly away</span>` : "") +
     ` · ${h.bodies.length} bod${h.bodies.length === 1 ? "y" : "ies"} known · ` +
     // #11: when Spansh's data was last reported; pre-Odyssey marked
-    (h.spansh_date ? `<span class="${h.spansh_old ? "old" : "unk"}" title="${h.spansh_old ? esc(spanshOldTitle(h.spansh_old)) : "when Spansh's data on this system was last reported"}">Spansh: ${h.spansh_old ? "pre-Odyssey, " : ""}${spanshDay(h.spansh_date)}</span> · ` : "") + (h.phenomena && h.phenomena.length ? phenomenaTag(h.phenomena) + " · " : "") + (h.rare_stars && h.rare_stars.length ? rareStarTag(h.rare_stars) + " · " : "") + (h.pois && h.pois.length ? poiTag(h.pois) + " · " : "") +
+    (h.spansh_date ? `<span class="${h.spansh_old ? "old" : "unk"}" title="${h.spansh_old ? esc(spanshOldTitle(h.spansh_old)) : "when Spansh's data on this system was last reported"}">Spansh: ${h.spansh_old ? "pre-Odyssey, " : ""}${spanshDay(h.spansh_date)}</span> · ` : "") +
+    (h.edsm_first ? `<span class="unk" title="${esc(edsmFirstText(h.edsm_first))} (EDSM's own reports, not the game's discovery tag)">EDSM: since ${esc(h.edsm_first.date.slice(0, 4))}</span> · ` : "") + (h.phenomena && h.phenomena.length ? phenomenaTag(h.phenomena) + " · " : "") + (h.rare_stars && h.rare_stars.length ? rareStarTag(h.rare_stars) + " · " : "") + (h.pois && h.pois.length ? poiTag(h.pois) + " · " : "") +
     `<span title="what selling now would pay for data you hold from here / the most this system could pay">now <b>${credits(h.value_now || 0)} cr</b> · max <b>${credits(maxOf(h) || 0)} cr</b>${maxBonus() ? "" : ` <span class="unk" title="Max leaves out first-discovery, first-mapped and first-footfall bonuses (alerts & thresholds dialog)">no bonus</span>`}</span>` +
     ` <a class="unk" href="api/export?what=system&id=${encodeURIComponent(h.id64)}" download title="this system's bodies and values as a spreadsheet (CSV)">⬇ CSV</a>` +
     ` <button type="button" class="mini" id="hereCopyMd" title="copy a short summary of this system in Markdown, for Reddit or Discord">📋</button>` +

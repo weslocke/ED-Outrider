@@ -234,7 +234,9 @@ fuel, "scoopable: 9 of last 20" (amber as on the fuel tile), and at the last sco
 scoop before 3 dry" with how much to scoop. While you scoop, the fuel line counts down to a full tank ("38 s to full",
 at the rate it is filling now: it slows at the edge of the scoop zone). The target says how much of it is
 known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"): two databases
-with different reporters. While a new target is looked up it says "checking…", never the previous target's verdict.
+with different reporters; the hover says who first reported one of its bodies to EDSM, and when (EDSM's own record, not
+the game's discovery tag), and Here's heading keeps "EDSM: since 2016" once you are there. While a new target is looked
+up it says "checking…", never the previous target's verdict.
 
 - **Where the next jump goes**, under the target: the route's next stop as the strip under the header says it ("🛣
   Next: Stop 38 · 4.2 ly · 38 of 120 · refuel in 3 jumps", or the Road to Riches / Exomastery one), and a kept boxel's

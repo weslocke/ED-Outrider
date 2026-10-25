@@ -973,7 +973,7 @@ class TargetCounts(unittest.TestCase):
         from support import _HwSession
         sp = ed_outrider.Spansh(self.db)
         sp.session = _HwSession([(200, {"name": "There", "bodyCount": 9, "bodies": [{"type": "Star"}, {"type": "Planet"}, {"type": "Belt"}]})])
-        self.assertEqual(asyncio.run(sp.edsm_bodies("There")), {"known": 2, "count": 9})
+        self.assertEqual(asyncio.run(sp.edsm_bodies("There")), {"known": 2, "count": 9, "first": None})   # no discovery said
         self.assertEqual(sp.session.calls[0], (ed_outrider.EDSM_BODIES, {"systemName": "There"}))
         sp.session = _HwSession([(200, [])])   # EDSM's answer for a system it does not have
         self.assertEqual(asyncio.run(sp.edsm_bodies("Nowhere")), {"known": 0, "count": None, "missing": True})

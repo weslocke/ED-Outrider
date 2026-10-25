@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Who first reported a system to EDSM
+- Explorer ideas, item 5: the target's EDSM answer (the bodies Outrider already asks for "EDSM 5/12") carries each body's
+  first reporter; the earliest (`edsm_first`) goes in the target counts' hover ("first reported to EDSM 2016-10-25 by
+  CMDR Vorrash") and is kept for that system (`State.edsm_first`, EDSM_FIRST_KEEP), so Here's heading says "EDSM: since
+  2016" once you are there. Worded as EDSM's own record, never the game's discovery tag. No extra EDSM request.
+
 ## 2026-10-25 · Search: at least N stars or planets of the kinds ticked
 - Explorer ideas, item 7: Stars and Planets each get "at least [ ] of them": a system matches with that many bodies
   among the section's ticks (two Earth-likes; with Earth-like and water world ticked, two of either). Local counts your
