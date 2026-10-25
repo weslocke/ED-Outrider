@@ -61,7 +61,8 @@ Newest first, one entry per commit.
 - Explorer ideas, item 2 (project/PLAN-explorer-ideas-2026-10-25.md): Now's fuel line and the overlay's say "38 s to
   full" while you scoop, at the rate the tank is filling over the last 8 s of Status.json readings (it slows at the edge
   of the scoop zone, so a short window follows it; `ScoopWatch.to_full`, `fuel_summary`'s `to_full_s`). The journal's
-  `FuelScoop` comes only when the scoop ends, so it cannot be the source.
+  `FuelScoop` comes every 5 t and when the scoop ends: too seldom to be the source. Checked in game: the countdown was
+  up 2 s into a scoop.
 
 ## 2026-10-25 · My firsts: Your records
 - The author: a folded **Your records** box at the end of My firsts: the most extreme bodies among your own scans

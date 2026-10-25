@@ -586,7 +586,7 @@ class ScoopWatch:
 
     # the seconds to a full tank while scooping (the author's choice, 2026-10-25: from Route Scoop's idea): the fuel's
     # rise over the last SCOOP_RATE_WINDOW s of Status.json readings (the rate falls off with the distance from the
-    # star, so a short window follows it); the journal's FuelScoop is written only once the scoop ends
+    # star, so a short window follows it); the journal's FuelScoop comes every 5 t and at the end: too seldom
     SCOOP_RATE_WINDOW = 8.0
     SCOOP_RATE_MIN_S = 2.0
 
