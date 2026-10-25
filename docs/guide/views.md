@@ -242,6 +242,11 @@ up it says "checking…", never the previous target's verdict.
   Next: Stop 38 · 4.2 ly · 38 of 120 · refuel in 3 jumps", or the Road to Riches / Exomastery one), and a kept boxel's
   Next (or the boxel followed, in Boxel mode): "▦ Boxel: next Smojooe KL-P d5-41 · to try" or "· known · 3 of 14
   bodies", each with 🎯 where auto-target can work.
+- **The nearest catalogued sight**: "Nearest sight: 📜 The Ammonia Lyceum · Athaip WR-H d11-7577 · 320 ly" with 🎯,
+  from [EDAstro's Galactic Encyclopedia Catalog](https://edastro.com/gec/) (the community's curated sights: scenery,
+  planetary and stellar features, green gas giants, nebulae...; its page opens from the name), within 500 ly
+  (`[server] sights_range`; 0 turns it off and nothing is fetched). Here's heading names the sights of a system that
+  has one, and Nearby's row has 📜. The catalogue is asked for once a day, only when it changed, and never shipped.
 - An **at-risk line** shows what is aboard against your rebuy ("🗺 380M · 🧬 412M aboard · 3.2× rebuy · 4 d
   unsold"), only once that is over your amber level or rebuy multiple; a ship bought with Arx (its hull has no credit
   value) gets no rebuy multiple. Docked where your data sells it says what

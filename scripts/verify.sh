@@ -127,6 +127,7 @@ for k in outrider.readclient.URLS:   # nor EDSM's account reads (the key Check, 
     setattr(outrider.readclient, k, OFF)
 outrider.codex_images.REF = OFF      # nor Canonn for the checklists' pictures (the shipped list stays)
 ed_outrider.DSSA_URL = OFF          # nor EDAstro for the DSSA list
+ed_outrider.GEC_URL = OFF           # nor for its catalogued sights
 ed_outrider.Clipboard.TOOLS = ()   # the desktop clipboard is never touched by the smoke test
 ed_outrider.Clipboard.READ_TOOLS = ()   # nor read (the 📋 buttons)
 import outrider.service   # nor your own ~/.config/systemd/user or Startup folder, nor systemctl (S70's service)

@@ -1,5 +1,5 @@
 """Explorer ideas from EDCodex's Exploration tools (project/PLAN-explorer-ideas-2026-10-25.md), the server's parts:
-Search's "at least N" (7), EDSM's first reporter (5), the surface trail (1). The page's parts are in tests/page_smoke.js ("explorer ideas"). Fakes only."""
+Search's "at least N" (7), EDSM's first reporter (5), the surface trail (1), catalogued sights (9). The page's parts are in tests/page_smoke.js ("explorer ideas"). Fakes only."""
 import asyncio
 import time
 import unittest
@@ -123,6 +123,61 @@ class Trail(unittest.TestCase):
         sent = t.points((9, 5))
         self.assertEqual(len(sent), t.TRAIL_SENT)
         self.assertEqual(sent[-1], list(t.pts[-1]))
+
+
+class Sights(unittest.TestCase):
+    """9: EDAstro's catalogued sights, fetched at runtime (a made-up answer here, never their data)."""
+    ANSWER = [{"id": 1, "id64": 42, "name": "Lyceum", "type": "Sights and Scenery", "summary": "x" * 400,
+               "poiUrl": "https://edastro.com/gec/view/1", "galMapSearch": "Far", "coordinates": [100.0, 0.0, 0.0]},
+              {"id": 2, "id64": 43, "name": "Spire", "type": "Planetary Features", "summary": "", "poiUrl": "javascript:x",
+               "galMapSearch": "Farther", "coordinates": [400.0, 0.0, 0.0]},
+              {"id": 3, "id64": None, "name": "No id", "coordinates": [1, 2, 3]}, "junk"]
+
+    def test_compact_and_nearest(self):
+        import outrider.sights as S
+        got = S.compact(self.ANSWER)
+        self.assertEqual([e["name"] for e in got], ["Lyceum", "Spire"])   # no id64: left out
+        self.assertEqual((len(got[0]["summary"]), got[0]["id64"], got[1]["url"], got[1]["summary"]), (S.SUMMARY_MAX, "42", None, None))
+        with self.assertRaises(ValueError):
+            S.compact({"error": "maintenance"})
+        near = S.nearest(got, {"x": 0.0, "y": 0.0, "z": 0.0}, 500)
+        self.assertEqual((near["name"], near["distance"]), ("Lyceum", 100.0))
+        self.assertIsNone(S.nearest(got, {"x": 0.0, "y": 0.0, "z": 0.0}, 50))   # none within reach
+        self.assertIsNone(S.nearest(got, {"x": 0.0, "y": 0.0, "z": 0.0}, 0))    # off
+        self.assertEqual(sorted(S.by_system(got)), ["42", "43"])
+
+    def state(self):
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        j.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(time.time() - 30), "StarSystem": "Home", "SystemAddress": 9,
+                  "StarPos": [0, 0, 0]})
+        return ed_outrider.State(db, j, ed_outrider.Spansh(db), 25)
+
+    def test_the_conditional_fetch_here_nearby_and_now(self):
+        st, asked = self.state(), []
+
+        async def fake(url, etag=None, modified=None):
+            asked.append((url, etag))
+            return (200, self.ANSWER, "e1", "m1") if etag is None else (304, None, etag, modified)
+        st.spansh.get_if_changed = fake
+        self.assertIsNone(st.sight_near())                     # nothing fetched yet
+        asyncio.run(st.sights_check())
+        self.assertEqual(st.sight_near()["name"], "Lyceum")
+        self.assertEqual([e["name"] for e in st.sights_here(42)], ["Lyceum"])
+        asyncio.run(st.sights_check())                         # unchanged: asked with its etag, the copy kept
+        self.assertEqual(asked, [(ed_outrider.GEC_URL, None), (ed_outrider.GEC_URL, "e1")])
+        self.assertEqual(st.sight_near()["name"], "Lyceum")
+        st.sights_range = 50                                   # out of reach
+        st._sight_near = (None, None)
+        self.assertIsNone(st.sight_near())
+        st.sights_range = 0                                    # off: nothing shown anywhere
+        self.assertEqual((st.sights_here(42), st.sight_near()), ([], None))
+
+    def test_the_setting(self):
+        self.assertEqual(ed_outrider.CONFIG_RANGES[("server", "sights_range")][:2], (0, 5000))
+        import outrider.config_edit as C
+        self.assertIn(("server", "sights_range"), [k for _, _, keys in C.GROUPS for k in keys])
 
 
 if __name__ == "__main__":

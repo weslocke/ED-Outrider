@@ -42,7 +42,7 @@ GROUPS = (
                                      ("server", "backup_keep"), ("server", "backup_every_days"), ("server", "speech_file"))),
     ("online", "Online checks", (("server", "update_check"), ("spansh", "watch_firsts"), ("spansh", "concurrency"),
                                   ("spansh", "map_max_radius"), ("spansh", "map_max_pages"))),
-    ("nearby", "Nearby", (("server", "radius"), ("server", "radius_choices"))),
+    ("nearby", "Nearby", (("server", "radius"), ("server", "radius_choices"), ("server", "sights_range"))),
     ("route", "Plot Route", (("highway", "clipboard"), ("highway", "efficiency"), ("highway", "conservative"),
                              ("highway", "conservative_ly"), ("highway", "voice_plot"), ("highway", "voice_plot_ly"),
                              ("highway", "background_image"), ("highway", "background_extent"),

@@ -210,6 +210,7 @@ import outrider.commander  # the Commander view: the commander, inventory, engin
 import outrider.earnings   # the Commander view's Earnings: what exploration, exobiology and mining paid (pure, + its SQL)
 import outrider.readclient  # EDSM's and Inara's account reads (G3): the key checks, EDSM's flight log
 import outrider.records     # My firsts' Your records: the most extreme bodies among your own scans
+import outrider.sights      # catalogued sights: EDAstro's Galactic Encyclopedia Catalog, fetched once a day
 import outrider.backfill   # filling a gap in EDSM's flight log (S47): the events rebuilt from the journals (pure)
 import outrider.edsmlog    # your EDSM flight log from before your journals (S67): kept entries, which count as visits
 import outrider.checklist  # the exobiology checklist: every species by region, with your state (pure)
@@ -451,6 +452,12 @@ FIRSTS_SEEN_SAY_S = 30 * 60
 # The update check ([server] update_check): GitHub's latest release against the running version
 RELEASES_LATEST = "https://api.github.com/repos/weslocke/ED-Outrider/releases/latest"
 RELEASES_PAGE = "https://github.com/weslocke/ED-Outrider/releases/latest"
+# Catalogued sights ([server] sights_range): EDAstro's GEC, asked once a day and only when changed (meta sights)
+GEC_URL = outrider.sights.URL
+SIGHTS_RANGE = 500.0              # ly: Now names the nearest catalogued sight within this ([server] sights_range; 0 off)
+SIGHTS_CHECK_START = 90           # s after the server starts before the first check
+SIGHTS_CHECK_EVERY = 86400        # s between checks
+SIGHTS_CHECK_RETRY = 3600         # s after a failed check
 UPDATE_CHECK_START = 60           # s after the server starts before the first check
 UPDATE_CHECK_EVERY = 86400        # s between checks
 UPDATE_CHECK_RETRY = 3600         # s to wait after a failed check (offline, GitHub down or throttled)
@@ -970,7 +977,7 @@ def _config_range(lo, hi, unit):
 CONFIG_RANGES = {
     ("defaults", "module_warn"): (1, 100, "%"), ("defaults", "rig_warn"): (100, RIG_LOST_M - 100, "m"),
     ("defaults", "speech_profanity_pct"): (0, 100, "%"), ("defaults", "speech_speed"): (0.5, 2, "times"),
-    ("speech", "pad_delay"): (0, 20, "s"),
+    ("speech", "pad_delay"): (0, 20, "s"), ("server", "sights_range"): (0, 5000, "ly"),
     ("autohonk", "delay"): (0, 30, "s"), ("autohonk", "hold"): (0.5, 20, "s"),
     ("copilot", "hold_ms"): (200, 3000, "ms"), ("copilot", "double_ms"): (100, 1000, "ms"),
     ("highway", "autotarget_delay"): (0, 60, "s"), ("highway", "efficiency"): (1, 100, "%"),
@@ -1132,6 +1139,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         # at least 1 ly: a bad config value is reported above; a --radius 0 flag is clamped
         "radius": max(1.0, pick(args.radius, num("server", sv, "radius", _config_radius, None), 25.0)),
         "radius_choices": radius_choices,
+        "sights_range": max(0.0, min(5000.0, num("server", sv, "sights_range", float, SIGHTS_RANGE))),   # CONFIG_RANGES' 0-5000
         # a relative --db is relative to the current folder, like every other path flag; a relative db in the
         # config file is relative to the repository folder (where this script is), so a copied folder keeps working
         "db": (os.path.abspath(os.path.expanduser(args.db)) if args.db
@@ -1279,6 +1287,7 @@ game_pc = {q(st["game_pc"] if st["game_pc"] == "auto" else ("true" if st["game_p
 update_check = {"true" if st["update_check"] else "false"}   # once a day, ask GitHub whether a newer Outrider release is out, and say so on the page (only the request: nothing about you is sent)
 radius = {n(st["radius"])}      # ly: the sphere of nearby systems the page lists
 radius_choices = [{", ".join(n(x) for x in st["radius_choices"])}]   # ly: what the page's radius dropdown offers
+sights_range = {n(st["sights_range"])}   # ly: Now names the nearest of EDAstro's catalogued sights within this (0 = off: not even fetched)
 backup_dir = {p(_root_relative(st["backup_dir"]))}   # backups: dated database zips, and every live journal copied once into its journals/
 backup_keep = {st["backup_keep"]}   # dated database zips kept (the journal archive is never pruned)
 backup_every_days = {n(st["backup_every_days"])}   # automatic backup at start when the last is older than this, and when the game quits (0 = off; a journal re-read is still backed up first)
@@ -7020,7 +7029,7 @@ LOOKUP_URLS = (("spansh", ("SPANSH_SEARCH", "SPANSH_BODY_SEARCH", "SPANSH_STATIO
                            "SPANSH_ROUTE", "SPANSH_GENERIC_ROUTE", "SPANSH_RESULTS", "SPANSH_RICHES", "SPANSH_EXO",
                            "SPANSH_TRADE", "SPANSH_TOURIST", "SPANSH_SYSTEM_NAMES", "SPANSH_SYSTEM_SEARCH")),
                ("edsm", ("EDSM_SYSTEM", "EDSM_SPHERE", "EDSM_BODIES")),
-               ("github", ("RELEASES_LATEST",)), ("edastro", ("DSSA_URL",)))
+               ("github", ("RELEASES_LATEST",)), ("edastro", ("DSSA_URL", "GEC_URL")))
 
 
 def lookup_source(url):
@@ -7910,6 +7919,8 @@ class State:
         self._records = None       # (key, answer): My firsts' Your records, worked out again when scans or jumps change
         self.edsm_first = {}       # id64 -> EDSM's first reporter {commander, date}, from the target's EDSM answers
         self.trail = SurfaceTrail()  # where you have been on the body you are over, this visit (the surface map's trail)
+        self.sights_range = SIGHTS_RANGE   # [server] sights_range (run() sets it); 0: no catalogued sights at all
+        self._sights = (None, [], {})      # (meta sights' checked, entries, by id64): read again when a check stored new ones
         self.reported_seen = None  # the overlay_detail key of the last look that found no life
         self.route_spansh = {}     # id64 -> (when, has a record): Spansh asked about the game's route hops (in memory only)
         self.route_task = None     # that ask (one at a time)
@@ -8264,6 +8275,7 @@ class State:
             "uploads": self.uploads_summary(),
             "sampling": self.sampling_summary(),
             "surface": self.surface_summary(),
+            "sight_near": self.sight_near(),   # the nearest catalogued sight within [server] sights_range (Now)
             "overlay": self.overlay_info(),
             # metres between samples per genus (a shipped table), shown before you land (review S1)
             "colony": outrider.bio.colony_table() if outrider.bio else None,
@@ -11621,6 +11633,59 @@ class State:
         self.journals.moment("firsts_seen", iso_ts(now), system=name, id64=str(id64), bodies=row[1], first_ts=first,
                              reported_ts=row[0], value=self.system_values.get(name), today=today, speak=speak)
 
+    # ---- catalogued sights (explorer ideas, item 9): EDAstro's GEC, fetched here, never shipped ----
+    def sights_list(self):
+        """(entries, {id64: [entries]}) from the last copy kept (meta sights); empty with the feature off or none yet."""
+        if not self.sights_range:
+            return [], {}
+        d = meta_get(self.db, "sights") or {}
+        if self._sights[0] != d.get("checked"):
+            entries = d.get("data") or []
+            self._sights = (d.get("checked"), entries, outrider.sights.by_system(entries))
+        return self._sights[1], self._sights[2]
+
+    def sights_here(self, id64):
+        """The catalogued sights in system `id64` (Here's heading, Nearby's 📜)."""
+        return self.sights_list()[1].get(str(id64), [])
+
+    def sight_near(self):
+        """The nearest catalogued sight within [server] sights_range of you, with its distance (Now's line), or None."""
+        entries = self.sights_list()[0]
+        pos = self.journals.pos
+        if not entries or not pos:
+            return None
+        key = (pos.get("id64"), self._sights[0])
+        if getattr(self, "_sight_near", (None,))[0] != key:
+            self._sight_near = (key, outrider.sights.nearest(entries, pos, self.sights_range))
+        return self._sight_near[1]
+
+    async def sights_check(self):
+        """One conditional ask of EDAstro's GEC; a new answer is kept (meta sights), an unchanged one only dated. Raises
+        on a failure (the loop waits SIGHTS_CHECK_RETRY)."""
+        d = meta_get(self.db, "sights") or {}
+        status, data, etag, modified = await self.spansh.get_if_changed(GEC_URL, d.get("etag"), d.get("modified"))
+        d = dict(d, checked=time.time())
+        if status == 200:
+            d.update(data=outrider.sights.compact(data), etag=etag, modified=modified)
+        meta_set(self.db, "sights", d)
+        self.db.commit()
+        self.bump()
+
+    async def watch_sights(self):
+        """[server] sights_range above 0: EDAstro's catalogued sights, at start and once a day (only the request: nothing
+        about you is sent)."""
+        await asyncio.sleep(SIGHTS_CHECK_START)
+        while True:
+            try:
+                await self.sights_check()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:  # noqa: BLE001 -- offline, EDAstro down, an answer of another shape: later, quietly
+                print(f"catalogued sights: could not ask EDAstro ({type(e).__name__}); trying again in an hour", file=sys.stderr)
+                await asyncio.sleep(SIGHTS_CHECK_RETRY)
+                continue
+            await asyncio.sleep(SIGHTS_CHECK_EVERY)
+
     async def watch_updates(self):
         """[server] update_check: GitHub's latest release, at start and once a day; a newer one goes in the payload
         (the page's Update pill). Only the request is made: nothing about the player is sent."""
@@ -12017,6 +12082,7 @@ class State:
         return {"id64": str(id64), "name": name, "bodies": out, "tree": tree, "partial": partial, "region": region,
                 "spansh_date": spansh_date(spansh_recs), "spansh_old": spansh_old(spansh_recs),   # Here's header, Now (#11)
                 "edsm_first": self.edsm_first.get(id64),   # EDSM's first reporter, when it was asked as your target
+                "sights": self.sights_here(id64),   # EDAstro's catalogued sights in this system
                 "phenomena": phenomena, "rare_stars": rare_stars(out),
                 "pois": [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))],
                 "leaving": leaving,
@@ -13189,6 +13255,7 @@ class State:
         s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts, coalesce(n, 1) AS n, max((SELECT count(DISTINCT site) FROM phenomena_sites ps WHERE ps.system = phenomena.system AND ps.kind = phenomena.kind), reached_ts IS NOT NULL) AS visited FROM phenomena WHERE system=?", (id64,))]
         s["rare_stars"] = rare_stars(records, base["name"])   # from Spansh's records too: seen before you go
         s["ggg"], s["ggg_green"] = ggg_bodies(self.db, id64, base["name"], records)   # Spansh's too: a system to go to
+        s["sights"] = [e["name"] for e in self.sights_here(id64)]   # EDAstro's catalogued sights there (📜)
         # the star and planet types here as codex entries, Spansh's too (the page marks the ones new to your codex)
         s["codex_types"] = [dict(t, body=r["name"]) for r in records for t in [codex_type(r)] if t]
         s["region"] = outrider.bio.region_name(base["x"], base["y"], base["z"]) \
@@ -13499,7 +13566,7 @@ class State:
     # what a source being down means for the player, on its card (S42)
     LOOKUP_DOWN_WORDS = {"spansh": "Nearby and Search show what was kept from earlier",
                          "edsm": "the EDSM fallbacks (Find by name, EDSM's list when Spansh fails) wait",
-                         "github": "the update check waits", "edastro": "the Nearest finder's DSSA carrier list waits",
+                         "github": "the update check waits", "edastro": "the Nearest finder's DSSA carrier list and the catalogued sights wait",
                          "canonn": "the checklists' pictures use the copy kept"}
 
     def check_lookup_outages(self, now=None):
@@ -23077,6 +23144,8 @@ async def run(args, st):
     firsts_task = state.watch_task(asyncio.create_task(state.watch_firsts()), "watch_firsts") if st["watch_firsts"] else None
     update_task = state.watch_task(asyncio.create_task(state.watch_updates()), "watch_updates") if st["update_check"] else None
     images_task = state.watch_task(asyncio.create_task(state.watch_codex_images()), "watch_codex_images")   # the checklists' picture links, once a day
+    state.sights_range = st["sights_range"]
+    sights_task = state.watch_task(asyncio.create_task(state.watch_sights()), "watch_sights") if st["sights_range"] else None
     # the in-game overlay's window, run by Outrider on the game PC while the overlay is wanted (never on a server,
     # under --simulate or with OUTRIDER_NO_OVERLAY_WINDOW: verify.sh's scratch server)
     overlay_task = None
@@ -23091,6 +23160,8 @@ async def run(args, st):
     print("update check: " + ("on (GitHub's latest release, once a day)" if st["update_check"] else "off ([server] update_check)"))
     print("firsts watch: " + ("on (your unsold firsts on Spansh: one request every 10-30 s, each system once a day)"
                               if st["watch_firsts"] else "off ([spansh] watch_firsts)"))
+    print("catalogued sights: " + (f"on (EDAstro's catalogue, once a day; Now names the nearest within {st['sights_range']:g} ly)"
+                                   if st["sights_range"] else "off ([server] sights_range = 0)"))
     print(state.uploads_line())
 
     runner = web.AppRunner(make_app(state, hosts))
@@ -23137,7 +23208,7 @@ async def run(args, st):
             state.honker.shutdown()       # ...and a press still waiting for the keyboard is refused
         if state.overlay_runner:
             state.overlay_runner.stop()   # the overlay window closes with Outrider
-        tasks = [t for t in (watcher, rules_task, button_task, firsts_task, update_task, images_task, overlay_task,   # the quit backup: finish_backup
+        tasks = [t for t in (watcher, rules_task, button_task, firsts_task, update_task, images_task, sights_task, overlay_task,   # the quit backup: finish_backup
                              *state.background_tasks()) if t]
         for t in tasks:
             t.cancel()

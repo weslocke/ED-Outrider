@@ -112,6 +112,7 @@ The project's history is in the [changelog](docs/CHANGELOG.md). Contributors and
 | What | From | Licence | In Outrider |
 |---|---|---|---|
 | Systems, bodies, stations, routes | [Spansh](https://spansh.co.uk), [EDSM](https://www.edsm.net) | their terms | looked up as you play |
+| Catalogued sights | CMDR Orvidius's [EDAstro](https://edastro.com/gec/), its Galactic Encyclopedia Catalog | [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/) | fetched once a day at runtime, never shipped; each sight links to its page (`outrider/sights.py`) |
 | Exobiology spawn conditions, nebulae | the community's work, gathered by the Canonn Research Group, maintained in [EDMC-BioScan](https://github.com/Silarn/EDMC-BioScan) | GPL v2 or later | `resources/bio_rules.json`, refreshed when it changes |
 | Colour variants | [EDMC-ExploData](https://github.com/Silarn/EDMC-ExploData) | GPL v2 | downloaded on the first start, not shipped |
 | Colony distances | the game (the Genetic Sampler shows them) | | `outrider/bio.py` |

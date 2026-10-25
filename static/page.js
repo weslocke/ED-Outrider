@@ -249,7 +249,19 @@ function notable(s) {
     (gg.length ? gggIcon(false, `potential green gas giant${gg.length > 1 ? "s" : ""} (the community's ladder model, from your scans or Spansh's): ` +
       gg.map(x => `${x.body} (${x.chance})`).join(", "), gg.length) : "") + (s.ggg_green ? gggIcon(true, "a green gas giant your codex confirms", s.ggg_green) : "") +
     codexTypesTag(s) + phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + poiTag(s.pois) + (s.spansh_old ? "" : oldDataTag(s.stale_bio)) + bioUnknownTag(s.bio_unknown) +
-    (s.curiosities ? `<span class="nb cur" title="${(s.curiosity_list || []).map(c => esc(`${c.body}: ${c.tag} (${c.why})`)).join("&#10;")}">🔭${s.curiosities > 1 ? "×" + s.curiosities : ""}</span>` : "");
+    (s.curiosities ? `<span class="nb cur" title="${(s.curiosity_list || []).map(c => esc(`${c.body}: ${c.tag} (${c.why})`)).join("&#10;")}">🔭${s.curiosities > 1 ? "×" + s.curiosities : ""}</span>` : "") +
+    ((s.sights || []).length ? `<span class="nb sight" title="${esc(`in EDAstro's catalogue of sights: ${s.sights.join(", ")}`)}">📜</span>` : "");
+}
+// EDAstro's catalogued sights (explorer ideas, item 9): a sight's link, its type and summary in the title; credited
+const SIGHTS_CREDIT = "from EDAstro's Galactic Encyclopedia Catalog (CC BY-NC-SA 3.0)";
+const sightLink = e => `<a class="sight" href="${esc(e.url || "https://edastro.com/gec/")}" target="_blank" rel="noopener"` +
+  ` title="${esc([e.type, e.summary, SIGHTS_CREDIT].filter(Boolean).join("\n"))}">📜 ${esc(e.name || "a catalogued sight")}</a>`;
+// Now's line: the nearest within [server] sights_range, or the one you are at
+function sightNearHtml(n) {
+  if (!n) return "";
+  const here = String(n.id64) === posId();
+  return here ? `${sightLink(n)} <span class="unk">· here${n.type ? ` · ${esc(n.type)}` : ""}</span>`
+    : `<span class="unk">Nearest sight:</span> ${sightLink(n)} <span class="unk">· ${esc(n.system || "")} · ${Math.round(n.distance).toLocaleString()} ly</span>${sysAimBtn(n.system, n.id64)}`;
 }
 // pre-Odyssey Spansh data (stale_bio {bodies, genera_top, up_to, reported}): thin-atmosphere worlds marked not
 // landable and bio never reported. A mark only: no value counts it, and nothing is spoken.
@@ -1375,6 +1387,7 @@ function renderNow() {
   const nr = nowRouteHtml(), nb = nowBoxelHtml();
   if (nr) lines.push(`<div class="now-line now-route">${nr}</div>`);
   if (nb) lines.push(`<div class="now-line now-boxel">${nb}</div>`);
+  if (data.sight_near) lines.push(`<div class="now-line now-sight">${sightNearHtml(data.sight_near)}</div>`);   // explorer ideas, 9
   if (f && f.live && f.pct != null)
     lines.push(`<div class="now-line ${f.pct < 15 ? "urgent" : f.pct < 30 ? "warn" : ""}">⛽ <b>${f.pct}%</b>` +
       (f.to_full_s != null ? ` · <span class="ok" title="while scooping: at the rate the tank is filling now">${toFullText(f.to_full_s)} to full</span>` : "") +
@@ -4797,7 +4810,8 @@ function renderHere() {
     ` · ${h.bodies.length} bod${h.bodies.length === 1 ? "y" : "ies"} known · ` +
     // #11: when Spansh's data was last reported; pre-Odyssey marked
     (h.spansh_date ? `<span class="${h.spansh_old ? "old" : "unk"}" title="${h.spansh_old ? esc(spanshOldTitle(h.spansh_old)) : "when Spansh's data on this system was last reported"}">Spansh: ${h.spansh_old ? "pre-Odyssey, " : ""}${spanshDay(h.spansh_date)}</span> · ` : "") +
-    (h.edsm_first ? `<span class="unk" title="${esc(edsmFirstText(h.edsm_first))} (EDSM's own reports, not the game's discovery tag)">EDSM: since ${esc(h.edsm_first.date.slice(0, 4))}</span> · ` : "") + (h.phenomena && h.phenomena.length ? phenomenaTag(h.phenomena) + " · " : "") + (h.rare_stars && h.rare_stars.length ? rareStarTag(h.rare_stars) + " · " : "") + (h.pois && h.pois.length ? poiTag(h.pois) + " · " : "") +
+    (h.edsm_first ? `<span class="unk" title="${esc(edsmFirstText(h.edsm_first))} (EDSM's own reports, not the game's discovery tag)">EDSM: since ${esc(h.edsm_first.date.slice(0, 4))}</span> · ` : "") +
+    ((h.sights || []).length ? h.sights.map(sightLink).join(" ") + " · " : "") + (h.phenomena && h.phenomena.length ? phenomenaTag(h.phenomena) + " · " : "") + (h.rare_stars && h.rare_stars.length ? rareStarTag(h.rare_stars) + " · " : "") + (h.pois && h.pois.length ? poiTag(h.pois) + " · " : "") +
     `<span title="what selling now would pay for data you hold from here / the most this system could pay">now <b>${credits(h.value_now || 0)} cr</b> · max <b>${credits(maxOf(h) || 0)} cr</b>${maxBonus() ? "" : ` <span class="unk" title="Max leaves out first-discovery, first-mapped and first-footfall bonuses (alerts & thresholds dialog)">no bonus</span>`}</span>` +
     ` <a class="unk" href="api/export?what=system&id=${encodeURIComponent(h.id64)}" download title="this system's bodies and values as a spreadsheet (CSV)">⬇ CSV</a>` +
     ` <button type="button" class="mini" id="hereCopyMd" title="copy a short summary of this system in Markdown, for Reddit or Discord">📋</button>` +

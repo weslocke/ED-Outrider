@@ -10088,6 +10088,14 @@ const releasePayloads = async () => {
       const L = surfaceLayout(s, surfaceCfg(), 400), p = L.trail[0];
       return [L.trail.length, Math.round(p[0]), Math.round(p[1]) < L.c, L.span === surfaceLayout({...s, trail: []}, surfaceCfg(), 400).span]; })()`);
     want.trail = [2, 200, true, true];   // 87 m east with your heading east: straight up the screen
+    // 9: EDAstro's catalogued sights: a link with its type, summary and credit; Now's nearest line; Nearby's 📜
+    got.sights = w.eval(`(() => { const e = {id64: "42", name: "Lyceum", type: "Sights and Scenery", summary: "Glow.", url: "https://edastro.com/gec/view/1",
+        system: "Far", distance: 320.4};
+      const a = new DOMParser().parseFromString(sightLink(e), "text/html").querySelector("a");
+      return [a.textContent, a.href, a.title.split("\\n")[0], a.title.includes("CC BY-NC-SA"),
+              new DOMParser().parseFromString(sightNearHtml(e), "text/html").body.textContent.replace(/\\s+/g, " ").trim().startsWith("Nearest sight: 📜 Lyceum · Far · 320 ly"),
+              sightNearHtml(null), notable({sights: ["Lyceum"], notable: {}}).includes("📜")]; })()`);
+    want.sights = ["📜 Lyceum", "https://edastro.com/gec/view/1", "Sights and Scenery", true, true, "", true];
     // (the batch's later items add their checks above this line)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodEX = !bad.length && errors.length === before;

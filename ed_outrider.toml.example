@@ -60,6 +60,8 @@
 # radius = 25          # ly: the sphere of nearby systems the page lists (Spansh is asked once per jump; at least 1)
 # radius_choices = [20, 25, 30, 40, 50]   # ly: the page's radius dropdown; larger spheres (up to your jump range,
 #                                         # say) work but fetch and redraw more — ~1,500 systems at 100 ly in the black
+# sights_range = 500   # ly: Now names the nearest of EDAstro's catalogued sights within this; Here and Nearby mark
+#                      # them (0 = off: the catalogue is not even fetched; it is asked once a day, never shipped)
 # Relative paths below (db, backup_dir, speech_file) are relative to the folder ed_outrider.py is in (a relative
 # --db flag is relative to the current folder). Your own files go in data/ (git-ignored); resources/ holds the
 # shipped ones.

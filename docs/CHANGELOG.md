@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Catalogued sights near you, from EDAstro
+- Explorer ideas, item 9: EDAstro's Galactic Encyclopedia Catalog (CMDR Orvidius's curated sights: scenery, planetary
+  and stellar features, green gas giants, nebulae, ~658 of them) asked once a day and only when it changed
+  (`watch_sights`, `get_if_changed`; meta `sights`, cut to what is shown by `outrider/sights.py`), never shipped: CC
+  BY-NC-SA 3.0, credited in the README and on every link. Now names the nearest within `[server] sights_range` (500 ly;
+  0 turns it off and nothing is fetched) with 🎯; Here's heading names a system's sights (each opening its page); Nearby's
+  row has 📜. Nothing is spoken. verify.sh points `GEC_URL` at a closed port.
+
 ## 2026-10-25 · Your trail on the surface map
 - Explorer ideas, item 1: a faint line under the surface map's markers is where you have driven, walked or flown low on
   this body this visit, so a search for the last species can see the ground already looked over. `SurfaceTrail`:
