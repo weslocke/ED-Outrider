@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · 🏆 on a body that holds one of Your records
+- Explorer ideas, item 4: in Here, a body that holds one of Your records has 🏆 beside its name (its title: "Your record:
+  Hottest planet, 900 K"), and Your records marks one set in the last day "🏆 new". Visual only: the voice's "no records
+  or milestones" decision stands. The page asks GET `/api/records` 3 s after Here loads (`recordsSoon`: a burst of FSS
+  scans is one request; the server works it out again only when a scan or jump was added). Here's legend has it.
+
 ## 2026-10-25 · Five more curiosities
 - Explorer ideas, item 3: the checks planned with the first set (PLAN-review-followup §5.3) and never built, each
   counted on the author's 26,748 scans first so none is noise: a **shepherd moon** (orbits inside its planet's rings: 32

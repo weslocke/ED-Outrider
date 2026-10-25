@@ -10048,6 +10048,14 @@ const releasePayloads = async () => {
     // 2: the seconds to a full tank while scooping
     got.toFull = w.eval(`[toFullText(38), toFullText(60), toFullText(125)]`);
     want.toFull = ["38 s", "1 min 00", "2 min 05"];
+    // 4: a body that holds one of Your records gets 🏆 in Here, its records in the title; a record set today is new
+    got.recMark = w.eval(`(() => { const k = JSON.stringify(REC.d); REC.d = {bodies: 1, records: [
+        {label: "Hottest planet", text: "900 K", body: "B 3", id64: "77", ts: new Date().toISOString()},
+        {label: "Biggest planet", text: "70,000 km", body: "B 3", id64: "77", ts: "2020-01-01T00:00:00Z"}]};
+      const m = new DOMParser().parseFromString(recordMark("77", "B 3"), "text/html").querySelector(".rec");
+      const out = [m.textContent, m.title, recordMark("77", "B 4"), recordMark("78", "B 3"), REC.d.records.map(recordNew)];
+      REC.d = JSON.parse(k); return out; })()`);
+    want.recMark = ["🏆", "Your record: Hottest planet, 900 K\nYour record: Biggest planet, 70,000 km", "", "", [true, false]];
     // (the batch's later items add their checks above this line)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodEX = !bad.length && errors.length === before;

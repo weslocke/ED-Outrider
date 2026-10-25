@@ -4628,6 +4628,7 @@ async function loadHere() {
   const key = `${id}|${data.scan_version}${partial}`;
   if (key === hereKey) return;
   hereKey = key;
+  recordsSoon();   // Your records again (🏆 on a body that holds one), after the burst of scans that moved the key
   let fresh;
   try { fresh = await apiJson(`api/system/${id}`); } catch (err) { fresh = {error: err.message}; }
   if (key !== hereKey) return;   // a newer request is already on its way
@@ -4840,7 +4841,7 @@ function renderHere() {
     const firsts = [b.first_discovered && `<span class="fl" title="first discovered">🏁</span>`, b.first_mapped && `<span class="fl" title="first mapped">🗺</span>`,
                     !b.first_mapped && b.mapped && `<span class="fl unk" title="mapped (not first)">🗺</span>`,
                     b.first_footfall && `<span class="fl" title="first footfall">👣</span>`, !b.scanned && `<span class="unk" title="known to Spansh, not scanned by you">—</span>`].filter(Boolean).join("");
-    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${pinMarkFor(h.id64, b.name)}${codexTypeMark(b.codex_type, h.region)}${codexGeoMark(b.codex_geo, h.region)}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
+    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${pinMarkFor(h.id64, b.name)}${codexTypeMark(b.codex_type, h.region)}${codexGeoMark(b.codex_geo, h.region)}${recordMark(h.id64, b.name)}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
       <td>${sfText(b.type === "Star" ? "star" : "planet", b.subtype || "")}${b.type === "Star" ? (b.scoopable ? ` <span class="scoop">⛽</span>` : "") : ""}${b.rings ? `<span class="sf2"> ${icon("ring", "i-ring", b.rings, ringsText(b))}</span>` : ""}${b.dist_ls != null ? `<div class="sf2 sub2 unk">${Math.round(b.dist_ls).toLocaleString()} ls</div>` : ""}</td>
       <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}</td>
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
@@ -4889,6 +4890,7 @@ const HERE_LEGEND = [
   [(q, s) => q(".cur"), "🔭", "something unusual"],
   [q => q(".ggg:not(.sure)"), gggIcon(false, ""), "potential green gas giant"],
   [q => q(".ggg.sure"), gggIcon(true, ""), "green gas giant"],
+  [q => q(".rec"), "🏆", "holds one of Your records (My firsts)"],
   [q => q(".nb.ELW"), `<span class="nb ELW">ELW</span>`, "Earth-like world"],
   [q => q(".nb.WW"), `<span class="nb WW">WW</span>`, "water world"],
   [q => q(".nb.AW"), `<span class="nb AW">AW</span>`, "ammonia world"],
@@ -5563,15 +5565,24 @@ async function loadFirsts() {
 }
 // Your records (the author, 2026-10-25): GET api/records when the box is opened, again when a scan or a jump adds one
 // (scan_version), never while it is closed; 🔍 opens the body in Here, ⌖ the system
-const REC = {key: null, d: null};
-async function loadRecords() {
-  if (!document.getElementById("recordsBox").open) return;
+const REC = {key: null, d: null, soon: null};
+async function loadRecords(any = false) {
+  if (!any && !document.getElementById("recordsBox").open) return;
   const key = `${data && data.scan_version}|${data && data.position && data.position.id}`;
   if (key === REC.key) return;
   REC.key = key;
   try { REC.d = await apiJson("api/records"); } catch (err) { REC.d = {error: err.message}; REC.key = null; }
   renderRecords();
+  if (view === "here" && hereData) renderHere();   // its 🏆 marks
 }
+// Here's 🏆 (explorer ideas, item 4): asked a few seconds after Here loads, so a burst of FSS scans is one request
+function recordsSoon() { clearTimeout(REC.soon); REC.soon = setTimeout(() => loadRecords(true), 3000); }
+// a body of Here that holds one of Your records: 🏆, the records in its title (visual only: the voice says no records)
+function recordMark(id64, name) {
+  const held = ((REC.d && REC.d.records) || []).filter(r => r.body === name && r.id64 === String(id64));
+  return held.length ? ` <span class="rec" title="${esc(held.map(r => `Your record: ${r.label}, ${r.text}`).join("\n"))}">🏆</span>` : "";
+}
+const recordNew = r => r.ts && Date.now() - Date.parse(r.ts) < 86400e3;   // set in the last day
 function renderRecords() {
   const el = document.getElementById("recordsBody"), d = REC.d;
   if (!d) return;
@@ -5580,7 +5591,7 @@ function renderRecords() {
   el.innerHTML = `<table class="recordsTable"><tbody>` + d.records.map(r => `<tr><td>${esc(r.label)}</td><td class="num"><b>${esc(r.text)}</b></td>` +
     `<td>${r.body ? `${esc(r.body)} <span class="goto" data-body="${esc(r.body)}" data-bsys="${esc(r.id64)}" title="open ${esc(r.body)} in Here">🔍</span>`
       : `<span class="goto" data-goto="${esc(r.id64)}" title="open ${esc(r.system || "")} in Here">⌖</span>`}${r.body === r.system ? "" : ` <span class="unk">${esc(r.system || "")}</span>`}</td>` +
-    `<td class="unk c2hide">${esc(day(r.ts))}</td></tr>`).join("") +
+    `<td class="unk c2hide">${esc(day(r.ts))}${recordNew(r) ? ` <span class="ok" title="set in the last day">🏆 new</span>` : ""}</td></tr>`).join("") +
     `</tbody></table><div class="hint">From your ${d.bodies.toLocaleString()} scans kept in your journals (nav beacon reads left out); Farthest from Sol from every system you have been to.</div>`;
 }
 document.getElementById("recordsBox").addEventListener("toggle", e => {
