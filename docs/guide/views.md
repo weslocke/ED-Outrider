@@ -156,7 +156,10 @@ runs that died with you ("+ 2 sample runs lost, 24M", a system with only those l
 Next line, the leaving warning, the status report and the arrival briefing name the scans still to redo ("Next: rescan
 12 lost scans in the FSS"), never "nothing worth staying for". <b>Left behind</b> lists nearby systems with work over your
 thresholds, nearest first; a click on System, Dist or Worth sorts by it (Worth: the most valuable first), kept per
-device.
+device. <b>Your records</b>, folded at the end, lists the most extreme bodies among your own scans (hottest and biggest
+star, hottest and coldest planet, highest and lowest gravity you could land on, the highest-gravity Earth-like, the
+thickest atmosphere, the fastest spin, the widest ring...) and the system farthest from Sol you have been to; 🔍 opens
+the body in Here.
 <br><br><img src="../images/firsts.png" alt="My firsts">
 </td>
 </tr>

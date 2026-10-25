@@ -5560,10 +5560,42 @@ async function loadFirsts() {
   if (firstsData && firstsData.error) firstsKey = null;   // retried at the next render
   renderFirsts();
 }
+// Your records (the author, 2026-10-25): GET api/records when the box is opened, again when a scan or a jump adds one
+// (scan_version), never while it is closed; 🔍 opens the body in Here, ⌖ the system
+const REC = {key: null, d: null};
+async function loadRecords() {
+  if (!document.getElementById("recordsBox").open) return;
+  const key = `${data && data.scan_version}|${data && data.position && data.position.id}`;
+  if (key === REC.key) return;
+  REC.key = key;
+  try { REC.d = await apiJson("api/records"); } catch (err) { REC.d = {error: err.message}; REC.key = null; }
+  renderRecords();
+}
+function renderRecords() {
+  const el = document.getElementById("recordsBody"), d = REC.d;
+  if (!d) return;
+  if (d.error) { el.innerHTML = `<span class="unk">${esc(d.error)}</span>`; return; }
+  if (!d.records.length) { el.innerHTML = `<span class="unk">No scans of yours yet.</span>`; return; }
+  el.innerHTML = `<table class="recordsTable"><tbody>` + d.records.map(r => `<tr><td>${esc(r.label)}</td><td class="num"><b>${esc(r.text)}</b></td>` +
+    `<td>${r.body ? `${esc(r.body)} <span class="goto" data-body="${esc(r.body)}" data-bsys="${esc(r.id64)}" title="open ${esc(r.body)} in Here">🔍</span>`
+      : `<span class="goto" data-goto="${esc(r.id64)}" title="open ${esc(r.system || "")} in Here">⌖</span>`}${r.body === r.system ? "" : ` <span class="unk">${esc(r.system || "")}</span>`}</td>` +
+    `<td class="unk c2hide">${esc(day(r.ts))}</td></tr>`).join("") +
+    `</tbody></table><div class="hint">From your ${d.bodies.toLocaleString()} scans kept in your journals (nav beacon reads left out); Farthest from Sol from every system you have been to.</div>`;
+}
+document.getElementById("recordsBox").addEventListener("toggle", e => {
+  store.set("recordsOpen", e.target.open);
+  if (e.target.open) loadRecords();
+});
+document.getElementById("recordsBody").addEventListener("click", e => {
+  const b = e.target.closest("[data-body]"); if (b) return openBodyIn(b.dataset.bsys, b.dataset.body);
+  const g = e.target.closest("[data-goto]"); if (g) return showInHere(g.dataset.goto);
+});
+if (store.get("recordsOpen", false)) document.getElementById("recordsBox").open = true;
 // the Map coloured by work left reads Left behind's and My firsts' answers: drawn again when one comes
 const mapWorkRedraw = () => { if (view === "map" && mSettings.color === "work") drawMap(); };
 function renderFirsts() {
   mapWorkRedraw();
+  loadRecords();   // only while its box is open
   const f = firstsData, st = document.getElementById("fStatus"), bms = bmMap();
   if (!f || f.error) { st.textContent = f ? f.error : ""; return; }
   // lost data stays in the database (a rescan earns it again) but is hidden unless asked for. x.sale is the

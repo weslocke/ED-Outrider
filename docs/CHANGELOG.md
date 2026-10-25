@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · My firsts: Your records
+- The author: a folded **Your records** box at the end of My firsts: the most extreme bodies among your own scans
+  (hottest, biggest and heaviest star; hottest, coldest, biggest, smallest and heaviest planet; highest and lowest gravity
+  you could land on; the highest-gravity Earth-like; the thickest atmosphere on a body with a surface; the fastest spin;
+  the shortest orbit, retrograde ones by their length; the body farthest from its arrival star; the widest ring) and the
+  system farthest from Sol, each with 🔍 (the body in Here) or ⌖ and the date. From the Scan lines Outrider keeps
+  (`outrider/records.py`, nav beacon reads left out), worked out on a worker only when a scan or a jump is added, asked
+  for only while the box is open (GET `/api/records`): 0.4 s over the author's 27,455 scans.
+
 ## 2026-10-25 · A green gas giant your codex logged is confirmed (its entry names the star)
 - A green gas giant's `CodexEntry` carries the system's main star's `BodyID`, never the giant's (4 of 4 green entries in a
   capture of every player's EDDN traffic), so the ✓ matched by body never came: the giant stayed "possible" or "likely".

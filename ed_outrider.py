@@ -209,6 +209,7 @@ import outrider.inara      # Inara's commander profile: travel, ranks, ships, in
 import outrider.commander  # the Commander view: the commander, inventory, engineering, missions, sessions (folds of the journal)
 import outrider.earnings   # the Commander view's Earnings: what exploration, exobiology and mining paid (pure, + its SQL)
 import outrider.readclient  # EDSM's and Inara's account reads (G3): the key checks, EDSM's flight log
+import outrider.records     # My firsts' Your records: the most extreme bodies among your own scans
 import outrider.backfill   # filling a gap in EDSM's flight log (S47): the events rebuilt from the journals (pure)
 import outrider.edsmlog    # your EDSM flight log from before your journals (S67): kept entries, which count as visits
 import outrider.checklist  # the exobiology checklist: every species by region, with your state (pure)
@@ -7768,6 +7769,22 @@ def route_hop_populated(h):
         return False
     return any((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2 <= r * r for cx, cy, cz, r in ROUTE_LOOKUP_SKIP)
 
+def body_records(db):
+    """State.body_records' work on `db`: {records: outrider.records.records(...), bodies: how many scans it read}."""
+    names = {r["id64"]: r["name"] for r in db.execute("SELECT id64, name FROM jumps ORDER BY ts")}
+    bodies = []
+    for r in db.execute("SELECT system, name, ts, raw FROM own_bodies"):
+        try:
+            raw = json.loads(r["raw"]) if r["raw"] else None
+        except ValueError:
+            continue
+        system = names.get(r["system"]) or (raw or {}).get("StarSystem")
+        bodies.append((r["system"], system, short_name(system, r["name"]) if system else r["name"], r["ts"], raw))
+    jumps = [(r["id64"], r["name"], r["x"], r["y"], r["z"], r["ts"]) for r in db.execute(
+        "SELECT id64, name, x, y, z, max(ts) AS ts FROM jumps GROUP BY id64")]
+    return {"records": outrider.records.records(bodies, jumps), "bodies": len(bodies)}
+
+
 class State:
     def __init__(self, db, journals, spansh, radius):
         self.db, self.journals, self.spansh, self.radius = db, journals, spansh, radius
@@ -7790,6 +7807,7 @@ class State:
         self.target_task = None
         self.reported_task = None  # S23: the ask for the species reported in your system (one at a time)
         self.reported_tried = {}   # id64 -> when last asked (or found fresh): not asked again before REPORTED_RETRY_S
+        self._records = None       # (key, answer): My firsts' Your records, worked out again when scans or jumps change
         self.reported_seen = None  # the overlay_detail key of the last look that found no life
         self.route_spansh = {}     # id64 -> (when, has a record): Spansh asked about the game's route hops (in memory only)
         self.route_task = None     # that ask (one at a time)
@@ -11276,6 +11294,29 @@ class State:
         out.sort(key=lambda r: r["distance"])
         self._left, self._left_key = {"radius": radius, "systems": out}, key
         return self._left
+
+    async def body_records(self):
+        """GET /api/records: Your records (outrider.records) from your own scans and jumps, each body's short name and
+        system; worked out again only when a scan or a jump is added, on a worker thread with its own read-only
+        connection (years of scans; a connection is never shared between threads)."""
+        key = tuple(self.db.execute("SELECT (SELECT count(*) FROM own_bodies), (SELECT max(ts) FROM own_bodies), "
+                                    "(SELECT max(ts) FROM jumps)").fetchone())
+        if self._records and self._records[0] == key:
+            return self._records[1]
+        path = self.db_path
+        if not path or path == ":memory:":   # tests: here, on the loop's own connection
+            out = body_records(self.db)
+        else:
+            def work():
+                db = sqlite3.connect(f"file:{urllib.parse.quote(os.path.abspath(path))}?mode=ro", uri=True)
+                db.row_factory = sqlite3.Row
+                try:
+                    return body_records(db)
+                finally:
+                    db.close()
+            out = await asyncio.get_running_loop().run_in_executor(None, work)
+        self._records = (key, out)
+        return out
 
     def firsts_list(self):
         """Every visited system holding first-discovery data, with its sale state and value (and, for unsold ones,
@@ -20629,6 +20670,10 @@ def make_app(state, hosts=None):
             radius = 100.0
         return web.json_response(state.left_behind(radius))   # the database connection belongs to this thread
 
+    async def records_view(_):
+        """GET /api/records: My firsts' Your records (read on a worker: years of scans)."""
+        return web.json_response(await state.body_records())
+
     async def firsts_view(_):
         return web.json_response({"firsts": state.firsts_list(), "computed": (state.unsold or {}).get("computed")})
 
@@ -21976,6 +22021,7 @@ def make_app(state, hosts=None):
     app.router.add_post("/api/autohonk/forget", pc_only(autohonk_forget_view))
     app.router.add_get("/api/autohonk/check", pc_only(autohonk_check_view))   # S69: looks, never presses
     app.router.add_get("/api/firsts", firsts_view)
+    app.router.add_get("/api/records", records_view)
     app.router.add_get("/api/left", left_view)
     app.router.add_get("/api/body", body_view)
     app.router.add_get("/api/find", find_view)

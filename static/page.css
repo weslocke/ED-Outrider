@@ -1553,3 +1553,8 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
   .audiopill { animation: none; outline: 2px solid var(--bad); outline-offset: 2px; }
   #sStatus.busy::before, #hwyStatus.busy::before, #ovInstalling .spin, #logRows .fresh td { animation: none; }
 }
+
+/* My firsts → Your records: a collapsed box at the end, its heading in the summary (the author, 2026-10-25) */
+#recordsBox > summary { cursor: pointer; }
+#recordsBox > summary h3 { display: inline; }
+.recordsTable td { padding: 2px 10px 2px 0; }

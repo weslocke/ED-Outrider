@@ -10024,6 +10024,24 @@ const releasePayloads = async () => {
     allOk = allOk && goodGG;
     console.log(goodGG ? "OK" : "FAIL", "| green gas giant confirmed |", goodGG ? "one, or one of N" : JSON.stringify(got), errors.slice(before));
   }
+  // My firsts → Your records (the author, 2026-10-25): a row per record, 🔍 for a body, ⌖ for a system, a star named as its
+  // system said once
+  {
+    const w = dom.window, d = w.document, before = errors.length;
+    w.eval(`window.__rec = JSON.stringify(REC); REC.d = {bodies: 27455, records: [
+      {key: "high_g", label: "Highest gravity, landable", text: "4.74 g", body: "1", system: "Sys", id64: "7", ts: "2025-10-02T00:00:00Z"},
+      {key: "hot_star", label: "Hottest star", text: "9,000 K", body: "PSR J1", system: "PSR J1", id64: "8", ts: "2025-12-03T00:00:00Z"},
+      {key: "far_sol", label: "Farthest from Sol", text: "37,134 ly", body: null, system: "Far", id64: "9", ts: "2025-12-04T00:00:00Z"}]}; renderRecords()`);
+    const rows = [...d.querySelectorAll("#recordsBody tr")].map(tr => [...tr.children].map(td => td.textContent.replace(/\s+/g, " ").trim()).join(" | "));
+    const got = [rows, !!d.querySelector('#recordsBody [data-body="1"][data-bsys="7"]'), !!d.querySelector('#recordsBody [data-goto="9"]'),
+                 d.querySelector("#recordsBody .hint").textContent.includes("27,455 scans")];
+    w.eval(`Object.assign(REC, JSON.parse(window.__rec)); delete window.__rec; renderRecords()`);
+    const want = [["Highest gravity, landable | 4.74 g | 1 🔍 Sys | 2025-10-02", "Hottest star | 9,000 K | PSR J1 🔍 | 2025-12-03",
+                   "Farthest from Sol | 37,134 ly | ⌖ Far | 2025-12-04"], true, true, true];
+    const goodRC = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && goodRC;
+    console.log(goodRC ? "OK" : "FAIL", "| your records |", goodRC ? "rows, links, a star named as its system once" : JSON.stringify(got), errors.slice(before));
+  }
   // The geology a body's signals could be (the author, 2026-10-19): the body card names the kinds its volcanism allows,
   // each new to your codex marked (✪ anywhere, ✦ this region), and how one is logged
   {
