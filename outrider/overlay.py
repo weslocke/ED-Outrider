@@ -900,6 +900,12 @@ def star_hazard(code):
         else "black hole" if c in ("H", "SupermassiveBlackHole") else ""
 
 
+def to_full_text(s):
+    """Seconds to a full tank as the page writes them (page.js toFullText): "38 s", "2 min 05"."""
+    s = int(s)
+    return f"{s} s" if s < 60 else f"{s // 60} min {s % 60:02d}"
+
+
 def fuel_t(x):
     """Tonnes of fuel as the page writes them (page.js fuelT): a short hop burns a few kilograms."""
     return f"{x:.1g}" if x < 0.1 else f"{x:.1f}"
@@ -1405,6 +1411,8 @@ def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, h
     if f.get("live") and f.get("pct") is not None:
         key = "bad" if f["pct"] < 15 else "warn" if f["pct"] < 30 else "text"
         row = [(f"⛽ {f['pct']}%", key)]
+        if f.get("to_full_s") is not None:   # while scooping (page.js toFullText)
+            row.append((f" · {to_full_text(f['to_full_s'])} to full", "good"))
         if f.get("jumps_max") is not None:
             row.append((f" · {f['jumps_max']} jump{'' if f['jumps_max'] == 1 else 's'}", "muted"))
         if f.get("since_scoop") is not None:

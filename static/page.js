@@ -1373,6 +1373,7 @@ function renderNow() {
   if (nb) lines.push(`<div class="now-line now-boxel">${nb}</div>`);
   if (f && f.live && f.pct != null)
     lines.push(`<div class="now-line ${f.pct < 15 ? "urgent" : f.pct < 30 ? "warn" : ""}">⛽ <b>${f.pct}%</b>` +
+      (f.to_full_s != null ? ` · <span class="ok" title="while scooping: at the rate the tank is filling now">${toFullText(f.to_full_s)} to full</span>` : "") +
       (f.jumps_max != null ? ` · ${f.jumps_max} ${jumpsWord(f.jumps_max)}` : "") + (f.since_scoop != null ? ` · ${f.since_scoop} since scoop` : "") +
       (data.boost ? ` · <span class="boosted">boosted ×${data.boost}</span>` : "") +
       (f.scoop_rate ? `<div class="now-small now-rate">${scoopRateWarn(f)}</div>` : "") +   // S19: the scoopable share
@@ -9714,6 +9715,8 @@ function hereScoopText(f, plain) {
   return plain ? "" : h.complete ? `<span class="noscoop">no scoopable star here</span>` : `<span class="unk">no other scoopable star known yet (FSS to check)</span>`;
 }
 const fuelT = x => x < 0.1 ? x.toPrecision(1) : x.toFixed(1);   // a short hop burns a few kilograms
+// seconds to a full tank while scooping (fuel_summary's to_full_s; outrider.overlay.to_full_text): "38 s", "2 min 05"
+const toFullText = s => s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")}`;
 // the payload's hush: in the speaking window a new hush is confirmed and cuts what is queued, and its end (a cancel,
 // the jump) says "Voice back on." once; a timed one ends on this page's clock (hushTick)
 function onHush(first) {

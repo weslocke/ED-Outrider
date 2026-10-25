@@ -78,7 +78,7 @@ before.
   data, partly or fully scanned, or visited; how many bodies are known; the star with ⛽ or ✕, and ⚠ for a neutron
   star, white dwarf or black hole), where the next jump goes
   (the next stop of the unfinished route you plotted last: the Highway, a survey or trade route;
-  and a kept boxel's Next), fuel, and what the data
+  and a kept boxel's Next), fuel (while scooping, the seconds to a full tank), and what the data
   aboard stands to lose once it passes your `unsold_warn` level: 🗺 and 🧬, how many times your rebuy it is ("× rebuy";
   none for a ship bought with Arx, whose hull has no credit value) and how long since you sold ("3 days unsold"; from a
   week "2 weeks 2 days since sold", or "2wk2d since sold" when that would not fit; whole days). Then, on a body,

@@ -226,7 +226,8 @@ what to do next, the body you have targeted, signals worth a detour ("Titan Coci
 all in rings · 1 of 3 visited": each drop at one counts, since the journal cannot tell which of a kind's sites it was)
 and the nearest unvisited system. Under the target, the jump's cost ("56.7 ly · 0.9 t · leaves 20 max jumps"); under the
 fuel, "scoopable: 9 of last 20" (amber as on the fuel tile), and at the last scoopable star before a dry stretch "⛽ last
-scoop before 3 dry" with how much to scoop. The target says how much of it is
+scoop before 3 dry" with how much to scoop. While you scoop, the fuel line counts down to a full tank ("38 s to full",
+at the rate it is filling now: it slows at the edge of the scoop zone). The target says how much of it is
 known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"): two databases
 with different reporters. While a new target is looked up it says "checking…", never the previous target's verdict.
 

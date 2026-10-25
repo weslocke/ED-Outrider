@@ -411,3 +411,41 @@ class ReviewFuel(unittest.TestCase):
         self.assertEqual(self.db.execute("SELECT count(*) FROM jumps WHERE ride = 1").fetchone()[0], 6)
         self.assertEqual(self.state.fuel_summary()["since_scoop"], 8)     # was 14
         self.assertEqual(self.state.scoop_rate(), {"scoopable": 8, "of": 8, "dry_run": 0})   # was 8 of 14, 6 dry
+
+
+class ScoopToFull(unittest.TestCase):
+    """The seconds to a full tank while scooping (2026-10-25): from Status.json's fuel over the last few seconds (the
+    journal's FuelScoop comes only when the scoop ends), shown on Now's fuel line and the overlay's."""
+
+    def st(self, fuel, scooping=True):
+        return {"live": True, "flags": ed_outrider.FLAG_SCOOPING if scooping else 0, "fuel_main": fuel}
+
+    def test_the_rate_and_the_seconds(self):
+        w = ed_outrider.ScoopWatch()
+        w.update(self.st(100.0), 160, 1000.0)
+        self.assertIsNone(w.to_full(160))                     # one reading: no rate yet
+        w.update(self.st(101.0), 160, 1001.0)
+        self.assertIsNone(w.to_full(160))                     # under SCOOP_RATE_MIN_S of readings
+        w.update(self.st(104.0), 160, 1004.0)                 # 1 t/s: 56 t to go
+        self.assertEqual(w.to_full(160), 56)
+        for t in range(1005, 1020):                           # slower near the edge: the window follows it
+            w.update(self.st(104.0 + (t - 1004) * 0.5), 160, float(t))
+        self.assertEqual(w.to_full(160), round((160 - 111.5) / 0.5))
+        w.update(self.st(111.5, scooping=False), 160, 1020.0)  # the flag off: no countdown
+        self.assertIsNone(w.to_full(160))
+        self.assertIsNone(ed_outrider.ScoopWatch().to_full(160))
+        self.assertIsNone(w.to_full(None))
+
+    def test_a_full_tank_or_no_rise_says_nothing(self):
+        w = ed_outrider.ScoopWatch()
+        for t, f in ((0.0, 159.97), (3.0, 159.98)):
+            w.update(self.st(f), 160, t)
+        self.assertIsNone(w.to_full(160))
+        w = ed_outrider.ScoopWatch()
+        for t in (0.0, 3.0):
+            w.update(self.st(80.0), 160, t)
+        self.assertIsNone(w.to_full(160))
+
+    def test_the_words(self):
+        import outrider.overlay as O
+        self.assertEqual([O.to_full_text(s) for s in (38, 60, 125)], ["38 s", "1 min 00", "2 min 05"])

@@ -539,9 +539,26 @@ class ScoopWatch:
     A scoop cut short by a jump (FSD charging, or a hyperspace StartJump just now) says nothing, and nor does
     one whose tank capacity is unknown (no Loadout yet)."""
 
+    # the seconds to a full tank while scooping (the author's choice, 2026-10-25: from Route Scoop's idea): the fuel's
+    # rise over the last SCOOP_RATE_WINDOW s of Status.json readings (the rate falls off with the distance from the
+    # star, so a short window follows it); the journal's FuelScoop is written only once the scoop ends
+    SCOOP_RATE_WINDOW = 8.0
+    SCOOP_RATE_MIN_S = 2.0
+
     def __init__(self):
         self.start = self.off_since = None
         self.jumping = False
+        self.samples = []   # (when, fuel) while the flag is on, the last SCOOP_RATE_WINDOW s
+
+    def to_full(self, capacity):
+        """Seconds until the tank is full at the scoop's current rate, while scooping; None when not scooping, the
+        rate is not known yet (under SCOOP_RATE_MIN_S of readings, or the fuel not rising) or the tank is full."""
+        if self.start is None or self.off_since is not None or not capacity or len(self.samples) < 2:
+            return None
+        (t0, f0), (t1, f1) = self.samples[0], self.samples[-1]
+        if t1 - t0 < self.SCOOP_RATE_MIN_S or f1 <= f0 or f1 >= capacity - 0.05:
+            return None
+        return max(1, round((capacity - f1) / ((f1 - f0) / (t1 - t0))))
 
     def update(self, st, capacity, now, jump_ts=None):
         """-> {"pct", "full"} when a scoop has just ended, else None."""
@@ -553,6 +570,11 @@ class ScoopWatch:
         if flags & FLAG_SCOOPING:
             if self.start is None:
                 self.start = now
+                self.samples = []
+            fuel = st.get("fuel_main")
+            if isinstance(fuel, (int, float)) and (not self.samples or fuel != self.samples[-1][1]):
+                self.samples.append((now, fuel))
+                self.samples = [x for x in self.samples if now - x[0] <= self.SCOOP_RATE_WINDOW]
             # scooping again: a charge seen during a flicker was cancelled (a real jump ends the scoop for good)
             self.off_since, self.jumping = None, False
             return None
@@ -10624,6 +10646,7 @@ class State:
                 "jumps_recent": jumps_recent, "jumps_max": jumps_max, "model": model_out,
                 "since_scoop": since_scoop, "last_scoop": j.last_scoop, "ts": st.get("ts"),
                 "scoop_rate": self.scoop_rate(), "here_scoop": self.here_scoop(),
+                "to_full_s": self.scoop.to_full(cap),   # while scooping: seconds to a full tank at the current rate
                 "live": bool(st.get("live")),
                 "low_flag": bool((st.get("flags") or 0) & (1 << 19)),   # Status.json LowFuel: the game's own warning
                 # in the ship's seat (Flags InMainShip): on foot or in the SRV the LowFuel bit says nothing

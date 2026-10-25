@@ -10042,6 +10042,19 @@ const releasePayloads = async () => {
     allOk = allOk && goodRC;
     console.log(goodRC ? "OK" : "FAIL", "| your records |", goodRC ? "rows, links, a star named as its system once" : JSON.stringify(got), errors.slice(before));
   }
+  // Explorer ideas (project/PLAN-explorer-ideas-2026-10-25.md): one block, a check per item
+  {
+    const w = dom.window, before = errors.length, got = {}, want = {};
+    // 2: the seconds to a full tank while scooping
+    got.toFull = w.eval(`[toFullText(38), toFullText(60), toFullText(125)]`);
+    want.toFull = ["38 s", "1 min 00", "2 min 05"];
+    // (the batch's later items add their checks above this line)
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const goodEX = !bad.length && errors.length === before;
+    allOk = allOk && goodEX;
+    console.log(goodEX ? "OK" : "FAIL", "| explorer ideas |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
+      : Object.keys(want).join(", "), errors.slice(before));
+  }
   // The geology a body's signals could be (the author, 2026-10-19): the body card names the kinds its volcanism allows,
   // each new to your codex marked (✪ anywhere, ✦ this region), and how one is logged
   {
