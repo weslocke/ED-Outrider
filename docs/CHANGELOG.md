@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Search: at least N stars or planets of the kinds ticked
+- Explorer ideas, item 7: Stars and Planets each get "at least [ ] of them": a system matches with that many bodies
+  among the section's ticks (two Earth-likes; with Earth-like and water world ticked, two of either). Local counts your
+  cache; Spansh's answer comes body by body and is counted per system (a cut answer can undercount, said as before).
+  `crit` `stars_min`/`planets_min` (`search_min`: 1 to 20, else 1), saved with the form, emptied by Clear ticks.
+
 ## 2026-10-25 · 📋 A system summary in Markdown
 - Explorer ideas, item 6: 📋 beside Here's ⬇ CSV copies a short Markdown summary of the system shown (lists only, as
   Reddit's Markdown wants): your firsts, notable worlds, green gas giants (or potential ones), curiosities, the life

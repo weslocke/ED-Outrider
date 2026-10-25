@@ -138,7 +138,9 @@ order back.
 unfinished exobiology or planetary mining locations (one mineral, if you like) within a radius, from what
 Outrider knows (<i>Local</i>) or everything reported (<i>Spansh</i>; mining locations are Local only, as Spansh cannot
 filter on them); <i>2+ in a ring</i> keeps the rings with two or more hotspots of one mineral ticked (more places to
-drop in, and where hotspots overlap); 🎯 after a result's name targets it in the galaxy map, where auto-target can work. Planets has
+drop in, and where hotspots overlap); <i>at least N</i> under Stars or Planets keeps the systems with that many of the
+kinds ticked (two Earth-likes, three neutron stars; with two kinds ticked, any mix of them); 🎯 after a result's name
+targets it in the galaxy map, where auto-target can work. Planets has
 <i>Potential green gas giant</i> too (see
 <a href="#-potential-green-gas-giants">below</a>). The name box finds any system (what Outrider knows,
 then EDSM, then Spansh when EDSM is down or doesn't know it) and opens it in Here, where ☆ bookmarks it or makes it the

@@ -471,8 +471,10 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <div class="opts inline" id="sScoopOpts"></div>
         <div class="opts" id="sOtherStars"></div>
         <label class="mod"><input type="checkbox" id="sMainOnly" checked> arrival star only</label>
+        <label class="mod" title="a system with at least this many stars of the kinds ticked (empty: one is enough)">at least <input type="number" id="sStarsMin" min="1" max="20" step="1" placeholder="1" style="width:3.5em"> of them</label>
       </fieldset>
-      <fieldset><legend>Planets</legend><div class="opts" id="sPlanets"></div></fieldset>
+      <fieldset><legend>Planets</legend><div class="opts" id="sPlanets"></div>
+        <label class="mod" title="a system with at least this many planets of the kinds ticked: 2 with Earth-like ticked is two Earth-likes (empty: one is enough)">at least <input type="number" id="sPlanetsMin" min="1" max="20" step="1" placeholder="1" style="width:3.5em"> of them</label></fieldset>
       <div class="sstack">
         <fieldset><legend>Rings</legend><div class="opts" id="sRings"></div></fieldset>
         <fieldset><legend>Exobiology</legend><div class="opts" id="sBio"></div>

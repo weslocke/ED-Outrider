@@ -10070,6 +10070,15 @@ const releasePayloads = async () => {
       "- Curiosities: B 3 shepherd moon (orbits inside B's rings)",
       "- Life on A 7 (first footfall ×5): Bacterium Aurasus - Emerald 5.0M; still to sample: Osseus",
       "- Ring hotspots: A 6 A Ring (Icy): Painite ×2", "- Worth: 31k cr on board, 201.7M cr at most"];
+    // 7: Search's "at least N" goes with the form (empty is 1); Clear ticks empties it
+    got.atLeast = w.eval(`(() => { const k = JSON.stringify(formParams());
+      document.getElementById("sPlanetsMin").value = "2"; document.getElementById("sStarsMin").value = "x";
+      const a = [formParams().planets_min, formParams().stars_min];
+      loadForm({...formParams(), planets_min: 1, stars_min: 3});
+      a.push(document.getElementById("sPlanetsMin").value, document.getElementById("sStarsMin").value);
+      document.getElementById("sClear").click(); a.push(document.getElementById("sStarsMin").value);
+      loadForm(JSON.parse(k)); saveForm(); return a; })()`);
+    want.atLeast = [2, 1, "", "3", ""];
     // (the batch's later items add their checks above this line)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodEX = !bad.length && errors.length === before;

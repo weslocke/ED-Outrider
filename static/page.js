@@ -9153,6 +9153,8 @@ function syncScoop() {
 sScoop.onchange = () => { scoopBoxes().forEach(b => b.checked = sScoop.checked); saveForm(); };
 document.getElementById("sScoopOpts").addEventListener("change", syncScoop);
 
+// "at least N" (1 to 20; empty or anything else: 1, one is enough)
+const searchMin = id => { const n = Number(document.getElementById(id).value); return Number.isInteger(n) && n >= 1 && n <= 20 ? n : 1; };
 function formParams() {
   const ticked = g => [...sForm.querySelectorAll(`input[data-group="${g}"]:checked`)].map(b => b.value);
   return {
@@ -9161,6 +9163,7 @@ function formParams() {
     main_only: document.getElementById("sMainOnly").checked,
     stars: ticked("stars"), planets: ticked("planets"), rings: ticked("rings"), hotspots: ticked("hotspots"), bio: ticked("bio"),
     hotspots_min: document.getElementById("sHotMin").checked ? 2 : 1,   // 2+ of one mineral in a ring
+    stars_min: searchMin("sStarsMin"), planets_min: searchMin("sPlanetsMin"),   // "at least N" of a section's ticks
     mining: document.getElementById("sMining").checked, mining_mineral: document.getElementById("sMineral").value || null,
     around: sAround.value || "here", around_name: document.getElementById("sAroundName").value.trim(),   // S49
   };
@@ -9174,6 +9177,7 @@ function loadForm(p) {
     sForm.querySelectorAll(`input[data-group="${g}"]`).forEach(b => b.checked = (p[g] || []).includes(b.value));
   document.getElementById("sMining").checked = p.mining === true;
   document.getElementById("sHotMin").checked = p.hotspots_min === 2;
+  for (const [id, k] of [["sStarsMin", "stars_min"], ["sPlanetsMin", "planets_min"]]) document.getElementById(id).value = p[k] > 1 ? p[k] : "";
   const mn = document.getElementById("sMineral"); mn.value = p.mining_mineral || ""; if (mn.selectedIndex < 0) mn.value = "";
   sAround.value = p.around || "here"; if (sAround.selectedIndex < 0) sAround.value = "here";
   document.getElementById("sAroundName").value = p.around_name || "";
@@ -9189,7 +9193,8 @@ function saveForm() { store.set("search", formParams()); }
 sForm.addEventListener("change", saveForm);
 document.getElementById("sClear").onclick = () => {
   sForm.querySelectorAll("input[data-group]").forEach(b => b.checked = false); syncScoop();
-  document.getElementById("sMining").checked = false; document.getElementById("sHotMin").checked = false; document.getElementById("sMineral").value = ""; saveForm();
+  document.getElementById("sMining").checked = false; document.getElementById("sHotMin").checked = false;
+  document.getElementById("sStarsMin").value = document.getElementById("sPlanetsMin").value = ""; document.getElementById("sMineral").value = ""; saveForm();
 };
 loadForm(store.get("search", null));
 

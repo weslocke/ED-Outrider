@@ -19806,6 +19806,11 @@ def bio_hits(db, id64, system, x, y, z, records, threshold):
     return [h for _, h in sorted(hits, key=lambda t: -t[0])]
 
 
+def search_min(v):
+    """Search's "at least N" (a section's ticks in one system): a whole 1 to 20, anything else 1."""
+    return v if isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= 20 else 1
+
+
 def match_system(system, records, crit):
     """Which of the ticked criteria this system satisfies: {section: [descriptions]}."""
     stars = [r for r in records if r["type"] == "Star"]
@@ -19820,7 +19825,7 @@ def match_system(system, records, crit):
                 label = "arrival star" if r["name"] == system else r["name"]
                 hits.append({"t": f"{label} · {r['subtype']}" + (" (arrival)" if is_main and r["name"] != system else ""),
                              "body": r["name"]})
-        if hits:
+        if hits and len({h["body"] for h in hits}) >= crit.get("stars_min", 1):   # "at least N" (explorer ideas, 7)
             out["stars"] = hits
     if crit["planets"]:
         hits = [{"t": f"{r['name']} · {r['subtype']}", "body": r["name"]} for r in records
@@ -19828,7 +19833,7 @@ def match_system(system, records, crit):
         if GGG_OPTION[0] in crit["planets"]:   # S27: the model's guess, never a fact ("potential")
             hits += [{"t": f"{r['name']} · potential green gas giant ({p['chance']})", "body": r["name"]} for r in records
                      for p in [outrider.ggg.predict_record(r)] if p]
-        if hits:
+        if hits and len({h["body"] for h in hits}) >= crit.get("planets_min", 1):   # bodies, a giant counted once
             out["planets"] = hits
     if crit["rings"]:
         hits = [{"t": f"{r['name']} {x['name']} · {x['type']}", "body": r["name"]} for r in records
@@ -19955,6 +19960,8 @@ class Searcher:
             "rings": set(params.get("rings") or []) & set(RING_TYPES),
             "hotspots": set(params.get("hotspots") or []) & set(HOTSPOT_MINERALS),
             "hotspots_min": 2 if params.get("hotspots_min") == 2 else 1,   # "2+ in a ring": anything else is 1
+            # "at least N" of a section's ticks in one system (explorer ideas, 7): 1 to 20, anything else 1
+            "stars_min": search_min(params.get("stars_min")), "planets_min": search_min(params.get("planets_min")),
             # ticked bio thresholds are OR'd like any other section: the lowest one decides
             "bio": min((BIO_SEARCH[k][1] for k in params.get("bio") or [] if k in BIO_SEARCH), default=None),
             # planetary mining locations (S4), with an optional mineral from the survey (an unknown name counts as none)
