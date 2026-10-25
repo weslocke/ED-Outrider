@@ -388,6 +388,43 @@ class Curiosities(unittest.TestCase):
         self.assertEqual([t for t, _ in got["6 a"]], ["close orbit"])   # 6 a really does hug planet 6
 
 
+class MoreCuriosities(unittest.TestCase):
+    """The checks planned with the first set and built 2026-10-25 (explorer ideas, item 3), each counted on the
+    author's scans first: a shepherd moon, a tiny world, a tiny star, an extreme orbit, a close binary."""
+
+    def tags(self, r, parent=None, raw=None):
+        return [t for t, _ in ed_outrider.curiosities(r, parent, raw)]
+
+    def test_shepherd_moon(self):
+        ringed = {"name": "3", "type": "Planet", "body_id": 3, "radius_km": 30000, "rings": [{"name": "A Ring", "inner": 8e7, "outer": 2e8}]}
+        inside = {"name": "3 a", "type": "Planet", "radius_km": 400, "sma_ls": 1.5e8 / ed_outrider.LIGHT_SPEED}
+        outside = dict(inside, sma_ls=3e8 / ed_outrider.LIGHT_SPEED)
+        self.assertEqual(self.tags(inside, ringed), ["shepherd moon"])
+        self.assertEqual(self.tags(outside, ringed), [])
+        self.assertNotIn("shepherd moon", self.tags(inside, {"name": "A", "type": "Star", "radius_km": 7e5, "rings": ringed["rings"]}))   # a star's: no
+
+    def test_tiny_world_tiny_star_and_extreme_orbit(self):
+        self.assertEqual(self.tags({"name": "1 a", "type": "Planet", "radius_km": 183}), ["tiny world"])
+        self.assertEqual(self.tags({"name": "1 b", "type": "Planet", "radius_km": 301}), [])
+        brown = {"name": "B", "type": "Star", "radius_km": 30000, "ed": {"StarType": "T"}}
+        self.assertEqual(self.tags(brown), ["tiny star"])
+        for t in ("DA", "N", "H"):   # small by nature
+            self.assertEqual(self.tags(dict(brown, ed={"StarType": t})), [])
+        self.assertEqual(self.tags({"name": "2", "type": "Planet", "radius_km": 2000}, raw={"Eccentricity": 0.93}), ["extreme orbit"])
+        self.assertEqual(self.tags({"name": "2", "type": "Planet", "radius_km": 2000}, raw={"Eccentricity": 0.5}), [])
+
+    def test_close_binary(self):
+        bary = [{"kind": "Null", "id": 1}]
+        a = {"name": "A", "type": "Star", "body_id": 2, "radius_km": 7e5, "sma_ls": 1.5, "parents_full": bary}
+        b = {"name": "B", "type": "Star", "body_id": 3, "radius_km": 5e5, "sma_ls": 2.0, "parents_full": bary}
+        got = ed_outrider.system_curiosities("S", [a, b])
+        self.assertEqual({k: [t for t, _ in v] for k, v in got.items()}, {"A": ["close binary"], "B": ["close binary"]})
+        self.assertIn("3.5 ls from B", got["A"][0][1])
+        self.assertEqual(ed_outrider.system_curiosities("S", [a, dict(b, sma_ls=4.0)]), {})   # 5.5 ls: not close
+        planets = [dict(a, type="Planet", radius_km=3000), dict(b, type="Planet", radius_km=3000)]
+        self.assertEqual(ed_outrider.system_curiosities("S", planets), {})                   # planet pairs: never
+
+
 class BioColours(unittest.TestCase):
     """BioScan's colour check (a species needs a colour variant for its star or materials) and the
     undecided-genus options shown before the DSS."""

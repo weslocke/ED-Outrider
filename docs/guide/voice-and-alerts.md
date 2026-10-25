@@ -30,7 +30,8 @@ the game too, for a few seconds each:
     only then) or an unknown planetary anomaly (said when the FSS finds it)
   - an FSS signal worth a detour, new to the system: a Titan, a Guardian beacon, a generation ship, a listening post
     (tourist beacons, number stations and memorials are shown on the page, not said)
-  - curiosities (the 🔭 marks: rare planet classes, odd orbits, ringed landables...; planets sharing a centre are not one) in the system you are in, once per
+  - curiosities (the 🔭 marks: rare planet classes, odd orbits, ringed landables, shepherd moons, tiny worlds and stars,
+    extreme orbits, close binary stars...; planets sharing a centre are not one) in the system you are in, once per
     system: one line to check your panels ("You might be interested in some curious things I found here"), not the list
 - low fuel where you cannot scoop, and a top-up worth taking before a dry stretch
 - on a Neutron Highway route from the exact plotter, fuel that won't reach the next refuel stop (its own row, **Fuel

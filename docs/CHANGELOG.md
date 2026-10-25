@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Five more curiosities
+- Explorer ideas, item 3: the checks planned with the first set (PLAN-review-followup §5.3) and never built, each
+  counted on the author's 26,748 scans first so none is noise: a **shepherd moon** (orbits inside its planet's rings: 32
+  bodies in 14 systems), a **tiny world** (under 300 km in radius: 5), a **tiny star** (under a twentieth of the Sun's
+  radius, white dwarfs, neutron stars and black holes left out: 10), an **extreme orbit** (eccentricity 0.9 or more: 7)
+  and a **close binary** (two stars round one barycentre under 5 ls apart: 49 systems, about as many as "close orbit").
+  A steep inclination was counted too and left out: 1,374 bodies. Each is a 🔭 with its reason, and the curious-find
+  call-out counts it like the others.
+
 ## 2026-10-25 · While scooping: the seconds to a full tank
 - Explorer ideas, item 2 (project/PLAN-explorer-ideas-2026-10-25.md): Now's fuel line and the overlay's say "38 s to
   full" while you scoop, at the rate the tank is filling over the last 8 s of Status.json readings (it slows at the edge

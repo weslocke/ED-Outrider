@@ -6599,6 +6599,20 @@ def curiosities(r, parent=None, raw=None):
     pf = [p for p in r.get("parents_full") or [] if p["kind"] != "Ring"]
     if planet and len(pf) >= 2 and pf[0]["kind"] == "Planet" and pf[1]["kind"] == "Planet":
         out.append(("moon of a moon", "a moon orbiting a moon"))
+    # the checks planned with the first set and not built then (explorer ideas, 2026-10-25), each counted on the
+    # author's 26,748 scans first: 32 shepherd moons, 5 tiny worlds, 10 tiny stars, 7 extreme orbits (an inclination
+    # check fired on 1,374: left out)
+    outer = max((x["outer"] for x in (parent or {}).get("rings") or [] if isinstance(x, dict) and x.get("outer")), default=None) \
+        if parent and parent.get("type") == "Planet" and isinstance(parent.get("rings"), list) else None
+    if planet and outer and sma_km and sma_km * 1000 < outer:
+        out.append(("shepherd moon", f"orbits inside {parent['name']}'s rings"))
+    if planet and rk and rk < TINY_WORLD_KM:
+        out.append(("tiny world", f"{rk:,.0f} km in radius"))
+    if r.get("type") == "Star" and rk and rk < TINY_STAR_KM and not degenerate_star((r.get("ed") or {}).get("StarType")):
+        out.append(("tiny star", f"{rk:,.0f} km in radius, a twentieth of the Sun's or less"))
+    ecc = raw.get("Eccentricity")
+    if isinstance(ecc, (int, float)) and ecc >= EXTREME_ECCENTRICITY:
+        out.append(("extreme orbit", f"eccentricity {ecc:.2f}: a long, thin ellipse"))
     rare = RARE_PLANETS.get(r.get("subtype") or "")
     if planet and rare:   # rare classes: a sight, if not a fortune
         out.append(rare)
@@ -6609,6 +6623,18 @@ def curiosities(r, parent=None, raw=None):
 
 
 # rare planet classes as curiosities (the same names in your scans and Spansh's records)
+TINY_WORLD_KM = 300            # a planet or moon smaller than this (radius) is a curiosity: 5 of the author's 26,748
+TINY_STAR_KM = 0.05 * 695_700  # a star (not a white dwarf, neutron star or black hole) under a twentieth of the Sun's radius
+EXTREME_ECCENTRICITY = 0.9     # an orbit at least this eccentric: 7 of the author's
+CLOSE_BINARY_LS = 5.0          # two stars round one barycentre closer than this: 52 pairs in the author's 3,401 systems
+
+
+def degenerate_star(star_type):
+    """A white dwarf, neutron star or black hole (journal StarType): tiny by nature, never a curiosity for its size."""
+    t = str(star_type or "")
+    return t in ("N", "H", "SupermassiveBlackHole") or t.startswith("D")
+
+
 RARE_PLANETS = {"Water giant": ("water giant", "a water giant: rare"),
                 "Helium-rich gas giant": ("helium-rich", "a helium-rich gas giant: rare"),
                 "Helium gas giant": ("helium giant", "a helium gas giant: very rare"),
@@ -6629,6 +6655,18 @@ def system_curiosities(system, records, raws=None):
         c = curiosities(x, parent, raws.get(x["name"]))
         if c:
             out[x["name"]] = c
+    # a close binary: the two stars of one barycentre whose orbits round it add up to under CLOSE_BINARY_LS (their
+    # separation; stars only: planet pairs were noise, 2026-10-12)
+    pairs = {}
+    for x in records:
+        f = first(x)
+        if x.get("type") == "Star" and f and f["kind"] == "Null" and x.get("sma_ls"):
+            pairs.setdefault(f["id"], []).append(x)
+    for two in pairs.values():
+        if len(two) == 2 and sum(x["sma_ls"] for x in two) < CLOSE_BINARY_LS:
+            sep = sum(x["sma_ls"] for x in two)
+            for x, other in ((two[0], two[1]), (two[1], two[0])):
+                out.setdefault(x["name"], []).append(("close binary", f"{sep:.1f} ls from {other['name']}, its companion star"))
     return out
 
 
