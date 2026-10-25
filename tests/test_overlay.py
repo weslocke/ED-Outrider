@@ -468,7 +468,9 @@ class Radar(unittest.TestCase):
         ok = O.radar_panel(self.surf(clear=True), pal)
         self.assertTrue(any(i["t"] == "circle" and i["c"] == pal["good"] for i in ok["items"]))
         self.assertIn("Clear: sample here (500 m from all)", [i["s"] for i in ok["items"] if i["t"] == "text"])
-        self.assertIsNone(O.radar_panel(self.surf(bio=[]), pal))          # nothing to draw
+        empty = O.radar_panel(self.surf(bio=[]), pal)                     # nothing on it: shown anyway, as the page's map
+        self.assertEqual((empty["id"], [i["s"] for i in empty["items"] if i["t"] == "text"][-1]), ("radar", "edge 800 m"))
+        self.assertTrue(any(i["t"] == "marker" for i in empty["items"]))   # you, in the middle
         self.assertIsNone(O.radar_panel(None, pal))
         shipped = O.radar_panel(self.surf(bio=[], ship={"lat": 0.0, "lon": 0.0, "dist": 1500}), pal)
         self.assertIn("ship 1.5 km", [i["s"] for i in shipped["items"] if i["t"] == "text"])

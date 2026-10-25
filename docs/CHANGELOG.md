@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · The overlay's surface radar shows with nothing on it
+- The author: hovering at 19 m with no sample run, tagged plant, pin or parked ship, the overlay's radar was gone (it hid
+  with nothing to draw), back once landed (the touchdown parks the ship on it), while the page's surface map showed
+  throughout: useless when looking for geology. `radar_panel` now draws whenever the surface map would (on the body or
+  low over it): you, N and the edge's distance.
+
 ## 2026-10-25 · Catalogued sights near you, from EDAstro
 - Explorer ideas, item 9: EDAstro's Galactic Encyclopedia Catalog (CMDR Orvidius's curated sights: scenery, planetary
   and stellar features, green gas giants, nebulae, ~658 of them) asked once a day and only when it changed

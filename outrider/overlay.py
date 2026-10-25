@@ -729,14 +729,14 @@ def radar_xy(here, lat, lon, cx, cy, r, rng):
 def radar_panel(surf, pal, size="normal", radar_range=800):
     """The surface radar, heading up: you at the centre, N on the rim; the sample points of the run in progress with
     their colony rings (red while you are inside one, green once clear), other runs' faint, tagged plants, the ship and
-    your rigs; what the next sample needs underneath. None with nothing to draw."""
+    your rigs; what the next sample needs underneath. None away from a body. Shown with nothing on it too, as the page's
+    surface map is (the author, 2026-10-25: hovering low with no run, plant, pin or ship, it hid, useless when looking
+    for geology): you, N and the edge's distance."""
     if not surf or surf.get("lat") is None or not surf.get("radius"):
         return None
     bio = surf.get("bio") or []
     cur = next((s for s in bio if s.get("current")), None)
     pins = surf.get("pins") or []
-    if not (bio or surf.get("ship") or surf.get("rigs") or surf.get("tags") or pins):
-        return None
     rng = max(radar_range, (cur.get("need") or 0) * 1.4 if cur else 0)
     w, r = 300, 118
     lh_small = LINE_H["small"]
