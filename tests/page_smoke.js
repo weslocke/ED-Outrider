@@ -10128,6 +10128,38 @@ const releasePayloads = async () => {
       return [t1, off, on, back]; })()`);
     want.shots = ["Not converting: off (Settings -> Screenshots) · from /p · to /p/Converted · last: Sys 2 a.png (Water Ice Geyser)",
                   [false, true], ["1920", false], "0"];
+    // the folder picker (📁): the game PC's folders from api/folders; a folder opened, then used, fills the field
+    got.folders = await (async () => {
+      const real = w.fetch, asked = [];
+      w.fetch = u => {
+        const q = new URL(String(u), "http://x/").searchParams;
+        if (!/api\/folders/.test(String(u))) return real(u);
+        asked.push(q.get("path"));
+        const path = q.get("path") || "/home/cmdr", body = {path, parent: path === "/" ? null : "/home", sep: "/", dirs: path.endsWith("Pics") ? [] : ["Pics", "Games"],
+                                                            hidden: 2, more: 0, drives: [], missing: null, error: null};
+        return Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
+      };
+      const f = w.document.querySelector('#shotSettings .scfg[data-key="folder"]'), keep = f.value;
+      f.value = ""; w.eval(`data.screenshots = Object.assign({}, data.screenshots, {folder: "/p/Converted"})`);
+      w.document.querySelector('#shotSettings .folderpick[data-pick="folder"]').click();
+      await sleep(50);
+      const dlg = w.document.getElementById("folderDlg");
+      const o = [dlg.open, [...w.document.querySelectorAll("#folderList [data-dir]")].map(b => b.dataset.dir), w.document.getElementById("folderHidN").textContent];
+      w.document.querySelector('#folderList [data-dir="Pics"]').click();
+      await sleep(50);
+      o.push(w.document.getElementById("folderPath").value, w.document.getElementById("folderList").textContent.trim());
+      w.document.getElementById("folderUse").click();
+      o.push(f.value, f.dataset.dirty, dlg.open, asked);
+      f.value = keep; f.dataset.dirty = "";
+      const sel = w.document.querySelector('#shotSettings .scfg[data-key="original"]'), mv = w.document.getElementById("shotMoveTo"), was = sel.value;
+      sel.value = "move"; sel.dispatchEvent(new w.Event("change")); o.push(mv.hidden);
+      sel.value = "keep"; sel.dispatchEvent(new w.Event("change")); o.push(mv.hidden);
+      sel.value = was; sel.dispatchEvent(new w.Event("change")); sel.dataset.dirty = "";
+      w.fetch = real;
+      return o;
+    })();
+    want.folders = [true, ["Pics", "Games"], "(2)", "/p/Converted/Pics", "no folders inside", "/p/Converted/Pics", "1", false,
+                    ["/p/Converted", "/p/Converted/Pics"], false, true];
     // (the batch's later items add their checks above this line)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodEX = !bad.length && errors.length === before;

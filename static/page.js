@@ -13942,6 +13942,7 @@ async function loadShotCfg() {
     el.dataset.orig = scNow(el);
   }
   shotSizeBoxes();
+  shotMoveShown();
 }
 // the medium / small ticks: a size field above 0 is ticked; ticking one fills its size (1920, 1080), unticking empties it
 function shotSizeBoxes() {
@@ -13978,6 +13979,54 @@ async function saveShotCfg() {
   msg.innerHTML = savedNote(r); msg.className = "hint ok";
 }
 document.getElementById("shotSave").onclick = saveShotCfg;
+// "moved to": its folder shows only while that is picked
+const shotMoveShown = () => { document.getElementById("shotMoveTo").hidden = document.querySelector('#shotSettings .scfg[data-key="original"]').value !== "move"; };
+document.querySelector('#shotSettings .scfg[data-key="original"]').addEventListener("change", shotMoveShown);
+// ---- the folder picker (📁 beside a folder field, the author's, 2026-10-25): a browser cannot hand a page a folder's
+// path, so the game PC lists its own (GET api/folders, names only); Use this folder fills the field, Save keeps it
+const FP = {field: null, path: "", sep: "/"};
+async function folderGo(path) {
+  const msg = document.getElementById("folderMsg");
+  let r;
+  try { r = await apiJson(`api/folders?${new URLSearchParams({path, hidden: document.getElementById("folderHidden").checked ? "1" : "0"})}`); }
+  catch { r = {error: "Outrider not reachable"}; }
+  if (!r || (r.error && !r.path)) { msg.textContent = (r && r.error) || "?"; msg.hidden = false; return; }
+  FP.path = r.path; FP.sep = r.sep || "/"; FP.parent = r.parent;
+  document.getElementById("folderPath").value = r.path;
+  document.getElementById("folderUp").disabled = !r.parent;
+  document.getElementById("folderDrives").innerHTML = (r.drives || []).map(d => `<button type="button" data-drive="${esc(d)}">${esc(d)}</button>`).join(" ");
+  document.getElementById("folderHidN").textContent = r.hidden ? `(${r.hidden})` : "";
+  msg.textContent = r.error || (r.missing ? `${r.missing} is not there yet (it is made when needed): showing the nearest folder that is` : "");
+  msg.hidden = !msg.textContent;
+  document.getElementById("folderList").innerHTML = r.dirs.length || r.more
+    ? r.dirs.map(d => `<li><button type="button" data-dir="${esc(d)}">📁 ${esc(d)}</button></li>`).join("") + (r.more ? `<li class="unk">… and ${r.more} more: type the path</li>` : "")
+    : `<li class="unk">no folders inside</li>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".folderpick"); if (!b) return;
+  FP.field = b.parentElement.querySelector(`[data-key="${b.dataset.pick}"]`);
+  const s = (data && data.screenshots) || {};
+  const start = FP.field.value.trim() || (b.dataset.pick === "folder" ? s.folder : s.pictures) || "";
+  document.getElementById("folderTitle").textContent = b.getAttribute("aria-label").replace(/^choose the /, "Choose the ");
+  tabShow(document.getElementById("folderDlg"));
+  folderGo(start);
+});
+document.getElementById("folderList").addEventListener("click", e => {
+  const b = e.target.closest("[data-dir]");
+  if (b) folderGo(FP.path.replace(/[\\/]+$/, "") + FP.sep + b.dataset.dir);
+});
+document.getElementById("folderDrives").addEventListener("click", e => { const b = e.target.closest("[data-drive]"); if (b) folderGo(b.dataset.drive); });
+document.getElementById("folderUp").onclick = () => { if (FP.parent) folderGo(FP.parent); };
+document.getElementById("folderHome").onclick = () => folderGo("");
+document.getElementById("folderHidden").onchange = () => folderGo(FP.path);
+document.getElementById("folderPath").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); folderGo(e.target.value.trim()); } });
+document.getElementById("folderUse").onclick = () => {
+  if (FP.field && FP.path) {
+    FP.field.value = FP.path; FP.field.dataset.dirty = "1"; FP.field.dispatchEvent(new Event("input", {bubbles: true}));
+    const m = document.getElementById("shotMsg"); m.textContent = "not saved yet: Save keeps it"; m.className = "hint";
+  }
+  tabClose(document.getElementById("folderDlg"));
+};
 // the line at the section's top: converting or why not, where from and to, the last shot
 function drawShots() {
   const el = document.getElementById("shotStatus"), s = data && data.screenshots;

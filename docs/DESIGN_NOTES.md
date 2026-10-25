@@ -1540,6 +1540,11 @@ upstream project's choices, not rules of the game.
   Status.json could not), so both stay out of `RESET_JOURNAL_DATA`. A shot names its subject only from your own
   sample spots, composition scans and codex formations within `[screenshots] subject_m`: never from another player's
   data. Your own bio/geo pictures in the checklists in place of Canonn's are a later step.
+- **The folder picker is the game PC's, names only** (2026-10-25, the author asked for folder selection): a browser
+  cannot hand a page a folder's path (a directory input gives files, never where they are), and the page may be on the
+  tablet anyway, so 📁 asks Outrider for a folder's subfolders (`/api/folders`, `pc_only`, behind the sign-in like
+  every route): never a file, never a write. A folder that is not there yet opens at its nearest parent; it is made
+  when the first shot needs it.
 
 ## Known limits
 
@@ -1626,8 +1631,8 @@ confirmed while playing. Treat reports about them as likely real.
   ship, with Status.json's live Latitude/Longitude in flight; tested on made-up Status.json only.
 
 
-- The rail's Hide UI, Screenshot and HighRes (2026-10-25): F10 and Alt+F10 were checked live from the keyboard;
-  Ctrl+Alt+G (hide the HUD) and all three pressed through the rail's virtual keyboard were not, nor on foot or in the SRV.
+- The rail's HighRes button (2026-10-25): Hide UI and Screenshot pressed from the tablet work (the author, 2026-10-25);
+  HighRes (Alt+F10) through the rail's virtual keyboard was not tried.
 - Screenshot converting end to end in a live session (the event's timing, the subject from a real sample spot or
   formation, the backlog on a full Pictures folder): the converter was tried on the author's real F10 and HighRes BMPs
   (2026-10-25), the rest on fakes.

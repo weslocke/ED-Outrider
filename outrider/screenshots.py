@@ -303,3 +303,50 @@ def journal_shots(paths):
         except OSError:
             continue
     return out
+
+
+FOLDERS_MAX = 1000   # folders one listing names (a huge folder is cut, and says how many more)
+
+
+def drives(exists=os.path.isdir):
+    """Windows' drive roots ("C:\\", "D:\\" ...); none elsewhere."""
+    if os.name != "nt":
+        return []
+    return [f"{c}:\\" for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if exists(f"{c}:\\")]
+
+
+def list_folders(path, hidden=False):
+    """The Settings folder picker (the author, 2026-10-25: a browser cannot hand a page a folder's path, so the game PC
+    lists its own): `path`'s subfolders, names only, never a file. "" is the home folder; a path not there yet (a
+    folder to be made) starts at its nearest parent that is. hidden: dot-folders too (the Proton prefix is under
+    one). {path, parent (None at a root), dirs, hidden (how many were left out), more, drives (Windows), missing,
+    error}."""
+    want = os.path.abspath(os.path.expanduser(path or "~"))
+    p, missing = want, None
+    while not os.path.isdir(p):
+        up = os.path.dirname(p)
+        if up == p:
+            break
+        p, missing = up, want
+    parent = os.path.dirname(p)
+    out = {"path": p, "parent": None if parent == p else parent, "sep": os.sep, "dirs": [], "hidden": 0, "more": 0,
+           "drives": drives(), "missing": missing, "error": None}
+    try:
+        with os.scandir(p) as it:
+            names = []
+            for e in it:
+                try:
+                    if not e.is_dir():
+                        continue
+                except OSError:
+                    continue
+                if e.name.startswith(".") and not hidden:
+                    out["hidden"] += 1
+                    continue
+                names.append(e.name)
+    except OSError as e:
+        out["error"] = f"{p} cannot be read ({e.strerror or e})"
+        return out
+    names.sort(key=lambda n: (n.startswith("."), n.casefold()))
+    out["dirs"], out["more"] = names[:FOLDERS_MAX], max(0, len(names) - FOLDERS_MAX)
+    return out

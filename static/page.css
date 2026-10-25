@@ -1561,6 +1561,15 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 
 /* a body panel's screenshots (2026-10-25): thumbnails in a row that wraps, each with when and what it shows */
 .shotlist { display: flex; flex-wrap: wrap; gap: 8px; }
+.folderpick { margin-left: 2px; }
+.folderdlg { width: min(640px, 94vw); }
+.folderdlg .folderbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.folderdlg #folderPath { width: 100%; box-sizing: border-box; font-family: var(--mono, monospace); }
+.folderlist { list-style: none; margin: 8px 0 0; padding: 0; max-height: 50vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; }
+.folderlist li button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; padding: 6px 10px; background: none; }
+.folderlist li button:hover, .folderlist li button:focus-visible { background: var(--bg); }
+.folderlist li.unk { padding: 6px 10px; }
+.folderdlg .folderhid { display: inline-flex; gap: 6px; align-items: center; margin: 0; }
 .shotlist figure.shot { margin: 0; width: 160px; }
 .shotlist figure.shot img { width: 160px; height: 90px; object-fit: cover; border-radius: 4px; display: block; border: 1px solid var(--line); }
 .shotlist figcaption { font-size: 11px; color: var(--muted); margin-top: 2px; }

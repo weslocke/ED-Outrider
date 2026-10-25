@@ -21216,6 +21216,12 @@ def make_app(state, hosts=None):
         out, status = await state.shots_backlog()
         return web.json_response(out, status=status)
 
+    async def folders_view(request):
+        """GET /api/folders?path=&hidden=1: a folder's subfolders on this PC, for Settings' folder picker (📁)."""
+        q = request.query
+        return web.json_response(await asyncio.get_running_loop().run_in_executor(
+            None, outrider.screenshots.list_folders, q.get("path", ""), q.get("hidden") == "1"))
+
     async def records_view(_):
         """GET /api/records: My firsts' Your records (read on a worker: years of scans)."""
         return web.json_response(await state.body_records())
@@ -22571,6 +22577,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/screenshots", screenshots_view)
     app.router.add_get("/api/screenshots/{id}/image", screenshot_image)
     app.router.add_post("/api/screenshots/backlog", screenshots_backlog)
+    app.router.add_get("/api/folders", pc_only(folders_view))   # names only, never a file
     app.router.add_get("/api/left", left_view)
     app.router.add_get("/api/body", body_view)
     app.router.add_get("/api/find", find_view)

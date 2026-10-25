@@ -938,26 +938,27 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <label data-find="screenshots.enabled" class="mod"><input type="checkbox" class="scfg" data-sec="screenshots" data-key="enabled"> Convert each screenshot as you take it
         <span class="hint">the game's own BMP (F10, or Alt+F10 for HighRes) becomes a PNG or JPG named after where it was taken, in a folder per commander, with what it shows when it is near a plant or formation you logged (within the distance below)</span></label>
       <div class="mod inlineopts" data-find="screenshots.folder screenshots.pictures">
-        <label title="where the converted images go (empty: the game's Pictures folder's Converted)">folder <input type="text" class="scfg" data-sec="screenshots" data-key="folder" size="34" spellcheck="false" autocapitalize="off"></label>
-        <label title="the game's own Pictures folder (empty: found beside its journals)">game's pictures <input type="text" class="scfg" data-sec="screenshots" data-key="pictures" size="34" spellcheck="false" autocapitalize="off"></label></div>
+        <label title="where the converted images go (empty: the game's Pictures folder's Converted)">save to <input type="text" class="scfg" data-sec="screenshots" data-key="folder" size="34" spellcheck="false" autocapitalize="off" title="where the converted images go (empty: the game's Pictures folder's Converted)"></label><button type="button" class="mini folderpick" data-pick="folder" title="choose the folder on the game PC" aria-label="choose the folder the converted images go to">📁</button>
+        <label title="the game's own Pictures folder, where F10 writes its BMPs (empty: found beside its journals)">the game's pictures <input type="text" class="scfg" data-sec="screenshots" data-key="pictures" size="34" spellcheck="false" autocapitalize="off" title="the game's own Pictures folder, where F10 writes its BMPs (empty: found beside its journals)"></label><button type="button" class="mini folderpick" data-pick="pictures" title="choose the folder on the game PC" aria-label="choose the game's Pictures folder">📁</button></div>
       <div class="mod inlineopts" data-find="screenshots.by_cmdr screenshots.by_system screenshots.subfolder screenshots.filename">
-        <label><input type="checkbox" class="scfg" data-sec="screenshots" data-key="by_cmdr"> a folder per commander</label>
-        <label><input type="checkbox" class="scfg" data-sec="screenshots" data-key="by_system"> and per system</label>
+        <label title="each commander's shots in a folder of their own"><input type="checkbox" class="scfg" data-sec="screenshots" data-key="by_cmdr"> a folder per commander</label>
+        <label title="inside that, a folder per system"><input type="checkbox" class="scfg" data-sec="screenshots" data-key="by_system"> and per system</label>
         <label title="your own folders instead of the two boxes: {cmdr} {system} {date}, a / for a folder inside a folder (empty: the boxes)">own folders <input type="text" class="scfg" data-sec="screenshots" data-key="subfolder" size="20" placeholder="{cmdr}/{date}" spellcheck="false" autocapitalize="off"></label>
         <label title="the file's name: {system} {body} {date} {time} {cmdr} {highres} {subject} (the plant or formation it shows)">name <input type="text" class="scfg" data-sec="screenshots" data-key="filename" size="34" spellcheck="false" autocapitalize="off"></label></div>
       <div class="mod inlineopts" data-find="screenshots.format screenshots.jpg_quality">
-        <label>full size as <select class="scfg" data-sec="screenshots" data-key="format"><option value="png">PNG (lossless)</option><option value="jpg">JPG</option></select></label>
+        <label title="the full-size image: PNG keeps every pixel (bigger files), JPG is smaller">full size as <select class="scfg" data-sec="screenshots" data-key="format"><option value="png">PNG (lossless)</option><option value="jpg">JPG</option></select></label>
         <label title="a full-size JPG's quality">JPG quality <input type="number" class="scfg" data-sec="screenshots" data-key="jpg_quality" min="50" max="100" step="1"></label></div>
       <div class="mod inlineopts" data-find="screenshots.medium screenshots.small screenshots.resized_quality">
         <label title="a copy in medium/ beside each image, its long edge this many px (never enlarged): for Reddit, Discord"><input type="checkbox" class="shotsize" data-for="medium" data-px="1920"> medium copy</label>
-        <input type="number" class="scfg" data-sec="screenshots" data-key="medium" min="0" max="7680" step="1" aria-label="medium copy's long edge, px"> px
+        <input type="number" class="scfg" data-sec="screenshots" data-key="medium" min="0" max="7680" step="1" title="the medium copy's long edge in px (never enlarged)" aria-label="medium copy's long edge, px"> px
         <label title="a copy in small/, its long edge this many px: phones, quick posts"><input type="checkbox" class="shotsize" data-for="small" data-px="1080"> small copy</label>
-        <input type="number" class="scfg" data-sec="screenshots" data-key="small" min="0" max="3840" step="1" aria-label="small copy's long edge, px"> px
+        <input type="number" class="scfg" data-sec="screenshots" data-key="small" min="0" max="3840" step="1" title="the small copy's long edge in px (never enlarged)" aria-label="small copy's long edge, px"> px
         <label title="the copies are JPG at this quality">quality <input type="number" class="scfg" data-sec="screenshots" data-key="resized_quality" min="50" max="100" step="1"></label></div>
-      <div class="mod inlineopts" data-find="screenshots.original screenshots.move_to screenshots.subject_m">
-        <label title="the game's BMP once every image is written and read back">the game's BMP <select class="scfg" data-sec="screenshots" data-key="original"><option value="keep">keep</option><option value="delete">delete</option><option value="move">move to</option></select></label>
-        <input type="text" class="scfg" data-sec="screenshots" data-key="move_to" size="26" placeholder="a folder" spellcheck="false" autocapitalize="off" aria-label="where to move the game's BMP">
-        <label title="a surface shot names the plant (your samples, your composition scans) or geology formation this close (0: never)">names what it shows within <input type="number" class="scfg" data-sec="screenshots" data-key="subject_m" min="0" max="500" step="1"> m</label></div>
+      <div class="mod inlineopts" data-find="screenshots.original screenshots.move_to">
+        <label title="what happens to the game's own BMP once every image is written and read back">afterwards, the game's BMP is <select class="scfg" data-sec="screenshots" data-key="original" title="what happens to the game's own BMP once every image is written and read back"><option value="keep">kept</option><option value="delete">deleted</option><option value="move">moved to</option></select></label>
+        <span id="shotMoveTo" hidden><input type="text" class="scfg" data-sec="screenshots" data-key="move_to" size="30" placeholder="a folder for the BMPs" spellcheck="false" autocapitalize="off" title="the folder the game's BMPs are moved to" aria-label="the folder the game's BMPs are moved to"><button type="button" class="mini folderpick" data-pick="move_to" title="choose the folder on the game PC" aria-label="choose the folder the BMPs are moved to">📁</button></span></div>
+      <label data-find="screenshots.subject_m" class="mod" title="a shot taken on a surface this close to a plant you sampled or scanned, or a geology formation you logged in your codex, keeps its name (0: never)">Note the plant or formation a surface shot shows, when it is within <input type="number" class="scfg" data-sec="screenshots" data-key="subject_m" min="0" max="500" step="1" title="metres (0: never)"> m
+        <span class="hint">a plant you sampled or tagged with the composition scanner, or a geology formation you logged in your codex: its name ("Stratum Tectonicas - Lime", "Water Ice Geyser") is kept with the shot, written into the image, and offered as {subject} for the file name; 0: never</span></label>
       <div class="mod"><button type="button" id="shotSave">Save</button> <span id="shotMsg" class="hint"></span></div>
       <div class="mod"><button type="button" id="shotBacklog" title="the BMPs still in the game's Pictures folder, each matched to its journal line (where and when it was taken); those converted already are left alone">Convert the screenshots already there</button> <span id="shotBacklogMsg" class="hint"></span></div>
     </details>
@@ -1119,6 +1120,23 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <button type="button" id="recountSave" class="primary">Save</button>
     </div>
     <div id="recountTotal" class="hint"></div>
+  </form>
+</dialog>
+<dialog id="folderDlg" class="folderdlg" aria-labelledby="folderTitle">
+  <form method="dialog">
+    <h3 id="folderTitle">Choose a folder</h3>
+    <p class="hint">Folders on the game PC, where Outrider runs. Open one, then <b>Use this folder</b>; Save keeps it.</p>
+    <div class="folderbar"><button type="button" id="folderUp" title="the folder above this one">⬆ Up</button>
+      <button type="button" id="folderHome" title="your home folder">⌂ Home</button><span id="folderDrives"></span></div>
+    <input type="text" id="folderPath" spellcheck="false" autocapitalize="off" title="type a path and press Enter to go there" aria-label="the folder's path (type one and press Enter)">
+    <p id="folderMsg" class="hint warnc" hidden></p>
+    <ul id="folderList" class="folderlist"></ul>
+    <div class="btns">
+      <label class="folderhid" title="folders whose names start with a dot (the game's Proton prefix is inside one)"><input type="checkbox" id="folderHidden"> hidden folders <span id="folderHidN"></span></label>
+      <span class="grow"></span>
+      <button type="button" data-close>Cancel</button>
+      <button type="button" id="folderUse" class="primary">Use this folder</button>
+    </div>
   </form>
 </dialog>
 <dialog id="updDialog" class="upddlg" aria-labelledby="updTitle">

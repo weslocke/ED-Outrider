@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Screenshots' settings: a folder picker, clearer words
+- The author read "a folder names what it shows within 50 m": the "move to" box's placeholder ran into the next
+  setting, whose help was only a hover title on its label. "Moved to" and its folder now show only when picked, the
+  distance has its own line ("Note the plant or formation a surface shot shows, when it is within 50 m") with its help
+  shown under it, and every field in the section has a hover popup.
+- 📁 beside each folder field (save to, the game's pictures, moved to): a picker of the game PC's folders (GET
+  `/api/folders`, game PC only, names only: `outrider.screenshots.list_folders`), Up, Home, the drives on Windows,
+  hidden folders on a tick (the Proton prefix is in one), a path typed and Enter; **Use this folder** fills the field.
+- Hide UI and Screenshot from the tablet's rail confirmed working by the author.
+
 ## 2026-10-25 · Hide UI, Screenshot and HighRes on every rail
 - The author (the Android session asked): three buttons at the end of every rail set (ship, SRV, Nomad, fighter, on
   foot), on by default (a set you edited is kept as it is: add them with Edit) and removable like any other. They press

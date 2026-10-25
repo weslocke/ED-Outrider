@@ -94,7 +94,8 @@ package (see [Install and run](install.md)), and is off until you tick it.
   Linux GNOME uses Alt+F10 for "toggle maximisation" until you free it in its keyboard settings). Steam's F12
   screenshots are not the game's and are left alone. Outrider takes the place and the commander from the journal's
   line for the shot, so the name is right even after you have jumped on.
-- **Where:** the game's Pictures folder's `Converted` folder unless you pick one, in **a folder per commander** (the
+- **Where:** the game's Pictures folder's `Converted` folder unless you pick one (type it, or **📁** beside the field
+  browses the game PC's folders, from the tablet too), in **a folder per commander** (the
   default) and, ticked, **per system** inside it. **Own folders** takes a pattern of your own instead
   (`{cmdr}/{date}`, a `/` for a folder inside a folder), and **name** sets the file's name from `{system}` `{body}`
   (short: `2 a`) `{date}` `{time}` (your local time) `{cmdr}` `{highres}` and `{subject}` (below). A name already
@@ -104,7 +105,7 @@ package (see [Install and run](install.md)), and is off until you tick it.
   or a JPG at the quality you set.
 - **The game's BMP:** kept (the default), deleted or moved to a folder of your choice, and only once every image has
   been written and read back.
-- **What it shows:** a shot taken on a surface within 50 m (**names what it shows within**) of a plant you sampled
+- **What it shows:** a shot taken on a surface within 50 m (**Note the plant or formation a surface shot shows**) of a plant you sampled
   or tagged with the composition scanner, or of a geology formation you logged in your codex, knows what it shows: the
   variant ("Stratum Tectonicas - Lime") or the formation ("Water Ice Geyser"), kept with the shot, written into the
   image and in the name when you add `{subject}` to it. Every image also carries where it was taken (system, body,

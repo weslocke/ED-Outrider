@@ -286,6 +286,48 @@ class Server(unittest.TestCase):
         return out
 
 
+class Folders(unittest.TestCase):
+    """Settings' folder picker: a folder's subfolders on the game PC, names only (the author, 2026-10-25)."""
+
+    def setUp(self):
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d)
+        for n in ("b", "A", ".steam", "c"):
+            os.makedirs(os.path.join(self.d, n))
+        with open(os.path.join(self.d, "a file.bmp"), "w") as f:
+            f.write("x")
+
+    def test_listing(self):
+        r = S.list_folders(self.d)
+        self.assertEqual((r["path"], r["parent"], r["dirs"], r["hidden"], r["missing"], r["error"]),
+                         (self.d, os.path.dirname(self.d), ["A", "b", "c"], 1, None, None))   # never a file; dot-folders apart
+        self.assertEqual(S.list_folders(self.d, hidden=True)["dirs"], ["A", "b", "c", ".steam"])
+        gone = os.path.join(self.d, "b", "not yet", "deeper")
+        r = S.list_folders(gone)
+        self.assertEqual((r["path"], r["missing"]), (os.path.join(self.d, "b"), gone))   # its nearest folder that is there
+        self.assertEqual(S.list_folders("")["path"], os.path.expanduser("~"))
+        self.assertIsNone(S.list_folders(os.path.abspath(os.sep))["parent"])
+        with unittest.mock.patch.object(S.os, "scandir", side_effect=PermissionError(13, "Permission denied")):
+            r = S.list_folders(self.d)
+        self.assertEqual((r["path"], r["dirs"]), (self.d, []))
+        self.assertIn("cannot be read", r["error"])
+
+    def test_the_route_is_the_game_pcs(self):
+        from aiohttp.test_utils import TestClient, TestServer
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        st = ed_outrider.State(db, ed_outrider.Journals(db), ed_outrider.Spansh(db), 25)
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(st))) as c:
+                r = await c.get("/api/folders", params={"path": self.d})
+                out = [r.status, (await r.json())["dirs"]]
+                st.game_pc = False
+                out.append((await c.get("/api/folders", params={"path": self.d})).status)   # a server: not its folders
+                return out
+        self.assertEqual(asyncio.run(go()), [200, ["A", "b", "c"], 409])
+
+
 class Settings(unittest.TestCase):
     def test_clamped_and_homed(self):
         num = lambda sec, table, key, conv, default: ed_outrider._config_value(sec, key, table.get(key), conv, default)
