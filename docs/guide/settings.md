@@ -10,8 +10,8 @@
 
 **⚙ Settings** (top right) holds everything, in folding sections: Alerts (with the alert sounds to try), Voice (with
 what the voice says: signals, routine systems, hazards, mapped planets), Worth stopping for, Risk & warnings, Surface
-map, Mining, Auto honk (and the co-pilot button), Auto-target, In-game overlay, Uploads, Display, Sharing, **Server**,
-Spoken lines and Questions asked.
+map, Mining, Auto honk (and the co-pilot button), Auto-target, In-game overlay, Screenshots, Uploads, Display, Sharing,
+**Server**, Spoken lines and Questions asked.
 **Find a setting…** at the top leaves only what matches the words typed (a setting's name, its help or its config key,
 `speech_speed` finds the Speed slider too), in every section at once, Server's keys included; clear it and every
 section is back as it was. A section's name shows all of it, and so does a block's heading inside one: "crew" shows the
@@ -24,7 +24,7 @@ no section of their own, in six groups: **Network and access**, **Files and back
 is set in its own sections, and Find a setting finds it there by its key too: `[defaults]` in the rows it starts new
 browsers with (Worth stopping for, Risk and warnings, Voice, the surface map: Sharing makes this browser's choices
 every new browser's defaults), `[speech]` in Voice, `[autohonk]` and `[copilot]` in Auto honk, `[highway]
-autotarget_*` in Auto-target, `[overlay]` in In-game overlay, `[eddn]`, `[edsm]` and `[inara]` in Uploads. The file
+autotarget_*` in Auto-target, `[overlay]` in In-game overlay, `[screenshots]` in Screenshots, `[eddn]`, `[edsm]` and `[inara]` in Uploads. The file
 keeps every key, to edit by hand if you like. Saving there writes `ed_outrider.toml` (only the keys you changed; its
 comments stay, and the previous file is kept as `ed_outrider.toml.bak`), and Outrider uses them from its next start:
 **Restart now** beside "Saved" does that at once. A few keys take effect at once instead: `[speech] voices_loaded` and
@@ -85,6 +85,7 @@ you save it in Settings ("[highway] efficiency must be 1 to 100 %"); in a file e
 | `[mcp]` | `url` (this PC at `[server] port`), `max_rows` (25), `password` (""): for the MCP bridge (see Ask an AI about your game) |
 | `[eddn]`, `[edsm]`, `[inara]` | `enabled` (false): written by the switches in Settings → Uploads (the only place to change them) |
 | `[overlay]` | `enabled` (false), `theme` ("default"; or lcars, elite, babylon5, narn, minbari, centauri, vorlon, shadow, sith, alliance, dark), `text_size` ("normal"; a panel can have its own in Settings), `panel_scale` (100: all panels' size in %, 20 to 250, Settings' All Panels: Scale, multiplied with each panel's own Size %; text is never drawn under 9 px), `system_panel` (true), `body_panel` (true: the Target panel), `radar` (true), `strip_panel` (false), `now_panel` (false), `bio_panel` (false), `alerts_panel` (false: the page's alerts for a few seconds), `system_seconds` (0: while in supercruise there), `radar_range` (800 m), `analysis_only` ([]: the panels shown in your ship only while the HUD is in analysis mode), `hide_docked` (["system", "body", "now", "bio"]: the panels hidden while docked), `show_inactive` (false: keep showing when Elite is not the active window), `pad_diagram` (true: while docking at a starport or carrier, a diagram of where your pad is, in the Surface radar's place and on Now), `hide_on_foot` ([]: the panels hidden on foot), `hide_mouse_lock` (false: no overlay at all on foot and in the DSS, where Elite locks the mouse) (the overlay is a game-PC feature: see In-game overlay) |
+| `[screenshots]` | `enabled` (false), `pictures` ("": the game's Pictures folder, found beside its journals), `folder` ("": that folder's `Converted`), `by_cmdr` (true), `by_system` (false), `subfolder` ("": the two above; else a pattern such as `{cmdr}/{date}`), `filename` (`{system} {body} {date} {time}{highres}`; also `{cmdr}` and `{subject}`), `format` ("png" or "jpg"), `jpg_quality` (90, 50 to 100), `medium` (0: none; a long edge in px up to 7680, 1920 when ticked), `small` (0; up to 3840, 1080 when ticked), `resized_quality` (85, 50 to 100), `original` ("keep", "delete" or "move"), `move_to` (""), `subject_m` (50 m, 0 to 500: a surface shot names the plant or formation this close; 0 never) (every key takes effect at once; game PC only: see [Screenshots](automation.md#-screenshots)) |
 | `[highway]` | `clipboard` (true), `efficiency` (60 %), `conservative` (false), `conservative_ly` (5 ly), `voice_plot` (true: the voice's "nearest station"... also plots a neutron route there past `voice_plot_ly`, 500 ly), `background_image` ("": none), `background_extent` ([-45000, 45000, -20000, 70000]), `background_opacity` (0.6); auto-target: `autotarget` (false), `autotarget_delay` (5 s), `autotarget_entry` ("type"), `autotarget_map_wait` (5 s), `autotarget_search_wait` (3 s: a second more for each 200 ly to the system, up to 7), `autotarget_key_delay` (0.05 s: the typing delay, between the name's characters when typed), `autotarget_step_pause` (0.25 s: the pause after each key of the steps), `autotarget_target` (the Target System steps) and `autotarget_route_target` (true: a route's next stop one jump away is targeted, not plotted), `autotarget_keys` ({}: read from your controls preset), `autotarget_search`, `autotarget_submit`, `autotarget_plot` (the galaxy map's steps: see the example file), `autotarget_dry_run` (false) |
 
 Command-line flags override the file for a single run:

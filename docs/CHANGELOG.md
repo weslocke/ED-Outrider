@@ -2,6 +2,24 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · 📷 Screenshots converted as you take them
+- A player asked for it so they can drop EDDiscovery (its screenshot converter's ideas, none of its code:
+  [EDDiscovery](https://github.com/EDDiscovery/EDDiscovery)); the folders and copies are the author's. Settings →
+  Screenshots (game PC, off until ticked, `[screenshots]`, every key live): each F10 / Alt+F10 shot's BMP, found from
+  the journal's `Screenshot` line, becomes a PNG (or JPG) named after where it was taken, in a folder per commander
+  (and, ticked, per system; or your own pattern), with optional `medium/` (1920 px) and `small/` (1080 px) JPG copies
+  at quality 85; the game's BMP kept, deleted or moved once every image is read back. One at a time on a worker thread:
+  a real 12288x6912 HighRes BMP (255 MB) took 4.4 s at ~0.5 GB. The optional Pillow package (requirements.txt, the
+  launchers' optional list; not in the Docker image).
+- What a surface shot shows (the author): the nearest of your sample spots, composition scans and logged geology
+  formations within `subject_m` (50 m) is kept with the shot, written into the image and offered as `{subject}`, ready
+  for your own bio/geo pictures later. Geology codex entries now keep their position (table `geo_tags`; PARSER_VERSION
+  61 re-reads the journals once for it).
+- A record (`screenshots`, live-only): Here's 📷 beside a body you photographed, the body panel's pictures with what
+  each shows and 📍 to pin where it was taken, a card when one fails, and **Convert the screenshots already there**
+  for the BMPs left in the Pictures folder (matched to their lines by name and time; works with the switch off).
+- `outrider/screenshots.py`, `tests/test_screenshots.py` (16 tests); the guide's Automation → Screenshots.
+
 ## 2026-10-25 · A compass grid on the surface map and the overlay's radar
 - The author, after another tool's tracker (not a copy): both maps get a grid that turns with the heading-up view:
   compass ticks on the rim every 15° (longer every 45°, longest at N E S W), E S W inside the rim beside N's chevron (the

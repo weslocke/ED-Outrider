@@ -1529,6 +1529,17 @@ upstream project's choices, not rules of the game.
   leaving warning, the status report and the briefing; only bodies you were first to discover are known (a lost scan of
   a known body is kept nowhere). Spansh's Guardian, Thargoid and anomaly counts show as "reported by others" until your
   own DSS counts them (S9-S3), and are never spoken: the surface-site line stays your own SAASignalsFound.
+- **Screenshots: the journal's line is the trigger, never a folder watch** (2026-10-25, a player replacing
+  EDDiscovery; its ideas only, none of its code): the game writes a `Screenshot` line for every F10 / Alt+F10 shot, and
+  it carries what a file name cannot (system, body, position), so there is no file watcher; a BMP with no line (one copied
+  into the folder; Steam's F12 shots write none and are Steam's own files) is left to **Convert the screenshots already there**.
+  One shot at a time on a worker thread (a HighRes one is 255 MB of BMP: ~4 s and ~0.5 GB, so never two at once), the
+  game's BMP deleted or moved only after every image was written and read back. Off by default and game-PC only: it
+  writes files beside the game's. Pillow is optional, like Piper; not in the Docker image. The record (`screenshots`)
+  and `geo_tags` are live-only (a geology CodexEntry's position could be rebuilt from the journals, but a position from
+  Status.json could not), so both stay out of `RESET_JOURNAL_DATA`. A shot names its subject only from your own
+  sample spots, composition scans and codex formations within `[screenshots] subject_m`: never from another player's
+  data. Your own bio/geo pictures in the checklists in place of Canonn's are a later step.
 
 ## Known limits
 
@@ -1598,6 +1609,10 @@ upstream project's choices, not rules of the game.
   a re-read would only keep a line nobody looks at again; a restart starts a new one. It is drawn on the surface map
   and, since the author asked for it there too (2026-10-25), on the overlay's radar: the stretches within its edge only.
 
+- **A screenshot is shown only from the folder it was converted into while that is still the output folder**
+  (2026-10-25): `shot_image` serves a path the record names only under `[screenshots] folder`, so after the folder is
+  changed (or the files moved), the body panel's older pictures read as missing; the files themselves are untouched.
+
 ## Not yet tried in a live game
 
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
@@ -1611,6 +1626,9 @@ confirmed while playing. Treat reports about them as likely real.
   ship, with Status.json's live Latitude/Longitude in flight; tested on made-up Status.json only.
 
 
+- Screenshot converting end to end in a live session (the event's timing, the subject from a real sample spot or
+  formation, the backlog on a full Pictures folder): the converter was tried on the author's real F10 and HighRes BMPs
+  (2026-10-25), the rest on fakes.
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen
   in the author's journals (the carrier was bought before them).
 - Status.json Flags2 on-foot-in-station bits (3, 13, 14) counting as docked.

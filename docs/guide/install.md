@@ -50,7 +50,7 @@ update Outrider.
 > Settings → Server at `[journals] live`. A browser needs one click on the
 > page before it plays sound: the red **Click Here To Allow Audio** pill asks for it.
 
-`requirements.txt` also installs two optional parts; leave either line out if you don't want it:
+`requirements.txt` also installs three optional parts; leave any of those lines out if you don't want it:
 
 - **Piper** (`piper-tts`, about 100 MB) for a natural speaking voice. It needs a **64-bit Python 3.11 to 3.14**: its
   onnxruntime has no build for Python 3.15 yet. The launchers pick such a Python by themselves when you have one
@@ -60,6 +60,8 @@ update Outrider.
 - **evdev** (Linux only) for auto honk, auto-target, the control rail and the co-pilot button (Windows needs
   nothing extra for the first three). It is built from
   source, so it needs your distribution's Python development headers.
+- **Pillow** (`pillow`, about 10 MB) to convert the game's screenshots as you take them
+  ([Screenshots](automation.md#-screenshots)); without it they stay the game's BMPs.
 
 If one of these will not install, the launcher still starts Outrider without it and says what is off and how to add
 it; once you have fixed that (say `sudo apt install python3-dev`), start it with `OUTRIDER_REINSTALL=1

@@ -933,6 +933,34 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
           (a browser or the tablet), the panel stays empty.</li>
       </ul>
     </details>
+    <details class="setsec pcOnly" data-sec-key="screenshots" data-chip="Screenshots" id="shotSettings"><summary>Screenshots <span class="sum-note">the game's F10 and Alt+F10 shots converted as you take them</span></summary>
+      <div id="shotStatus" class="hint" role="status"></div>
+      <label data-find="screenshots.enabled" class="mod"><input type="checkbox" class="scfg" data-sec="screenshots" data-key="enabled"> Convert each screenshot as you take it
+        <span class="hint">the game's own BMP (F10, or Alt+F10 for HighRes) becomes a PNG or JPG named after where it was taken, in a folder per commander, with what it shows when it is near a plant or formation you logged (within the distance below)</span></label>
+      <div class="mod inlineopts" data-find="screenshots.folder screenshots.pictures">
+        <label title="where the converted images go (empty: the game's Pictures folder's Converted)">folder <input type="text" class="scfg" data-sec="screenshots" data-key="folder" size="34" spellcheck="false" autocapitalize="off"></label>
+        <label title="the game's own Pictures folder (empty: found beside its journals)">game's pictures <input type="text" class="scfg" data-sec="screenshots" data-key="pictures" size="34" spellcheck="false" autocapitalize="off"></label></div>
+      <div class="mod inlineopts" data-find="screenshots.by_cmdr screenshots.by_system screenshots.subfolder screenshots.filename">
+        <label><input type="checkbox" class="scfg" data-sec="screenshots" data-key="by_cmdr"> a folder per commander</label>
+        <label><input type="checkbox" class="scfg" data-sec="screenshots" data-key="by_system"> and per system</label>
+        <label title="your own folders instead of the two boxes: {cmdr} {system} {date}, a / for a folder inside a folder (empty: the boxes)">own folders <input type="text" class="scfg" data-sec="screenshots" data-key="subfolder" size="20" placeholder="{cmdr}/{date}" spellcheck="false" autocapitalize="off"></label>
+        <label title="the file's name: {system} {body} {date} {time} {cmdr} {highres} {subject} (the plant or formation it shows)">name <input type="text" class="scfg" data-sec="screenshots" data-key="filename" size="34" spellcheck="false" autocapitalize="off"></label></div>
+      <div class="mod inlineopts" data-find="screenshots.format screenshots.jpg_quality">
+        <label>full size as <select class="scfg" data-sec="screenshots" data-key="format"><option value="png">PNG (lossless)</option><option value="jpg">JPG</option></select></label>
+        <label title="a full-size JPG's quality">JPG quality <input type="number" class="scfg" data-sec="screenshots" data-key="jpg_quality" min="50" max="100" step="1"></label></div>
+      <div class="mod inlineopts" data-find="screenshots.medium screenshots.small screenshots.resized_quality">
+        <label title="a copy in medium/ beside each image, its long edge this many px (never enlarged): for Reddit, Discord"><input type="checkbox" class="shotsize" data-for="medium" data-px="1920"> medium copy</label>
+        <input type="number" class="scfg" data-sec="screenshots" data-key="medium" min="0" max="7680" step="1" aria-label="medium copy's long edge, px"> px
+        <label title="a copy in small/, its long edge this many px: phones, quick posts"><input type="checkbox" class="shotsize" data-for="small" data-px="1080"> small copy</label>
+        <input type="number" class="scfg" data-sec="screenshots" data-key="small" min="0" max="3840" step="1" aria-label="small copy's long edge, px"> px
+        <label title="the copies are JPG at this quality">quality <input type="number" class="scfg" data-sec="screenshots" data-key="resized_quality" min="50" max="100" step="1"></label></div>
+      <div class="mod inlineopts" data-find="screenshots.original screenshots.move_to screenshots.subject_m">
+        <label title="the game's BMP once every image is written and read back">the game's BMP <select class="scfg" data-sec="screenshots" data-key="original"><option value="keep">keep</option><option value="delete">delete</option><option value="move">move to</option></select></label>
+        <input type="text" class="scfg" data-sec="screenshots" data-key="move_to" size="26" placeholder="a folder" spellcheck="false" autocapitalize="off" aria-label="where to move the game's BMP">
+        <label title="a surface shot names the plant (your samples, your composition scans) or geology formation this close (0: never)">names what it shows within <input type="number" class="scfg" data-sec="screenshots" data-key="subject_m" min="0" max="500" step="1"> m</label></div>
+      <div class="mod"><button type="button" id="shotSave">Save</button> <span id="shotMsg" class="hint"></span></div>
+      <div class="mod"><button type="button" id="shotBacklog" title="the BMPs still in the game's Pictures folder, each matched to its journal line (where and when it was taken); those converted already are left alone">Convert the screenshots already there</button> <span id="shotBacklogMsg" class="hint"></span></div>
+    </details>
     <details class="setsec" data-sec-key="uploads" data-chip="Uploads"><summary>Uploads <span class="sum-note">EDDN, EDSM and Inara: send what you find, keep your profiles current (off by default)</span></summary>
       <div id="uploadsBox"></div>
       <div class="hint">Only one Outrider (or EDMC) should send each: two would send everything twice. Outrider leaves a note

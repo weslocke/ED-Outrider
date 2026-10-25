@@ -82,6 +82,42 @@ from the next start).
   A keyboard or mouse needs your user in the `input` group, which lets every program read your typing, so a
   joystick button is the better choice.
 
+## 📷 Screenshots
+
+The game saves its screenshots as huge BMP files named `Screenshot_0001.bmp`. With **⚙ Settings → Screenshots →
+Convert each screenshot as you take it** ticked, Outrider turns each one, as you take it, into a PNG (or a JPG) named
+after where it was taken: `Smojooe UW-E c11-22 2 a 2026-10-25 20-33-35.png`. That is the part of EDDiscovery's
+screenshots most players use. It runs on the game PC (the Pictures folder is there), needs the optional **Pillow**
+package (see [Install and run](install.md)), and is off until you tick it.
+
+- **Which shots:** the game's own, F10 and Alt+F10 (HighRes: four times the size, a few seconds to convert, and on
+  Linux GNOME uses Alt+F10 for "toggle maximisation" until you free it in its keyboard settings). Steam's F12
+  screenshots are not the game's and are left alone. Outrider takes the place and the commander from the journal's
+  line for the shot, so the name is right even after you have jumped on.
+- **Where:** the game's Pictures folder's `Converted` folder unless you pick one, in **a folder per commander** (the
+  default) and, ticked, **per system** inside it. **Own folders** takes a pattern of your own instead
+  (`{cmdr}/{date}`, a `/` for a folder inside a folder), and **name** sets the file's name from `{system}` `{body}`
+  (short: `2 a`) `{date}` `{time}` (your local time) `{cmdr}` `{highres}` and `{subject}` (below). A name already
+  there gets " (2)".
+- **Smaller copies to post:** tick **medium copy** (1920 px on the long edge) and/or **small copy** (1080 px): JPGs at
+  quality 85, in `medium/` and `small/` folders beside the full size, never enlarged. The full size is a PNG (lossless)
+  or a JPG at the quality you set.
+- **The game's BMP:** kept (the default), deleted or moved to a folder of your choice, and only once every image has
+  been written and read back.
+- **What it shows:** a shot taken on a surface within 50 m (**names what it shows within**) of a plant you sampled
+  or tagged with the composition scanner, or of a geology formation you logged in your codex, knows what it shows: the
+  variant ("Stratum Tectonicas - Lime") or the formation ("Water Ice Geyser"), kept with the shot, written into the
+  image and in the name when you add `{subject}` to it. Every image also carries where it was taken (system, body,
+  coordinates, commander, time) inside it, for a later caption.
+- **Finding them again:** a 📷 beside a body you photographed in Here, and the body's panel lists its shots with a
+  small picture (click it to open it larger: the medium copy when there is one), the time and what it shows; **📍**
+  beside a surface shot pins where it was taken.
+- **The ones already there:** **Convert the screenshots already there** does the BMPs left in the Pictures folder,
+  each matched to its journal line by name and time (one with none is converted with no system), and leaves those
+  done already alone. It works with the switch off.
+- When one fails (the folder not writable, the file never written), a card says why; the Settings section says what
+  keeps it off (Pillow missing, the Pictures folder not found, not the game PC).
+
 ---
 
 [ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · **Automation** · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)

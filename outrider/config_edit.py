@@ -24,8 +24,8 @@ HIDDEN_SECTIONS = {"eddn", "edsm", "inara"}   # written by their own page sectio
 # the file, found by Find a setting through their section's data-find="section.key" (tests/test_settings keeps every
 # one findable). [defaults]: the browser rows (Sharing -> "use these for new browsers" sets new browsers' defaults);
 # [speech]: Voice; [overlay]: In-game overlay; [autohonk], [copilot]: Auto honk; [highway] autotarget*: Auto-target
-# and Plot Route
-HOMED_SECTIONS = {"defaults", "speech", "overlay", "autohonk", "copilot"}
+# and Plot Route; [screenshots]: Screenshots
+HOMED_SECTIONS = {"defaults", "speech", "overlay", "autohonk", "copilot", "screenshots"}
 
 
 def homed(section, key):

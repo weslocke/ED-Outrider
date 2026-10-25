@@ -4521,7 +4521,7 @@ const releasePayloads = async () => {
     const want = {colony: [500, null, " · 1,000 m"], sortTh: ["dist", "grav", "now", "max"], sortCycle: ["dist", "-dist rev", "max"],
       nearCycle: ["value", "-value", "distance"], treeSort: "max", halves: [true, true, true], halvesOff: false, matRow: true, link: ["linked", "linked"],
       nogame: ["linked · no game", "linked"], stale: ["unlinked · retrying", "stale"], none: ["unlinked · retrying", "none"], pill: true,
-      chips: ["Alerts", "Voice", "Worth stopping for", "Risk & warnings", "Surface map", "Mining", "Auto honk", "Auto-target", "In-game overlay", "Uploads", "Display", "Sharing", "Server", "Spoken lines", "Questions asked"],
+      chips: ["Alerts", "Voice", "Worth stopping for", "Risk & warnings", "Surface map", "Mining", "Auto honk", "Auto-target", "In-game overlay", "Screenshots", "Uploads", "Display", "Sharing", "Server", "Spoken lines", "Questions asked"],
       autoSmall: true, autoBig: false, line: true, cut: true, moved: ["voice", "voice", "voice", "alerts", "values"]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodB12 = !bad.length && errors.length === before;
@@ -5275,7 +5275,7 @@ const releasePayloads = async () => {
     await sleep(100);
     got.push(w.eval(`JSON.stringify(Object.values(JSON.parse(localStorage.getItem("settingsOpen"))).some(Boolean))`));
     w.eval(`document.getElementById("alertDialog").close ? document.getElementById("alertDialog").close() : document.getElementById("alertDialog").removeAttribute("open")`);
-    const want = ["Settings", true, 15, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, highway: {conservative: true}}), "false"];
+    const want = ["Settings", true, 16, ["alerts"], true, '[true,true,true,"","auto true false","1"]', JSON.stringify({server: {port: "9999"}, highway: {conservative: true}}), "false"];
     const goodS = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodS;
     console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "15 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
@@ -10105,6 +10105,19 @@ const releasePayloads = async () => {
       surfaceGrid(g, {c: 200, rimR: 186, north: -Math.PI / 2, S: 400}, surfColours(), false);   // heading east: north on the left
       return [calls.lineTo, calls.arc, calls.text]; })()`);
     want.grid = [26, 2, [["E", 200, 36], ["S", 364, 200], ["W", 200, 364]]];   // heading east: east is up, west down
+    // Screenshots (2026-10-25): the section's status line, the medium/small ticks filling their sizes, Here's 📷
+    got.shots = w.eval(`(() => { const k = data.screenshots;
+      data.screenshots = {on: false, why: "off (Settings -> Screenshots)", pictures: "/p", folder: "/p/Converted", queued: 0,
+                          last: {ok: true, full: "/p/Converted/Hefay/Sys 2 a.png", subject: {name: "Water Ice Geyser"}}};
+      drawShots(); const t1 = document.getElementById("shotStatus").textContent.replace(/\\s+/g, " ").trim();
+      data.screenshots = k; drawShots();
+      const f = document.querySelector('#shotSettings .scfg[data-key="medium"]'), b = document.querySelector('#shotSettings .shotsize[data-for="medium"]');
+      f.value = "0"; shotSizeBoxes(); const off = [b.checked, f.disabled];
+      b.checked = true; b.onchange(); const on = [f.value, f.disabled];
+      b.checked = false; b.onchange(); const back = f.value; f.dataset.dirty = "";
+      return [t1, off, on, back]; })()`);
+    want.shots = ["Not converting: off (Settings -> Screenshots) · from /p · to /p/Converted · last: Sys 2 a.png (Water Ice Geyser)",
+                  [false, true], ["1920", false], "0"];
     // (the batch's later items add their checks above this line)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodEX = !bad.length && errors.length === before;

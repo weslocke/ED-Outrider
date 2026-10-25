@@ -1558,3 +1558,9 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 #recordsBox > summary { cursor: pointer; }
 #recordsBox > summary h3 { display: inline; }
 .recordsTable td { padding: 2px 10px 2px 0; }
+
+/* a body panel's screenshots (2026-10-25): thumbnails in a row that wraps, each with when and what it shows */
+.shotlist { display: flex; flex-wrap: wrap; gap: 8px; }
+.shotlist figure.shot { margin: 0; width: 160px; }
+.shotlist figure.shot img { width: 160px; height: 90px; object-fit: cover; border-radius: 4px; display: block; border: 1px solid var(--line); }
+.shotlist figcaption { font-size: 11px; color: var(--muted); margin-top: 2px; }

@@ -15,9 +15,9 @@ WORKDIR /app
 # pages then speak with the browser's voice)
 ARG WITH_PIPER=1
 # requirements.txt itself (review 2026-10-23 S7-S4: a hand copy missed a new package): every line but evdev (key presses
-# on the game PC only) and, with WITH_PIPER=0, piper-tts; copied alone first, so the layer stays cached until it changes
+# on the game PC only), pillow (screenshots: the game PC's too) and, with WITH_PIPER=0, piper-tts; copied alone first, so the layer stays cached until it changes
 COPY requirements.txt /tmp/requirements.txt
-RUN grep -v -i -E '^(evdev|piper-tts)' /tmp/requirements.txt > /tmp/req-server.txt \
+RUN grep -v -i -E '^(evdev|piper-tts|pillow)' /tmp/requirements.txt > /tmp/req-server.txt \
  && pip install --no-cache-dir -r /tmp/req-server.txt \
  && if [ "$WITH_PIPER" = "1" ]; then pip install --no-cache-dir "$(grep -i -E '^piper-tts' /tmp/requirements.txt | sed 's/[[:space:]]*#.*//')"; fi
 # certifi (the root certificates every HTTPS request also trusts) as new as the build: the layer above stays in

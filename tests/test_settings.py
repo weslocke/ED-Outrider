@@ -33,7 +33,7 @@ class ConfigEdit(unittest.TestCase):
         st = settings({})
         secs = ce.entries(ed_outrider.config_text(st))
         self.assertEqual([s["section"] for s in secs],
-                         ["journals", "server", "defaults", "spansh", "speech", "autohonk", "copilot", "highway", "overlay",
+                         ["journals", "server", "defaults", "spansh", "speech", "autohonk", "copilot", "highway", "overlay", "screenshots",
                           "assistant", "mcp", "eddn", "edsm", "inara"])
         keys = [(s["section"], k["key"]) for s in secs for k in s["keys"]]
         self.assertGreaterEqual(len(keys), 80)

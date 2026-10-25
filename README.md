@@ -66,6 +66,7 @@ also run 24/7 on a home server in Docker.
 | ⛏️ **Rhino mining** | A heading-up surface map on Now with your rigs, sample points and ship, and every collection kept per body. |
 | 📱 **A tablet in the cockpit** | Every page in a touch layout with eleven themes, alerts as banners, game buttons on a control rail, and the voice on the tablet if you like. |
 | 🎙️ **Ask out loud** | "Hey Vespa, status report": answered in the voice from what Outrider knows, with an optional AI for anything else; Settings lists every command it knows. |
+| 📷 **Screenshots** | The game's F10 and Alt+F10 BMPs converted as you take them to PNG or JPG, named after where they were taken, in a folder per commander (and system), with medium and small copies to post, and what a surface shot shows: the plant or formation beside you. |
 | 🎯 **Automation (game PC; Linux, Windows experimental)** | Auto honk fires the Discovery Scanner on arrival, auto-target targets the next route system after a supercharge and any system from a 🎯 (its galaxy-map keys yours to change, with a cheatsheet), and one HOTAS button (Linux) targets the next route system with a tap, gives a status report with a double tap and hushes with a hold. |
 
 ## 🚀 Getting started

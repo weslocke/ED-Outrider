@@ -508,6 +508,10 @@ back to.
 - **Finding them again:** a 📍 beside a body with pins in Here and Overview, and every pin in **Bookmarks** (with
   Plot route to its system).
 
+**Screenshots.** With [screenshot converting](automation.md#-screenshots) on, a 📷 beside a body in Here (with a count
+past one) says you photographed it; its panel's **📷 Screenshots** lists them with a small picture, the time and what
+each shows (a plant or formation within 50 m), and **📍** pins where a surface shot was taken.
+
 **Marking rigs.** The game logs nothing when you deploy or pick up a rig, so you tell Outrider with the
 co-pilot button. In the Rhino on a planet:
 

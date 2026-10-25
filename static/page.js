@@ -4933,7 +4933,7 @@ function renderHere() {
     const firsts = [b.first_discovered && `<span class="fl" title="first discovered">🏁</span>`, b.first_mapped && `<span class="fl" title="first mapped">🗺</span>`,
                     !b.first_mapped && b.mapped && `<span class="fl unk" title="mapped (not first)">🗺</span>`,
                     b.first_footfall && `<span class="fl" title="first footfall">👣</span>`, !b.scanned && `<span class="unk" title="known to Spansh, not scanned by you">—</span>`].filter(Boolean).join("");
-    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${pinMarkFor(h.id64, b.name)}${codexTypeMark(b.codex_type, h.region)}${codexGeoMark(b.codex_geo, h.region)}${recordMark(h.id64, b.name)}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
+    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${pinMarkFor(h.id64, b.name)}${codexTypeMark(b.codex_type, h.region)}${codexGeoMark(b.codex_geo, h.region)}${recordMark(h.id64, b.name)}${b.shots ? ` <span class="shotmark" title="${b.shots} screenshot${b.shots === 1 ? "" : "s"} of it: open the body for them">📷${b.shots > 1 ? b.shots : ""}</span>` : ""}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
       <td>${sfText(b.type === "Star" ? "star" : "planet", b.subtype || "")}${b.type === "Star" ? (b.scoopable ? ` <span class="scoop">⛽</span>` : "") : ""}${b.rings ? `<span class="sf2"> ${icon("ring", "i-ring", b.rings, ringsText(b))}</span>` : ""}${b.dist_ls != null ? `<div class="sf2 sub2 unk">${Math.round(b.dist_ls).toLocaleString()} ls</div>` : ""}</td>
       <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}</td>
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
@@ -4983,6 +4983,7 @@ const HERE_LEGEND = [
   [q => q(".ggg:not(.sure)"), gggIcon(false, ""), "potential green gas giant"],
   [q => q(".ggg.sure"), gggIcon(true, ""), "green gas giant"],
   [q => q(".rec"), "🏆", "holds one of Your records (My firsts)"],
+  [q => q(".shotmark"), "📷", "your screenshots of it (open the body)"],
   [q => q(".nb.ELW"), `<span class="nb ELW">ELW</span>`, "Earth-like world"],
   [q => q(".nb.WW"), `<span class="nb WW">WW</span>`, "water world"],
   [q => q(".nb.AW"), `<span class="nb AW">AW</span>`, "ammonia world"],
@@ -5504,7 +5505,10 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
   const npins = (PINS.list || []).filter(p => p.system === String(d.id64) && p.body === d.full_name).length;
   const pinSec = isStar ? "" : `<div class="sec${(bodySecs.pins ?? !npins) ? " closed" : ""}" data-sec="pins"><div class="lbl">📍 Pins${npins ? ` · ${npins}` : ""}</div>` +
     `<div class="secbody" data-sys="${esc(d.id64)}" data-body="${esc(d.full_name)}" data-sysname="${esc(d.system || "")}">${pinsListHtml(d.id64, d.full_name)}</div></div>`;
-  h += pinSec + curSec + bioSec + geoSec + mineSec + ringSec + compSec + `<div class="two">${physSec}${orbitSec}</div>`;
+  // your screenshots of it (a player's request, 2026-10-25): filled once open (loadShotList), thumbnails to the copies
+  const shotSec = row.shots && sys != null ? `<div class="sec${bodySecs.shots ? " closed" : ""}" data-sec="shots"><div class="lbl">📷 Screenshots · ${row.shots}</div>` +
+    `<div class="secbody shotlist" data-sys="${esc(sys)}" data-body="${esc(d.full_name)}" data-sysname="${esc(d.system || "")}"><span class="unk">loading…</span></div></div>` : "";
+  h += pinSec + shotSec + curSec + bioSec + geoSec + mineSec + ringSec + compSec + `<div class="two">${physSec}${orbitSec}</div>`;
   h += sec("value", "Value and discovery", kv([
     ["Pays now", has(row.value_now) ? credits(row.value_now) + " cr" : null], ["Could pay", has(row.value_max) ? credits(row.value_max) + " cr" + (has(row.value_max_base) && row.value_max_base !== row.value_max ? ` (${credits(row.value_max_base)} without bonuses)` : "") : null],
     ["Of which", row.value_parts ? `${credits(row.value_parts.carto_now)} + ${credits(row.value_parts.bio_now)} bio held · ${credits(row.value_parts.carto_left)} + ${credits(row.value_parts.bio_left)} bio still there (bio ×${row.value_parts.bio_factor})` : null],
@@ -5517,7 +5521,34 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
   h += `<div class="src">Sources: ${d.own ? "your journal Scan" : "no scan of yours"}${d.spansh ? ` · Spansh (updated ${esc((sp.updateTime || "").slice(0, 10))})` : d.spansh_error ? ` · Spansh lookup failed (${esc(d.spansh_error)})` : " · not on Spansh"}</div>`;
   panel.innerHTML = h.replace("</h3>", "</h3>" + bodyArtHtml(d));   // the picture beside the title, the text round it
   drawBodyArt(panel, d);
+  const sl = panel.querySelector(".shotlist"); if (sl) loadShotList(sl);
 }
+// a body panel's screenshots: a thumbnail each (its page: the medium copy, else the full one), when, what it shows, and
+// 📍 to pin where it was taken (a surface shot)
+async function loadShotList(el) {
+  let r;
+  try { r = await apiJson(`api/screenshots?${new URLSearchParams({system: el.dataset.sys, body: el.dataset.body})}`); } catch { r = null; }
+  if (!r || r.error) { el.innerHTML = `<span class="unk">${esc((r && r.error) || "could not read them")}</span>`; return; }
+  const shots = (r.shots || []).filter(x => !x.error);
+  el.innerHTML = shots.length ? shots.map(x => {
+    const big = x.sizes.includes("medium") ? "medium" : "full";
+    return `<figure class="shot"><a href="api/screenshots/${x.id}/image?size=${big}" target="_blank" rel="noopener" title="open it (${big === "medium" ? "the medium copy" : "full size"})">` +
+      `<img src="api/screenshots/${x.id}/image?size=thumb" alt="" loading="lazy"></a><figcaption>${esc(localDay(x.ts))} ${esc(localTime(x.ts))}` +
+      `${x.subject ? ` · ${esc(x.subject.name)} <span class="unk">${x.subject.dist} m</span>` : ""}` +
+      `${x.lat != null && x.lon != null ? ` <button type="button" class="mini" data-shotpin="${x.id}" data-lat="${x.lat}" data-lon="${x.lon}" data-name="${esc(`📷 ${localTime(x.ts)}`)}" title="pin where it was taken">📍</button>` : ""}` +
+      `</figcaption></figure>`;
+  }).join("") : `<span class="unk">none here</span>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-shotpin]"); if (!b) return;
+  const l = b.closest(".shotlist");
+  let r;
+  try { r = await apiJson("api/pins", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(
+    {action: "add", system: l.dataset.sys, sysname: l.dataset.sysname, body: l.dataset.body, name: b.dataset.name,
+     lat: Number(b.dataset.lat), lon: Number(b.dataset.lon)})}); } catch { r = {error: "Outrider not reachable"}; }
+  b.textContent = r && !r.error ? "📍✓" : "📍✗"; b.title = r && !r.error ? "pinned (Pins, above)" : `not pinned: ${(r && r.error) || "?"}`;
+  if (r && !r.error) loadPins();
+});
 
 // ---- drawn bodies (tablet plan phase 7): a static picture of a body made from its scan data, beside the body panel's
 // title, labelled as an impression. Its class gives the colours (PLANET_COLOURS, STAR_COLOURS), the system and body
@@ -10943,6 +10974,7 @@ function drawTts() {
   if (crewUi) { drawCrew(); drawVoiceMemory(); }
   drawSpeechBtn();
   drawHonk();
+  drawShots();
   drawAtSet();
 }
 drawSpeechBtn();
@@ -13570,6 +13602,7 @@ setSecs.forEach(d => d.addEventListener("toggle", () => {
     if (document.getElementById("srvService").open) loadService();
   }
   if (d.id === "honkSettings" && d.open) { loadHonkCheck(); loadHonkCfg(); }
+  if (d.id === "shotSettings" && d.open) { loadShotCfg(); drawShots(); }
 }));
 document.getElementById("setOpenAll").onclick = () => setSecs.forEach(d => { d.open = true; });
 document.getElementById("setCloseAll").onclick = () => setSecs.forEach(d => { d.open = false; });
@@ -13890,6 +13923,80 @@ async function saveHonkCfg() {
   msg.innerHTML = savedNote(r); msg.className = "hint ok";
 }
 document.getElementById("hcSave").onclick = saveHonkCfg;
+// ---- Settings -> Screenshots (a player's request, 2026-10-25: to drop EDDiscovery's): [screenshots] read from GET
+// api/config's homed keys and saved like Auto honk's (all of them used from the next shot); the payload's screenshots
+// block says whether shots convert, where, and the last one; a button converts what is already in the Pictures folder
+const SC_FIELDS = () => [...document.querySelectorAll("#shotSettings .scfg")];
+const scNow = el => el.type === "checkbox" ? String(el.checked) : el.value;
+async function loadShotCfg() {
+  let c;
+  try { c = await apiJson("api/config"); } catch { c = {error: "Outrider not reachable"}; }
+  const msg = document.getElementById("shotMsg");
+  if (!c || c.error) { msg.textContent = `Cannot read the settings: ${(c && c.error) || "?"}`; msg.className = "hint warnc"; return; }
+  const vals = {};
+  for (const s of c.homed || []) for (const k of s.keys) vals[`${s.section}.${k.key}`] = k.value;
+  for (const el of SC_FIELDS()) {
+    if (el.dataset.dirty) continue;
+    const v = vals[`${el.dataset.sec}.${el.dataset.key}`];
+    if (el.type === "checkbox") el.checked = !!v; else el.value = v ?? "";
+    el.dataset.orig = scNow(el);
+  }
+  shotSizeBoxes();
+}
+// the medium / small ticks: a size field above 0 is ticked; ticking one fills its size (1920, 1080), unticking empties it
+function shotSizeBoxes() {
+  for (const b of document.querySelectorAll("#shotSettings .shotsize")) {
+    const f = document.querySelector(`#shotSettings .scfg[data-key="${b.dataset.for}"]`);
+    b.checked = Number(f.value) > 0; f.disabled = !b.checked;
+  }
+}
+for (const b of document.querySelectorAll("#shotSettings .shotsize")) b.onchange = () => {
+  const f = document.querySelector(`#shotSettings .scfg[data-key="${b.dataset.for}"]`);
+  f.value = b.checked ? (Number(f.value) > 0 ? f.value : b.dataset.px) : "0"; f.dataset.dirty = "1"; shotSizeBoxes();
+};
+SC_FIELDS().forEach(el => el.addEventListener(el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input", () => { el.dataset.dirty = "1"; }));
+async function saveShotCfg() {
+  const msg = document.getElementById("shotMsg"), out = {};
+  const say = (t, bad) => { msg.textContent = t; msg.className = bad ? "hint warnc" : "hint"; };
+  for (const el of SC_FIELDS()) {
+    if (scNow(el) === el.dataset.orig) continue;
+    let v = el.type === "checkbox" ? el.checked : el.value.trim();
+    if (el.type === "number") {
+      v = Number(v);
+      if (el.value.trim() === "" || !isFinite(v)) { say("Not saved: the sizes and qualities are numbers", true); return; }
+    }
+    (out[el.dataset.sec] = out[el.dataset.sec] || {})[el.dataset.key] = v;
+  }
+  if (!Object.keys(out).length) { say("nothing changed"); return; }
+  let r;
+  try { r = await apiJson("api/config", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(out)}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  r = r || {error: "?"};
+  if (r.error) { say(`Not saved: ${r.error}`, true); return; }
+  SC_FIELDS().forEach(el => { el.dataset.dirty = ""; });
+  await loadShotCfg();
+  msg.innerHTML = savedNote(r); msg.className = "hint ok";
+}
+document.getElementById("shotSave").onclick = saveShotCfg;
+// the line at the section's top: converting or why not, where from and to, the last shot
+function drawShots() {
+  const el = document.getElementById("shotStatus"), s = data && data.screenshots;
+  if (!el) return;
+  if (!s) { el.textContent = ""; return; }
+  const last = s.last ? (s.last.ok ? ` · last: ${s.last.full ? s.last.full.split(/[\\/]/).pop() : ""}${s.last.subject ? ` (${s.last.subject.name})` : ""}`
+                                   : ` · last failed: ${s.last.error}`) : "";
+  el.innerHTML = `${s.on ? `<span class="ok">Converting</span>` : `<span class="warnc">Not converting: ${esc(s.why || "?")}</span>`}` +
+    ` <span class="unk">· from ${esc(s.pictures || "?")} · to ${esc(s.folder || "?")}${s.queued ? ` · ${s.queued} waiting` : ""}${esc(last)}</span>`;
+}
+document.getElementById("shotBacklog").onclick = async () => {
+  const msg = document.getElementById("shotBacklogMsg");
+  msg.textContent = "looking…";
+  let r;
+  try { r = await apiJson("api/screenshots/backlog", {method: "POST"}); } catch { r = {error: "Outrider not reachable"}; }
+  msg.textContent = !r || r.error ? `Not done: ${(r && r.error) || "?"}`
+    : r.queued ? `${r.queued} queued (${r.matched} matched to the journals${r.unmatched ? `, ${r.unmatched} unknown system` : ""}${r.skipped ? `, ${r.skipped} done already` : ""})`
+    : `nothing to convert${r.skipped ? ` (${r.skipped} done already)` : ""}`;
+};
 // Settings opened on Server settings (a notice's button): `section`, a config section to unfold ("journals")
 // Settings at one of its sections (data-sec-key), opened
 function openSettingsSection(key) {

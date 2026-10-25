@@ -19,7 +19,8 @@ import python_check  # noqa: E402  scripts/: why this Python cannot install Pipe
 
 OPTIONAL = {"evdev": "auto honk, auto-target, the control rail and the co-pilot button (Linux): it is built from source and "
                      "needs your Python's development headers (Debian/Ubuntu: sudo apt install python3-dev)",
-            "piper-tts": "Piper's natural voices: without it the page speaks with the browser's own voice"}
+            "piper-tts": "Piper's natural voices: without it the page speaks with the browser's own voice",
+            "pillow": "screenshots converted as you take them (Settings -> Screenshots): without it they stay as the game's BMPs"}
 REQUIRED_IMPORTS = ("aiohttp", "certifi")   # what Outrider cannot start without
 
 

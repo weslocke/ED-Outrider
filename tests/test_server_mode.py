@@ -420,7 +420,7 @@ class FableScriptFixes(unittest.TestCase):
         self.assertNotIn("--start-period=30m", df)
 
     def test_guide_matches(self):
-        self.assertIn("Auto honk (and the co-pilot button), Auto-target, In-game overlay, Uploads, Display", self.read("docs/guide/settings.md"))
+        self.assertIn("Auto honk (and the co-pilot button), Auto-target, In-game overlay, Screenshots, Uploads, Display", self.read("docs/guide/settings.md"))
         self.assertIn("up to fifty lines per alert", self.read("docs/guide/voice-and-alerts.md"))
 
 

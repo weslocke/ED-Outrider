@@ -8,6 +8,10 @@ certifi>=2024.7.4
 # Pulls in onnxruntime, about 100 MB. See outrider/tts.py.
 piper-tts>=1.3
 
+# Screenshots converted as you take them (optional: Settings -> Screenshots says when it is missing). See
+# outrider/screenshots.py.
+pillow>=10
+
 # Auto honk on Linux (optional: presses a key through a virtual keyboard). See outrider/honk.py.
 evdev>=1.6; sys_platform == "linux"
 

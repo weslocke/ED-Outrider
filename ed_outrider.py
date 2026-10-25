@@ -211,6 +211,7 @@ import outrider.earnings   # the Commander view's Earnings: what exploration, ex
 import outrider.readclient  # EDSM's and Inara's account reads (G3): the key checks, EDSM's flight log
 import outrider.records     # My firsts' Your records: the most extreme bodies among your own scans
 import outrider.sights      # catalogued sights: EDAstro's Galactic Encyclopedia Catalog, fetched once a day
+import outrider.screenshots  # the game's screenshots converted as they are taken (Pillow, optional)
 import outrider.backfill   # filling a gap in EDSM's flight log (S47): the events rebuilt from the journals (pure)
 import outrider.edsmlog    # your EDSM flight log from before your journals (S67): kept entries, which count as visits
 import outrider.checklist  # the exobiology checklist: every species by region, with your state (pure)
@@ -978,6 +979,8 @@ CONFIG_RANGES = {
     ("defaults", "module_warn"): (1, 100, "%"), ("defaults", "rig_warn"): (100, RIG_LOST_M - 100, "m"),
     ("defaults", "speech_profanity_pct"): (0, 100, "%"), ("defaults", "speech_speed"): (0.5, 2, "times"),
     ("speech", "pad_delay"): (0, 20, "s"), ("server", "sights_range"): (0, 5000, "ly"),
+    ("screenshots", "jpg_quality"): (50, 100, ""), ("screenshots", "resized_quality"): (50, 100, ""),
+    ("screenshots", "medium"): (0, 7680, "px"), ("screenshots", "small"): (0, 3840, "px"), ("screenshots", "subject_m"): (0, 500, "m"),
     ("autohonk", "delay"): (0, 30, "s"), ("autohonk", "hold"): (0.5, 20, "s"),
     ("copilot", "hold_ms"): (200, 3000, "ms"), ("copilot", "double_ms"): (100, 1000, "ms"),
     ("highway", "autotarget_delay"): (0, 60, "s"), ("highway", "efficiency"): (1, 100, "%"),
@@ -1066,11 +1069,29 @@ def _config_section(cfg, name):
     return {}
 
 
+def screenshots_settings(ss, num, flag):
+    """[screenshots] (outrider/screenshots.py DEFAULTS): the numbers clamped to CONFIG_RANGES', the choices to theirs."""
+    d = outrider.screenshots.DEFAULTS
+    clamp = lambda key, conv: min(CONFIG_RANGES[("screenshots", key)][1], max(CONFIG_RANGES[("screenshots", key)][0],
+                                                                              num("screenshots", ss, key, conv, d[key])))
+    text = lambda key: num("screenshots", ss, key, _config_str, d[key]) or ""
+    fmt, orig = text("format").lower(), text("original").lower()
+    return {"enabled": flag("screenshots", ss, "enabled", d["enabled"]), "pictures": text("pictures"), "folder": text("folder"),
+            "by_cmdr": flag("screenshots", ss, "by_cmdr", d["by_cmdr"]), "by_system": flag("screenshots", ss, "by_system", d["by_system"]),
+            "subfolder": text("subfolder"), "filename": text("filename") or d["filename"],
+            "format": fmt if fmt in outrider.screenshots.FORMATS else d["format"],
+            "jpg_quality": clamp("jpg_quality", int), "medium": clamp("medium", int), "small": clamp("small", int),
+            "resized_quality": clamp("resized_quality", int),
+            "original": orig if orig in outrider.screenshots.ORIGINALS else d["original"], "move_to": text("move_to"),
+            "subject_m": clamp("subject_m", float)}
+
+
 def settings_from(cfg, args, env_journals=None, detected=((), ())):
     """Resolve every setting with the precedence flag > env > config > default/auto-detect."""
     j, sv, df, sp = (_config_section(cfg, s) for s in ("journals", "server", "defaults", "spansh"))
     ah, spk, cp = _config_section(cfg, "autohonk"), _config_section(cfg, "speech"), _config_section(cfg, "copilot")
     hw = _config_section(cfg, "highway")
+    ss = _config_section(cfg, "screenshots")
     j = dict(j, live=_config_folders(j.get("live"), "live"), legacy=_config_folders(j.get("legacy"), "legacy"))
     num = lambda sec, table, key, conv, default: _config_value(sec, key, table.get(key), conv, default)
     flag = lambda sec, table, key, default: _config_value(sec, key, table.get(key), _config_bool, default)
@@ -1192,6 +1213,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         "map_max_radius": max(5.0, num("spansh", sp, "map_max_radius", float, MAP_MAX_RADIUS)),
         "map_max_pages": max(1, num("spansh", sp, "map_max_pages", int, MAP_MAX_PAGES)),
         "watch_firsts": flag("spansh", sp, "watch_firsts", WATCH_FIRSTS),
+        "screenshots": screenshots_settings(ss, num, flag),
         "autohonk": {"enabled": flag("autohonk", ah, "enabled", AUTOHONK["enabled"]),
                      "key": num("autohonk", ah, "key", _config_str, None) or AUTOHONK["key"],
                      "delay": min(30.0, max(0.0, num("autohonk", ah, "delay", float, AUTOHONK["delay"]))),
@@ -1404,6 +1426,23 @@ hide_on_foot = [{", ".join(q(x) for x in st["overlay"]["hide_on_foot"])}]   # pa
 hide_mouse_lock = {"true" if st["overlay"]["hide_mouse_lock"] else "false"}   # no overlay at all on foot and in the DSS, where Elite locks the mouse (an overlay can break that lock on some systems)
 pad_diagram = {"true" if st["overlay"]["pad_diagram"] else "false"}   # while docking at a starport or carrier, a diagram of where your pad is under PAD 34, in the overlay's Surface radar place and on Now (false: the number and its words only)
 
+[screenshots]   # the game's F10 / Alt+F10 shots converted as you take them (game PC; needs the optional Pillow package)
+enabled = {"true" if st["screenshots"]["enabled"] else "false"}   # convert each new screenshot (Settings -> Screenshots)
+pictures = {q(st["screenshots"]["pictures"])}   # the game's Pictures folder ("" = found beside its journals)
+folder = {q(st["screenshots"]["folder"])}   # where the converted images go ("" = the Pictures folder's Converted)
+by_cmdr = {"true" if st["screenshots"]["by_cmdr"] else "false"}   # a folder per commander
+by_system = {"true" if st["screenshots"]["by_system"] else "false"}   # ... and one per system in it
+subfolder = {q(st["screenshots"]["subfolder"])}   # your own folders instead ("" = the two above): {{cmdr}} {{system}} {{date}}, "/" nests
+filename = {q(st["screenshots"]["filename"])}   # tokens: {{system}} {{body}} {{date}} {{time}} {{cmdr}} {{highres}} {{subject}}
+format = {q(st["screenshots"]["format"])}   # "png" (lossless) or "jpg"
+jpg_quality = {st["screenshots"]["jpg_quality"]}   # a full-size JPG's quality (50-100)
+medium = {st["screenshots"]["medium"]}   # a medium copy's long edge in px, in medium/ (0 = none; 1920 when ticked)
+small = {st["screenshots"]["small"]}   # a small copy's long edge in px, in small/ (0 = none; 1080 when ticked)
+resized_quality = {st["screenshots"]["resized_quality"]}   # the copies' JPG quality (50-100)
+original = {q(st["screenshots"]["original"])}   # the game's BMP after converting: "keep", "delete" or "move"
+move_to = {q(st["screenshots"]["move_to"])}   # where "move" puts it
+subject_m = {n(st["screenshots"]["subject_m"])}   # m: a surface shot names the plant or formation this close (0 = never)
+
 [assistant]
 enabled = {"true" if st["assistant"]["enabled"] else "false"}   # the voice's AI layer for questions the fixed phrases do not match (resources/ask.json); nothing is sent anywhere while false
 base_url = {q(st["assistant"]["base_url"])}   # an OpenAI-compatible endpoint, e.g. "http://localhost:11434/v1" (Ollama), "https://api.openai.com/v1"
@@ -1555,7 +1594,8 @@ MINING_EVENTS = frozenset(MINING_FILL + MINING_CLOSE + ("SupercruiseExit", "Loca
 # a hotspot's Destination name ("$SAA_RingHotspot:#type=$Alexandrite_name;;"): its mineral
 RING_HOTSPOT = re.compile(r"RingHotspot:#type=\$(\w+?)_name", re.I)
 _OTHER_EVENTS = (POSITION_EVENTS + STAR_CLASS_EVENTS + SCAN_EVENTS + DATA_EVENTS + SHIP_EVENTS + CMDR_EVENTS + MATERIAL_EVENTS
-                 + BODY_EVENTS + SRV_EVENTS + CARGO_ONLY + DOCKING_EVENTS + CHAT_EVENTS + ("Loadout", "Shutdown", "Fileheader"))
+                 + BODY_EVENTS + SRV_EVENTS + CARGO_ONLY + DOCKING_EVENTS + CHAT_EVENTS + ("Loadout", "Shutdown", "Fileheader")
+                 + ("Screenshot",))   # the game's F10 / Alt+F10 shots: converted live (outrider/screenshots.py)
 # The Commander view (outrider/commander.py): Journals.handle_commander folds these into the meta keys of
 # outrider.commander.COMMANDER_META and the play_activity table, and each one bumps Journals.commander_version (the page's
 # cue to ask for the open tab again); COMMANDER_ONLY are read for it alone
@@ -1618,7 +1658,8 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 #     on its way keeps its arrival time through a shipyard list; and a mining stint lasts through a relog in its ring
 #     (one after a long break keeps its hotspot), a legacy folder's stints are not today's ship's
 # 58: each mining session keeps where it mined (play_activity's mining places: the ring, the SRV's body): Sessions' Where
-PARSER_VERSION = 60
+# 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
+PARSER_VERSION = 61
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1644,6 +1685,7 @@ PARSER_VERSION = 60
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    61: "geology formations logged in your codex keep where they are, so a screenshot taken near one names it",
     60: "a deposit into your carrier's bank counts toward its weeks of upkeep (the Fable bug check of 2026-10-24)",
     59: "a death on foot or in the SRV no longer clears the ore you mined (the ship and its hold survive), an older "
         "sample read late no longer replaces a newer one, and a first discovery read late from an older folder keeps "
@@ -1906,6 +1948,21 @@ CREATE TABLE IF NOT EXISTS sample_points (
 CREATE TABLE IF NOT EXISTS bio_tags (
     system INTEGER, body_id INTEGER, species TEXT, genus TEXT, name TEXT, lat REAL, lon REAL, ts TEXT,
     PRIMARY KEY (system, body_id, species, ts));
+-- Geology formations logged in the codex (a "Geology and anomalies" CodexEntry: geysers, fumaroles, vents...) where they
+-- are: the event's Latitude/Longitude (all 26 of the author's carried one, 2026-10-25), else yours from the live
+-- Status.json, as bio_tags. A screenshot taken near one names it (outrider/screenshots.py `subject`). Like bio_tags,
+-- kept through a re-read (INSERT OR IGNORE writes the same rows again).
+CREATE TABLE IF NOT EXISTS geo_tags (
+    system INTEGER, body_id INTEGER, entry_id INTEGER, name TEXT, lat REAL, lon REAL, ts TEXT,
+    PRIMARY KEY (system, body_id, entry_id, ts));
+-- Screenshots converted (outrider/screenshots.py): the shot (its journal event: ts, the original's name, system, body,
+-- position, commander), what it shows (subject: JSON {kind, name, entry_id, dist}), the files written (full, medium,
+-- small; NULL when not made), the size, or the error. Live only (the files are this PC's): a re-read keeps it, the
+-- backup carries it.
+CREATE TABLE IF NOT EXISTS screenshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, original TEXT, system INTEGER, system_name TEXT, body TEXT,
+    body_id INTEGER, lat REAL, lon REAL, heading REAL, cmdr TEXT, subject TEXT, full TEXT, medium TEXT, small TEXT,
+    width INTEGER, height INTEGER, error TEXT, UNIQUE (ts, original));
 -- The surface map's mining records (Batch M1). Live only, like sample_points: the positions come from Status.json
 -- and a rig from a co-pilot press, none of which a journal holds, so a journal re-read keeps them (not in
 -- RESET_JOURNAL_DATA) and the backup zip carries them with the rest of the database.
@@ -2903,6 +2960,7 @@ class Journals:
         self.jump_class = {}       # id64 -> StarClass from the StartJump heading there
         self.arrival_scan = None   # the latest arrival-star Scan: {id64, was_discovered, ts}
         self.status_json = None    # live Status.json: {fuel_main, fuel_reservoir, ts}
+        self.shots_new = []        # live Screenshot events not yet taken by the State's conversion (note_screenshot)
         self.bio_sales_changed = False
         self.target = None         # latest FSDTarget, cleared on arrival
         self.dirty = set()         # systems whose own scan data changed since last looked
@@ -3966,6 +4024,9 @@ class Journals:
                                "star_class": ev.get("StarClass"), "ts": ts,
                                "remaining": ev.get("RemainingJumpsInRoute") if isinstance(ev.get("RemainingJumpsInRoute"), int) else None}
             return
+        if name == "Screenshot":   # the game's F10 / Alt+F10: converted live (note_screenshot)
+            self.note_screenshot(ev, ts)
+            return
         if name in SCAN_EVENTS:
             self.handle_scan(name, ev, ts)
             if name in ("Scan", "SAAScanComplete", "ScanOrganic"):   # a body scanned / mapped, a species sampled
@@ -4613,6 +4674,39 @@ class Journals:
             lat, lon = st["lat"], st["lon"]
         self.db.execute("INSERT OR IGNORE INTO bio_tags VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                         (system, ev["BodyID"], species, genus, name, lat, lon, ts))
+
+    def note_geo_tag(self, ev, system, ts):
+        """A geology CodexEntry ("Geology and anomalies" with a body: a geyser, fumarole, vent...) where it is: the
+        event's Latitude/Longitude, else yours from this moment's live Status.json over that body (as note_bio_tag)."""
+        if ev.get("SubCategory") != "$Codex_SubCategory_Geology_and_Anomalies;" or ev.get("BodyID") is None or system is None:
+            return
+        lat, lon = ev.get("Latitude"), ev.get("Longitude")
+        if lat is None or lon is None:
+            st = self.status_json or {}
+            row = self.db.execute("SELECT name FROM own_bodies WHERE system=? AND body_id=?", (system, ev["BodyID"])).fetchone()
+            if not st.get("live") or st.get("lat") is None or not row or st.get("body") != row["name"] or not st.get("ts"):
+                return
+            try:
+                if abs(ts_seconds(ts) - ts_seconds(st["ts"])) > 90:
+                    return
+            except ValueError:
+                return
+            lat, lon = st["lat"], st["lon"]
+        self.db.execute("INSERT OR IGNORE INTO geo_tags VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (system, ev["BodyID"], ev.get("EntryID"), ev.get("Name_Localised") or ev.get("Name"), lat, lon, ts))
+
+    def note_screenshot(self, ev, ts):
+        """A live Screenshot event (the game's F10 / Alt+F10): queued for the State's conversion (shots_new) with where
+        it was taken and by whom. A catch-up or re-read never converts (Settings' "convert what is already there" does)."""
+        if not live_event(ts) or not ev.get("Filename"):
+            return
+        pos = self.pos or {}
+        self.shots_new.append({"ts": ts, "original": re.split(r"[\\/]", str(ev["Filename"]))[-1],
+                               "system": ev.get("System") or pos.get("name"),
+                               "system_id": pos.get("id64") if (ev.get("System") or pos.get("name")) == pos.get("name") else None,
+                               "body": ev.get("Body") or None, "lat": ev.get("Latitude"), "lon": ev.get("Longitude"),
+                               "heading": ev.get("Heading"), "width": ev.get("Width"), "height": ev.get("Height"),
+                               "cmdr": (self.commander or {}).get("name")})
 
     def handle_phenomenon(self, name, ev, ts):
         """Notable stellar phenomena: found by the FSS, reached by dropping out of supercruise at one."""
@@ -5412,6 +5506,7 @@ class Journals:
                  ev.get("NewTraitsDiscovered") and json.dumps(ev["NewTraitsDiscovered"]),
                  ev.get("VoucherAmount")))
             self.note_bio_tag(ev, system, ts)
+            self.note_geo_tag(ev, system, ts)
             self.mark(system)
             return
         if name == "ScanBaryCentre":
@@ -7920,6 +8015,9 @@ class State:
         self.edsm_first = {}       # id64 -> EDSM's first reporter {commander, date}, from the target's EDSM answers
         self.trail = SurfaceTrail()  # where you have been on the body you are over, this visit (the surface map's trail)
         self.sights_range = SIGHTS_RANGE   # [server] sights_range (run() sets it); 0: no catalogued sights at all
+        self.shots_cfg = dict(outrider.screenshots.DEFAULTS)   # [screenshots] (run() sets it; Settings applies it at once)
+        self.shots_queue, self.shots_task = [], None   # shots waiting for the converter, its task (one at a time)
+        self.shots_last = None     # the last conversion: {ok, ts, full, subject, error} (Settings and the card)
         self._sights = (None, [], {})      # (meta sights' checked, entries, by id64): read again when a check stored new ones
         self.reported_seen = None  # the overlay_detail key of the last look that found no life
         self.route_spansh = {}     # id64 -> (when, has a record): Spansh asked about the game's route hops (in memory only)
@@ -8276,6 +8374,7 @@ class State:
             "sampling": self.sampling_summary(),
             "surface": self.surface_summary(),
             "sight_near": self.sight_near(),   # the nearest catalogued sight within [server] sights_range (Now)
+            "screenshots": self.shots_summary(),   # the game PC's screenshot conversion: on or why not, the last one
             "overlay": self.overlay_info(),
             # metres between samples per genus (a shipped table), shown before you land (review S1)
             "colony": outrider.bio.colony_table() if outrider.bio else None,
@@ -8468,7 +8567,8 @@ class State:
     # and the auto-target's sequence ([highway] autotarget_*): tuned by trial and error, so the next run uses it (2026-10-22)
     LIVE_CONFIG = {("speech", "voices_loaded"), ("speech", "voices_preload"), ("speech", "pad_delay")} | \
         {("highway", "autotarget_" + k) for k in outrider.target.DEFAULTS} | \
-        {("autohonk", "delay"), ("autohonk", "skip_honked")}   # read on every honk (Settings -> Auto honk, 2026-10-23)
+        {("autohonk", "delay"), ("autohonk", "skip_honked")} | \
+        {("screenshots", k) for k in outrider.screenshots.DEFAULTS}   # read for every shot (Settings -> Screenshots)
 
     def config_live(self, st, keys):
         """The LIVE_CONFIG keys among `keys` ((section, key) just written) set on the running Outrider from the saved
@@ -8477,6 +8577,8 @@ class State:
         after a docking grant the pad is said (pad_delay: the next grant), and the auto-target's sequence (the next
         run). The keys applied, as "section.key"."""
         done = sorted({f"{s}.{k}" for s, k in keys if (s, k) in self.LIVE_CONFIG})
+        for k in [d.split(".", 1)[1] for d in done if d.startswith("screenshots.")]:
+            self.shots_cfg[k] = st["screenshots"][k]
         if "speech.pad_delay" in done:
             self.journals.pad_delay = st["pad_delay"]
         for k in ("delay", "skip_honked"):
@@ -11686,6 +11788,213 @@ class State:
                 continue
             await asyncio.sleep(SIGHTS_CHECK_EVERY)
 
+    # ---- screenshots (outrider/screenshots.py): the game's F10 / Alt+F10 shots converted as they are taken ----
+    def shots_folders(self):
+        """(the game's Pictures folder or None, where converted images go or None) from [screenshots] (pictures, folder),
+        else found beside the live journals."""
+        c = self.shots_cfg
+        pictures = c.get("pictures") or outrider.screenshots.pictures_from_journals(LIVE_DIRS)
+        return pictures, c.get("folder") or (os.path.join(pictures, "Converted") if pictures else None)
+
+    def shots_why_off(self, switched_on=True):
+        """Why no screenshot is converted ("" when they are); switched_on=False: whether one could be (the backlog
+        button converts with the switch off)."""
+        if switched_on and not self.shots_cfg.get("enabled"):
+            return "off (Settings -> Screenshots)"
+        if not self.game_pc or self.simulate:
+            return NOT_GAME_PC if not self.game_pc else "not while simulating"
+        if outrider.screenshots.pillow() is None:
+            return "the Pillow package is not installed (OUTRIDER_REINSTALL=1, then start ED Outrider)"
+        if not self.shots_folders()[0]:
+            return "the game's Pictures folder was not found: set it in Settings -> Screenshots"
+        return ""
+
+    def shots_step(self):
+        """Every tick: the live Screenshot events the journal reader noted go to the converter (one task, one shot at a
+        time); none while the feature is off (they are dropped: Settings' "convert what is already there" catches up)."""
+        new, self.journals.shots_new = self.journals.shots_new, []
+        if new and not self.shots_why_off():
+            self.shots_queue += new
+        if self.shots_queue and (self.shots_task is None or self.shots_task.done()):
+            try:
+                self.shots_task = asyncio.get_running_loop().create_task(self.shots_run())
+            except RuntimeError:   # no loop (a test calling tick by hand): left queued
+                pass
+
+    async def shots_run(self):
+        while self.shots_queue:
+            shot = self.shots_queue.pop(0)
+            try:
+                await self.shot_convert(shot)
+            except Exception as e:  # noqa: BLE001 -- one shot's failure never stops the others
+                print(f"screenshots: {shot.get('original')}: {type(e).__name__}: {e}", file=sys.stderr)
+
+    def shot_subject(self, shot):
+        """What a surface shot shows (outrider.screenshots.nearest_subject): your sample spots, the plants you tagged and
+        the geology formations logged on its body within [screenshots] subject_m; also the body's id and radius."""
+        body = None
+        if shot.get("system_id") is None and shot.get("system"):   # a shot from the journals (the backlog): by its name
+            row = self.db.execute("SELECT id64 FROM jumps WHERE name=? ORDER BY ts DESC LIMIT 1", (shot["system"],)).fetchone()
+            shot["system_id"] = row["id64"] if row else None
+        if shot.get("system_id") is not None and shot.get("body"):
+            body = self.db.execute("SELECT body_id, raw FROM own_bodies WHERE system=? AND name=?",
+                                   (shot["system_id"], shot["body"])).fetchone()
+        if not body:
+            return None, None
+        radius = (json.loads(body["raw"]) if body["raw"] else {}).get("Radius")
+        sid, bid = shot["system_id"], body["body_id"]
+        variants = {r["species"]: r["variant_name"] or r["species_name"] for r in self.db.execute(
+            "SELECT species, species_name, variant_name FROM own_organic WHERE system=? AND body_id=?", (sid, bid))}
+        subjects = [{"kind": "bio", "name": variants.get(r["species"]) or r["species"], "lat": r["lat"], "lon": r["lon"]}
+                    for r in self.db.execute("SELECT species, lat, lon FROM sample_points WHERE system=? AND body_id=?", (sid, bid))]
+        subjects += [{"kind": "bio", "name": r["name"], "lat": r["lat"], "lon": r["lon"]} for r in self.db.execute(
+            "SELECT name, lat, lon FROM bio_tags WHERE system=? AND body_id=?", (sid, bid))]
+        subjects += [{"kind": "geo", "name": r["name"], "entry_id": r["entry_id"], "lat": r["lat"], "lon": r["lon"]}
+                     for r in self.db.execute("SELECT entry_id, name, lat, lon FROM geo_tags WHERE system=? AND body_id=?", (sid, bid))]
+        return bid, outrider.screenshots.nearest_subject(shot.get("lat"), shot.get("lon"), radius, subjects,
+                                                         self.shots_cfg.get("subject_m"))
+
+    async def shot_convert(self, shot):
+        """One shot: its file waited for, converted (a worker thread: Pillow, a HighRes takes seconds), the original kept,
+        deleted or moved, the record written, the card set or cleared."""
+        cfg = dict(self.shots_cfg)
+        pictures, root = self.shots_folders()
+        src = outrider.screenshots.original_path(pictures, shot.get("original"))
+        body_id, subject = self.shot_subject(shot)
+        shot = dict(shot, subject=subject)
+        fields = outrider.screenshots.fields_for(shot)
+        paths = outrider.screenshots.plan_paths(cfg, fields, root)
+        S = outrider.screenshots
+
+        def work():
+            if not src or not S.wait_ready(src):
+                raise FileNotFoundError(f"{shot.get('original')} never appeared in {pictures}")
+            out = S.convert(src, paths, cfg, shot)
+            out["original"] = S.finish_original(src, cfg, paths["full"])
+            return out
+        err, out = None, None
+        try:
+            out = await asyncio.get_running_loop().run_in_executor(None, work)
+        except Exception as e:  # noqa: BLE001 -- recorded and said: a folder not writable, a file never written
+            err = f"{type(e).__name__}: {e}"
+        written = (out or {}).get("written") or []
+        self.db.execute("INSERT OR REPLACE INTO screenshots (ts, original, system, system_name, body, body_id, lat, lon, heading, "
+                        "cmdr, subject, full, medium, small, width, height, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (shot["ts"], shot.get("original"), shot.get("system_id"), shot.get("system"), shot.get("body"), body_id,
+                         shot.get("lat"), shot.get("lon"), shot.get("heading"), shot.get("cmdr"), json.dumps(subject) if subject else None,
+                         paths["full"] if paths["full"] in written else None,
+                         paths["medium"] if paths["medium"] in written else None, paths["small"] if paths["small"] in written else None,
+                         (out or {}).get("width"), (out or {}).get("height"), err))
+        self.db.commit()
+        self.shots_last = {"ok": not err, "ts": shot["ts"], "full": paths["full"] if not err else None,
+                           "subject": subject, "error": err, "original": shot.get("original")}
+        if err:
+            self.notices.set("screenshots", f"A screenshot could not be converted ({shot.get('original')}): {err}", "warn", "open:screenshots")
+        else:
+            self.notices.clear("screenshots")
+        self.bump()
+
+    async def shots_backlog(self):
+        """POST /api/screenshots/backlog: the BMPs already in the game's Pictures folder, each matched to its journal
+        Screenshot event (the same name, the nearest time: outrider.screenshots.match_backlog), queued for converting
+        but those converted already (the record has the shot without an error); one with no event as an unknown system.
+        (answer, status): {queued, matched, unmatched, skipped}."""
+        why = self.shots_why_off(switched_on=False)
+        if why:
+            return {"error": why}, 409
+        pictures, _ = self.shots_folders()
+        S = outrider.screenshots
+
+        def scan():
+            files = [(n, os.path.getmtime(os.path.join(pictures, n))) for n in sorted(os.listdir(pictures))
+                     if n.lower().endswith(".bmp") and os.path.isfile(os.path.join(pictures, n))]
+            paths = [p for d in LIVE_DIRS for p in sorted(glob(os.path.join(glob_escape(d), "Journal.*.log")))]
+            return files, S.journal_shots(paths)
+        files, shots = await asyncio.get_running_loop().run_in_executor(None, scan)
+        events = [(ts_seconds(x["ts"]), x["original"], x) for x in shots if x.get("ts")]
+        match = S.match_backlog(files, events)
+        done = {(r["ts"], r["original"]) for r in self.db.execute("SELECT ts, original FROM screenshots WHERE error IS NULL")}
+        queued = matched = skipped = 0
+        for name, mtime in files:
+            shot = match.get(name)
+            if shot:
+                matched += 1
+                shot = dict(shot)
+            else:
+                shot = {"ts": iso_ts(mtime), "original": name, "system": None, "body": None, "cmdr": None}
+            if (shot["ts"], name) in done or any(q.get("original") == name and q.get("ts") == shot["ts"] for q in self.shots_queue):
+                skipped += 1
+                continue
+            shot.setdefault("system_id", None)
+            self.shots_queue.append(shot)
+            queued += 1
+        self.shots_step()
+        return {"queued": queued, "matched": matched, "unmatched": len(files) - matched, "skipped": skipped}, 200
+
+    def shots_list(self, system=None, body=None):
+        """GET /api/screenshots?system=&body=: the shots converted (newest first; one system's, one body's), each {id, ts,
+        system, body, lat, lon, cmdr, subject, sizes: [the copies made], error}."""
+        q, args = "SELECT * FROM screenshots", []
+        conds = []
+        if system:
+            conds.append("system=?")
+            args.append(int(system))
+        if body:
+            conds.append("body=?")
+            args.append(body)
+        rows = self.db.execute(q + (" WHERE " + " AND ".join(conds) if conds else "") + " ORDER BY ts DESC LIMIT 200", args)
+        return [{"id": r["id"], "ts": r["ts"], "system": r["system_name"], "system_id": str(r["system"]) if r["system"] is not None else None,
+                 "body": r["body"], "lat": r["lat"], "lon": r["lon"], "cmdr": r["cmdr"],
+                 "subject": json.loads(r["subject"]) if r["subject"] else None, "original": r["original"],
+                 "sizes": [k for k in ("small", "medium", "full") if r[k]], "error": r["error"]} for r in rows]
+
+    SHOT_THUMB_PX = 480
+    _shot_thumbs = {}   # (id, path's mtime) -> JPG bytes: a thumbnail made for a shot with no small copy (kept SHOT_THUMBS)
+    SHOT_THUMBS = 64
+
+    async def shot_image(self, sid, size):
+        """GET /api/screenshots/{id}/image?size=thumb|small|medium|full: the file (only a path the record names, under the
+        converted folder), or a thumbnail made from the smallest copy there is. -> (path or bytes, content type) or None."""
+        r = self.db.execute("SELECT * FROM screenshots WHERE id=?", (sid,)).fetchone()
+        if not r:
+            return None
+        _, root = self.shots_folders()
+        ok = lambda p: p and root and os.path.isfile(p) and os.path.realpath(p).startswith(os.path.realpath(root) + os.sep)
+        if size in ("small", "medium", "full"):
+            p = r[size]
+            return (p, "image/png" if p and p.endswith(".png") else "image/jpeg") if ok(p) else None
+        if ok(r["small"]):
+            return r["small"], "image/jpeg"
+        src = next((r[k] for k in ("medium", "full") if ok(r[k])), None)
+        if not src or outrider.screenshots.pillow() is None:
+            return None
+        key = (sid, os.path.getmtime(src))
+        if key not in self._shot_thumbs:
+            def make():
+                import io
+                Image = outrider.screenshots.pillow()
+                with Image.open(src) as im:
+                    im = im.convert("RGB")
+                    im.thumbnail((self.SHOT_THUMB_PX, self.SHOT_THUMB_PX))
+                    buf = io.BytesIO()
+                    im.save(buf, "JPEG", quality=80)
+                return buf.getvalue()
+            data = await asyncio.get_running_loop().run_in_executor(None, make)
+            while len(self._shot_thumbs) >= self.SHOT_THUMBS:
+                self._shot_thumbs.pop(next(iter(self._shot_thumbs)))
+            self._shot_thumbs[key] = data
+        return self._shot_thumbs[key], "image/jpeg"
+
+    def shots_summary(self):
+        """The payload's screenshots block on the game PC (None elsewhere): {on, why, pictures, folder, queued, last}."""
+        if not self.game_pc:
+            return None
+        pictures, root = self.shots_folders()
+        why = self.shots_why_off()
+        return {"on": not why, "why": why or None, "pictures": pictures, "folder": root,
+                "queued": len(self.shots_queue) + (1 if self.shots_task and not self.shots_task.done() else 0),
+                "last": self.shots_last}
+
     async def watch_updates(self):
         """[server] update_check: GitHub's latest release, at start and once a day; a newer one goes in the payload
         (the page's Update pill). Only the request is made: nothing about the player is sent."""
@@ -11953,6 +12262,10 @@ class State:
         # your latest scan of each body: data re-collected after a loss or a sale counts again
         latest = {r["body_id"]: r["ts"] for r in self.db.execute("SELECT body_id, ts FROM own_bodies WHERE system=?", (id64,))}
         greens = ggg_green(self.db, id64, records)   # the codex's green giants, matched by class (their BodyID is the star's)
+        shots = {}   # Here's 📷: the screenshots converted of each body (by its short name)
+        for r in self.db.execute("SELECT body, count(*) AS n FROM screenshots WHERE system=? AND error IS NULL GROUP BY body", (id64,)):
+            if r["body"]:
+                shots[short_name(name, r["body"])] = r["n"]
         out = []
         for r in records:
             bid = own_ids.get(r["name"])
@@ -12044,6 +12357,7 @@ class State:
                 "organics": organics.get(bid, []), "codex": codex.get(bid, []) if bid is not None else [],
                 # a potential green gas giant (the ladder model on its full-precision temperature) or a confirmed one
                 "ggg": ggg_state(r, greens.get(r.get("name"))),
+                "shots": shots.get(r["name"], 0),   # screenshots of it (Here's 📷, the body panel's pictures)
                 # the codex entry its type logs (the page marks one not in your codex for the region: ✦ / ✪)
                 "codex_type": codex_type(r),
                 # the geology entries its volcanism could log (S22: ✦ / ✪ when one is not in your codex for the region)
@@ -19511,6 +19825,7 @@ class State:
             # starve the ones after it, several of which only fire within a short window (review S5). A database
             # error stops the rest (they would fail the same way) and goes to the handler below.
             for name, step in (("watch_status", lambda: self.watch_status(time.time())), ("maybe_refresh", self.maybe_refresh),
+                               ("shots_step", self.shots_step),
                                ("apply_own_changes", self.apply_own_changes), ("maybe_classify_target", self.maybe_classify_target),
                                ("maybe_unsold", self.maybe_unsold), ("maybe_sale_left", self.maybe_sale_left),
                                ("maybe_curious", self.maybe_curious), ("maybe_reported", self.maybe_reported),
@@ -20867,6 +21182,31 @@ def make_app(state, hosts=None):
             radius = 100.0
         return web.json_response(state.left_behind(radius))   # the database connection belongs to this thread
 
+    async def screenshots_view(request):
+        """GET /api/screenshots?system=&body=: the shots converted (Here's 📷)."""
+        try:
+            return web.json_response({"shots": state.shots_list(request.query.get("system"), request.query.get("body"))})
+        except ValueError:
+            return web.json_response({"error": "system: an id64"}, status=400)
+
+    async def screenshot_image(request):
+        """GET /api/screenshots/{id}/image?size=thumb|small|medium|full: one shot's image (only files the record names)."""
+        try:
+            got = await state.shot_image(int(request.match_info["id"]), request.query.get("size", "thumb"))
+        except ValueError:
+            got = None
+        if not got:
+            raise web.HTTPNotFound()
+        body, ctype = got
+        if isinstance(body, bytes):
+            return web.Response(body=body, content_type=ctype, headers={"Cache-Control": "max-age=3600"})
+        return web.FileResponse(body, headers={"Content-Type": ctype, "Cache-Control": "max-age=3600"})
+
+    async def screenshots_backlog(_):
+        """POST /api/screenshots/backlog: convert the shots already in the game's Pictures folder."""
+        out, status = await state.shots_backlog()
+        return web.json_response(out, status=status)
+
     async def records_view(_):
         """GET /api/records: My firsts' Your records (read on a worker: years of scans)."""
         return web.json_response(await state.body_records())
@@ -22219,6 +22559,9 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/autohonk/check", pc_only(autohonk_check_view))   # S69: looks, never presses
     app.router.add_get("/api/firsts", firsts_view)
     app.router.add_get("/api/records", records_view)
+    app.router.add_get("/api/screenshots", screenshots_view)
+    app.router.add_get("/api/screenshots/{id}/image", screenshot_image)
+    app.router.add_post("/api/screenshots/backlog", screenshots_backlog)
     app.router.add_get("/api/left", left_view)
     app.router.add_get("/api/body", body_view)
     app.router.add_get("/api/find", find_view)
@@ -23145,6 +23488,7 @@ async def run(args, st):
     update_task = state.watch_task(asyncio.create_task(state.watch_updates()), "watch_updates") if st["update_check"] else None
     images_task = state.watch_task(asyncio.create_task(state.watch_codex_images()), "watch_codex_images")   # the checklists' picture links, once a day
     state.sights_range = st["sights_range"]
+    state.shots_cfg = dict(st["screenshots"])
     sights_task = state.watch_task(asyncio.create_task(state.watch_sights()), "watch_sights") if st["sights_range"] else None
     # the in-game overlay's window, run by Outrider on the game PC while the overlay is wanted (never on a server,
     # under --simulate or with OUTRIDER_NO_OVERLAY_WINDOW: verify.sh's scratch server)
