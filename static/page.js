@@ -4722,6 +4722,40 @@ const ringsText = (b, sys = hereData && hereData.id64) => {
       (rec[r.name] || []).map(g => `\n  you, ${hotspotLine(g)}`).join("");
   }), sys != null ? ringPricesLine(b, sys) : ""].filter(Boolean).join("\n");
 };
+// 📋 beside Here's ⬇ CSV (explorer ideas, item 6): a short Markdown summary of the system for Reddit or Discord, from
+// Here's own answer: firsts, notable worlds, green gas giants, curiosities, life (sampled and still to sample), rings
+// with hotspots, the value. Lists only (Reddit's Markdown: no tables)
+function systemSummaryMd(h) {
+  if (!h || h.error) return "";
+  const out = [`**${h.name}**${h.region ? ` (${h.region})` : ""} · ${h.bodies.length} bod${h.bodies.length === 1 ? "y" : "ies"} known`];
+  const f = h.firsts, n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  const firsts = f ? [f.system && "first to discover the system", f.bodies && n(f.bodies, "body first discovered", "bodies first discovered"),
+    f.mapped && n(f.mapped, "first mapped", "first mapped"), f.footfall && n(f.footfall, "first footfall", "first footfalls")].filter(Boolean) : [];
+  if (firsts.length) out.push(`- Firsts: ${firsts.join(" · ")}`);
+  const NOTABLE = {ELW: "Earth-like world", WW: "water world", AW: "ammonia world"};
+  const notable = h.bodies.filter(b => b.notable && NOTABLE[b.notable] || b.terraformable)
+    .map(b => `${b.name} ${NOTABLE[b.notable] || b.subtype || ""}${b.terraformable ? " (terraformable)" : ""}`.trim());
+  if (notable.length) out.push(`- Notable: ${notable.join(", ")}`);
+  const ggg = h.bodies.filter(b => b.ggg);
+  if (ggg.length) out.push(`- ${ggg.some(b => b.ggg.confirmed) ? "Green gas giant" : "Potential green gas giant"}: ` +
+    ggg.map(b => `${b.name}${b.ggg.confirmed ? "" : ` (${b.ggg.chance})`}`).join(", "));
+  const cur = h.bodies.flatMap(b => (b.curiosities || []).map(c => `${b.name} ${c.tag} (${c.why})`));
+  if (cur.length) out.push(`- Curiosities: ${cur.join("; ")}`);
+  for (const b of h.bodies) {
+    const orgs = (b.organics || []).filter(o => !o.lost), fct = bioFactor(b);
+    const left = (b.genera || []).filter(g => !orgs.some(o => o.genus === g && o.done));
+    if (!orgs.length && !left.length) continue;
+    out.push(`- Life on ${b.name}${fct === 5 ? " (first footfall ×5)" : ""}: ` + [
+      orgs.map(o => `${o.variant || o.species}${o.done ? "" : ` ${o.samples}/3`}${o.value ? ` ${credits(o.value * fct)}` : ""}`).join(", "),
+      left.filter(g => !orgs.some(o => o.genus === g)).length ? `still to sample: ${left.filter(g => !orgs.some(o => o.genus === g)).join(", ")}` : ""
+    ].filter(Boolean).join("; "));
+  }
+  const rings = h.bodies.flatMap(b => (b.ring_details || []).filter(r => Object.keys(r.hotspots || {}).length)
+    .map(r => `${b.name} ${r.name} (${r.type || "?"}): ${Object.entries(r.hotspots).map(([k, v]) => `${mineral(k)} ×${v}`).join(", ")}`));
+  if (rings.length) out.push(`- Ring hotspots: ${rings.join("; ")}`);
+  out.push(`- Worth: ${credits(h.value_now || 0)} cr on board, ${credits(maxOf(h) || 0)} cr at most`);
+  return out.join("\n");
+}
 function renderHere() {
   const h = hereData, head = document.getElementById("hereHead"), lv = document.getElementById("hereLeaving");
   if (!h) {   // another system on its way: nothing of the last one stays on screen, or clickable (the sweep of 2026-10-09)
@@ -4752,6 +4786,7 @@ function renderHere() {
     (h.spansh_date ? `<span class="${h.spansh_old ? "old" : "unk"}" title="${h.spansh_old ? esc(spanshOldTitle(h.spansh_old)) : "when Spansh's data on this system was last reported"}">Spansh: ${h.spansh_old ? "pre-Odyssey, " : ""}${spanshDay(h.spansh_date)}</span> · ` : "") + (h.phenomena && h.phenomena.length ? phenomenaTag(h.phenomena) + " · " : "") + (h.rare_stars && h.rare_stars.length ? rareStarTag(h.rare_stars) + " · " : "") + (h.pois && h.pois.length ? poiTag(h.pois) + " · " : "") +
     `<span title="what selling now would pay for data you hold from here / the most this system could pay">now <b>${credits(h.value_now || 0)} cr</b> · max <b>${credits(maxOf(h) || 0)} cr</b>${maxBonus() ? "" : ` <span class="unk" title="Max leaves out first-discovery, first-mapped and first-footfall bonuses (alerts & thresholds dialog)">no bonus</span>`}</span>` +
     ` <a class="unk" href="api/export?what=system&id=${encodeURIComponent(h.id64)}" download title="this system's bodies and values as a spreadsheet (CSV)">⬇ CSV</a>` +
+    ` <button type="button" class="mini" id="hereCopyMd" title="copy a short summary of this system in Markdown, for Reddit or Discord">📋</button>` +
     `<span class="modes">${HERE_MODES.filter(([m]) => m !== "split" || hereCtx() === "tab").map(([m, label, title]) =>
       `<button type="button" data-mode="${m}" title="${title}"${(m === "split" ? hereMode().split : hereMode().top === m) ? ' class="on"' : ""}>${label}</button>`).join("")}</span>` +
     (hereRefreshError && h.id64 === shownSystem() ? ` <span class="unk" title="${esc(hereRefreshError)}">· refresh failed</span>` : "");
@@ -5577,6 +5612,7 @@ async function loadRecords(any = false) {
 }
 // Here's 🏆 (explorer ideas, item 4): asked a few seconds after Here loads, so a burst of FSS scans is one request
 function recordsSoon() { clearTimeout(REC.soon); REC.soon = setTimeout(() => loadRecords(true), 3000); }
+document.addEventListener("click", e => { if (e.target.closest("#hereCopyMd")) copyText(systemSummaryMd(hereData), "the system summary"); });
 // a body of Here that holds one of Your records: 🏆, the records in its title (visual only: the voice says no records)
 function recordMark(id64, name) {
   const held = ((REC.d && REC.d.records) || []).filter(r => r.body === name && r.id64 === String(id64));

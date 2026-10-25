@@ -10056,6 +10056,20 @@ const releasePayloads = async () => {
       const out = [m.textContent, m.title, recordMark("77", "B 4"), recordMark("78", "B 3"), REC.d.records.map(recordNew)];
       REC.d = JSON.parse(k); return out; })()`);
     want.recMark = ["🏆", "Your record: Hottest planet, 900 K\nYour record: Biggest planet, 70,000 km", "", "", [true, false]];
+    // 6: the 📋 Markdown summary of the system shown in Here
+    got.summary = w.eval(`systemSummaryMd({name: "Sys", region: "Inner Orion Spur", id64: "7", value_now: 31000, value_max: 201700000,
+      firsts: {system: true, bodies: 12, mapped: 1, footfall: 1},
+      bodies: [{name: "A 4", notable: "ELW", terraformable: true, subtype: "Earth-like world"},
+               {name: "B 3", ggg: {chance: "likely"}, curiosities: [{tag: "shepherd moon", why: "orbits inside B's rings"}]},
+               {name: "A 7", value_parts: {bio_factor: 5}, genera: ["Bacterium", "Osseus"],
+                organics: [{genus: "Bacterium", species: "Bacterium Aurasus", variant: "Bacterium Aurasus - Emerald", samples: 3, done: true, value: 1000000}]},
+               {name: "A 6", ring_details: [{name: "A Ring", type: "Icy", hotspots: {Painite: 2}}]}]}).split("\\n")`);
+    want.summary = ["**Sys** (Inner Orion Spur) · 4 bodies known",
+      "- Firsts: first to discover the system · 12 bodies first discovered · 1 first mapped · 1 first footfall",
+      "- Notable: A 4 Earth-like world (terraformable)", "- Potential green gas giant: B 3 (likely)",
+      "- Curiosities: B 3 shepherd moon (orbits inside B's rings)",
+      "- Life on A 7 (first footfall ×5): Bacterium Aurasus - Emerald 5.0M; still to sample: Osseus",
+      "- Ring hotspots: A 6 A Ring (Icy): Painite ×2", "- Worth: 31k cr on board, 201.7M cr at most"];
     // (the batch's later items add their checks above this line)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodEX = !bad.length && errors.length === before;

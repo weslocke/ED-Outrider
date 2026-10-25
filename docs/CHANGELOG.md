@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · 📋 A system summary in Markdown
+- Explorer ideas, item 6: 📋 beside Here's ⬇ CSV copies a short Markdown summary of the system shown (lists only, as
+  Reddit's Markdown wants): your firsts, notable worlds, green gas giants (or potential ones), curiosities, the life
+  sampled with its colours and value (×5 said) and the genera still to sample, ring hotspots, and what it is worth
+  (`systemSummaryMd`, from Here's own answer: nothing asked).
+
 ## 2026-10-25 · 🏆 on a body that holds one of Your records
 - Explorer ideas, item 4: in Here, a body that holds one of Your records has 🏆 beside its name (its title: "Your record:
   Hottest planet, 900 K"), and Your records marks one set in the last day "🏆 new". Visual only: the voice's "no records
