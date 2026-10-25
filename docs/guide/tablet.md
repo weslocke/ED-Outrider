@@ -52,11 +52,15 @@ for this: see [Other devices on your network](install.md#-other-devices-on-your-
   pixels, the app's version and, in the Android app, its own screens (Server…, Voice…, App menu…), and Sign out when
   Outrider asks for a password.
 - **A smaller tablet** (under 1200 × 700 CSS pixels) gets a compact layout: a narrower page
-  list, and a narrower rail whose eight buttons fit without scrolling, with short names (Gear, Scoop, Night vis.…).
-- **The control rail** on the right (on the game PC only; not in Docker): up to eight game buttons for where you are
+  list, and a narrower rail whose buttons (all eleven of a full set) fit without scrolling, with short names (Gear, Scoop, Night vis.…).
+- **The control rail** on the right (on the game PC only; not in Docker): up to eleven game buttons for where you are
   (ship, SRV, Nomad, fighter, on foot), each pressing that control's keyboard binding on the PC once. The defaults are
   landing gear, cargo scoop, night vision, ship lights, flight assist, silent running, hardpoints and analysis mode;
-  the SRV, the Nomad and fighters, and on foot have their own. A button shows the game's state (Status.json), SENT
+  the SRV, the Nomad and fighters, and on foot have their own. Every set ends with **Hide UI**, **Screenshot** and
+  **HighRes shot** (Hide UI, Shot, HiRes on a small tablet): the game's own Ctrl+Alt+G, F10 and Alt+F10, which need no
+  binding, a plain press with no state shown (on Linux GNOME takes Alt+F10 until you free it in its keyboard settings;
+  a shot is converted if [Screenshots](automation.md#-screenshots) is on); take any of them off with Edit. A set you
+  edited before keeps its buttons: add them with Edit. A button shows the game's state (Status.json), SENT
   until the game confirms a press, and "not confirmed" if it doesn't. Hardpoints, landing gear and cargo scoop show
   N/A in supercruise, where they can't be used (the game even reports hardpoints deployed there after a jump). A control with no keyboard binding says "bind a
   key" (give it a second, keyboard binding in Elite's controls). Edit chooses, renames and orders each set (stored on

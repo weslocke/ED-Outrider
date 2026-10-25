@@ -63,6 +63,9 @@ class Pure(unittest.TestCase):
 
     def test_default_sets_are_the_agreed_ones(self):
         actions = {c: [rail.catalogue_entry(c, b["id"])["action"] for b in rail.default_set(c)] for c in rail.CONTEXTS}
+        fixed = ["HideUI", "Screenshot", "HighResScreenshot"]   # the game's own keys, in every set (the author, 2026-10-25)
+        self.assertTrue(all(v[-3:] == fixed for v in actions.values()))
+        actions = {c: v[:-3] for c, v in actions.items()}
         self.assertEqual(actions["ship"], ["LandingGearToggle", "ToggleCargoScoop", "NightVisionToggle", "ShipSpotLightToggle",
                                            "ToggleFlightAssist", "ToggleButtonUpInput", "DeployHardpointToggle", "PlayerHUDModeToggle"])
         self.assertEqual(actions["srv"], ["ToggleDriveAssist", "HeadlightsBuggyButton", "AutoBreakBuggyButton", "NightVisionToggle",
@@ -82,7 +85,7 @@ class Pure(unittest.TestCase):
                 self.assertIn(b["label"], rail.SHORT_LABELS, f"{c} {b['label']} has no short form")
                 self.assertLessEqual(len(rail.short_label(b["label"])), 10, b["label"])
         self.assertEqual([rail.short_label(b["label"]) for b in rail.default_set("ship")],
-                         ["Gear", "Scoop", "Night vis.", "Lights", "FA", "Silent", "Hardpts", "Analysis"])
+                         ["Gear", "Scoop", "Night vis.", "Lights", "FA", "Silent", "Hardpts", "Analysis", "Hide UI", "Shot", "HiRes"])
         self.assertEqual(rail.short_label("Scoop!"), "Scoop!")
 
     def test_states(self):
@@ -241,7 +244,7 @@ class Server(unittest.TestCase):
     def test_info(self):
         r = self.state.rail_info()
         self.assertEqual((r["context"], r["can_press"], [b["id"] for b in r["buttons"]]),
-                         ("ship", True, ["gear", "scoop", "nv", "lights", "fa", "silent", "hard", "hud"]))
+                         ("ship", True, ["gear", "scoop", "nv", "lights", "fa", "silent", "hard", "hud", "hideui", "shot", "hires"]))
         gear, nv = r["buttons"][0], r["buttons"][2]
         self.assertEqual((gear["label"], gear["short"], nv["short"]), ("Landing gear", "Gear", "Night vis."))
         self.assertEqual((gear["bound"], gear["state"], nv["bound"], nv["action_label"]), (True, "off", False, "Night Vision Toggle"))
@@ -282,6 +285,28 @@ class Server(unittest.TestCase):
         out, status = self.press("srv", "da")
         self.assertEqual((status, self.h.ui.events), (200, [("KEY_D", 1), ("KEY_D", 0)]))
 
+    def test_fixed_keys(self):
+        """The author's (2026-10-25): Hide UI, Screenshot and HighRes in every set press the game's own keys, which no
+        .binds file holds; a plain press (no state); removable in the editor like any button."""
+        self.press("ship", "shot")
+        self.assertEqual(self.h.ui.events, [("KEY_F10", 1), ("KEY_F10", 0)])   # in the ship too
+        self.ship(0, flags2=F(rail.F2_ON_FOOT))
+        r = self.state.rail_info(full=True)
+        b = {x["id"]: x for x in r["buttons"]}
+        self.assertEqual((r["context"], b["shot"]["bound"], b["hires"]["short"], b["hideui"]["reported"]), ("foot", True, "HiRes", False))
+        self.assertEqual([x["id"] for x in r["buttons"] if x["press"]], ["hideui", "shot", "hires"])
+        self.assertIn("Left Ctrl + Left Alt + G", b["hideui"]["keys"])
+        self.assertEqual({c["id"]: c["action"] for c in r["edit"]["foot"]["catalogue"]}["hires"], "Left Alt + F10")
+        for id_, keys in (("shot", [("KEY_F10", 1), ("KEY_F10", 0)]),
+                          ("hires", [("KEY_LEFTALT", 1), ("KEY_F10", 1), ("KEY_F10", 0), ("KEY_LEFTALT", 0)]),
+                          ("hideui", [("KEY_LEFTCTRL", 1), ("KEY_LEFTALT", 1), ("KEY_G", 1), ("KEY_G", 0), ("KEY_LEFTALT", 0), ("KEY_LEFTCTRL", 0)])):
+            self.h.ui.events.clear()
+            out, status = self.press("foot", id_)
+            self.assertEqual((status, self.h.ui.events), (200, keys), id_)
+        self.assertEqual(self.state.rail_save("foot", [{"id": "torch"}, {"id": "shot"}])[1], 200)
+        self.assertEqual([x["id"] for x in self.state.rail_info()["buttons"]], ["torch", "shot"])
+        self.assertEqual(self.press("foot", "hires")[1], 404)   # taken off the rail: not pressed
+
     def test_edit_sets(self):
         out, status = self.state.rail_save("ship", [{"id": "scoop", "label": "Scoop!"}, {"id": "gear"}])
         self.assertEqual((status, [b["label"] for b in self.state.rail_info()["buttons"]]), (200, ["Scoop!", "Landing gear"]))
@@ -291,7 +316,7 @@ class Server(unittest.TestCase):
         self.db.executescript(ed_outrider.RESET_JOURNAL_DATA)   # a journal re-read keeps your sets (live-only data)
         self.assertEqual(len(self.state.rail_sets()["ship"]), 2)
         self.state.rail_save("ship", reset=True)
-        self.assertEqual(len(self.state.rail_sets()["ship"]), 8)
+        self.assertEqual(len(self.state.rail_sets()["ship"]), 11)
 
     def test_device_follows_the_game(self):
         self.state.rail_device()

@@ -1626,6 +1626,8 @@ confirmed while playing. Treat reports about them as likely real.
   ship, with Status.json's live Latitude/Longitude in flight; tested on made-up Status.json only.
 
 
+- The rail's Hide UI, Screenshot and HighRes (2026-10-25): F10 and Alt+F10 were checked live from the keyboard;
+  Ctrl+Alt+G (hide the HUD) and all three pressed through the rail's virtual keyboard were not, nor on foot or in the SRV.
 - Screenshot converting end to end in a live session (the event's timing, the subject from a real sample spot or
   formation, the backlog on a full Pictures folder): the converter was tried on the author's real F10 and HighRes BMPs
   (2026-10-25), the rest on fakes.

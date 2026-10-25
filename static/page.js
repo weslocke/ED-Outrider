@@ -14961,6 +14961,7 @@ function tabRailMode(b, r, now = Date.now()) {
     if (p.until && now < p.until) return "pending";
     if (p.notUntil && now < p.notUntil) return "notconf";
   }
+  if (b.press) return "press";   // a fixed key (Hide UI, Screenshot, HighRes): a plain press, no state to show
   return !b.reported || b.state == null ? "unknown" : b.state === "na" ? "na" : b.state === "off" ? "off" : "on";
 }
 function tabRailTick(now = Date.now()) {   // confirmed, or past its time: SENT ends
@@ -14992,10 +14993,11 @@ function tabDrawRail() {
                    nolink: "No link"}[mode] || RAIL_STATE_WORDS[b.state] || "";
     const sub = mode === "na" ? (b.na || "not available now") : mode === "bind" ? (b.now_on ? `On ${b.now_on} only: add a keyboard key` : `Bind a key: ${b.action_label}`) : mode === "pending" ? "waiting for the game" : mode === "nolink" ? "Outrider not reachable" : "";
     return `<button type="button" class="tb-rb ${mode}${b.amber ? " amber" : ""}${b.states === 3 && b.state === "high" ? " high" : ""}" data-rail="${esc(b.id)}"` +
-      `${dis ? " disabled" : ""} aria-label="${esc(`${b.label}, ${state}${sub ? ", " + sub : ""}`)}" title="${esc(b.keys || b.why || "")}">` +
+      `${dis ? " disabled" : ""} aria-label="${esc(`${b.label}${state ? ", " + state : ""}${sub ? ", " + sub : ""}`)}" title="${esc(b.keys || b.why || "")}">` +
       `<span class="tb-rbl"><b>${b.short && b.short !== b.label ? `<span class="rb-full">${esc(b.label)}</span><span class="rb-short">${esc(b.short)}</span>` : esc(b.label)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span><span class="tb-rbs"><i></i>${esc(state)}</span></button>`;
   }).join("");
   if (list.innerHTML !== html) list.innerHTML = html;
+  list.classList.toggle("many", (r.buttons || []).length > 8);   // up to 11 (Hide UI, Screenshot, HighRes): shorter buttons
 }
 async function tabRailPress(id) {
   const r = data && data.rail, b = r && (r.buttons || []).find(x => x.id === id);

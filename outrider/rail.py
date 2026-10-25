@@ -5,12 +5,12 @@ in, the default button sets (agreed with the author), each button's state from S
 tablet's editor offers, and checking an edited set. ed_outrider.State holds the sets (meta "rail_sets"), reads the
 bindings (outrider/honk.py, per preset category) and presses through auto honk's virtual keyboard (Honker.tap).
 
-One button = one tap of one bound key combination. Never a sequence or a macro. Status.json's flags are the only
+One button = one tap of one bound key combination (a few are the game's own fixed keys, in no .binds file: FIXED_KEYS). Never a sequence or a macro. Status.json's flags are the only
 confirmation: a press shows SENT until the flag changes ("not confirmed" after RAIL_CONFIRM_S).
 """
 import re
 
-RAIL_MAX = 8            # buttons per context
+RAIL_MAX = 11           # buttons per context (8, then the three fixed-key ones in every set, 2026-10-25)
 RAIL_CONFIRM_S = 4.0    # seconds a press waits for Status.json to show the change
 LABEL_MAX = 24
 
@@ -29,8 +29,13 @@ CONTEXT_LABEL = {"ship": "Ship controls", "srv": "SRV controls", "nomad": "Nomad
 CATEGORY = {"ship": "ship", "nomad": "ship", "fighter": "ship", "srv": "srv", "foot": "foot"}
 
 
-def _b(id_, label, action, state=None, amber=False):
-    return {"id": id_, "label": label, "action": action, "state": state, "amber": amber}
+def _b(id_, label, action, state=None, amber=False, fixed=None):
+    return {"id": id_, "label": label, "action": action, "state": state, "amber": amber, "fixed": fixed}
+
+
+# the game's fixed keys (no .binds entry, not rebindable; F10 and Alt+F10 checked live 2026-10-25): a button with
+# `fixed` presses these instead of reading its action's binding. On Linux GNOME takes Alt+F10 until it is freed.
+FIXED_KEYS = {"hideui": ["KEY_LEFTCTRL", "KEY_LEFTALT", "KEY_G"], "shot": ["KEY_F10"], "hires": ["KEY_LEFTALT", "KEY_F10"]}
 
 
 # state: ("flag", bit) lit when set; ("flag_off", bit) lit when clear; "headlights" (OFF / ON / HIGH);
@@ -75,11 +80,18 @@ CATALOGUE = {
              _b("galmap", "Galaxy map", "GalaxyMapOpen_Humanoid"),
              _b("sysmap", "System map", "SystemMapOpen_Humanoid")],
 }
+# the author's (2026-10-25): Hide UI, Screenshot and HighRes in every context, the game's fixed keys, so no binding to
+# read; nothing in Status.json reports them
+for _c in CATALOGUE:
+    CATALOGUE[_c] += [_b("hideui", "Hide UI", "HideUI", fixed=FIXED_KEYS["hideui"]),
+                      _b("shot", "Screenshot", "Screenshot", fixed=FIXED_KEYS["shot"]),
+                      _b("hires", "HighRes shot", "HighResScreenshot", fixed=FIXED_KEYS["hires"])]
+FIXED_IDS = ["hideui", "shot", "hires"]
 # the agreed defaults (the author's mockup, 2026-10-02/03), top to bottom
-DEFAULT_IDS = {"ship": ["gear", "scoop", "nv", "lights", "fa", "silent", "hard", "hud"],
-               "srv": ["da", "head", "brake", "nv", "turret", "scoop", "hud", "recall"],
-               "nomad": ["fa", "lights", "nv"], "fighter": ["fa", "lights", "nv"],
-               "foot": ["torch", "nv", "shields", "bio"]}
+DEFAULT_IDS = {"ship": ["gear", "scoop", "nv", "lights", "fa", "silent", "hard", "hud"] + FIXED_IDS,
+               "srv": ["da", "head", "brake", "nv", "turret", "scoop", "hud", "recall"] + FIXED_IDS,
+               "nomad": ["fa", "lights", "nv"] + FIXED_IDS, "fighter": ["fa", "lights", "nv"] + FIXED_IDS,
+               "foot": ["torch", "nv", "shields", "bio"] + FIXED_IDS}
 
 
 # the catalogue's names shortened for a small tablet's narrow rail (the author's choice, 2026-10-05); a name the player
@@ -89,7 +101,8 @@ SHORT_LABELS = {
     "Flight assist": "FA", "Silent running": "Silent", "Hardpoints": "Hardpts", "Analysis mode": "Analysis",
     "Fighter: dock": "Ftr dock", "Galaxy map": "Gal. map", "System map": "Sys. map", "FSS": "FSS",
     "Drive assist": "DA", "Headlights": "Lights", "Handbrake": "Brake", "Turret view": "Turret", "Recall ship": "Recall",
-    "Flashlight": "Torch", "Suit shields": "Shields", "Bio Scanner": "Bio scan",
+    "Flashlight": "Torch", "Suit shields": "Shields", "Bio Scanner": "Bio scan", "Hide UI": "Hide UI",
+    "Screenshot": "Shot", "HighRes shot": "HiRes",
 }
 
 

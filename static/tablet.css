@@ -102,6 +102,10 @@ a.tb-btn { display: inline-flex; align-items: center; text-decoration: none; }  
 /* inside the button: the cut-corner themes' clip-path clipped an outline outside it away (review 2026-10-23 S5-B15) */
 .tb-rb.amber { box-shadow: inset 0 0 0 3px var(--tb-rb-amber); }
 .tb-rb:disabled { cursor: not-allowed; }
+.tb-rb.press .tb-rbs { display: none; }   /* a fixed key (Hide UI, Screenshot, HighRes): a plain press, no state */
+/* more than eight buttons (the fixed-key ones in every set, 2026-10-25): a little shorter so eleven fit 1280 x 800 */
+.tb-raillist.many .tb-rb { min-height: 44px; }
+.tb-raillist.many .tb-rbl small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1; }
 .tb-railrows { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .tb-railrows li { display: flex; align-items: center; gap: 8px; }
 .tb-railrows input { flex: 1 1 auto; min-width: 0; min-height: 40px; font: inherit; background: var(--panel); color: var(--text);
@@ -264,6 +268,10 @@ body.tablet.tb-norail #tabRail { display: none !important; }
   .tb-railtitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tb-railsub { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tb-rb { flex-basis: 50px; min-height: 42px; padding: 0 10px 0 12px; gap: 6px; }
+  /* more than eight: all eleven still fit a 1006 x 601 tablet (measured in Chromium, every theme) */
+  .tb-raillist.many { gap: 4px; }
+  .tb-raillist.many .tb-rb { flex-basis: 40px; min-height: 32px; }
+  .tb-raillist.many .tb-rbl b { font-size: 15px; }
   .tb-rbl small { font-size: 11px; }
   .tb-rbs { max-width: 58px; font-size: 12px; }
   .rb-full { display: none; }

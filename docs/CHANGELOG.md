@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Hide UI, Screenshot and HighRes on every rail
+- The author (the Android session asked): three buttons at the end of every rail set (ship, SRV, Nomad, fighter, on
+  foot), on by default (a set you edited is kept as it is: add them with Edit) and removable like any other. They press
+  the game's own fixed keys, Ctrl+Alt+G, F10 and Alt+F10, which no .binds file holds (`outrider.rail.FIXED_KEYS`, a
+  catalogue button's `fixed`: no binding read), as a plain press with no state shown (`press`, page.js mode "press").
+- A set now holds up to 11 buttons (`RAIL_MAX`). Over eight, the rail's buttons are a little shorter
+  (`.tb-raillist.many`; a sub-line on one line): measured in headless Chromium with every theme, eleven fit without
+  scrolling at the small tablet's 1006 x 601 (34 px buttons) and at 1280 x 800, where 48 px ones scrolled by 6 px.
+
 ## 2026-10-25 · 📷 Screenshots converted as you take them
 - A player asked for it so they can drop EDDiscovery (its screenshot converter's ideas, none of its code:
   [EDDiscovery](https://github.com/EDDiscovery/EDDiscovery)); the folders and copies are the author's. Settings →

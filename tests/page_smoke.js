@@ -5011,6 +5011,16 @@ const releasePayloads = async () => {
                                  na: "in supercruise", reported: true, states: 2, amber: false}]};
                       tabDrawRail(); const h = document.querySelector('#tabRail [data-rail="hard"]');
                       [h.className, h.disabled, (h.querySelector("small") || {}).textContent, h.querySelector(".tb-rbs").textContent].join("|")`));
+      // a fixed key (Hide UI, Screenshot, HighRes): a plain press with no state; over eight buttons the list is "many"
+      o.push(tw.eval(`const P = id => ({id, label: id, action: "A", action_label: "A", bound: true, keys: "F10", state: null, reported: false,
+                                        states: 2, amber: false, press: ["hideui", "shot", "hires"].includes(id)});
+                      data.rail = {context: "ship", label: "Ship controls", why: null, can_press: true, why_not: null, confirm_s: 4, max: 11,
+                      buttons: ["a", "b", "c", "d", "e", "f", "g", "galmap", "hideui", "shot", "hires"].map(P)};
+                      tabDrawRail(); const s = document.querySelector('#tabRail [data-rail="shot"]');
+                      const many = document.getElementById("tabRailList").classList.contains("many");
+                      data.rail.buttons = data.rail.buttons.slice(0, 8); tabDrawRail();
+                      [s.className, s.disabled, s.getAttribute("aria-label"), document.querySelector('#tabRail [data-rail="galmap"]').className, many,
+                       document.getElementById("tabRailList").classList.contains("many")].join("|")`));
       tw.fetch = real;
       return o;
     })();
@@ -5224,7 +5234,7 @@ const releasePayloads = async () => {
       schemArt: [true, true, 2, true, false, true, true, false],
       ask: [true, "Fuel at 41 percent.", 0, "Nearest unvisited: Smojooe ZC-D c12-2, 10.8 light years.", false, 1, true],
       rail: [3, "tb-rb off", true, true, "Ship controls", "tb-rb pending", '[{"context":"ship","id":"gear"}]', "tb-rb on", "tb-rb notconf",
-             "tb-rb nolink|no rail: docked|0", "tb-rb na|true|in supercruise|N/A"],
+             "tb-rb nolink|no rail: docked|0", "tb-rb na|true|in supercruise|N/A", "tb-rb press|false|shot|tb-rb unknown|true|false"],
       serverRail: ["none", true],
       reload: [true, true, false, false, 0, false, 0, true, true, 1], hint: [true, false], searchSheet: "123456", popKeeps: true, link: ["linked", "unlinked · retrying", "unlinked · retrying"], pill: [true, "tb-link linked"],
       banner: [true, true, true, 0], sheet: [true, true, true, true, true, true, true], sheetHere: [false, "here"], tabAround: [true, true],

@@ -339,7 +339,8 @@ def _fake_evdev():
     import outrider.target
     names = {"KEY_" + c for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"} | {k for k, _ in outrider.target.US_KEYMAP.values()}
     names |= {"KEY_LEFTALT", "KEY_RIGHTALT", "KEY_LEFTCTRL", "KEY_RIGHTCTRL", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
-              "KEY_ENTER", "KEY_KPENTER", "KEY_BACKSPACE", "KEY_SPACE", "KEY_HOME", "KEY_ESC", "KEY_COMPOSE", "KEY_DOWN"}
+              "KEY_ENTER", "KEY_KPENTER", "KEY_BACKSPACE", "KEY_SPACE", "KEY_HOME", "KEY_ESC", "KEY_COMPOSE", "KEY_DOWN",
+              "KEY_F10"}
     codes = {n: i + 1 for i, n in enumerate(sorted(names))}
     return types.SimpleNamespace(ecodes=types.SimpleNamespace(EV_KEY=1, ecodes=codes))
 

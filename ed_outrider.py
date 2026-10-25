@@ -19147,10 +19147,10 @@ class State:
             sets = self.rail_sets()
             items = [dict(outrider.rail.catalogue_entry(ctx, b["id"]), label=b["label"]) for b in sets[ctx]]
             dirs = self.honker.journal_dirs if self.honker else LIVE_DIRS
-            binds = outrider.honk.keyboard_bindings(dirs, [b["action"] for b in items], hint=None,
+            binds = outrider.honk.keyboard_bindings(dirs, [b["action"] for b in items if not b["fixed"]], hint=None,
                                                     category=outrider.rail.CATEGORY[ctx])
             for b in items:
-                keys, text = binds.get(b["action"], (None, "not read"))
+                keys, text = binds.get(b["action"], (None, "not read")) if not b["fixed"] else (b["fixed"], self.rail_fixed_text(b))
                 out["buttons"].append({"id": b["id"], "label": b["label"], "short": outrider.rail.short_label(b["label"]),
                                        "action": b["action"],
                                        "action_label": outrider.honk.action_label(b["action"]), "bound": bool(keys),
@@ -19159,15 +19159,23 @@ class State:
                                        "now_on": (re.search(r"now only (.+?) on ", text or "") or [None, None])[1] if not keys else None,
                                        "state": outrider.rail.state_of(b, st), "reported": b["state"] is not None,
                                        "na": outrider.rail.NA_WHY.get(b["id"]) if outrider.rail.state_of(b, st) == "na" else None,
-                                       "states": 3 if b["state"] == "headlights" else 2, "amber": b["amber"]})
+                                       "states": 3 if b["state"] == "headlights" else 2, "amber": b["amber"],
+                                       "press": bool(b["fixed"])})   # a plain press: no state (the page shows none)
             out["why_not"] = self.rail_why_not()
             out["can_press"] = out["why_not"] is None
         if full:
             sets = self.rail_sets()
             out["edit"] = {c: {"label": outrider.rail.CONTEXT_LABEL[c], "set": sets[c],
-                               "catalogue": [{"id": b["id"], "label": b["label"], "action": b["action"]}
+                               "catalogue": [{"id": b["id"], "label": b["label"],
+                                              "action": self.rail_fixed_text(b, short=True) if b["fixed"] else b["action"]}
                                              for b in outrider.rail.CATALOGUE[c]]} for c in outrider.rail.CONTEXTS}
         return out
+
+    @staticmethod
+    def rail_fixed_text(b, short=False):
+        """A fixed-key button's keys in words: "Left Ctrl + Left Alt + G (the game's own key)"."""
+        keys = " + ".join(outrider.honk.key_label(k) for k in b["fixed"])
+        return keys if short else f"{keys} (the game's own key, not in your controls)"
 
     def rail_device(self):
         """The virtual keyboard is kept open for the rail while the game is live (a device created at the moment of a
@@ -19199,8 +19207,9 @@ class State:
             return {"error": "no such button in this set"}, 404
         if not b["bound"]:
             return {"error": b["why"]}, 409
-        keys, _ = outrider.honk.keyboard_bindings(self.honker.journal_dirs, [b["action"]], hint=None,
-                                                  category=outrider.rail.CATEGORY[ctx])[b["action"]]
+        fixed = outrider.rail.catalogue_entry(ctx, id_)["fixed"]
+        keys = fixed or outrider.honk.keyboard_bindings(self.honker.journal_dirs, [b["action"]], hint=None,
+                                                        category=outrider.rail.CATEGORY[ctx])[b["action"]][0]
         if not self.honker.ready and not self.honker.open("rail"):
             return {"error": self.honker.device_error or "the virtual keyboard could not be opened"}, 409
 
