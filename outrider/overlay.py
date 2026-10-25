@@ -726,6 +726,23 @@ def radar_xy(here, lat, lon, cx, cy, r, rng):
     return cx + r * k * math.sin(rel), cy - r * k * math.cos(rel), d > rng
 
 
+def radar_grid(cx, cy, r, north, pal):
+    """The radar's grid (page.js surfaceGrid's twin, 2026-10-25): quarter rings, a crosshair along your heading and
+    across it, compass ticks on the rim every 15° (longer every 45°, longest at N E S W) and E S W inside it, turned with
+    the heading-up radar (`north`: where north is, in radians clockwise from up)."""
+    out = [circle(cx, cy, r * k, pal["frame"]) for k in (0.25, 0.75)]
+    out += [line([(cx - r, cy), (cx + r, cy)], pal["frame"]), line([(cx, cy - r), (cx, cy + r)], pal["frame"])]
+    for deg in range(0, 360, 15):
+        a = north + math.radians(deg)
+        ln = 10 if deg % 90 == 0 else 6 if deg % 45 == 0 else 3
+        out.append(line([(cx + r * math.sin(a), cy - r * math.cos(a)), (cx + (r - ln) * math.sin(a), cy - (r - ln) * math.cos(a))],
+                        pal["muted"], lw=1.5 if deg % 45 == 0 else 1))
+    for deg, t in ((90, "E"), (180, "S"), (270, "W")):
+        a = north + math.radians(deg)
+        out.append(text(cx + (r - 18) * math.sin(a) - 4, cy - (r - 18) * math.cos(a) - 7, t, pal["muted"], "small"))
+    return out
+
+
 def radar_panel(surf, pal, size="normal", radar_range=800):
     """The surface radar, heading up: you at the centre, N on the rim; the sample points of the run in progress with
     their colony rings (red while you are inside one, green once clear), other runs' faint, tagged plants, the ship and
@@ -749,7 +766,8 @@ def radar_panel(surf, pal, size="normal", radar_range=800):
     cx, cy = w / 2, head + 14 + r
     items += [circle(cx, cy, r, pal["frame"]), circle(cx, cy, r / 2, pal["frame"])]
     north = math.radians(-(surf.get("heading") or 0))
-    items.append(text(cx + (r + 8) * math.sin(north) - 4, cy - (r + 8) * math.cos(north) - 8, "N", pal["muted"], "small"))
+    items += radar_grid(cx, cy, r, north, pal)
+    items.append(text(cx + (r + 8) * math.sin(north) - 4, cy - (r + 8) * math.cos(north) - 8, "N", pal["accent"], "small", bold=True))
     here = {"lat": surf["lat"], "lon": surf["lon"], "heading": surf.get("heading") or 0, "radius": surf["radius"]}
     # your trail on this body this visit (the author, 2026-10-25: wanted here too, not only on the page's map), under
     # everything: the stretches within the edge only (a point beyond it would be pressed onto the rim), joined to you

@@ -10098,6 +10098,13 @@ const releasePayloads = async () => {
               new DOMParser().parseFromString(sightNearHtml(e), "text/html").body.textContent.replace(/\\s+/g, " ").trim().startsWith("Nearest sight: 📜 Lyceum · Far · 320 ly"),
               sightNearHtml(null), notable({sights: ["Lyceum"], notable: {}}).includes("📜")]; })()`);
     want.sights = ["📜 Lyceum", "https://edastro.com/gec/view/1", "Sights and Scenery", true, true, "", true];
+    // the surface map's grid (2026-10-25): 24 rim ticks, the crosshair, quarter rings; E S W turned with the heading
+    got.grid = w.eval(`(() => { const calls = {lineTo: 0, arc: 0, text: []};
+      const g = {save() {}, restore() {}, setLineDash() {}, beginPath() {}, stroke() {}, moveTo() {},
+                 lineTo() { calls.lineTo++; }, arc() { calls.arc++; }, fillText(t, x, y) { calls.text.push([t, Math.round(x), Math.round(y)]); }};
+      surfaceGrid(g, {c: 200, rimR: 186, north: -Math.PI / 2, S: 400}, surfColours(), false);   // heading east: north on the left
+      return [calls.lineTo, calls.arc, calls.text]; })()`);
+    want.grid = [26, 2, [["E", 200, 36], ["S", 364, 200], ["W", 200, 364]]];   // heading east: east is up, west down
     // (the batch's later items add their checks above this line)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodEX = !bad.length && errors.length === before;

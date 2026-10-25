@@ -474,8 +474,16 @@ class Radar(unittest.TestCase):
         self.assertIsNone(O.radar_panel(None, pal))
         # the trail (2026-10-25): the stretches within the edge, joined to you; a point beyond the edge breaks it
         trail = O.radar_panel(self.surf(bio=[], trail=[[0.0, 0.002], [0.001, 0.002], [0.5, 0.5], [0.0, 0.001]]), pal)
-        self.assertEqual([len(i["pts"]) for i in trail["items"] if i["t"] == "line"], [2, 2])
-        self.assertFalse([i for i in empty["items"] if i["t"] == "line"])   # no trail: no line
+        grid = [i for i in empty["items"] if i["t"] == "line"]          # the grid: 24 rim ticks and the crosshair's 2
+        self.assertEqual(len(grid), 26)
+        self.assertEqual([len(i["pts"]) for i in trail["items"] if i["t"] == "line" and i not in grid], [2, 2])
+        # the grid turns with the heading: heading east puts north on the left, its letter and its long tick there
+        east = O.radar_panel(self.surf(bio=[], heading=90), pal)
+        n = next(i for i in east["items"] if i["t"] == "text" and i["s"] == "N")
+        self.assertLess(n["x"], 40)
+        self.assertTrue(any(i["t"] == "line" and i["lw"] == 1.5 and i["pts"][0][0] < 40 and
+                            abs(abs(i["pts"][0][0] - i["pts"][1][0]) - 10) < 0.2 for i in east["items"]))
+        self.assertIn("E", [i["s"] for i in empty["items"] if i["t"] == "text"])
         shipped = O.radar_panel(self.surf(bio=[], ship={"lat": 0.0, "lon": 0.0, "dist": 1500}), pal)
         self.assertIn("ship 1.5 km", [i["s"] for i in shipped["items"] if i["t"] == "text"])
 

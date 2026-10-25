@@ -48,7 +48,8 @@ before.
   the rim; the sample points of your run with their colony rings, red while you are inside one and green once you are
   clear; tagged plants, the ship and your rigs. Underneath: how far the next sample must be, or "Clear: sample here".
   It shows with nothing on it too (you, N and its edge), as the page's surface map does: low over a body looking for
-  geology, say. A faint line is your trail on this body this visit, as on the page's map.
+  geology, say. A faint line is your trail on this body this visit, as on the page's map. A compass grid turns with
+  you: ticks on the rim every 15° (longest at N, E, S, W, with their letters), a crosshair and quarter rings.
   **Docking** takes the radar's place (its corner, size and switch: the radar has nothing to show in space; at a
   planetary port the pad comes first until you touch down): from the moment a station gives you a pad until you touch
   down it shows

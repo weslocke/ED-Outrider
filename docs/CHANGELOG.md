@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · A compass grid on the surface map and the overlay's radar
+- The author, after another tool's tracker (not a copy): both maps get a grid that turns with the heading-up view:
+  compass ticks on the rim every 15° (longer every 45°, longest at N E S W), E S W inside the rim beside N's chevron (the
+  overlay's N in the accent colour), a faint crosshair along your heading and across it, and dashed quarter rings
+  (page.js `surfaceGrid`, outrider.overlay `radar_grid`).
+
 ## 2026-10-25 · Your trail on the overlay's radar too
 - The author: the trail showed on the page's surface map, not in the overlay. `radar_panel` draws it under everything,
   faint, the stretches within the radar's edge only (a point beyond it would be pressed onto the rim), joined to you.

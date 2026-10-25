@@ -1605,6 +1605,31 @@ const surfColours = () => { const cs = getComputedStyle(document.documentElement
   return {line: v("--line") || "#262c35", muted: v("--muted") || "#7d8794", text: v("--text") || "#d8dde4", accent: v("--accent") || "#ff8c1a",
           info: v("--info") || "#6aa8ff", bad: v("--bad") || "#e05d5d", good: v("--good") || "#5cc98a", panel: v("--panel") || "#161a20",
           warn: v("--warn") || "#e3b341"}; };
+// the map's grid (the author, 2026-10-25, after a HUD's tracker): faint quarter rings, a crosshair along your heading and
+// across it, compass ticks on the rim every 15° (longer every 45°, longest at N E S W) and E S W inside it, all turned
+// with the heading-up map; N keeps its own chevron (drawSurface). outrider.overlay.radar_grid is the overlay's twin
+function surfaceGrid(g, L, C, small) {
+  const c = L.c, R = L.rimR;
+  g.save(); g.strokeStyle = C.line; g.lineWidth = 1; g.globalAlpha = 0.6;
+  g.setLineDash([1, 5]);
+  for (const k of [0.25, 0.75]) { g.beginPath(); g.arc(c, c, R * k, 0, 2 * Math.PI); g.stroke(); }
+  g.setLineDash([]); g.globalAlpha = 0.35;
+  g.beginPath(); g.moveTo(c - R, c); g.lineTo(c + R, c); g.moveTo(c, c - R); g.lineTo(c, c + R); g.stroke();
+  g.globalAlpha = 0.9; g.strokeStyle = C.muted;
+  for (let deg = 0; deg < 360; deg += 15) {
+    const a = L.north + deg * Math.PI / 180, len = deg % 90 === 0 ? (small ? 7 : 11) : deg % 45 === 0 ? (small ? 5 : 7) : (small ? 2 : 4);
+    g.lineWidth = deg % 45 === 0 ? 1.5 : 1;
+    g.beginPath(); g.moveTo(c + Math.sin(a) * R, c - Math.cos(a) * R); g.lineTo(c + Math.sin(a) * (R - len), c - Math.cos(a) * (R - len)); g.stroke();
+  }
+  if (!small) {
+    const font = Math.max(10, Math.round(L.S / 46));
+    g.fillStyle = C.muted; g.font = `${font}px system-ui, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+    for (const [deg, t] of [[90, "E"], [180, "S"], [270, "W"]]) {
+      const a = L.north + deg * Math.PI / 180; g.fillText(t, c + Math.sin(a) * (R - 22), c - Math.cos(a) * (R - 22));
+    }
+  }
+  g.restore();
+}
 function drawSurface(canvas, L, small) {
   const dpr = window.devicePixelRatio || 1, S = L.S;
   canvas.style.width = canvas.style.height = S + "px";
@@ -1617,6 +1642,7 @@ function drawSurface(canvas, L, small) {
   g.fillStyle = C.panel; g.strokeStyle = C.line; g.lineWidth = 1;
   g.beginPath(); g.arc(c, c, R, 0, 2 * Math.PI); g.fill(); g.stroke();
   g.setLineDash([2, 4]); g.beginPath(); g.arc(c, c, R / 2, 0, 2 * Math.PI); g.stroke(); g.setLineDash([]);
+  surfaceGrid(g, L, C, small);
   g.save(); g.beginPath(); g.arc(c, c, R, 0, 2 * Math.PI); g.clip();
   // your trail on this body this visit, under everything (to you: the arrow is drawn last)
   if ((L.trail || []).length > 1) {

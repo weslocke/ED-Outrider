@@ -466,7 +466,8 @@ On a planet, Now shows a map under its lines: on the ground, in the SRV, on foot
 pane (a body panel you open takes its place until you close it), with the body you are on brought to the top of the list
 above it; the firsts and the checklist under the system's name give it their room. A faint line under the markers is
 **your trail** on this body this visit (driving, walking or flying low): the ground you have already looked over while
-you hunt for the last species. It starts afresh on another body, or when you leave this one's orbit or restart Outrider.
+you hunt for the last species. A compass grid turns with you: ticks on the rim every 15° (longest at N, E, S and W, with
+their letters), a crosshair along your heading and quarter rings, to read a bearing at a glance. It starts afresh on another body, or when you leave this one's orbit or restart Outrider.
 
 <p align="center">
   <img src="../images/surface.png" alt="The surface map on Now: rigs, samples, a mining location and the ship" width="900">
