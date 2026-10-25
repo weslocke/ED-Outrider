@@ -10083,6 +10083,11 @@ const releasePayloads = async () => {
     got.edsmFirst = [w.eval(`edsmFirstText({commander: "Vorrash", date: "2016-10-25"})`),
                      w.eval(`targetCounts({known: 3, count: 12, edsm: {known: 5, count: 12, first: {commander: "V", date: "2016-10-25"}}})`).includes("first reported to EDSM 2016-10-25 by CMDR V")];
     want.edsmFirst = ["first reported to EDSM 2016-10-25 by CMDR Vorrash", true];
+    // 1: the surface trail, turned and scaled as the markers are (heading up), never moving the zoom
+    got.trail = w.eval(`(() => { const s = {lat: 0, lon: 0, radius: 1000000, heading: 90, trail: [[0, 0.005], [0, 0]]};
+      const L = surfaceLayout(s, surfaceCfg(), 400), p = L.trail[0];
+      return [L.trail.length, Math.round(p[0]), Math.round(p[1]) < L.c, L.span === surfaceLayout({...s, trail: []}, surfaceCfg(), 400).span]; })()`);
+    want.trail = [2, 200, true, true];   // 87 m east with your heading east: straight up the screen
     // (the batch's later items add their checks above this line)
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodEX = !bad.length && errors.length === before;

@@ -533,6 +533,44 @@ FSS_SETTLE = 2.0          # s after the FSS closes before judging it: the journa
 LEAVING_CACHE_MAX = 64    # systems whose leaving_summary is kept (the target's, the pinned ones, the moments')
 
 
+class SurfaceTrail:
+    """Where you have driven, walked or flown low on the body you are over, this visit (explorer ideas, item 1, from
+    Rhino Surface Mapper's idea): Status.json's position each tick (State.surface_here), a point after moving
+    TRAIL_STEP_M, at most TRAIL_MAX (the older half thinned by half when full). Another body, or none (you left its
+    orbit, a jump), starts afresh. Live only, in memory: a restart starts a new trail."""
+    TRAIL_STEP_M = 20.0
+    TRAIL_MAX = 2000
+    TRAIL_SENT = 300   # points the payload carries (evenly picked, the newest always)
+
+    def __init__(self):
+        self.key, self.pts = None, []
+
+    def note(self, h):
+        """h: State.surface_here() (None away from a body)."""
+        if not h or h.get("lat") is None or h.get("lon") is None:
+            self.key, self.pts = None, []
+            return
+        key = (h["system"], h["body_id"])
+        if key != self.key:
+            self.key, self.pts = key, []
+        if self.pts and surface_m(self.pts[-1][0], self.pts[-1][1], h["lat"], h["lon"], h["radius"]) < self.TRAIL_STEP_M:
+            return
+        self.pts.append((round(h["lat"], 5), round(h["lon"], 5)))
+        if len(self.pts) > self.TRAIL_MAX:
+            half = len(self.pts) // 2
+            self.pts = self.pts[:half:2] + self.pts[half:]
+
+    def points(self, key):
+        """[[lat, lon], ...] for the body `key` (system, body_id), at most TRAIL_SENT: [] for another body."""
+        if key != self.key or len(self.pts) < 2:
+            return []
+        pts = self.pts
+        if len(pts) > self.TRAIL_SENT:
+            step = len(pts) / self.TRAIL_SENT
+            pts = [pts[int(i * step)] for i in range(self.TRAIL_SENT - 1)] + [pts[-1]]
+        return [list(p) for p in pts]
+
+
 class ScoopWatch:
     """Fuel scooping from Status.json, polled every tick: the end of each scoop, once. The flag must stay off
     SCOOP_SETTLE s (it flickers at the edge of the scoop zone) and the scoop must have run SCOOP_MIN_RUN s.
@@ -7871,6 +7909,7 @@ class State:
         self.reported_tried = {}   # id64 -> when last asked (or found fresh): not asked again before REPORTED_RETRY_S
         self._records = None       # (key, answer): My firsts' Your records, worked out again when scans or jumps change
         self.edsm_first = {}       # id64 -> EDSM's first reporter {commander, date}, from the target's EDSM answers
+        self.trail = SurfaceTrail()  # where you have been on the body you are over, this visit (the surface map's trail)
         self.reported_seen = None  # the overlay_detail key of the last look that found no life
         self.route_spansh = {}     # id64 -> (when, has a record): Spansh asked about the game's route hops (in memory only)
         self.route_task = None     # that ask (one at a time)
@@ -8861,6 +8900,7 @@ class State:
             wrote = True
         j.end_burst(now)
         h = self.surface_here()
+        self.trail.note(h)
         self.suit_watch(st, h, now)
         if self.in_rhino(h):
             for rig in self.rigs_out(h["system"], h["body_id"]):
@@ -9108,7 +9148,9 @@ class State:
                 "tags": tags_shown(self.bio_tags_here(h)),
                 # #16: this body's pins with where each is (the map and the overlay's radar draw them; the active one
                 # guided): the payload's pins.here, also here so the overlay needs no second look
-                "pins": (self.pins_summary()["here"] or {}).get("pins") or []}
+                "pins": (self.pins_summary()["here"] or {}).get("pins") or [],
+                # where you have been on this body this visit, thinned (explorer ideas, item 1): drawn under the map
+                "trail": self.trail.points((h["system"], h["body_id"]))}
 
     def bio_tags_here(self, h):
         """Plants tagged on this body (bio_tags) for species not finished here, nearest first: {species, genus,

@@ -459,7 +459,9 @@ those tables, and the colours show at once.
 On a planet, Now shows a map under its lines: on the ground, in the SRV, on foot, or flying below 1,000 m
 (it hides again 100 m higher). Hiding deletes nothing. The Overview shows the same map in the lower half of its system
 pane (a body panel you open takes its place until you close it), with the body you are on brought to the top of the list
-above it; the firsts and the checklist under the system's name give it their room.
+above it; the firsts and the checklist under the system's name give it their room. A faint line under the markers is
+**your trail** on this body this visit (driving, walking or flying low): the ground you have already looked over while
+you hunt for the last species. It starts afresh on another body, or when you leave this one's orbit or restart Outrider.
 
 <p align="center">
   <img src="../images/surface.png" alt="The surface map on Now: rigs, samples, a mining location and the ship" width="900">

@@ -1,5 +1,5 @@
 """Explorer ideas from EDCodex's Exploration tools (project/PLAN-explorer-ideas-2026-10-25.md), the server's parts:
-Search's "at least N" (7), EDSM's first reporter (5). The page's parts are in tests/page_smoke.js ("explorer ideas"). Fakes only."""
+Search's "at least N" (7), EDSM's first reporter (5), the surface trail (1). The page's parts are in tests/page_smoke.js ("explorer ideas"). Fakes only."""
 import asyncio
 import time
 import unittest
@@ -92,6 +92,37 @@ class EdsmFirst(unittest.TestCase):
         self.assertIsNone(st.system_detail(42)["edsm_first"])                    # EDSM never asked about it
         st.edsm_first[42] = {"commander": "Vorrash", "date": "2016-10-25"}
         self.assertEqual(st.system_detail(42)["edsm_first"], {"commander": "Vorrash", "date": "2016-10-25"})
+
+
+class Trail(unittest.TestCase):
+    """1: where you have been on this body this visit, for the surface map."""
+
+    def here(self, lat, lon, body=5):
+        return {"system": 9, "body_id": body, "lat": lat, "lon": lon, "radius": 1_000_000}
+
+    def test_steps_bodies_and_leaving(self):
+        t = ed_outrider.SurfaceTrail()
+        t.note(self.here(0.0, 0.0))
+        t.note(self.here(0.0, 0.0005))          # ~9 m: not a point yet
+        self.assertEqual(t.points((9, 5)), [])  # one point is no line
+        t.note(self.here(0.0, 0.002))           # ~35 m
+        self.assertEqual(t.points((9, 5)), [[0.0, 0.0], [0.0, 0.002]])
+        self.assertEqual(t.points((9, 6)), [])  # another body: not this trail
+        t.note(self.here(0.0, 0.004, body=6))   # another body: afresh
+        t.note(self.here(0.0, 0.006, body=6))
+        self.assertEqual(t.points((9, 6)), [[0.0, 0.004], [0.0, 0.006]])
+        t.note(None)                            # left the body: gone
+        self.assertEqual(t.points((9, 6)), [])
+
+    def test_capped_and_thinned(self):
+        t = ed_outrider.SurfaceTrail()
+        for i in range(t.TRAIL_MAX + 1):
+            t.note(self.here(0.0, i * 0.002))
+        self.assertLessEqual(len(t.pts), t.TRAIL_MAX)
+        self.assertEqual(t.pts[-1], (0.0, round(t.TRAIL_MAX * 0.002, 5)))   # the newest kept
+        sent = t.points((9, 5))
+        self.assertEqual(len(sent), t.TRAIL_SENT)
+        self.assertEqual(sent[-1], list(t.pts[-1]))
 
 
 if __name__ == "__main__":

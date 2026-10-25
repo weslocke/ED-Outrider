@@ -1594,6 +1594,10 @@ upstream project's choices, not rules of the game.
 - **No page open, no alerts on the overlay:** the Alerts panel shows what an open Outrider page (a browser window or
   the tablet) posts, so with none open anywhere the panel stays empty (see the decision above).
 
+- **The surface trail is live only** (2026-10-25): it is this visit's, so a table to keep it through a restart or
+  a re-read would only keep a line nobody looks at again; a restart starts a new one. It is drawn on the surface map
+  only, never on the overlay's radar (its room is for what is around you now).
+
 ## Not yet tried in a live game
 
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not

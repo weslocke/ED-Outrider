@@ -1581,7 +1581,11 @@ function surfaceLayout(s, cfg, S) {
     it.ringPx = it.ringM ? it.ringM * scale : 0;
   }
   const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000].filter(v => v <= span / 3).pop() || 10;
-  return {S, c, rimR, span, scale, heading: hd, headingKnown: s.heading != null, north: -rad, items: shown,
+  // where you have been on this body this visit (explorer ideas, item 1): the same turn and scale, never the zoom's
+  // concern; the line is cut by the rim's clip when drawn
+  const trail = (s.trail || []).map(([lat, lon]) => { const p = surfLocal(s, lat, lon), rx = p.east * ch - p.north * sh, ry = p.east * sh + p.north * ch;
+    return [c + rx * scale, c - ry * scale]; });
+  return {S, c, rimR, span, scale, heading: hd, headingKnown: s.heading != null, north: -rad, items: shown, trail,
           bar: {m: nice, px: nice * scale}};
 }
 const surfColours = () => { const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
@@ -1601,6 +1605,11 @@ function drawSurface(canvas, L, small) {
   g.beginPath(); g.arc(c, c, R, 0, 2 * Math.PI); g.fill(); g.stroke();
   g.setLineDash([2, 4]); g.beginPath(); g.arc(c, c, R / 2, 0, 2 * Math.PI); g.stroke(); g.setLineDash([]);
   g.save(); g.beginPath(); g.arc(c, c, R, 0, 2 * Math.PI); g.clip();
+  // your trail on this body this visit, under everything (to you: the arrow is drawn last)
+  if ((L.trail || []).length > 1) {
+    g.strokeStyle = C.muted; g.globalAlpha = 0.55; g.lineWidth = small ? 1 : 1.5; g.lineJoin = "round"; g.beginPath();
+    L.trail.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.lineTo(c, c); g.stroke(); g.globalAlpha = 1;
+  }
   // rings first: bio colony distance (the run solid, others faint), rig spacing (faint, an estimate)
   for (const it of L.items) if (it.ringPx && !it.off) {
     g.beginPath(); g.arc(it.sx, it.sy, it.ringPx, 0, 2 * Math.PI);

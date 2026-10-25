@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Your trail on the surface map
+- Explorer ideas, item 1: a faint line under the surface map's markers is where you have driven, walked or flown low on
+  this body this visit, so a search for the last species can see the ground already looked over. `SurfaceTrail`:
+  Status.json's position each tick, a point every 20 m, at most 2,000 (the older half thinned when full), afresh on
+  another body or once you leave its orbit; live only, in memory. The payload's surface block carries it thinned to 300
+  points (`trail`); `surfaceLayout` turns and scales it as the markers (never changing the zoom), `drawSurface` draws
+  it first, joined to you.
+
 ## 2026-10-25 · Who first reported a system to EDSM
 - Explorer ideas, item 5: the target's EDSM answer (the bodies Outrider already asks for "EDSM 5/12") carries each body's
   first reporter; the earliest (`edsm_first`) goes in the target counts' hover ("first reported to EDSM 2016-10-25 by
