@@ -1596,7 +1596,7 @@ upstream project's choices, not rules of the game.
 
 - **The surface trail is live only** (2026-10-25): it is this visit's, so a table to keep it through a restart or
   a re-read would only keep a line nobody looks at again; a restart starts a new one. It is drawn on the surface map
-  only, never on the overlay's radar (its room is for what is around you now).
+  and, since the author asked for it there too (2026-10-25), on the overlay's radar: the stretches within its edge only.
 
 ## Not yet tried in a live game
 

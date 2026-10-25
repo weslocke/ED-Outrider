@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Your trail on the overlay's radar too
+- The author: the trail showed on the page's surface map, not in the overlay. `radar_panel` draws it under everything,
+  faint, the stretches within the radar's edge only (a point beyond it would be pressed onto the rim), joined to you.
+
 ## 2026-10-25 · 📋 The system summary: body names bold
 - The author's paste: "4 c a moon of a moon" read as body 4 c and "a moon of a moon". Body names are bold with a colon
   after them ("**4 c a**: moon of a moon"), a body's curiosities on one item, and a curiosity's reason only when it adds

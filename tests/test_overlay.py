@@ -472,6 +472,10 @@ class Radar(unittest.TestCase):
         self.assertEqual((empty["id"], [i["s"] for i in empty["items"] if i["t"] == "text"][-1]), ("radar", "edge 800 m"))
         self.assertTrue(any(i["t"] == "marker" for i in empty["items"]))   # you, in the middle
         self.assertIsNone(O.radar_panel(None, pal))
+        # the trail (2026-10-25): the stretches within the edge, joined to you; a point beyond the edge breaks it
+        trail = O.radar_panel(self.surf(bio=[], trail=[[0.0, 0.002], [0.001, 0.002], [0.5, 0.5], [0.0, 0.001]]), pal)
+        self.assertEqual([len(i["pts"]) for i in trail["items"] if i["t"] == "line"], [2, 2])
+        self.assertFalse([i for i in empty["items"] if i["t"] == "line"])   # no trail: no line
         shipped = O.radar_panel(self.surf(bio=[], ship={"lat": 0.0, "lon": 0.0, "dist": 1500}), pal)
         self.assertIn("ship 1.5 km", [i["s"] for i in shipped["items"] if i["t"] == "text"])
 
