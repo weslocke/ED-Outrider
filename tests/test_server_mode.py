@@ -792,3 +792,120 @@ class LauncherBanner(unittest.TestCase):
         bar = "=" * 70   # past the address's end (the author)
         self.assertEqual(out.split("\n"), ["", bar, f"#      ED Outrider v{outrider.__version__}", "#",
                                            "#                       https://github.com/weslocke/ED-Outrider", bar, ""])
+
+
+class PiperPython(unittest.TestCase):
+    """Issue #13 (2026-10-25): a Windows player's newest Python was 3.15, which onnxruntime has no build for, so pip said
+    every piper-tts version had "conflicting dependencies". The launchers now pick a Python Piper can be installed into
+    (scripts/python_check.py), say before the setup when there is none, and the installer says why Piper failed."""
+    ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def setUp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("python_check", os.path.join(self.ROOT, "scripts", "python_check.py"))
+        self.pc = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.pc)
+
+    def read(self, name):
+        with open(os.path.join(self.ROOT, name), encoding="utf-8") as f:
+            return f.read()
+
+    def wanted(self):
+        """The versions the launchers try, newest first, from PIPER_PYTHONS (so moving its top moves them)."""
+        (lo_major, lo), (hi_major, hi) = self.pc.PIPER_PYTHONS
+        self.assertEqual(lo_major, hi_major)
+        return [f"{hi_major}.{m}" for m in range(hi, lo - 1, -1)]
+
+    def test_why_not(self):
+        self.assertEqual(self.pc.why_not((3, 13), 64), "")
+        self.assertEqual(self.pc.why_not((3, 14), 64), "")
+        self.assertIn("Python 3.15 is newer than Piper's voices support yet (Python 3.11 to 3.14, 64-bit)", self.pc.why_not((3, 15), 64))
+        self.assertIn("32-bit", self.pc.why_not((3, 12), 32))
+        self.assertIn("older than ED Outrider needs", self.pc.why_not((3, 10), 64))
+        block = self.pc.notice(self.pc.why_not((3, 15), 64))
+        for part in ("browser's own voice", "Python 3.14 (64-bit)", "https://www.python.org/downloads/", ".venv folder"):
+            self.assertIn(part, block)
+
+    def test_main(self):
+        import io
+        import unittest.mock
+        with unittest.mock.patch.object(self.pc, "why_not", return_value=""), unittest.mock.patch.object(self.pc, "has_venv", return_value=True):
+            self.assertEqual(self.pc.main(["--ok"]), 0)
+        with unittest.mock.patch.object(self.pc, "why_not", return_value=""), unittest.mock.patch.object(self.pc, "has_venv", return_value=False):
+            self.assertEqual(self.pc.main(["--ok"]), 1)   # no venv/ensurepip (Debian without python3.x-venv): not picked
+        with unittest.mock.patch.object(self.pc, "why_not", return_value="Python 3.15 is newer"), \
+                unittest.mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            self.assertEqual(self.pc.main(["--ok"]), 1)
+            self.assertEqual(out.getvalue(), "")           # --ok is silent
+            self.assertEqual(self.pc.main([]), 0)          # never stops a launcher
+            self.assertIn("Python 3.15 is newer", out.getvalue())
+
+    def test_the_installer_says_why_piper_failed(self):
+        import importlib.util
+        import types
+        import unittest.mock
+        spec = importlib.util.spec_from_file_location("install_requirements", os.path.join(self.ROOT, "scripts", "install_requirements.py"))
+        ir = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ir)
+        req = os.path.join(self.ROOT, "requirements.txt")
+        run = lambda cmd, **kw: types.SimpleNamespace(returncode=1 if cmd[-1] == req or cmd[-1].lower().startswith("piper") else 0)
+        for why, said_why in (("Python 3.15 is newer than Piper's voices support yet", True), ("", False)):
+            said = []
+            with unittest.mock.patch.object(ir.python_check, "why_not", return_value=why):
+                self.assertEqual(ir.install(req, run, said.append), 2)
+            line = [x for x in said if "Why:" in x]
+            self.assertEqual(bool(line), said_why, said)
+            if said_why:
+                self.assertIn("Install Python 3.14 (64-bit), delete .venv, start again.", line[0])
+
+    def test_the_linux_launcher_picks_a_python_piper_can_use(self):
+        """python3 when it suits; else the newest versioned one that does; none: python3, with the notice first."""
+        import shutil
+        import subprocess
+        import tempfile
+        self.assertIn(" ".join(["python3"] + ["python" + v for v in self.wanted()]), self.read("launch_outrider.sh"))
+
+        def run(ok):
+            d, bins = tempfile.mkdtemp(), tempfile.mkdtemp()
+            self.addCleanup(shutil.rmtree, d)
+            self.addCleanup(shutil.rmtree, bins)
+            shutil.copy(os.path.join(self.ROOT, "launch_outrider.sh"), d)
+            os.makedirs(os.path.join(d, "scripts"))
+            shutil.copy(os.path.join(self.ROOT, "scripts", "python_check.py"), os.path.join(d, "scripts"))
+            with open(os.path.join(d, "requirements.txt"), "w") as f:
+                f.write("aiohttp\n")
+            for tool in ("dirname", "cat", "rm", "mkdir", "chmod", "uname", "cut"):
+                p = shutil.which(tool)
+                if p:
+                    os.symlink(p, os.path.join(bins, tool))
+            # fake Pythons: --ok as told, the notice named, venv names who made it and fails (the run ends there)
+            for name in ["python3"] + ["python" + v for v in self.wanted()]:
+                with open(os.path.join(bins, name), "w") as f:
+                    f.write('#!/bin/sh\nif [ "$2" = "--ok" ]; then exit %d; fi\n'
+                            'if [ "$1" = "scripts/python_check.py" ]; then echo "NOTICE from %s"; exit 0; fi\n'
+                            'if [ "$1" = "-m" ] && [ "$2" = "venv" ]; then echo "VENV by %s"; exit 1; fi\n'
+                            'exit 0\n' % (0 if name in ok else 1, name, name))
+                os.chmod(os.path.join(bins, name), 0o755)
+            env = {k: v for k, v in os.environ.items() if k != "PYTHON"}
+            env["PATH"] = bins
+            r = subprocess.run([shutil.which("bash"), os.path.join(d, "launch_outrider.sh")], cwd=d, capture_output=True,
+                               text=True, env=env, timeout=60)
+            self.assertEqual(r.returncode, 1, r.stderr)   # the fake venv fails: the run stops after the choice
+            return r.stdout
+        self.assertIn("VENV by python3\n", run({"python3", "python3.13"}))           # the system's own first
+        out = run({"python3.13", "python3.12"})                                    # python3 is 3.15: the newest that suits
+        self.assertIn("VENV by python3.13", out)
+        self.assertIn("NOTICE from python3.13", out)                               # (the real one prints nothing then)
+        out = run(set())                                                           # nothing suits: python3, warned first
+        self.assertIn("VENV by python3\n", out)
+        self.assertLess(out.index("NOTICE from python3"), out.index("Setting up ED Outrider"))
+
+    def test_the_windows_launcher_picks_a_python_piper_can_use(self):
+        bat = self.read("launch_outrider.bat")
+        loop = "for %%v in (" + " ".join(self.wanted()) + ") do if not defined PY (py -%%v scripts\\python_check.py --ok >nul 2>&1 && set \"PY=py -%%v\")"
+        self.assertIn(loop, bat)
+        self.assertLess(bat.index(loop), bat.index('py -3 --version >nul 2>&1 && set "PY=py -3"'))   # before the newest
+        self.assertLess(bat.index('if defined PYTHON set PY="%PYTHON%"'), bat.index(loop))          # PYTHON still wins
+        notice = bat.index("%PY% scripts\\python_check.py\n")
+        self.assertLess(bat.index(":piperpy"), notice)
+        self.assertLess(notice, bat.index('%PY% -m venv "%VENV%"'))                                  # said before the setup

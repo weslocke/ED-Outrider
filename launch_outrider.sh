@@ -5,7 +5,9 @@
 # installs PyQt6 when missing. On a Linux desktop without the clipboard program it needs (xclip with an X display,
 # X11 or XWayland; wl-copy under Wayland without one) it says how to install it, at every start until it is there. Any arguments go to Outrider
 # (./launch_outrider.sh --port 8026).
-# PYTHON=/path/to/python3.x picks the Python that makes the environment (3.11 or newer).
+# PYTHON=/path/to/python3.x picks the Python that makes the environment (3.11 or newer); otherwise python3 when it can
+# install Piper's voices (scripts/python_check.py: 3.11 to 3.14, 64-bit, with venv), else the newest python3.14 ...
+# python3.11 that can, else python3; a Python that cannot install Piper is said before the setup (issue #13).
 set -euo pipefail
 # relative paths in the arguments (--config my.toml, --db, --journals .) are the caller's: Outrider is started from
 # the folder this was run in, with the repository's files by their full path
@@ -64,7 +66,18 @@ if needs_install; then
         rm -rf "$VENV"
     fi
     if [ ! -x "$VENV/bin/python" ]; then
-        PY="${PYTHON:-python3}"
+        PY="${PYTHON:-}"
+        if [ -z "$PY" ]; then
+            # the system's python3 when Piper's voices can be installed into it, else the newest versioned one that can
+            # (issue #13: a newest Python without onnxruntime builds); none of them: python3, said below
+            for cand in python3 python3.14 python3.13 python3.12 python3.11; do
+                if command -v "$cand" >/dev/null 2>&1 && "$cand" scripts/python_check.py --ok >/dev/null 2>&1; then
+                    PY=$cand
+                    break
+                fi
+            done
+            PY="${PY:-python3}"
+        fi
         if ! command -v "$PY" >/dev/null 2>&1; then
             echo "Python not found ($PY). Install Python 3.11 or newer, or set PYTHON=/path/to/python3.x" >&2
             exit 1
@@ -73,6 +86,7 @@ if needs_install; then
             echo "ED Outrider needs Python 3.11 or newer ($("$PY" --version 2>&1) found). Set PYTHON=/path/to/python3.x" >&2
             exit 1
         fi
+        "$PY" scripts/python_check.py || true   # one that cannot install Piper's voices: said before the setup
         echo "Setting up ED Outrider: creating $VENV (the first time takes a minute or two: about 100 MB with Piper)"
         if ! "$PY" -m venv "$VENV" || ! "$VENV/bin/python" -m pip --version >/dev/null 2>&1; then
             rm -rf "$VENV"   # nothing half-made left behind: the next run starts clean

@@ -4,7 +4,9 @@ rem requirements.txt on the first run, again whenever requirements.txt has chang
 rem environment is broken; otherwise it starts at once. With the in-game overlay on ([overlay] enabled = true) it also
 rem installs PyQt6 when missing. Double-click it, or run it in a Command Prompt; any arguments
 rem go to Outrider (launch_outrider.bat --port 8026). PYTHON=C:\path\to\python.exe picks the Python that makes the
-rem environment (3.11 or newer); otherwise the py launcher's newest Python 3, then python on the PATH.
+rem environment (3.11 or newer); otherwise the newest Python the py launcher has that can install Piper's voices
+rem (scripts\python_check.py: 3.14 to 3.11, 64-bit), else its newest Python 3, then python on the PATH; a Python that
+rem cannot install Piper is said before the setup (issue #13: Python 3.15).
 rem Auto honk, auto-target and the control rail are experimental on Windows; the co-pilot button is Linux only for
 rem now; everything else works. The Linux and macOS launcher is launch_outrider.sh.
 rem Kept with Windows line endings (.gitattributes): cmd can misread labels in a file with Unix ones.
@@ -36,6 +38,9 @@ goto run
 set "PY="
 if defined PYTHON set PY="%PYTHON%"
 if defined PY goto checkpy
+rem a Python Piper's voices can be installed into first (issue #13: py -3 is the newest, 3.15 had no onnxruntime)
+for %%v in (3.14 3.13 3.12 3.11) do if not defined PY (py -%%v scripts\python_check.py --ok >nul 2>&1 && set "PY=py -%%v")
+if defined PY goto checkpy
 py -3 --version >nul 2>&1 && set "PY=py -3"
 if defined PY goto checkpy
 python --version >nul 2>&1 && set "PY=python"
@@ -45,11 +50,15 @@ echo PATH"), or set PYTHON=C:\path\to\python.exe
 goto fail
 
 :checkpy
-%PY% -c "import sys; sys.exit(sys.version_info < (3, 11))" >nul 2>&1 && goto makevenv
+%PY% -c "import sys; sys.exit(sys.version_info < (3, 11))" >nul 2>&1 && goto piperpy
 echo ED Outrider needs Python 3.11 or newer, and found:
 %PY% --version
 echo Install a newer one from https://www.python.org/downloads/ or set PYTHON=C:\path\to\python.exe
 goto fail
+
+:piperpy
+rem one that cannot install Piper's voices (too new, 32-bit) is said before the setup: Outrider still runs
+%PY% scripts\python_check.py
 
 :makevenv
 echo Setting up ED Outrider: creating %VENV% (the first time takes a minute or two: about 100 MB with Piper)

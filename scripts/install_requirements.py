@@ -14,6 +14,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # its neighbour, however this file is loaded
+import python_check  # noqa: E402  scripts/: why this Python cannot install Piper (issue #13), said with its line below
+
 OPTIONAL = {"evdev": "auto honk, auto-target, the control rail and the co-pilot button (Linux): it is built from source and "
                      "needs your Python's development headers (Debian/Ubuntu: sudo apt install python3-dev)",
             "piper-tts": "Piper's natural voices: without it the page speaks with the browser's own voice"}
@@ -61,6 +64,9 @@ def install(path, run=subprocess.run, out=print):
         out(bar)
         for r in optional:
             out(f"  {name_of(r)}: {OPTIONAL[name_of(r)]}")
+            why = python_check.why_not() if name_of(r) == "piper-tts" else ""
+            if why:   # pip's own words ("conflicting dependencies") never say it is the Python (issue #13)
+                out(f"    Why: {why}. Install Python {'%d.%d' % python_check.PIPER_PYTHONS[1]} (64-bit), delete .venv, start again.")
         out("  To try again: OUTRIDER_REINSTALL=1 then start ED Outrider (Windows: set OUTRIDER_REINSTALL=1 first).")
         out(bar)
         return 2

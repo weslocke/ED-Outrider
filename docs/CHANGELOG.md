@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · The launchers pick a Python that Piper's voices can be installed into
+- Issue #13 (Call-me-EnvY): on Windows with Python 3.15 (out since 9 October), pip said every piper-tts version had
+  "conflicting dependencies": Piper needs onnxruntime, which has builds for 64-bit Python 3.11 to 3.14 only.
+  `scripts/python_check.py` knows that range (`PIPER_PYTHONS`). The Windows launcher tries `py -3.14` … `py -3.11` before
+  `py -3` (the newest), the Linux one `python3`, then `python3.14` … `python3.11`, each only when it suits (64-bit, and
+  with venv: Debian's python3.x without its -venv package is passed over); `PYTHON=` still wins. With no such Python, a
+  block before the setup says Outrider runs with the browser's voice and how to get Piper (install 3.14, delete .venv);
+  when piper-tts fails, the installer's optional-packages block gives the same reason.
+
 ## 2026-10-24 · The codex marks before the DSS, and what the to-do line's ✪ counts
 - The author: the to-do line said "bio on A 7 … 👣×5 ✪" while the table and the body's hover marked no species new to
   the codex. Before the DSS, the possible genera they list came from `bio_options`, which carried no codex fields, so

@@ -52,7 +52,11 @@ update Outrider.
 
 `requirements.txt` also installs two optional parts; leave either line out if you don't want it:
 
-- **Piper** (`piper-tts`, about 100 MB) for a natural speaking voice.
+- **Piper** (`piper-tts`, about 100 MB) for a natural speaking voice. It needs a **64-bit Python 3.11 to 3.14**: its
+  onnxruntime has no build for Python 3.15 yet. The launchers pick such a Python by themselves when you have one
+  (Windows: through the `py` launcher; Linux: `python3`, else `python3.14` … `python3.11`) and say so before the setup
+  when you have none: Outrider then runs with the browser's voice. Installed Python 3.14 afterwards? Delete the `.venv`
+  folder and start again. `PYTHON=` still picks one yourself.
 - **evdev** (Linux only) for auto honk, auto-target, the control rail and the co-pilot button (Windows needs
   nothing extra for the first three). It is built from
   source, so it needs your distribution's Python development headers.
