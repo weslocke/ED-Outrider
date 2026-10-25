@@ -39,6 +39,43 @@ class Model(unittest.TestCase):
         self.assertFalse(G.confirmed(["Stratum Tectonicas - Grey", None]))
 
 
+class GreenCodex(unittest.TestCase):
+    """A green giant's codex entry carries the main star's BodyID (4 of 4 in a capture of every player's EDDN traffic,
+    2026-10-25), so the giant is told by the class its entry id names (its type's id + 1), never by the body."""
+    def giant(self, name, body_id, cls="Sudarsky class I gas giant", temp=100.0):
+        return {"name": name, "body_id": body_id, "type": "Planet", "subtype": cls, "temperature": temp, "radius_km": 70000.0,
+                "ed": {"PlanetClass": cls, "MassEM": 300.0}}
+
+    def test_entry_ids_and_names(self):
+        self.assertEqual([G.green_class(i) for i in (1200502, 1200702, 1200302, 1200501)], ["class1", "class3", "water_life", None])
+        self.assertEqual(G.green_class(None, "Green Class III Gas Giant"), "class3")
+        self.assertEqual(G.green_class(None, "$Codex_Ent_Green_Sudarsky_Class_I_Name;"), "class1")
+        self.assertEqual(G.green_class(None, "Green Gas Giant"), "")                 # green, no class named
+        self.assertIsNone(G.green_class(1300501, "High metal content world"))
+
+    def test_matched_by_class_not_by_body(self):
+        star = {"name": "S", "body_id": 0, "type": "Star", "subtype": "G"}
+        one, three = self.giant("S 2", 46), self.giant("S 1", 25, "Sudarsky class III gas giant")
+        # the entry on the star (BodyID 0): the system's only class I giant is the green one
+        self.assertEqual(G.match_green([(1200502, "Green Class I Gas Giant", 0)], [star, one, three]), {"S 2": {"confirmed": True, "of": 1}})
+        # two class I giants: the one the model flags, else both ("one of 2")
+        other, flagged = self.giant("S 3", 59), dict(self.giant("S 3", 59), temperature=250.0)
+        self.assertEqual(G.match_green([(1200502, "x", 0)], [star, one, flagged]), {"S 3": {"confirmed": True, "of": 1}})
+        self.assertEqual(G.match_green([(1200502, "x", 0)], [star, one, other]),
+                         {"S 2": {"confirmed": True, "of": 2}, "S 3": {"confirmed": True, "of": 2}})
+        # an entry at the giant itself (an older journal) is that giant; anything else in the codex is not green
+        self.assertEqual(G.match_green([(1200502, "x", 46)], [star, one, other]), {"S 2": {"confirmed": True, "of": 1}})
+        self.assertEqual(G.match_green([(1300501, "High metal content world", 0)], [star, one]), {})
+
+    def test_here_and_nearby_with_the_star_s_body_id(self):
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        db.execute("INSERT INTO codex (ts, entry_id, name, system, body_id) VALUES ('t', 1200502, 'Green Class I Gas Giant', 9, 0)")
+        recs = [{"name": "S", "body_id": 0, "type": "Star", "subtype": "G"}, dict(self.giant("S B 3", 4), temperature=250.0)]
+        self.assertEqual(ed_outrider.ggg_bodies(db, 9, "S", recs), ([], 1))   # confirmed: not a guess any more, counted
+        self.assertEqual(ed_outrider.ggg_state(recs[1], ed_outrider.ggg_green(db, 9, recs).get("S B 3")), {"confirmed": True, "of": 1})
+
+
 class Server(unittest.TestCase):
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")
@@ -69,7 +106,7 @@ class Server(unittest.TestCase):
                         "VALUES (?, 1, 'Green Class I Gas Giant', 'Astronomical Bodies', 'Gas Giants', 18, 9, 'Gree Sector AB-C d1-2', 4, 1, 0, 0)", (at(9),))
         self.assertEqual(ed_outrider.ggg_bodies(self.db, 9, "Gree Sector AB-C d1-2", recs), ([], 1))
         body = next(b for b in self.state.system_detail(9)["bodies"] if b["name"] == "B 3")
-        self.assertEqual(body["ggg"], {"confirmed": True})
+        self.assertEqual(body["ggg"], {"confirmed": True, "of": 1})
 
 
 def fixture():

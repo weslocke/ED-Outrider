@@ -10014,6 +10014,16 @@ const releasePayloads = async () => {
     allOk = allOk && goodCX;
     console.log(goodCX ? "OK" : "FAIL", "| leaving line's codex mark |", goodCX ? "names the species it counts" : JSON.stringify(got), errors.slice(before));
   }
+  // A green gas giant your codex logged, matched by class: "one of these N" when the system has several of it
+  {
+    const w = dom.window, before = errors.length;
+    const got = [w.eval(`gggTitle({confirmed: true, of: 1})`), w.eval(`gggTitle({confirmed: true, of: 2})`)];
+    const want = ["a green gas giant: your codex entry confirms it",
+                  "a green gas giant of this class is in your codex here: one of these 2 (the game does not say which)"];
+    const goodGG = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && goodGG;
+    console.log(goodGG ? "OK" : "FAIL", "| green gas giant confirmed |", goodGG ? "one, or one of N" : JSON.stringify(got), errors.slice(before));
+  }
   // The geology a body's signals could be (the author, 2026-10-19): the body card names the kinds its volcanism allows,
   // each new to your codex marked (✪ anywhere, ✦ this region), and how one is logged
   {

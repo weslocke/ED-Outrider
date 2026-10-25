@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · A green gas giant your codex logged is confirmed (its entry names the star)
+- A green gas giant's `CodexEntry` carries the system's main star's `BodyID`, never the giant's (4 of 4 green entries in a
+  capture of every player's EDDN traffic), so the ✓ matched by body never came: the giant stayed "possible" or "likely".
+  The entry's id is its giant type's + 1 (class I 1200501, green 1200502): `outrider.ggg.match_green` finds the giant by
+  that class (the entry's own body first, for an older journal; else the only one of the class; else the ones the model
+  flags; else all of them, "one of these N" in the hover). Here, Now and Nearby's count follow.
+
 ## 2026-10-25 · The launchers pick a Python that Piper's voices can be installed into
 - Issue #13 (Call-me-EnvY): on Windows with Python 3.15 (out since 9 October), pip said every piper-tts version had
   "conflicting dependencies": Piper needs onnxruntime, which has builds for 64-bit Python 3.11 to 3.14 only.

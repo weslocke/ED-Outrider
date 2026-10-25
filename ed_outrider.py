@@ -6363,27 +6363,35 @@ def boxel_next_number(visited, spansh, end, skip=False):
                  and not (skip and n in spansh and boxel_fully_scanned(spansh[n]))), None)
 
 
-def ggg_state(record, codex_names=()):
-    """A body's green gas giant state: {"confirmed": True} when its codex entry says so, else the model's prediction
-    (outrider.ggg.predict_record: {chance, class, rung, border, temperature}) or None."""
-    if outrider.ggg.confirmed(codex_names):
-        return {"confirmed": True}
-    return outrider.ggg.predict_record(record)
+def ggg_state(record, green=None):
+    """A body's green gas giant state: `green` when a codex entry of its system names it (outrider.ggg.match_green:
+    {"confirmed": True, "of": n}), else the model's prediction (outrider.ggg.predict_record: {chance, class, rung,
+    border, temperature}) or None."""
+    return green or outrider.ggg.predict_record(record)
+
+
+def ggg_green(db, id64, records):
+    """outrider.ggg.match_green for a system: its codex lines matched to its giants by class (the entry's BodyID is the
+    main star's, not the giant's)."""
+    return outrider.ggg.match_green([(r[0], r[1], r[2]) for r in db.execute(
+        "SELECT entry_id, name, body_id FROM codex WHERE system=?", (id64,))], records)
 
 
 def ggg_bodies(db, id64, system_name, records):
     """[{body, chance}] for a system's potential green gas giants (yours and Spansh's records), and the count of ones a
     codex entry confirms: what Nearby's row says (a system worth going to)."""
-    green = {r[0] for r in db.execute(f"SELECT body_id FROM codex WHERE system=? AND name IN ({','.join('?' * len(outrider.ggg.CODEX_GREEN))})",
-                                      (id64, *outrider.ggg.CODEX_GREEN))}
+    green = ggg_green(db, id64, records)
     out = []
     for r in records:
-        if r.get("body_id") in green:
+        if r.get("name") in green:
             continue
         p = outrider.ggg.predict_record(r)
         if p:
             out.append({"body": short_name(system_name, r.get("name") or "") or r.get("name"), "chance": p["chance"]})
-    return out, len(green)
+    # the green giants logged: each one named, and "one of 2" of a class counted once (as Nearby's tag shows it)
+    sure = [r for r in records if green.get(r.get("name"), {}).get("of") == 1]
+    groups = {(outrider.ggg.record_class(r), green[r["name"]]["of"]) for r in records if green.get(r.get("name"), {}).get("of", 1) > 1}
+    return out, len(sure) + len(groups)
 
 
 def rare_star_words(subtype):
@@ -11732,6 +11740,7 @@ class State:
         seen_codex = self.codex_species_seen(id64)   # the species your composition scans logged, per body
         # your latest scan of each body: data re-collected after a loss or a sale counts again
         latest = {r["body_id"]: r["ts"] for r in self.db.execute("SELECT body_id, ts FROM own_bodies WHERE system=?", (id64,))}
+        greens = ggg_green(self.db, id64, records)   # the codex's green giants, matched by class (their BodyID is the star's)
         out = []
         for r in records:
             bid = own_ids.get(r["name"])
@@ -11822,7 +11831,7 @@ class State:
                 # a codex entry with no body (a phenomenon in space) is no unscanned body's: those have bid None too
                 "organics": organics.get(bid, []), "codex": codex.get(bid, []) if bid is not None else [],
                 # a potential green gas giant (the ladder model on its full-precision temperature) or a confirmed one
-                "ggg": ggg_state(r, [c["name"] for c in (codex.get(bid, []) if bid is not None else [])]),
+                "ggg": ggg_state(r, greens.get(r.get("name"))),
                 # the codex entry its type logs (the page marks one not in your codex for the region: ✦ / ✪)
                 "codex_type": codex_type(r),
                 # the geology entries its volcanism could log (S22: ✦ / ✪ when one is not in your codex for the region)

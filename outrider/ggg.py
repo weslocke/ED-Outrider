@@ -119,6 +119,52 @@ def confirmed(codex_names):
     return any(str(n or "").strip() in CODEX_GREEN for n in codex_names or ())
 
 
+# A green giant's codex entry is its type's entry id + 1 ("Sudarsky class I gas giant" 1200501, its green one 1200502:
+# EDDN's codex entries, 2026-10-25), and its BodyID is the system's main star, never the giant (4 of 4 green entries
+# in a capture of every player's EDDN traffic): which giant is green is told by its class, not by the body.
+TYPE_ENTRY = {"class1": 1200501, "class2": 1200601, "class3": 1200701, "class4": 1200801, "class5": 1200901,
+              "helium": 1201001, "water_giant": 1200101, "water_life": 1200301, "ammonia_life": 1200401}
+GREEN_ENTRY = {i + 1: cls for cls, i in TYPE_ENTRY.items()}
+
+
+def green_class(entry_id, name=None):
+    """A codex entry's green giant class ("class1"...), "" for a green one of no class named ("Green Gas Giant"), or
+    None when it is not a green giant's entry."""
+    if entry_id in GREEN_ENTRY:
+        return GREEN_ENTRY[entry_id]
+    n = str(name or "").strip()
+    if n in CODEX_GREEN or n.lower().startswith("$codex_ent_green_"):
+        return gas_class(n.lower().replace("$codex_ent_green_", "").replace("_", " ").replace("sudarsky ", "")) or ""
+    return None
+
+
+def record_class(r):
+    """A body record's gas giant class (gas_class of its journal PlanetClass, else its subtype), or None."""
+    ed = r.get("ed") if isinstance(r.get("ed"), dict) else {}
+    return gas_class(ed.get("PlanetClass") or r.get("subtype"))
+
+
+def match_green(entries, records):
+    """Which of a system's bodies its green giant codex entries mean: {body name: {"confirmed": True, "of": n}} (n > 1:
+    one of n giants of that class, the journal never says which). entries: (entry_id, name, body_id) of the system's
+    codex lines. A giant of the class the entry names, at the entry's own body (an older journal, a test) first;
+    else the only one of that class; else the ones the model flags among them; else all of them."""
+    out = {}
+    for entry_id, name, body_id in entries:
+        cls = green_class(entry_id, name)
+        if cls is None:
+            continue
+        giants = [r for r in records if r.get("type") == "Planet" and record_class(r) and (not cls or record_class(r) == cls)]
+        own = [r for r in giants if body_id is not None and r.get("body_id") == body_id]
+        flagged = [r for r in giants if predict_record(r)]
+        pick = own or (giants if len(giants) == 1 else flagged or giants)
+        for r in pick:
+            if r.get("name"):
+                had = out.get(r["name"])
+                out[r["name"]] = {"confirmed": True, "of": min(len(pick), had["of"]) if had else len(pick)}
+    return out
+
+
 def predict_record(r):
     """predict() for one of Outrider's body records (yours from the journal, or Spansh's from someone else's scan:
     both keep the journal's own temperature): the class from ed.PlanetClass (or subtype), the mass from ed.MassEM (a

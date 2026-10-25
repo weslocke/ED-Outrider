@@ -154,7 +154,10 @@ function dual(fullHtml, shortHtml, {title = null, titleHtml = null, s2 = null} =
 // a green gas giant: a green ringed planet, with "?" while it is only the ladder model's guess (the author, 2026-10-12)
 const GGG_SVG = `<svg viewBox="0 0 18 14" width="17" height="13" aria-hidden="true"><ellipse cx="9" cy="7" rx="8.2" ry="2.3" fill="none" stroke="#9BE7A9" stroke-width="1.1" transform="rotate(-18 9 7)"/><circle cx="9" cy="7" r="4.6" fill="#3FBF6A"/><path d="M5.2 5.6 Q9 4.4 12.8 5.6" stroke="#B8F5C5" stroke-width=".8" fill="none"/></svg>`;
 const gggIcon = (sure, title, n = 1) => `<span class="ggg${sure ? " sure" : ""}" title="${esc(title)}">${GGG_SVG}${sure ? "" : "?"}${n > 1 ? "×" + n : ""}</span>`;
-const gggTitle = g => g.confirmed ? "a green gas giant: your codex entry confirms it"
+// confirmed: your codex logged a green giant of its class here; of > 1: one of that many, the journal never says which
+// (its codex entry names the system's main star, not the giant)
+const gggTitle = g => g.confirmed ? (g.of > 1 ? `a green gas giant of this class is in your codex here: one of these ${g.of} (the game does not say which)`
+    : "a green gas giant: your codex entry confirms it")
   : `a potential green gas giant (${g.chance}): the community's seven-layer ladder model puts a cloud layer exactly on a colour border (layer ${g.rung}, ${g.border} K). A guess: check it in the system map, the codex confirms it`;
 const nameWords = n => { const split = esc(n).split(" ").map(w => /-/.test(w) ? `<span class="nw">${w}</span>` : w).join(" ");
   return split === esc(n) ? split : `<span class="c2hide">${esc(n)}</span><span class="sf2">${split}</span>`; };

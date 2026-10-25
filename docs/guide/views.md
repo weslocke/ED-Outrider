@@ -304,7 +304,8 @@ journal's own figures for: your scans, and Spansh's records of other people's.
 
 - **A green planet with "?"** marks a potential one: beside the body in Here, on the system's row in Nearby (a
   system worth going to), and a Now line ("Potential green gas giant: B 3 · check in the system map"). Without the
-  "?" it is confirmed: your codex has its green entry.
+  "?" it is confirmed: your codex has its green entry (the game logs it on the system, not the giant, so with two giants
+  of that class both get the mark, "one of these 2" in the hover).
 - **"Potential green gas giant"** is said when one of your own scans fits (its own switch under Discoveries).
 - "likely" is a confirmed rule of the model, "possible" a derived one. It is a guess about where to look: some kinds
   (Class II, V, helium giants) and some temperatures cannot be predicted at all, and nothing is said for them.
