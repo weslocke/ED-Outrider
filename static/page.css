@@ -147,6 +147,8 @@ td.bodies { cursor: help; }
 @keyframes shipcardin { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { #shipCard { animation: none; } }
 #pop .mapacts { display: flex; gap: 6px; flex-wrap: wrap; }
+#pop .popshots { display: flex; gap: 4px; margin-top: 3px; }
+#pop .popshots img { width: 112px; height: 63px; object-fit: cover; border-radius: 3px; border: 1px solid var(--line); }
 #pop h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--accent); }
 #pop .sec { margin-top: 6px; }
 #pop .lbl { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }

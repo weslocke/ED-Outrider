@@ -173,16 +173,57 @@ def nearest_subject(lat, lon, radius, subjects, max_m):
 
 
 def description(shot):
-    """The words written into the image: where it was taken, by whom, what it shows."""
-    parts = [shot.get("system"), short_body(shot.get("system"), shot.get("body")) or None]
-    if shot.get("lat") is not None and shot.get("lon") is not None:
-        parts.append(f"{shot['lat']:.5f}, {shot['lon']:.5f}")
+    """The words written into the image: where it was taken, what it shows, by whom, when."""
+    m = metadata(shot)
+    return " · ".join(p for p in (m["where"], m["subject"], m["position"], m["cmdr"] and f"CMDR {m['cmdr']}",
+                                  m["when_iso"] and m["when_iso"].replace("T", " ").replace("Z", " UTC")) if p)
+
+
+def metadata(shot):
+    """What goes into every image (the author, 2026-10-25: "almost no metadata, definitely not system and bio
+    information"): {title, where, subject, position, cmdr, when_iso, when_exif, keywords}."""
+    system, body = shot.get("system") or "", shot.get("body") or ""
+    where = body if body and system and body.startswith(system) else " · ".join(p for p in (system, body) if p)
     subj = shot.get("subject") or {}
+    subject = f"{subj['name']} ({subj.get('dist')} m away)" if subj.get("name") else ""
+    position = ""
+    if shot.get("lat") is not None and shot.get("lon") is not None:
+        position = f"latitude {shot['lat']:.5f}, longitude {shot['lon']:.5f}"
+        if shot.get("heading") is not None:
+            position += f", heading {shot['heading']}°"
+    when_iso = when_exif = None
+    try:
+        t = datetime.datetime.strptime(shot["ts"], "%Y-%m-%dT%H:%M:%SZ")
+        when_iso, when_exif = t.strftime("%Y-%m-%dT%H:%M:%SZ"), t.strftime("%Y:%m:%d %H:%M:%S")
+    except (KeyError, TypeError, ValueError):
+        pass
+    keywords = ["Elite Dangerous", system, body]
     if subj.get("name"):
-        parts.append(f"{subj['name']} ({subj.get('dist')} m)")
+        keywords += [subj["name"], subj["name"].split(" - ")[0], subj["name"].split()[0],
+                     {"bio": "Exobiology", "geo": "Geology"}.get(subj.get("kind"), "")]
     if shot.get("cmdr"):
-        parts.append(f"CMDR {shot['cmdr']}")
-    return " · ".join(p for p in parts if p)
+        keywords.append(f"CMDR {shot['cmdr']}")
+    keywords = list(dict.fromkeys(k for k in keywords if k))
+    title = " · ".join(p for p in (subj.get("name"), where) if p) or "Elite Dangerous"
+    return {"title": title, "where": where, "subject": subject, "position": position, "cmdr": shot.get("cmdr") or "",
+            "when_iso": when_iso, "when_exif": when_exif, "keywords": keywords}
+
+
+def xmp_packet(m, desc):
+    """An XMP packet (what photo managers, Windows and exiftool read first): Dublin Core title, description, creator,
+    keywords; the time and the tool."""
+    from xml.sax.saxutils import escape as x
+    alt = lambda v: f'<rdf:Alt><rdf:li xml:lang="x-default">{x(v)}</rdf:li></rdf:Alt>'   # noqa: E731
+    bag = "".join(f"<rdf:li>{x(k)}</rdf:li>" for k in m["keywords"])
+    return ('<?xpacket begin="\ufeff" id="W5M0MpCehiHzreSzNTczkc9d"?>'
+            '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+            '<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xmp="http://ns.adobe.com/xap/1.0/">'
+            f"<dc:title>{alt(m['title'])}</dc:title><dc:description>{alt(desc)}</dc:description>"
+            + (f"<dc:creator><rdf:Seq><rdf:li>{x('CMDR ' + m['cmdr'])}</rdf:li></rdf:Seq></dc:creator>" if m["cmdr"] else "")
+            + f"<dc:subject><rdf:Bag>{bag}</rdf:Bag></dc:subject>"
+            + (f"<xmp:CreateDate>{m['when_iso']}</xmp:CreateDate>" if m["when_iso"] else "")
+            + "<xmp:CreatorTool>ED Outrider</xmp:CreatorTool></rdf:Description></rdf:RDF></x:xmpmeta>"
+            '<?xpacket end="w"?>')
 
 
 def convert(src, paths, cfg, shot, Image=None):
@@ -194,23 +235,27 @@ def convert(src, paths, cfg, shot, Image=None):
         raise RuntimeError("Pillow is not installed")
     Image.MAX_IMAGE_PIXELS = MAX_PIXELS
     from PIL import PngImagePlugin
+    m = metadata(shot)
     desc = description(shot)
-    when = None
-    try:
-        when = datetime.datetime.strptime(shot["ts"], "%Y-%m-%dT%H:%M:%SZ").strftime("%Y:%m:%d %H:%M:%S")
-    except (KeyError, TypeError, ValueError):
-        pass
+    xmp = xmp_packet(m, desc)
 
     def exif():
         import unicodedata
+        ascii_ = lambda v: unicodedata.normalize("NFKD", v.replace(" · ", " | ")).encode("ascii", "ignore").decode()   # noqa: E731
+        xp = lambda v: v.encode("utf-16-le") + b"\0\0"   # noqa: E731  Windows' Properties -> Details, any script
         e = Image.Exif()
-        # ImageDescription is ASCII: the words folded to it ("Hefay" stays, "Sjöberg" becomes "Sjoberg"); the whole
-        # text, any script, in XPComment (Windows' Properties -> Details -> Comments)
-        e[0x010E] = unicodedata.normalize("NFKD", desc.replace(" · ", " | ")).encode("ascii", "ignore").decode()
-        e[0x9C9C] = desc.encode("utf-16-le") + b"\0\0"
+        # ImageDescription and Artist are ASCII: folded to it ("Sjöberg" becomes "Sjoberg"); the XP* fields hold it all
+        e[0x010E] = ascii_(desc)
         e[0x0131] = "ED Outrider"                          # Software
-        if when:
-            e[0x0132] = when                               # DateTime (UTC, as the journal)
+        if m["cmdr"]:
+            e[0x013B] = ascii_("CMDR " + m["cmdr"])         # Artist
+            e[0x9C9D] = xp("CMDR " + m["cmdr"])             # XPAuthor
+        e[0x9C9B] = xp(m["title"])                          # XPTitle
+        e[0x9C9C] = xp(desc)                                # XPComment
+        e[0x9C9E] = xp("; ".join(m["keywords"]))            # XPKeywords
+        if m["when_exif"]:
+            e[0x0132] = m["when_exif"]                      # DateTime (UTC, as the journal)
+            e.get_ifd(0x8769)[0x9003] = m["when_exif"]      # DateTimeOriginal
         return e
 
     written = []
@@ -221,14 +266,19 @@ def convert(src, paths, cfg, shot, Image=None):
     w, h = img.size
     os.makedirs(paths["dir"], exist_ok=True)
     if paths["full"].endswith(".png"):
-        info = PngImagePlugin.PngInfo()
-        info.add_text("Description", desc)
+        info = PngImagePlugin.PngInfo()   # PNG's own keys, XMP, and EXIF in an eXIf chunk
+        info.add_itxt("Title", m["title"])
+        info.add_itxt("Description", desc)
+        if m["cmdr"]:
+            info.add_itxt("Author", "CMDR " + m["cmdr"])
         info.add_text("Software", "ED Outrider")
-        if when:
-            info.add_text("Creation Time", when)
-        img.save(paths["full"], "PNG", compress_level=PNG_LEVEL, pnginfo=info)
+        info.add_text("Source", "Elite Dangerous")
+        if m["when_exif"]:
+            info.add_text("Creation Time", m["when_exif"])
+        info.add_itxt("XML:com.adobe.xmp", xmp)
+        img.save(paths["full"], "PNG", compress_level=PNG_LEVEL, pnginfo=info, exif=exif())
     else:
-        img.save(paths["full"], "JPEG", quality=int(cfg.get("jpg_quality") or 90), exif=exif())
+        img.save(paths["full"], "JPEG", quality=int(cfg.get("jpg_quality") or 90), exif=exif(), xmp=xmp.encode())
     written.append(paths["full"])
     for key in ("medium", "small"):
         if not paths.get(key):
@@ -238,7 +288,7 @@ def convert(src, paths, cfg, shot, Image=None):
         # straight to the size (no full-size copy first); reducing_gap: a fast box reduction, then LANCZOS for the last steps
         copy = img.resize((max(1, round(w * k)), max(1, round(h * k))), Image.Resampling.LANCZOS, reducing_gap=3.0) if k < 1 else img
         os.makedirs(os.path.dirname(paths[key]), exist_ok=True)
-        copy.save(paths[key], "JPEG", quality=int(cfg.get("resized_quality") or 85), exif=exif())
+        copy.save(paths[key], "JPEG", quality=int(cfg.get("resized_quality") or 85), exif=exif(), xmp=xmp.encode())
         written.append(paths[key])
     img.close()
     for p in written:   # each read back before the original may go

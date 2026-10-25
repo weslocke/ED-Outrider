@@ -4701,11 +4701,22 @@ class Journals:
         if not live_event(ts) or not ev.get("Filename"):
             return
         pos = self.pos or {}
+        lat, lon, heading = ev.get("Latitude"), ev.get("Longitude"), ev.get("Heading")
+        if lat is None or lon is None:
+            # on foot the line names the body only (the author's three shots of a bacterium, 2026-10-25; from the ship
+            # it had them): yours from the live Status.json over that body at that moment, as a plant's tag
+            st = self.status_json or {}
+            try:
+                near = st.get("ts") and abs(ts_seconds(ts) - ts_seconds(st["ts"])) <= 90
+            except ValueError:
+                near = False
+            if st.get("live") and near and st.get("lat") is not None and ev.get("Body") and st.get("body") == ev.get("Body"):
+                lat, lon, heading = st["lat"], st["lon"], st.get("heading")
         self.shots_new.append({"ts": ts, "original": re.split(r"[\\/]", str(ev["Filename"]))[-1],
                                "system": ev.get("System") or pos.get("name"),
                                "system_id": pos.get("id64") if (ev.get("System") or pos.get("name")) == pos.get("name") else None,
-                               "body": ev.get("Body") or None, "lat": ev.get("Latitude"), "lon": ev.get("Longitude"),
-                               "heading": ev.get("Heading"), "width": ev.get("Width"), "height": ev.get("Height"),
+                               "body": ev.get("Body") or None, "lat": lat, "lon": lon,
+                               "heading": heading, "width": ev.get("Width"), "height": ev.get("Height"),
                                "cmdr": (self.commander or {}).get("name")})
 
     def handle_phenomenon(self, name, ev, ts):
@@ -11986,12 +11997,14 @@ class State:
         return self._shot_thumbs[key], "image/jpeg"
 
     def shots_summary(self):
-        """The payload's screenshots block on the game PC (None elsewhere): {on, why, pictures, folder, queued, last}."""
+        """The payload's screenshots block on the game PC (None elsewhere): {on, why, pictures, folder, n (converted so
+        far), queued, last}."""
         if not self.game_pc:
             return None
         pictures, root = self.shots_folders()
         why = self.shots_why_off()
-        return {"on": not why, "why": why or None, "pictures": pictures, "folder": root,
+        n = self.db.execute("SELECT count(*) FROM screenshots WHERE error IS NULL").fetchone()[0]
+        return {"on": not why, "why": why or None, "pictures": pictures, "folder": root, "n": n,   # n: Here reloads on a new one
                 "queued": len(self.shots_queue) + (1 if self.shots_task and not self.shots_task.done() else 0),
                 "last": self.shots_last}
 
@@ -12262,10 +12275,13 @@ class State:
         # your latest scan of each body: data re-collected after a loss or a sale counts again
         latest = {r["body_id"]: r["ts"] for r in self.db.execute("SELECT body_id, ts FROM own_bodies WHERE system=?", (id64,))}
         greens = ggg_green(self.db, id64, records)   # the codex's green giants, matched by class (their BodyID is the star's)
-        shots = {}   # Here's 📷: the screenshots converted of each body (by its short name)
-        for r in self.db.execute("SELECT body, count(*) AS n FROM screenshots WHERE system=? AND error IS NULL GROUP BY body", (id64,)):
+        shots, shot_ids = {}, {}   # Here's 📷: the screenshots converted of each body (by its short name), the newest 3's ids
+        for r in self.db.execute("SELECT id, body FROM screenshots WHERE system=? AND error IS NULL ORDER BY ts DESC", (id64,)):
             if r["body"]:
-                shots[short_name(name, r["body"])] = r["n"]
+                k = short_name(name, r["body"])
+                shots[k] = shots.get(k, 0) + 1
+                if len(shot_ids.setdefault(k, [])) < 3:
+                    shot_ids[k].append(r["id"])
         out = []
         for r in records:
             bid = own_ids.get(r["name"])
@@ -12358,6 +12374,7 @@ class State:
                 # a potential green gas giant (the ladder model on its full-precision temperature) or a confirmed one
                 "ggg": ggg_state(r, greens.get(r.get("name"))),
                 "shots": shots.get(r["name"], 0),   # screenshots of it (Here's 📷, the body panel's pictures)
+                "shot_ids": shot_ids.get(r["name"], []),   # the newest three: the hover card's thumbnails
                 # the codex entry its type logs (the page marks one not in your codex for the region: ✦ / ✪)
                 "codex_type": codex_type(r),
                 # the geology entries its volcanism could log (S22: ✦ / ✪ when one is not in your codex for the region)

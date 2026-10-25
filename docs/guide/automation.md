@@ -109,9 +109,11 @@ package (see [Install and run](install.md)), and is off until you tick it.
 - **What it shows:** a shot taken on a surface within 50 m (**Note the plant or formation a surface shot shows**) of a plant you sampled
   or tagged with the composition scanner, or of a geology formation you logged in your codex, knows what it shows: the
   variant ("Stratum Tectonicas - Lime") or the formation ("Water Ice Geyser"), kept with the shot, written into the
-  image and in the name when you add `{subject}` to it. Every image also carries where it was taken (system, body,
-  coordinates, commander, time) inside it, for a later caption.
-- **Finding them again:** a 📷 beside a body you photographed in Here, and the body's panel lists its shots with a
+  image and in the name when you add `{subject}` to it. On foot the game's line has no position, so Outrider takes
+  yours from that moment. Every picture carries its title, a description (system, body, what it shows, position,
+  commander, time) and keywords inside it, in the places viewers look: XMP (photo managers), EXIF (Windows' Properties
+  → Details) and PNG's own text.
+- **Finding them again:** a 📷 beside a body you photographed in Here, its hover card shows the newest three, and the body's panel lists its shots with a
   small picture (click it to open it larger: the medium copy when there is one), the time and what it shows; **📍**
   beside a surface shot pins where it was taken.
 - **The ones already there:** **Convert the screenshots already there** does the BMPs left in the Pictures folder,

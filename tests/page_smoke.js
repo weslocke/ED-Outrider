@@ -10168,6 +10168,11 @@ const releasePayloads = async () => {
       [fmt.value, q("medium").value, q("small").value] = keep; shotSizeBoxes(); fmt.dataset.dirty = "";
       return o; })()`);
     want.shotui = [true, true, false, false];
+    // the body's hover card: your screenshots of it, the newest three as thumbnails (the author, 2026-10-25)
+    got.shotpop = w.eval(`(() => { const d = document.createElement("div");
+      d.innerHTML = bodyPopHtml({name: "4 a", type: "Planet", subtype: "Rocky body", shots: 4, shot_ids: [16, 15, 14]}, null, "7");
+      return [[...d.querySelectorAll(".popshots img")].map(i => i.getAttribute("src")), d.querySelector(".popshots").previousElementSibling.textContent]; })()`);
+    want.shotpop = [["api/screenshots/16/image?size=thumb", "api/screenshots/15/image?size=thumb", "api/screenshots/14/image?size=thumb"], "📷 4 screenshots"];
     want.folders = [true, ["Pics", "Games"], "(2)", "/p/Converted/Pics", "no folders inside", "/p/Converted/Pics", "1", false,
                     ["/p/Converted", "/p/Converted/Pics"], false, true];
     // (the batch's later items add their checks above this line)

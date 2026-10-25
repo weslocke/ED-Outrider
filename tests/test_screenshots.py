@@ -112,20 +112,32 @@ class Convert(unittest.TestCase):
     def test_full_and_copies_with_what_it_shows(self):
         src = bmp(os.path.join(self.d, "Screenshot_0001.bmp"), 3072, 1728)
         cfg = dict(S.DEFAULTS, medium=1920, small=4000)   # small larger than the shot: never upscaled
-        shot = {"ts": "2026-10-25T20:33:35Z", "system": "Sys", "body": "Sys 2 a", "lat": -41.6, "lon": -113.8, "cmdr": "Hefay",
-                "subject": {"name": "Stratum Tectonicas - Lime", "dist": 12}}
+        shot = {"ts": "2026-10-25T20:33:35Z", "system": "Sys", "body": "Sys 2 a", "lat": -41.6, "lon": -113.8, "heading": 129,
+                "cmdr": "Hefay", "subject": {"kind": "bio", "name": "Stratum Tectonicas - Lime", "dist": 12}}
         paths = S.plan_paths(cfg, S.fields_for(shot), os.path.join(self.d, "out"))
         out = S.convert(src, paths, cfg, shot)
         self.assertEqual((out["width"], out["height"], len(out["written"])), (3072, 1728, 3))
+        # the author, 2026-10-25: "almost no metadata, definitely not system and bio information": PNG's own keys, XMP
+        # and EXIF (with Windows' XP fields) in every image
+        desc = ("Sys 2 a · Stratum Tectonicas - Lime (12 m away) · latitude -41.60000, longitude -113.80000, heading 129° · "
+                "CMDR Hefay · 2026-10-25 20:33:35 UTC")
         with Image.open(paths["full"]) as im:
             self.assertEqual((im.format, im.size), ("PNG", (3072, 1728)))
-            self.assertIn("Stratum Tectonicas - Lime (12 m)", im.text["Description"])
-            self.assertIn("CMDR Hefay", im.text["Description"])
+            self.assertEqual((im.text["Description"], im.text["Title"], im.text["Author"]),
+                             (desc, "Stratum Tectonicas - Lime · Sys 2 a", "CMDR Hefay"))
+            xmp = im.text["XML:com.adobe.xmp"]
+            for want in ("<rdf:li>Sys 2 a</rdf:li>", "<rdf:li>Stratum Tectonicas</rdf:li>", "<rdf:li>Exobiology</rdf:li>",
+                         "<xmp:CreateDate>2026-10-25T20:33:35Z</xmp:CreateDate>", "<rdf:li>CMDR Hefay</rdf:li>"):
+                self.assertIn(want, xmp)
+            ex = im.getexif()
+            self.assertEqual((ex[0x013B], ex.get_ifd(0x8769)[0x9003]), ("CMDR Hefay", "2026:10:25 20:33:35"))
         with Image.open(paths["medium"]) as im:
             self.assertEqual((im.format, im.size), ("JPEG", (1920, 1080)))
             ex = im.getexif()
-            self.assertIn("Sys | 2 a | -41.60000, -113.80000 | Stratum Tectonicas - Lime (12 m) | CMDR Hefay", ex[0x010E])
-            self.assertIn("Sys · 2 a", bytes(ex[0x9C9C]).decode("utf-16-le"))
+            self.assertEqual(ex[0x010E], desc.replace(" · ", " | ").replace("°", ""))   # ASCII: the ° folded away
+            self.assertEqual(bytes(ex[0x9C9C]).decode("utf-16-le").rstrip("\0"), desc)
+            self.assertIn("Exobiology", bytes(ex[0x9C9E]).decode("utf-16-le"))
+            self.assertIn("Stratum Tectonicas - Lime", im.info["xmp"].decode())
         with Image.open(paths["small"]) as im:
             self.assertEqual(im.size, (3072, 1728))   # 4000 asked: kept at its own size
         self.assertTrue(os.path.isfile(src))         # kept by default
@@ -219,6 +231,28 @@ class Server(unittest.TestCase):
         self.assertEqual(asyncio.run(self.st.shot_image(x["id"], "medium"))[0], r["medium"])
         self.db.execute("UPDATE screenshots SET full=? WHERE id=?", (os.path.join(self.d, "elsewhere.png"), x["id"]))
         self.assertIsNone(asyncio.run(self.st.shot_image(x["id"], "full")))         # never a file outside the folder
+
+    def test_on_foot_the_position_is_status_jsons(self):
+        """The author, 2026-10-25: three shots of a bacterium on foot named nothing: on foot the Screenshot line has no
+        Latitude/Longitude, so the live Status.json's over that body at that moment is the shot's."""
+        self.j.status_json = {"live": True, "ts": self.at(29), "body": "Sys 2 a", "lat": 0.0, "lon": 0.0011, "heading": 77}
+        self.j.handle({"event": "Screenshot", "timestamp": self.at(30), "Filename": "\\ED_Pictures\\Screenshot_0001.bmp",
+                       "System": "Sys", "Body": "Sys 2 a"})
+        bmp(os.path.join(self.pictures, "Screenshot_0001.bmp"), 320, 180)
+        self.assertEqual([(x["lat"], x["lon"], x["heading"]) for x in self.j.shots_new], [(0.0, 0.0011, 77)])
+        self.run_queue()
+        [r] = self.db.execute("SELECT * FROM screenshots").fetchall()
+        self.assertEqual(json.loads(r["subject"])["name"], "Water Ice Geyser")
+        self.assertEqual(self.st.shots_summary()["n"], 1)   # the page's Here reloads on it
+        [b] = [b for b in self.st.system_detail(9)["bodies"] if b["name"] == "2 a"]
+        self.assertEqual((b["shots"], b["shot_ids"]), (1, [r["id"]]))
+        # another body's Status.json, or one from minutes before: no position rather than a wrong one
+        for st in ({"live": True, "ts": self.at(29), "body": "Sys 3", "lat": 1.0, "lon": 1.0},
+                   {"live": True, "ts": self.at(-200), "body": "Sys 2 a", "lat": 1.0, "lon": 1.0}):
+            self.j.status_json, self.j.shots_new = st, []
+            self.j.handle({"event": "Screenshot", "timestamp": self.at(30), "Filename": "\\ED_Pictures\\Screenshot_0002.bmp",
+                           "System": "Sys", "Body": "Sys 2 a"})
+            self.assertEqual([(x["lat"], x["lon"]) for x in self.j.shots_new], [(None, None)])
 
     def test_a_catch_up_never_converts_and_off_drops(self):
         self.j.handle({"event": "Screenshot", "timestamp": "2020-01-01T00:00:00Z", "Filename": "\\ED_Pictures\\old.bmp"})

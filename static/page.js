@@ -4677,7 +4677,8 @@ async function loadHere() {
   // Only your own scans change this view, except while Spansh's body details are still arriving
   // ("partial"): then ask again every few seconds until they have.
   const partial = hereData && hereData.partial && hereData.id64 === id ? `|p${Math.floor(Date.now() / 4000)}` : "";
-  const key = `${id}|${data.scan_version}${partial}`;
+  // a screenshot converted counts too (the author, 2026-10-25: Here's 📷 said 2 after the third)
+  const key = `${id}|${data.scan_version}|${(data.screenshots || {}).n || 0}${partial}`;
   if (key === hereKey) return;
   hereKey = key;
   recordsSoon();   // Your records again (🏆 on a body that holds one), after the burst of scans that moved the key
@@ -4933,7 +4934,7 @@ function renderHere() {
     const firsts = [b.first_discovered && `<span class="fl" title="first discovered">🏁</span>`, b.first_mapped && `<span class="fl" title="first mapped">🗺</span>`,
                     !b.first_mapped && b.mapped && `<span class="fl unk" title="mapped (not first)">🗺</span>`,
                     b.first_footfall && `<span class="fl" title="first footfall">👣</span>`, !b.scanned && `<span class="unk" title="known to Spansh, not scanned by you">—</span>`].filter(Boolean).join("");
-    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${pinMarkFor(h.id64, b.name)}${codexTypeMark(b.codex_type, h.region)}${codexGeoMark(b.codex_geo, h.region)}${recordMark(h.id64, b.name)}${b.shots ? ` <span class="shotmark" title="${b.shots} screenshot${b.shots === 1 ? "" : "s"} of it: open the body for them">📷${b.shots > 1 ? b.shots : ""}</span>` : ""}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
+    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${pinMarkFor(h.id64, b.name)}${codexTypeMark(b.codex_type, h.region)}${codexGeoMark(b.codex_geo, h.region)}${recordMark(h.id64, b.name)}${b.shots ? ` <span class="shotmark" title="${b.shots} screenshot${b.shots === 1 ? "" : "s"} of it: click the body for all of them">📷${b.shots > 1 ? b.shots : ""}</span>` : ""}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
       <td>${sfText(b.type === "Star" ? "star" : "planet", b.subtype || "")}${b.type === "Star" ? (b.scoopable ? ` <span class="scoop">⛽</span>` : "") : ""}${b.rings ? `<span class="sf2"> ${icon("ring", "i-ring", b.rings, ringsText(b))}</span>` : ""}${b.dist_ls != null ? `<div class="sf2 sub2 unk">${Math.round(b.dist_ls).toLocaleString()} ls</div>` : ""}</td>
       <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}</td>
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
@@ -5357,7 +5358,11 @@ function bodyPopHtml(b, region, sys = null) {   // sys: the body's system id64 s
   if (b.mining || (b.mined || []).length) h += `<div class="sec">${b.mining ? `⛏ ${mineCount(b.mining)}` : ""}${b.mining_odds ? `<div class="unk">${mineOddsLine(b.mining_odds)}</div>` : ""}${minedHtml(b)}</div>`;
   const flags = [b.first_discovered && "🏁 first discovered", b.first_mapped && "🗺 first mapped", !b.first_mapped && b.mapped && "mapped", b.first_footfall && "👣 first footfall", !b.scanned && "not scanned by you"].filter(Boolean);
   h += `<div class="sec"><span>${maxOf(b) ? `now ${credits(b.value_now || 0)} · max ${credits(maxOf(b))}` : ""}</span>` +
-       (flags.length ? `<div class="unk">${flags.join(" · ")}</div>` : "") + `</div><div class="sec unk">click for everything known</div>`;
+       (flags.length ? `<div class="unk">${flags.join(" · ")}</div>` : "") + `</div>`;
+  // your screenshots of it (the author, 2026-10-25: the 📷 showed, the card had none): the newest three
+  if (b.shots) h += `<div class="sec"><div class="lbl">📷 ${b.shots} screenshot${b.shots === 1 ? "" : "s"}</div><div class="popshots">` +
+    (b.shot_ids || []).map(id => `<img src="api/screenshots/${encodeURIComponent(id)}/image?size=thumb" alt="">`).join("") + `</div></div>`;
+  h += `<div class="sec unk">click for everything known</div>`;
   return h;
 }
 

@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Screenshots on foot name what they show; full metadata; Here's 📷 up to date
+- The author: three shots of a bacterium on foot, `{subject}` in the name, and nothing named. On foot the game's
+  Screenshot line has no Latitude/Longitude (from the ship it has): the shot now takes the live Status.json's over that
+  body within 90 s (`Journals.note_screenshot`, as a plant's tag), never another body's. (The three shots already taken
+  keep no position: none was recorded for them.)
+- "Almost no metadata": every picture now carries a title ("Bacterium Bullaris - Polonium · Smojooe UW-E c11-27 4 a"),
+  the description (system and body, what it shows and how far, position and heading, CMDR, time in UTC) and keywords
+  (system, body, the variant, species, genus, Exobiology or Geology, CMDR) as XMP, EXIF (ImageDescription, Artist,
+  DateTimeOriginal and Windows' XPTitle, XPComment, XPKeywords, XPAuthor) and PNG's Title, Description, Author,
+  Source (`outrider.screenshots.metadata`, `xmp_packet`), checked with exiftool.
+- Here's 📷 said 2 after the third shot: Here reloaded only on your scans; the payload's `screenshots.n` now moves it
+  too. The body's hover card had no screenshots: it shows how many and the newest three as thumbnails (`shot_ids`).
+
 ## 2026-10-25 · Screenshots' settings laid out in Folders, Files and What a shot shows
 - The author: the game's pictures and the export folder on lines of their own (the game's first), "save to" named
   **Export pictures to**, and the section easier to follow; "what is 85?" (the resized copies' JPG quality, labelled
