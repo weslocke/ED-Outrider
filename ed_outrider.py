@@ -1940,6 +1940,12 @@ CREATE TABLE IF NOT EXISTS mining_hotspot_drops (
 CREATE TABLE IF NOT EXISTS sample_points (
     system INTEGER, body_id INTEGER, species TEXT, genus TEXT, n INTEGER, lat REAL, lon REAL, ts TEXT,
     PRIMARY KEY (system, body_id, species, n));
+-- Every sample's position, kept (sample_points' are dropped when the run completes): what a screenshot shows (the
+-- author, 2026-10-25: a shot taken just after the Analyse found nothing). Live only, like sample_points.
+CREATE TABLE IF NOT EXISTS bio_spots (
+    system INTEGER, body_id INTEGER, species TEXT, genus TEXT, lat REAL, lon REAL, ts TEXT,
+    PRIMARY KEY (system, body_id, species, ts));
+INSERT OR IGNORE INTO bio_spots SELECT system, body_id, species, genus, lat, lon, ts FROM sample_points;
 -- Plants tagged with the composition scanner (a biology CodexEntry), BioScan's waypoints: where to go for the next
 -- sample. The position is the event's Latitude/Longitude when it has them (on foot), else Status.json's at that
 -- moment (the ship's or SRV's scanner: "scan as close to the plant as you can"). Live only, like sample_points: a
@@ -4642,6 +4648,8 @@ class Journals:
             return
         self.db.execute("INSERT OR REPLACE INTO sample_points VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                         (system, body, species, genus, n, st["lat"], st["lon"], ts))
+        self.db.execute("INSERT OR IGNORE INTO bio_spots VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (system, body, species, genus, st["lat"], st["lon"], ts))
 
     def note_bio_tag(self, ev, system, ts):
         """A biology CodexEntry (the composition scanner, or a first Log) is a waypoint for that species on that body
@@ -11841,7 +11849,8 @@ class State:
                 print(f"screenshots: {shot.get('original')}: {type(e).__name__}: {e}", file=sys.stderr)
 
     def shot_subject(self, shot):
-        """What a surface shot shows (outrider.screenshots.nearest_subject): your sample spots, the plants you tagged and
+        """What a surface shot shows (outrider.screenshots.nearest_subject): your sample spots (bio_spots: a finished run's
+        too), the plants you tagged and
         the geology formations logged on its body within [screenshots] subject_m; also the body's id and radius."""
         body = None
         if shot.get("system_id") is None and shot.get("system"):   # a shot from the journals (the backlog): by its name
@@ -11857,7 +11866,7 @@ class State:
         variants = {r["species"]: r["variant_name"] or r["species_name"] for r in self.db.execute(
             "SELECT species, species_name, variant_name FROM own_organic WHERE system=? AND body_id=?", (sid, bid))}
         subjects = [{"kind": "bio", "name": variants.get(r["species"]) or r["species"], "lat": r["lat"], "lon": r["lon"]}
-                    for r in self.db.execute("SELECT species, lat, lon FROM sample_points WHERE system=? AND body_id=?", (sid, bid))]
+                    for r in self.db.execute("SELECT species, lat, lon FROM bio_spots WHERE system=? AND body_id=?", (sid, bid))]
         subjects += [{"kind": "bio", "name": r["name"], "lat": r["lat"], "lon": r["lon"]} for r in self.db.execute(
             "SELECT name, lat, lon FROM bio_tags WHERE system=? AND body_id=?", (sid, bid))]
         subjects += [{"kind": "geo", "name": r["name"], "entry_id": r["entry_id"], "lat": r["lat"], "lon": r["lon"]}

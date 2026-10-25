@@ -199,7 +199,8 @@ def metadata(shot):
         pass
     keywords = ["Elite Dangerous", system, body]
     if subj.get("name"):
-        keywords += [subj["name"], subj["name"].split(" - ")[0], subj["name"].split()[0],
+        colour = subj["name"].split(" - ")[1] if " - " in subj["name"] else ""   # the variant's colour ("Yellow")
+        keywords += [subj["name"], subj["name"].split(" - ")[0], subj["name"].split()[0], colour,
                      {"bio": "Exobiology", "geo": "Geology"}.get(subj.get("kind"), "")]
     if shot.get("cmdr"):
         keywords.append(f"CMDR {shot['cmdr']}")

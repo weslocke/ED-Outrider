@@ -254,6 +254,29 @@ class Server(unittest.TestCase):
                            "System": "Sys", "Body": "Sys 2 a"})
             self.assertEqual([(x["lat"], x["lon"]) for x in self.j.shots_new], [(None, None)])
 
+    def test_a_shot_after_the_run_is_analysed(self):
+        """The author, 2026-10-25: the sample spots went when the run completed, so a shot just after the Analyse
+        found nothing; bio_spots keeps them, and the name is the variant's, its colour included."""
+        bug = {"Genus": "$Codex_Ent_Bacterial_Genus_Name;", "Genus_Localised": "Bacterium",
+               "Species": "$Codex_Ent_Bacterial_10_Name;", "Species_Localised": "Bacterium Bullaris",
+               "Variant": "$Codex_Ent_Bacterial_10_Polonium_Name;", "Variant_Localised": "Bacterium Bullaris - Yellow",
+               "SystemAddress": 9, "Body": 6}
+        for i, (kind, lon) in enumerate((("Log", 0.010), ("Sample", 0.020), ("Sample", 0.030), ("Analyse", 0.030))):
+            self.j.status_json = {"live": True, "ts": self.at(10 + i), "body": "Sys 2 a", "lat": 0.0, "lon": lon}
+            self.j.handle(dict(bug, event="ScanOrganic", timestamp=self.at(10 + i), ScanType=kind))
+        self.assertEqual(self.db.execute("SELECT count(*) FROM sample_points").fetchone()[0], 0)   # the run is done
+        self.j.status_json = {"live": True, "ts": self.at(29), "body": "Sys 2 a", "lat": 0.0, "lon": 0.0302}
+        self.j.handle({"event": "Screenshot", "timestamp": self.at(30), "Filename": "\\ED_Pictures\\Screenshot_0001.bmp",
+                       "System": "Sys", "Body": "Sys 2 a"})
+        bmp(os.path.join(self.pictures, "Screenshot_0001.bmp"), 320, 180)
+        self.st.shots_cfg["filename"] = "{body} {subject}"
+        self.run_queue()
+        [r] = self.db.execute("SELECT * FROM screenshots").fetchall()
+        self.assertEqual(json.loads(r["subject"])["name"], "Bacterium Bullaris - Yellow")
+        self.assertTrue(os.path.basename(r["full"]).startswith("2 a Bacterium Bullaris - Yellow"), r["full"])
+        with Image.open(r["full"]) as im:
+            self.assertIn("<rdf:li>Yellow</rdf:li>", im.text["XML:com.adobe.xmp"])   # the colour, a keyword of its own
+
     def test_a_catch_up_never_converts_and_off_drops(self):
         self.j.handle({"event": "Screenshot", "timestamp": "2020-01-01T00:00:00Z", "Filename": "\\ED_Pictures\\old.bmp"})
         self.assertEqual(self.j.shots_new, [])               # not live: never

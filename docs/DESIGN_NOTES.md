@@ -1538,7 +1538,7 @@ upstream project's choices, not rules of the game.
   writes files beside the game's. Pillow is optional, like Piper; not in the Docker image. The record (`screenshots`)
   and `geo_tags` are live-only (a geology CodexEntry's position could be rebuilt from the journals, but a position from
   Status.json could not), so both stay out of `RESET_JOURNAL_DATA`. A shot names its subject only from your own
-  sample spots, composition scans and codex formations within `[screenshots] subject_m`: never from another player's
+  sample spots (`bio_spots`: kept after the run completes, when `sample_points` are dropped), composition scans and codex formations within `[screenshots] subject_m`: never from another player's
   data. Your own bio/geo pictures in the checklists in place of Canonn's are a later step.
 - **The folder picker is the game PC's, names only** (2026-10-25, the author asked for folder selection): a browser
   cannot hand a page a folder's path (a directory input gives files, never where they are), and the page may be on the

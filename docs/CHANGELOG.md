@@ -2,12 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · A shot after the run still names the plant, colour included
+- The author asked about the bio sample's colour: it is the variant's name ("Bacterium Bullaris - Yellow"), which is
+  what a shot names, but the sample spots were dropped when the run was analysed (they space the next sample), so a
+  shot taken after the last sample found nothing. Each sample's position is now kept in `bio_spots` (live-only, out of
+  `RESET_JOURNAL_DATA`; seeded from the current `sample_points`), and `State.shot_subject` matches against it. The
+  colour is also a keyword of its own in the picture's metadata.
+
 ## 2026-10-25 · Screenshots on foot name what they show; full metadata; Here's 📷 up to date
 - The author: three shots of a bacterium on foot, `{subject}` in the name, and nothing named. On foot the game's
   Screenshot line has no Latitude/Longitude (from the ship it has): the shot now takes the live Status.json's over that
   body within 90 s (`Journals.note_screenshot`, as a plant's tag), never another body's. (The three shots already taken
   keep no position: none was recorded for them.)
-- "Almost no metadata": every picture now carries a title ("Bacterium Bullaris - Polonium · Smojooe UW-E c11-27 4 a"),
+- "Almost no metadata": every picture now carries a title ("Bacterium Bullaris - Yellow · Smojooe UW-E c11-27 4 a"),
   the description (system and body, what it shows and how far, position and heading, CMDR, time in UTC) and keywords
   (system, body, the variant, species, genus, Exobiology or Geology, CMDR) as XMP, EXIF (ImageDescription, Artist,
   DateTimeOriginal and Windows' XPTitle, XPComment, XPKeywords, XPAuthor) and PNG's Title, Description, Author,
