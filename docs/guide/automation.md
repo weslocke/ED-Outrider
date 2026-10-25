@@ -94,15 +94,16 @@ package (see [Install and run](install.md)), and is off until you tick it.
   Linux GNOME uses Alt+F10 for "toggle maximisation" until you free it in its keyboard settings). Steam's F12
   screenshots are not the game's and are left alone. Outrider takes the place and the commander from the journal's
   line for the shot, so the name is right even after you have jumped on.
-- **Where:** the game's Pictures folder's `Converted` folder unless you pick one (type it, or **📁** beside the field
-  browses the game PC's folders, from the tablet too), in **a folder per commander** (the
-  default) and, ticked, **per system** inside it. **Own folders** takes a pattern of your own instead
-  (`{cmdr}/{date}`, a `/` for a folder inside a folder), and **name** sets the file's name from `{system}` `{body}`
-  (short: `2 a`) `{date}` `{time}` (your local time) `{cmdr}` `{highres}` and `{subject}` (below). A name already
-  there gets " (2)".
-- **Smaller copies to post:** tick **medium copy** (1920 px on the long edge) and/or **small copy** (1080 px): JPGs at
-  quality 85, in `medium/` and `small/` folders beside the full size, never enlarged. The full size is a PNG (lossless)
-  or a JPG at the quality you set.
+- **Folders:** **Game's pictures** is where the game saves its BMPs (empty: Outrider finds it beside the journals);
+  **Export pictures to** is where the PNGs or JPGs go (empty: a `Converted` folder inside the game's pictures). Type
+  a path, or **📁** beside the field browses the game PC's folders (from the tablet too). They are sorted into **a
+  folder per commander** (the default) and, ticked, **one per system** inside it; **or your own** takes a pattern
+  instead (`{cmdr}/{date}`, a `/` for a folder inside a folder).
+- **Files:** **File name** builds each name from `{system}` `{body}` (short: `2 a`) `{date}` `{time}` (your local
+  time) `{cmdr}` `{highres}` and `{subject}` (below); a name already there gets " (2)". **Full-size picture as** PNG
+  (lossless, the default) or JPG, with its own **JPG quality** (90). **Smaller copies to post:** tick **medium** (1920
+  px on the long edge) and/or **small** (1080 px): always JPGs, at the **copies' JPG quality** (85), in `medium/` and
+  `small/` folders beside the full size, never enlarged.
 - **The game's BMP:** kept (the default), deleted or moved to a folder of your choice, and only once every image has
   been written and read back.
 - **What it shows:** a shot taken on a surface within 50 m (**Note the plant or formation a surface shot shows**) of a plant you sampled

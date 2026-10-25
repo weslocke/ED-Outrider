@@ -13950,7 +13950,11 @@ function shotSizeBoxes() {
     const f = document.querySelector(`#shotSettings .scfg[data-key="${b.dataset.for}"]`);
     b.checked = Number(f.value) > 0; f.disabled = !b.checked;
   }
+  // the copies' quality only with a copy ticked; the full size's JPG quality only for a JPG
+  document.querySelector('#shotSettings .scfg[data-key="resized_quality"]').disabled = ![...document.querySelectorAll("#shotSettings .shotsize")].some(b => b.checked);
+  document.getElementById("shotJpgQ").hidden = document.querySelector('#shotSettings .scfg[data-key="format"]').value !== "jpg";
 }
+document.querySelector('#shotSettings .scfg[data-key="format"]').addEventListener("change", shotSizeBoxes);
 for (const b of document.querySelectorAll("#shotSettings .shotsize")) b.onchange = () => {
   const f = document.querySelector(`#shotSettings .scfg[data-key="${b.dataset.for}"]`);
   f.value = b.checked ? (Number(f.value) > 0 ? f.value : b.dataset.px) : "0"; f.dataset.dirty = "1"; shotSizeBoxes();

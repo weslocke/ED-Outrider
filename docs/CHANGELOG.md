@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Screenshots' settings laid out in Folders, Files and What a shot shows
+- The author: the game's pictures and the export folder on lines of their own (the game's first), "save to" named
+  **Export pictures to**, and the section easier to follow; "what is 85?" (the resized copies' JPG quality, labelled
+  only "quality"). Now three headed groups, each row with a line saying what it does: the full size's **JPG quality**
+  shows only for a JPG, the **copies' JPG quality** is named so and greyed with no copy ticked, empty folder fields say
+  what they default to.
+
 ## 2026-10-25 · Screenshots' settings: a folder picker, clearer words
 - The author read "a folder names what it shows within 50 m": the "move to" box's placeholder ran into the next
   setting, whose help was only a hover title on its label. "Moved to" and its folder now show only when picked, the

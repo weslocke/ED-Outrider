@@ -10158,6 +10158,16 @@ const releasePayloads = async () => {
       w.fetch = real;
       return o;
     })();
+    // the full size's JPG quality only for a JPG; the copies' quality greyed with no copy ticked
+    got.shotui = w.eval(`(() => { const q = k => document.querySelector('#shotSettings .scfg[data-key="' + k + '"]');
+      const fmt = q("format"), keep = [fmt.value, q("medium").value, q("small").value], o = [];
+      fmt.value = "png"; q("medium").value = "0"; q("small").value = "0"; shotSizeBoxes();
+      o.push(document.getElementById("shotJpgQ").hidden, q("resized_quality").disabled);
+      fmt.value = "jpg"; fmt.dispatchEvent(new Event("change")); q("medium").value = "1920"; shotSizeBoxes();
+      o.push(document.getElementById("shotJpgQ").hidden, q("resized_quality").disabled);
+      [fmt.value, q("medium").value, q("small").value] = keep; shotSizeBoxes(); fmt.dataset.dirty = "";
+      return o; })()`);
+    want.shotui = [true, true, false, false];
     want.folders = [true, ["Pics", "Games"], "(2)", "/p/Converted/Pics", "no folders inside", "/p/Converted/Pics", "1", false,
                     ["/p/Converted", "/p/Converted/Pics"], false, true];
     // (the batch's later items add their checks above this line)

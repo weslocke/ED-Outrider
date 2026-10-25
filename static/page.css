@@ -1545,7 +1545,12 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 #pop .hs.mrec { color: var(--info); }   /* your mining record under a ring (mining B) */
 .now-line.now-mine { color: var(--accent); }   /* mining D: the strip while you mine in a ring */
 /* Settings -> Auto honk and the co-pilot button: the button's own heading over its fields (2026-10-23) */
-#honkSettings h4.hchead { margin: .9em 0 .2em; font-size: 1em; }
+#honkSettings h4.hchead, #shotSettings h4.hchead { margin: .9em 0 .2em; font-size: 1em; }
+#shotSettings .inlineopts input[type=number] { width: 4.5em; }
+#shotSettings .optlbl, #shotSettings .unit { color: var(--muted); font-size: 12px; margin-right: 10px; }
+#shotSettings .unit { margin: 0 12px 0 4px; }
+#shotSettings .mod { margin-bottom: 10px; }
+#shotSettings label.mod > .hint { display: block; }
 #fcFuel.stale { border-color: var(--bad); }   /* S4-S4: the depot reading is over a week old */
 /* last in the file: it must win over the rules above (a media query adds no specificity) */
 /* S5-S6: with reduced motion asked for, nothing spins or pulses: the audio pill keeps a still outline instead */
