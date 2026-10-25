@@ -10158,16 +10158,24 @@ const releasePayloads = async () => {
       w.fetch = real;
       return o;
     })();
-    // the full size's JPG quality only for a JPG; the copies' quality greyed with no copy ticked
+    // the full size's quality only for a JPG or WebP; the copies' format only with a copy or the crop; the crop's four
+    // boxes kept as one "l, t, w, h" and drawn on the latest shot
     got.shotui = w.eval(`(() => { const q = k => document.querySelector('#shotSettings .scfg[data-key="' + k + '"]');
-      const fmt = q("format"), keep = [fmt.value, q("medium").value, q("small").value], o = [];
-      fmt.value = "png"; q("medium").value = "0"; q("small").value = "0"; shotSizeBoxes();
-      o.push(document.getElementById("shotJpgQ").hidden, q("resized_quality").disabled);
-      fmt.value = "jpg"; fmt.dispatchEvent(new Event("change")); q("medium").value = "1920"; shotSizeBoxes();
-      o.push(document.getElementById("shotJpgQ").hidden, q("resized_quality").disabled);
-      [fmt.value, q("medium").value, q("small").value] = keep; shotSizeBoxes(); fmt.dataset.dirty = "";
+      const fmt = q("format"), keep = [fmt.value, q("medium").value, q("small").value, q("crop").value], o = [], ls = data.screenshots;
+      data.screenshots = Object.assign({}, ls, {last_id: 7});
+      fmt.value = "png"; q("medium").value = "0"; q("small").value = "0"; q("crop").value = ""; shotCropRead(); shotSizeBoxes();
+      o.push(document.getElementById("shotFullQ").hidden, document.getElementById("shotCopiesFmt").hidden, document.getElementById("shotCropBox").hidden);
+      fmt.value = "webp"; fmt.dispatchEvent(new Event("change"));
+      const on = document.getElementById("shotCropOn"); on.checked = true; on.onchange({target: on});
+      o.push(document.getElementById("shotFullQ").hidden, document.getElementById("shotCopiesFmt").hidden, q("crop").value);
+      const top = document.querySelector('#shotSettings .cropv[data-i="1"]'); top.value = "20"; top.dispatchEvent(new Event("input"));
+      const pv = document.getElementById("shotCropPv");
+      o.push(q("crop").value, pv.hidden, pv.querySelector("img").getAttribute("src"), pv.querySelector(".cropbox").style.top);
+      on.checked = false; on.onchange({target: on}); o.push(q("crop").value, pv.hidden);
+      [fmt.value, q("medium").value, q("small").value, q("crop").value] = keep; shotCropRead(); shotSizeBoxes();
+      SC_FIELDS().forEach(el => { el.dataset.dirty = ""; }); data.screenshots = ls;
       return o; })()`);
-    want.shotui = [true, true, false, false];
+    want.shotui = [true, true, true, false, false, "10, 10, 80, 75", "10, 20, 80, 75", false, "api/screenshots/7/image?size=thumb", "20%", "", true];
     // the body's hover card: your screenshots of it, the newest three as thumbnails (the author, 2026-10-25)
     got.shotpop = w.eval(`(() => { const d = document.createElement("div");
       d.innerHTML = bodyPopHtml({name: "4 a", type: "Planet", subtype: "Rocky body", shots: 4, shot_ids: [16, 15, 14]}, null, "7");

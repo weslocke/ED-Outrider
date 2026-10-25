@@ -1553,6 +1553,9 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 #shotSettings .unit { margin: 0 12px 0 4px; }
 #shotSettings .mod { margin-bottom: 10px; }
 #shotSettings label.mod > .hint { display: block; }
+#shotSettings .croppv { position: relative; flex-basis: 100%; max-width: 384px; margin-top: 6px; }
+#shotSettings .croppv img { display: block; width: 100%; border-radius: 4px; opacity: .55; }
+#shotSettings .cropbox { position: absolute; border: 2px solid var(--accent); box-shadow: 0 0 0 1px rgba(0,0,0,.6); pointer-events: none; }
 #fcFuel.stale { border-color: var(--bad); }   /* S4-S4: the depot reading is over a week old */
 /* last in the file: it must win over the rules above (a media query adds no specificity) */
 /* S5-S6: with reduced motion asked for, nothing spins or pulses: the audio pill keeps a still outline instead */

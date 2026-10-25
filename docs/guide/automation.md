@@ -101,9 +101,17 @@ package (see [Install and run](install.md)), and is off until you tick it.
   instead (`{cmdr}/{date}`, a `/` for a folder inside a folder).
 - **Files:** **File name** builds each name from `{system}` `{body}` (short: `2 a`) `{date}` `{time}` (your local
   time) `{cmdr}` `{highres}` and `{subject}` (below); a name already there gets " (2)". **Full-size picture as** PNG
-  (lossless, the default) or JPG, with its own **JPG quality** (90). **Smaller copies to post:** tick **medium** (1920
-  px on the long edge) and/or **small** (1080 px): always JPGs, at the **copies' JPG quality** (85), in `medium/` and
-  `small/` folders beside the full size, never enlarged.
+  (lossless, the default: about 8.5 MB for a 3072 x 1728 shot), JPG or WebP at a **quality** (90: about 1.2 MB as JPG,
+  1 MB as WebP, the smallest at the same quality). Untick **keep the full-size picture** to keep only the copies and
+  the crop (with none of them, the full size is written anyway). Each file's date is when the shot was taken.
+- **Copies to post:** tick **medium** (1920 px on the long edge) and/or **small** (1080 px), in `medium/` and `small/`
+  folders beside the full size, never enlarged. **A crop** cuts the same part out of every shot into `crop/`: left,
+  top, width and height in % of the picture (so it fits a HighRes shot too), drawn on your latest shot as you set it,
+  optionally **resized to** a long edge in px; the middle without the HUD's edges, say, or a square for an avatar. The
+  copies and the crop are JPG (posts anywhere) or WebP (smaller; Discord and browsers show it) at their own quality (85).
+- **The clipboard:** **After each shot, copy** the full size, a copy or the crop to the clipboard, ready to paste
+  into Discord or a post (the shots you take, never the ones converted later). It replaces what was on the clipboard,
+  a system name copied for the galaxy map included.
 - **The game's BMP:** kept (the default), deleted or moved to a folder of your choice, and only once every image has
   been written and read back.
 - **What it shows:** a shot taken on a surface within 50 m (**Note the plant or formation a surface shot shows**) of a plant you sampled

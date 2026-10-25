@@ -711,6 +711,29 @@ class HighwayH1(unittest.TestCase):
             raise OSError("no such file")
         self.assertFalse(ed_outrider.Clipboard(True, which=which, run=boom, env={"DISPLAY": ":0"}).copy("X"))
 
+    def test_clipboard_picture(self):
+        """A screenshot on the clipboard ([screenshots] clipboard, the author 2026-10-25): PNG through xclip or
+        wl-copy, Windows' CF_DIB and PNG; whatever [highway] clipboard says."""
+        ran = []
+
+        def run(argv, **kw):
+            ran.append((argv, kw["input"]))
+            return types_ns(returncode=0)
+        which = lambda name: "/usr/bin/" + name   # noqa: E731
+        off = ed_outrider.Clipboard(False, which=which, run=run, env={"DISPLAY": ":0"})
+        self.assertEqual(off.copy_image(b"PNG", b"DIB"), (True, None))
+        wl = ed_outrider.Clipboard(True, which=lambda n: n == "wl-copy" and "/usr/bin/wl-copy", run=run, env={"WAYLAND_DISPLAY": "w"})
+        self.assertEqual(wl.copy_image(b"PNG2"), (True, None))
+        self.assertEqual(ran, [(["xclip", "-selection", "clipboard", "-t", "image/png"], b"PNG"), (["wl-copy", "--type", "image/png"], b"PNG2")])
+        got = []
+        win = ed_outrider.Clipboard(True, platform="win32", win_set=lambda t: None, win_get=lambda: "",
+                                    win_image=lambda dib, png: got.append((dib, png)))
+        self.assertEqual((win.copy_image(b"P", b"D"), got), ((True, None), [(b"D", b"P")]))
+        none = ed_outrider.Clipboard(True, which=which, run=run, env={})
+        self.assertFalse(none.copy_image(b"P")[0])
+        bad = ed_outrider.Clipboard(True, which=which, run=lambda *a, **k: types_ns(returncode=1), env={"DISPLAY": ":0"})
+        self.assertEqual(bad.copy_image(b"P"), (False, "xclip failed"))
+
     def test_clipboard_paste(self):
         """#5's 📋: the clipboard read with wl-paste (Wayland) or xclip -o (X11), Windows' own call; only a one-line name
         comes back; empty, a paragraph, a link, binary data, a failed or missing tool are said, never raised."""

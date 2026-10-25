@@ -13946,6 +13946,7 @@ async function loadShotCfg() {
     if (el.type === "checkbox") el.checked = !!v; else el.value = v ?? "";
     el.dataset.orig = scNow(el);
   }
+  shotCropRead();
   shotSizeBoxes();
   shotMoveShown();
 }
@@ -13955,10 +13956,46 @@ function shotSizeBoxes() {
     const f = document.querySelector(`#shotSettings .scfg[data-key="${b.dataset.for}"]`);
     b.checked = Number(f.value) > 0; f.disabled = !b.checked;
   }
-  // the copies' quality only with a copy ticked; the full size's JPG quality only for a JPG
-  document.querySelector('#shotSettings .scfg[data-key="resized_quality"]').disabled = ![...document.querySelectorAll("#shotSettings .shotsize")].some(b => b.checked);
-  document.getElementById("shotJpgQ").hidden = document.querySelector('#shotSettings .scfg[data-key="format"]').value !== "jpg";
+  // the full size's quality only for a JPG or WebP; the copies' format and quality only with a copy or the crop; the
+  // crop's box only while it is ticked
+  const cropOn = document.getElementById("shotCropOn").checked;
+  document.getElementById("shotFullQ").hidden = document.querySelector('#shotSettings .scfg[data-key="format"]').value === "png";
+  document.getElementById("shotCopiesFmt").hidden = !cropOn && ![...document.querySelectorAll("#shotSettings .shotsize")].some(b => b.checked);
+  document.getElementById("shotCropBox").hidden = !cropOn;
+  shotCropDraw();
 }
+// the crop: four boxes in % (left, top, width, height) kept in [screenshots] crop as "l, t, w, h", drawn on your latest
+// shot so you see what it cuts
+const shotCropField = () => document.querySelector('#shotSettings .scfg[data-key="crop"]');
+function shotCropRead() {
+  const v = (shotCropField().value || "").split(/[,\s]+/).map(Number);
+  const ok = v.length === 4 && v.every(isFinite);
+  document.getElementById("shotCropOn").checked = ok;
+  document.querySelectorAll("#shotSettings .cropv").forEach(el => { el.value = ok ? v[el.dataset.i] : ""; });
+}
+function shotCropWrite() {
+  const f = shotCropField(), on = document.getElementById("shotCropOn").checked;
+  const v = [...document.querySelectorAll("#shotSettings .cropv")].map(el => Number(el.value));
+  f.value = on && v.every(x => isFinite(x)) ? v.join(", ") : "";
+  f.dataset.dirty = "1"; shotSizeBoxes();
+}
+function shotCropDraw() {
+  const pv = document.getElementById("shotCropPv"), id = data && data.screenshots && data.screenshots.last_id;
+  const v = [...document.querySelectorAll("#shotSettings .cropv")].map(el => Number(el.value) || 0);
+  pv.hidden = !document.getElementById("shotCropOn").checked || !id;
+  if (pv.hidden) return;
+  const img = pv.querySelector("img"), src = `api/screenshots/${id}/image?size=thumb`;
+  if (img.getAttribute("src") !== src) img.setAttribute("src", src);
+  const b = pv.querySelector(".cropbox"), x = Math.min(100, Math.max(0, v[0])), y = Math.min(100, Math.max(0, v[1]));
+  Object.assign(b.style, {left: `${x}%`, top: `${y}%`, width: `${Math.max(0, Math.min(100 - x, v[2]))}%`, height: `${Math.max(0, Math.min(100 - y, v[3]))}%`});
+}
+document.getElementById("shotCropOn").onchange = e => {
+  if (e.target.checked && !shotCropField().value) {   // a first box: the middle, the HUD's edges left out
+    [10, 10, 80, 75].forEach((x, i) => { document.querySelector(`#shotSettings .cropv[data-i="${i}"]`).value = x; });
+  }
+  shotCropWrite();
+};
+document.querySelectorAll("#shotSettings .cropv").forEach(el => el.addEventListener("input", shotCropWrite));
 document.querySelector('#shotSettings .scfg[data-key="format"]').addEventListener("change", shotSizeBoxes);
 for (const b of document.querySelectorAll("#shotSettings .shotsize")) b.onchange = () => {
   const f = document.querySelector(`#shotSettings .scfg[data-key="${b.dataset.for}"]`);
@@ -14041,7 +14078,7 @@ function drawShots() {
   const el = document.getElementById("shotStatus"), s = data && data.screenshots;
   if (!el) return;
   if (!s) { el.textContent = ""; return; }
-  const last = s.last ? (s.last.ok ? ` · last: ${s.last.full ? s.last.full.split(/[\\/]/).pop() : ""}${s.last.subject ? ` (${s.last.subject.name})` : ""}`
+  const last = s.last ? (s.last.ok ? ` · last: ${s.last.full ? s.last.full.split(/[\\/]/).pop() : ""}${s.last.subject ? ` (${s.last.subject.name})` : ""}${s.last.clipboard ? `, ${s.last.clipboard}` : ""}`
                                    : ` · last failed: ${s.last.error}`) : "";
   el.innerHTML = `${s.on ? `<span class="ok">Converting</span>` : `<span class="warnc">Not converting: ${esc(s.why || "?")}</span>`}` +
     ` <span class="unk">· from ${esc(s.pictures || "?")} · to ${esc(s.folder || "?")}${s.queued ? ` · ${s.queued} waiting` : ""}${esc(last)}</span>`;

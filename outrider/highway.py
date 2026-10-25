@@ -194,7 +194,8 @@ class Clipboard:
     READ_TOOLS = (("xclip", "DISPLAY", ("xclip", "-selection", "clipboard", "-o")),
                   ("wl-paste", "WAYLAND_DISPLAY", ("wl-paste", "--no-newline", "--type", "text")))
 
-    def __init__(self, enabled=True, which=None, run=None, env=None, platform=None, win_set=None, win_get=None):
+    def __init__(self, enabled=True, which=None, run=None, env=None, platform=None, win_set=None, win_get=None,
+                 win_image=None):
         import shutil
         import subprocess
         self.enabled = bool(enabled)
@@ -202,6 +203,7 @@ class Clipboard:
         self._devnull = subprocess.DEVNULL
         self._pipe = subprocess.PIPE
         self.tool = self.argv = self._win_set = self.read_tool = self.read_argv = self._win_get = None
+        self._win_image = win_image   # Windows' picture copy (a test's fake; else outrider.winkeys')
         if (platform or sys.platform).startswith("win"):
             if win_set is None:
                 from outrider.winkeys import set_clipboard as win_set
@@ -244,6 +246,28 @@ class Clipboard:
             ok, err = False, f"{self.tool}: {type(e).__name__}"
         self.last = {"text": str(text), "ok": ok, "ts": iso_ts(time.time()), "error": err}
         return ok
+
+    IMAGE_ARGV = {"xclip": ("xclip", "-selection", "clipboard", "-t", "image/png"), "wl-copy": ("wl-copy", "--type", "image/png")}
+
+    def copy_image(self, png, dib=None):
+        """Put a picture on the clipboard (the screenshots' [screenshots] clipboard; whatever [highway] clipboard says):
+        the PNG bytes through xclip or wl-copy, Windows' CF_DIB and PNG. (ok, why not or None); never raises."""
+        if not (self.argv or self._win_set):
+            return False, self.info()["why"]
+        try:
+            if self._win_set:
+                win = self._win_image
+                if win is None:
+                    from outrider.winkeys import set_clipboard_image as win
+                win(dib, png)
+                return True, None
+            r = self._run(list(self.IMAGE_ARGV[self.tool]), input=png, stdout=self._devnull, stderr=self._devnull,
+                          timeout=10, check=False)
+            return (True, None) if r.returncode == 0 else (False, f"{self.tool} failed")
+        except (OSError, ValueError) as e:
+            return False, f"{self.tool}: {e}"
+        except Exception as e:  # noqa: BLE001 -- subprocess.TimeoutExpired and the like: report, never raise
+            return False, f"{self.tool}: {type(e).__name__}"
 
     def paste_why(self):
         """Why the clipboard cannot be read on this desktop, or None when it can."""

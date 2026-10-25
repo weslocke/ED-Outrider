@@ -1633,6 +1633,8 @@ confirmed while playing. Treat reports about them as likely real.
 
 - The rail's HighRes button (2026-10-25): Hide UI and Screenshot pressed from the tablet work (the author, 2026-10-25);
   HighRes (Alt+F10) through the rail's virtual keyboard was not tried.
+- A screenshot on the Windows clipboard (`winkeys.set_clipboard_image`: CF_DIB and the registered PNG format, 2026-10-25):
+  written to the Win32 API, run only on Linux (xclip) by the author.
 - Screenshot converting end to end in a live session (the event's timing, the subject from a real sample spot or
   formation, the backlog on a full Pictures folder): the converter was tried on the author's real F10 and HighRes BMPs
   (2026-10-25), the rest on fakes.

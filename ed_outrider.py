@@ -979,7 +979,7 @@ CONFIG_RANGES = {
     ("defaults", "module_warn"): (1, 100, "%"), ("defaults", "rig_warn"): (100, RIG_LOST_M - 100, "m"),
     ("defaults", "speech_profanity_pct"): (0, 100, "%"), ("defaults", "speech_speed"): (0.5, 2, "times"),
     ("speech", "pad_delay"): (0, 20, "s"), ("server", "sights_range"): (0, 5000, "ly"),
-    ("screenshots", "jpg_quality"): (50, 100, ""), ("screenshots", "resized_quality"): (50, 100, ""),
+    ("screenshots", "quality"): (50, 100, ""), ("screenshots", "copies_quality"): (50, 100, ""), ("screenshots", "crop_px"): (0, 7680, "px"),
     ("screenshots", "medium"): (0, 7680, "px"), ("screenshots", "small"): (0, 3840, "px"), ("screenshots", "subject_m"): (0, 500, "m"),
     ("autohonk", "delay"): (0, 30, "s"), ("autohonk", "hold"): (0.5, 20, "s"),
     ("copilot", "hold_ms"): (200, 3000, "ms"), ("copilot", "double_ms"): (100, 1000, "ms"),
@@ -1075,13 +1075,23 @@ def screenshots_settings(ss, num, flag):
     clamp = lambda key, conv: min(CONFIG_RANGES[("screenshots", key)][1], max(CONFIG_RANGES[("screenshots", key)][0],
                                                                               num("screenshots", ss, key, conv, d[key])))
     text = lambda key: num("screenshots", ss, key, _config_str, d[key]) or ""
-    fmt, orig = text("format").lower(), text("original").lower()
+    # renamed before the first release (2026-10-25; WebP takes a quality too): a file written with the old names keeps them
+    ss = dict(ss)
+    for old, new in (("jpg_quality", "quality"), ("resized_quality", "copies_quality")):
+        if old in ss and new not in ss:
+            ss[new] = ss.pop(old)
+    fmt, orig, cfmt, clip = (text(k).lower() for k in ("format", "original", "copies_format", "clipboard"))
+    crop = outrider.screenshots.parse_crop(text("crop"))
     return {"enabled": flag("screenshots", ss, "enabled", d["enabled"]), "pictures": text("pictures"), "folder": text("folder"),
             "by_cmdr": flag("screenshots", ss, "by_cmdr", d["by_cmdr"]), "by_system": flag("screenshots", ss, "by_system", d["by_system"]),
             "subfolder": text("subfolder"), "filename": text("filename") or d["filename"],
             "format": fmt if fmt in outrider.screenshots.FORMATS else d["format"],
-            "jpg_quality": clamp("jpg_quality", int), "medium": clamp("medium", int), "small": clamp("small", int),
-            "resized_quality": clamp("resized_quality", int),
+            "quality": clamp("quality", int), "full": flag("screenshots", ss, "full", d["full"]),
+            "medium": clamp("medium", int), "small": clamp("small", int),
+            "crop": ", ".join(f"{v:g}" for v in crop) if crop else "", "crop_px": clamp("crop_px", int),
+            "copies_format": cfmt if cfmt in outrider.screenshots.COPY_FORMATS else d["copies_format"],
+            "copies_quality": clamp("copies_quality", int),
+            "clipboard": clip if clip in outrider.screenshots.CLIPBOARD else d["clipboard"],
             "original": orig if orig in outrider.screenshots.ORIGINALS else d["original"], "move_to": text("move_to"),
             "subject_m": clamp("subject_m", float)}
 
@@ -1434,11 +1444,16 @@ by_cmdr = {"true" if st["screenshots"]["by_cmdr"] else "false"}   # a folder per
 by_system = {"true" if st["screenshots"]["by_system"] else "false"}   # ... and one per system in it
 subfolder = {q(st["screenshots"]["subfolder"])}   # your own folders instead ("" = the two above): {{cmdr}} {{system}} {{date}}, "/" nests
 filename = {q(st["screenshots"]["filename"])}   # tokens: {{system}} {{body}} {{date}} {{time}} {{cmdr}} {{highres}} {{subject}}
-format = {q(st["screenshots"]["format"])}   # "png" (lossless) or "jpg"
-jpg_quality = {st["screenshots"]["jpg_quality"]}   # a full-size JPG's quality (50-100)
+format = {q(st["screenshots"]["format"])}   # the full size: "png" (lossless), "jpg" or "webp" (smaller than JPG at the same quality)
+quality = {st["screenshots"]["quality"]}   # a full-size JPG's or WebP's quality (50-100)
+full = {"true" if st["screenshots"]["full"] else "false"}   # keep the full-size picture (false: only the copies and the crop; the full size anyway when there are none)
 medium = {st["screenshots"]["medium"]}   # a medium copy's long edge in px, in medium/ (0 = none; 1920 when ticked)
 small = {st["screenshots"]["small"]}   # a small copy's long edge in px, in small/ (0 = none; 1080 when ticked)
-resized_quality = {st["screenshots"]["resized_quality"]}   # the copies' JPG quality (50-100)
+crop = {q(st["screenshots"]["crop"])}   # a cut-out in crop/: "left, top, width, height" in % of the picture ("" = none), e.g. "10, 10, 80, 75"
+crop_px = {st["screenshots"]["crop_px"]}   # the crop's long edge in px (0 = as cut)
+copies_format = {q(st["screenshots"]["copies_format"])}   # the copies and the crop: "jpg" or "webp"
+copies_quality = {st["screenshots"]["copies_quality"]}   # their quality (50-100)
+clipboard = {q(st["screenshots"]["clipboard"])}   # after each shot, put this picture on the clipboard: "full", "medium", "small", "crop" ("" = none)
 original = {q(st["screenshots"]["original"])}   # the game's BMP after converting: "keep", "delete" or "move"
 move_to = {q(st["screenshots"]["move_to"])}   # where "move" puts it
 subject_m = {n(st["screenshots"]["subject_m"])}   # m: a surface shot names the plant or formation this close (0 = never)
@@ -1968,7 +1983,7 @@ CREATE TABLE IF NOT EXISTS geo_tags (
 CREATE TABLE IF NOT EXISTS screenshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, original TEXT, system INTEGER, system_name TEXT, body TEXT,
     body_id INTEGER, lat REAL, lon REAL, heading REAL, cmdr TEXT, subject TEXT, full TEXT, medium TEXT, small TEXT,
-    width INTEGER, height INTEGER, error TEXT, UNIQUE (ts, original));
+    width INTEGER, height INTEGER, error TEXT, crop TEXT, UNIQUE (ts, original));
 -- The surface map's mining records (Batch M1). Live only, like sample_points: the positions come from Status.json
 -- and a rig from a co-pilot press, none of which a journal holds, so a journal re-read keeps them (not in
 -- RESET_JOURNAL_DATA) and the backup zip carries them with the rest of the database.
@@ -11898,21 +11913,42 @@ class State:
         except Exception as e:  # noqa: BLE001 -- recorded and said: a folder not writable, a file never written
             err = f"{type(e).__name__}: {e}"
         written = (out or {}).get("written") or []
+        got = {k: paths[k] if paths.get(k) and paths[k] in written else None for k in ("full", "medium", "small", "crop")}
         self.db.execute("INSERT OR REPLACE INTO screenshots (ts, original, system, system_name, body, body_id, lat, lon, heading, "
-                        "cmdr, subject, full, medium, small, width, height, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        "cmdr, subject, full, medium, small, crop, width, height, error) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (shot["ts"], shot.get("original"), shot.get("system_id"), shot.get("system"), shot.get("body"), body_id,
                          shot.get("lat"), shot.get("lon"), shot.get("heading"), shot.get("cmdr"), json.dumps(subject) if subject else None,
-                         paths["full"] if paths["full"] in written else None,
-                         paths["medium"] if paths["medium"] in written else None, paths["small"] if paths["small"] in written else None,
+                         got["full"], got["medium"], got["small"], got["crop"],
                          (out or {}).get("width"), (out or {}).get("height"), err))
         self.db.commit()
-        self.shots_last = {"ok": not err, "ts": shot["ts"], "full": paths["full"] if not err else None,
-                           "subject": subject, "error": err, "original": shot.get("original")}
+        clip = await self.shot_clipboard(cfg, got) if not err and not shot.get("backlog") else None
+        self.shots_last = {"ok": not err, "ts": shot["ts"], "full": next((p for p in got.values() if p), None) if not err else None,
+                           "subject": subject, "error": err, "original": shot.get("original"), "clipboard": clip}
         if err:
             self.notices.set("screenshots", f"A screenshot could not be converted ({shot.get('original')}): {err}", "warn", "open:screenshots")
         else:
             self.notices.clear("screenshots")
         self.bump()
+
+    async def shot_clipboard(self, cfg, got):
+        """[screenshots] clipboard: that picture (else the first one written) on the clipboard after a live shot, never
+        from the backlog. -> "copied the medium copy", the reason it was not, or None (off)."""
+        want = cfg.get("clipboard")
+        if not want:
+            return None
+        key = next((k for k in (want, "medium", "small", "crop", "full") if got.get(k)), None)
+        if not key or not self.clipboard:
+            return "not copied: " + ("no picture" if not key else "no clipboard here")
+
+        def work():
+            png, dib = outrider.screenshots.clipboard_image(got[key])
+            return self.clipboard.copy_image(png, dib)
+        try:
+            ok, why = await asyncio.get_running_loop().run_in_executor(None, work)
+        except Exception as e:  # noqa: BLE001 -- a picture that could not be read back: said, never raised
+            ok, why = False, f"{type(e).__name__}: {e}"
+        return f"copied the {'full-size picture' if key == 'full' else key + (' copy' if key != 'crop' else '')}" if ok else f"not copied: {why}"
 
     async def shots_backlog(self):
         """POST /api/screenshots/backlog: the BMPs already in the game's Pictures folder, each matched to its journal
@@ -11946,6 +11982,7 @@ class State:
                 skipped += 1
                 continue
             shot.setdefault("system_id", None)
+            shot["backlog"] = True   # never put on the clipboard
             self.shots_queue.append(shot)
             queued += 1
         self.shots_step()
@@ -11966,26 +12003,27 @@ class State:
         return [{"id": r["id"], "ts": r["ts"], "system": r["system_name"], "system_id": str(r["system"]) if r["system"] is not None else None,
                  "body": r["body"], "lat": r["lat"], "lon": r["lon"], "cmdr": r["cmdr"],
                  "subject": json.loads(r["subject"]) if r["subject"] else None, "original": r["original"],
-                 "sizes": [k for k in ("small", "medium", "full") if r[k]], "error": r["error"]} for r in rows]
+                 "sizes": [k for k in ("small", "medium", "crop", "full") if r[k]], "error": r["error"]} for r in rows]
 
     SHOT_THUMB_PX = 480
     _shot_thumbs = {}   # (id, path's mtime) -> JPG bytes: a thumbnail made for a shot with no small copy (kept SHOT_THUMBS)
     SHOT_THUMBS = 64
 
     async def shot_image(self, sid, size):
-        """GET /api/screenshots/{id}/image?size=thumb|small|medium|full: the file (only a path the record names, under the
+        """GET /api/screenshots/{id}/image?size=thumb|small|medium|crop|full: the file (only a path the record names, under the
         converted folder), or a thumbnail made from the smallest copy there is. -> (path or bytes, content type) or None."""
         r = self.db.execute("SELECT * FROM screenshots WHERE id=?", (sid,)).fetchone()
         if not r:
             return None
         _, root = self.shots_folders()
         ok = lambda p: p and root and os.path.isfile(p) and os.path.realpath(p).startswith(os.path.realpath(root) + os.sep)
-        if size in ("small", "medium", "full"):
+        mime = lambda p: outrider.screenshots.MIME.get(os.path.splitext(p)[1][1:].lower().replace("jpeg", "jpg"), "image/jpeg")   # noqa: E731
+        if size in ("small", "medium", "crop", "full"):
             p = r[size]
-            return (p, "image/png" if p and p.endswith(".png") else "image/jpeg") if ok(p) else None
+            return (p, mime(p)) if ok(p) else None
         if ok(r["small"]):
-            return r["small"], "image/jpeg"
-        src = next((r[k] for k in ("medium", "full") if ok(r[k])), None)
+            return r["small"], mime(r["small"])
+        src = next((r[k] for k in ("medium", "full", "crop") if ok(r[k])), None)
         if not src or outrider.screenshots.pillow() is None:
             return None
         key = (sid, os.path.getmtime(src))
@@ -12012,8 +12050,9 @@ class State:
             return None
         pictures, root = self.shots_folders()
         why = self.shots_why_off()
-        n = self.db.execute("SELECT count(*) FROM screenshots WHERE error IS NULL").fetchone()[0]
+        n, last_id = self.db.execute("SELECT count(*), max(id) FROM screenshots WHERE error IS NULL").fetchone()
         return {"on": not why, "why": why or None, "pictures": pictures, "folder": root, "n": n,   # n: Here reloads on a new one
+                "last_id": last_id,   # Settings' crop preview draws on it
                 "queued": len(self.shots_queue) + (1 if self.shots_task and not self.shots_task.done() else 0),
                 "last": self.shots_last}
 

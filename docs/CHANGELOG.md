@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Screenshots: WebP, a crop, copies only, the clipboard, the shot's date
+- The author asked for a lossy PNG with a quality; measured on a real 3072 x 1728 shot, a 256-colour PNG was 4.6 MB
+  (or 1.5 MB dithered, worse than JPG), so **WebP** instead: the full size as PNG, JPG or WebP at `quality` (90: 1 MB
+  against JPG's 1.2 MB), the copies and the crop as JPG or WebP (`copies_format`) at `copies_quality`. The settings
+  were renamed before the release (`jpg_quality` to `quality`, `resized_quality` to `copies_quality`); the old names
+  are still read.
+- From EDDiscovery's list: **a crop** (`crop`: left, top, width, height in % so it fits HighRes too, into `crop/`,
+  optionally `crop_px` on its long edge; Settings draws it on your latest shot), **copies only** (`full` off: no full
+  size unless nothing else is written), **the clipboard** (`clipboard`: that picture after each live shot, never the
+  backlog's; xclip or wl-copy as image/png, Windows CF_DIB and PNG), and each file's date set to the shot's.
+
 ## 2026-10-25 · A shot after the run still names the plant, colour included
 - The author asked about the bio sample's colour: it is the variant's name ("Bacterium Bullaris - Yellow"), which is
   what a shot names, but the sample spots were dropped when the run was analysed (they space the next sample), so a

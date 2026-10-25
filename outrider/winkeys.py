@@ -147,6 +147,24 @@ def get_clipboard():
 def set_clipboard(text):
     """Put text on the Windows clipboard (as Unicode text); OSError when Windows refused (another program holds it
     open, say). For the Highway's copy of the next system and auto-target's paste entry."""
+    _set_clipboard([(13, str(text).encode("utf-16-le") + b"\0\0")], "the text")   # CF_UNICODETEXT
+
+
+def set_clipboard_image(dib, png=None):
+    """Put a picture on the Windows clipboard: CF_DIB (a BMP without its file header: every program pastes it) and,
+    given, the registered "PNG" format too (browsers, Discord). OSError when Windows refused. For the screenshots."""
+    formats = [(8, dib)]   # CF_DIB
+    if png:
+        u32 = ctypes.WinDLL("user32", use_last_error=True)
+        u32.RegisterClipboardFormatW.restype = ctypes.c_uint
+        fmt = u32.RegisterClipboardFormatW("PNG")
+        if fmt:
+            formats.append((fmt, png))
+    _set_clipboard(formats, "the picture")
+
+
+def _set_clipboard(formats, what):
+    """The clipboard emptied and given each (format, bytes); the clipboard owns each block once it is set."""
     from ctypes import wintypes
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
     u32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -156,7 +174,6 @@ def set_clipboard(text):
     k32.GlobalFree.argtypes = (wintypes.HGLOBAL,)
     u32.OpenClipboard.argtypes = (wintypes.HWND,)
     u32.SetClipboardData.restype, u32.SetClipboardData.argtypes = wintypes.HANDLE, (wintypes.UINT, wintypes.HANDLE)
-    data = str(text).encode("utf-16-le") + b"\0\0"
     for _ in range(10):   # another program may have it open for a moment
         if u32.OpenClipboard(None):
             break
@@ -166,14 +183,15 @@ def set_clipboard(text):
         raise OSError(ctypes.get_last_error(), "the clipboard is in use by another program")
     try:
         u32.EmptyClipboard()
-        h = k32.GlobalAlloc(0x0002, len(data))   # GMEM_MOVEABLE
-        if not h:
-            raise OSError(ctypes.get_last_error(), "no memory for the clipboard")
-        p = k32.GlobalLock(h)
-        ctypes.memmove(p, data, len(data))
-        k32.GlobalUnlock(h)
-        if not u32.SetClipboardData(13, h):   # CF_UNICODETEXT; on success the clipboard owns h
-            k32.GlobalFree(h)
-            raise OSError(ctypes.get_last_error(), "Windows did not take the text")
+        for fmt, data in formats:
+            h = k32.GlobalAlloc(0x0002, len(data))   # GMEM_MOVEABLE
+            if not h:
+                raise OSError(ctypes.get_last_error(), "no memory for the clipboard")
+            p = k32.GlobalLock(h)
+            ctypes.memmove(p, data, len(data))
+            k32.GlobalUnlock(h)
+            if not u32.SetClipboardData(fmt, h):   # on success the clipboard owns h
+                k32.GlobalFree(h)
+                raise OSError(ctypes.get_last_error(), f"Windows did not take {what}")
     finally:
         u32.CloseClipboard()

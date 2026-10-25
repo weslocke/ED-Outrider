@@ -21,10 +21,15 @@ import shutil
 import time
 
 DEFAULTS = {"enabled": False, "pictures": "", "folder": "", "by_cmdr": True, "by_system": False, "subfolder": "",
-            "filename": "{system} {body} {date} {time}{highres}", "format": "png", "jpg_quality": 90,
-            "medium": 0, "small": 0, "resized_quality": 85, "original": "keep", "move_to": "", "subject_m": 50.0}
+            "filename": "{system} {body} {date} {time}{highres}", "format": "png", "quality": 90, "full": True,
+            "medium": 0, "small": 0, "crop": "", "crop_px": 0, "copies_format": "jpg", "copies_quality": 85,
+            "original": "keep", "move_to": "", "subject_m": 50.0, "clipboard": ""}
 MEDIUM_PX, SMALL_PX = 1920, 1080   # the sizes a ticked copy starts at (long edge, px)
-FORMATS = ("png", "jpg")
+FORMATS = ("png", "jpg", "webp")   # the full size: lossless PNG; JPG and WebP at `quality` (WebP: smaller at the same)
+COPY_FORMATS = ("jpg", "webp")     # medium, small and the crop, at `copies_quality`
+CLIPBOARD = ("", "full", "medium", "small", "crop")   # which picture goes on the clipboard after each shot ("" none)
+EXT = {"png": "png", "jpg": "jpg", "webp": "webp"}
+MIME = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}
 ORIGINALS = ("keep", "delete", "move")
 TOKENS = ("cmdr", "system", "body", "date", "time", "highres", "subject")
 NAME_MAX = 150           # characters of a file or folder name (Windows' path limit is near)
@@ -89,19 +94,43 @@ def subfolder_parts(cfg, fields):
     return [safe_name(render(p, fields)) for p in re.split(r"[\\/]", tpl) if render(p, fields)]
 
 
+def parse_crop(text):
+    """[screenshots] crop "left, top, width, height" in % of the picture (so one setting fits a normal and a HighRes
+    shot) -> (x, y, w, h) clamped inside it, or None (empty, unreadable, nothing left)."""
+    try:
+        x, y, w, h = (float(v) for v in re.split(r"[,\s]+", str(text or "").strip()))
+    except ValueError:
+        return None
+    x, y = min(100.0, max(0.0, x)), min(100.0, max(0.0, y))
+    w, h = min(100.0 - x, max(0.0, w)), min(100.0 - y, max(0.0, h))
+    return (x, y, w, h) if w >= 1 and h >= 1 else None
+
+
+def crop_box(size, crop):
+    """A parse_crop rectangle in a picture of `size` (w, h) px -> Pillow's (left, top, right, bottom)."""
+    (W, H), (x, y, w, h) = size, crop
+    left, top = round(W * x / 100), round(H * y / 100)
+    return left, top, max(left + 1, round(W * (x + w) / 100)), max(top + 1, round(H * (y + h) / 100))
+
+
 def plan_paths(cfg, fields, root, exists=os.path.exists):
-    """{"dir", "full", "medium", "small"} for a shot (medium/small None when off): the full image under root/subfolders,
-    the copies in its medium/ and small/ subfolders, one name for all three; " (2)", " (3)"... when it is taken."""
+    """{"dir", "full", "medium", "small", "crop"} for a shot (None for each one off): the full picture under
+    root/subfolders, the copies and the crop in its medium/, small/ and crop/ subfolders, one name for all; " (2)",
+    " (3)"... when it is taken. The full size is written unless `full` is off and some other picture is (never none)."""
     folder = os.path.join(root, *subfolder_parts(cfg, fields))
     base = safe_name(render(cfg.get("filename") or DEFAULTS["filename"], fields), fallback="Screenshot")
-    ext = "jpg" if cfg.get("format") == "jpg" else "png"
+    ext = EXT.get(cfg.get("format"), "png")
+    cext = EXT.get(cfg.get("copies_format"), "jpg")
+    others = bool(cfg.get("medium") or cfg.get("small") or parse_crop(cfg.get("crop")))
+    full = cfg.get("full", True) or not others
     n = 1
     while True:
         name = base if n == 1 else f"{base} ({n})"
-        out = {"dir": folder, "full": os.path.join(folder, f"{name}.{ext}"),
-               "medium": os.path.join(folder, "medium", f"{name}.jpg") if cfg.get("medium") else None,
-               "small": os.path.join(folder, "small", f"{name}.jpg") if cfg.get("small") else None}
-        if not any(p and exists(p) for p in (out["full"], out["medium"], out["small"])):
+        out = {"dir": folder, "full": os.path.join(folder, f"{name}.{ext}") if full else None,
+               "medium": os.path.join(folder, "medium", f"{name}.{cext}") if cfg.get("medium") else None,
+               "small": os.path.join(folder, "small", f"{name}.{cext}") if cfg.get("small") else None,
+               "crop": os.path.join(folder, "crop", f"{name}.{cext}") if parse_crop(cfg.get("crop")) else None}
+        if not any(p and exists(p) for k, p in out.items() if k != "dir"):
             return out
         n += 1
 
@@ -177,6 +206,27 @@ def description(shot):
     m = metadata(shot)
     return " · ".join(p for p in (m["where"], m["subject"], m["position"], m["cmdr"] and f"CMDR {m['cmdr']}",
                                   m["when_iso"] and m["when_iso"].replace("T", " ").replace("Z", " UTC")) if p)
+
+
+def when_seconds(ts):
+    """The journal's "2026-10-25T22:02:14Z" -> epoch seconds, or None."""
+    try:
+        return datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc).timestamp()
+    except (TypeError, ValueError):
+        return None
+
+
+def clipboard_image(path, Image=None):
+    """The picture at path for the clipboard: (PNG bytes, DIB bytes) (Linux tools take the PNG; Windows wants a device-
+    independent bitmap, CF_DIB, and gets the PNG too for programs that read it)."""
+    import io
+    Image = Image or pillow()
+    with Image.open(path) as im:
+        im = im.convert("RGB")
+        png, bmp = io.BytesIO(), io.BytesIO()
+        im.save(png, "PNG", compress_level=PNG_LEVEL)
+        im.save(bmp, "BMP")
+    return png.getvalue(), bmp.getvalue()[14:]   # CF_DIB is a BMP file without its 14-byte file header
 
 
 def metadata(shot):
@@ -266,35 +316,52 @@ def convert(src, paths, cfg, shot, Image=None):
         img = img.convert("RGB")
     w, h = img.size
     os.makedirs(paths["dir"], exist_ok=True)
-    if paths["full"].endswith(".png"):
-        info = PngImagePlugin.PngInfo()   # PNG's own keys, XMP, and EXIF in an eXIf chunk
-        info.add_itxt("Title", m["title"])
-        info.add_itxt("Description", desc)
-        if m["cmdr"]:
-            info.add_itxt("Author", "CMDR " + m["cmdr"])
-        info.add_text("Software", "ED Outrider")
-        info.add_text("Source", "Elite Dangerous")
-        if m["when_exif"]:
-            info.add_text("Creation Time", m["when_exif"])
-        info.add_itxt("XML:com.adobe.xmp", xmp)
-        img.save(paths["full"], "PNG", compress_level=PNG_LEVEL, pnginfo=info, exif=exif())
-    else:
-        img.save(paths["full"], "JPEG", quality=int(cfg.get("jpg_quality") or 90), exif=exif(), xmp=xmp.encode())
-    written.append(paths["full"])
+
+    def save(pic, path, fmt, quality):
+        if fmt == "png":
+            info = PngImagePlugin.PngInfo()   # PNG's own keys, XMP, and EXIF in an eXIf chunk
+            info.add_itxt("Title", m["title"])
+            info.add_itxt("Description", desc)
+            if m["cmdr"]:
+                info.add_itxt("Author", "CMDR " + m["cmdr"])
+            info.add_text("Software", "ED Outrider")
+            info.add_text("Source", "Elite Dangerous")
+            if m["when_exif"]:
+                info.add_text("Creation Time", m["when_exif"])
+            info.add_itxt("XML:com.adobe.xmp", xmp)
+            pic.save(path, "PNG", compress_level=PNG_LEVEL, pnginfo=info, exif=exif())
+        elif fmt == "webp":   # method 4: Pillow's default speed; ~1 MB for a 3072 x 1728 shot at 90 (measured 2026-10-25)
+            pic.save(path, "WEBP", quality=int(quality), method=4, exif=exif(), xmp=xmp.encode())
+        else:
+            pic.save(path, "JPEG", quality=int(quality), exif=exif(), xmp=xmp.encode())
+        written.append(path)
+
+    def fit(pic, px):
+        """pic with its long edge at most px (never upscaled); straight to the size (no full-size copy first),
+        reducing_gap: a fast box reduction, then LANCZOS for the last steps."""
+        pw, ph = pic.size
+        k = min(1.0, px / max(pw, ph)) if px else 1.0
+        return pic.resize((max(1, round(pw * k)), max(1, round(ph * k))), Image.Resampling.LANCZOS, reducing_gap=3.0) if k < 1 else pic
+
+    if paths.get("full"):
+        save(img, paths["full"], cfg.get("format") if cfg.get("format") in FORMATS else "png", cfg.get("quality") or 90)
+    cfmt, cq = (cfg.get("copies_format") if cfg.get("copies_format") in COPY_FORMATS else "jpg"), cfg.get("copies_quality") or 85
     for key in ("medium", "small"):
-        if not paths.get(key):
-            continue
-        px = int(cfg.get(key) or 0)
-        k = min(1.0, px / max(w, h))   # the long edge at most px: never upscaled
-        # straight to the size (no full-size copy first); reducing_gap: a fast box reduction, then LANCZOS for the last steps
-        copy = img.resize((max(1, round(w * k)), max(1, round(h * k))), Image.Resampling.LANCZOS, reducing_gap=3.0) if k < 1 else img
-        os.makedirs(os.path.dirname(paths[key]), exist_ok=True)
-        copy.save(paths[key], "JPEG", quality=int(cfg.get("resized_quality") or 85), exif=exif(), xmp=xmp.encode())
-        written.append(paths[key])
+        if paths.get(key):
+            os.makedirs(os.path.dirname(paths[key]), exist_ok=True)
+            save(fit(img, int(cfg.get(key) or 0)), paths[key], cfmt, cq)
+    box = parse_crop(cfg.get("crop"))
+    if paths.get("crop") and box:
+        os.makedirs(os.path.dirname(paths["crop"]), exist_ok=True)
+        save(fit(img.crop(crop_box((w, h), box)), int(cfg.get("crop_px") or 0)), paths["crop"], cfmt, cq)
     img.close()
     for p in written:   # each read back before the original may go
         with Image.open(p) as chk:
             chk.verify()
+    t = when_seconds(shot.get("ts"))
+    if t is not None:   # the file's date is the shot's (EDDiscovery's too): a backlog's pictures sort by when they were taken
+        for p in written:
+            os.utime(p, (t, t))
     return {"width": w, "height": h, "written": written}
 
 

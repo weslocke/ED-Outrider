@@ -146,6 +146,38 @@ class Convert(unittest.TestCase):
         with Image.open(jpg["full"]) as im:
             self.assertEqual(im.format, "JPEG")
 
+    def test_webp_copies_only_a_crop_and_the_files_date(self):
+        """The author, 2026-10-25: WebP with a quality (smaller than JPG at the same), EDDiscovery's crop and its
+        "extra images only", and the file's date the shot's."""
+        src = bmp(os.path.join(self.d, "Screenshot_0001.bmp"), 3072, 1728)
+        shot = {"ts": "2026-10-25T20:33:35Z", "system": "Sys", "body": "Sys 2 a", "cmdr": "Hefay"}
+        cfg = dict(S.DEFAULTS, format="webp", quality=80, medium=1920, copies_format="webp", crop="10, 10, 80, 75", crop_px=1000)
+        paths = S.plan_paths(cfg, S.fields_for(shot), os.path.join(self.d, "out"))
+        self.assertEqual([os.path.basename(os.path.dirname(paths[k])) + "/" + os.path.splitext(paths[k])[1] for k in ("medium", "crop")],
+                         ["medium/.webp", "crop/.webp"])
+        S.convert(src, paths, cfg, shot)
+        with Image.open(paths["full"]) as im:
+            self.assertEqual((im.format, im.size), ("WEBP", (3072, 1728)))
+            self.assertIn("Sys 2 a", im.info["xmp"].decode())
+        with Image.open(paths["crop"]) as im:   # 80 % x 75 % of 3072 x 1728 = 2458 x 1296, then 1000 px on its long edge
+            self.assertEqual((im.format, im.size), ("WEBP", (1000, 527)))
+        when = datetime.datetime(2026, 10, 25, 20, 33, 35, tzinfo=datetime.timezone.utc).timestamp()
+        self.assertEqual({round(os.path.getmtime(paths[k])) for k in ("full", "medium", "crop")}, {when})
+        # copies only: no full size; nothing else asked for: the full size anyway, never no picture at all
+        only = S.plan_paths(dict(cfg, full=False), S.fields_for(shot), os.path.join(self.d, "o2"))
+        self.assertEqual((only["full"], bool(only["medium"]), bool(only["crop"])), (None, True, True))
+        out = S.convert(src, only, dict(cfg, full=False), shot)
+        self.assertEqual(len(out["written"]), 2)
+        bare = S.plan_paths(dict(S.DEFAULTS, full=False), S.fields_for(shot), os.path.join(self.d, "o3"))
+        self.assertTrue(bare["full"].endswith(".png"))
+
+    def test_crop_text(self):
+        self.assertEqual(S.parse_crop("10, 10, 80, 75"), (10, 10, 80, 75))
+        self.assertEqual(S.parse_crop("90 0 50 100"), (90, 0, 10, 100))     # cut at the picture's edge
+        for bad in ("", "10, 10, 80", "a, b, c, d", "0, 0, 0.5, 50"):
+            self.assertIsNone(S.parse_crop(bad))
+        self.assertEqual(S.crop_box((3072, 1728), (10, 10, 80, 75)), (307, 173, 2765, 1469))
+
     def test_the_original(self):
         src = bmp(os.path.join(self.d, "a.bmp"))
         self.assertEqual(S.finish_original(src, dict(S.DEFAULTS), "x"), src)
@@ -277,6 +309,31 @@ class Server(unittest.TestCase):
         with Image.open(r["full"]) as im:
             self.assertIn("<rdf:li>Yellow</rdf:li>", im.text["XML:com.adobe.xmp"])   # the colour, a keyword of its own
 
+    def test_the_clipboard_after_a_live_shot_never_the_backlog(self):
+        copied = []
+
+        class Clip:
+            def copy_image(self, png, dib=None):
+                copied.append((png[:8], len(dib or b"")))
+                return True, None
+        self.st.clipboard = Clip()
+        self.st.shots_cfg.update(clipboard="medium")
+        self.shoot()
+        self.run_queue()
+        self.assertEqual([c[0] for c in copied], [b"\x89PNG\r\n\x1a\n"])   # the medium copy, as PNG for the clipboard
+        self.assertEqual(self.st.shots_last["clipboard"], "copied the medium copy")
+        self.st.shots_cfg.update(clipboard="crop")   # not made: the first picture that was
+        self.shoot(name="Screenshot_0002.bmp")
+        self.j.shots_new[0]["ts"] = self.at(31)
+        self.run_queue()
+        self.assertEqual(self.st.shots_last["clipboard"], "copied the medium copy")
+        self.st.shots_queue.append(dict(self.j.shots_new[0] if self.j.shots_new else {"ts": self.at(32)}, original="Screenshot_0003.bmp",
+                                        ts=self.at(32), backlog=True, system="Sys", body="Sys 2 a", system_id=9))
+        bmp(os.path.join(self.pictures, "Screenshot_0003.bmp"), 320, 180)
+        self.run_queue()
+        self.assertEqual(len(copied), 2)   # the backlog's never
+        self.assertIsNone(self.st.shots_last["clipboard"])
+
     def test_a_catch_up_never_converts_and_off_drops(self):
         self.j.handle({"event": "Screenshot", "timestamp": "2020-01-01T00:00:00Z", "Filename": "\\ED_Pictures\\old.bmp"})
         self.assertEqual(self.j.shots_new, [])               # not live: never
@@ -391,6 +448,10 @@ class Settings(unittest.TestCase):
         flag = lambda sec, table, key, default: ed_outrider._config_value(sec, key, table.get(key), ed_outrider._config_bool, default)
         st = ed_outrider.screenshots_settings({"format": "TIFF", "medium": 99999, "subject_m": -5, "original": "move"}, num, flag)
         self.assertEqual((st["format"], st["medium"], st["subject_m"], st["original"], st["by_cmdr"]), ("png", 7680, 0, "move", True))
+        st = ed_outrider.screenshots_settings({"jpg_quality": 70, "resized_quality": 60, "crop": "5,5,200,90", "copies_format": "WEBP",
+                                               "clipboard": "Medium", "format": "webp"}, num, flag)
+        self.assertEqual((st["quality"], st["copies_quality"], st["crop"], st["copies_format"], st["clipboard"], st["format"], st["full"]),
+                         (70, 60, "5, 5, 95, 90", "webp", "medium", "webp", True))   # the names before the release still read
         import outrider.config_edit as C
         self.assertTrue(C.homed("screenshots", "folder"))
         self.assertIn(("screenshots", "folder"), ed_outrider.State.LIVE_CONFIG)
