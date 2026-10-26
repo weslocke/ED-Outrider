@@ -2474,6 +2474,36 @@ class BatchBState(unittest.TestCase):
             [pend] = self.state.leaving_summary(1)["bio_pending"]
             self.assertEqual((pend["codex_galaxy"], pend["codex_names"]), (True, ["Stratum Tectonicas - Teal"]))
 
+    def test_codex_marks_before_the_dss_settled_like_the_line(self):
+        """Fourth in-depth review 2026-10-25: the table's options were marked from the raw guess while the line first
+        took the species your codex entry on the body names; and the line's hover named the first colour candidate,
+        which could be the one you have."""
+        region = outrider.bio.region_name(0, 0, 0)
+        if not region:
+            self.skipTest("no bio_rules.json")
+        self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, PlanetClass="Rocky body", MassEM=0.2)
+        self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:02:00Z", "SystemAddress": 1, "BodyName": "S1 A 4",
+                       "BodyID": 4, "Signals": [{"Type": ed_outrider.BIO, "Count": 1}]})
+        # your composition scan logged Stratum Tectonicas - Teal on this body, a colour already in the region's codex
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, subcategory, system, body_id, region) VALUES "
+                        "('2026-01-01T00:03:00Z', 2, 'Stratum Tectonicas - Teal', '$Codex_SubCategory_Organic_Structures;', 1, 4, ?)", (region,))
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES ('t', 1, 'Concha Biconcavis - Red', ?)", (region,))
+        self.db.commit()
+        cands = [dict(self.CANDS[0], variants=["Stratum Tectonicas - Teal", "Stratum Tectonicas - Green"]), dict(self.CANDS[1], variants=[])]
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=cands):
+            body = next(b for b in self.state.system_detail(1)["bodies"] if b["name"] == "A 4")
+            opts = {g["genus"]: g for g in body["bio_options"]["genera"]}
+            [pend] = self.state.leaving_summary(1)["bio_pending"]
+            self.assertEqual((opts["Stratum"]["codex_new"], pend["codex_new"]), (False, False))   # the table as the line
+        # two colour candidates, the first logged: the line names the other one
+        self.db.execute("DELETE FROM codex WHERE entry_id=2")
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES ('t2', 3, 'Stratum Tectonicas - Teal', ?)", (region,))
+        self.db.commit()
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=cands):
+            self.state._leaving.clear()   # the codex rows were changed by hand, not through a journal line
+            [pend] = self.state.leaving_summary(1)["bio_pending"]
+            self.assertEqual(pend["codex_names"], ["Stratum Tectonicas - Green"])
+
     def test_leaving_skips_a_finished_body_without_dss(self):   # F2
         self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, PlanetClass="Rocky body", MassEM=0.2)
         self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:02:00Z", "SystemAddress": 1, "BodyName": "S1 A 4",

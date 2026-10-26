@@ -10011,6 +10011,9 @@ const releasePayloads = async () => {
         let n = 0; const asks = [async () => null, async () => [{station: "Hub", system: "S", distance: 5, price: 100000}]];
         const realAsk = holdSellAsk; holdSellAsk = async () => asks[Math.min(n++, 1)]();
         Object.assign(sBody, {sys: "81", name: "X 1", data: b});
+        // Here shows the same system: its ask goes first, and Search's panel must still be redrawn (fourth review)
+        const keepSel = [selectedSystem, bodyData, selectedBody]; selectedSystem = "81"; bodyData = b; selectedBody = "X 1";
+        const realRB = renderBody; renderBody = () => {};
         const panel = document.getElementById("sBodyPanel");
         await ringPricesAsk(b, "81");
         renderBodyInto(panel, b, "X 1", "closeSearchBody()", "81");
@@ -10018,6 +10021,7 @@ const releasePayloads = async () => {
         RING_PRICES.set("81|Painite", Object.assign(RING_PRICES.get("81|Painite"), {at: -1e9}));
         await fire();
         const after = (panel.querySelector(".ringprices") || {}).textContent;
+        [selectedSystem, bodyData, selectedBody] = keepSel; renderBody = realRB;
         window.setTimeout = realST; holdSellAsk = realAsk; RING_PRICES.clear(); RING_PRICE_TIMERS.clear();
         Object.assign(sBody, {sys: null, name: null, data: null}); panel.innerHTML = "";
         return JSON.stringify([/failed/.test(before || ""), /Painite 100k/.test(after || ""), n]);
@@ -10282,7 +10286,8 @@ const releasePayloads = async () => {
     // a body's name in it is none (in-depth review 2026-10-25)
     got.gggWords = w.eval(`(() => {
       const g = (n, of) => ({name: n, ggg: {confirmed: true, of}});
-      const md = systemSummaryMd({name: "Sys", id64: "7", bodies: [g("A 1", 1), g("B 2", 2), g("B 3", 2), {name: "B 4", ggg: {confirmed: false, chance: "likely"}},
+      const md = systemSummaryMd({name: "Sys", id64: "7", bodies: [g("A 1", 1),
+        Object.assign(g("B 2", 2), {curiosities: [{tag: "green gas giant (one of 2)", why: "the codex does not say which of these giants is the green one"}]}), g("B 3", 2), {name: "B 4", ggg: {confirmed: false, chance: "likely"}},
         {name: "2"}, {name: "3", curiosities: [{tag: "close orbit", why: "orbits 3 radii from 2"}]},
         {name: "2 a", curiosities: [{tag: "shepherd moon", why: "orbits inside 2's rings"}, {tag: "tiny world", why: "183 km in radius"}]}]});
       return [gggSureWords([g("A 1", 1), g("B 2", 2), g("B 3", 2)]), md.split("\\n").filter(l => /green gas giant|Curiosities/i.test(l))];

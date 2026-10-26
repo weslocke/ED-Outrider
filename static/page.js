@@ -3553,11 +3553,13 @@ function ringPricesRetry(sys) {
   if (typeof setTimeout !== "function" || RING_PRICE_TIMERS.has(sys)) return;
   RING_PRICE_TIMERS.set(sys, setTimeout(async () => {
     RING_PRICE_TIMERS.delete(sys);
+    let got = false;
     if (typeof selectedSystem !== "undefined" && String(selectedSystem) === String(sys) && bodyData && !bodyData.error &&
-        await ringPricesAsk(bodyData, sys) && String(selectedSystem) === String(sys)) renderBody();
-    // Search's body panel too (third in-depth review 2026-10-25: only Here's was asked again)
+        (got = await ringPricesAsk(bodyData, sys)) && String(selectedSystem) === String(sys)) renderBody();
+    // Search's body panel too (third in-depth review 2026-10-25: only Here's was asked again), redrawn when either
+    // ask brought the prices (fourth: Here's ask first left nothing due for it, and it kept "lookup failed")
     const sb = typeof sBody !== "undefined" ? sBody : null;
-    if (sb && String(sb.sys) === String(sys) && sb.data && !sb.data.error && await ringPricesAsk(sb.data, sys) &&
+    if (sb && String(sb.sys) === String(sys) && sb.data && !sb.data.error && ((await ringPricesAsk(sb.data, sys)) || got) &&
         String(sBody.sys) === String(sys) && sBody.data === sb.data)
       renderBodyInto(document.getElementById("sBodyPanel"), sb.data, sb.name, "closeSearchBody()", sys);
   }, RING_PRICE_RETRY_MS + 1000));
@@ -4842,8 +4844,10 @@ function systemSummaryMd(h) {
   // (a name only where the reasons put one: before "'s" or at the end, so body "3" leaves "3 radii from 2" its figure)
   const names = h.bodies.map(b => b.name).filter(Boolean).sort((a, b) => b.length - a.length);
   const figure = why => /\d/.test(names.reduce((t, n) => t.replace(new RegExp(`(^|\\s)${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=['’]s\\b|$)`, "g"), "$1"), why || ""));
-  const cur = h.bodies.filter(b => (b.curiosities || []).length)
-    .map(b => `${B(b.name)}: ${b.curiosities.map(c => `${c.tag}${figure(c.why) ? ` (${c.why})` : ""}`).join(", ")}`);
+  // the green giants are named on their own line above: not again here (fourth in-depth review 2026-10-25)
+  const curOf = b => (b.curiosities || []).filter(c => !/^green gas giant/.test(c.tag));
+  const cur = h.bodies.filter(b => curOf(b).length)
+    .map(b => `${B(b.name)}: ${curOf(b).map(c => `${c.tag}${figure(c.why) ? ` (${c.why})` : ""}`).join(", ")}`);
   if (cur.length) out.push(`- Curiosities: ${cur.join("; ")}`);
   for (const b of h.bodies) {
     const orgs = (b.organics || []).filter(o => !o.lost), fct = bioFactor(b);
@@ -5744,7 +5748,7 @@ async function loadFirsts() {
   renderFirsts();
 }
 // Your records (the author, 2026-10-25): GET api/records when the box is opened, again when a scan or a jump adds one
-// (scan_version), never while it is closed; 🔍 opens the body in Here, ⌖ the system
+// (scan_version); while it is closed only for Here's 🏆 marks (recordsSoon); 🔍 opens the body in Here, ⌖ the system
 const REC = {key: null, d: null, soon: null};
 async function loadRecords(any = false) {
   if (!any && !document.getElementById("recordsBox").open) return;

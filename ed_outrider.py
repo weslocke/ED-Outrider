@@ -566,20 +566,22 @@ class SurfaceTrail:
         # review 2026-10-25: the approach from orbit was drawn as a line from the rim)
         flags, flags2 = h.get("flags") or 0, h.get("flags2") or 0
         down = flags & (FLAG_IN_SRV | FLAG_LANDED) or flags2 & 1
-        if not down and (flags & FLAG_ALT_AVG or h.get("alt") is None or h["alt"] >= SURFACE_ALT):
+        # the surface map's own hysteresis: once low, still low up to SURFACE_ALT + SURFACE_HIDE_PAD (fourth in-depth
+        # review 2026-10-25: hovering at 1,000 m added a point and a break every tick, without bound)
+        top = SURFACE_ALT + (SURFACE_HIDE_PAD if self.pts and self.pts[-1] is not None else 0)
+        if not down and (flags & FLAG_ALT_AVG or h.get("alt") is None or h["alt"] >= top):
             # a break (None): the next low point starts a new stroke, never a line across ground not flown low
             # (third in-depth review 2026-10-25)
             if self.pts and self.pts[-1] is not None:
                 self.pts.append(None)
             return
-        last = self.pts[-1] if self.pts else None
+        last = next((p for p in reversed(self.pts) if p is not None), None)   # the last point, across a break too
         if last is not None and surface_m(last[0], last[1], h["lat"], h["lon"], h["radius"]) < self.TRAIL_STEP_M:
             return
         self.pts.append((round(h["lat"], 5), round(h["lon"], 5)))
-        if sum(p is not None for p in self.pts) > self.TRAIL_MAX:   # the older half thinned by half, its breaks kept
+        if len(self.pts) > self.TRAIL_MAX:   # the older half thinned by half, breaks counted and thinned alike
             half = len(self.pts) // 2
-            old = [p for i, p in enumerate(self.pts[:half]) if p is None or i % 2 == 0]
-            self.pts = self._tidy(old + self.pts[half:])
+            self.pts = self._tidy(self.pts[:half:2] + self.pts[half:])
 
     @staticmethod
     def _tidy(pts):
@@ -599,9 +601,18 @@ class SurfaceTrail:
             return []
         pts = self.pts
         if len(pts) > self.TRAIL_SENT:
-            step = len(pts) / self.TRAIL_SENT
-            keep = {int(i * step) for i in range(self.TRAIL_SENT - 1)} | {len(pts) - 1} | {i for i, p in enumerate(pts) if p is None}
-            pts = self._tidy([pts[i] for i in sorted(keep)])
+            # TRAIL_SENT points sampled among the real ones; a break kept only where one falls between two kept points
+            # (fourth in-depth review 2026-10-25: every break was kept, so many of them went past the cap)
+            real = [i for i, p in enumerate(pts) if p is not None]
+            keep = sorted({real[int(i * len(real) / self.TRAIL_SENT)] for i in range(self.TRAIL_SENT - 1)} | {real[-1]})
+            out = []
+            for a, b in zip(keep, keep[1:] + [None]):
+                out.append(pts[a])
+                if b is not None and any(p is None for p in pts[a:b]):
+                    out.append(None)
+            if pts[-1] is None:
+                out.append(None)
+            pts = self._tidy(out)
         return [list(p) if p is not None else None for p in pts]
 
 
@@ -1736,7 +1747,7 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 #     (one after a long break keeps its hotspot), a legacy folder's stints are not today's ship's
 # 58: each mining session keeps where it mined (play_activity's mining places: the ring, the SRV's body): Sessions' Where
 # 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
-PARSER_VERSION = 63
+PARSER_VERSION = 64
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1762,6 +1773,7 @@ PARSER_VERSION = 63
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    64: "a green gas giant scanned three times (on arrival, in the FSS, when mapped) is still told apart by its codex entry",
     63: "a body first read off a nav beacon is dated by your own scan of it in Your records, and green gas giants are told apart by the scan written with their codex entry",
     62: "Your records are dated by when you first scanned each body, and a nav beacon read no longer hides one",
     61: "geology formations logged in your codex keep where they are, so a screenshot taken near one names it",
@@ -1946,7 +1958,7 @@ CREATE TABLE IF NOT EXISTS own_systems (
     id64 INTEGER PRIMARY KEY, name TEXT, body_count INTEGER, all_found INTEGER);
 CREATE TABLE IF NOT EXISTS own_bodies (
     system INTEGER, body_id INTEGER, name TEXT, record TEXT, ts TEXT, raw TEXT, ship_id INTEGER, first_ts TEXT,
-    PRIMARY KEY (system, body_id));
+    fss_ts TEXT, PRIMARY KEY (system, body_id));
 -- Barycentres (the Null entries in a body's Parents): their orbit, from ScanBaryCentre.
 CREATE TABLE IF NOT EXISTS own_barycentres (
     system INTEGER, body_id INTEGER, record TEXT, ts TEXT,
@@ -5632,7 +5644,7 @@ class Journals:
             if record and ev.get("BodyID") is not None:
                 # A body is news once: the Detailed rescan the game writes after mapping it (SAAScanComplete)
                 # and AutoScans on a return visit replace the row but must not announce it again.
-                known = self.db.execute("SELECT record, ts, ship_id, raw, first_ts FROM own_bodies WHERE system=? AND body_id=?",
+                known = self.db.execute("SELECT record, ts, ship_id, raw, first_ts, fss_ts FROM own_bodies WHERE system=? AND body_id=?",
                                         (system, ev["BodyID"])).fetchone()
                 # an FSS (Detailed) of the body said its signals; a later AutoScan or nav-beacon read replacing the row
                 # must not make them "not counted" again (review: "bio possible" on a body already checked)
@@ -5674,9 +5686,13 @@ class Journals:
                             raw = known["raw"]
                     except (TypeError, ValueError):
                         pass
-                self.db.execute("INSERT OR REPLACE INTO own_bodies (system, body_id, name, record, ts, raw, ship_id, first_ts) "
-                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                                (system, ev["BodyID"], ev["BodyName"], json.dumps(record), ts, raw, first_ship, first_ts))
+                # your first Detailed (FSS) scan's time: a green giant's codex entry is written in its second, and an
+                # AutoScan before it and the mapping's rescan after move first_ts and ts away from it (fourth in-depth
+                # review 2026-10-25)
+                fss_ts = (known["fss_ts"] if known else None) or (ts if ev.get("ScanType") == "Detailed" else None)
+                self.db.execute("INSERT OR REPLACE INTO own_bodies (system, body_id, name, record, ts, raw, ship_id, first_ts, fss_ts) "
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                (system, ev["BodyID"], ev["BodyName"], json.dumps(record), ts, raw, first_ship, first_ts, fss_ts))
                 flag = lambda k: None if k not in ev else int(bool(ev[k]))
                 undisc = ts if ev.get("WasDiscovered") is False else None
                 if record["type"] == "Star" and not known and live_event(ts):
@@ -6683,10 +6699,11 @@ def ggg_entries(db, id64):
 
 
 def ggg_scan_times(db, id64, records):
-    """records with "scan_ts": the times of your own scans of each body (the first and the latest), by body id, which
+    """records with "scan_ts": the times of your own scans of each body (the first, the first FSS, the latest), by body id, which
     your records and Spansh's both carry (third in-depth review 2026-10-25: by name it never matched, the records'
     names being short)."""
-    times = {r["body_id"]: [r["first_ts"], r["ts"]] for r in db.execute("SELECT body_id, ts, first_ts FROM own_bodies WHERE system=?", (id64,))}
+    times = {r["body_id"]: [r["first_ts"], r["fss_ts"], r["ts"]]
+             for r in db.execute("SELECT body_id, ts, first_ts, fss_ts FROM own_bodies WHERE system=?", (id64,))}
     return [dict(r, scan_ts=times[r.get("body_id")]) if r.get("body_id") in times else r for r in records]
 
 
@@ -6920,7 +6937,7 @@ def curiosities(r, parent=None, raw=None):
         of = g.get("of") or 1
         # "one of N" in the tag too: the overlay's "Also here" prints the tag alone (third in-depth review 2026-10-25)
         out.append(("green gas giant", "a green gas giant: one of the rarest sights") if of == 1 else
-                   (f"green gas giant (one of {of})", f"one of these {of} giants is a green gas giant (the codex does not say which)"))
+                   (f"green gas giant (one of {of})", "the codex does not say which of these giants is the green one"))
     return out
 
 
@@ -7083,12 +7100,14 @@ def bio_left_groups(r, star, known, ctx, done):
     return [g for g in groups if g["genus"] not in done][:left_n]
 
 
-def bio_options(r, star=None, ctx=None, known=(), mark=None):
+def bio_options(r, star=None, ctx=None, known=(), mark=None, fix=None):
     """Before the DSS, when a body has fewer signals than genera the rules allow, which genus it is cannot
     be told: {low, high, genera} -- every possible genus (most valuable first) and the range the signals
     could pay, from the cheapest to the most valuable. None when the signals already cover the choices.
     `known`: genera you sampled there without a DSS; each accounts for one signal and is no longer an option.
-    `mark(group)`: more fields for each genus (system_detail's codex marks, as its guesses carry them)."""
+    `mark(group)`: more fields for each genus (system_detail's codex marks, as its guesses carry them); `fix(groups)`:
+    the groups as the to-do line settles them before they are marked (the colour logged, the species your codex entry
+    on the body names: fourth in-depth review 2026-10-25, the table marked a species the line did not count)."""
     known = set(known or ())
     n = (r.get("bio") or 0) - len(known)
     if not outrider.bio or r.get("type") != "Planet" or n <= 0:
@@ -7096,6 +7115,8 @@ def bio_options(r, star=None, ctx=None, known=(), mark=None):
     groups = [g for g in outrider.bio.by_genus(outrider.bio.predict(_bio_body(r, star, ctx), ctx)) if g["genus"] not in known]
     if len(groups) <= n:
         return None
+    if fix:
+        groups = fix(groups)
     lows = sorted(g.get("min_value") or 0 for g in groups)
     return {"low": sum(lows[:n]), "high": sum(g.get("value") or 0 for g in groups[:n]),
             "genera": [{"genus": g["genus"], "best": g["best"], "value": g["value"],
@@ -12385,8 +12406,11 @@ class State:
         codex_galaxy = lambda bid, groups: any(codex_new_group(g, known_all) for g in with_logged_variants(groups, logged.get(bid, {})))
         # which: the species (its colour when settled) the ✪ / ✦ counts, for its hover (the author, 2026-10-24: a mark
         # that names nothing read as a count)
-        codex_names = lambda bid, groups, known: [g.get("variant") or g.get("best") for g in
-                                                  with_logged_variants(groups, logged.get(bid, {})) if codex_new_group(g, known)]
+        # the colours not in your codex, not the first candidate (fourth in-depth review 2026-10-25: it could name the
+        # colour you have), as the table's hover lists them
+        codex_names = lambda bid, groups, known: [n for g in with_logged_variants(groups, logged.get(bid, {})) if codex_new_group(g, known)
+                                                  for n in ([v for v in g["variants"] if v.lower() not in known[0]] if g.get("variants")
+                                                            else [g.get("best")])]
         # the x5 first-footfall bonus per body, as body_bio / approach_facts apply it. A separate factor: potential
         # stays bonus-free, so the bio threshold compares what it always did
         footfalled = {r["body_id"]: r["was_footfalled"] for r in self.db.execute(
@@ -12562,7 +12586,8 @@ class State:
             known_genera = genera.get(bid) or r.get("genera") or []
             bio_val, bio_groups = bio_guess(r, star, known_genera or None, ctx) if (r.get("bio") or known_genera) else (None, [])
             # a genus you have sampled here shows the colour the journal logged, not the guess
-            bio_groups = with_logged_variants(bio_groups, {o["genus"]: o["variant"] for o in organics.get(bid, []) if o["variant"]})
+            logged_here = {o["genus"]: o["variant"] for o in organics.get(bid, []) if o["variant"]}
+            bio_groups = with_logged_variants(bio_groups, logged_here)
             # a genus you have not sampled but your codex entry here names (a composition scan, from the ship too): that species
             sampled = {o["genus"] for o in organics.get(bid, [])}
             seen = {g: s for g, s in seen_codex.get(bid, {}).items() if g not in sampled}
@@ -12638,7 +12663,8 @@ class State:
                 # undecided before the DSS: every genus it could be, and the range ("Stratum or Bacterium")
                 # each possible genus with the guesses' codex marks: the leaving line's ✪ / ✦ counts them before the
                 # DSS too, so the table and the hover must show which (the author, 2026-10-24)
-                "bio_options": bio_options(r, star, ctx, {o["genus"] for o in held}, mark=lambda g: {
+                "bio_options": bio_options(r, star, ctx, {o["genus"] for o in held}, fix=lambda gs: with_codex_species(
+                    with_logged_variants(gs, logged_here), seen), mark=lambda g: {
                     "variants": g.get("variants") or [],
                     "codex_new": bool(region and g["genus"] not in got and codex_new_group(g, known_codex)),
                     "codex_galaxy_new": bool(g["genus"] not in got and codex_new_group(g, known_all)),

@@ -2,6 +2,22 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Fourth review fixes (2): codex marks, green gas giants, the trail, records, launchers
+- **Codex marks before the DSS:** the table's possible genera were marked from the raw guess while the to-do line
+  first took the species your codex entry on the body names (and the colour logged): they are settled the same way
+  now (`bio_options`' `fix`). The line's hover names the colours not in your codex, not the first candidate (which
+  could be the one you have).
+- **Green gas giants:** a giant scanned on arrival, in the FSS and when mapped is still told apart (your first FSS
+  scan's time is kept: `own_bodies.fss_ts`, PARSER_VERSION 64 re-reads the journals once); an entry logged again on a
+  rescan no longer marks the other giant "one of 2" beside the one named, nor counts x2 in Nearby. The "one of N"
+  count is said once (the tag); the 📋 summary leaves those giants out of its Curiosities, named on their own line.
+- **The trail** stays bounded hovering at the 1,000 m line (the surface map's own 100 m margin; breaks counted in the
+  cap and the payload).
+- **Your records:** a pressure reads with two figures at least ("0.059 atm", not "0.1 atm"), never "3.5e-05 Pa".
+- **Ring prices:** Search's body panel is redrawn when Here's panel of the same system was asked again first.
+- **Launchers:** a `.venv` made by a Python older than 3.11 is made again (it was reused and failed on tomllib).
+- **Docs:** the green giant fallback in the guide, the code map's Dockerfile filter and Your records' loading.
+
 ## 2026-10-26 · Fourth review fixes (1): screenshots and the clipboard
 The fourth in-depth Fable review (everything since d17eee4, each fix through its real path):
 - **A shot still being written** after the minute (a slow disk) is said so, not "never appeared".

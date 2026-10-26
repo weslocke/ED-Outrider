@@ -154,6 +154,20 @@ class Trail(unittest.TestCase):
                  and all(60 < x < 240 for x, _ in i["pts"])]   # inside the rim: not the E and W ticks
         self.assertEqual(len(trail), 2, trail)
 
+    def test_bounded_with_many_breaks(self):
+        """Fourth in-depth review 2026-10-25: hovering at the 1,000 m line added a point and a break every tick without
+        bound, and every break went past TRAIL_SENT; the surface map's own 100 m margin and breaks counted fix both."""
+        t = ed_outrider.SurfaceTrail()
+        for i in range(3 * t.TRAIL_MAX):
+            t.note(self.here(0.0, 0.0, alt=999.0 if i % 2 else 1050.0))   # jitter across 1,000 m, standing still
+        self.assertEqual(t.pts, [(0.0, 0.0)])
+        t = ed_outrider.SurfaceTrail()
+        for i in range(3 * t.TRAIL_MAX):   # a real hop now and then: low points with breaks between
+            t.note(self.here(0.0, i * 0.002, alt=5000.0 if i % 7 == 6 else 100.0))
+        self.assertLessEqual(len(t.pts), t.TRAIL_MAX)
+        sent = t.points((9, 5))
+        self.assertEqual(len([p for p in sent if p is not None]), t.TRAIL_SENT)
+
     def test_capped_and_thinned(self):
         t = ed_outrider.SurfaceTrail()
         for i in range(t.TRAIL_MAX + 1):

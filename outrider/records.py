@@ -41,13 +41,18 @@ def _ring_width(e):
 
 
 def _pressure_words(pa):
-    """A pressure in words: atm when it is thick enough to read so, else Pa (third in-depth review 2026-10-25: a few Pa
-    read "0.0000 atm")."""
-    if pa >= 0.05 * 101325:
-        return f"{pa / 101325:,.1f} atm"
+    """A pressure in words: atm with two figures at least, else Pa, never scientific notation (third and fourth in-depth
+    reviews 2026-10-25: a few Pa read "0.0000 atm", 0.06 atm "0.1 atm", a trace "3.5e-05 Pa")."""
+    atm = pa / 101325
+    if atm >= 10:
+        return f"{atm:,.0f} atm"
+    if atm >= 1:
+        return f"{atm:,.1f} atm"
     if pa >= 1000:
-        return f"{pa / 101325:,.3f} atm"
-    return f"{pa:,.1f} Pa" if pa >= 1 else f"{pa:.2g} Pa"
+        return f"{atm:.2f} atm" if atm >= 0.1 else f"{atm:.3f} atm"
+    if pa >= 1:
+        return f"{pa:,.0f} Pa" if pa >= 100 else f"{pa:.1f} Pa"
+    return "under 1 Pa"
 
 
 # (key, label, which bodies, the figure, highest (True) or lowest, its words)

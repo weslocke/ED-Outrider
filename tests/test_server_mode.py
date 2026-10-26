@@ -316,6 +316,15 @@ class PackagingFixes(unittest.TestCase):
         self.assertIn('0|2) req_hash "$VENV/bin/python" > "$STAMP" ;;', script)
         self.assertNotIn('echo "$want" > "$STAMP"', script)
 
+    def test_an_environment_from_a_too_old_python_is_made_again(self):
+        """Fourth in-depth review 2026-10-25: a .venv made by Python 3.10 was reused and Outrider failed on tomllib."""
+        sh = self.read("launch_outrider.sh")
+        self.assertIn('"$VENV/bin/python" -c \'import sys; sys.exit(sys.version_info < (3, 11))\' 2>/dev/null || return 0', sh)
+        self.assertIn('was made by a Python older than 3.11: making it again', sh)
+        with open(os.path.join(self.ROOT, "launch_outrider.bat"), "rb") as f:
+            bat = f.read().decode("ascii")
+        self.assertIn('was made by a Python older than 3.11: making it again& rmdir /s /q "%VENV%"& goto create', bat)
+
     def test_windows_launcher_remakes_a_half_made_environment(self):
         with open(os.path.join(self.ROOT, "launch_outrider.bat"), "rb") as f:
             script = f.read().decode("ascii")

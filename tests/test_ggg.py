@@ -98,6 +98,35 @@ class GreenCodex(unittest.TestCase):
         rows = {b["name"]: b.get("ggg") for b in st.system_detail(9)["bodies"] if b.get("type") == "Planet"}
         self.assertEqual(rows, {"24": None, "61": {"confirmed": True, "of": 1}})
 
+    def test_three_scans_and_a_relogged_entry(self):
+        """Fourth in-depth review 2026-10-25: a giant scanned on arrival, in the FSS (the entry's second) and when mapped
+        kept only the first and the last time, so the match fell back to "one of 2"; and the entry logged again on a
+        rescan marked the other giant "one of 2" beside the one named, and Nearby counted x2."""
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        j.handle({"event": "FSDJump", "timestamp": "2026-10-10T21:20:00Z", "StarSystem": "Byoo", "SystemAddress": 9, "StarPos": [0, 0, 0]})
+        def scan(i, t, kind):
+            j.handle({"event": "Scan", "timestamp": t, "ScanType": kind, "StarSystem": "Byoo", "SystemAddress": 9, "BodyID": i,
+                      "BodyName": f"Byoo {i}", "PlanetClass": "Sudarsky class III gas giant", "SurfaceTemperature": 100.0,
+                      "MassEM": 300.0, "Radius": 7e7, "DistanceFromArrivalLS": 100.0})
+        scan(24, "2026-10-10T21:20:05Z", "AutoScan")
+        scan(61, "2026-10-10T21:20:06Z", "AutoScan")
+        scan(24, "2026-10-10T21:22:30Z", "Detailed")
+        scan(61, "2026-10-10T21:22:34Z", "Detailed")   # the entry's second
+        scan(61, "2026-10-10T21:40:00Z", "Detailed")   # mapped: the rescan
+        db.execute("INSERT INTO codex (ts, entry_id, name, system, body_id) VALUES ('2026-10-10T21:22:34Z', 1200702, 'x', 9, 0)")
+        db.execute("INSERT INTO codex (ts, entry_id, name, system, body_id) VALUES ('2026-10-12T08:00:00Z', 1200702, 'x', 9, 0)")
+        db.commit()
+        st = ed_outrider.State(db, j, ed_outrider.Spansh(db), 25)
+        rows = {b["name"]: b.get("ggg") for b in st.system_detail(9)["bodies"] if b.get("type") == "Planet"}
+        self.assertEqual(rows, {"24": None, "61": {"confirmed": True, "of": 1}})
+        recs = ed_outrider.ggg_scan_times(db, 9, [{"name": "24", "body_id": 24, "type": "Planet", "subtype": "Sudarsky class III gas giant",
+                                                    "ed": {"PlanetClass": "Sudarsky class III gas giant"}},
+                                                   {"name": "61", "body_id": 61, "type": "Planet", "subtype": "Sudarsky class III gas giant",
+                                                    "ed": {"PlanetClass": "Sudarsky class III gas giant"}}])
+        self.assertEqual(G.green_count(ed_outrider.ggg_entries(db, 9), recs), 1)
+
     def test_here_and_nearby_with_the_star_s_body_id(self):
         db = ed_outrider.open_db(":memory:")
         self.addCleanup(db.close)

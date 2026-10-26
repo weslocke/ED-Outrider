@@ -52,6 +52,7 @@ have=$(cat "$STAMP" 2>/dev/null || true)
 needs_install() {
     [ -n "${OUTRIDER_REINSTALL:-}" ] && return 0   # asked for (an optional package that could not be built before)
     [ ! -x "$VENV/bin/python" ] && return 0
+    "$VENV/bin/python" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null || return 0   # too old: made again
     [ "$want" != "$have" ] && return 0
     "$VENV/bin/python" -c "import aiohttp" 2>/dev/null || return 0   # a broken or emptied environment
     return 1
@@ -62,6 +63,10 @@ if needs_install; then
     # made again rather than failing on every run
     if [ -x "$VENV/bin/python" ] && ! "$VENV/bin/python" -m pip --version >/dev/null 2>&1; then
         echo "$VENV is incomplete (no pip): making it again"
+        rm -rf "$VENV"
+    elif [ -x "$VENV/bin/python" ] && ! "$VENV/bin/python" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; then
+        # made by a Python older than 3.11 (fourth in-depth review 2026-10-25: it was reused and failed on tomllib)
+        echo "$VENV was made by a Python older than 3.11: making it again"
         rm -rf "$VENV"
     elif [ -e "$VENV/pyvenv.cfg" ] && [ ! -x "$VENV/bin/python" ]; then
         # its Python is gone (a dangling link after the system's Python was upgraded): venv would not replace it

@@ -111,7 +111,7 @@ class Server(unittest.TestCase):
         self.assertNotIn("pressure", rec)
         self.assertNotIn("far_out", rec)
         thin = R.records([(1, "S", "1", "t", scan("S 1", PlanetClass="Rocky body", SurfacePressure=500.0, Radius=1e6))])
-        self.assertEqual({r["key"]: r["text"] for r in thin}["pressure"], "500.0 Pa")
+        self.assertEqual({r["key"]: r["text"] for r in thin}["pressure"], "500 Pa")
 
 
     def test_review_3(self):
@@ -119,6 +119,8 @@ class Server(unittest.TestCase):
         the record a beacon read over your raw scan."""
         thin = R.records([(1, "S", "1", "t", scan("S 1", PlanetClass="Rocky body", SurfacePressure=3.0, Radius=1e6))])
         self.assertEqual({r["key"]: r["text"] for r in thin}["pressure"], "3.0 Pa")
+        # two figures at least, never scientific notation (fourth in-depth review: 0.06 atm read "0.1 atm")
+        self.assertEqual([R._pressure_words(v) for v in (6000, 3.5e-5, 2e6)], ["0.059 atm", "under 1 Pa", "20 atm"])
         star = dict(BodyID=0, BodyName="Sys", StarSystem="Sys", SystemAddress=7, StarType="G", Radius=7e8, SurfaceTemperature=5000.0)
         self.j.handle({"event": "FSDJump", "timestamp": "2026-10-25T00:00:00Z", "StarSystem": "Sys", "SystemAddress": 7, "StarPos": [0, 0, 0]})
         self.j.handle(dict(star, event="Scan", timestamp="2026-10-25T00:00:05Z", ScanType="AutoScan"))

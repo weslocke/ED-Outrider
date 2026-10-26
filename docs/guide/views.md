@@ -322,9 +322,9 @@ journal's own figures for: your scans, and Spansh's records of other people's.
 - **A green planet with "?"** marks a potential one: beside the body in Here, on the system's row in Nearby (a
   system worth going to), and a Now line ("Potential green gas giant: B 3 · check in the system map"). Without the
   "?" it is confirmed: your codex has its green entry. The game files it on the system's main star, not the giant, but
-  writes it in the same second as your scan of the giant, which names it; only when no scan of yours shares that
-  second (a system you never scanned yourself) do the giants of its class all get the mark, "one of these 2" in the
-  hover and "one of" in Now and the 📋 summary.
+  writes it in the same second as your FSS scan of the giant, which names it. Only when no scan of yours shares that
+  second (an older journal, say) is the giant picked by its class: the only one of that class, else the ones the
+  model flags, else all of them, "one of these 2" in the hover and "one of" in Now, the 📋 summary and the overlay.
 - **"Potential green gas giant"** is said when one of your own scans fits (its own switch under Discoveries).
 - "likely" is a confirmed rule of the model, "possible" a derived one. It is a guess about where to look: some kinds
   (Class II, V, helium giants) and some temperatures cannot be predicted at all, and nothing is said for them.

@@ -153,7 +153,7 @@ def _seconds(ts):
         return None
 
 
-def match_green(entries, records):
+def match_green(entries, records, sets=None):
     """Which of a system's bodies its green giant codex entries mean: {body name: {"confirmed": True, "of": n}} (n > 1:
     one of n giants, nothing says which). entries: (entry_id, name, body_id[, ts]) of the system's codex lines;
     records may carry "scan_ts", the times of your own scans of the body. The giant whose Scan was written in the
@@ -161,7 +161,7 @@ def match_green(entries, records):
     else one at the entry's own body (an older journal, a test), else by the class the entry names: the only one, the
     ones the model flags, all of them; a class no giant here has (the capture's water-life entry over an ammonia-life
     giant) falls back to every giant rather than confirming nothing."""
-    out = {}
+    out, picks = {}, []
     for e in entries:
         entry_id, name, body_id = e[0], e[1], e[2]
         ts = _seconds(e[3]) if len(e) > 3 and e[3] else None
@@ -174,7 +174,19 @@ def match_green(entries, records):
         giants = [r for r in every if not cls or record_class(r) == cls] or every
         own = [r for r in giants if body_id is not None and r.get("body_id") == body_id]
         flagged = [r for r in giants if predict_record(r)]
-        pick = (same if len(same) == 1 else []) or own or (giants if len(giants) == 1 else flagged or giants)
+        sure = (same if len(same) == 1 else []) or own
+        picks.append((entry_id, sure, sure or (giants if len(giants) == 1 else flagged or giants)))
+    # the same entry logged again (a rescan) is the giant another of its lines names, never a second "one of N" beside
+    # it (fourth in-depth review 2026-10-25: Here said one green and one "one of 2", Nearby x2)
+    named = {}
+    for entry_id, sure, _ in picks:
+        if len(sure) == 1:
+            named.setdefault(entry_id, set()).add(sure[0].get("name"))
+    for entry_id, sure, pick in picks:
+        if not sure and any(r.get("name") in named.get(entry_id, ()) for r in pick):
+            continue
+        if sets is not None and pick:
+            sets.add(frozenset(r.get("name") for r in pick))
         for r in pick:
             if r.get("name"):
                 had = out.get(r["name"])
@@ -186,8 +198,11 @@ def green_count(entries, records):
     """How many green giants a system's codex lines confirm: each line that matches a giant counts once (review
     2026-10-25: a line naming no class over two giants of different classes was counted once per class, x2), never
     more than the giants matched."""
-    matched = [e for e in entries if match_green([e], records)]
-    return min(len(matched), len(match_green(entries, records)))
+    # each distinct set of giants the lines name counts once: a line re-logged for the same giant is one (fourth
+    # in-depth review 2026-10-25: x2)
+    sets = set()
+    out = match_green(entries, records, sets)
+    return min(len(sets), len(out))
 
 
 def predict_record(r):

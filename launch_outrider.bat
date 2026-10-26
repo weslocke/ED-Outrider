@@ -28,6 +28,9 @@ set "CERTSTAMP=%VENV%\.certifi-checked"
 
 :check
 if not exist "%VPY%" goto create
+rem an environment made by a Python older than 3.11 is made again (fourth in-depth review 2026-10-25: it started and
+rem failed on tomllib)
+"%VPY%" -c "import sys; sys.exit(sys.version_info < (3, 11))" >nul 2>&1 || (echo %VENV% was made by a Python older than 3.11: making it again& rmdir /s /q "%VENV%"& goto create)
 if defined OUTRIDER_REINSTALL goto install
 rem installs again when requirements.txt changed since (or the stamp is missing), or the environment is broken
 rem (no aiohttp); compared in Python, not with fc, which is unreliable outside Windows (Wine)
