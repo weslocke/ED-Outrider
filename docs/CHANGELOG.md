@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · The clipboard's copy made when not kept; a shot in space named once
+- The author: "the medium copy" chosen for the clipboard with no medium copy ticked put the full-size picture there,
+  far too big to paste. A medium or small copy, or the crop, not kept as a file is now made for the clipboard alone
+  from the best picture written (no file); and nothing on the clipboard is ever more than 3,840 px on its long edge
+  (`screenshots.CLIPBOARD_MAX_PX`: a HighRes full size is shrunk, said in the status line).
+- A shot in space, where the game's Body is the system's own star, was named "Smojooe TW-E c11-23 Smojooe TW-E c11-23
+  2026-10-26 13-19-00": `{body}` is empty for the system's own star.
+- DESIGN_NOTES' "not yet tried" list says what the author confirmed in game on 2026-10-26.
+
 ## 2026-10-26 · Docs screenshots retaken for the next release
 - The seven the docs sweep flagged, on a scratch server with copies of the data: here.png (Smojooe TW-E c11-9: the new
   Rings counts, 📋, 📷 on a photographed body, 🏆 on body 4 with its record in the panel), firsts.png (Your records

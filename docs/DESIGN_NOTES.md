@@ -1744,12 +1744,16 @@ confirmed while playing. Treat reports about them as likely real.
   HighRes (Alt+F10) through the rail's virtual keyboard was not tried.
 - A screenshot on the Windows clipboard (`winkeys.set_clipboard_image`: CF_DIB and the registered PNG format, 2026-10-25):
   written to the Win32 API, run only on Linux (xclip) by the author.
-- Screenshots after the review rounds' fixes (2026-10-25/26): live conversion of F10 and HighRes shots worked for the
-  author (the first on-foot shots named nothing: fixed, not retried); the subject from a real sample spot or formation,
-  WebP, the crop, copies only, the clipboard (Windows' especially) and the backlog on a full Pictures folder were tried
-  on fakes only.
-- The codex line's wait for the FSS's end (`codex_deferred`, 2026-10-26): made after the author's live report of a
-  species said too early, tested with synthetic events only, not yet heard in game.
+- Screenshots (2026-10-26, the author in game): F10 and HighRes conversion, the medium and small copies, the crop,
+  the clipboard (Linux, the chosen copy ticked), bio shots named after their plant, the codex folders and the
+  checklists' own pictures (a new pick per click, 📷 marks), Here's 📷 and the body's pictures, and "Convert the
+  screenshots already there" all work. Not yet tried: WebP, a geology formation's shot, the clipboard on Windows, and
+  the clipboard's copy made when that copy is not kept, with its 3,840 px cap (2026-10-26, after the author's report).
+- The 2026.10.29 work the author has used in game (2026-10-26): Your records and 🏆, the 📋 summary, Search's "at least
+  N", the trail and compass grid, seconds to a full tank, the codex line (quiet during the FSS where it once spoke wrongly, and a held line said
+  correctly after "all found"), the first start's journal re-read. Not yet:
+  catalogued sights (none within reach yet), a green gas giant confirmed, the record on a body's card and panel and
+  Boxel view's click (both fixed after the author's reports), the EDSM first reporter.
 - A green gas giant confirmed by your own codex entry (`outrider.ggg.match_green`, 2026-10-25): built on the four green
   entries in a capture of every player's EDDN traffic and on synthetic journals; the author has logged none.
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen

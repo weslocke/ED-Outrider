@@ -30,7 +30,8 @@ DEFAULTS = {"enabled": False, "pictures": "", "folder": "", "by_cmdr": True, "by
 MEDIUM_PX, SMALL_PX = 1920, 1080   # the sizes a ticked copy starts at (long edge, px)
 FORMATS = ("png", "jpg", "webp")   # the full size: lossless PNG; JPG and WebP at `quality` (WebP: smaller at the same)
 COPY_FORMATS = ("jpg", "webp")     # medium, small and the crop, at `copies_quality`
-CLIPBOARD = ("", "full", "medium", "small", "crop")   # which picture goes on the clipboard after each shot ("" none)
+CLIPBOARD = ("", "full", "medium", "small", "crop")
+CLIPBOARD_MAX_PX = 3840   # the clipboard's picture is never bigger (a HighRes shot is 12288 px wide: the author, 2026-10-26)   # which picture goes on the clipboard after each shot ("" none)
 EXT = {"png": "png", "jpg": "jpg", "webp": "webp"}
 MIME = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}
 ORIGINALS = ("keep", "delete", "move")
@@ -96,7 +97,10 @@ def fields_for(shot, when=None):
         except (KeyError, TypeError, ValueError):
             t = datetime.datetime.now().astimezone()
     subj = shot.get("subject") or {}
-    return {"system": shot.get("system") or "Unknown system", "body": short_body(shot.get("system"), shot.get("body")),
+    # the system's own star (the game's Body in space, away from any planet) is no body of its own in the name: "Sys
+    # 2026-10-26 ...", never "Sys Sys 2026-10-26 ..." (the author, 2026-10-26)
+    body = short_body(shot.get("system"), shot.get("body"))
+    return {"system": shot.get("system") or "Unknown system", "body": "" if body == shot.get("system") else body,
             "cmdr": shot.get("cmdr") or "Unknown commander", "date": t.strftime("%Y-%m-%d"), "time": t.strftime("%H-%M-%S"),
             "highres": " (HighRes)" if "HighRes" in str(shot.get("original") or "") else "",
             "subject": subj.get("name") or ""}
@@ -408,13 +412,20 @@ def when_seconds(ts):
         return None
 
 
-def clipboard_image(path, Image=None, dib=True):
+def clipboard_image(path, Image=None, dib=True, px=0, crop=None):
     """The picture at path for the clipboard: (PNG bytes, DIB bytes or None) (Linux tools take the PNG; Windows wants a
     device-independent bitmap, CF_DIB, and gets the PNG too for programs that read it). dib=False: no DIB (Linux), and
-    no copies past the one each needs (third in-depth review 2026-10-25: about 1 GB for a HighRes shot)."""
+    no copies past the one each needs (third in-depth review 2026-10-25: about 1 GB for a HighRes shot). `crop` (a
+    parse_crop box) cuts it and `px` shrinks it to that long edge first: the copy chosen for the clipboard when no file
+    of it is kept (the author, 2026-10-26: the full size went instead, far too big to paste)."""
     import io
     Image = Image or pillow()
     with Image.open(path) as im:
+        if crop:
+            im = im.crop(crop_box(im.size, crop))
+        if px and max(im.size) > px:
+            im.draft("RGB", (px, px))
+            im.thumbnail((px, px), Image.Resampling.LANCZOS)
         if im.mode != "RGB":
             im = im.convert("RGB")
         png = io.BytesIO()

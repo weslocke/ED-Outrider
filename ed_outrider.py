@@ -12269,22 +12269,44 @@ class State:
         want = cfg.get("clipboard")
         if not want:
             return None
-        key = next((k for k in (want, "medium", "small", "crop", "full") if got.get(k)), None)
+        S = outrider.screenshots
+        name = lambda k: "full-size picture" if k == "full" else k + (" copy" if k != "crop" else "")   # noqa: E731
+        # the one chosen when it was written; a medium or small copy, or the crop, not kept as a file is made for the
+        # clipboard alone from the best picture written (the author, 2026-10-26: the full size went instead, too big to
+        # paste); else the first one made, said so (review 2026-10-25: a different picture went without a word)
+        box = S.parse_crop(cfg.get("crop"))
+        src = next((got[k] for k in ("full", "medium", "crop", "small") if got.get(k)), None)
+        px, crop, note = 0, None, ""
+        if got.get(want):
+            key = want
+        elif src and want in ("medium", "small") and not (want == "medium" and got.get("crop") == src):
+            key, px, note = want, int(cfg.get(want) or (S.MEDIUM_PX if want == "medium" else S.SMALL_PX)), " (made for the clipboard)"
+        elif src and want == "crop" and box and src != got.get("crop"):
+            key, crop, px, note = "crop", box, int(cfg.get("crop_px") or 0), " (made for the clipboard)"
+        else:
+            key = next((k for k in (want, "medium", "small", "crop", "full") if got.get(k)), None)
         if not key or not self.clipboard:
             return "not copied: " + ("no picture" if not key else "no clipboard here")
-        # the one chosen, else the first one made, said so (review 2026-10-25: a different picture went without a word)
-        name = lambda k: "full-size picture" if k == "full" else k + (" copy" if k != "crop" else "")   # noqa: E731
+        path = got[key] if got.get(key) else src
         instead = f"the {name(want)} was not made: " if key != want else ""
+        # never more than CLIPBOARD_MAX_PX on its long edge: a HighRes picture is far too big to paste (the author)
+        px = min(px or S.CLIPBOARD_MAX_PX, S.CLIPBOARD_MAX_PX)
 
         def work():
+            nonlocal note
+            Image = S.pillow()
+            with Image.open(path) as im:   # its header only: was it shrunk to the cap?
+                big = max(im.size) > px and px == S.CLIPBOARD_MAX_PX and not note
+            if big:
+                note = f" (shrunk to {S.CLIPBOARD_MAX_PX} px for the clipboard)"
             # the DIB only where it is used (Windows' CF_DIB): on Linux xclip / wl-copy take the PNG
-            png, dib = outrider.screenshots.clipboard_image(got[key], dib=bool(getattr(self.clipboard, "_win_set", None)))
+            png, dib = S.clipboard_image(path, dib=bool(getattr(self.clipboard, "_win_set", None)), px=px, crop=crop)
             return self.clipboard.copy_image(png, dib)
         try:
             ok, why = await asyncio.get_running_loop().run_in_executor(None, work)
         except Exception as e:  # noqa: BLE001 -- a picture that could not be read back: said, never raised
             ok, why = False, f"{type(e).__name__}: {e}"
-        return f"{instead}copied the {name(key)}" if ok else f"not copied: {why}"
+        return f"{instead}copied the {name(key)}{note}" if ok else f"not copied: {why}"
 
     async def shots_backlog(self):
         """POST /api/screenshots/backlog: the BMPs already in the game's Pictures folder, each matched to its journal

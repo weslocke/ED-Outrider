@@ -105,6 +105,15 @@ class Names(unittest.TestCase):
         got = S.match_backlog([("Screenshot_0001.bmp", 5002.0), ("Screenshot_0009.bmp", 5000.0)], events)
         self.assertEqual(got, {"Screenshot_0001.bmp": {"n": "new"}, "Screenshot_0009.bmp": None})   # a reused name: by time
 
+    def test_a_shot_of_the_system_itself_names_it_once(self):
+        """The author, 2026-10-26: a shot in space (the game's Body is the system's own star) was named
+        "Smojooe TW-E c11-23 Smojooe TW-E c11-23 2026-10-26 13-19-00"."""
+        when = datetime.datetime(2026, 10, 26, 13, 19)
+        f = S.fields_for({"system": "Smojooe TW-E c11-23", "body": "Smojooe TW-E c11-23", "ts": "x"}, when)
+        self.assertEqual(S.render(S.DEFAULTS["filename"], f), "Smojooe TW-E c11-23 2026-10-26 13-19-00")
+        f = S.fields_for({"system": "Sol", "body": "Earth", "ts": "x"}, when)   # a body of its own name: kept
+        self.assertEqual(S.render(S.DEFAULTS["filename"], f), "Sol Earth 2026-10-26 13-19-00")
+
     def test_codex_dir(self):
         """[screenshots] codex: Biology/<genus>/<species> or Geology/<group>/<name> under the export folder; never filed
         by a guess (no group or entry, another kind, no subject)."""
@@ -826,6 +835,40 @@ class Server(unittest.TestCase):
         self.run_queue()
         self.assertEqual(len(copied), 2)   # the backlog's never
         self.assertIsNone(self.st.shots_last["clipboard"])
+
+    def test_the_clipboard_copy_made_when_not_kept(self):
+        """The author, 2026-10-26: "the medium copy" chosen for the clipboard with no medium copy ticked put the full-size
+        picture there (a HighRes one far too big to paste): it is made at that size for the clipboard alone, no file."""
+        import io
+        copied = []
+
+        class Clip:
+            def copy_image(self, png, dib=None):
+                copied.append(png)
+                return True, None
+        self.st.clipboard = Clip()
+        for n, (want, edge) in enumerate((("medium", 1920), ("small", 1080))):
+            self.st.shots_cfg.update(clipboard=want, medium=0, small=0, format="jpg")
+            name = f"Screenshot_000{n + 1}.bmp"
+            bmp(os.path.join(self.pictures, name), 3072, 1728)
+            self.j.handle({"event": "Screenshot", "timestamp": self.at(30 + n), "Filename": f"\\ED_Pictures\\{name}",
+                           "System": "Sys", "Body": "Sys 2 a"})
+            self.run_queue()
+            with Image.open(io.BytesIO(copied[-1])) as im:
+                self.assertEqual(max(im.size), edge, want)
+            self.assertEqual(self.st.shots_last["clipboard"], f"copied the {want} copy (made for the clipboard)")
+            r = self.db.execute("SELECT medium, small FROM screenshots WHERE original=?", (name,)).fetchone()
+            self.assertEqual((r["medium"], r["small"]), (None, None))   # no file of it kept
+            self.assertFalse(os.path.exists(os.path.join(self.out, "Hefay", want)))
+        # the full size chosen (or the fallback) of a HighRes shot: never bigger than CLIPBOARD_MAX_PX
+        self.st.shots_cfg.update(clipboard="full")
+        bmp(os.path.join(self.pictures, "Screenshot_0009.bmp"), 5000, 2800)
+        self.j.handle({"event": "Screenshot", "timestamp": self.at(40), "Filename": "\\ED_Pictures\\Screenshot_0009.bmp",
+                       "System": "Sys", "Body": "Sys 2 a"})
+        self.run_queue()
+        with Image.open(io.BytesIO(copied[-1])) as im:
+            self.assertEqual(max(im.size), S.CLIPBOARD_MAX_PX)
+        self.assertEqual(self.st.shots_last["clipboard"], f"copied the full-size picture (shrunk to {S.CLIPBOARD_MAX_PX} px for the clipboard)")
 
     def test_review_2_server(self):
         """The in-depth review of 2026-10-25, the server's side of screenshots."""
