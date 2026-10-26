@@ -16,11 +16,21 @@ PIPER_PYTHONS = ((3, 11), (3, 14))
 DOWNLOAD = "https://www.python.org/downloads/"
 
 
-def why_not(version=None, bits=None):
+def free_threaded_build():
+    """A free-threaded CPython (3.13t, 3.14t: the optional build without the GIL), which onnxruntime has no build for."""
+    try:
+        import sysconfig
+        return bool(sysconfig.get_config_var("Py_GIL_DISABLED")) or "t" in getattr(sys, "abiflags", "")
+    except Exception:  # noqa: BLE001 -- an old Python without these: a standard build
+        return False
+
+
+def why_not(version=None, bits=None, free_threaded=None):
     """Why this Python cannot install Piper's voices, or "" when it can (version: sys.version_info's first two, bits:
-    the pointer size; both this Python's by default)."""
+    the pointer size, free_threaded: a build without the GIL; all this Python's by default)."""
     version = tuple(version or sys.version_info[:2])
     bits = bits or struct.calcsize("P") * 8
+    free_threaded = free_threaded_build() if free_threaded is None else free_threaded
     low, high = PIPER_PYTHONS
     name = "Python %d.%d" % version
     if version < low:
@@ -29,6 +39,8 @@ def why_not(version=None, bits=None):
         return "%s is newer than Piper's voices support yet (Python %d.%d to %d.%d, 64-bit)" % ((name,) + low + high)
     if bits != 64:
         return "%s is %d-bit: Piper's voices need a 64-bit Python" % (name, bits)
+    if free_threaded:   # in-depth review 2026-10-25: it passed, and pip's "conflicting dependencies" came back (issue #13)
+        return "%s is the free-threaded build: Piper's voices need the standard one" % name
     return ""
 
 

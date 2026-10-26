@@ -187,7 +187,8 @@ upstream project's choices, not rules of the game.
   every ringed body); once per mineral and system for 30 minutes, a failure kept 2 so a redraw never asks again, the
   distances from you (the lookup measures from the ship). **Search's 2+** is one tick, not a count: three of one mineral
   in a ring is rare. **A mining mission's search** follows the commodity's journal id, not its localised words; a
-  mission held from before has no id and gets no 🔍 rather than a re-read for something that lives days.
+  mission held from before got no id and no 🔍 rather than a re-read of its own; the re-reads of versions 61-63 read
+  every MissionAccepted again anyway, so only a mission whose acceptance is in no journal read has none.
 - **Mining stints and their hotspots** (mining B-D, 2026-10-19; the review of 2026-10-20). A stint runs from a drop
   into a ring (`SupercruiseExit` or a login's `Location` with `BodyType: PlanetaryRing`) to leaving it: `MINING_CLOSE`
   is SupercruiseEntry, FSDJump, CarrierJump, Docked and Died, **not a logout or LoadGame**: the login's Location says

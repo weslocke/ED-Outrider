@@ -41,9 +41,12 @@ STAMP="$VENV/.requirements.sha256"   # requirements.txt as it was when last inst
 
 # hashed with Python, which this needs anyway: macOS has no sha256sum (only shasum)
 # (the same hex sha256sum gave, so an existing stamp still matches); the environment's own Python when it has one
+req_hash() {
+    "$1" -c 'import hashlib; print(hashlib.sha256(open("requirements.txt", "rb").read()).hexdigest())' 2>/dev/null || true
+}
 HASHPY="${PYTHON:-python3}"
 [ -x "$VENV/bin/python" ] && HASHPY="$VENV/bin/python"
-want=$("$HASHPY" -c 'import hashlib; print(hashlib.sha256(open("requirements.txt", "rb").read()).hexdigest())' 2>/dev/null || true)
+want=$(req_hash "$HASHPY")
 have=$(cat "$STAMP" 2>/dev/null || true)
 
 needs_install() {
@@ -102,7 +105,9 @@ if needs_install; then
     code=0
     "$VENV/bin/python" scripts/install_requirements.py requirements.txt || code=$?
     case $code in
-        0|2) echo "$want" > "$STAMP" ;;
+        # hashed again with the environment's own Python: with no `python3` on the PATH (only a python3.14 picked
+        # above) the first hash was empty, and the next start installed everything again (in-depth review 2026-10-25)
+        0|2) req_hash "$VENV/bin/python" > "$STAMP" ;;
         3) ;;   # the stamp left as it was: the next start tries again
         *) exit 1 ;;
     esac

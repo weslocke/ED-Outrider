@@ -309,6 +309,13 @@ class PackagingFixes(unittest.TestCase):
         self.assertIn("sudo apt install python3-venv", r.stderr)
         self.assertFalse(os.path.exists(os.path.join(d, ".venv")))   # nothing half-made left for the next run
 
+    def test_the_stamp_is_hashed_with_the_environment_s_python(self):
+        """In-depth review 2026-10-25: with no `python3` on the PATH (a python3.14 picked), the hash taken before the
+        environment existed was empty, so the next start installed everything again."""
+        script = self.read("launch_outrider.sh")
+        self.assertIn('0|2) req_hash "$VENV/bin/python" > "$STAMP" ;;', script)
+        self.assertNotIn('echo "$want" > "$STAMP"', script)
+
     def test_windows_launcher_remakes_a_half_made_environment(self):
         with open(os.path.join(self.ROOT, "launch_outrider.bat"), "rb") as f:
             script = f.read().decode("ascii")
@@ -751,7 +758,7 @@ class CertifiWeekly(unittest.TestCase):
         self.assertEqual(ir.install(req, runner(["aiohttp"], imports=False), said.append), 1)
         sh, bat = self.read("launch_outrider.sh"), self.read("launch_outrider.bat")
         self.assertIn("scripts/install_requirements.py requirements.txt", sh)
-        self.assertIn("0|2) echo \"$want\" > \"$STAMP\" ;;", sh)
+        self.assertIn("0|2) req_hash \"$VENV/bin/python\" > \"$STAMP\" ;;", sh)
         self.assertIn('[ -n "${OUTRIDER_REINSTALL:-}" ] && return 0', sh)
         self.assertIn("scripts\\install_requirements.py requirements.txt", bat)
         self.assertIn("if %errorlevel% equ 3 goto run", bat)
@@ -822,6 +829,9 @@ class PiperPython(unittest.TestCase):
         self.assertIn("Python 3.15 is newer than Piper's voices support yet (Python 3.11 to 3.14, 64-bit)", self.pc.why_not((3, 15), 64))
         self.assertIn("32-bit", self.pc.why_not((3, 12), 32))
         self.assertIn("older than ED Outrider needs", self.pc.why_not((3, 10), 64))
+        # a free-threaded 3.14t: onnxruntime has no build for it (in-depth review 2026-10-25)
+        self.assertIn("free-threaded", self.pc.why_not((3, 14), 64, True))
+        self.assertEqual(self.pc.why_not((3, 14), 64, False), "")
         block = self.pc.notice(self.pc.why_not((3, 15), 64))
         for part in ("browser's own voice", "Python 3.14 (64-bit)", "https://www.python.org/downloads/", ".venv folder"):
             self.assertIn(part, block)

@@ -1554,6 +1554,10 @@ class Server(unittest.TestCase):
         self.assertEqual(self.state.overlay_panels(now=1), [])
         self.state.surface_summary = lambda now=None: None
         self.assertEqual(self.state.overlay_panels(now=1), [])
+        # docked at a planetary port ("landed" there too): no radar (in-depth review 2026-10-25: it stayed up all along)
+        self.state.journals.status_json = {"live": True, "flags": ed_outrider.FLAG_DOCKED | ed_outrider.FLAG_LANDED, "gui_focus": 0}
+        self.state.surface_summary = lambda now=None: dict(surf, down=True, show=True)
+        self.assertEqual(self.state.overlay_panels(now=1), [])
 
     def test_loopback_for_the_window(self):
         """The window always asks http://127.0.0.1:<port>: with [server] host one LAN address Outrider listens on

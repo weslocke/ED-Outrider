@@ -9956,6 +9956,10 @@ const releasePayloads = async () => {
       d.querySelector('#prospectOpts [data-ppct="painite"]').value = "";
       d.getElementById("prospectOpts").dispatchEvent(new w.Event("change", {bubbles: true}));
       got.saved2 = w.eval(`JSON.stringify(miningCfg().pcts)`);
+      // committing a mineral's own threshold keeps the fields in place (in-depth review 2026-10-25: the rebuild threw the
+      // focus away): the same element before and after its change
+      got.keepField = w.eval(`(() => { const f = document.querySelector("#prospectOpts [data-ppct]"); if (!f) return "no field";
+        f.dispatchEvent(new Event("change", {bubbles: true})); return document.querySelector("#prospectOpts [data-ppct]") === f; })()`);
       w.eval(`miningSet({combined: true, pct: 50}); drawMiningRings()`);
       got.combined = [w.eval(`prospectHit({painite: 5, platinum: 41})`) === null,   // Platinum's own 40 met, the sum 46 under 50
                       [...d.querySelectorAll("#prospectOpts [data-ppct]")].every(f => f.disabled)];
@@ -10031,8 +10035,9 @@ const releasePayloads = async () => {
       hits: JSON.stringify(["Painite, 27 percent", null, "Platinum, 31 percent", "Platinum, 35 percent"]),
       fields: [["platinum", "", "30", false], ["painite", "25", "30", false]],
       saved1: JSON.stringify({painite: 25, platinum: 40}), saved2: JSON.stringify({platinum: 40}), combined: [true, true],
+      keepField: true,
       prices2: ["Best nearby: not known (the price lookup failed; asked again in a few minutes)", "Best nearby: asking…", true, true, true],
-      prices: [true, false, ["Painite", "Platinum", "Alexandrite", "Alexandrite"], "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly",
+      prices: [true, false, ["Painite", "Platinum", "Alexandrite", "Alexandrite"], "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly · Alexandrite: lookup failed (asked again in a few minutes)",
                true, "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly",
                "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly)",
                "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly"],

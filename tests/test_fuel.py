@@ -436,6 +436,13 @@ class ScoopToFull(unittest.TestCase):
         self.assertIsNone(ed_outrider.ScoopWatch().to_full(160))
         self.assertIsNone(w.to_full(None))
 
+    def test_a_creeping_reading_says_nothing(self):
+        """In-depth review 2026-10-25: at the scoop zone's edge a few grams over the window gave "15999 min 52"."""
+        w = ed_outrider.ScoopWatch()
+        w.update(self.st(100.0), 160, 1000.0)
+        w.update(self.st(100.0005), 160, 1008.0)
+        self.assertIsNone(w.to_full(160))
+
     def test_a_full_tank_or_no_rise_says_nothing(self):
         w = ed_outrider.ScoopWatch()
         for t, f in ((0.0, 159.97), (3.0, 159.98)):

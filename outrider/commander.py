@@ -593,7 +593,8 @@ def _mission(e):
             "influence": e.get("Influence"), "reputation": e.get("Reputation"), "accepted": e.get("timestamp"),
             # a mining mission (Mission_Mining..., wing ones too) and its commodity's journal id ("$Bertrandite_Name;" ->
             # "bertrandite"): CMDR -> Missions' search for where to mine it, by the id so a translated game works too
-            # (ideas from EliteMining's feature list, 2026-10-24). A mission held from before has neither: no search
+            # (ideas from EliteMining's feature list, 2026-10-24). A mission whose MissionAccepted is in no journal read
+            # has neither: no search
             "mining": bool(re.match(r"\$?Mission_Mining", str(e.get("Name") or ""), re.I)), "commodity_id": _symbol(e.get("Commodity"))}
 
 

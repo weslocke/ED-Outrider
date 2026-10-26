@@ -104,8 +104,20 @@ class EdsmFirst(unittest.TestCase):
 class Trail(unittest.TestCase):
     """1: where you have been on this body this visit, for the surface map."""
 
-    def here(self, lat, lon, body=5):
-        return {"system": 9, "body_id": body, "lat": lat, "lon": lon, "radius": 1_000_000}
+    def here(self, lat, lon, body=5, alt=120.0, flags=0):
+        return {"system": 9, "body_id": body, "lat": lat, "lon": lon, "radius": 1_000_000, "alt": alt, "flags": flags, "flags2": 0}
+
+    def test_only_the_ground_looked_over(self):
+        """In-depth review 2026-10-25: an orbital-cruise pass and the glide down were drawn as trail; only low flight,
+        landed, the SRV or on foot count, and a high stretch keeps what is drawn."""
+        t = ed_outrider.SurfaceTrail()
+        t.note(self.here(0.0, 0.0))
+        t.note(self.here(0.0, 0.002))
+        t.note(self.here(0.0, 0.5, alt=40_000.0, flags=ed_outrider.FLAG_ALT_AVG))   # orbital cruise
+        t.note(self.here(0.0, 0.3, alt=5_000.0))                                    # gliding, high up
+        self.assertEqual(t.points((9, 5)), [[0.0, 0.0], [0.0, 0.002]])
+        t.note(self.here(0.0, 0.004, alt=4_000.0, flags=ed_outrider.FLAG_IN_SRV))   # the SRV on a hill: always
+        self.assertEqual(len(t.points((9, 5))), 3)
 
     def test_steps_bodies_and_leaving(self):
         t = ed_outrider.SurfaceTrail()

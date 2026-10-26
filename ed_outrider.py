@@ -561,6 +561,13 @@ class SurfaceTrail:
         key = (h["system"], h["body_id"])
         if key != self.key:
             self.key, self.pts = key, []
+        # only the ground looked over: driving, walking, landed, or flying low (below SURFACE_ALT, the altitude the
+        # surface's own): an orbital-cruise pass or the glide down adds nothing and keeps what is drawn (in-depth
+        # review 2026-10-25: the approach from orbit was drawn as a line from the rim)
+        flags, flags2 = h.get("flags") or 0, h.get("flags2") or 0
+        down = flags & (FLAG_IN_SRV | FLAG_LANDED) or flags2 & 1
+        if not down and (flags & FLAG_ALT_AVG or h.get("alt") is None or h["alt"] >= SURFACE_ALT):
+            return
         if self.pts and surface_m(self.pts[-1][0], self.pts[-1][1], h["lat"], h["lon"], h["radius"]) < self.TRAIL_STEP_M:
             return
         self.pts.append((round(h["lat"], 5), round(h["lon"], 5)))
@@ -590,6 +597,7 @@ class ScoopWatch:
     # star, so a short window follows it); the journal's FuelScoop comes every 5 t and at the end: too seldom
     SCOOP_RATE_WINDOW = 8.0
     SCOOP_RATE_MIN_S = 2.0
+    SCOOP_FULL_MAX_S = 2 * 3600   # longer than this to full: the scoop is barely taking fuel, no line
 
     def __init__(self):
         self.start = self.off_since = None
@@ -604,7 +612,10 @@ class ScoopWatch:
         (t0, f0), (t1, f1) = self.samples[0], self.samples[-1]
         if t1 - t0 < self.SCOOP_RATE_MIN_S or f1 <= f0 or f1 >= capacity - 0.05:
             return None
-        return max(1, round((capacity - f1) / ((f1 - f0) / (t1 - t0))))
+        left = (capacity - f1) / ((f1 - f0) / (t1 - t0))
+        # at the scoop zone's edge the rate falls toward nothing: past SCOOP_FULL_MAX_S it is no figure to read
+        # (in-depth review 2026-10-25: "15999 min 52 to full")
+        return max(1, round(left)) if left <= self.SCOOP_FULL_MAX_S else None
 
     def update(self, st, capacity, now, jump_ts=None):
         """-> {"pct", "full"} when a scoop has just ended, else None."""
@@ -10057,11 +10068,14 @@ class State:
         # refused; the author, 2026-10-14: the radar's place, free in space, rather than the Target panel's), even at a
         # planetary port; else the radar on a body (landed, in the SRV, on foot) or low over it, as the surface map shows
         if cfg.get("radar"):
+            # docked at a planetary port the ship is "landed" there, but the surface radar has nothing to look for
+            # (in-depth review 2026-10-25: since it shows when empty, it stayed up the whole time docked)
+            docked = bool(((self.journals.status_json or {}).get("flags") or 0) & FLAG_DOCKED)
             dock = self.docking_shown(now)
             surf = None if dock else self.surface_summary(now)
             p = outrider.overlay.pad_panel(dock, pal, size["radar"], pid="radar") if dock else \
                 outrider.overlay.radar_panel(surf, pal, size["radar"], cfg["radar_range"]) \
-                if surf and (surf.get("down") or surf.get("show")) else None
+                if surf and (surf.get("down") or surf.get("show")) and not docked else None
             if p:
                 out.append(p)
         # the page's alerts (S26): anywhere, for ALERT_SECONDS each

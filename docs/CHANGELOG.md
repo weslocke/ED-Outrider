@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · In-depth review fixes (3): mining, the launchers, scooping, the trail, the overlay
+- **Ring prices:** a mineral whose lookup failed while others answered is named ("Alexandrite: lookup failed"), and a
+  failed lookup is really asked again a few minutes on for the body panel still showing it (nothing redrew it).
+- **Mining thresholds:** committing a mineral's own threshold keeps the fields (the rebuild threw the focus away).
+- **The guide:** "missions taken before this version have none" was false after the re-reads: only a mission whose
+  acceptance is in no journal read has none.
+- **Launchers:** with no `python3` on the PATH (a python3.14 picked), the requirements stamp was empty and the next
+  start installed everything again: it is hashed with the environment's own Python. A free-threaded 3.14t passed the
+  Piper check, though onnxruntime has no build for it: it is said like 3.15.
+- **Scooping:** at the scoop zone's edge a creeping reading gave "15999 min 52 to full": past two hours there is no line.
+- **The trail:** only the ground looked over (driving, walking, landed, below 1,000 m): an orbital-cruise pass and the
+  glide down were drawn as a line from the rim; a high stretch keeps what is drawn.
+- **The overlay's radar** no longer stays up while docked at a planetary port (it shows when empty since 2dd8c48).
+
 ## 2026-10-25 · In-depth review fixes (2): records, curiosities, green gas giants, sights, Search
 - **Your records:** a body first read off a nav beacon is dated by your own scan of it; an airless body's 0 holds no
   "Thickest atmosphere" record, an arrival star's 0 no "Farthest from its arrival star"; a thin atmosphere shows its

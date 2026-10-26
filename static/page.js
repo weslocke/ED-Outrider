@@ -3535,11 +3535,23 @@ async function ringPricesAsk(b, sys, ask = m => holdSellAsk(m, 1, 100, "price", 
     const wait = (async () => {
       const rows = await ask(m);
       RING_PRICES.set(key, {at: now, best: rows ? rows[0] || null : null, failed: !rows, busy: false});
+      if (!rows) ringPricesRetry(sys);
     })();
     RING_PRICES.set(key, Object.assign(RING_PRICES.get(key) || {}, {busy: true, wait}));
     return wait;
   })]);
   return true;
+}
+// a failed lookup asked again RING_PRICE_RETRY_MS on for the body panel still showing that system (in-depth review
+// 2026-10-25: "asked again in a few minutes" waited for a redraw nothing made); one timer per system
+const RING_PRICE_TIMERS = new Map();
+function ringPricesRetry(sys) {
+  if (typeof setTimeout !== "function" || RING_PRICE_TIMERS.has(sys)) return;
+  RING_PRICE_TIMERS.set(sys, setTimeout(async () => {
+    RING_PRICE_TIMERS.delete(sys);
+    if (typeof selectedSystem !== "undefined" && String(selectedSystem) === String(sys) && bodyData && !bodyData.error &&
+        await ringPricesAsk(bodyData, sys) && String(selectedSystem) === String(sys)) renderBody();
+  }, RING_PRICE_RETRY_MS + 1000));
 }
 // the line's stand-in while it has no price: asking (a lookup is under way or not yet made), or the lookup failed and
 // is asked again in a few minutes (review 2026-10-25: "asking…" stayed after a failure, with nothing asking)
@@ -3560,6 +3572,9 @@ function ringPricesLine(b, sys, html = false) {
   const parts = priced.map(([m, c]) => `${e(m)} ${credits(c.best.price)} cr/t` +
     (html ? ` <span class="unk">(${e(where(c.best))})</span>` : ` (${where(c.best)})`));
   if (none.length) parts.push(`${e(andList(none))}: no buyer within 100 ly`);
+  // a mineral whose lookup failed while others answered is named, not left out (in-depth review 2026-10-25)
+  const failed = bodyHotMinerals(b).filter(m => { const c = RING_PRICES.get(`${sys}|${m}`); return c && c.failed && !c.busy; });
+  if (failed.length) parts.push(`${e(andList(failed))}: lookup failed (asked again in a few minutes)`);
   return `Best nearby${String(sys) !== String(posId()) ? " from you" : ""}: ${parts.join(" · ")}`;
 }
 // mining C: a prospected rock said when worth it (prospectHit), a motherlode always (its own box), a rock already mined
@@ -10842,7 +10857,7 @@ document.getElementById("limpetsLow").onchange = e => {
   const n = Number(e.target.value);
   miningSet({limpetsLow: Number.isInteger(n) && n >= 2 && n <= 50 ? n : MINING_DEFAULTS.limpetsLow}); drawMiningRings();
 };
-document.getElementById("prospectOpts").onchange = () => {
+document.getElementById("prospectOpts").onchange = e => {
   const n = Number(document.getElementById("prospectPct").value);
   // a mineral's own threshold: a whole 1-100 kept, anything else (empty) back to the shared one; an unticked mineral
   // keeps its number for when it is ticked again
@@ -10855,7 +10870,10 @@ document.getElementById("prospectOpts").onchange = () => {
              pct: Number.isFinite(n) && n >= 1 && n <= 100 ? Math.round(n) : MINING_DEFAULTS.pct, pcts,
              combined: document.getElementById("prospectCombined").checked, motherlode: document.getElementById("prospectLode").checked,
              rawHigh: document.getElementById("prospectHigh").checked});
-  drawMiningRings(); miningRedraw();
+  // a mineral's own threshold is already on screen: no rebuild, which threw away the field Tab was moving to
+  // (in-depth review 2026-10-25)
+  if (!(e && e.target && e.target.matches && e.target.matches("[data-ppct]"))) drawMiningRings();
+  miningRedraw();
 };
 document.getElementById("miningRings").onchange = () => {
   store.set("miningRings", {types: [...document.querySelectorAll("#miningRings [data-ring]:checked")].map(b => b.dataset.ring),
