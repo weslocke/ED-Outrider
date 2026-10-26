@@ -124,6 +124,12 @@ package (see [Install and run](install.md)), and is off until you tick it.
   yours from that moment. Every picture carries its title, a description (system, body, what it shows, position,
   commander, time) and keywords inside it, in the places viewers look: XMP (photo managers), EXIF (Windows' Properties
   → Details, its "Date taken" in your local time) and PNG's own text.
+- **Your own codex:** with **Also copy those shots into your own codex folders** ticked, a shot that knows its plant
+  or formation is also copied, as its full-size picture (else the first copy made), to
+  `Biology/<genus>/<species>/` or `Geology/<group>/<formation>/` inside the export folder, whichever commander took
+  it: `Biology/Tussock/Tussock Albata/Smojooe UW-E c11-28 7 f 2026-10-26 08-51-14.jpg`. The folders take the English
+  names whatever the game's language. A shot of a plant you have not sampled or tagged yet knows no plant, so it is
+  not copied.
 - **Finding them again:** a 📷 beside a body you photographed in Here, its hover card shows the newest three, and the body's panel lists its shots with a
   small picture (click it to open it larger: the medium copy when there is one), the time and what it shows; **📍**
   beside a surface shot pins where it was taken.

@@ -1166,7 +1166,7 @@ def screenshots_settings(ss, num, flag):
             "copies_quality": clamp("copies_quality", int),
             "clipboard": clip if clip in outrider.screenshots.CLIPBOARD else d["clipboard"],
             "original": orig if orig in outrider.screenshots.ORIGINALS else d["original"], "move_to": path("move_to"),
-            "subject_m": clamp("subject_m", float)}
+            "subject_m": clamp("subject_m", float), "codex": flag("screenshots", ss, "codex", d["codex"])}
 
 
 def settings_from(cfg, args, env_journals=None, detected=((), ())):
@@ -1530,6 +1530,7 @@ clipboard = {q(st["screenshots"]["clipboard"])}   # after each shot, put this pi
 original = {q(st["screenshots"]["original"])}   # the game's BMP after converting: "keep", "delete" or "move"
 move_to = {q(st["screenshots"]["move_to"])}   # where "move" puts it
 subject_m = {n(st["screenshots"]["subject_m"])}   # m: a surface shot names the plant or formation this close (0 = never)
+codex = {"true" if st["screenshots"]["codex"] else "false"}   # also copy such a shot to Biology/<genus>/<species> or Geology/<group>/<name> in the export folder: your own codex
 
 [assistant]
 enabled = {"true" if st["assistant"]["enabled"] else "false"}   # the voice's AI layer for questions the fixed phrases do not match (resources/ask.json); nothing is sent anywhere while false
@@ -12069,13 +12070,19 @@ class State:
             "SELECT species, species_name, variant_name FROM own_organic WHERE system=? AND body_id=?", (sid, bid))}
         # the spot's own name, else the run's, else the rules' species name: never the raw codex code (review 2026-10-25:
         # an abandoned run's own_organic row is gone)
-        rules = {sp["id"]: sp["name"] for sp in ((outrider.bio.load_rules() or {}).get("species") or [])} if outrider.bio else {}
-        subjects = [{"kind": "bio", "name": r["name"] or variants.get(r["species"]) or rules.get(r["species"]), "lat": r["lat"], "lon": r["lon"]}
+        rules = {sp["id"]: sp for sp in ((outrider.bio.load_rules() or {}).get("species") or [])} if outrider.bio else {}
+        # group and entry: the shipped lists' English genus and species (formation group and name), [screenshots] codex's
+        # folders; None when the list does not have it (that shot is not filed)
+        bio = lambda species: {"group": (rules.get(species) or {}).get("genus"), "entry": (rules.get(species) or {}).get("name")}  # noqa: E731
+        geo = {e["id"]: e for e in self.geo_codex()}
+        subjects = [dict(bio(r["species"]), kind="bio", name=r["name"] or variants.get(r["species"]) or bio(r["species"])["entry"],
+                         lat=r["lat"], lon=r["lon"])
                     for r in self.db.execute("SELECT species, lat, lon, name FROM bio_spots WHERE system=? AND body_id=?", (sid, bid))]
         subjects = [x for x in subjects if x["name"] and not str(x["name"]).startswith("$")]
-        subjects += [{"kind": "bio", "name": r["name"], "lat": r["lat"], "lon": r["lon"]} for r in self.db.execute(
-            "SELECT name, lat, lon FROM bio_tags WHERE system=? AND body_id=?", (sid, bid))]
-        subjects += [{"kind": "geo", "name": r["name"], "entry_id": r["entry_id"], "lat": r["lat"], "lon": r["lon"]}
+        subjects += [dict(bio(r["species"]), kind="bio", name=r["name"], lat=r["lat"], lon=r["lon"]) for r in self.db.execute(
+            "SELECT species, name, lat, lon FROM bio_tags WHERE system=? AND body_id=?", (sid, bid))]
+        subjects += [{"kind": "geo", "name": r["name"], "entry_id": r["entry_id"], "lat": r["lat"], "lon": r["lon"],
+                      "group": (geo.get(r["entry_id"]) or {}).get("group"), "entry": (geo.get(r["entry_id"]) or {}).get("name")}
                      for r in self.db.execute("SELECT entry_id, name, lat, lon FROM geo_tags WHERE system=? AND body_id=?", (sid, bid))]
         return bid, outrider.screenshots.nearest_subject(shot.get("lat"), shot.get("lon"), radius, subjects,
                                                          self.shots_cfg.get("subject_m"))
@@ -12101,6 +12108,12 @@ class State:
             if os.path.getsize(src) == 0:   # there, but the game never wrote it (third in-depth review 2026-10-25)
                 raise ValueError(f"{shot.get('original')} is empty (0 bytes): the game did not write it")
             out = S.convert(src, paths, cfg, shot)
+            codex = S.codex_dir(root, subject) if cfg.get("codex") and out["written"] else None
+            if codex:   # the first picture written (the full size unless it is off); a failure is said, the shot is fine
+                try:
+                    out["codex"] = S.copy_to_codex(out["written"][0], codex)
+                except OSError as e:
+                    out["codex_error"] = f"{type(e).__name__}: {e}"
             try:   # the pictures are written and checked: a BMP that cannot be moved or deleted is said, not a failure
                 out["original"] = S.finish_original(src, cfg, paths["full"])   # (review 2026-10-25: recorded as failed)
             except (OSError, ValueError) as e:
@@ -12122,14 +12135,18 @@ class State:
                          (out or {}).get("width"), (out or {}).get("height"), err))
         self.db.commit()
         clip = await self.shot_clipboard(cfg, got) if not err and not shot.get("backlog") else None
-        kept = (out or {}).get("original_error")
+        kept, codex_err = (out or {}).get("original_error"), (out or {}).get("codex_error")
         self.shots_last = {"ok": not err, "ts": shot["ts"], "full": next((p for p in got.values() if p), None) if not err else None,
-                           "subject": subject, "error": err, "original": shot.get("original"), "clipboard": clip, "original_error": kept}
+                           "subject": subject, "error": err, "original": shot.get("original"), "clipboard": clip, "original_error": kept,
+                           "codex": (out or {}).get("codex")}
         if err:
             self.notices.set("screenshots", f"A screenshot could not be converted ({shot.get('original')}): {err}", "warn", "open:screenshots")
         elif kept:
             self.notices.set("screenshots", f"A screenshot was converted, but its BMP ({shot.get('original')}) was not moved or "
                                             f"deleted: {kept}", "warn", "open:screenshots")
+        elif codex_err:
+            self.notices.set("screenshots", f"A screenshot was converted, but not copied to your codex folders: {codex_err}",
+                             "warn", "open:screenshots")
         else:
             self.notices.clear("screenshots")
         self.bump()

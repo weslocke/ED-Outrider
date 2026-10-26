@@ -90,15 +90,30 @@ class Names(unittest.TestCase):
 
     def test_subject_and_backlog(self):
         R = 1_000_000
-        subs = [{"kind": "bio", "name": "Stratum Tectonicas - Lime", "lat": 0.0, "lon": 0.001},          # ~17 m
+        subs = [{"kind": "bio", "name": "Stratum Tectonicas - Lime", "lat": 0.0, "lon": 0.001,          # ~17 m
+                 "group": "Stratum", "entry": "Stratum Tectonicas"},
                 {"kind": "geo", "name": "Water Ice Geyser", "entry_id": 1400258, "lat": 0.0, "lon": 0.002}]   # ~35 m
-        self.assertEqual(S.nearest_subject(0.0, 0.0, R, subs, 50), {"kind": "bio", "name": "Stratum Tectonicas - Lime", "entry_id": None, "dist": 17})
+        self.assertEqual(S.nearest_subject(0.0, 0.0, R, subs, 50), {"kind": "bio", "name": "Stratum Tectonicas - Lime", "entry_id": None,
+                                                                    "group": "Stratum", "entry": "Stratum Tectonicas", "dist": 17})
         self.assertIsNone(S.nearest_subject(0.0, 0.0, R, subs, 10))     # none that close
         self.assertIsNone(S.nearest_subject(None, None, R, subs, 50))   # a shot from the air
         self.assertIsNone(S.nearest_subject(0.0, 0.0, R, subs, 0))      # off
         events = [(1000.0, "Screenshot_0001.bmp", {"n": "old"}), (5000.0, "Screenshot_0001.bmp", {"n": "new"})]
         got = S.match_backlog([("Screenshot_0001.bmp", 5002.0), ("Screenshot_0009.bmp", 5000.0)], events)
         self.assertEqual(got, {"Screenshot_0001.bmp": {"n": "new"}, "Screenshot_0009.bmp": None})   # a reused name: by time
+
+    def test_codex_dir(self):
+        """[screenshots] codex: Biology/<genus>/<species> or Geology/<group>/<name> under the export folder; never filed
+        by a guess (no group or entry, another kind, no subject)."""
+        root = os.path.join("x", "out")
+        self.assertEqual(S.codex_dir(root, {"kind": "bio", "name": "Tussock Albata - Green", "group": "Tussock", "entry": "Tussock Albata"}),
+                         os.path.join(root, "Biology", "Tussock", "Tussock Albata"))
+        self.assertEqual(S.codex_dir(root, {"kind": "geo", "name": "Geysir d'eau", "group": "Geyser", "entry": "Water Geyser"}),
+                         os.path.join(root, "Geology", "Geyser", "Water Geyser"))   # the English name, whatever the game's
+        self.assertEqual(S.codex_dir(root, {"kind": "geo", "group": "A/B", "entry": "C:D"}), os.path.join(root, "Geology", "A_B", "C_D"))
+        for subj in (None, {"kind": "bio", "name": "X", "group": None, "entry": "X"}, {"kind": "bio", "group": "G"},
+                     {"kind": "other", "group": "G", "entry": "E"}):
+            self.assertIsNone(S.codex_dir(root, subj), subj)
 
     def test_journal_shots(self):
         d = tempfile.mkdtemp()
@@ -386,6 +401,41 @@ class Server(unittest.TestCase):
         self.db.execute("UPDATE screenshots SET full=? WHERE id=?", (link, x["id"]))
         self.assertIsNone(asyncio.run(self.st.shot_image(x["id"], "full")))
 
+    def test_codex_copies(self):
+        """[screenshots] codex (the author, 2026-10-26: a codex of their own pictures for the Bio/Geo page to show): a shot of
+        a formation also copied to Geology/<group>/<name> in the export folder, not per commander; off by default; a
+        failed copy is said and the shot is fine."""
+        self.shoot()
+        self.run_queue()
+        self.assertFalse(os.path.exists(os.path.join(self.out, "Geology")))   # off by default
+        self.st.shots_cfg["codex"] = True
+        self.shoot("Screenshot_0002.bmp")
+        self.run_queue()
+        r = self.db.execute("SELECT * FROM screenshots WHERE original='Screenshot_0002.bmp'").fetchone()
+        subj = json.loads(r["subject"])
+        self.assertEqual((subj["group"], subj["entry"]), ("Geyser", "Water Ice Geyser"))
+        folder = os.path.join(self.out, "Geology", "Geyser", "Water Ice Geyser")
+        copy = os.path.join(folder, os.path.basename(r["full"]))
+        self.assertEqual(self.st.shots_last["codex"], copy)
+        with open(copy, "rb") as a, open(r["full"], "rb") as b:
+            self.assertEqual(a.read(), b.read())   # the full-size picture, as written
+        self.assertEqual(int(os.path.getmtime(copy)), int(os.path.getmtime(r["full"])))   # dated when taken
+        # a shot with no formation near: no copy
+        self.shoot("Screenshot_0003.bmp", lon=0.5)
+        self.run_queue()
+        self.assertIsNone(self.st.shots_last["codex"])
+        self.assertEqual(len(os.listdir(folder)), 1)
+        # the folder cannot be made (a file in its place): the shot is converted, a card says why
+        shutil.rmtree(os.path.join(self.out, "Geology"))
+        with open(os.path.join(self.out, "Geology"), "w"):
+            pass
+        self.shoot("Screenshot_0004.bmp")
+        self.run_queue()
+        self.assertTrue(self.st.shots_last["ok"])
+        self.assertIsNone(self.st.shots_last["codex"])
+        [card] = [n for n in self.st.notices.active() if n["key"] == "screenshots"]
+        self.assertIn("codex", card["text"])
+
     def test_on_foot_the_position_is_status_jsons(self):
         """The author, 2026-10-25: three shots of a bacterium on foot named nothing: on foot the Screenshot line has no
         Latitude/Longitude, so the live Status.json's over that body at that moment is the shot's."""
@@ -423,10 +473,13 @@ class Server(unittest.TestCase):
         self.j.handle({"event": "Screenshot", "timestamp": self.at(30), "Filename": "\\ED_Pictures\\Screenshot_0001.bmp",
                        "System": "Sys", "Body": "Sys 2 a"})
         bmp(os.path.join(self.pictures, "Screenshot_0001.bmp"), 320, 180)
-        self.st.shots_cfg["filename"] = "{body} {subject}"
+        self.st.shots_cfg.update(filename="{body} {subject}", codex=True)
         self.run_queue()
         [r] = self.db.execute("SELECT * FROM screenshots").fetchall()
         self.assertEqual(json.loads(r["subject"])["name"], "Bacterium Bullaris - Yellow")
+        # [screenshots] codex: the rules' genus and species, the colour in the name only
+        self.assertEqual(self.st.shots_last["codex"], os.path.join(self.out, "Biology", "Bacterium", "Bacterium Bullaris",
+                                                                   os.path.basename(r["full"])))
         self.assertTrue(os.path.basename(r["full"]).startswith("2 a Bacterium Bullaris - Yellow"), r["full"])
         with Image.open(r["full"]) as im:
             self.assertIn("<rdf:li>Yellow</rdf:li>", im.text["XML:com.adobe.xmp"])   # the colour, a keyword of its own

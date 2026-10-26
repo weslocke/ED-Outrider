@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Screenshots: your own codex folders
+- **Settings → Screenshots → Also copy those shots into your own codex folders** (`[screenshots] codex`, off by
+  default): a shot that knows its plant or formation is also copied (its full-size picture, else the first copy made)
+  to `Biology/<genus>/<species>/` or `Geology/<group>/<formation>/` inside the export folder, whichever commander
+  took it. The names are the shipped lists' English ones (the exobiology rules, `geo_codex.json`) in any game
+  language, so a later Bio/Geo page can find a genus's or formation's pictures there. A shot with no named subject is
+  not copied; a copy that fails is said on the screenshots card, the shot itself is fine.
+
 ## 2026-10-26 · Spansh queries checked against the live site; an empty body route is said
 - Every Spansh call Outrider makes was run against the live site with the code's own requests and parsers: the
   system sphere, dumps, id64 lookups, body search (Earth-likes, reported biology, species landmarks), station search

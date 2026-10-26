@@ -14188,7 +14188,7 @@ function drawShots() {
   const el = document.getElementById("shotStatus"), s = data && data.screenshots;
   if (!el) return;
   if (!s) { el.textContent = ""; return; }
-  const last = s.last ? (s.last.ok ? ` · last: ${s.last.full ? s.last.full.split(/[\\/]/).pop() : ""}${s.last.subject ? ` (${s.last.subject.name})` : ""}${s.last.clipboard ? `, ${s.last.clipboard}` : ""}`
+  const last = s.last ? (s.last.ok ? ` · last: ${s.last.full ? s.last.full.split(/[\\/]/).pop() : ""}${s.last.subject ? ` (${s.last.subject.name})` : ""}${s.last.codex ? ", copied to your codex" : ""}${s.last.clipboard ? `, ${s.last.clipboard}` : ""}`
                                    : ` · last failed: ${s.last.error}`) : "";
   el.innerHTML = `${s.on ? `<span class="ok">Converting</span>` : `<span class="warnc">Not converting: ${esc(s.why || "?")}</span>`}` +
     ` <span class="unk">· from ${esc(s.pictures || "?")} · to ${esc(s.folder || "?")}${s.queued ? ` · ${s.queued} waiting` : ""}${esc(last)}</span>`;

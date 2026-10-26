@@ -10,7 +10,8 @@ size to settle. Names like Screenshot_0001 are reused once the folder is emptied
 Each shot becomes a full-size PNG (or JPG) under [screenshots] folder, in a subfolder by commander (and system), with
 optional `medium/` and `small/` JPG copies beside it (long edge, never upscaled: for Reddit and the like), the
 system, body, position, commander and what it shows (a plant or a formation within subject_m: `subject`) written
-into the image. Pure but for the files: the server queues the shots and runs `convert` on a worker. Needs Pillow (an
+into the image; with [screenshots] codex on, a shot of a plant or formation also copied to Biology/<genus>/<species> or
+Geology/<group>/<name> under the export folder (the player's own codex: `codex_dir`). Pure but for the files: the server queues the shots and runs `convert` on a worker. Needs Pillow (an
 optional package: `pillow()` says whether it is there).
 """
 import datetime
@@ -23,7 +24,7 @@ import time
 DEFAULTS = {"enabled": False, "pictures": "", "folder": "", "by_cmdr": True, "by_system": False, "subfolder": "",
             "filename": "{system} {body} {date} {time}{highres}", "format": "png", "quality": 90, "full": True,
             "medium": 0, "small": 0, "crop": "", "crop_px": 0, "copies_format": "jpg", "copies_quality": 85,
-            "original": "keep", "move_to": "", "subject_m": 50.0, "clipboard": ""}
+            "original": "keep", "move_to": "", "subject_m": 50.0, "clipboard": "", "codex": False}
 MEDIUM_PX, SMALL_PX = 1920, 1080   # the sizes a ticked copy starts at (long edge, px)
 FORMATS = ("png", "jpg", "webp")   # the full size: lossless PNG; JPG and WebP at `quality` (WebP: smaller at the same)
 COPY_FORMATS = ("jpg", "webp")     # medium, small and the crop, at `copies_quality`
@@ -32,6 +33,10 @@ EXT = {"png": "png", "jpg": "jpg", "webp": "webp"}
 MIME = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}
 ORIGINALS = ("keep", "delete", "move")
 TOKENS = ("cmdr", "system", "body", "date", "time", "highres", "subject")
+# [screenshots] codex: a shot of a plant or formation copied under the export folder to Biology/<genus>/<species> or
+# Geology/<group>/<name>, the shipped lists' English names (bio_rules.json, geo_codex.json), so the folders are the same
+# in any game language and can be looked up by them
+CODEX_FOLDERS = {"bio": "Biology", "geo": "Geology"}
 NAME_MAX = 150           # characters of a file or folder name (Windows' path limit is near)
 PICTURES_TAIL = ("Frontier Developments", "Elite Dangerous")
 WAIT_S, POLL_S = 60.0, 0.5   # how long a shot's file may take to appear and settle (a HighRes one: under 3 s, 2026-10-25)
@@ -210,7 +215,35 @@ def nearest_subject(lat, lon, radius, subjects, max_m):
     if not best:
         return None
     s = best[1]
-    return {"kind": s.get("kind"), "name": s.get("name"), "entry_id": s.get("entry_id"), "dist": round(best[0])}
+    return {"kind": s.get("kind"), "name": s.get("name"), "entry_id": s.get("entry_id"), "group": s.get("group"),
+            "entry": s.get("entry"), "dist": round(best[0])}
+
+
+def codex_dir(root, subject):
+    """[screenshots] codex: the folder a shot of `subject` is copied to, root/Biology/<genus>/<species> or
+    root/Geology/<group>/<name>; None without a subject whose group and entry are known (never filed by a guess)."""
+    s = subject or {}
+    top = CODEX_FOLDERS.get(s.get("kind"))
+    if not top or not s.get("group") or not s.get("entry"):
+        return None
+    return os.path.join(root, top, safe_name(s["group"]), safe_name(s["entry"]))
+
+
+def free_path(folder, name):
+    """folder/name, else with " (2)", " (3)"... before its extension: the first one not taken."""
+    stem, ext = os.path.splitext(name)
+    dest, n = os.path.join(folder, name), 2
+    while os.path.exists(dest):
+        dest, n = os.path.join(folder, f"{stem} ({n}){ext}"), n + 1
+    return dest
+
+
+def copy_to_codex(picture, folder):
+    """A copy of `picture` in `folder` under its own name (its date kept, as the picture's is the shot's). -> its path."""
+    os.makedirs(folder, exist_ok=True)
+    dest = free_path(folder, os.path.basename(picture))
+    shutil.copy2(picture, dest)
+    return dest
 
 
 def description_parts(m):
@@ -434,10 +467,7 @@ def finish_original(src, cfg, full):
         if where == os.path.normcase(os.path.abspath(os.path.dirname(src))):
             raise ValueError("'moved to' is the game's own Pictures folder: the BMP was kept")
         os.makedirs(cfg["move_to"], exist_ok=True)
-        stem, ext = os.path.splitext(os.path.basename(src))
-        dest, n = os.path.join(cfg["move_to"], stem + ext), 2
-        while os.path.exists(dest):
-            dest, n = os.path.join(cfg["move_to"], f"{stem} ({n}){ext}"), n + 1
+        dest = free_path(cfg["move_to"], os.path.basename(src))
         shutil.move(src, dest)
         return dest
     return src
