@@ -555,6 +555,25 @@ const releasePayloads = async () => {
       "Amethyst · Image: CMDR Someone, via Canonn"]) && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| codex picture caption |", JSON.stringify(got), errors.slice(before));
   }
+  // the records a body holds said on its card and in its panel, not only in the 🏆's hover (the author, 2026-10-26)
+  {
+    const w = dom.window, before = errors.length;
+    const res = JSON.parse(w.eval(`(() => { const saved = REC.d;
+      REC.d = {records: [{key: "hot", label: "Hottest planet", text: "1,203 K", body: "4", system: "Smojooe AB-C d1-2", id64: "77", ts: new Date().toISOString()},
+                         {key: "far", label: "Farthest system", text: "12,000 ly", body: null, system: "X", id64: "77"},
+                         {key: "big", label: "Largest planet", text: "70,000 km", body: "5", system: "Smojooe AB-C d1-2", id64: "77"}]};
+      const card = bodyPopHtml({name: "4", type: "Planet", subtype: "Rocky body"}, null, "77");
+      const other = bodyPopHtml({name: "4", type: "Planet", subtype: "Rocky body"}, null, "78");
+      const div = document.createElement("div");
+      renderBodyInto(div, {full_name: "Smojooe AB-C d1-2 4", own: {}, spansh: {}, row: {}}, "4", "closeBody()", "77");
+      const panel = div.textContent, whole = recordsHeld("77", "Smojooe AB-C d1-2 5").map(r => r.key);
+      REC.d = saved;
+      return JSON.stringify({card, other, panel, whole}); })()`));
+    const ok = /Your record</.test(res.card) && /Hottest planet<\/span><b>1,203 K <span class="ok"[^>]*>new<\/span><\/b>/.test(res.card) &&
+               !/Largest|Farthest/.test(res.card) && !/Your record/.test(res.other) && /Your recordHottest planet1,203 K new/.test(res.panel) &&
+               JSON.stringify(res.whole) === '["big"]' && errors.length === before;
+    console.log(ok ? "OK" : "FAIL", "| records on the body's card |", JSON.stringify(res).slice(0, 400), errors.slice(before));
+  }
   // 📷 beside an entry and a colour you have pictures of (the author, 2026-10-26)
   {
     const w = dom.window, before = errors.length;

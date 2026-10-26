@@ -154,6 +154,8 @@ td.bodies { cursor: help; }
 #pop .lbl { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
 #pop ul { margin: 2px 0 0; padding: 0; list-style: none; }
 #pop li { display: flex; justify-content: space-between; gap: 16px; }
+.recheld { margin: 0; padding: 0; list-style: none; }   /* the records a body holds, in its panel */
+.recheld li { display: flex; justify-content: space-between; gap: 16px; }
 #pop .bn { color: var(--muted); }
 #pop .hs { display: block; color: var(--text); font-size: 12px; padding-left: 10px; }
 #pop .src { color: var(--muted); font-weight: 400; font-size: 11px; }

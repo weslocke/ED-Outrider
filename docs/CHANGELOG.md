@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · A body's records on its card and in its panel
+- A body holding one of Your records (the 🏆 beside its name) says which on its hover card and in its details panel
+  ("🏆 Your record · Biggest planet 77,691 km", "new" when set in the last day), as the author asked: the 🏆's own
+  hover was the only place it was said.
+
 ## 2026-10-26 · Broken codex pictures passed over
 - A picture in a codex folder that does not open (empty, not a picture, unreadable) is passed over: a folder of only
   those shows Canonn's picture, not a broken one (`screenshots.readable`, a header read). Checked as the author asked:

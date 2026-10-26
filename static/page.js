@@ -5420,6 +5420,9 @@ function bodyPopHtml(b, region, sys = null) {   // sys: the body's system id64 s
   const flags = [b.first_discovered && "🏁 first discovered", b.first_mapped && "🗺 first mapped", !b.first_mapped && b.mapped && "mapped", b.first_footfall && "👣 first footfall", !b.scanned && "not scanned by you"].filter(Boolean);
   h += `<div class="sec"><span>${maxOf(b) ? `now ${credits(b.value_now || 0)} · max ${credits(maxOf(b))}` : ""}</span>` +
        (flags.length ? `<div class="unk">${flags.join(" · ")}</div>` : "") + `</div>`;
+  // the records it holds (the 🏆 beside its name)
+  const held = recordsHeld(sys, b.name);
+  if (held.length) h += `<div class="sec"><div class="lbl">🏆 Your record${held.length === 1 ? "" : "s"}</div><ul>${recordsHeldHtml(held)}</ul></div>`;
   // your screenshots of it (the author, 2026-10-25: the 📷 showed, the card had none): the newest three
   if (b.shots) h += `<div class="sec"><div class="lbl">📷 ${b.shots} screenshot${b.shots === 1 ? "" : "s"}</div><div class="popshots">` +
     (b.shot_ids || []).map(id => `<img src="api/screenshots/${encodeURIComponent(id)}/image?size=thumb" alt="">`).join("") + `</div></div>`;
@@ -5574,7 +5577,8 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
   // your screenshots of it (a player's request, 2026-10-25): filled once open (loadShotList), thumbnails to the copies
   const shotSec = row.shots && sys != null ? `<div class="sec${bodySecs.shots ? " closed" : ""}" data-sec="shots"><div class="lbl">📷 Screenshots · ${row.shots}</div>` +
     `<div class="secbody shotlist" data-sys="${esc(sys)}" data-body="${esc(d.full_name)}" data-sysname="${esc(d.system || "")}"><span class="unk">loading…</span></div></div>` : "";
-  h += pinSec + shotSec + curSec + bioSec + geoSec + mineSec + ringSec + compSec + `<div class="two">${physSec}${orbitSec}</div>`;
+  const held = recordsHeld(sys, bodyName), recSec = held.length ? sec("records", `🏆 Your record${held.length === 1 ? "" : "s"}`, `<ul class="recheld">${recordsHeldHtml(held)}</ul>`) : "";
+  h += recSec + pinSec + shotSec + curSec + bioSec + geoSec + mineSec + ringSec + compSec + `<div class="two">${physSec}${orbitSec}</div>`;
   h += sec("value", "Value and discovery", kv([
     ["Pays now", has(row.value_now) ? credits(row.value_now) + " cr" : null], ["Could pay", has(row.value_max) ? credits(row.value_max) + " cr" + (has(row.value_max_base) && row.value_max_base !== row.value_max ? ` (${credits(row.value_max_base)} without bonuses)` : "") : null],
     ["Of which", row.value_parts ? `${credits(row.value_parts.carto_now)} + ${credits(row.value_parts.bio_now)} bio held · ${credits(row.value_parts.carto_left)} + ${credits(row.value_parts.bio_left)} bio still there (bio ×${row.value_parts.bio_factor})` : null],
@@ -5773,8 +5777,17 @@ function recordsSoon() { clearTimeout(REC.soon); REC.soon = setTimeout(() => loa
 document.addEventListener("click", e => { if (e.target.closest("#hereCopyMd")) copyText(systemSummaryMd(hereData), "the system summary"); });
 // a body of Here that holds one of Your records: 🏆, the records in its title (visual only: the voice says no records)
 function recordMark(id64, name) {
-  const held = ((REC.d && REC.d.records) || []).filter(r => r.body === name && r.id64 === String(id64));
+  const held = recordsHeld(id64, name);
   return held.length ? ` <span class="rec" title="${esc(held.map(r => `Your record: ${r.label}, ${r.text}`).join("\n"))}">🏆</span>` : "";
+}
+// Your records a body holds (its short name as Here has it, or its whole name), as loaded for My firsts
+function recordsHeld(id64, name) {
+  return id64 == null || !name ? [] : ((REC.d && REC.d.records) || []).filter(r => r.id64 === String(id64) && r.body &&
+    (r.body === name || `${r.system} ${r.body}` === name));
+}
+// what the 🏆 stands for, said on the body's card and in its panel (the author, 2026-10-26: "you'd have to go find it")
+function recordsHeldHtml(held) {
+  return held.map(r => `<li><span>${esc(r.label)}</span><b>${esc(r.text)}${recordNew(r) ? ` <span class="ok" title="set in the last day">new</span>` : ""}</b></li>`).join("");
 }
 const recordNew = r => r.ts && Date.now() - Date.parse(r.ts) < 86400e3;   // set in the last day
 function renderRecords() {
