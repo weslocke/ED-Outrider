@@ -737,6 +737,31 @@ class Server(unittest.TestCase):
         self.assertEqual({yellow()["file"] for _ in range(20)}, {"good.png"})
         self.assertEqual(self.st.checklist_picture(sid, "Yellow", "good.png")[0]["image"]["file"], "good.png")   # the only one
 
+    def test_here_marks_a_species_you_have_a_picture_of(self):
+        """The author, 2026-10-26: Here's bio column says when your codex folders already hold a picture of that
+        species' colour (no second shot needed): a sampled species (its colour from the sample's variant code) and a
+        plant's codex entry by its name."""
+        bug = {"Genus": "$Codex_Ent_Bacterial_Genus_Name;", "Genus_Localised": "Bacterium",
+               "Species": "$Codex_Ent_Bacterial_10_Name;", "Species_Localised": "Bacterium Bullaris",
+               "Variant": "$Codex_Ent_Bacterial_10_Polonium_Name;", "Variant_Localised": "Bacterium Bullaris - Yellow",
+               "SystemAddress": 9, "Body": 6}
+        for i, kind in enumerate(("Log", "Sample", "Sample", "Analyse")):
+            self.j.status_json = {"live": True, "ts": self.at(10 + i), "body": "Sys 2 a", "lat": 0.0, "lon": 0.01 * (i + 1)}
+            self.j.handle(dict(bug, event="ScanOrganic", timestamp=self.at(10 + i), ScanType=kind))
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, subcategory, system, body_id, region) VALUES "
+                        "(?, 2420101, 'Stratum Paleas - Lime', '$Codex_SubCategory_Organic_Structures;', 9, 6, 'R')", (self.at(20),))
+        self.db.commit()
+        body = lambda: next(b for b in self.st.system_detail(9)["bodies"] if b["name"] == "2 a")
+        b = body()
+        self.assertEqual(([o["own_pic"] for o in b["organics"]], [c.get("own_pic") for c in b["codex"] if c["entry_id"]]), ([False], [False]))
+        for folder in (os.path.join(self.out, "Biology", "Bacterium", "Bacterium Bullaris", "Yellow"),
+                       os.path.join(self.out, "Biology", "Stratum", "Stratum Paleas", "Lime")):
+            os.makedirs(folder)
+            Image.new("RGB", (10, 10)).save(os.path.join(folder, "a.png"))
+        b = body()
+        self.assertEqual(([o["own_pic"] for o in b["organics"]], [c.get("own_pic") for c in b["codex"] if c["entry_id"]]), ([True], [True]))
+        self.assertEqual([c.get("own_pic") for c in b["codex"] if not c["entry_id"]], [None] * len([c for c in b["codex"] if not c["entry_id"]]))
+
     def test_a_reread_fills_a_tags_variant(self):
         """Review 2026-10-26: a plant tagged before bio_tags.variant existed kept NULL through a journal re-read (its
         INSERT OR IGNORE), so its shot was never filed by colour."""

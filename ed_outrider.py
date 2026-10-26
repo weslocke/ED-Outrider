@@ -12475,6 +12475,29 @@ class State:
         # when and where it was taken, when the picture says (Outrider wrote it in; an edit may have dropped it)
         return dict(S.picture_facts(path), url=f"api/codex_picture?{q}", full=f"api/codex_picture?{q}&size=full", own=True, file=name)
 
+    def own_pic_check(self):
+        """A test (species id or None, variant codex code or None, the name logged) -> whether your codex folders hold a
+        picture of that species' colour (Here's 📷, the author 2026-10-26: no second shot needed), from one walk of the
+        folders; always False without them. The species by id, else by the name before " - "; its colour as a shot's is
+        filed (checklist.variant_colour)."""
+        S, root = outrider.screenshots, self.shots_folders()[1]
+        have = S.codex_folders(root)
+        R = (outrider.bio.load_rules() or {}) if outrider.bio and have else {}
+        if not have or not R.get("species"):
+            return lambda *a: False
+        merged, names = outrider.checklist.merge_species(R["species"])
+        by_id = {sp.get("id") or sp["name"]: sp for sp in merged}
+        tables = bool(R.get("colours"))
+
+        def check(species=None, variant=None, name=None):
+            sp = by_id.get(species) or by_id.get(names.get(str(name or "").split(" - ")[0].strip().lower()))
+            if not sp:
+                return False
+            folder = S.codex_dir(root, {"kind": "bio", "group": sp.get("genus"), "entry": sp["name"],
+                                        "colour": outrider.checklist.variant_colour(sp, variant, name, tables)})
+            return bool(folder) and os.path.normcase(folder) in have
+        return check
+
     def codex_marks(self, out, kind):
         """[screenshots] codex_show: each checklist row's `own_pics`, the colours ("" for a species with none, and for a
         formation) you have pictures of in your codex folders (the 📷 beside it, the author 2026-10-26); none while
@@ -12783,12 +12806,16 @@ class State:
                LEFT JOIN own_footfall ff ON ff.system = f.system AND ff.body_id = f.body_id
                WHERE f.system = ?""", (id64,))}
         organics = {}
+        own_pic = self.own_pic_check()   # Here's 📷: a picture of that species' colour in your codex folders
+        codes = {(r["body_id"], r["species"]): r["variant"] for r in self.db.execute(
+            "SELECT body_id, species, variant FROM bio_spots WHERE system=? AND variant IS NOT NULL ORDER BY ts", (id64,))}
         for r in self.db.execute("SELECT * FROM own_organic WHERE system=? ORDER BY genus_name", (id64,)):
             st = organic_state(self.db, r["done_ts"], (id64, r["body_id"], r["species"]))
             organics.setdefault(r["body_id"], []).append(
                 {"genus": r["genus_name"], "species": r["species_name"], "variant": r["variant_name"],
                  "samples": r["samples"], "done": bool(r["done_ts"]) and st != "lost", "state": st,
                  "lost": st == "lost",
+                 "own_pic": own_pic(r["species"], codes.get((r["body_id"], r["species"])), r["variant_name"]),
                  "value": outrider.bio.species_value(r["species_name"]) if outrider.bio and r["species_name"] else None})
         genera = {}
         for r in self.db.execute("SELECT body_id, genus_name FROM own_genera WHERE system=?", (id64,)):
@@ -12812,6 +12839,8 @@ class State:
                                                        # category is "Biological and Geological" for both: the
                                                        # subcategory tells a plant from a geyser)
                                                        "entry_id": r["entry_id"] if "organic" in (r["subcategory"] or "").lower() else None}
+            if row["entry_id"]:   # a plant's entry ("Stratum Paleas - Lime"): 📷 when your codex folders have it
+                row["own_pic"] = own_pic(None, None, r["name"])
             codex.setdefault(r["body_id"], []).append(row)
         odyssey = True
         star_row = self.db.execute("SELECT star_class FROM jumps WHERE id64=? ORDER BY ts DESC LIMIT 1", (id64,)).fetchone()

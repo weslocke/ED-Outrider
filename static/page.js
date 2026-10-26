@@ -4967,11 +4967,11 @@ function renderHere() {
         const c = codexOf(o), name = c ? c.name : o.variant || o.species || g;
         if (c) merged.add(c);
         bio.push(`<span class="sp done" title="${c ? `codex: ${esc(name)} · analysed` : `${esc(name)}: analysed (no codex entry on this body)`}${colonyM(g) ? ` · samples ${colonyM(g)} m apart` : ""}">` +
-                 `${c ? "📖" : "✓"} ${dual(colourName(name), esc(g), {title: false})}${c ? (c.voucher ? " 💰" : c.new ? " ✦" : "") : ""}` +
+                 `${c ? "📖" : "✓"} ${dual(colourName(name), esc(g), {title: false})}${c ? (c.voucher ? " 💰" : c.new ? " ✦" : "") : ""}${clCam(o.own_pic || (c && c.own_pic))}` +
                  `${o.value ? ` <span class="unk">${credits(o.value * f)}</span>` : ""}</span>`);
         continue;
       }
-      bio.push(o ? `<span class="sp ${o.lost ? "lost" : o.done ? "done" : "part"}" title="${esc(o.species || "")}${o.variant ? " · " + esc(o.variant) : ""}${o.lost ? " · lost with the ship, sample again" : ""}${colonyM(g) ? ` · samples ${colonyM(g)} m apart` : ""}">${esc(g)} ${o.lost ? "lost ✗" : `${o.samples}/3${o.done ? " ✓" : ""}`}${!o.lost && o.value ? ` <span class="unk">${credits(o.value * f)}</span>` : ""}</span>` +
+      bio.push(o ? `<span class="sp ${o.lost ? "lost" : o.done ? "done" : "part"}" title="${esc(o.species || "")}${o.variant ? " · " + esc(o.variant) : ""}${o.lost ? " · lost with the ship, sample again" : ""}${colonyM(g) ? ` · samples ${colonyM(g)} m apart` : ""}">${esc(g)} ${o.lost ? "lost ✗" : `${o.samples}/3${o.done ? " ✓" : ""}`}${!o.lost && o.value ? ` <span class="unk">${credits(o.value * f)}</span>` : ""}${clCam(o.own_pic)}</span>` +
                    // a run under way prices the species you logged (known from its first sample), like the pop-up and
                    // the panel; the predictor's guess is only for a lost run or one whose species has no price
                    (o.lost || (!o.done && !o.value) ? guessTxt(guessOf(g)) : "") + repTxt(g)
@@ -4995,7 +4995,7 @@ function renderHere() {
     }
     // the codex name ("Bacterium Volu - Gold") repeats the run's species: a compact table shows only 📖 and its mark
     const codex = b.codex.filter(c => !merged.has(c)).map(c =>
-      `<span class="sp" title="codex: ${esc(c.name)}">📖 ${dual(colourName(c.name), "", {title: false})}${c.voucher ? " 💰" : c.new ? " ✦" : ""}</span>`).join("");
+      `<span class="sp" title="codex: ${esc(c.name)}">📖 ${dual(colourName(c.name), "", {title: false})}${c.voucher ? " 💰" : c.new ? " ✦" : ""}${clCam(c.own_pic)}</span>`).join("");
     const firsts = [b.first_discovered && `<span class="fl" title="first discovered">🏁</span>`, b.first_mapped && `<span class="fl" title="first mapped">🗺</span>`,
                     !b.first_mapped && b.mapped && `<span class="fl unk" title="mapped (not first)">🗺</span>`,
                     b.first_footfall && `<span class="fl" title="first footfall">👣</span>`, !b.scanned && `<span class="unk" title="known to Spansh, not scanned by you">—</span>`].filter(Boolean).join("");
@@ -5050,6 +5050,7 @@ const HERE_LEGEND = [
   [q => q(".ggg.sure"), gggIcon(true, ""), "green gas giant"],
   [q => q(".rec"), "🏆", "holds one of Your records (My firsts)"],
   [q => q(".shotmark"), "📷", "your screenshots of it (open the body)"],
+  [q => q(".sp .clcam"), "📷", "beside a species: a picture of that colour in your codex folders"],
   [q => q(".nb.ELW"), `<span class="nb ELW">ELW</span>`, "Earth-like world"],
   [q => q(".nb.WW"), `<span class="nb WW">WW</span>`, "water world"],
   [q => q(".nb.AW"), `<span class="nb AW">AW</span>`, "ammonia world"],

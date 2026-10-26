@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · 📷 in Here's bio column: a species you already have a picture of
+- The author: once a species' colour is known, Here's bio column says whether your codex folders already hold a
+  picture of it, so no second shot is needed: 📷 beside a finished species, a run under way and a composition scan's
+  codex line (`own_pic` on `system_detail`'s organics and organic codex rows, `State.own_pic_check`: one walk of the
+  folders; the colour from the sample's variant code, else the name). Here's legend explains it.
+
 ## 2026-10-26 · 🏆 on a system that holds a record, in Nearby and Boxel view
 - The author: "I had one in this boxel, can't find it": only Here's body rows had the 🏆. A system that holds one of
   Your records (any of its bodies, or the farthest system) now has 🏆 beside its name in Nearby's list and Boxel view's,

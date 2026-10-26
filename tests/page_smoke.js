@@ -1232,6 +1232,16 @@ const releasePayloads = async () => {
         hereData = Object.assign({}, hd, {bodies: [seenB], tree: null}); renderHere();
         const srow = document.querySelector('#hereRows tr[data-body="Fake 2"]'), seenSp = srow && srow.querySelector("td.bio .sp.seen");
         o.seenMark = [!!seenSp && /✦/.test(seenSp.textContent), srow ? (srow.querySelector("td.bio").textContent.match(/📖/g) || []).length : -1];
+        // 📷 beside a species whose colour your codex folders have a picture of (the author, 2026-10-26): a finished
+        // one, a run under way and a composition scan's codex line; none without
+        const picB = Object.assign({}, fake, {name: "Fake 3", genera: ["Bacterium", "Fungoida"], bio_guess: [],
+          organics: [{genus: "Bacterium", species: "Bacterium Aurasus", variant: "Bacterium Aurasus - Green", samples: 3, done: true, lost: false, value: 1000000, own_pic: true},
+                     {genus: "Fungoida", species: "Fungoida Stabitis", variant: "Fungoida Stabitis - Green", samples: 1, done: false, lost: false, value: 2000000, own_pic: false}],
+          codex: [{name: "Bacterium Aurasus - Green", new: false, voucher: 1, own_pic: true}, {name: "Stratum Paleas - Lime", new: false, own_pic: true}]});
+        hereData = Object.assign({}, hd, {bodies: [picB], tree: null}); renderHere();
+        const prow = document.querySelector('#hereRows tr[data-body="Fake 3"]');
+        o.ownPic = prow ? [...prow.querySelectorAll("td.bio .sp")].map(e => !!e.querySelector(".clcam")) : null;
+        o.ownPicLegend = [...document.querySelectorAll("#hereLegend .lgi")].some(e => /codex folders/.test(e.parentElement ? e.parentElement.textContent : ""));
         // the icon legend under the list (the author, 2026-10-10): only the icons this list shows; none, no footer
         const plain = {first_discovered: false, first_mapped: false, mapped: false, first_footfall: false, scanned: true, rings: 0,
           terraformable: false, notable: null, volcanism: null, mining: 0, mined: [], belts: [], stale_bio: false, bio_unknown: false};
@@ -1363,7 +1373,7 @@ const releasePayloads = async () => {
     w.setTimeout = realST; w.fetch = realFetch;
     w.eval("search = null; searchWant = 0; searchRefused = false; render()");
     w.speak = realSpeak; w.play = realPlay;
-    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1], legend: true, noDss: true, finished: true, mat: true,
+    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1], ownPic: [true, false, true], ownPicLegend: true, legend: true, noDss: true, finished: true, mat: true,
                   streak: 2, nulls: ["{}", "ts"], impNull: "bioSort", saved: true, dock: "2026-01-01T01:00:00Z", hlRender: true, more: true};
     const want2 = {onbody: true, here: true, logError: null};
     const goodH = JSON.stringify(out) === JSON.stringify(want) && JSON.stringify(out2) === JSON.stringify(want2)
