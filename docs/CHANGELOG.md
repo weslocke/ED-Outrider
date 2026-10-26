@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Docs screenshots retaken for the next release
+- The seven the docs sweep flagged, on a scratch server with copies of the data: here.png (Smojooe TW-E c11-9: the new
+  Rings counts, 📋, 📷 on a photographed body, 🏆 on body 4 with its record in the panel), firsts.png (Your records
+  open), search.png (the form's top: "at least N", "2+ in a ring"), surface.png and tablet.png (the trail and the
+  compass grid; the tablet's rail with Hide UI and Screenshot), overlay-settings.png (the Foot column, hide on foot,
+  the panel-stays and radar-range row), checklist.png (your own picture of Bacterium Bullaris - Yellow with its caption,
+  📷 marks).
+
 ## 2026-10-26 · Boxel view: a system opens in Here, its bodies have the hover card
 - The author: in Nearby's Boxel view (the Overview's too) a click on a system did not show it in Here, and its bodies
   had no hover card. A row of a system you visited or Spansh knows now opens it in Here as a Nearby row does (the same
