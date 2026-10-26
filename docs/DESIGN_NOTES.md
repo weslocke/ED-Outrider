@@ -1749,8 +1749,9 @@ confirmed while playing. Treat reports about them as likely real.
 - Screenshots (2026-10-26, the author in game): F10 and HighRes conversion, the medium and small copies, the crop,
   the clipboard (Linux, the chosen copy ticked), bio shots named after their plant, the codex folders and the
   checklists' own pictures (a new pick per click, 📷 marks), Here's 📷 and the body's pictures, "Convert the
-  screenshots already there", WebP, and the clipboard's small copy made when no small copy is kept all work. Not yet
-  tried: a geology formation's shot, the clipboard on Windows, and the 3,840 px cap on a HighRes shot's full size.
+  screenshots already there", WebP, the clipboard's small copy made when no small copy is kept, and a geology
+  formation's shot (filed under Geology and shown on the Geology checklist) all work. Not yet tried: the clipboard on
+  Windows, and the 3,840 px cap on a HighRes shot's full size.
 - The 2026.10.29 work the author has used in game (2026-10-26): Your records and 🏆, the 📋 summary, Search's "at least
   N", the trail and compass grid, seconds to a full tank, the codex line (quiet during the FSS where it once spoke wrongly, and a held line said
   correctly after "all found"), the first start's journal re-read. Not yet:
