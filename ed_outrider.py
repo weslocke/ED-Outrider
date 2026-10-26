@@ -1758,7 +1758,8 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 #     (one after a long break keeps its hotspot), a legacy folder's stints are not today's ship's
 # 58: each mining session keeps where it mined (play_activity's mining places: the ring, the SRV's body): Sessions' Where
 # 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
-PARSER_VERSION = 64
+# 65: codex entries keep their own code (codex.code: "$Codex_Ent_Stratum_02_F_Name;"), Here's 📷 in any language
+PARSER_VERSION = 65
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1784,6 +1785,7 @@ PARSER_VERSION = 64
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    65: "each codex entry keeps the game's own code for it, so Here's 📷 knows a plant you photographed in any game language",
     64: "a green gas giant scanned three times (on arrival, in the FSS, when mapped) is still told apart by its codex entry",
     63: "a body first read off a nav beacon is dated by your own scan of it in Your records, and green gas giants are told apart by the scan written with their codex entry",
     62: "Your records are dated by when you first scanned each body, and a nav beacon read no longer hides one",
@@ -2018,6 +2020,7 @@ CREATE TABLE IF NOT EXISTS own_organic (
 CREATE TABLE IF NOT EXISTS codex (
     ts TEXT, entry_id INTEGER, name TEXT, category TEXT, subcategory TEXT, region TEXT,
     system INTEGER, system_name TEXT, body_id INTEGER, is_new INTEGER, new_traits TEXT, voucher INTEGER,
+    code TEXT,
     PRIMARY KEY (ts, entry_id));
 CREATE INDEX IF NOT EXISTS codex_system ON codex (system);
 CREATE INDEX IF NOT EXISTS jumps_ts ON jumps (ts);
@@ -5650,12 +5653,13 @@ class Journals:
             return
         if name == "CodexEntry":
             self.db.execute(
-                "INSERT OR IGNORE INTO codex VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO codex (ts, entry_id, name, category, subcategory, region, system, system_name, body_id,"
+                " is_new, new_traits, voucher, code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (ts, ev.get("EntryID"), ev.get("Name_Localised") or ev.get("Name"),
                  ev.get("Category_Localised"), ev.get("SubCategory_Localised"), ev.get("Region_Localised"),
                  system, ev.get("System"), ev.get("BodyID"), int(bool(ev.get("IsNewEntry"))),
                  ev.get("NewTraitsDiscovered") and json.dumps(ev["NewTraitsDiscovered"]),
-                 ev.get("VoucherAmount")))
+                 ev.get("VoucherAmount"), ev.get("Name")))
             self.note_bio_tag(ev, system, ts)
             self.note_geo_tag(ev, system, ts)
             self.mark(system)
@@ -8391,7 +8395,8 @@ class State:
         self._fss_closed = None    # (id64, arrival ts, time) the FSS was closed: judged FSS_SETTLE s later
         self._fss_warned = None    # (id64, arrival ts): "bodies still hidden" once per visit
         self._moment_extra = {}    # seq -> (key, fields): what moments_summary adds, kept while the key holds
-        self.codex_deferred = {}   # id64 -> {body_id}: codex lines held back until every body is found (codex_signal_facts)
+        self.codex_deferred = {}   # id64 -> {body_id}: codex lines held back until every body is scanned (codex_release)
+        self.codex_decided = {}    # (id64, body_id) -> "said" | "held": each body's codex line decided once a visit
         self._brief_all_found = {}  # arrival_brief seq -> all_found as first sent (the page reads each moment once)
         self.backup_wait_task = None   # the quit backup, waiting SHUTDOWN_BACKUP_DELAY
         self._shutdown_seen = journals.last_shutdown   # read before we started: not a quit to back up now
@@ -10437,10 +10442,10 @@ class State:
         species by the rules (leaving_summary's bio_pending: those new here and those new anywhere, one name per species,
         its colour when only one is new) and the geology its volcanism could show (codex_geo, against codex_types as the
         page judges it). -> {body, items: [{name, galaxy}], more} or None when nothing is new (or the body is not known).
-        Biology is held back while bodies are still unfound and only some of the genera the body could have are new (the
-        author, 2026-10-26: "Prasinum Bioluminescent Anemone, never logged" was said for a body the finished FSS showed
-        was Bacterium): its body goes in codex_deferred and the FSS's end (fss_done, `held`) says it if it still is.
-        Geology depends on the body alone: said at once."""
+        Biology is held back while bodies are still unscanned and only some of the genera the body could have are new
+        (the author, 2026-10-26: "Prasinum Bioluminescent Anemone, never logged" was said for a body the finished FSS
+        showed was Bacterium): decided once per body (codex_decided), its body goes in codex_deferred and codex_release
+        says it (`held`) once every body is scanned, if it still is. Geology depends on the body alone: said at once."""
         row = self.db.execute("SELECT name, record FROM own_bodies WHERE system=? AND body_id=?", (sid, body_id)).fetchone()
         where = self.locate(sid)
         if not row or not where:
@@ -10458,8 +10463,15 @@ class State:
                 by_species.setdefault(str(n).split(" - ")[0], []).append(n)
             bio = [{"name": names[0] if len(names) == 1 else sp, "galaxy": all(n in gal for n in names)}
                    for sp, names in by_species.items()]
-            if bio and not held and not b.get("codex_sure") and not self.all_bodies_found(sid):
-                self.codex_deferred.setdefault(sid, set()).add(body_id)   # said at the FSS's end, if still new
+            if bio and not held:
+                # said or held, decided once per body and visit (review 2026-10-26: a recomputation after more scans held
+                # back a line already said, and said it again later)
+                if (sid, body_id) not in self.codex_decided:
+                    self.codex_decided[(sid, body_id)] = "held" if not b.get("codex_sure") and not self.all_bodies_found(sid) else "said"
+                if self.codex_decided[(sid, body_id)] == "held":
+                    self.codex_deferred.setdefault(sid, set()).add(body_id)   # said once every body is scanned (codex_release)
+                else:
+                    items += bio
             elif bio:
                 items += bio
         if sig and sig["geo"] and not held:
@@ -10477,12 +10489,27 @@ class State:
         return {"body": short, "items": items[:self.CODEX_SAY_MAX], "more": max(0, len(items) - self.CODEX_SAY_MAX)}
 
     def all_bodies_found(self, sid):
-        """Whether every body of the system is found (the FSS's all found, or your scans reach its body count)."""
-        r = self.db.execute("SELECT body_count, all_found FROM own_systems WHERE id64=?", (sid,)).fetchone()
-        if r and r["all_found"]:
-            return True
+        """Whether your own scans reach the system's body count: what the bio rules need to settle a guess. Not the
+        FSS's "all found" alone (review 2026-10-26: in a system others discovered the honk says all found before you
+        have scanned anything)."""
+        r = self.db.execute("SELECT body_count FROM own_systems WHERE id64=?", (sid,)).fetchone()
         n = self.db.execute("SELECT count(*) FROM own_bodies WHERE system=?", (sid,)).fetchone()[0]
         return bool(r and r["body_count"] and n >= r["body_count"])
+
+    def codex_release(self, now=None):
+        """A follow-up: the codex lines held back (codex_deferred) said once every body of their system is scanned, in
+        one `codex_held` moment, judged again then (none when nothing is new any more); a system you left forgets its
+        held lines and its decisions."""
+        here = (self.journals.pos or {}).get("id64")
+        for key in [k for k in self.codex_decided if k[0] != here]:
+            del self.codex_decided[key]
+        for sid in list(self.codex_deferred):
+            if sid != here:
+                del self.codex_deferred[sid]
+            elif self.all_bodies_found(sid):
+                facts = [f for f in (self.codex_signal_facts(sid, bid, held=True) for bid in sorted(self.codex_deferred.pop(sid))) if f]
+                if facts:
+                    self.journals.moment("codex_held", iso_ts(time.time() if now is None else now), system=str(sid), codex=facts)
 
     def moments_summary(self):
         """The latest journal moments for the page's alerts, with scans and bio signals priced: the page
@@ -10564,9 +10591,6 @@ class State:
         extra = {"system": str(sid), "system_name": where[0]} if where else {"system": str(sid) if sid is not None else None}
         if kind == "fss_done":
             extra["leaving"] = self.leaving_summary(sid)
-            # the codex lines held back until every body was found (codex_signal_facts), judged again now
-            extra["codex"] = [f for f in (self.codex_signal_facts(sid, bid, held=True)
-                                          for bid in sorted(self.codex_deferred.get(sid, ()))) if f]
         elif kind in ("left_body", "bio_done"):
             bb = self.body_bio(sid, m["body_id"])
             if bb is None:
@@ -12239,6 +12263,8 @@ class State:
         except Exception as e:  # noqa: BLE001 -- recorded and said: a folder not writable, a file never written
             err = f"{type(e).__name__}: {e}"
         written = (out or {}).get("written") or []
+        if (out or {}).get("codex"):
+            self._codex_folders = None   # Here's and the checklist's 📷 see it at once
         got = {k: paths[k] if paths.get(k) and paths[k] in written else None for k in ("full", "medium", "small", "crop")}
         self.db.execute("INSERT OR REPLACE INTO screenshots (ts, original, system, system_name, body, body_id, lat, lon, heading, "
                         "cmdr, subject, full, medium, small, crop, width, height, error) "
@@ -12275,19 +12301,23 @@ class State:
         # clipboard alone from the best picture written (the author, 2026-10-26: the full size went instead, too big to
         # paste); else the first one made, said so (review 2026-10-25: a different picture went without a word)
         box = S.parse_crop(cfg.get("crop"))
-        src = next((got[k] for k in ("full", "medium", "crop", "small") if got.get(k)), None)
+        # made only from a whole picture at least as big (review 2026-10-26: a "small copy" was cut from the crop, a
+        # "medium copy" was the small one at small size): the medium from the full size, the small from either
+        bigger = {"medium": ("full",), "small": ("full", "medium"), "crop": ("full", "medium")}
+        src = next((got[k] for k in bigger.get(want, ()) if got.get(k)), None)
         px, crop, note = 0, None, ""
         if got.get(want):
-            key = want
-        elif src and want in ("medium", "small") and not (want == "medium" and got.get("crop") == src):
-            key, px, note = want, int(cfg.get(want) or (S.MEDIUM_PX if want == "medium" else S.SMALL_PX)), " (made for the clipboard)"
-        elif src and want == "crop" and box and src != got.get("crop"):
-            key, crop, px, note = "crop", box, int(cfg.get("crop_px") or 0), " (made for the clipboard)"
+            key, path = want, got[want]
+        elif src and want in ("medium", "small"):
+            key, path, note = want, src, " (made for the clipboard)"
+            px = int(cfg.get(want) or (S.MEDIUM_PX if want == "medium" else S.SMALL_PX))
+        elif src and want == "crop" and box:
+            key, path, crop, px, note = "crop", src, box, int(cfg.get("crop_px") or 0), " (made for the clipboard)"
         else:
             key = next((k for k in (want, "medium", "small", "crop", "full") if got.get(k)), None)
+            path = got.get(key) if key else None
         if not key or not self.clipboard:
             return "not copied: " + ("no picture" if not key else "no clipboard here")
-        path = got[key] if got.get(key) else src
         instead = f"the {name(want)} was not made: " if key != want else ""
         # never more than CLIPBOARD_MAX_PX on its long edge: a HighRes picture is far too big to paste (the author)
         px = min(px or S.CLIPBOARD_MAX_PX, S.CLIPBOARD_MAX_PX)
@@ -12475,13 +12505,26 @@ class State:
         # when and where it was taken, when the picture says (Outrider wrote it in; an edit may have dropped it)
         return dict(S.picture_facts(path), url=f"api/codex_picture?{q}", full=f"api/codex_picture?{q}&size=full", own=True, file=name)
 
+    CODEX_FOLDERS_KEEP_S = 10   # the codex folders' walk kept this long (a shot saved into them drops it at once)
+
+    def codex_folders(self):
+        """outrider.screenshots.codex_folders of the export folder, kept CODEX_FOLDERS_KEEP_S (review 2026-10-26: every
+        system_detail walked the trees: Here, Now, the overlay); shot_convert drops it when it saves a codex picture."""
+        root = self.shots_folders()[1]
+        hit = getattr(self, "_codex_folders", None)
+        if hit and hit[0] == root and time.monotonic() - hit[1] < self.CODEX_FOLDERS_KEEP_S:
+            return hit[2]
+        have = outrider.screenshots.codex_folders(root)
+        self._codex_folders = (root, time.monotonic(), have)
+        return have
+
     def own_pic_check(self):
         """A test (species id or None, variant codex code or None, the name logged) -> whether your codex folders hold a
         picture of that species' colour (Here's 📷, the author 2026-10-26: no second shot needed), from one walk of the
         folders; always False without them. The species by id, else by the name before " - "; its colour as a shot's is
         filed (checklist.variant_colour)."""
         S, root = outrider.screenshots, self.shots_folders()[1]
-        have = S.codex_folders(root)
+        have = self.codex_folders()
         R = (outrider.bio.load_rules() or {}) if outrider.bio and have else {}
         if not have or not R.get("species"):
             return lambda *a: False
@@ -12490,7 +12533,9 @@ class State:
         tables = bool(R.get("colours"))
 
         def check(species=None, variant=None, name=None):
-            sp = by_id.get(species) or by_id.get(names.get(str(name or "").split(" - ")[0].strip().lower()))
+            m = BIO_CODEX_RE.match(str(variant or ""))   # the species from its variant's code, in any language
+            sp = (by_id.get(species) or (by_id.get(f"$Codex_Ent_{m.group(1)}_{m.group(2)}_Name;") if m else None)
+                  or by_id.get(names.get(str(name or "").split(" - ")[0].strip().lower())))
             if not sp:
                 return False
             folder = S.codex_dir(root, {"kind": "bio", "group": sp.get("genus"), "entry": sp["name"],
@@ -12505,7 +12550,7 @@ class State:
         if not self.shots_cfg.get("codex_show"):
             return out
         S, root = outrider.screenshots, self.shots_folders()[1]
-        have = S.codex_folders(root)
+        have = self.codex_folders()
         if not have:
             return out
         for g in out.get("genera") or []:
@@ -12681,11 +12726,14 @@ class State:
         # for the FSS's codex line (codex_signal_facts): the names new here and those new anywhere, each its own (review
         # 2026-10-26: one never-logged species hid the others new only here), and whether every genus the body could
         # still have is new, so a new entry is sure whatever it turns out to be
-        codex_said = lambda bid, groups: {
+        # `possible`: every genus the body could still have, not the guessed few (review 2026-10-26: with one signal the
+        # top guess alone was judged, and the author's C 1 case was said at once again)
+        codex_said = lambda bid, groups, possible=None: {
             "codex_region_names": codex_names(bid, groups, known_codex) if region else [],
             "codex_galaxy_names": codex_names(bid, groups, known_all),
-            "codex_sure": bool(groups) and all(codex_new_group(g, known_codex if region else known_all)
-                                                 for g in with_logged_variants(groups, logged.get(bid, {})))}
+            "codex_sure": bool(possible if possible is not None else groups) and all(
+                codex_new_group(g, known_codex if region else known_all)
+                for g in with_logged_variants(possible if possible is not None else groups, logged.get(bid, {})))}
         # the x5 first-footfall bonus per body, as body_bio / approach_facts apply it. A separate factor: potential
         # stays bonus-free, so the bio threshold compares what it always did
         footfalled = {r["body_id"]: r["was_footfalled"] for r in self.db.execute(
@@ -12709,14 +12757,19 @@ class State:
                 if n_left <= 0 and not partial:
                     continue
                 groups = bio_left_groups(dict(rec, bio=n_sig), star, None, ctx, done_set | set(partial))
+                # every genus the rules still allow it (the codex line's "sure"), the runs under way with them
+                possible = [g for g in bio_guess(dict(rec, bio=None), star, None, ctx)[1]
+                            if g["genus"] not in done_set | set(partial)]
                 if partial:
-                    groups = bio_guess(rec, star, sorted(partial), ctx)[1] + groups
+                    runs = bio_guess(rec, star, sorted(partial), ctx)[1]
+                    groups, possible = runs + groups, runs + possible
                 groups = with_codex_species(groups, seen_codex.get(bid))   # a composition scan's species, exactly
+                possible = with_codex_species(possible, seen_codex.get(bid))
                 val = sum((g.get("value") or 0) for g in groups) or None
                 bio_pending.append({"body": name_of(bid), "signals": n_left, "genera": None, "partial": partial, "potential": val,
                                     "codex_new": codex_new(bid, groups), "codex_galaxy": codex_galaxy(bid, groups),
                                     "codex_names": codex_names(bid, groups, known_all if codex_galaxy(bid, groups) else known_codex),
-                                    **codex_said(bid, groups), "dist_ls": rec.get("dist_ls"), **extra(bid, rec)})
+                                    **codex_said(bid, groups, possible), "dist_ls": rec.get("dist_ls"), **extra(bid, rec)})
             elif left or partial:
                 left_val, left_groups = bio_guess(rec, star, sorted(left), ctx) if left else (None, [])
                 left_groups = with_codex_species(left_groups, seen_codex.get(bid))
@@ -12827,7 +12880,7 @@ class State:
             mined.setdefault(r["body_id"], []).append({"name": r["name"], "tons": r["tons"], "last": r["last_ts"]})
         codex = {}
         seen = {}   # one line per entry and body: the game logs a CodexEntry for each composition scan of a species
-        for r in self.db.execute("SELECT body_id, name, is_new, voucher, entry_id, subcategory FROM codex WHERE system=?"
+        for r in self.db.execute("SELECT body_id, name, is_new, voucher, entry_id, subcategory, code FROM codex WHERE system=?"
                                  " ORDER BY ts", (id64,)):
             had = seen.get((r["body_id"], r["entry_id"]))
             if had:
@@ -12838,9 +12891,12 @@ class State:
                                                        # an organic entry's id: Canonn Bioforge's statistics for it (the
                                                        # category is "Biological and Geological" for both: the
                                                        # subcategory tells a plant from a geyser)
-                                                       "entry_id": r["entry_id"] if "organic" in (r["subcategory"] or "").lower() else None}
+                                                       # subcategory tells a plant from a geyser; a plant's code says it
+                                                       # in any game language)
+                                                       "entry_id": r["entry_id"] if "organic" in (r["subcategory"] or "").lower()
+                                                       or BIO_CODEX_RE.match(r["code"] or "") else None}
             if row["entry_id"]:   # a plant's entry ("Stratum Paleas - Lime"): 📷 when your codex folders have it
-                row["own_pic"] = own_pic(None, None, r["name"])
+                row["own_pic"] = own_pic(None, r["code"], r["name"])
             codex.setdefault(r["body_id"], []).append(row)
         odyssey = True
         star_row = self.db.execute("SELECT star_class FROM jumps WHERE id64=? ORDER BY ts DESC LIMIT 1", (id64,)).fetchone()
@@ -13958,6 +14014,11 @@ class State:
         r = self.db.execute("SELECT name, x, y, z FROM bookmarks WHERE id64=?", (id64,)).fetchone()
         if r:
             return tuple(r)
+        # a boxel's system Spansh knows (Boxel view's rows: review 2026-10-26, a click opened Here on "unknown system")
+        for prefix, cache in (meta_get(self.db, "boxel_spansh") or {}).items():
+            for n, v in ((cache or {}).get("systems") or {}).items():
+                if isinstance(v, dict) and str(v.get("id64")) == str(id64) and str(n).isdigit() and v.get("x") is not None:
+                    return outrider.boxel.name_of(prefix, int(n)), v["x"], v["y"], v["z"]
         return outrider.edsmlog.locate(self.db, id64)   # S67: a system Find found in your EDSM flight log
 
     def find_local(self, name):
@@ -20445,7 +20506,8 @@ class State:
                                ("maybe_locate_carrier", self.maybe_locate_carrier), ("maybe_find_sellers", self.maybe_find_sellers),
                                ("maybe_backup_on_quit", self.maybe_backup_on_quit), ("highway_copy_next", self.highway_copy_next), ("riches_copy_next", self.riches_copy_next),
                                ("highway_heavy_check", self.highway_heavy_check), ("last_scoop_check", self.last_scoop_check),
-                               ("wrong_target_watch", self.wrong_target_watch), ("maybe_autotarget", self.maybe_autotarget),
+                               ("wrong_target_watch", self.wrong_target_watch), ("codex_release", self.codex_release),
+                               ("maybe_autotarget", self.maybe_autotarget),
                                ("maybe_boxel_autotarget", self.maybe_boxel_autotarget), ("docking_release", self.docking_release)):
                 try:
                     step()

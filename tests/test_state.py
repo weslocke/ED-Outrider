@@ -2464,6 +2464,8 @@ class BatchBState(unittest.TestCase):
         self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:02:00Z", "SystemAddress": 1, "BodyName": "S1 A 4",
                        "BodyID": 4, "Signals": [{"Type": ed_outrider.BIO, "Count": 1}]})
         self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES ('t', 1, 'Concha Biconcavis - Red', ?)", (region,))
+        # every body scanned: the open guess (one signal, Concha logged) is not held back (review 2026-10-26)
+        self.db.execute("INSERT OR REPLACE INTO own_systems (id64, name, body_count, all_found) VALUES (1, 'S1', 1, 1)")
         self.db.commit()
         cands = [dict(self.CANDS[0], variants=["Stratum Tectonicas - Teal"]), dict(self.CANDS[1], variants=[])]   # Concha: logged
         with unittest.mock.patch.object(outrider.bio, "predict", return_value=cands):
@@ -2501,22 +2503,49 @@ class BatchBState(unittest.TestCase):
             self.assertEqual(self.state.codex_signal_facts(1, 4)["items"],
                              [{"name": "Stratum Tectonicas - Teal", "galaxy": True}, {"name": "Concha Biconcavis - Red", "galaxy": False}])
             self.assertEqual(self.state.codex_deferred, {})
-            # Concha logged here too: the body may be a logged Concha, so nothing is said until every body is found
+            # said is said (review 2026-10-26 #5): Concha logged here meanwhile, the recomputation never holds it back now
             self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES ('t2', 2, 'Concha Biconcavis - Red', ?)", (region,))
             self.db.commit()
             self.state._leaving.clear()
-            self.assertIsNone(self.state.codex_signal_facts(1, 4))
-            self.assertEqual(self.state.codex_deferred, {1: {4}})
-            done = {"kind": "fss_done", "system": 1, "seq": 9999}
+            self.assertEqual(self.state.codex_signal_facts(1, 4)["items"], [{"name": "Stratum Tectonicas - Teal", "galaxy": True}])
+            self.assertEqual(self.state.codex_deferred, {})
+            # one signal, the body may be the logged Concha (the author's C 1; review #0: only the top guess was judged):
+            # held while bodies are unscanned, the honk's "all found" not counting (review #7)
+            self.planet("2026-01-01T00:03:00Z", 1, 5, "A 5", Landable=True, PlanetClass="Rocky body", MassEM=0.2)
+            self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:04:00Z", "SystemAddress": 1, "BodyName": "S1 A 5",
+                           "BodyID": 5, "Signals": [{"Type": ed_outrider.BIO, "Count": 1}]})
             self.db.execute("UPDATE own_systems SET all_found=1 WHERE id64=1")
             self.db.commit()
-            self.assertEqual(self.state.moment_extra(done)["codex"],
-                             [{"body": "A 4", "items": [{"name": "Stratum Tectonicas - Teal", "galaxy": True}], "more": 0}])
-        # judged again at the end: the guess settled on a logged species: nothing said
+            self.state._leaving.clear()
+            self.assertFalse(self.state.all_bodies_found(1))
+            self.assertIsNone(self.state.codex_signal_facts(1, 5))
+            self.assertEqual(self.state.codex_deferred, {1: {5}})
+            self.state.codex_release()
+            self.assertFalse([m for m in self.j.moments if m["kind"] == "codex_held"])   # not yet: 2 of 5 scanned
+            # every body scanned: said once, judged again then (review #6, #8: lost with the honk, or said twice)
+            self.db.execute("UPDATE own_systems SET body_count=2 WHERE id64=1")
+            self.db.commit()
+            self.state._leaving.clear()
+            self.state.codex_release()
+            self.state.codex_release()
+            held = [m for m in self.j.moments if m["kind"] == "codex_held"]
+            self.assertEqual([m["codex"] for m in held], [[{"body": "A 5", "items": [{"name": "Stratum Tectonicas - Teal", "galaxy": True}], "more": 0}]])
+            self.assertEqual(self.state.codex_deferred, {})
+        # a held body whose guess settled on a logged species says nothing; a system you left forgets its held lines
         with unittest.mock.patch.object(outrider.bio, "predict", return_value=[dict(self.CANDS[1], variants=["Concha Biconcavis - Red"])]):
             self.state._leaving.clear()
-            self.state._moment_extra.clear()
-            self.assertEqual(self.state.moment_extra(dict(done, seq=10000))["codex"], [])
+            self.state.codex_deferred = {1: {5}}
+            self.state.codex_release()
+            self.assertEqual(len([m for m in self.j.moments if m["kind"] == "codex_held"]), 1)
+            self.state.codex_deferred, self.state.codex_decided = {99: {1}}, {(99, 1): "held", (1, 4): "said"}
+            self.state.codex_release()
+            self.assertEqual((self.state.codex_deferred, self.state.codex_decided), ({}, {(1, 4): "said"}))
+
+    def test_a_boxel_system_spansh_knows_is_located(self):
+        """Review 2026-10-26: a Boxel view row Spansh knows, outside Nearby's sphere, opened Here on "unknown system"."""
+        ed_outrider.meta_set(self.db, "boxel_spansh", {"Drojau TF-H c13-": {"systems": {"12": {"id64": 3375408059762, "x": 1.0, "y": 2.0, "z": 3.0}}}})
+        self.assertEqual(self.state.locate(3375408059762), ("Drojau TF-H c13-12", 1.0, 2.0, 3.0))
+        self.assertIsNone(self.state.locate(3375408059763))
 
     def test_codex_marks_before_the_dss_settled_like_the_line(self):
         """Fourth in-depth review 2026-10-25: the table's options were marked from the raw guess while the line first

@@ -695,7 +695,18 @@ class Server(unittest.TestCase):
                              (os.path.join(bul, "Red", "deeper"), "x.png"),
                              (os.path.join(self.out, "Geology", "Geyser", "Water Ice Geyser"), "g.jpg")):
             os.makedirs(folder, exist_ok=True)
-            open(os.path.join(folder, name), "w").close()
+            if name.endswith((".png", ".jpg")):
+                Image.new("RGB", (8, 8)).save(os.path.join(folder, name))
+            else:
+                open(os.path.join(folder, name), "w").close()
+        # a folder of broken or linked pictures only is no 📷 (review 2026-10-26: codex_own shows Canonn's there)
+        broken = os.path.join(bul, "Gold")
+        os.makedirs(broken)
+        open(os.path.join(broken, "empty.png"), "w").close()
+        outside = os.path.join(self.d, "outside.png")
+        Image.new("RGB", (8, 8)).save(outside)
+        os.makedirs(os.path.join(bul, "Lime"))
+        os.symlink(outside, os.path.join(bul, "Lime", "linked.png"))
         self.assertEqual(S.codex_folders(self.out), {os.path.normcase(os.path.join(bul, "Yellow")),
                                                      os.path.normcase(os.path.join(self.out, "Geology", "Geyser", "Water Ice Geyser"))})
         rows = lambda kind: {r["name"]: r for g in self.st.checklist("all", kind)[0]["genera"] for r in g["species"]}
@@ -758,9 +769,23 @@ class Server(unittest.TestCase):
                        os.path.join(self.out, "Biology", "Stratum", "Stratum Paleas", "Lime")):
             os.makedirs(folder)
             Image.new("RGB", (10, 10)).save(os.path.join(folder, "a.png"))
+        self.st._codex_folders = None   # the walk is kept a few seconds; a shot saved through Outrider drops it itself
         b = body()
         self.assertEqual(([o["own_pic"] for o in b["organics"]], [c.get("own_pic") for c in b["codex"] if c["entry_id"]]), ([True], [True]))
         self.assertEqual([c.get("own_pic") for c in b["codex"] if not c["entry_id"]], [None] * len([c for c in b["codex"] if not c["entry_id"]]))
+
+    def test_here_marks_a_composition_scan_in_any_language(self):
+        """Review 2026-10-26: a composition scan's codex line got its 📷 only in an English game (its name and subcategory
+        were matched); the entry's own code (codex.code) says the species and colour in any language."""
+        self.j.handle({"event": "CodexEntry", "timestamp": self.at(5), "EntryID": 2420210, "Name": "$Codex_Ent_Stratum_02_K_Name;",
+                       "Name_Localised": "Stratum Paleas - Hellgrün", "Category": "$Codex_Category_Biology;",
+                       "SubCategory": "$Codex_SubCategory_Organic_Structures;", "SubCategory_Localised": "Organische Strukturen",
+                       "System": "Sys", "SystemAddress": 9, "BodyID": 6, "Latitude": 0.0, "Longitude": 0.003})
+        lime = os.path.join(self.out, "Biology", "Stratum", "Stratum Paleas", "Lime")
+        os.makedirs(lime)
+        Image.new("RGB", (10, 10)).save(os.path.join(lime, "a.png"))
+        b = next(b for b in self.st.system_detail(9)["bodies"] if b["name"] == "2 a")
+        self.assertEqual([(c["name"], c.get("own_pic")) for c in b["codex"] if c["entry_id"]], [("Stratum Paleas - Hellgrün", True)])
 
     def test_a_reread_fills_a_tags_variant(self):
         """Review 2026-10-26: a plant tagged before bio_tags.variant existed kept NULL through a journal re-read (its
@@ -885,6 +910,20 @@ class Server(unittest.TestCase):
             r = self.db.execute("SELECT medium, small FROM screenshots WHERE original=?", (name,)).fetchone()
             self.assertEqual((r["medium"], r["small"]), (None, None))   # no file of it kept
             self.assertFalse(os.path.exists(os.path.join(self.out, "Hefay", want)))
+        # review 2026-10-26: never cut from the crop, never the small copy at small size called "medium"
+        self.st.shots_cfg.update(clipboard="small", full=False, medium=0, small=0, crop="10, 10, 50, 50")
+        bmp(os.path.join(self.pictures, "Screenshot_0007.bmp"), 3072, 1728)
+        self.j.handle({"event": "Screenshot", "timestamp": self.at(37), "Filename": "\\ED_Pictures\\Screenshot_0007.bmp",
+                       "System": "Sys", "Body": "Sys 2 a"})
+        self.run_queue()
+        self.assertEqual(self.st.shots_last["clipboard"], "the small copy was not made: copied the crop")
+        self.st.shots_cfg.update(clipboard="medium", full=False, medium=0, small=1080, crop="")
+        bmp(os.path.join(self.pictures, "Screenshot_0008.bmp"), 3072, 1728)
+        self.j.handle({"event": "Screenshot", "timestamp": self.at(38), "Filename": "\\ED_Pictures\\Screenshot_0008.bmp",
+                       "System": "Sys", "Body": "Sys 2 a"})
+        self.run_queue()
+        self.assertEqual(self.st.shots_last["clipboard"], "the medium copy was not made: copied the small copy")
+        self.st.shots_cfg.update(full=True, small=0)
         # the full size chosen (or the fallback) of a HighRes shot: never bigger than CLIPBOARD_MAX_PX
         self.st.shots_cfg.update(clipboard="full")
         bmp(os.path.join(self.pictures, "Screenshot_0009.bmp"), 5000, 2800)

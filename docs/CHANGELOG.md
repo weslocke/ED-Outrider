@@ -2,6 +2,24 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Opus review 6 fixes: the codex line's hold-back reworked, the clipboard's sources, the lists
+An Opus bug check of ce9a8df..HEAD (5 areas x 2 lenses, 2 skeptics per finding: 30 findings, about 16 distinct, all
+confirmed but one split; project/done/reviews/review-2026-10-26):
+- **The codex line's hold-back** (the author's C 1 case was still said at once with one signal): "sure" is judged over
+  every genus the rules allow the body, not the guessed few; held until your own scans reach the body count (the
+  honk's "all found" came first in systems others discovered); decided once per body (a line said was held back and
+  said again after more scans); released by a follow-up (`codex_release`, a `codex_held` moment) instead of riding on
+  the debrief, which a honk's all found dropped; a second all found no longer says it twice; a system left forgets it.
+- **The clipboard:** a copy made for it comes only from a whole picture at least as big (a "small copy" was cut from
+  the crop, a "medium copy" was the small one); the hint no longer promises a crop made for it.
+- **Your pictures:** the 📷 marks count only pictures that open inside the export folder; the folders' walk is kept
+  10 s and dropped by a codex save; a composition scan's 📷 works in any game language (`codex.code`, PARSER_VERSION
+  65); the checklist reloads after a shot; a click on another colour while a pick is coming wins.
+- **The lists:** a hand-made sector's visited boxel rows open in Here with their 🏆; a Spansh-known boxel row opens a
+  real system (`locate` reads the boxel's Spansh list); records arriving redraw Here and any open body panel; a failed
+  records request keeps the 🏆 shown and asks again a minute later; a row's pinned highlight follows a tab switch.
+- The Settings tooltip says when the codex line is said.
+
 ## 2026-10-26 · 📷 in Here's bio column: a species you already have a picture of
 - The author: once a species' colour is known, Here's bio column says whether your codex folders already hold a
   picture of it, so no second shot is needed: 📷 beside a finished species, a run under way and a composition scan's

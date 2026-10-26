@@ -524,8 +524,7 @@ const releasePayloads = async () => {
       onData();
       // a line held back while the genus was open is said once every body is found (the author's C 1, 2026-10-26)
       store.set("sayCodex", true);
-      data.moments = [mk(4, {kind: "fss_done", system: "9", count: 5, leaving: {body_count: 5, bio_pending: [], unmapped: [], unmapped_all: []},
-                             codex: [{body: "C 1", more: 0, items: [{name: "Bacterium Vesicula - Lime", galaxy: false}]}]})];
+      data.moments = [mk(4, {kind: "codex_held", system: "9", codex: [{body: "C 1", more: 0, items: [{name: "Bacterium Vesicula - Lime", galaxy: false}]}]})];
       onData();
       out.one = codexSignalsText({body: "B 4", more: 0, items: [{name: "Stratum Tectonicas", galaxy: true}]});
       out.more = codexSignalsText({body: "B 4", more: 2, items: [{name: "Stratum Tectonicas", galaxy: true}]});
@@ -587,10 +586,15 @@ const releasePayloads = async () => {
       out.bxRec = (document.querySelector('#boxelTable tr[data-id="9001"] .rec') || {}).title || "";
       out.bxNone = !document.querySelector('#boxelTable tr[data-id="9002"] .rec');
       out.nearRec = !!(nid && document.querySelector(\`#rows tr[data-id="\${nid}"] .rec\`));
+      // a hand-made sector's visited row: its summary's id (review 2026-10-26)
+      boxelData.rows.push({n: 3, name: "Bx AB-C d1-3", visited: true, spansh: false, summary: Object.assign({}, sum, {id: "9005"})});
+      pane.hidden = false; drawBoxel();
+      out.handMade = !!document.querySelector('#boxelTable tr[data-id="9005"]');
+      boxelData.rows.pop();
       REC.d = savedRec;
       hidePop(); [boxelData, pinnedSystem] = saved; pane.hidden = wasHidden; drawBoxel(); render();
       return JSON.stringify(out); })()`));
-    const ok = JSON.stringify(res.ids) === '["9001","9002"]' && JSON.stringify(res.pops) === '["9001"]' && JSON.stringify(res.pinned) === '["9001"]' &&
+    const ok = JSON.stringify(res.ids) === '["9001","9002"]' && JSON.stringify(res.pops) === '["9001"]' && JSON.stringify(res.pinned) === '["9001"]' && res.handMade &&
                res.marked && res.pop && res.bxRec === "Your record: Biggest planet, 77,691 km (body 4)" && res.bxNone && res.nearRec &&
                errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| boxel rows open in Here, hover card |", JSON.stringify(res), errors.slice(before));
@@ -634,6 +638,19 @@ const releasePayloads = async () => {
                errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| checklist 📷 marks |", JSON.stringify(res), errors.slice(before));
   }
+  // a failed api/records keeps the 🏆 already shown and asks again a minute later (review 2026-10-26)
+  {
+    const w = dom.window, before = errors.length;
+    const realApi = w.apiJson;
+    w.eval(`window.__rec = [REC.d, REC.key, REC.failed]; REC.d = {bodies: 1, records: [{label: "Biggest planet", text: "1 km", body: "4", system: "S", id64: "77"}]}; REC.key = null;`);
+    w.apiJson = async () => ({error: "Outrider restarting"});
+    await w.eval(`loadRecords(true)`);
+    const res = JSON.parse(w.eval(`JSON.stringify({kept: recordsHeld("77", "4").length, failed: !!REC.failed, stale: REC.d.stale || null})`));
+    w.apiJson = realApi;
+    w.eval(`[REC.d, REC.key, REC.failed] = window.__rec; delete window.__rec;`);
+    const ok = res.kept === 1 && res.failed && res.stale === "Outrider restarting" && errors.length === before;
+    console.log(ok ? "OK" : "FAIL", "| records kept on a failed ask |", JSON.stringify(res), errors.slice(before));
+  }
   // a colour clicked picks another of your own pictures (the author, 2026-10-26); a Canonn one asks nothing
   {
     const w = dom.window, before = errors.length, asked = [];
@@ -644,13 +661,15 @@ const releasePayloads = async () => {
                                                                red: {url: "https://c/r.jpg", cmdr: "X"}}}`);
       await w.eval(`Promise.all([clColour("lime"), clColour("lime")])`);   // a double click: one pick (review 2026-10-26)
       await w.eval(`clColour("red")`);
+      // a Canonn colour clicked while an own picture's pick is coming: the later click stays (review 2026-10-26)
+      await w.eval(`Promise.all([clColour("lime"), clColour("red")])`);
       const out = {file: w.eval(`CL.species.images.lime.file`), colour: w.eval(`CL.colour`)};
       w.eval(`CL.open = null; CL.species = null; CL.colour = null; CL_PIC_WAIT = 3000`);
       return out;
     };
     const res = await run();
     w.apiJson = realApi;
-    const ok = asked.length === 1 && /api\/checklist\/picture\?species=%24S1%3B&colour=lime&avoid=a\.png/.test(asked[0]) &&
+    const ok = asked.length === 2 && /api\/checklist\/picture\?species=%24S1%3B&colour=lime&avoid=a\.png/.test(asked[0]) &&
                res.file === "b.png" && res.colour === "red" && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| codex picture per click |", JSON.stringify(asked), JSON.stringify(res), errors.slice(before));
   }

@@ -112,8 +112,8 @@ package (see [Install and run](install.md)), and is off until you tick it.
   optionally **resized to** a long edge in px; the middle without the HUD's edges, say, or a square for an avatar. The
   copies and the crop are JPG (posts anywhere) or WebP (smaller; Discord and browsers show it) at their own quality (85).
 - **The clipboard:** **After each shot, copy** the full size, a copy or the crop to the clipboard, ready to paste
-  into Discord or a post (the shots you take, never the ones converted later). A medium or small copy, or the crop,
-  is made for the clipboard alone when no file of it is kept; the picture is never more than 3,840 px on its long
+  into Discord or a post (the shots you take, never the ones converted later). A medium or small copy is made for
+  the clipboard alone, from the full size, when no file of it is kept; the picture is never more than 3,840 px on its long
   edge (a HighRes shot's full size is shrunk), and the status line says so. It replaces what was on the clipboard, a system name
   copied for the galaxy map included. On Linux it needs `xclip` or `wl-copy`, as the Highway's copy does (see
   [Install and run](install.md#-getting-started)); Windows has its own.

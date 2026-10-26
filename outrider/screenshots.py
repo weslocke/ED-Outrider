@@ -323,9 +323,10 @@ def codex_pictures(folder):
 
 
 def codex_folders(root):
-    """The codex folders under `root` holding a picture (CODEX_IMAGES), normcased: Biology's to the colour (three deep)
-    and Geology's to the formation (two), one walk for the whole checklist (its 📷 marks); links are not followed, as
-    codex_own offers nothing from outside the export folder."""
+    """The codex folders under `root` holding a picture codex_own would show (CODEX_IMAGES that open, inside root),
+    normcased: Biology's to the colour (three deep) and Geology's to the formation (two), one walk for the whole
+    checklist (its 📷 marks); links are not followed (review 2026-10-26: a 📷 for a folder of broken or linked files
+    only, where the panel showed Canonn's)."""
     found = set()
     for top, depth in ((CODEX_FOLDERS["bio"], 3), (CODEX_FOLDERS["geo"], 2)):
         base = os.path.join(root or "", top)
@@ -334,7 +335,8 @@ def codex_folders(root):
         for d, dirs, files in os.walk(base):
             if os.path.relpath(d, base).count(os.sep) + (d != base) >= depth:
                 dirs[:] = []   # no deeper than a colour (or a formation)
-            if any(not f.startswith(".") and os.path.splitext(f)[1].lower() in CODEX_IMAGES for f in files):
+            if any(not f.startswith(".") and os.path.splitext(f)[1].lower() in CODEX_IMAGES
+                   and under(root, os.path.join(d, f)) and readable(os.path.join(d, f)) for f in files):   # the first good one ends it
                 found.add(os.path.normcase(d))
     return found
 

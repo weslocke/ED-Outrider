@@ -4071,6 +4071,7 @@ function unsoldHtml(u) {
 
 function render() {
   recordsWanted();   // the lists' 🏆
+  if (boxelPinDrawn !== pinnedSystem) drawBoxel();   // a pin cleared elsewhere (a tab switch): its row's highlight goes
   renderUploads();
   renderOverlay();
   if (!data) return;
@@ -4469,9 +4470,11 @@ const boxelCodeLine = (mc, c) => { const y = c && c.yours;
   return `<b>${mc}</b> · ${c ? c.size : ""} ly cubes · ${esc(c ? c.kind : "")}` + (y && y.systems ? ` <span class="bxyours">· from your ${y.systems} ${mc} system${y.systems === 1 ? "" : "s"}: ` +
     `${Math.round(100 * y.bio / y.systems)}% with biology${y.elw ? `, ${y.elw} Earth-like` : ""}${y.ww ? `, ${y.ww} water world${y.ww === 1 ? "" : "s"}` : ""}` +
     `${y.terraformable ? `, ${y.terraformable} terraformable` : ""}</span>` : ""); };
+var boxelPinDrawn = null;   // (var: render may run before this line) the pin the boxel table was last drawn with (render redraws it when that changes)
 function drawBoxel() {
   const el = document.getElementById("boxelPane");
   if (!el || el.hidden) return;
+  boxelPinDrawn = pinnedSystem;
   const d = boxelData, pc = data && data.game_pc !== false;
   let html = "";
   if (!d) html = `<div class="unk">loading…</div>`;
@@ -4498,10 +4501,11 @@ function drawBoxel() {
       (!b.standard ? `<span class="unk">a hand-made sector: ${mk("destination")}target cannot check its systems</span>` : "") + `</div>`;
     // a system you or Spansh know opens in Here on a click, and its bodies cell has Nearby's hover card (the author,
     // 2026-10-26: neither worked in Boxel view); one only to try has nothing for Here to show
-    const rowHtml = r => { const s = r.summary, open = r.id && (r.visited || r.spansh);
+    // a hand-made sector's rows have no computed id: a visited one has its summary's (review 2026-10-26)
+    const rowHtml = r => { const s = r.summary, rid = r.id || (s && s.id), open = rid && (r.visited || r.spansh);
       return `<tr class="${[r.visited && "visited", r.n === d.next && "next", !r.visited && !r.spansh && "try", d.skip_known && r.scanned && !r.visited && "skipped",
-                           open && pinnedSystem === r.id && "pinned"].filter(Boolean).join(" ")}"${open ? ` data-id="${esc(r.id)}"` : ""}>` +
-        `<td class="n">-${r.n}</td><td class="name copy" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${s ? firstsIcon(s.firsts) : ""}${sysRecordMark(r.id)}</td>` +
+                           open && pinnedSystem === rid && "pinned"].filter(Boolean).join(" ")}"${open ? ` data-id="${esc(rid)}"` : ""}>` +
+        `<td class="n">-${r.n}</td><td class="name copy" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${s ? firstsIcon(s.firsts) : ""}${sysRecordMark(rid)}</td>` +
         `<td class="num">${r.distance != null ? r.distance.toFixed(1) : ""}</td>` +
         `<td>${r.visited ? `<span class="ok" title="you have been here">✓ visited</span>` : r.spansh ? boxelKnown(r) : `<span class="unk">to try</span>`}</td>` +
         `<td>${s ? star(s) : ""}</td><td${s && s.id ? ` class="bodies" data-pop data-id="${esc(s.id)}"` : ""}>${s ? bodies(s) : ""}</td><td class="num"${s ? ` title="${valueTitle(s)}"` : ""}>${s ? valueCell(s) : ""}</td>` +
@@ -5773,9 +5777,19 @@ async function loadRecords(any = false) {
   const key = `${data && data.scan_version}|${data && data.position && data.position.id}`;
   if (key === REC.key) return;
   REC.key = key;
-  try { REC.d = await apiJson("api/records"); } catch (err) { REC.d = {error: err.message}; REC.key = null; REC.failed = Date.now(); }
+  // a failure keeps the last good answer (review 2026-10-26: one failed ask took every 🏆 away): said in My firsts,
+  // asked again after a minute
+  let got;
+  try { got = await apiJson("api/records"); } catch (err) { got = {error: err.message}; }
+  if (!got || got.error) { REC.key = null; REC.failed = Date.now(); REC.d = REC.d && !REC.d.error ? Object.assign({}, REC.d, {stale: got && got.error}) : got; }
+  else { REC.d = got; REC.failed = null; }
   renderRecords();
-  if (view === "here" && hereData) renderHere();   // its 🏆 marks
+  // every place a 🏆 shows (review 2026-10-26: Here in the Overview or beside a pinned row, and an open body panel,
+  // kept their old marks): Here, its body panel, Search's, the lists
+  if (hereData && (view === "here" || view === "overview" || (view === "near" && pinnedSystem))) renderHere();
+  if (selectedBody && bodyData) renderBody();
+  if (typeof sBody !== "undefined" && sBody.data && !sBody.data.error)
+    renderBodyInto(document.getElementById("sBodyPanel"), sBody.data, sBody.name, "closeSearchBody()", sBody.sys);
   if (view === "near" || view === "overview") { render(); drawBoxel(); }   // the lists' 🏆
 }
 // Here's 🏆 (explorer ideas, item 4): asked a few seconds after Here loads, so a burst of FSS scans is one request
@@ -6892,7 +6906,8 @@ async function loadChecklist(force = false) {
   const kind = clKind();
   // the colour tables' state too (S7): the note's "downloading…" / "failed", and the colours once they are in
   const br = data && data.bio_rules, colKey = br ? `${br.colours}|${(br.colours_job || {}).state}` : "";
-  const key = `${kind}|${want}|${data && data.scan_version}|${want === "here" ? posId() : ""}|${colKey}`;
+  // a converted shot too: its codex picture's 📷 (review 2026-10-26)
+  const key = `${kind}|${want}|${data && data.scan_version}|${want === "here" ? posId() : ""}|${colKey}|${((data && data.screenshots) || {}).n || 0}`;
   if (!force && key === CL.key) return;
   // every change (region, list, a scan) asks, and only the newest answer is drawn: a region picked while an answer
   // was on its way was dropped (the Fable review of 2026-10-10, #6); a list switched meanwhile asks anew (setBioMode)
@@ -6995,20 +7010,21 @@ function renderChecklist() {
 let CL_PIC_WAIT = 3000;   // ms a re-picked picture is waited for before the switch
 async function clColour(colour) {
   const sp = CL.species, img = sp && sp.images && sp.images[colour];
+  clColour.want = colour;   // the latest click wins (review 2026-10-26: an earlier pick's late answer took the panel back)
   if (!img || !img.own) { CL.colour = colour; renderChecklist(); return; }
-  if (clColour.busy) return;
-  clColour.busy = true;
+  if (clColour.busy === colour) return;   // that colour's pick still coming: let go; another colour is its own
+  clColour.busy = colour;
   try {
     let d;
     try { d = await apiJson(`api/checklist/picture?species=${encodeURIComponent(sp.id)}&colour=${encodeURIComponent(colour)}&avoid=${encodeURIComponent(img.file || "")}`); }
     catch { d = null; }
     if (d && d.image && d.image.url)   // at most CL_PIC_WAIT: a slow picture then loads in place
       await new Promise(ok => { const im = new Image(); im.onload = im.onerror = ok; im.src = d.image.url; setTimeout(ok, CL_PIC_WAIT); });
-    if (CL.species !== sp) return;   // another species opened meanwhile
-    if (d && d.image) sp.images[colour] = d.image;
+    if (d && d.image) sp.images[colour] = d.image;   // kept for that colour's next showing either way
+    if (CL.species !== sp || clColour.want !== colour) return;   // another species or colour clicked meanwhile
     CL.colour = colour;   // the one picked (or, failing that, the one it had)
     renderChecklist();
-  } finally { clColour.busy = false; }
+  } finally { if (clColour.busy === colour) clColour.busy = null; }
 }
 // 📷: pictures of your own of it in your codex folders (Settings → Screenshots; the author, 2026-10-26)
 function clCam(on) { return on ? ' <span class="clcam" title="you have pictures of your own of it (your codex folders)">📷</span>' : ""; }
@@ -10330,7 +10346,8 @@ function onData() {
                                                     (fold ? " " + jumponiumSaid(jp) : "")});
         if (jp && fold && jumponiumOn()) toast(`⛽ ${jp.body}: ${(jp.name || jp.material).toLowerCase()} ${jp.pct}%`);
         if (jp && !(fold && said)) sayJumponium(jp);
-        // the codex lines held back while the body's genus was still open (codex_signal_facts), now every body is found
+      }
+      else if (m.kind === "codex_held") {   // the codex lines held back while a genus was open, now every body is scanned
         for (const c of m.codex || []) {
           const t = codexSignalsText(c);
           if (t && saySignals("codex") && speechOn && speakerHere() && !hushed()) speak(t, {kind: "signals"});

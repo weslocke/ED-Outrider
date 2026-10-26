@@ -324,8 +324,8 @@ the sentence ends:
   Geyser, never logged" (four names at most, then "and 2 more"; once per body each visit). It is on by default and said
   whether or not the counts are. Geology is said at once (it
   depends on the body alone). Biology is said at once only when every genus the body could have is new to you; while
-  some are and some are not and bodies are still unfound (a star yet to be found can rule a genus in or out), it waits
-  for the FSS's "all found" and is said then if it still is.
+  some are and some are not and bodies are still unscanned (a star yet to be scanned can rule a genus in or out), it
+  waits until you have scanned every body of the system and is said then if it still is.
   **The jump line** in the hyperspace tunnel, with whether the star ahead is scoopable, and any hazard.
 - **Greeting and goodbye:** what is at stake after a long break (and any core module under your level), and a
   session recap when you quit.
