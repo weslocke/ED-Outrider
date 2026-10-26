@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · A system's hover card names its records
+- The author: the 🏆 showed on a Boxel view row, but the system's hover card (Nearby's and Boxel view's bodies cell)
+  said nothing of it. The card now opens with "🏆 Your record · Biggest planet (4) 77,691 km" (`sysRecordsHeld`).
+
 ## 2026-10-26 · Opus review 6 fixes: the codex line's hold-back reworked, the clipboard's sources, the lists
 An Opus bug check of ce9a8df..HEAD (5 areas x 2 lenses, 2 skeptics per finding: 30 findings, about 16 distinct, all
 confirmed but one split; project/done/reviews/review-2026-10-26):

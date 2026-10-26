@@ -586,6 +586,10 @@ const releasePayloads = async () => {
       out.bxRec = (document.querySelector('#boxelTable tr[data-id="9001"] .rec') || {}).title || "";
       out.bxNone = !document.querySelector('#boxelTable tr[data-id="9002"] .rec');
       out.nearRec = !!(nid && document.querySelector(\`#rows tr[data-id="\${nid}"] .rec\`));
+      // the system's hover card says which (the author, 2026-10-26)
+      showPop(document.querySelector('#boxelTable td.bodies[data-pop][data-id="9001"]'), 10, 10);
+      out.cardRec = document.getElementById("pop").textContent.includes("Your record") && document.getElementById("pop").textContent.includes("Biggest planet (4)77,691 km");
+      hidePop();
       // a hand-made sector's visited row: its summary's id (review 2026-10-26)
       boxelData.rows.push({n: 3, name: "Bx AB-C d1-3", visited: true, spansh: false, summary: Object.assign({}, sum, {id: "9005"})});
       pane.hidden = false; drawBoxel();
@@ -594,7 +598,7 @@ const releasePayloads = async () => {
       REC.d = savedRec;
       hidePop(); [boxelData, pinnedSystem] = saved; pane.hidden = wasHidden; drawBoxel(); render();
       return JSON.stringify(out); })()`));
-    const ok = JSON.stringify(res.ids) === '["9001","9002"]' && JSON.stringify(res.pops) === '["9001"]' && JSON.stringify(res.pinned) === '["9001"]' && res.handMade &&
+    const ok = JSON.stringify(res.ids) === '["9001","9002"]' && JSON.stringify(res.pops) === '["9001"]' && JSON.stringify(res.pinned) === '["9001"]' && res.handMade && res.cardRec &&
                res.marked && res.pop && res.bxRec === "Your record: Biggest planet, 77,691 km (body 4)" && res.bxNone && res.nearRec &&
                errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| boxel rows open in Here, hover card |", JSON.stringify(res), errors.slice(before));

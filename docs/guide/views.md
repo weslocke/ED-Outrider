@@ -170,7 +170,8 @@ star, hottest and coldest planet, highest and lowest gravity you could land on, 
 thickest atmosphere, the fastest spin, the widest ring...) and the system farthest from Sol you have been to; 🔍 opens
 the body in Here. A record set in the last day is marked **🏆 new**, and in Here a body that holds one of your records
 has a 🏆 beside its name (hover it for which; its hover card and its details panel say so too). In Nearby's list,
-standard or Boxel view, a system that holds one has a 🏆 beside its name, its hover naming the record and the body.
+standard or Boxel view, a system that holds one has a 🏆 beside its name, its hover naming the record and the body;
+the system's card (hover its bodies) lists them too.
 In Here's bio column, a 📷 beside a species (sampled, being sampled, or logged with the composition scanner) says your
 codex folders already hold a picture of that colour (Settings → Screenshots), so another shot is not needed.
 <br><br><img src="../images/firsts.png" alt="My firsts">

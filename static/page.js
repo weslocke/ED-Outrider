@@ -5801,8 +5801,9 @@ function recordsWanted() {
   if (`${data.scan_version}|${data.position && data.position.id}` !== REC.key) recordsSoon();
 }
 // a system that holds one of Your records (any of its bodies, or the system farthest from Sol): 🏆 on its row
+const sysRecordsHeld = id64 => id64 == null ? [] : ((REC.d && REC.d.records) || []).filter(r => r.id64 === String(id64));
 function sysRecordMark(id64) {
-  const held = id64 == null ? [] : ((REC.d && REC.d.records) || []).filter(r => r.id64 === String(id64));
+  const held = sysRecordsHeld(id64);
   return held.length ? ` <span class="rec" title="${esc(held.map(r => `Your record: ${r.label}, ${r.text}${r.body ? ` (body ${r.body})` : ""}`).join("\n"))}">🏆</span>` : "";
 }
 document.addEventListener("click", e => { if (e.target.closest("#hereCopyMd")) copyText(systemSummaryMd(hereData), "the system summary"); });
@@ -9667,6 +9668,10 @@ const curiosityList = (items, withBody) => !(items || []).length ? "" :
 function popHtml(s) {
   const src = s.source === "own" ? "not in Spansh · your scans" : s.own_scans ? "Spansh + your scans" : "";
   let h = `<h3>${esc(s.name)}${src ? ` <span class="src">${src}</span>` : ""}</h3>`;
+  // the records it holds, as the 🏆 beside its name in the lists (the author, 2026-10-26: the card said nothing)
+  const held = sysRecordsHeld(s.id);
+  if (held.length) h += `<div class="sec"><div class="lbl">🏆 Your record${held.length === 1 ? "" : "s"}</div><ul>` +
+    held.map(r => `<li><span>${esc(r.label)}${r.body ? ` <span class="unk">(${esc(r.body)})</span>` : ""}</span><b>${esc(r.text)}${recordNew(r) ? ` <span class="ok" title="set in the last day">new</span>` : ""}</b></li>`).join("") + `</ul></div>`;
   if (!s.bodies_known) return h + `<div class="unk">No bodies known yet.</div>`;
   h += `<div>${s.body_count ? `${s.bodies_known} of ${s.body_count} bodies known`
                              : `${s.bodies_known} bod${s.bodies_known > 1 ? "ies" : "y"} known, total unknown (no FSS honk reported)`}</div>`;
