@@ -80,6 +80,51 @@ class Server(unittest.TestCase):
         self.assertIn(1400158, logged["Inner Orion Spur"])
         self.assertNotIn(1400601, logged["Inner Orion Spur"])
 
+    def test_possible_new_codex_entries_said_after_the_scan(self):
+        """The author, 2026-10-26: the FSS's signals counts can be off and the possible new codex entries still said. The
+        game writes FSSBodySignals a second before the body's Scan (their journals, 2026-10-23), so the codex_signals
+        moment waits for the Scan; once per body and visit; the geology its volcanism could show, judged as the page's
+        ✦ / ✪ are (never logged anywhere, or not in this region); none when your codex has them all."""
+        at = lambda s: ed_outrider.iso_ts(self.now - 60 + s)
+        name = "Drojau TF-H c13-0"
+        pos = [-4179.0, -64.0, 3339.0]
+        region = ed_outrider.outrider.bio.region_name(*pos)
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES (?, 1400158, 'x', ?)", (at(-100), region))
+        self.j.handle({"event": "FSDJump", "timestamp": at(0), "StarSystem": name, "SystemAddress": 9, "StarPos": pos})
+        scan = lambda bid, body, s: self.j.handle({
+            "event": "Scan", "timestamp": at(s), "ScanType": "Detailed", "StarSystem": name, "SystemAddress": 9, "BodyID": bid,
+            "BodyName": f"{name} {body}", "PlanetClass": "Icy body", "TerraformState": "", "Landable": True, "AtmosphereType": "None",
+            "Volcanism": "major water geysers volcanism", "DistanceFromArrivalLS": 900.0, "WasDiscovered": True, "WasMapped": False})
+        sig = lambda bid, body, s: self.j.handle({
+            "event": "FSSBodySignals", "timestamp": at(s), "BodyName": f"{name} {body}", "BodyID": bid, "SystemAddress": 9,
+            "Signals": [{"Type": "$SAA_SignalType_Geological;", "Type_Localised": "Geological", "Count": 3}]})
+        kinds = lambda: [m for m in self.state.moments_summary() if m["kind"] == "codex_signals"]
+        sig(4, "B 3", 5)
+        self.assertEqual(kinds(), [])                       # the Scan is not in yet
+        scan(4, "B 3", 6)
+        [m] = kinds()
+        self.assertEqual((m["body"], m["items"], m["more"]), ("B 3", [{"name": "Water Ice Geyser", "galaxy": True}], 0))   # the fumarole is logged here
+        scan(4, "B 3", 30)                                 # the mapping's rescan: not said again
+        sig(4, "B 3", 31)
+        self.assertEqual(len(kinds()), 1)
+        # a Scan first and its signals after: said at the signals; a body whose geology your codex has: nothing said
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES (?, 1400258, 'x', 'Elsewhere')", (at(-90),))
+        scan(5, "B 4", 40)
+        sig(5, "B 4", 41)
+        self.assertEqual(len([m for m in self.j.moments if m["kind"] == "codex_signals"]), 2)
+        [m2] = [m for m in kinds() if m["body"] == "B 4"]
+        self.assertEqual(m2["items"], [{"name": "Water Ice Geyser", "galaxy": False}])   # logged elsewhere, not here
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES (?, 1400258, 'x', ?)", (at(-80), region))
+        self.state._moment_extra.clear()
+        self.assertEqual(kinds(), [])                       # all in your codex now: nothing to say
+        # an old journal read again says nothing
+        sig(6, "B 5", -5000)
+        scan(6, "B 5", -4999)
+        self.assertFalse([m for m in self.j.moments if m["kind"] == "codex_signals" and m["body_id"] == 6])
+        # the [defaults] key, on unless set off
+        self.assertTrue(ed_outrider.SPEAK_CODEX_SIGNALS)
+        self.assertIn("sayCodex", ed_outrider.BROWSER_SETTINGS)
+
 
 if __name__ == "__main__":
     unittest.main()

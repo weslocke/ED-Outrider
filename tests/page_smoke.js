@@ -503,6 +503,37 @@ const releasePayloads = async () => {
                words === "Next Neutron Highway Stop: Ossia. Boost your FSD to continue.|Off route: detour." && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| highway moments spoken |", words, JSON.stringify(res), errors.slice(before));
   }
+  // the FSS's possible new codex entries (the author, 2026-10-26): their own tick, said with the counts' ticks off, on by
+  // default, quiet when unticked
+  {
+    const w = dom.window, before = errors.length, said = [];
+    const realPlay = w.play, realSpeak = w.speak;
+    w.speak = (t, o) => said.push([t, (o || {}).kind]); w.play = () => {};
+    const res = JSON.parse(w.eval(`(() => {
+      const saved = data.moments, flags = [speechOn, isSpeaker, lastMomentSeq], keep = ["sayBio", "sayGeo", "sayCodex"].map(k => store.get(k, null));
+      speechOn = true; isSpeaker = true;
+      store.set("sayBio", false); store.set("sayGeo", false); store.set("sayCodex", null);
+      const out = {byDefault: saySignals("codex"), box: !!document.getElementById("sayCodex")};
+      const s0 = lastMomentSeq, mk = (i, m) => Object.assign({seq: s0 + i, ts: new Date().toISOString()}, m);
+      data.moments = [mk(1, {kind: "signals", system: "9", body: "B 3", bio: 2, geo: 3}),
+                      mk(2, {kind: "codex_signals", system: "9", body: "B 3", more: 0,
+                             items: [{name: "Bacterium Acies - Teal", galaxy: false}, {name: "Water Ice Geyser", galaxy: true}]})];
+      onData();
+      store.set("sayCodex", false);
+      data.moments = [mk(3, {kind: "codex_signals", system: "9", body: "B 4", more: 2, items: [{name: "Stratum Tectonicas", galaxy: true}]})];
+      onData();
+      out.one = codexSignalsText({body: "B 4", more: 0, items: [{name: "Stratum Tectonicas", galaxy: true}]});
+      out.more = codexSignalsText({body: "B 4", more: 2, items: [{name: "Stratum Tectonicas", galaxy: true}]});
+      data.moments = saved; [speechOn, isSpeaker, lastMomentSeq] = flags;
+      ["sayBio", "sayGeo", "sayCodex"].forEach((k, i) => store.set(k, keep[i]));
+      return JSON.stringify(out); })()`));
+    w.speak = realSpeak; w.play = realPlay;
+    const words = said.map(x => x[0]).join("|");
+    const ok = res.byDefault && res.box && words === "Possible new codex entries on body B 3: Bacterium Acies - Teal, new in this region; Water Ice Geyser, never logged." &&
+               res.one === "Possible new codex entry on body B 4: Stratum Tectonicas, never logged." &&
+               res.more === "Possible new codex entries on body B 4: Stratum Tectonicas, never logged; and 2 more." && errors.length === before;
+    console.log(ok ? "OK" : "FAIL", "| codex signals spoken |", words, JSON.stringify(res), errors.slice(before));
+  }
   // auto-target's results: their own alerts row (spoken, not notified by default; its speech tick can switch them off)
   {
     const w = dom.window, before = errors.length, said = [];

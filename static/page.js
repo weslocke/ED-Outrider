@@ -5,7 +5,7 @@
 // same list (BROWSER_SETTINGS).
 const SETTINGS_KEYS = ["alerts", "alertSound", "alertSpeak", "speech", "speechStyles", "speechMix", "speechNames", "chatterNames",
   "chatRead", "chatChannels", "chatHeader", "chatMuted", "speechSpeed",
-  "speechProfanity", "speechProfanityPct", "speechDangerBusiness", "speechShift", "sayBio", "sayGeo", "sayHazard",
+  "speechProfanity", "speechProfanityPct", "speechDangerBusiness", "speechShift", "sayBio", "sayGeo", "sayCodex", "sayHazard",
   "sayMapped", "honkAnnounce", "sound", "unsoldCfg", "highlightCfg", "bioMinCfg", "maxBonus", "codexNewCounts",
   "highG", "streakCfg", "skipFloor", "sort", "sorts", "showVisited", "showExplored", "oneJump", "map",
   "log", "lbRadius", "fShowLost", "fWithin", "mHeld", "bioSort", "bState", "bDays", "hDays", "routineQuiet", "fuelJumps",
@@ -224,6 +224,14 @@ function codexGeoMark(list, region) {
   const gal = fresh.some(x => x.st === "galaxy");
   return ` <span class="cxnew cxgeo${gal ? " cxgal" : ""}" title="its volcanism could show geology new to your codex: ${fresh.map(x =>
     esc(x.t.name) + (x.st === "galaxy" ? " (anywhere)" : "")).join(", ")} (logged when you scan one)">${gal ? "✪" : "✦"}</span>`;
+}
+// "Possible new codex entries on body 2 A: Bacterium Acies - Teal, never logged; Water Ice Geyser, new in this region."
+function codexSignalsText(m) {
+  const items = (m && m.items) || [];
+  if (!items.length) return "";
+  return `Possible new codex entr${items.length + (m.more || 0) === 1 ? "y" : "ies"} on body ${m.body}: ` +
+    items.map(x => `${x.name}, ${x.galaxy ? "never logged" : "new in this region"}`).join("; ") +
+    (m.more ? `; and ${m.more} more` : "") + ".";
 }
 // the geology a body with geological signals could show (S22, from its volcanism), each marked ✪ / ✦ when new to your
 // codex, and how such an entry is logged: the body card and the details panel (the author, 2026-10-19: the ✪ beside
@@ -3006,9 +3014,10 @@ function codexNewCounts() {
 }
 // the "mapped" call-out after each planet's DSS mapping: off unless ticked ([defaults] speak_mapped, or per browser)
 const sayMapped = () => !!(store.get("sayMapped", null) ?? (data && data.defaults && data.defaults.speak_mapped) ?? false);
-// say signal counts as the FSS finds them: "bio" and "geo", each its own tick
-const saySignals = k => !!(store.get(k === "bio" ? "sayBio" : "sayGeo", null)
-  ?? (data && data.defaults && data.defaults[k === "bio" ? "speak_bio_signals" : "speak_geo_signals"]) ?? true);
+// say signal counts as the FSS finds them: "bio" and "geo", each its own tick; "codex": the possible new codex entries
+// among them, a tick of its own (the author, 2026-10-26: the counts off, the codex finds still said)
+const SAY_SIGNALS = {bio: ["sayBio", "speak_bio_signals"], geo: ["sayGeo", "speak_geo_signals"], codex: ["sayCodex", "speak_codex_signals"]};
+const saySignals = k => !!(store.get(SAY_SIGNALS[k][0], null) ?? (data && data.defaults && data.defaults[SAY_SIGNALS[k][1]]) ?? true);
 // The lines of each alert already heard (templates, newest last), so every line of the current pool is heard before
 // any comes round again. Per browser (a per-browser convenience, not in SETTINGS_KEYS), so a reload, a server
 // restart or the speaker passing to another window does not start it afresh; at most SPEECH_HEARD_MAX per alert.
@@ -10168,6 +10177,10 @@ function onData() {
           : b ? `${n(m.bio, "Biological")} on body ${m.body}.` : g ? `${n(m.geo, "Geological")} on body ${m.body}.` : "";
         if (text && speechOn && speakerHere() && !hushed()) speak(text, {kind: "signals"});
       }
+      else if (m.kind === "codex_signals") {   // after the counts: what among them could be new to your codex (✪ / ✦)
+        const text = codexSignalsText(m);
+        if (text && saySignals("codex") && speechOn && speakerHere() && !hushed()) speak(text, {kind: "signals"});
+      }
       else if (m.kind === "honk") {
         const n = m.bodies, count = m.all_found ? "all bodies found" : n != null ? `${n} bod${n === 1 ? "y" : "ies"}` : "";
         // a honk that worked also gave the arrival briefing, which says the body count: one summary, not two
@@ -10794,6 +10807,7 @@ function drawSpeechStyles() {
   const swear = styles.map(([k]) => k).filter(k => lines.some(e => e && Array.isArray(e[k + "_profane"]) && e[k + "_profane"].length));
   if (document.activeElement !== namesBox) namesBox.value = speechNames().join(", ");
   document.getElementById("sayBio").checked = saySignals("bio"); document.getElementById("sayGeo").checked = saySignals("geo");
+  document.getElementById("sayCodex").checked = saySignals("codex");
   document.getElementById("sayHazard").checked = sayHazard();
   document.getElementById("sayMapped").checked = sayMapped();
   document.getElementById("codexNewCounts").checked = codexNewCounts();   // the config's default once the payload says it
@@ -10845,7 +10859,7 @@ const drawVolume = () => { volBox.value = Math.round(outVolume() * 100); volOut.
 volBox.oninput = () => { volOut.textContent = `${volBox.value}%`; };
 volBox.onchange = () => { store.set("volume", Number(volBox.value)); drawVolume(); };
 drawVolume();
-for (const [id, key] of [["sayBio", "sayBio"], ["sayGeo", "sayGeo"], ["sayHazard", "sayHazard"], ["sayMapped", "sayMapped"], ["routineQuiet", "routineQuiet"]])
+for (const [id, key] of [["sayBio", "sayBio"], ["sayGeo", "sayGeo"], ["sayCodex", "sayCodex"], ["sayHazard", "sayHazard"], ["sayMapped", "sayMapped"], ["routineQuiet", "routineQuiet"]])
   document.getElementById(id).onchange = e => store.set(key, e.target.checked);
 // Settings → Mining: the ring types ticked and pristine only (miningRings)
 function drawMiningRings() {

@@ -675,10 +675,11 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <label title="how often a line comes from the swearing versions instead of the clean ones"><input type="number" id="speechProfanityPct" min="0" max="100" step="5" style="width:4.5em">% of the time</label></span></div>
       <div class="vsaid" data-find-block="what the voice says">
         <h4 class="vmhead">What the voice says</h4>
-        <div data-find="defaults.speak_bio_signals defaults.speak_geo_signals" class="mod inlineopts">Say signals as the FSS finds them:
+        <div data-find="defaults.speak_bio_signals defaults.speak_geo_signals defaults.speak_codex_signals" class="mod inlineopts">Say signals as the FSS finds them:
           <label><input type="checkbox" id="sayBio"> biological</label>
           <label><input type="checkbox" id="sayGeo"> geological</label>
-          <span class="hint">"2 Biological and 1 Geological Signals found on body A 3" (when 🗣 is on)</span></div>
+          <label title="once the body's scan is in: the species its signals could be, or the geology its volcanism could show, that your codex lacks in this region (✦) or anywhere (✪); said whether or not the counts are"><input type="checkbox" id="sayCodex"> possible new codex entries</label>
+          <span class="hint">"2 Biological and 1 Geological Signals found on body A 3"; "Possible new codex entries on body A 3: Bacterium Acies - Teal, new in this region" (when 🗣 is on)</span></div>
         <label class="mod"><input type="checkbox" id="routineQuiet"> Routine systems: sound only
           <span class="hint">arriving somewhere known with every body already found, a scoopable star, and nothing over your body or bio levels: a soft two-note sound instead of the arrival briefing (and of "nothing worth staying for" after the FSS); the card stays</span></label>
         <label class="mod"><input type="checkbox" id="sayHazard"> Say the hazard when the FSD charges for a neutron star, white dwarf or black hole

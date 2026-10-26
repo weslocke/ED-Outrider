@@ -504,7 +504,7 @@ SHUTDOWN_LIVE_S = 300      # s: a Shutdown older than this is a journal being ca
 # screen speaks) stay out. The page has the same list (SETTINGS_KEYS in page.js).
 BROWSER_SETTINGS = ("alerts", "alertSound", "alertSpeak", "speech", "speechStyles", "speechMix", "speechNames", "chatterNames",
                     "chatRead", "chatChannels", "chatHeader", "chatMuted", "speechSpeed",
-                    "speechProfanity", "speechProfanityPct", "speechDangerBusiness", "speechShift", "sayBio", "sayGeo", "sayHazard",
+                    "speechProfanity", "speechProfanityPct", "speechDangerBusiness", "speechShift", "sayBio", "sayGeo", "sayCodex", "sayHazard",
                     "sayMapped", "honkAnnounce", "sound", "unsoldCfg", "highlightCfg", "bioMinCfg", "maxBonus", "codexNewCounts",
                     "highG", "streakCfg", "skipFloor", "sort", "sorts", "showVisited", "showExplored", "oneJump", "map",
                     "log", "lbRadius", "fShowLost", "fWithin", "mHeld", "bioSort", "bState", "bDays", "hDays", "routineQuiet", "fuelJumps",
@@ -818,6 +818,7 @@ def honk_learn(record, group, ok):
 
 
 SPEAK_BIO_SIGNALS = SPEAK_GEO_SIGNALS = True   # say "2 Biological Signals on body A 3" as the FSS finds them
+SPEAK_CODEX_SIGNALS = True   # and the possible new codex entries among them
 CODEX_INTERESTING = True   # a body whose likeliest species is new to your codex here is worth stopping for, whatever its value
 SPEAK_MAPPED = False   # the "mapped" call-out after each planet's DSS mapping (what it pays, the efficiency, what is next)
 SPEECH_SPEED = 1.0   # spoken alerts' pace: 1 is the voice's own, 1.3 is 30% faster (0.5 to 2)
@@ -1276,6 +1277,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         "speech_danger_business": flag("defaults", df, "speech_danger_business", SPEECH_DANGER_BUSINESS),
         "speak_bio_signals": flag("defaults", df, "speak_bio_signals", SPEAK_BIO_SIGNALS),
         "speak_geo_signals": flag("defaults", df, "speak_geo_signals", SPEAK_GEO_SIGNALS),
+        "speak_codex_signals": flag("defaults", df, "speak_codex_signals", SPEAK_CODEX_SIGNALS),
         "speak_mapped": flag("defaults", df, "speak_mapped", SPEAK_MAPPED),
         "codex_interesting": flag("defaults", df, "codex_interesting", CODEX_INTERESTING),
         "speech_speed": min(2.0, max(0.5, num("defaults", df, "speech_speed", float, SPEECH_SPEED))),
@@ -1426,6 +1428,7 @@ speech_profanity_pct = {st["speech_profanity_pct"]}   # with profanity on: how o
 speech_danger_business = {"true" if st["speech_danger_business"] else "false"}   # danger lines (hull, heat, interdiction, fuel, carrier leaving) only from business, never swearing
 speak_bio_signals = {"true" if st["speak_bio_signals"] else "false"}   # say biological signal counts as the FSS finds them
 speak_geo_signals = {"true" if st["speak_geo_signals"] else "false"}   # and geological ones
+speak_codex_signals = {"true" if st["speak_codex_signals"] else "false"}   # and the possible new codex entries among them (the species or geology new to your codex, ✦ / ✪)
 speak_mapped = {"true" if st["speak_mapped"] else "false"}   # after mapping a planet: what it pays, whether the efficiency bonus landed, what is next
 codex_interesting = {"true" if st["codex_interesting"] else "false"}   # a codex find (✦) makes a body worth stopping for: on Now's next stops and in the leaving warnings
 speech_speed = {n(st["speech_speed"])}   # spoken alerts' pace: 1 is the voice's own, 1.3 is 30% faster (0.5 to 2)
@@ -3095,6 +3098,9 @@ class Journals:
         self.body_touched = set()  # (system, body_id) touched down, disembarked or sampled on since arriving there
         self.approached = set()    # (system, body_id) briefed on approach this game session (once each)
         self.rings_said = set()    # (system, body_id) whose rings were announced this visit (Settings → Mining)
+        # the FSS's signal finds waiting for their body's Scan ((system, body name) -> ts: the game writes FSSBodySignals
+        # a second before it), and the bodies checked for possible new codex entries this visit (codex_signals)
+        self.fss_signals_pending, self.codex_said = {}, set()
         self.brief_key = None      # (id64, arrival ts) of the latest arrival briefing: one per arrival
         self.last_start_jump = None  # ts of the latest hyperspace StartJump (a scoop cut short by a jump is not news)
         self.last_shutdown = None  # ts of the latest Shutdown read (the quit backup)
@@ -3650,14 +3656,14 @@ class Journals:
         rollback and reload(), or the retry would announce its moments twice."""
         return (self.moment_seq, list(self.moments), self.last_heat,
                 set(self.body_touched), set(self.approached), self.brief_key,
-                set(self.regions_said), set(self.rings_said), self.region_entered, self.jumponium, dict(self.sale_run or {}) or None,
+                set(self.regions_said), set(self.rings_said), set(self.codex_said), dict(self.fss_signals_pending), self.region_entered, self.jumponium, dict(self.sale_run or {}) or None,
                 json.loads(json.dumps(self.burst)), self.uploads.snapshot() if self.uploads else None,
                 json.loads(json.dumps(self.nsp_burst)), json.loads(json.dumps(self.docking_hold)), self.chat_seq, list(self.chat),
                 list(self.shots_new))
 
     def restore(self, cp):
         (self.moment_seq, moments, self.last_heat, touched, approached, self.brief_key,
-         regions, rings, self.region_entered, self.jumponium, self.sale_run, self.burst, uploads, self.nsp_burst, self.docking_hold,
+         regions, rings, codex_said, fss_pending, self.region_entered, self.jumponium, self.sale_run, self.burst, uploads, self.nsp_burst, self.docking_hold,
          self.chat_seq, chat, shots_new) = cp
         self.shots_new = list(shots_new)   # a rolled-back tick's retry notes its Screenshot lines again
         self.chat = collections.deque(chat, maxlen=CHAT_KEEP)
@@ -3665,6 +3671,7 @@ class Journals:
             self.uploads.restore(uploads)
         self.body_touched, self.approached, self.regions_said = set(touched), set(approached), set(regions)
         self.rings_said = set(rings)
+        self.codex_said, self.fss_signals_pending = set(codex_said), dict(fss_pending)
         self.moments = collections.deque(moments, maxlen=self.moments.maxlen)
 
     def reload(self):
@@ -4301,6 +4308,8 @@ class Journals:
         # F10), not a relog where you already were
         if name in ("FSDJump", "CarrierJump", "Location") and current and not relog:
             self.rings_said.clear()   # a new visit: each ringed body is news again
+            self.codex_said.clear()
+            self.fss_signals_pending.clear()
             self.highway_arrival(id64, ev.get("StarSystem"), ts)
             self.riches_arrival(id64, ev.get("StarSystem"), ts)
 
@@ -4724,6 +4733,13 @@ class Journals:
             self.db.execute("DELETE FROM sample_points WHERE system=? AND body_id=? AND species=? AND ts <= ?",
                             (r["system"], r["body_id"], r["species"], ts))
         self.db.execute(f"DELETE FROM own_organic WHERE {where}", args)
+
+    def codex_check(self, system, body_id, ts):
+        """A body the FSS found biological or geological signals on, its Scan in: a codex_signals moment (the page says
+        the possible new codex entries, State.codex_signal_facts), once per body and visit, live only."""
+        if live_event(ts) and (system, body_id) not in self.codex_said:
+            self.codex_said.add((system, body_id))
+            self.moment("codex_signals", ts, system=system, body_id=body_id)
 
     def note_sample_point(self, system, body, species, genus, kind, n, ts, name=None, variant=None):
         """Remember where a sample was taken, from the live Status.json reading (at most a second old at
@@ -5722,6 +5738,8 @@ class Journals:
                     body = short_name(ev.get("StarSystem") or (self.pos or {}).get("name"), ev.get("BodyName") or "") or ev.get("BodyName")
                     self.moment("ring", ts, system=str(system), body=body, types=sorted({r["type"] for r in record["rings"] if r["type"]}),
                                 reserve=RESERVE_LEVELS.get(ev.get("ReserveLevel")))
+                if record["type"] == "Planet" and self.fss_signals_pending.pop((system, ev["BodyName"]), None):
+                    self.codex_check(system, ev["BodyID"], ts)   # its FSS signals came a second before this Scan
                 if record["type"] == "Planet" and not known:
                     self.moment("scan", ts, system=system, body_id=ev["BodyID"])
                     p = outrider.ggg.predict(ev) if live_event(ts) else None
@@ -5829,6 +5847,14 @@ class Journals:
                                 what=site_words(news, short))
                 if name == "FSSBodySignals" and (signals.get(BIO) or signals.get(GEO)):   # the FSS just found them
                     self.moment("signals", ts, system=system, body_name=body, bio=signals.get(BIO, 0), geo=signals.get(GEO, 0))
+                    # possible new codex entries: judged from the body's Scan, which the game writes just after this
+                    # (else already there)
+                    scanned = ev.get("BodyID") is not None and self.db.execute(
+                        "SELECT 1 FROM own_bodies WHERE system=? AND body_id=?", (system, ev["BodyID"])).fetchone()
+                    if scanned:
+                        self.codex_check(system, ev["BodyID"], ts)
+                    elif live_event(ts):
+                        self.fss_signals_pending[(system, body)] = ts
                 if signals.get(BIO) and ev.get("BodyID") is not None and name == "FSSBodySignals":
                     self.moment("bio", ts, system=system, body_id=ev["BodyID"], signals=signals[BIO])
                 for g in ev.get("Genuses") or []:
@@ -8637,6 +8663,7 @@ class State:
                          "speech_profanity_pct": SPEECH_PROFANITY_PCT, "speech_danger_business": SPEECH_DANGER_BUSINESS,
                          "speech_names": SPEECH_NAMES, "speech_speed": SPEECH_SPEED,
                          "speak_bio_signals": SPEAK_BIO_SIGNALS, "speak_geo_signals": SPEAK_GEO_SIGNALS,
+                         "speak_codex_signals": SPEAK_CODEX_SIGNALS,
                          "speak_mapped": SPEAK_MAPPED, "codex_interesting": CODEX_INTERESTING,
                          "surface_alt": SURFACE_ALT, "rig_spacing": RIG_SPACING, "surface_map_min": SURFACE_MAP_MIN,
                          "surface_map_strip": SURFACE_MAP_STRIP, "rig_warn": RIG_WARN},
@@ -10399,6 +10426,43 @@ class State:
         name = outrider.bio.region_name(pos["x"], pos["y"], pos["z"])
         return {"name": name, "nebula": bool(outrider.bio.in_nebula({"name": pos["name"], "x": pos["x"], "y": pos["y"], "z": pos["z"]}))}
 
+    CODEX_SAY_MAX = 4   # names said in a codex_signals line; the rest as "and N more"
+
+    def codex_signal_facts(self, sid, body_id):
+        """What the FSS's signals on a body could log that your codex lacks (the ✦ / ✪ of Here's table): its likeliest
+        species by the rules (leaving_summary's bio_pending: one name per species, its colour when only one is new) and
+        the geology its volcanism could show (codex_geo, against codex_types as the page judges it). -> {body, items:
+        [{name, galaxy}], more} or None when nothing is new (or the body is not known)."""
+        row = self.db.execute("SELECT name, record FROM own_bodies WHERE system=? AND body_id=?", (sid, body_id)).fetchone()
+        where = self.locate(sid)
+        if not row or not where:
+            return None
+        rec = json.loads(row["record"])
+        short = short_name(where[0], row["name"])
+        sig = self.db.execute("SELECT bio, geo FROM own_signals WHERE system=? AND name=?", (sid, row["name"])).fetchone()
+        items = []
+        if sig and sig["bio"]:
+            b = next((x for x in (self.leaving_summary(sid) or {}).get("bio_pending") or [] if x["body"] == short), None)
+            if b and (b.get("codex_new") or b.get("codex_galaxy")):
+                by_species = {}
+                for n in b.get("codex_names") or []:
+                    by_species.setdefault(str(n).split(" - ")[0], []).append(n)
+                items += [{"name": names[0] if len(names) == 1 else sp, "galaxy": bool(b.get("codex_galaxy"))}
+                          for sp, names in by_species.items()]
+        if sig and sig["geo"]:
+            logged = self.codex_types()
+            region = outrider.bio.region_name(where[1], where[2], where[3]) if outrider.bio and where[1] is not None else None
+            for t in codex_geo(dict(rec, geo=sig["geo"])) or []:
+                if not logged:   # no codex types in your journals at all: nothing to judge by (the page's rule)
+                    break
+                if not any(t["id"] in ids for ids in logged.values()):
+                    items.append({"name": t["name"], "galaxy": True})
+                elif region and t["id"] not in logged.get(region, []):
+                    items.append({"name": t["name"], "galaxy": False})
+        if not items:
+            return None
+        return {"body": short, "items": items[:self.CODEX_SAY_MAX], "more": max(0, len(items) - self.CODEX_SAY_MAX)}
+
     def moments_summary(self):
         """The latest journal moments for the page's alerts, with scans and bio signals priced: the page
         compares them with your (per-browser) highlight levels and announces only what crosses them."""
@@ -10461,7 +10525,7 @@ class State:
 
     # the moments whose facts moments_summary adds (the page words them against your thresholds)
     MOMENT_EXTRA = ("fss_done", "fss_unfinished", "left_body", "bio_done", "approach", "arrival_brief", "game_exit", "loss",
-                    "mapped")
+                    "mapped", "codex_signals")
 
     def moment_extra(self, m):
         """The facts a moment is spoken from, or None to leave it out (a body nobody scanned). Worked out once
@@ -10490,6 +10554,12 @@ class State:
                     extra["value"] = v * bb["factor"] if v else None
         elif kind == "approach":
             extra.update(self.approach_facts(sid, m["body_id"], m.get("body_name")))
+        elif kind == "codex_signals":
+            facts = self.codex_signal_facts(sid, m["body_id"])
+            if facts is None:
+                extra = None
+            else:
+                extra.update(facts)
         elif kind == "mapped":
             facts = self.mapped_facts(sid, m["body_id"])
             if facts is None:
@@ -23628,7 +23698,7 @@ def startup_notices(st, config_path):
 
 async def run(args, st):
     global LIVE_DIRS, LEGACY_DIRS, UNSOLD_WARN, UNSOLD_URGENT, BIO_MIN, SOUNDS_DEFAULT, BODY_HIGHLIGHT, BIO_HIGHLIGHT, MAX_INCLUDE_BONUS, RADIUS_CHOICES, VOICE, VOICE_FALLBACK, BACKUP_DIR
-    global SPEECH_STYLES, SPEECH_PROFANITY, SPEECH_NAMES, SPEECH_SPEED, SPEAK_BIO_SIGNALS, SPEAK_GEO_SIGNALS, SPEECH_PROFANITY_PCT
+    global SPEECH_STYLES, SPEECH_PROFANITY, SPEECH_NAMES, SPEECH_SPEED, SPEAK_BIO_SIGNALS, SPEAK_GEO_SIGNALS, SPEECH_PROFANITY_PCT, SPEAK_CODEX_SIGNALS
     global SPEAK_MAPPED, CODEX_INTERESTING
     global SPEECH_DANGER_BUSINESS, HIGH_GRAVITY, MODULE_WARN, BACKUP_KEEP, BACKUP_EVERY_DAYS
     global SPANSH_CONCURRENCY, MAP_MAX_RADIUS, MAP_MAX_PAGES
@@ -23648,6 +23718,7 @@ async def run(args, st):
     SPEECH_SPEED, SPEECH_PROFANITY_PCT = st["speech_speed"], st["speech_profanity_pct"]
     SPEECH_DANGER_BUSINESS = st["speech_danger_business"]
     SPEAK_BIO_SIGNALS, SPEAK_GEO_SIGNALS = st["speak_bio_signals"], st["speak_geo_signals"]
+    SPEAK_CODEX_SIGNALS = st["speak_codex_signals"]
     SPEAK_MAPPED, CODEX_INTERESTING = st["speak_mapped"], st["codex_interesting"]
     BACKUP_DIR, BACKUP_KEEP, BACKUP_EVERY_DAYS = st["backup_dir"], st["backup_keep"], st["backup_every_days"]
     SPANSH_CONCURRENCY, MAP_MAX_RADIUS, MAP_MAX_PAGES = st["concurrency"], st["map_max_radius"], st["map_max_pages"]

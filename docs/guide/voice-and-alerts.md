@@ -317,7 +317,11 @@ the sentence ends:
   briefing where there is nothing to do. A system with lost scans to redo is never routine, nor is one whose Spansh
   data predates Odyssey until your own scans have every body: its briefing ends "Spansh's data here is from February
   2019, before Odyssey: worth a rescan" (and how many thin-atmosphere worlds may hold life), since "everything known" there means little.
-- **FSS debrief:** what is worth doing once every body is found. **Signals** as the FSS finds them.
+- **FSS debrief:** what is worth doing once every body is found. **Signals** as the FSS finds them (⚙ Settings → Voice →
+  What the voice says: biological, geological, and **possible new codex entries**, each its own tick). The last says,
+  once the body's scan is in, what its signals could log that your codex lacks, as Here's ✦ (this region) and ✪
+  (never logged) mark it: "Possible new codex entries on body A 3: Bacterium Acies - Teal, new in this region; Water Ice
+  Geyser, never logged". It is on by default and said whether or not the counts are.
   **The jump line** in the hyperspace tunnel, with whether the star ahead is scoopable, and any hazard.
 - **Greeting and goodbye:** what is at stake after a long break (and any core module under your level), and a
   session recap when you quit.

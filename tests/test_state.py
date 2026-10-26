@@ -2473,6 +2473,14 @@ class BatchBState(unittest.TestCase):
                              {"Stratum": (True, True, ["Stratum Tectonicas - Teal"]), "Concha": (False, False, [])})
             [pend] = self.state.leaving_summary(1)["bio_pending"]
             self.assertEqual((pend["codex_galaxy"], pend["codex_names"]), (True, ["Stratum Tectonicas - Teal"]))
+            # the FSS's codex line (2026-10-26) says what the mark counts
+            self.assertEqual(self.state.codex_signal_facts(1, 4),
+                             {"body": "A 4", "items": [{"name": "Stratum Tectonicas - Teal", "galaxy": True}], "more": 0})
+        # two colours of one species new: the species, once
+        cands = [dict(self.CANDS[0], variants=["Stratum Tectonicas - Teal", "Stratum Tectonicas - Lime"]), dict(self.CANDS[1], variants=[])]
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=cands):
+            self.state._leaving.clear()
+            self.assertEqual(self.state.codex_signal_facts(1, 4)["items"], [{"name": "Stratum Tectonicas", "galaxy": True}])
 
     def test_codex_marks_before_the_dss_settled_like_the_line(self):
         """Fourth in-depth review 2026-10-25: the table's options were marked from the raw guess while the line first

@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Possible new codex entries said as the FSS finds signals
+- **⚙ Settings → Voice → Say signals as the FSS finds them: possible new codex entries** (per browser, `[defaults]
+  speak_codex_signals`, on by default): once a body's scan is in (the game writes FSSBodySignals a second before it),
+  the species its signals could be and the geology its volcanism could show that your codex lacks, as Here's ✦ / ✪
+  judge them: "Possible new codex entries on body A 3: Bacterium Acies - Teal, new in this region; Water Ice Geyser,
+  never logged". Its own tick, so the biological and geological counts can be off and the codex finds still said.
+  Once per body and visit (a `codex_signals` moment, `State.codex_signal_facts`), live only; at most four names.
+
 ## 2026-10-26 · Codex pictures in a format of their own
 - **Also save tagged screenshots into your codex folders … as** (`[screenshots] codex_format`, `codex_quality`): a copy
   of the picture exported (as before), or the game's shot converted again at full size to PNG, JPG or WebP at its own
