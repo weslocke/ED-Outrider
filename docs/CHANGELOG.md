@@ -2,6 +2,24 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Third review fixes (1): screenshots
+The third in-depth Fable review (everything since d17eee4, the fix rounds hardest):
+- **An empty BMP** (the game never wrote it) waited the whole minute and was called "never appeared"; it is said to be
+  empty after a few seconds, and the backlog leaves empty files alone (counted in its message).
+- **"~/..."** in the three folder settings is the home folder, as in every other folder setting (it made a folder
+  named "~").
+- **The crop** past the picture's edge is refused when saved, in Settings and by the server's check, rather than
+  trimmed into numbers never typed.
+- **The clipboard:** a shot converted by the start-up catch-up is never put on it; the copy no longer builds about
+  1 GB for a HighRes shot (no extra copies, the Windows-only DIB only on Windows).
+- **A formation's picture** gets no stray first-word keyword ("Water" for a Water Ice Geyser).
+- **Settings:** the folder picker says the game's own folder is never made; a hidden, emptied quality box no longer
+  refuses Save; the backlog's "matched / unknown" add up to what was queued.
+- **📍 on a shot** pins it once (a double click pinned it twice).
+- **An id64 too big for the database** is refused (400), not a server error.
+- **The guide** no longer says the folder picker is on the tablet; the code map names what `shot_subject` reads; the
+  folder-guard test now fails without the guard (it used a file that did not exist).
+
 ## 2026-10-25 · In-depth review fixes (3): mining, the launchers, scooping, the trail, the overlay
 - **Ring prices:** a mineral whose lookup failed while others answered is named ("Alexandrite: lookup failed"), and a
   failed lookup is really asked again a few minutes on for the body panel still showing it (nothing redrew it).

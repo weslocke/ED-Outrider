@@ -5586,13 +5586,15 @@ async function loadShotList(el) {
   }).join("") : `<span class="unk">none here</span>`;
 }
 document.addEventListener("click", async e => {
-  const b = e.target.closest("[data-shotpin]"); if (!b) return;
+  const b = e.target.closest("[data-shotpin]"); if (!b || b.disabled) return;
   const l = b.closest(".shotlist");
+  b.disabled = true;   // one pin per shot: a double click or a second click added it twice (third in-depth review 2026-10-25)
   let r;
   try { r = await apiJson("api/pins", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(
     {action: "add", system: l.dataset.sys, sysname: l.dataset.sysname, body: l.dataset.body, name: b.dataset.name,
      lat: Number(b.dataset.lat), lon: Number(b.dataset.lon)})}); } catch { r = {error: "Outrider not reachable"}; }
   b.textContent = r && !r.error ? "📍✓" : "📍✗"; b.title = r && !r.error ? "pinned (Pins, above)" : `not pinned: ${(r && r.error) || "?"}`;
+  if (!r || r.error) b.disabled = false;   // a failure may be tried again
   if (r && !r.error) loadPins();
 });
 
@@ -14036,9 +14038,12 @@ function shotCropRead() {
 const shotCropValues = () => [...document.querySelectorAll("#shotSettings .cropv")].map(el => el.value.trim() === "" ? NaN : Number(el.value));
 // as the server reads it: the box is cut at the picture's edge, and what is left must be 1 % or more (review
 // 2026-10-25: left 99.5, width 10 passed here and was dropped there)
+// as the server's check: inside the picture as typed (third in-depth review 2026-10-25: a box past the edge was trimmed
+// into numbers never typed)
 const shotCropBad = () => {
-  const v = shotCropValues(), cut = (at, len) => Math.min(100 - Math.min(100, Math.max(0, at)), len);
-  return document.getElementById("shotCropOn").checked && (!v.every(isFinite) || cut(v[0], v[2]) < 1 || cut(v[1], v[3]) < 1);
+  const v = shotCropValues();
+  return document.getElementById("shotCropOn").checked &&
+    (!v.every(isFinite) || v[0] < 0 || v[1] < 0 || v[2] < 1 || v[3] < 1 || v[0] + v[2] > 100 || v[1] + v[3] > 100);
 };
 function shotCropWrite() {
   const f = shotCropField(), on = document.getElementById("shotCropOn").checked, v = shotCropValues();
@@ -14074,7 +14079,7 @@ SC_FIELDS().forEach(el => el.addEventListener(el.type === "checkbox" || el.tagNa
 async function saveShotCfg() {
   const msg = document.getElementById("shotMsg"), out = {};
   const say = (t, bad) => { msg.textContent = t; msg.className = bad ? "hint warnc" : "hint"; };
-  if (shotCropBad()) { say("Not saved: the crop's four boxes need numbers, its width and height at least 1 % inside the picture", true); return; }
+  if (shotCropBad()) { say("Not saved: the crop's four boxes need numbers inside the picture (width and height at least 1 %, left + width and top + height at most 100 %)", true); return; }
   // "moved to" needs a folder that is not the game's own (review 2026-10-25: the BMP was kept without a word, or
   // renamed in place and converted again by every backlog run)
   const q = k => document.querySelector(`#shotSettings .scfg[data-key="${k}"]`);
@@ -14086,7 +14091,9 @@ async function saveShotCfg() {
     }
   }
   for (const el of SC_FIELDS()) {
-    if (scNow(el) === el.dataset.orig) continue;
+    // a box the page has hidden (the quality for a PNG, the copies' with none ticked) is neither checked nor sent: an
+    // emptied one refused Save with nothing on screen to correct (third in-depth review 2026-10-25)
+    if (scNow(el) === el.dataset.orig || (el.type === "number" && el.closest("[hidden]"))) continue;
     let v = el.type === "checkbox" ? el.checked : el.value.trim();
     if (el.type === "number") {
       v = Number(v);
@@ -14122,7 +14129,10 @@ async function folderGo(path) {
   document.getElementById("folderUp").disabled = !r.parent;
   document.getElementById("folderDrives").innerHTML = (r.drives || []).map(d => `<button type="button" data-drive="${esc(d)}">${esc(d)}</button>`).join(" ");
   document.getElementById("folderHidN").textContent = r.hidden ? `(${r.hidden})` : "";
-  msg.textContent = r.error || (r.missing ? `${r.missing} is not there yet (it is made when needed): showing the nearest folder that is` : "");
+  // the game's own folder is never made: only the export and "moved to" folders are (third in-depth review 2026-10-25)
+  const made = FP.field && FP.field.dataset.key !== "pictures";
+  msg.textContent = r.error || (r.missing ? (made ? `${r.missing} is not there yet (it is made when needed): showing the nearest folder that is`
+    : `${r.missing} does not exist: pick the folder the game saves its screenshots in`) : "");
   msg.hidden = !msg.textContent;
   document.getElementById("folderList").innerHTML = r.dirs.length || r.more
     ? r.dirs.map(d => `<li><button type="button" data-dir="${esc(d)}">📁 ${esc(d)}</button></li>`).join("") + (r.more ? `<li class="unk">… and ${r.more} more: type the path</li>` : "")
@@ -14169,8 +14179,8 @@ document.getElementById("shotBacklog").onclick = async () => {
   let r;
   try { r = await apiJson("api/screenshots/backlog", {method: "POST"}); } catch { r = {error: "Outrider not reachable"}; }
   msg.textContent = !r || r.error ? `Not done: ${(r && r.error) || "?"}`
-    : r.queued ? `${r.queued} queued (${r.matched} matched to the journals${r.unmatched ? `, ${r.unmatched} unknown system` : ""}${r.skipped ? `, ${r.skipped} done already` : ""})`
-    : `nothing to convert${r.skipped ? ` (${r.skipped} done already)` : ""}`;
+    : (r.queued ? `${r.queued} queued (${r.matched} matched to the journals${r.unmatched ? `, ${r.unmatched} unknown system` : ""})`
+       : "nothing to convert") + [r.skipped && `${r.skipped} done already`, r.empty && `${r.empty} empty, left alone`].filter(Boolean).map(x => ` · ${x}`).join("");
 };
 // Settings opened on Server settings (a notice's button): `section`, a config section to unfold ("journals")
 // Settings at one of its sections (data-sec-key), opened

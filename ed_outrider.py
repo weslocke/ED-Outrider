@@ -1017,8 +1017,17 @@ CONFIG_CHECKS = {**{("highway", "autotarget_" + k): _config_plot_steps for k in 
 def _config_crop(v):
     """[screenshots] crop: empty, or a box parse_crop takes (review 2026-10-25: one cut away at the edge was stored as
     "" without a word)."""
-    if not isinstance(v, str) or (v.strip() and not outrider.screenshots.parse_crop(v)):
-        raise ValueError("must be left, top, width, height in %, the width and height at least 1 % inside the picture")
+    if not isinstance(v, str):
+        raise ValueError("must be left, top, width, height in %")
+    if v.strip():
+        try:
+            x, y, w, h = (float(n) for n in re.split(r"[,\s]+", v.strip()))
+        except ValueError:
+            raise ValueError("must be four numbers: left, top, width, height in %") from None
+        # inside the picture as typed: a box past the edge is refused, not trimmed into numbers never typed (third
+        # in-depth review 2026-10-25); parse_crop's trim stays for a hand-edited file
+        if not (0 <= x and 0 <= y and w >= 1 and h >= 1 and x + w <= 100 and y + h <= 100):
+            raise ValueError("must fit inside the picture: width and height at least 1 %, left + width and top + height at most 100 %")
     return v
 
 
@@ -1101,8 +1110,10 @@ def screenshots_settings(ss, num, flag):
         if old in ss and new not in ss:
             ss[new] = ss.pop(old)
     fmt, orig, cfmt, clip = (text(k).lower() for k in ("format", "original", "copies_format", "clipboard"))
+    # "~/..." as every other folder setting (third in-depth review 2026-10-25: taken literally, a folder named "~")
+    path = lambda key: os.path.expanduser(text(key)) if text(key) else ""   # noqa: E731
     crop = outrider.screenshots.parse_crop(text("crop"))
-    return {"enabled": flag("screenshots", ss, "enabled", d["enabled"]), "pictures": text("pictures"), "folder": text("folder"),
+    return {"enabled": flag("screenshots", ss, "enabled", d["enabled"]), "pictures": path("pictures"), "folder": path("folder"),
             "by_cmdr": flag("screenshots", ss, "by_cmdr", d["by_cmdr"]), "by_system": flag("screenshots", ss, "by_system", d["by_system"]),
             "subfolder": text("subfolder"), "filename": text("filename") or d["filename"],
             "format": fmt if fmt in outrider.screenshots.FORMATS else d["format"],
@@ -1112,7 +1123,7 @@ def screenshots_settings(ss, num, flag):
             "copies_format": cfmt if cfmt in outrider.screenshots.COPY_FORMATS else d["copies_format"],
             "copies_quality": clamp("copies_quality", int),
             "clipboard": clip if clip in outrider.screenshots.CLIPBOARD else d["clipboard"],
-            "original": orig if orig in outrider.screenshots.ORIGINALS else d["original"], "move_to": text("move_to"),
+            "original": orig if orig in outrider.screenshots.ORIGINALS else d["original"], "move_to": path("move_to"),
             "subject_m": clamp("subject_m", float)}
 
 
@@ -4762,7 +4773,10 @@ class Journals:
                 near = False
             if st.get("live") and near and st.get("lat") is not None and ev.get("Body") and st.get("body") == ev.get("Body"):
                 lat, lon, heading = st["lat"], st["lon"], st.get("heading")
-        self.shots_new.append({"ts": ts, "original": re.split(r"[\\/]", str(ev["Filename"]))[-1],
+        # the start-up catch-up's lines (a shot taken in the minutes before Outrider started) are converted, never put on
+        # the clipboard: "the shots you take" only (third in-depth review 2026-10-25)
+        self.shots_new.append({"backlog": bool(getattr(self, "importing", False)) or None,
+                               "ts": ts, "original": re.split(r"[\\/]", str(ev["Filename"]))[-1],
                                "system": ev.get("System") or pos.get("name"),
                                "system_id": pos.get("id64") if (ev.get("System") or pos.get("name")) == pos.get("name") else None,
                                "body": ev.get("Body") or None, "lat": lat, "lon": lon,
@@ -12019,6 +12033,8 @@ class State:
         def work():
             if not src or not S.wait_ready(src):
                 raise FileNotFoundError(f"{shot.get('original')} never appeared in {pictures}")
+            if os.path.getsize(src) == 0:   # there, but the game never wrote it (third in-depth review 2026-10-25)
+                raise ValueError(f"{shot.get('original')} is empty (0 bytes): the game did not write it")
             out = S.convert(src, paths, cfg, shot)
             try:   # the pictures are written and checked: a BMP that cannot be moved or deleted is said, not a failure
                 out["original"] = S.finish_original(src, cfg, paths["full"])   # (review 2026-10-25: recorded as failed)
@@ -12067,7 +12083,8 @@ class State:
         instead = f"the {name(want)} was not made: " if key != want else ""
 
         def work():
-            png, dib = outrider.screenshots.clipboard_image(got[key])
+            # the DIB only where it is used (Windows' CF_DIB): on Linux xclip / wl-copy take the PNG
+            png, dib = outrider.screenshots.clipboard_image(got[key], dib=bool(getattr(self.clipboard, "_win_set", None)))
             return self.clipboard.copy_image(png, dib)
         try:
             ok, why = await asyncio.get_running_loop().run_in_executor(None, work)
@@ -12087,19 +12104,23 @@ class State:
         S = outrider.screenshots
 
         def scan():
-            files = [(n, os.path.getmtime(os.path.join(pictures, n))) for n in sorted(os.listdir(pictures))
-                     if n.lower().endswith(".bmp") and os.path.isfile(os.path.join(pictures, n))]
+            bmps = [n for n in sorted(os.listdir(pictures)) if n.lower().endswith(".bmp") and os.path.isfile(os.path.join(pictures, n))]
+            # an empty BMP (the game never wrote it) is left out and counted, not queued at every run (third in-depth
+            # review 2026-10-25: a minute's wait each time)
+            empty = [n for n in bmps if os.path.getsize(os.path.join(pictures, n)) == 0]
+            files = [(n, os.path.getmtime(os.path.join(pictures, n))) for n in bmps if n not in empty]
             paths = [p for d in LIVE_DIRS for p in sorted(glob(os.path.join(glob_escape(d), "Journal.*.log")))]
-            return files, S.journal_shots(paths)
-        files, shots = await asyncio.get_running_loop().run_in_executor(None, scan)
+            return files, len(empty), S.journal_shots(paths)
+        files, empty, shots = await asyncio.get_running_loop().run_in_executor(None, scan)
         events = [(ts_seconds(x["ts"]), x["original"], x) for x in shots if x.get("ts")]
         match = S.match_backlog(files, events)
         done = {(r["ts"], r["original"]) for r in self.db.execute("SELECT ts, original FROM screenshots WHERE error IS NULL")}
+        # matched and unmatched count the shots queued now, so they add up to queued (third in-depth review 2026-10-25)
         queued = matched = skipped = 0
         for name, mtime in files:
             shot = match.get(name)
+            found = bool(shot)
             if shot:
-                matched += 1
                 shot = dict(shot)
             else:
                 shot = {"ts": iso_ts(mtime), "original": name, "system": None, "body": None, "cmdr": None}
@@ -12112,8 +12133,9 @@ class State:
             shot["backlog"] = True   # never put on the clipboard
             self.shots_queue.append(shot)
             queued += 1
+            matched += found
         self.shots_step()
-        return {"queued": queued, "matched": matched, "unmatched": len(files) - matched, "skipped": skipped}, 200
+        return {"queued": queued, "matched": matched, "unmatched": queued - matched, "skipped": skipped, "empty": empty}, 200
 
     def shots_list(self, system=None, body=None):
         """GET /api/screenshots?system=&body=: the shots converted (newest first; one system's, one body's), each {id, ts,
@@ -12121,8 +12143,11 @@ class State:
         q, args = "SELECT * FROM screenshots", []
         conds = []
         if system:
+            n = int(system)
+            if not 0 <= n < 2 ** 63:   # sqlite refuses a bigger one with OverflowError: a 500 (third in-depth review)
+                raise ValueError("system: an id64")
             conds.append("system=?")
-            args.append(int(system))
+            args.append(n)
         if body:
             conds.append("body=?")
             args.append(body)
@@ -21427,10 +21452,10 @@ def make_app(state, hosts=None):
             return web.json_response({"error": "system: an id64"}, status=400)
 
     async def screenshot_image(request):
-        """GET /api/screenshots/{id}/image?size=thumb|small|medium|full: one shot's image (only files the record names)."""
+        """GET /api/screenshots/{id}/image?size=thumb|small|medium|crop|full: one shot's image (only files the record names)."""
         try:
             got = await state.shot_image(int(request.match_info["id"]), request.query.get("size", "thumb"))
-        except ValueError:
+        except (ValueError, OverflowError):   # an id sqlite cannot take: not found, never a 500
             got = None
         if not got:
             raise web.HTTPNotFound()
@@ -22943,6 +22968,7 @@ async def import_journals(journals, live_dirs, starting):
     between two (the database connection is this thread's: no worker). False when starting.stop came part way: every
     file read is whole and committed, the rest is read at the next start."""
     steps = journals.import_steps(live_dirs)
+    journals.importing = True   # a shot noted meanwhile is converted, never put on the clipboard (note_screenshot)
     try:
         for step in steps:
             starting.step(step)
@@ -22951,6 +22977,7 @@ async def import_journals(journals, live_dirs, starting):
                 return False
     finally:
         steps.close()
+        journals.importing = False
     return True
 
 

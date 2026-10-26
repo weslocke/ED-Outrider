@@ -184,6 +184,7 @@ def _set_clipboard(formats, what):
     try:
         u32.EmptyClipboard()
         for fmt, data in formats:
+            data = bytes(data)   # a memoryview (clipboard_image's buffers) for ctypes.memmove
             h = k32.GlobalAlloc(0x0002, len(data))   # GMEM_MOVEABLE
             if not h:
                 raise OSError(ctypes.get_last_error(), "no memory for the clipboard")

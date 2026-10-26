@@ -215,6 +215,23 @@ class Convert(unittest.TestCase):
         with unittest.mock.patch.object(Image.Image, "save", broken), self.assertRaises(OSError):
             S.convert(small, S.plan_paths(jpg, S.fields_for(shot), os.path.join(self.d, "o2")), jpg, shot)
 
+    def test_review_3_files(self):
+        """A formation's picture gets no first-word keyword ("Water"); an empty file settles after a few seconds rather
+        than waiting the minute; the clipboard's picture has no DIB on Linux (third in-depth review 2026-10-25)."""
+        m = S.metadata({"ts": "2026-10-25T20:00:00Z", "system": "Sol", "body": "Sol 4", "subject": {"kind": "geo", "name": "Water Ice Geyser", "dist": 12}})
+        self.assertEqual(m["keywords"], ["Elite Dangerous", "Sol", "Sol 4", "Water Ice Geyser", "Geology"])
+        empty = os.path.join(self.d, "e.bmp")
+        open(empty, "wb").close()
+        t = [0.0]
+        def sleep(s):
+            t[0] += s
+        self.assertTrue(S.wait_ready(empty, timeout=60, poll=0.5, sleep=sleep, clock=lambda: t[0]))
+        self.assertLess(t[0], 10)
+        src = bmp(os.path.join(self.d, "c.bmp"), 64, 36)
+        png, dib = S.clipboard_image(src, dib=False)
+        self.assertEqual((bytes(png[:4]), dib), (b"\x89PNG", None))
+        self.assertTrue(len(S.clipboard_image(src)[1]) > 0)
+
     def test_crop_text(self):
         self.assertEqual(S.parse_crop("10, 10, 80, 75"), (10, 10, 80, 75))
         self.assertEqual(S.parse_crop("90 0 50 100"), (90, 0, 10, 100))     # cut at the picture's edge
@@ -313,8 +330,16 @@ class Server(unittest.TestCase):
         img = asyncio.run(self.st.shot_image(x["id"], "thumb"))
         self.assertTrue(isinstance(img[0], bytes) and img[1] == "image/jpeg")       # made from the medium copy
         self.assertEqual(asyncio.run(self.st.shot_image(x["id"], "medium"))[0], r["medium"])
-        self.db.execute("UPDATE screenshots SET full=? WHERE id=?", (os.path.join(self.d, "elsewhere.png"), x["id"]))
-        self.assertIsNone(asyncio.run(self.st.shot_image(x["id"], "full")))         # never a file outside the folder
+        # never a file outside the folder: a real one there, and a link inside the folder pointing at it (third in-depth
+        # review 2026-10-25: the file did not exist, so the test passed without the folder check)
+        outside = os.path.join(self.d, "elsewhere.png")
+        shutil.copy(r["full"], outside)
+        self.db.execute("UPDATE screenshots SET full=? WHERE id=?", (outside, x["id"]))
+        self.assertIsNone(asyncio.run(self.st.shot_image(x["id"], "full")))
+        link = os.path.join(self.out, "link.png")
+        os.symlink(outside, link)
+        self.db.execute("UPDATE screenshots SET full=? WHERE id=?", (link, x["id"]))
+        self.assertIsNone(asyncio.run(self.st.shot_image(x["id"], "full")))
 
     def test_on_foot_the_position_is_status_jsons(self):
         """The author, 2026-10-25: three shots of a bacterium on foot named nothing: on foot the Screenshot line has no
@@ -432,6 +457,60 @@ class Server(unittest.TestCase):
         with self.assertRaises(ValueError):
             ed_outrider.CONFIG_CHECKS["screenshots", "crop"]("99.5, 0, 10, 100")
         self.assertEqual(ed_outrider.CONFIG_CHECKS["screenshots", "crop"](""), "")
+
+    def test_review_3_server(self):
+        """The third in-depth review of 2026-10-25, the server's side."""
+        # an empty BMP is said to be empty, at once, and the backlog leaves it alone
+        open(os.path.join(self.pictures, "Screenshot_0009.bmp"), "wb").close()
+        with unittest.mock.patch.object(S.wait_ready, "__defaults__", (60, 0.5, lambda s: None, iter(range(0, 1000)).__next__)):
+            self.shoot(name="Screenshot_0009.bmp", make=False)
+            self.run_queue()
+        r = self.db.execute("SELECT error FROM screenshots WHERE original='Screenshot_0009.bmp'").fetchone()
+        self.assertIn("is empty", r["error"])
+        with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", []):
+            out, status = asyncio.run(self.st.shots_backlog())
+        self.assertEqual((out["empty"], out["queued"]), (1, 0))
+        # a shot from the start-up catch-up is converted, never put on the clipboard
+        copied = []
+        self.st.clipboard = type("C", (), {"copy_image": lambda s, png, dib=None: (copied.append(1), (True, None))[1]})()
+        self.st.shots_cfg.update(clipboard="medium")
+        self.j.importing = True
+        self.shoot(name="Screenshot_0010.bmp")
+        self.j.importing = False
+        self.run_queue()
+        self.assertEqual((copied, self.st.shots_last["clipboard"]), ([], None))
+        # an id sqlite cannot take: refused (400), never an exception (500)
+        with self.assertRaises(ValueError):
+            self.st.shots_list("1" * 30)
+        # ~ in a typed folder is the home folder, as in every other folder setting
+        num = lambda sec, table, key, conv, default: ed_outrider._config_value(sec, key, table.get(key), conv, default)   # noqa: E731
+        flag = lambda sec, table, key, default: ed_outrider._config_value(sec, key, table.get(key), ed_outrider._config_bool, default)   # noqa: E731
+        st = ed_outrider.screenshots_settings({"pictures": "~/pics", "folder": "~/out", "move_to": "~/kept"}, num, flag)
+        self.assertEqual([st[k] for k in ("pictures", "folder", "move_to")],
+                         [os.path.expanduser(f"~/{k}") for k in ("pics", "out", "kept")])
+        # a crop past the picture's edge is refused when saved, not trimmed into numbers never typed
+        for bad in ("10, 10, 95, 75", "-5, 0, 50, 50", "1, 2, 3"):
+            with self.assertRaises(ValueError):
+                ed_outrider.CONFIG_CHECKS["screenshots", "crop"](bad)
+        self.assertEqual(ed_outrider.CONFIG_CHECKS["screenshots", "crop"]("10, 10, 90, 90"), "10, 10, 90, 90")
+
+    def test_review_3_backlog_counts(self):
+        """matched + unmatched add up to queued: a shot done already is not in them (third in-depth review)."""
+        jd = os.path.join(self.d, "journals")
+        os.makedirs(jd)
+        with open(os.path.join(jd, "Journal.2026-10-25T150000.01.log"), "w") as f:
+            for n, sec in (("0002", 35), ("0003", 50)):
+                f.write('{"timestamp":"2026-10-25T20:33:%sZ", "event":"Screenshot", "Filename":"\\\\ED_Pictures\\\\Screenshot_%s.bmp", '
+                        '"System":"Sys", "Body":"Sys 2 a"}\n' % (sec, n))
+        for n, sec in (("0002", 37), ("0003", 52)):
+            p = bmp(os.path.join(self.pictures, f"Screenshot_{n}.bmp"))
+            t = ed_outrider.ts_seconds(f"2026-10-25T20:33:{sec}Z")
+            os.utime(p, (t, t))
+        bmp(os.path.join(self.pictures, "Screenshot_0004.bmp"))   # no line: unknown
+        self.db.execute("INSERT INTO screenshots (ts, original, full) VALUES ('2026-10-25T20:33:35Z', 'Screenshot_0002.bmp', 'x')")
+        with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", [jd]):
+            out, _ = asyncio.run(self.st.shots_backlog())
+        self.assertEqual((out["queued"], out["matched"], out["unmatched"], out["skipped"]), (2, 1, 1, 1))
 
     def test_review_2_samples(self):
         """The Analyse sample's spot is kept, and a spot keeps its name after its run is abandoned (review 2026-10-25:

@@ -96,7 +96,7 @@ package (see [Install and run](install.md)), and is off until you tick it.
   line for the shot, so the name is right even after you have jumped on.
 - **Folders:** **Game's pictures** is where the game saves its BMPs (empty: Outrider finds it beside the journals);
   **Export pictures to** is where the PNGs or JPGs go (empty: a `Converted` folder inside the game's pictures). Type
-  a path, or **📁** beside the field browses the game PC's folders (from the tablet too). They are sorted into **a
+  a path, or **📁** beside the field browses the game PC's folders (always the game PC's, whichever browser the page is open in). They are sorted into **a
   folder per commander** (the default) and, ticked, **one per system** inside it; **or your own** takes a pattern
   instead (`{cmdr}/{date}`, a `/` for a folder inside a folder).
 - **Files:** **File name** builds each name from `{system}` `{body}` (short: `2 a`) `{date}` `{time}` (your local

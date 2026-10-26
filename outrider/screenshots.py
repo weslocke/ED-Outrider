@@ -160,10 +160,14 @@ def original_path(pictures, filename):
     return os.path.join(pictures, name) if pictures and name else None
 
 
+EMPTY_SETTLE_S = 5.0   # a file still empty this long is one the game will not write (not one it is about to)
+
+
 def wait_ready(path, timeout=WAIT_S, poll=POLL_S, sleep=time.sleep, clock=time.monotonic):
-    """True once `path` exists and its size has stayed the same over one poll (the game has finished writing it);
-    False after `timeout`. Run on a worker thread: it sleeps."""
-    end, last = clock() + timeout, None
+    """True once `path` exists and its size has stayed the same over one poll (the game has finished writing it), or
+    has stayed empty for EMPTY_SETTLE_S (third in-depth review 2026-10-25: an empty BMP waited the whole minute and was
+    called "never appeared"; the conversion then says it is empty); False after `timeout`. Run on a worker thread."""
+    end, last, empty_since = clock() + timeout, None, None
     while clock() < end:
         try:
             size = os.path.getsize(path)
@@ -171,6 +175,12 @@ def wait_ready(path, timeout=WAIT_S, poll=POLL_S, sleep=time.sleep, clock=time.m
             size = None
         if size and size == last:
             return True
+        if size == 0:
+            empty_since = clock() if empty_since is None else empty_since
+            if clock() - empty_since >= EMPTY_SETTLE_S:
+                return True
+        else:
+            empty_since = None
         last = size
         sleep(poll)
     return False
@@ -233,17 +243,22 @@ def when_seconds(ts):
         return None
 
 
-def clipboard_image(path, Image=None):
-    """The picture at path for the clipboard: (PNG bytes, DIB bytes) (Linux tools take the PNG; Windows wants a device-
-    independent bitmap, CF_DIB, and gets the PNG too for programs that read it)."""
+def clipboard_image(path, Image=None, dib=True):
+    """The picture at path for the clipboard: (PNG bytes, DIB bytes or None) (Linux tools take the PNG; Windows wants a
+    device-independent bitmap, CF_DIB, and gets the PNG too for programs that read it). dib=False: no DIB (Linux), and
+    no copies past the one each needs (third in-depth review 2026-10-25: about 1 GB for a HighRes shot)."""
     import io
     Image = Image or pillow()
     with Image.open(path) as im:
-        im = im.convert("RGB")
-        png, bmp = io.BytesIO(), io.BytesIO()
+        if im.mode != "RGB":
+            im = im.convert("RGB")
+        png = io.BytesIO()
         im.save(png, "PNG", compress_level=PNG_LEVEL)
-        im.save(bmp, "BMP")
-    return png.getvalue(), bmp.getvalue()[14:]   # CF_DIB is a BMP file without its 14-byte file header
+        bmp = None
+        if dib:
+            bmp = io.BytesIO()
+            im.save(bmp, "BMP")
+    return png.getbuffer(), (bmp.getbuffer()[14:] if bmp else None)   # CF_DIB: a BMP file without its 14-byte header
 
 
 def metadata(shot):
@@ -269,7 +284,9 @@ def metadata(shot):
     except (KeyError, TypeError, ValueError):
         pass
     keywords = ["Elite Dangerous", system, body]
-    if subj.get("name"):
+    if subj.get("name") and subj.get("kind") == "geo":   # a formation is its name (third in-depth review: "Water" was a keyword)
+        keywords += [subj["name"], "Geology"]
+    elif subj.get("name"):
         colour = subj["name"].split(" - ")[1] if " - " in subj["name"] else ""   # the variant's colour ("Yellow")
         keywords += [subj["name"], subj["name"].split(" - ")[0], subj["name"].split()[0], colour,
                      {"bio": "Exobiology", "geo": "Geology"}.get(subj.get("kind"), "")]

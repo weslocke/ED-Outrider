@@ -1544,8 +1544,8 @@ upstream project's choices, not rules of the game.
 - **The folder picker is the game PC's, names only** (2026-10-25, the author asked for folder selection): a browser
   cannot hand a page a folder's path (a directory input gives files, never where they are), and the page may be on the
   tablet anyway, so 📁 asks Outrider for a folder's subfolders (`/api/folders`, `pc_only`, behind the sign-in like
-  every route): never a file, never a write. A folder that is not there yet opens at its nearest parent; it is made
-  when the first shot needs it.
+  every route): never a file, never a write. A folder that is not there yet opens at its nearest parent; an export or
+  "moved to" folder is made when the first shot needs it, the game's own Pictures folder never is (it is said so).
 
 ## Known limits
 

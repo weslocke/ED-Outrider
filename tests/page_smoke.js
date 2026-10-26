@@ -10262,6 +10262,40 @@ const releasePayloads = async () => {
       ["- Green gas giant: **A 1** · Green gas giant, one of: **B 2**, **B 3** (the codex does not say which)",
        "- Potential green gas giant: **B 4** (likely)",
        "- Curiosities: **3**: close orbit (orbits 3 radii from 2); **2 a**: shepherd moon, tiny world (183 km in radius)"]];
+    // the third in-depth review of 2026-10-25: the picker says the game's own folder is never made; 📍 pins a shot once;
+    // a hidden, emptied quality box does not refuse Save; a crop past the edge is refused as typed
+    got.review3 = await (async () => {
+      const q = k => w.document.querySelector('#shotSettings .scfg[data-key="' + k + '"]'), o = [], real = w.fetch, posts = [];
+      w.fetch = (u, opt) => {
+        if (/api\/folders/.test(String(u))) return Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"},
+          json: async () => ({path: "/home", parent: "/", sep: "/", dirs: [], hidden: 0, more: 0, drives: [], missing: "/home/typo", error: null})});
+        if (opt && opt.method === "POST") { posts.push(String(u)); return Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => ({ok: true})}); }
+        return real(u, opt);
+      };
+      w.document.querySelector('#shotSettings .folderpick[data-pick="pictures"]').click(); await sleep(50);
+      o.push(w.document.getElementById("folderMsg").textContent);
+      w.document.querySelector('#shotSettings .folderpick[data-pick="folder"]').click(); await sleep(50);
+      o.push(w.document.getElementById("folderMsg").textContent.includes("made when needed"));
+      w.eval('tabClose(document.getElementById("folderDlg"))');
+      const list = w.document.createElement("div"); list.className = "shotlist"; list.dataset.sys = "9"; list.dataset.body = "S 1";
+      list.innerHTML = '<button type="button" data-shotpin="5" data-lat="1" data-lon="2" data-name="x">📍</button>';
+      w.document.body.appendChild(list);
+      const pin = list.querySelector("button"); pin.click(); pin.click(); await sleep(50);
+      o.push(posts.filter(u => /api\/pins/.test(u)).length, pin.disabled);
+      list.remove();
+      const keep = ["format", "quality", "crop"].map(k => q(k).value), on = w.document.getElementById("shotCropOn");
+      q("format").value = "png"; q("quality").value = ""; q("quality").dataset.dirty = "1"; w.eval("shotSizeBoxes()");
+      posts.length = 0; await w.eval("saveShotCfg()");
+      o.push(w.document.getElementById("shotMsg").textContent.startsWith("Not saved"));
+      q("crop").value = "10, 10, 95, 75"; w.eval("shotCropRead(); shotSizeBoxes()");
+      await w.eval("saveShotCfg()"); o.push(w.document.getElementById("shotMsg").textContent.startsWith("Not saved: the crop"));
+      ["format", "quality", "crop"].forEach((k, i) => { q(k).value = keep[i]; });
+      w.eval("shotCropRead(); shotSizeBoxes(); SC_FIELDS().forEach(el => { el.dataset.dirty = ''; })");
+      w.document.getElementById("shotMsg").textContent = "";
+      w.fetch = real;
+      return o;
+    })();
+    want.review3 = ["/home/typo does not exist: pick the folder the game saves its screenshots in", true, 1, true, false, true];
     // an emptied crop box is no number: Save refuses rather than store a zero-size crop (review 2026-10-25)
     got.cropempty = await (async () => {
       const q = k => w.document.querySelector('#shotSettings .scfg[data-key="' + k + '"]'), on = w.document.getElementById("shotCropOn");
@@ -10276,7 +10310,7 @@ const releasePayloads = async () => {
       w.document.getElementById("shotMsg").textContent = "";
       return o;
     })();
-    want.cropempty = ["10, 10, 80, 75", "Not saved: the crop's four boxes need numbers, its width and height at least 1 % inside the picture", 0];
+    want.cropempty = ["10, 10, 80, 75", "Not saved: the crop's four boxes need numbers inside the picture (width and height at least 1 %, left + width and top + height at most 100 %)", 0];
     want.shotui = [true, true, true, false, false, "10, 10, 80, 75", "10, 20, 80, 75", false, "api/screenshots/7/image?size=thumb", "20%", "", true];
     // the body's hover card: your screenshots of it, the newest three as thumbnails (the author, 2026-10-25)
     got.shotpop = w.eval(`(() => { const d = document.createElement("div");
