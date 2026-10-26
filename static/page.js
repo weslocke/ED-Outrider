@@ -6958,6 +6958,19 @@ function renderChecklist() {
   clDrawSide();
 }
 // a species' colours, dropped down under its row: each with what gives it and your state; one with a picture shows it
+// a colour clicked: its picture; one of your own is picked again at each click (the author, 2026-10-26), another than
+// the one shown, swapped in when the answer comes (the old one stays meanwhile: no blank)
+async function clColour(colour) {
+  const sp = CL.species, img = sp && sp.images && sp.images[colour];
+  CL.colour = colour;
+  if (!img || !img.own) { renderChecklist(); return; }
+  let d;
+  try { d = await apiJson(`api/checklist/picture?species=${encodeURIComponent(sp.id)}&colour=${encodeURIComponent(colour)}&avoid=${encodeURIComponent(img.file || "")}`); }
+  catch { d = null; }
+  if (CL.species !== sp || CL.colour !== colour) return;   // another species or colour meanwhile
+  if (d && d.image) sp.images[colour] = d.image;
+  renderChecklist();
+}
 function clVariantRows(r) {
   const {imgs, pick} = clPick(r);
   return r.variants.list.map(v => {
@@ -6972,7 +6985,7 @@ document.getElementById("clGrid").addEventListener("click", e => {
   if (fb) return clFind(fb.dataset.clfind, fb.dataset.clcolour || null);
   const vr = e.target.closest("tr.clvar");
   if (vr) {   // a colour: its picture
-    if (vr.classList.contains("climgrow")) { CL.colour = vr.dataset.colour; renderChecklist(); }
+    if (vr.classList.contains("climgrow")) clColour(vr.dataset.colour);
     return;
   }
   const tr = e.target.closest("[data-cl]");

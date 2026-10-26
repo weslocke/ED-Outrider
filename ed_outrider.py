@@ -12401,10 +12401,11 @@ class State:
 
     CODEX_VIEW_PX = 960   # a codex picture as a checklist panel shows it (the panel's width, 260 px high at most)
 
-    def codex_own(self, kind, group, entry, colour=""):
+    def codex_own(self, kind, group, entry, colour="", avoid=None):
         """[screenshots] codex_show: one of your own pictures of a checklist entry, picked at random from its codex
         folder (outrider.screenshots.codex_dir: a species' colour, "" for one with none; a formation), as the checklist's
-        image ({url, full, own, file}); None when it is off or the folder has none (Canonn's then)."""
+        image ({url, full, own, file}), another than `avoid` (the one shown) when there are two or more; None when it
+        is off or the folder has none (Canonn's then)."""
         if not self.shots_cfg.get("codex_show"):
             return None
         S = outrider.screenshots
@@ -12412,11 +12413,27 @@ class State:
         names = S.codex_pictures(folder) if folder else []
         if not names:
             return None
-        name = random.choice(names)
+        name = random.choice([n for n in names if n != avoid] or names)
         q = urllib.parse.urlencode({"kind": kind, "group": group, "entry": entry, "colour": colour or "", "file": name})
         # when and where it was taken, when the picture says (Outrider wrote it in; an edit may have dropped it)
         return dict(S.picture_facts(os.path.join(folder, name)), url=f"api/codex_picture?{q}", full=f"api/codex_picture?{q}&size=full",
                     own=True, file=name)
+
+    def checklist_picture(self, species_id, colour="", avoid=None):
+        """GET /api/checklist/picture?species=<id>&colour=&avoid=<file>: another of your own pictures of a species' colour
+        (each click on a colour picks again, the author 2026-10-26). -> ({image: codex_own's or None}, HTTP status)."""
+        R = outrider.bio.load_rules() if outrider.bio else None
+        if not R:
+            return {"error": "the exobiology rules are not loaded"}, 503
+        merged, _ = outrider.checklist.merge_species(R["species"])
+        sp = next((s for s in merged if (s.get("id") or s["name"]) == species_id), None)
+        if sp is None:
+            return {"error": "no such species"}, 404
+        known = {c.lower(): c for c, _ in outrider.checklist.colours(sp)}
+        colour = " ".join((colour or "").split()).lower()
+        if (colour or known) and colour not in known:
+            return {"error": f"{sp['name']} has no colour {colour}"}, 400
+        return {"image": self.codex_own("bio", sp.get("genus"), sp["name"], known.get(colour, ""), avoid)}, 200
 
     async def codex_picture(self, q):
         """GET /api/codex_picture?kind=&group=&entry=&colour=&file=&size=view|full (codex_own's links): a picture in a
@@ -21866,6 +21883,12 @@ def make_app(state, hosts=None):
         out, status = state.checklist(request.query.get("region", "here"), kind)
         return web.json_response(out, status=status)
 
+    async def checklist_picture_view(request):
+        """GET /api/checklist/picture?species=<id>&colour=&avoid=: another of your own pictures of that colour."""
+        q = request.query
+        out, status = state.checklist_picture(q.get("species", "")[:200], q.get("colour", "")[:60], q.get("avoid") or None)
+        return web.json_response(out, status=status)
+
     async def checklist_find_view(request):
         """GET /api/checklist/find?species=<checklist id>&colour=: the nearest bodies where commanders reported it (S29)."""
         species = request.query.get("species", "")[:200]
@@ -22964,7 +22987,8 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/history", history_view)
     app.router.add_get("/api/organics", organics_view)
     app.router.add_get("/api/checklist", checklist_view)
-    app.router.add_get("/api/checklist/find", checklist_find_view)   # S29: asks Spansh, so not among the AI's READ_ROUTES
+    app.router.add_get("/api/checklist/find", checklist_find_view)
+    app.router.add_get("/api/checklist/picture", checklist_picture_view)   # S29: asks Spansh, so not among the AI's READ_ROUTES
     app.router.add_get("/api/log", log_view)
     app.router.add_get("/api/materials", materials_view)
     for part, fn in (("profile", state.commander_profile), ("inventory", state.commander_inventory),

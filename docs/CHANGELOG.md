@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · A colour's own picture picked again at each click
+- On the Exo-Biology checklist, each click on a colour picks another of your own pictures of it (not the one shown,
+  when there are two or more): GET `/api/checklist/picture`, asked only when that colour's picture is one of yours;
+  Canonn's are shown as they were. The picture shown stays until the new one arrives.
+
 ## 2026-10-26 · The checklist picture's caption shortened
 - "Amethyst · Your picture: 2026-10-26, Smojooe UW-E c11-34 6 b" (the date, then the body's full name), as the author
   asked, in place of "taken: … on body … in system …".

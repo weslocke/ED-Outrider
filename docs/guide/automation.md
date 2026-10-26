@@ -135,7 +135,7 @@ package (see [Install and run](install.md)), and is off until you tick it.
   so it is not copied.
 - **Your pictures on the checklists:** **Show your own pictures on the Bio/Geo checklists** makes the Exo-Biology and
   Geology checklists show one of your own pictures of a species' colour or a formation, picked at random from its
-  codex folder each time you open it, instead of Canonn's; Canonn's still shows where the folder is missing or has
+  codex folder each time you open it (and at each click on a colour), instead of Canonn's; Canonn's still shows where the folder is missing or has
   none. Any picture in the folder counts (PNG, JPG, WebP, GIF), so crop or edit the copies, or add your own. Under the
   picture: "Your picture: 2026-10-26, Smojooe UW-E c11-28 7 f" (when and where it was taken) as far as the picture says
   (Outrider writes it in; an editor may drop it), else "Your picture, from your codex folders".

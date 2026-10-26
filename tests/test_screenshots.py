@@ -549,6 +549,14 @@ class Server(unittest.TestCase):
             seen.add(sp["images"]["yellow"]["file"])
         self.assertEqual(seen, {"mine.png", "cropped.png"})                                  # at random, from the folder
         self.assertEqual(sp["images"]["red"], {"url": "https://c/r.jpg", "cmdr": "Other"})  # no folder: Canonn's
+        # each click on a colour picks again (the author, 2026-10-26), never the one shown when there is another
+        for shown in ("mine.png", "cropped.png") * 5:
+            got, status = self.st.checklist_picture(sid, "Yellow", shown)
+            self.assertEqual((status, got["image"]["own"]), (200, True))
+            self.assertNotEqual(got["image"]["file"], shown)
+        self.assertIsNone(self.st.checklist_picture(sid, "red")[0]["image"])     # none of your own: the page keeps Canonn's
+        self.assertEqual(self.st.checklist_picture(sid, "Plaid")[1], 400)
+        self.assertEqual(self.st.checklist_picture("$Nope;", "yellow")[1], 404)
         img = sp["images"]["yellow"]
         self.assertTrue(img["own"] and img["url"].startswith("api/codex_picture?") and img["full"].endswith("&size=full"))
         q = dict(urllib.parse.parse_qsl(img["url"].split("?", 1)[1]))

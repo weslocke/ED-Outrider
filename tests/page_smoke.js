@@ -548,6 +548,26 @@ const releasePayloads = async () => {
       "Amethyst · Image: CMDR Someone, via Canonn"]) && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| codex picture caption |", JSON.stringify(got), errors.slice(before));
   }
+  // a colour clicked picks another of your own pictures (the author, 2026-10-26); a Canonn one asks nothing
+  {
+    const w = dom.window, before = errors.length, asked = [];
+    const realApi = w.apiJson;
+    w.apiJson = async url => { asked.push(url); return {image: {url: "api/codex_picture?f=2", own: true, file: "b.png"}}; };
+    const run = async () => {
+      w.eval(`CL.open = "$S1;"; CL.species = {id: "$S1;", images: {lime: {url: "api/codex_picture?f=1", own: true, file: "a.png"},
+                                                               red: {url: "https://c/r.jpg", cmdr: "X"}}}`);
+      await w.eval(`clColour("lime")`);
+      await w.eval(`clColour("red")`);
+      const out = {file: w.eval(`CL.species.images.lime.file`), colour: w.eval(`CL.colour`)};
+      w.eval(`CL.open = null; CL.species = null; CL.colour = null`);
+      return out;
+    };
+    const res = await run();
+    w.apiJson = realApi;
+    const ok = asked.length === 1 && /api\/checklist\/picture\?species=%24S1%3B&colour=lime&avoid=a\.png/.test(asked[0]) &&
+               res.file === "b.png" && res.colour === "red" && errors.length === before;
+    console.log(ok ? "OK" : "FAIL", "| codex picture per click |", JSON.stringify(asked), JSON.stringify(res), errors.slice(before));
+  }
   // auto-target's results: their own alerts row (spoken, not notified by default; its speech tick can switch them off)
   {
     const w = dom.window, before = errors.length, said = [];
