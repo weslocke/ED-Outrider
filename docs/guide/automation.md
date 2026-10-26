@@ -100,7 +100,7 @@ package (see [Install and run](install.md)), and is off until you tick it.
   a path, or **📁** beside the field browses the game PC's folders (always the game PC's, whichever browser the page is open in). They are sorted into **a
   folder per commander** (the default) and, ticked, **one per system** inside it; **or your own** takes a pattern
   instead (`{cmdr}/{date}`, a `/` for a folder inside a folder).
-- **Files:** **File name** builds each name from `{system}` `{body}` (short: `2 a`) `{date}` `{time}` (your local
+- **Files:** **File name** builds each name from `{system}` `{body}` (short: `2 a`; empty for a shot in space, where the game names the system's own star) `{date}` `{time}` (your local
   time) `{cmdr}` `{highres}` and `{subject}` (below); a name already there gets " (2)". **Full-size picture as** PNG
   (lossless, the default: about 8.5 MB for a 3072 x 1728 shot), JPG or WebP at a **quality** (90: about 1.2 MB as JPG,
   1 MB as WebP, the smallest at the same quality; WebP takes 16,383 px a side at most, so a bigger HighRes shot is

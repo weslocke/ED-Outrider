@@ -219,8 +219,10 @@ upstream project's choices, not rules of the game.
   higher one cannot be targeted. Sector names are not generated: recommendations cover sectors you have a system in.
   Hand-authored sectors use other origins: their names parse, their geometry is not claimed. The auto-target opt-in
   needs a kept boxel (following whichever boxel you jump into would take over every target). A boxel is complete by
-  itself once its end is known and every number below it visited; Done marks one finished either way (meta
-  `boxel_done`, undone any time): no Next, out of the recommendations. Skipping systems already fully scanned is
+  itself once its end is known and every number below it visited, and is then marked done by itself (2026-10-26,
+  the author: it stayed bright and kept until Done was pressed; a Retry takes that mark back, and one undone by hand
+  is never marked again: meta `boxel_reopened`); Done marks one finished either way (meta `boxel_done`, undone any
+  time): no Next, out of the recommendations, a kept one let go. Skipping systems already fully scanned is
   opt-in (meta `boxel_skip_known`): a system Spansh knows was often only honked in passing and keeps its bodies'
   first discoveries, so only one with every body reported is passed over. The head shows the highest known number,
   yours or Spansh's.
@@ -1619,6 +1621,12 @@ upstream project's choices, not rules of the game.
   for (GET `/api/records`) only while the box is open or 3 s after Here loads, so a burst of FSS scans is one request.
   A body holding one has 🏆 in Here, and its hover card and details panel name the record ("new" when set in the last
   day). Visual only: the discovery streak's "no records or milestones" (above) stands.
+- **What a body orbits is its orbit's size, not today's distance** (2026-10-26, Hiner399's ask): Here's "↳ 15 ls · B",
+  the card's and panel's "orbits B at 15 ls" are the semi-major axis from the Scan (or Spansh), with the closest and
+  farthest points from the eccentricity of your own scans. Bodies' current positions are not in the journals (the
+  real body-to-body distances were found infeasible on 2026-10-25), and for "how tight is this moonlet's orbit" the
+  orbit's size is the right number. Shown only where it adds something: not for the arrival star's planets or the
+  barycentre the arrival star is in, whose distance from arrival says it.
 - **Five more curiosities, each counted first** (2026-10-25): a shepherd moon (it orbits inside its planet's rings), a
   tiny world (under 300 km in radius), a tiny star (under a twentieth of the Sun's radius; white dwarfs, neutron stars
   and black holes are small by nature and left out), an extreme orbit (eccentricity 0.9 or more) and a close binary

@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Docs caught up for the release
+- The code map names this round's pieces (`orbit_facts`, `boxel_complete_done` and `boxel_reopened`, `recordsWanted`,
+  `sysRecordsHeld`, `codex_sure_group`, the clipboard's made copies and `CLIPBOARD_MAX_PX`); the README's system and
+  screenshot rows say what a moon orbits and Here's 📷 for a colour you have; the guide says `{body}` is empty for a
+  shot in space; DESIGN_NOTES records the boxel done by itself and why an orbit is its size, not today's distance.
+
 ## 2026-10-26 · What a body orbits and how far
 - Hiner399 (discussion #3): beside a moon's or a second star's planet's distance from arrival, how far it is from what
   it orbits. Here's LS column has "↳ 15 ls · B" under it, the body's card "orbits B at 15 ls" and its panel an Orbits
