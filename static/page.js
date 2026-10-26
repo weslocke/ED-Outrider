@@ -14042,6 +14042,10 @@ function shotSizeBoxes() {
   document.getElementById("shotFullQ").hidden = document.querySelector('#shotSettings .scfg[data-key="format"]').value === "png";
   document.getElementById("shotCopiesFmt").hidden = !cropOn && ![...document.querySelectorAll("#shotSettings .shotsize")].some(b => b.checked);
   document.getElementById("shotCropBox").hidden = !cropOn;
+  // the codex's format only while it is ticked, its quality only for a JPG or WebP
+  const codexOn = document.querySelector('#shotSettings .scfg[data-key="codex"]').checked;
+  document.getElementById("shotCodexFmt").hidden = !codexOn;
+  document.getElementById("shotCodexQ").hidden = !codexOn || !["jpg", "webp"].includes(document.querySelector('#shotSettings .scfg[data-key="codex_format"]').value);
   shotCropDraw();
 }
 // the crop: four boxes in % (left, top, width, height) kept in [screenshots] crop as "l, t, w, h", drawn on your latest
@@ -14090,7 +14094,7 @@ document.getElementById("shotCropOn").onchange = e => {
   shotCropWrite();
 };
 document.querySelectorAll("#shotSettings .cropv").forEach(el => el.addEventListener("input", shotCropWrite));
-document.querySelector('#shotSettings .scfg[data-key="format"]').addEventListener("change", shotSizeBoxes);
+for (const k of ["format", "codex", "codex_format"]) document.querySelector(`#shotSettings .scfg[data-key="${k}"]`).addEventListener("change", shotSizeBoxes);
 for (const b of document.querySelectorAll("#shotSettings .shotsize")) b.onchange = () => {
   const f = document.querySelector(`#shotSettings .scfg[data-key="${b.dataset.for}"]`);
   f.value = b.checked ? (Number(f.value) > 0 ? f.value : b.dataset.px) : "0"; f.dataset.dirty = "1"; shotSizeBoxes();

@@ -26,7 +26,7 @@ DEFAULTS = {"enabled": False, "pictures": "", "folder": "", "by_cmdr": True, "by
             "filename": "{system} {body} {date} {time}{highres}", "format": "png", "quality": 90, "full": True,
             "medium": 0, "small": 0, "crop": "", "crop_px": 0, "copies_format": "jpg", "copies_quality": 85,
             "original": "keep", "move_to": "", "subject_m": 50.0, "clipboard": "", "codex": False,
-            "codex_show": False}
+            "codex_format": "", "codex_quality": 90, "codex_show": False}
 MEDIUM_PX, SMALL_PX = 1920, 1080   # the sizes a ticked copy starts at (long edge, px)
 FORMATS = ("png", "jpg", "webp")   # the full size: lossless PNG; JPG and WebP at `quality` (WebP: smaller at the same)
 COPY_FORMATS = ("jpg", "webp")     # medium, small and the crop, at `copies_quality`
@@ -40,6 +40,7 @@ TOKENS = ("cmdr", "system", "body", "date", "time", "highres", "subject")
 # the folders are the same in any game language; codex_show: the checklists show a picture from them (CODEX_IMAGES:
 # any the player puts there too, edited or cropped)
 CODEX_FOLDERS = {"bio": "Biology", "geo": "Geology"}
+CODEX_FORMATS = ("", "png", "jpg", "webp")   # "": a copy of the picture exported; else the shot converted again, full size
 CODEX_IMAGES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
 NAME_MAX = 150           # characters of a file or folder name (Windows' path limit is near)
 PICTURES_TAIL = ("Frontier Developments", "Elite Dangerous")
@@ -254,12 +255,25 @@ def free_path(folder, name):
     return dest
 
 
-def copy_to_codex(picture, folder):
-    """A copy of `picture` in `folder` under its own name (its date kept, as the picture's is the shot's). -> its path."""
-    os.makedirs(folder, exist_ok=True)
-    dest = free_path(folder, os.path.basename(picture))
-    shutil.copy2(picture, dest)
-    return dest
+def to_codex(src, written, full, folder, cfg, shot, Image=None):
+    """[screenshots] codex: the shot saved into its codex `folder`, under the name of the first picture `written`:
+    a copy of that picture (codex_format "", or the full size `full` is that format at that quality already), else the
+    game's BMP `src` converted again at full size to codex_format at codex_quality (small everyday pictures, fine codex
+    ones). Its date is the shot's. -> its path."""
+    fmt = cfg.get("codex_format") or ""
+    fmt = fmt if fmt in FORMATS else ""
+    same = full and os.path.splitext(full)[1][1:].lower() == EXT.get(fmt) and (
+        fmt == "png" or int(cfg.get("quality") or 90) == int(cfg.get("codex_quality") or 90))
+    if not fmt or same:
+        pic = full if fmt else written[0]
+        os.makedirs(folder, exist_ok=True)
+        dest = free_path(folder, os.path.basename(pic))
+        shutil.copy2(pic, dest)
+        return dest
+    paths = {"dir": folder, "full": free_path(folder, f"{os.path.splitext(os.path.basename(written[0]))[0]}.{EXT[fmt]}")}
+    convert(src, paths, dict(cfg, format=fmt, quality=cfg.get("codex_quality") or 90, full=True, medium=0, small=0, crop=""),
+            shot, Image)
+    return paths["full"]   # a JPG instead of a WebP past libwebp's size
 
 
 def description_parts(m):

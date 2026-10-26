@@ -159,6 +159,38 @@ class Convert(unittest.TestCase):
         self.d = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.d)
 
+    def test_to_codex(self):
+        """[screenshots] codex_format (the author, 2026-10-26: small everyday shots, fine codex pictures): "" copies the
+        first picture written; a format converts the game's BMP again at full size at codex_quality, unless the full
+        size written is that already (then a copy)."""
+        src = bmp(os.path.join(self.d, "Screenshot_0001.bmp"), 640, 360)
+        shot = {"ts": "2026-10-25T20:33:35Z", "system": "Sys", "body": "Sys 2 a", "subject": {"kind": "bio", "name": "Tussock Albata - Green"}}
+        out = os.path.join(self.d, "out")
+        cfg = dict(S.DEFAULTS, format="jpg", quality=70, full=False, small=320)
+        paths = S.plan_paths(cfg, S.fields_for(shot), out)
+        written = S.convert(src, paths, cfg, shot)["written"]                 # a small JPG only
+        folder = os.path.join(self.d, "codex")
+        got = S.to_codex(src, written, None, folder, cfg, shot)                 # "": a copy of it
+        with open(got, "rb") as a, open(written[0], "rb") as b:
+            self.assertEqual(a.read(), b.read())
+        got = S.to_codex(src, written, None, folder, dict(cfg, codex_format="png"), shot)   # the BMP again, full size
+        self.assertEqual(os.path.splitext(got)[0], os.path.join(folder, os.path.splitext(os.path.basename(written[0]))[0]))
+        with Image.open(got) as im:
+            self.assertEqual((im.format, im.size), ("PNG", (640, 360)))
+            self.assertIn("Tussock Albata - Green", im.text["Description"])   # what it shows, written in as ever
+        self.assertEqual(int(os.path.getmtime(got)), S.when_seconds(shot["ts"]))
+        # the full size is that format at that quality already: a copy; another quality: converted again
+        cfg = dict(cfg, full=True, small=0)
+        paths = S.plan_paths(cfg, S.fields_for(shot), out)
+        written = S.convert(src, paths, cfg, shot)["written"]
+        same = S.to_codex(src, written, paths["full"], folder, dict(cfg, codex_format="jpg", codex_quality=70), shot)
+        finer = S.to_codex(src, written, paths["full"], folder, dict(cfg, codex_format="jpg", codex_quality=98), shot)
+        with open(same, "rb") as a, open(paths["full"], "rb") as b, open(finer, "rb") as c:
+            full = b.read()
+            self.assertEqual(a.read(), full)
+            self.assertGreater(len(c.read()), len(full))
+        self.assertEqual(len(os.listdir(folder)), 4)   # never over one another: " (2)"...
+
     def test_full_and_copies_with_what_it_shows(self):
         src = bmp(os.path.join(self.d, "Screenshot_0001.bmp"), 3072, 1728)
         cfg = dict(S.DEFAULTS, medium=1920, small=4000)   # small larger than the shot: never upscaled
@@ -451,6 +483,16 @@ class Server(unittest.TestCase):
         self.assertIsNone(self.st.shots_last["codex"])
         [card] = [n for n in self.st.notices.active() if n["key"] == "screenshots"]
         self.assertIn("codex", card["text"])
+        # a codex format: the game's BMP converted again before it is deleted (small JPGs everyday, a PNG for the codex)
+        os.remove(os.path.join(self.out, "Geology"))
+        self.st.shots_cfg.update(format="jpg", codex_format="png", original="delete")
+        self.shoot("Screenshot_0005.bmp")
+        self.run_queue()
+        r = self.db.execute("SELECT * FROM screenshots WHERE original='Screenshot_0005.bmp'").fetchone()
+        self.assertTrue(r["full"].endswith(".jpg") and self.st.shots_last["codex"].endswith(".png"), self.st.shots_last)
+        with Image.open(self.st.shots_last["codex"]) as im:
+            self.assertEqual((im.format, im.size), ("PNG", (320, 180)))
+        self.assertFalse(os.path.exists(os.path.join(self.pictures, "Screenshot_0005.bmp")))   # deleted after
 
     def test_checklists_show_your_own_pictures(self):
         """[screenshots] codex_show (the author, 2026-10-26): a checklist entry's picture is one of your own from its codex
@@ -852,6 +894,9 @@ class Settings(unittest.TestCase):
         flag = lambda sec, table, key, default: ed_outrider._config_value(sec, key, table.get(key), ed_outrider._config_bool, default)
         st = ed_outrider.screenshots_settings({"format": "TIFF", "medium": 99999, "subject_m": -5, "original": "move"}, num, flag)
         self.assertEqual((st["format"], st["medium"], st["subject_m"], st["original"], st["by_cmdr"]), ("png", 7680, 0, "move", True))
+        st = ed_outrider.screenshots_settings({"codex_format": "tiff", "codex_quality": 20}, num, flag)
+        self.assertEqual((st["codex"], st["codex_format"], st["codex_quality"], st["codex_show"]), (False, "", 50, False))
+        self.assertEqual(ed_outrider.screenshots_settings({"codex_format": "PNG"}, num, flag)["codex_format"], "png")
         st = ed_outrider.screenshots_settings({"jpg_quality": 70, "resized_quality": 60, "crop": "5,5,200,90", "copies_format": "WEBP",
                                                "clipboard": "Medium", "format": "webp"}, num, flag)
         self.assertEqual((st["quality"], st["copies_quality"], st["crop"], st["copies_format"], st["clipboard"], st["format"], st["full"]),

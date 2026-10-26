@@ -1020,7 +1020,8 @@ CONFIG_RANGES = {
     ("defaults", "module_warn"): (1, 100, "%"), ("defaults", "rig_warn"): (100, RIG_LOST_M - 100, "m"),
     ("defaults", "speech_profanity_pct"): (0, 100, "%"), ("defaults", "speech_speed"): (0.5, 2, "times"),
     ("speech", "pad_delay"): (0, 20, "s"), ("server", "sights_range"): (0, 5000, "ly"),
-    ("screenshots", "quality"): (50, 100, ""), ("screenshots", "copies_quality"): (50, 100, ""), ("screenshots", "crop_px"): (0, 7680, "px"),
+    ("screenshots", "quality"): (50, 100, ""), ("screenshots", "copies_quality"): (50, 100, ""),
+    ("screenshots", "codex_quality"): (50, 100, ""), ("screenshots", "crop_px"): (0, 7680, "px"),
     ("screenshots", "medium"): (0, 7680, "px"), ("screenshots", "small"): (0, 3840, "px"), ("screenshots", "subject_m"): (0, 500, "m"),
     ("autohonk", "delay"): (0, 30, "s"), ("autohonk", "hold"): (0.5, 20, "s"),
     ("copilot", "hold_ms"): (200, 3000, "ms"), ("copilot", "double_ms"): (100, 1000, "ms"),
@@ -1151,7 +1152,7 @@ def screenshots_settings(ss, num, flag):
     for old, new in (("jpg_quality", "quality"), ("resized_quality", "copies_quality")):
         if old in ss and new not in ss:
             ss[new] = ss.pop(old)
-    fmt, orig, cfmt, clip = (text(k).lower() for k in ("format", "original", "copies_format", "clipboard"))
+    fmt, orig, cfmt, clip, xfmt = (text(k).lower() for k in ("format", "original", "copies_format", "clipboard", "codex_format"))
     # "~/..." as every other folder setting (third in-depth review 2026-10-25: taken literally, a folder named "~")
     path = lambda key: os.path.expanduser(text(key)) if text(key) else ""   # noqa: E731
     crop = outrider.screenshots.parse_crop(text("crop"))
@@ -1167,6 +1168,8 @@ def screenshots_settings(ss, num, flag):
             "clipboard": clip if clip in outrider.screenshots.CLIPBOARD else d["clipboard"],
             "original": orig if orig in outrider.screenshots.ORIGINALS else d["original"], "move_to": path("move_to"),
             "subject_m": clamp("subject_m", float), "codex": flag("screenshots", ss, "codex", d["codex"]),
+            "codex_format": xfmt if xfmt in outrider.screenshots.CODEX_FORMATS else d["codex_format"],
+            "codex_quality": clamp("codex_quality", int),
             "codex_show": flag("screenshots", ss, "codex_show", d["codex_show"])}
 
 
@@ -1531,7 +1534,9 @@ clipboard = {q(st["screenshots"]["clipboard"])}   # after each shot, put this pi
 original = {q(st["screenshots"]["original"])}   # the game's BMP after converting: "keep", "delete" or "move"
 move_to = {q(st["screenshots"]["move_to"])}   # where "move" puts it
 subject_m = {n(st["screenshots"]["subject_m"])}   # m: a surface shot names the plant or formation this close (0 = never)
-codex = {"true" if st["screenshots"]["codex"] else "false"}   # also copy such a shot to Biology/<genus>/<species>/<colour> or Geology/<group>/<name> in the export folder: your own codex
+codex = {"true" if st["screenshots"]["codex"] else "false"}   # also save such a shot (a tagged one) to Biology/<genus>/<species>/<colour> or Geology/<group>/<name> in the export folder: your own codex
+codex_format = {q(st["screenshots"]["codex_format"])}   # as: "" (a copy of the picture exported), or the shot converted again at full size: "png", "jpg" or "webp"
+codex_quality = {st["screenshots"]["codex_quality"]}   # a codex JPG's or WebP's quality (50-100)
 codex_show = {"true" if st["screenshots"]["codex_show"] else "false"}   # the Bio/Geo checklists show a random picture from those folders (Canonn's when there is none)
 
 [assistant]
@@ -12122,10 +12127,11 @@ class State:
                 raise ValueError(f"{shot.get('original')} is empty (0 bytes): the game did not write it")
             out = S.convert(src, paths, cfg, shot)
             codex = S.codex_dir(root, subject) if cfg.get("codex") and out["written"] else None
-            if codex:   # the first picture written (the full size unless it is off); a failure is said, the shot is fine
+            if codex:   # before the BMP may go (a codex format converts it again); a failure is said, the shot is fine
                 try:
-                    out["codex"] = S.copy_to_codex(out["written"][0], codex)
-                except OSError as e:
+                    full = paths["full"] if paths.get("full") in out["written"] else None
+                    out["codex"] = S.to_codex(src, out["written"], full, codex, cfg, shot)
+                except Exception as e:  # noqa: BLE001 -- a folder not writable, a disk full, Pillow failing
                     out["codex_error"] = f"{type(e).__name__}: {e}"
             try:   # the pictures are written and checked: a BMP that cannot be moved or deleted is said, not a failure
                 out["original"] = S.finish_original(src, cfg, paths["full"])   # (review 2026-10-25: recorded as failed)

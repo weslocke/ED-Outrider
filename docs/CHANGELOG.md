@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Codex pictures in a format of their own
+- **Also save tagged screenshots into your codex folders … as** (`[screenshots] codex_format`, `codex_quality`): a copy
+  of the picture exported (as before), or the game's shot converted again at full size to PNG, JPG or WebP at its own
+  quality, so the everyday pictures can be small and the codex ones fine. A full size already in that format and
+  quality is copied rather than converted again. The setting is reworded ("tagged": the plant, its colour or the
+  formation is known); the format shows while it is ticked, the quality for a JPG or WebP.
+
 ## 2026-10-26 · Your own pictures on the Bio/Geo checklists; codex folders by colour
 - **Codex folders by colour:** a biology shot is copied to `Biology/<genus>/<species>/<colour>/` (no colour folder
   for a species with none). The colour is the species table's English one, from the variant's codex code now kept

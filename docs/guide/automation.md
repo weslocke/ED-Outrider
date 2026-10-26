@@ -124,8 +124,10 @@ package (see [Install and run](install.md)), and is off until you tick it.
   yours from that moment. Every picture carries its title, a description (system, body, what it shows, position,
   commander, time) and keywords inside it, in the places viewers look: XMP (photo managers), EXIF (Windows' Properties
   → Details, its "Date taken" in your local time) and PNG's own text.
-- **Your own codex:** with **Also copy those shots into your own codex folders** ticked, a shot that knows its plant
-  or formation is also copied, as its full-size picture (else the first copy made), to
+- **Your own codex:** with **Also save tagged screenshots into your codex folders** ticked, a shot that knows its plant
+  (and its colour) or formation is also saved, **as** a copy of the picture exported above (the full size, else the
+  first copy made) or as its own full-size PNG, JPG or WebP at its own quality (small everyday pictures, fine codex
+  ones: the game's shot is converted again for it, before the BMP is deleted or moved), to
   `Biology/<genus>/<species>/<colour>/` (a species with no colours, such as the anemones, has no colour folder) or
   `Geology/<group>/<formation>/` inside the export folder, whichever commander took it:
   `Biology/Tussock/Tussock Albata/Green/Smojooe UW-E c11-28 7 f 2026-10-26 08-51-14.jpg`. The folders take the
