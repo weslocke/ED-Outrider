@@ -6827,9 +6827,11 @@ const CL = {data: null, key: null, open: null, species: null, map: null, colour:
 // Canonn's, credited
 function clFigure(img, alt, colour) {
   if (!img || !img.url) return "";
-  // your own: when and where it was taken, as far as the picture says (else where it came from)
-  const taken = img.own ? [img.taken, img.body && `on body ${img.body}`, img.system && `in system ${img.system}`].filter(Boolean).join(" ") : "";
-  const credit = img.own ? `<span title="${esc(img.file || "")}">Your picture</span>, ${taken ? `taken: ${esc(taken)}` : "from your codex folders"}`
+  // your own: when and where it was taken ("2026-10-26, Smojooe UW-E c11-34 6 b"), as far as the picture says (else
+  // where it came from)
+  const place = [img.system, img.body].filter(Boolean).join(" ");
+  const taken = img.own ? [img.taken, place].filter(Boolean).join(", ") : "";
+  const credit = img.own ? `<span title="${esc(img.file || "")}">Your picture</span>${taken ? `: ${esc(taken)}` : ", from your codex folders"}`
     : `Image: ${img.cmdr ? `CMDR ${esc(img.cmdr)}, ` : ""}via <a href="https://canonn.science/codex/" target="_blank" rel="noopener noreferrer">Canonn</a>`;
   return `<figure class="climg"><a href="${esc(img.full || img.url)}" target="_blank" rel="noopener noreferrer" title="open it full size">` +
     `<img src="${esc(img.url)}" alt="${esc(alt)}" loading="lazy" referrerpolicy="no-referrer"></a>` +

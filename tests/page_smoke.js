@@ -543,8 +543,8 @@ const releasePayloads = async () => {
     const got = [cap(Object.assign({taken: "2026-10-26", body: "7 f", system: "Smojooe UW-E c11-28"}, own)),
                  cap(Object.assign({taken: "2026-10-26", body: null, system: null}, own)), cap(own),
                  cap({url: "https://c/x.jpg", cmdr: "Someone"})];
-    const ok = JSON.stringify(got) === JSON.stringify(["Amethyst · Your picture, taken: 2026-10-26 on body 7 f in system Smojooe UW-E c11-28",
-      "Amethyst · Your picture, taken: 2026-10-26", "Amethyst · Your picture, from your codex folders",
+    const ok = JSON.stringify(got) === JSON.stringify(["Amethyst · Your picture: 2026-10-26, Smojooe UW-E c11-28 7 f",
+      "Amethyst · Your picture: 2026-10-26", "Amethyst · Your picture, from your codex folders",
       "Amethyst · Image: CMDR Someone, via Canonn"]) && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| codex picture caption |", JSON.stringify(got), errors.slice(before));
   }

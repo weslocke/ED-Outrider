@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · The checklist picture's caption shortened
+- "Amethyst · Your picture: 2026-10-26, Smojooe UW-E c11-34 6 b" (the date, then the body's full name), as the author
+  asked, in place of "taken: … on body … in system …".
+
 ## 2026-10-26 · Your checklist pictures say when and where they were taken
 - Under one of your own pictures on the Bio/Geo checklists: "Amethyst · Your picture, taken: 2026-10-26 on body 7 f in
   system Smojooe UW-E c11-28", read from the picture itself (`screenshots.picture_facts`: EXIF's date, else XMP's);
