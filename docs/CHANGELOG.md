@@ -2,6 +2,23 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Third review fixes (2): green gas giants, the trail, records, mining, launchers
+- **Green gas giants:** the same-second match (c1da22b) never fired in the server: the scan times were looked up by
+  the journal's full body name while the records carry short ones. They go by body id now, which your records and
+  Spansh's share; the test goes through the journal and `system_detail`, not the matcher alone. The overlay's "Also
+  here" says "green gas giant (one of 2)" for giants nothing tells apart.
+- **The trail:** a high stretch between two low ones is a gap, on the page and the overlay's radar (they were joined
+  by a straight line across ground never flown low); while you are high it is not joined to you.
+- **Your records:** a few Pa reads in Pa ("3.0 Pa", not "0.0000 atm"); a nav beacon read after your AutoScan keeps
+  the AutoScan's scan type too, as it keeps its line.
+- **Ring prices:** a failed lookup is asked again for Search's body panel too, not only Here's.
+- **Mining thresholds:** a refused 150 clears from its box, 2.5 reads 3: what is kept shows.
+- **Search:** "arrival star only" greys for the value the search sends (25 or 1.5 count as 1 there).
+- **The overlay's radar** stays away on foot in a planetary port's hangar or concourse too.
+- **The Piper notice** says to change PYTHON= when that chose the Python (the launcher picks none then).
+- **The guides:** an optional package (Pillow) is not retried offline by itself (OUTRIDER_REINSTALL=1 is); the
+  git-ignored scripts/install.sh is gone from the file table; pillow is named among the optional packages.
+
 ## 2026-10-25 · Third review fixes (1): screenshots
 The third in-depth Fable review (everything since d17eee4, the fix rounds hardest):
 - **An empty BMP** (the game never wrote it) waited the whole minute and was called "never appeared"; it is said to be

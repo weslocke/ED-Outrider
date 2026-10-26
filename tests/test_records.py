@@ -111,7 +111,20 @@ class Server(unittest.TestCase):
         self.assertNotIn("pressure", rec)
         self.assertNotIn("far_out", rec)
         thin = R.records([(1, "S", "1", "t", scan("S 1", PlanetClass="Rocky body", SurfacePressure=500.0, Radius=1e6))])
-        self.assertEqual({r["key"]: r["text"] for r in thin}["pressure"], "0.0049 atm")
+        self.assertEqual({r["key"]: r["text"] for r in thin}["pressure"], "500.0 Pa")
+
+
+    def test_review_3(self):
+        """Third in-depth review 2026-10-25: a few Pa read "0.0000 atm"; a nav beacon read after your AutoScan stamped
+        the record a beacon read over your raw scan."""
+        thin = R.records([(1, "S", "1", "t", scan("S 1", PlanetClass="Rocky body", SurfacePressure=3.0, Radius=1e6))])
+        self.assertEqual({r["key"]: r["text"] for r in thin}["pressure"], "3.0 Pa")
+        star = dict(BodyID=0, BodyName="Sys", StarSystem="Sys", SystemAddress=7, StarType="G", Radius=7e8, SurfaceTemperature=5000.0)
+        self.j.handle({"event": "FSDJump", "timestamp": "2026-10-25T00:00:00Z", "StarSystem": "Sys", "SystemAddress": 7, "StarPos": [0, 0, 0]})
+        self.j.handle(dict(star, event="Scan", timestamp="2026-10-25T00:00:05Z", ScanType="AutoScan"))
+        self.j.handle(dict(star, event="Scan", timestamp="2026-10-25T00:05:00Z", ScanType="NavBeaconDetail"))
+        rec = json.loads(self.db.execute("SELECT record FROM own_bodies WHERE system=7 AND body_id=0").fetchone()[0])
+        self.assertEqual(rec["scan_type"], "AutoScan")
 
 
 if __name__ == "__main__":

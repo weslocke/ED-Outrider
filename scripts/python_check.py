@@ -54,14 +54,20 @@ def has_venv():
     return True
 
 
-def notice(reason):
-    """The block the launchers print before setting up with a Python that cannot install Piper."""
+def notice(reason, forced=None):
+    """The block the launchers print before setting up with a Python that cannot install Piper. forced: PYTHON= chose
+    it (the launchers then never pick one: third in-depth review 2026-10-25, "it picks that Python by itself" was
+    false); this process's environment by default."""
+    import os
     low, high = PIPER_PYTHONS
+    forced = bool(os.environ.get("PYTHON")) if forced is None else forced
     bar = "=" * 78
     return "\n".join([bar, "  " + reason + ".",
                       "  ED Outrider runs, but speaks with the browser's own voice. For Piper's natural voices: install",
                       "  Python %d.%d (64-bit) from %s (keep the other one), delete the" % (high + (DOWNLOAD,)),
-                      "  .venv folder here, and start ED Outrider again: it picks that Python by itself.",
+                      ("  .venv folder here, set PYTHON= to that Python (or unset it: PYTHON= chose this one), and start"
+                       "\n  ED Outrider again." if forced else
+                       "  .venv folder here, and start ED Outrider again: it picks that Python by itself."),
                       bar])
 
 

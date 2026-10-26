@@ -1603,7 +1603,8 @@ function surfaceLayout(s, cfg, S) {
   const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000].filter(v => v <= span / 3).pop() || 10;
   // where you have been on this body this visit (explorer ideas, item 1): the same turn and scale, never the zoom's
   // concern; the line is cut by the rim's clip when drawn
-  const trail = (s.trail || []).map(([lat, lon]) => { const p = surfLocal(s, lat, lon), rx = p.east * ch - p.north * sh, ry = p.east * sh + p.north * ch;
+  // a null is a break (a high stretch: never a line across ground not flown low)
+  const trail = (s.trail || []).map(q => { if (!q) return null; const p = surfLocal(s, q[0], q[1]), rx = p.east * ch - p.north * sh, ry = p.east * sh + p.north * ch;
     return [c + rx * scale, c - ry * scale]; });
   return {S, c, rimR, span, scale, heading: hd, headingKnown: s.heading != null, north: -rad, items: shown, trail,
           bar: {m: nice, px: nice * scale}};
@@ -1652,9 +1653,12 @@ function drawSurface(canvas, L, small) {
   surfaceGrid(g, L, C, small);
   g.save(); g.beginPath(); g.arc(c, c, R, 0, 2 * Math.PI); g.clip();
   // your trail on this body this visit, under everything (to you: the arrow is drawn last)
-  if ((L.trail || []).length > 1) {
+  if ((L.trail || []).filter(Boolean).length > 1) {
     g.strokeStyle = C.muted; g.globalAlpha = 0.55; g.lineWidth = small ? 1 : 1.5; g.lineJoin = "round"; g.beginPath();
-    L.trail.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.lineTo(c, c); g.stroke(); g.globalAlpha = 1;
+    let pen = false;   // a new stroke after a break; joined to you only when it does not end on one
+    for (const p of L.trail) { if (!p) { pen = false; continue; } pen ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); pen = true; }
+    if (pen) g.lineTo(c, c);
+    g.stroke(); g.globalAlpha = 1;
   }
   // rings first: bio colony distance (the run solid, others faint), rig spacing (faint, an estimate)
   for (const it of L.items) if (it.ringPx && !it.off) {
@@ -3551,6 +3555,11 @@ function ringPricesRetry(sys) {
     RING_PRICE_TIMERS.delete(sys);
     if (typeof selectedSystem !== "undefined" && String(selectedSystem) === String(sys) && bodyData && !bodyData.error &&
         await ringPricesAsk(bodyData, sys) && String(selectedSystem) === String(sys)) renderBody();
+    // Search's body panel too (third in-depth review 2026-10-25: only Here's was asked again)
+    const sb = typeof sBody !== "undefined" ? sBody : null;
+    if (sb && String(sb.sys) === String(sys) && sb.data && !sb.data.error && await ringPricesAsk(sb.data, sys) &&
+        String(sBody.sys) === String(sys) && sBody.data === sb.data)
+      renderBodyInto(document.getElementById("sBodyPanel"), sb.data, sb.name, "closeSearchBody()", sys);
   }, RING_PRICE_RETRY_MS + 1000));
 }
 // the line's stand-in while it has no price: asking (a lookup is under way or not yet made), or the lookup failed and
@@ -9307,7 +9316,8 @@ function formParams() {
 // "at least 2" stars counts every star in the system, so "arrival star only" is off then (the server ignores it too;
 // review 2026-10-25: the two together could never match)
 function sMainOnlyShown() {
-  const many = Number(document.getElementById("sStarsMin").value) > 1, b = document.getElementById("sMainOnly");
+  // the value the search sends (a whole 1 to 20, else 1): 25 or 1.5 counts as 1 there (third in-depth review 2026-10-25)
+  const many = searchMin("sStarsMin") > 1, b = document.getElementById("sMainOnly");
   b.disabled = many;
   b.closest("label").title = many ? "every star of the system counts when you ask for at least 2" : "";
 }
@@ -10867,6 +10877,9 @@ document.getElementById("prospectOpts").onchange = e => {
   for (const f of document.querySelectorAll("#prospectOpts [data-ppct]")) {
     const v = Number(f.value);
     if (f.value.trim() !== "" && Number.isFinite(v) && v >= 1 && v <= 100) pcts[f.dataset.ppct] = Math.round(v); else delete pcts[f.dataset.ppct];
+    // what is kept shows (third in-depth review 2026-10-25: a refused 150 stayed in the field with no rebuild to clear it)
+    const kept = pcts[f.dataset.ppct] != null ? String(pcts[f.dataset.ppct]) : "";
+    if (f.value !== kept) f.value = kept;
   }
   miningSet({minerals: [...document.querySelectorAll("#prospectOpts [data-pmin]:checked")].map(b => b.dataset.pmin),
              pct: Number.isFinite(n) && n >= 1 && n <= 100 ? Math.round(n) : MINING_DEFAULTS.pct, pcts,

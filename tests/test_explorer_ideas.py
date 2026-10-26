@@ -115,9 +115,9 @@ class Trail(unittest.TestCase):
         t.note(self.here(0.0, 0.002))
         t.note(self.here(0.0, 0.5, alt=40_000.0, flags=ed_outrider.FLAG_ALT_AVG))   # orbital cruise
         t.note(self.here(0.0, 0.3, alt=5_000.0))                                    # gliding, high up
-        self.assertEqual(t.points((9, 5)), [[0.0, 0.0], [0.0, 0.002]])
+        self.assertEqual(t.points((9, 5)), [[0.0, 0.0], [0.0, 0.002], None])   # ends on a break: high now
         t.note(self.here(0.0, 0.004, alt=4_000.0, flags=ed_outrider.FLAG_IN_SRV))   # the SRV on a hill: always
-        self.assertEqual(len(t.points((9, 5))), 3)
+        self.assertEqual(len([p for p in t.points((9, 5)) if p]), 3)
 
     def test_steps_bodies_and_leaving(self):
         t = ed_outrider.SurfaceTrail()
@@ -132,6 +132,27 @@ class Trail(unittest.TestCase):
         self.assertEqual(t.points((9, 6)), [[0.0, 0.004], [0.0, 0.006]])
         t.note(None)                            # left the body: gone
         self.assertEqual(t.points((9, 6)), [])
+
+    def test_a_break_across_a_high_stretch(self):
+        """Third in-depth review 2026-10-25: two low stretches either side of a high flight were joined by a straight
+        line; a break (None) keeps them apart, on the page and the overlay's radar."""
+        t = ed_outrider.SurfaceTrail()
+        t.note(self.here(0.0, 0.0))
+        t.note(self.here(0.0, 0.002))
+        t.note(self.here(0.0, 0.1, alt=30_000.0))
+        t.note(self.here(0.0, 0.1, alt=30_000.0))
+        t.note(self.here(0.0, 0.010))
+        t.note(self.here(0.0, 0.012))
+        self.assertEqual(t.points((9, 5)), [[0.0, 0.0], [0.0, 0.002], None, [0.0, 0.010], [0.0, 0.012]])
+        import outrider.overlay as O
+        surf = {"lat": 0.0, "lon": 0.012, "radius": 1_000_000, "heading": 0, "trail": t.points((9, 5)), "samples": []}
+        pal = O.palette("default")
+        items = O.radar_panel(surf, pal, "normal", 2000)["items"]
+        # the trail's strokes: muted, along the trail's latitude (the grid's are not): two, none across the gap
+        trail = [i for i in items if i["t"] == "line" and i["c"] == pal["muted"] and i["lw"] == 1.5
+                 and len({round(y, 1) for _, y in i["pts"]}) == 1 and len(i["pts"]) > 1
+                 and all(60 < x < 240 for x, _ in i["pts"])]   # inside the rim: not the E and W ticks
+        self.assertEqual(len(trail), 2, trail)
 
     def test_capped_and_thinned(self):
         t = ed_outrider.SurfaceTrail()

@@ -66,7 +66,8 @@ update Outrider.
 If one of these will not install, the launcher still starts Outrider without it and says what is off and how to add
 it; once you have fixed that (say `sudo apt install python3-dev`), start it with `OUTRIDER_REINSTALL=1
 ./launch_outrider.sh` (Windows: `set OUTRIDER_REINSTALL=1` first) to install it. Offline after an update, the launcher
-starts with the packages already installed and installs the new ones at the next start.
+starts with the packages already installed and installs a new required one at the next start; a new optional one
+(Pillow, say) waits for `OUTRIDER_REINSTALL=1` once you are online, as the launcher's message says.
 
 Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste) need **`xclip`**
 (used wherever there is an X display: X11, and Wayland desktops with XWayland, which the game runs under) or

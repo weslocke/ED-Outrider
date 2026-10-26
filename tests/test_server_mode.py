@@ -832,7 +832,10 @@ class PiperPython(unittest.TestCase):
         # a free-threaded 3.14t: onnxruntime has no build for it (in-depth review 2026-10-25)
         self.assertIn("free-threaded", self.pc.why_not((3, 14), 64, True))
         self.assertEqual(self.pc.why_not((3, 14), 64, False), "")
-        block = self.pc.notice(self.pc.why_not((3, 15), 64))
+        # PYTHON= chose it: the launcher never picks one then, so the notice says to change PYTHON= (third in-depth review)
+        self.assertIn("set PYTHON= to that Python", self.pc.notice("x", forced=True))
+        self.assertIn("it picks that Python by itself", self.pc.notice("x", forced=False))
+        block = self.pc.notice(self.pc.why_not((3, 15), 64), forced=False)
         for part in ("browser's own voice", "Python 3.14 (64-bit)", "https://www.python.org/downloads/", ".venv folder"):
             self.assertIn(part, block)
 

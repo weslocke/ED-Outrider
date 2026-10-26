@@ -772,15 +772,19 @@ def radar_panel(surf, pal, size="normal", radar_range=800):
     # your trail on this body this visit (the author, 2026-10-25: wanted here too, not only on the page's map), under
     # everything: the stretches within the edge only (a point beyond it would be pressed onto the rim), joined to you
     seg, segs = [], []
-    for lat, lon in list(surf.get("trail") or []) + [[surf["lat"], surf["lon"]]]:
-        x, y, beyond = radar_xy(here, lat, lon, cx, cy, r, rng)
+    for q in list(surf.get("trail") or []) + [[surf["lat"], surf["lon"]]]:
+        if q is None:   # a break: a high stretch between two low ones (never a line across it)
+            segs.append(seg)
+            seg = []
+            continue
+        x, y, beyond = radar_xy(here, q[0], q[1], cx, cy, r, rng)
         if beyond:
             segs.append(seg)
             seg = []
         else:
             seg.append((x, y))
     segs.append(seg)
-    items += [line(s, pal["muted"], lw=1.5) for s in segs if len(s) > 1 and len(surf.get("trail") or []) > 1]
+    items += [line(s, pal["muted"], lw=1.5) for s in segs if len(s) > 1 and len([q for q in surf.get("trail") or [] if q]) > 1]
     for s in sorted(bio, key=lambda s: bool(s.get("current"))):   # the run in progress drawn last, on top
         c = (pal["good"] if s.get("clear") else pal["bad"]) if s.get("current") else pal["muted"]
         for p in s.get("points") or []:

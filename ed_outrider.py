@@ -567,23 +567,42 @@ class SurfaceTrail:
         flags, flags2 = h.get("flags") or 0, h.get("flags2") or 0
         down = flags & (FLAG_IN_SRV | FLAG_LANDED) or flags2 & 1
         if not down and (flags & FLAG_ALT_AVG or h.get("alt") is None or h["alt"] >= SURFACE_ALT):
+            # a break (None): the next low point starts a new stroke, never a line across ground not flown low
+            # (third in-depth review 2026-10-25)
+            if self.pts and self.pts[-1] is not None:
+                self.pts.append(None)
             return
-        if self.pts and surface_m(self.pts[-1][0], self.pts[-1][1], h["lat"], h["lon"], h["radius"]) < self.TRAIL_STEP_M:
+        last = self.pts[-1] if self.pts else None
+        if last is not None and surface_m(last[0], last[1], h["lat"], h["lon"], h["radius"]) < self.TRAIL_STEP_M:
             return
         self.pts.append((round(h["lat"], 5), round(h["lon"], 5)))
-        if len(self.pts) > self.TRAIL_MAX:
+        if sum(p is not None for p in self.pts) > self.TRAIL_MAX:   # the older half thinned by half, its breaks kept
             half = len(self.pts) // 2
-            self.pts = self.pts[:half:2] + self.pts[half:]
+            old = [p for i, p in enumerate(self.pts[:half]) if p is None or i % 2 == 0]
+            self.pts = self._tidy(old + self.pts[half:])
+
+    @staticmethod
+    def _tidy(pts):
+        """No break first or twice in a row."""
+        out = []
+        for p in pts:
+            if p is None and (not out or out[-1] is None):
+                continue
+            out.append(p)
+        return out
 
     def points(self, key):
-        """[[lat, lon], ...] for the body `key` (system, body_id), at most TRAIL_SENT: [] for another body."""
-        if key != self.key or len(self.pts) < 2:
+        """[[lat, lon] or None (a break: a high stretch between two low ones), ...] for the body `key` (system, body_id),
+        at most TRAIL_SENT points with every break kept: [] for another body. It may end on a break (you are high
+        now): then it is not joined to you."""
+        if key != self.key or sum(p is not None for p in self.pts) < 2:
             return []
         pts = self.pts
         if len(pts) > self.TRAIL_SENT:
             step = len(pts) / self.TRAIL_SENT
-            pts = [pts[int(i * step)] for i in range(self.TRAIL_SENT - 1)] + [pts[-1]]
-        return [list(p) for p in pts]
+            keep = {int(i * step) for i in range(self.TRAIL_SENT - 1)} | {len(pts) - 1} | {i for i, p in enumerate(pts) if p is None}
+            pts = self._tidy([pts[i] for i in sorted(keep)])
+        return [list(p) if p is not None else None for p in pts]
 
 
 class ScoopWatch:
@@ -5610,7 +5629,9 @@ class Journals:
                         was = json.loads(known["record"]).get("scan_type")
                     except (TypeError, ValueError):
                         was = None
-                    if was and was not in NO_SIGNAL_SCANS:
+                    # a nav beacon's read after your own scan (an AutoScan too) keeps your scan's type, as raw keeps
+                    # your scan's line (third in-depth review 2026-10-25: the record said "beacon" over your raw)
+                    if was and (was not in NO_SIGNAL_SCANS or (record["scan_type"] in NAV_BEACON_SCANS and was not in NAV_BEACON_SCANS)):
                         record["scan_type"] = was
                 # the ship of the first scan: a rescan (the Detailed one after mapping, a return visit) keeps it; an older
                 # scan read late (a legacy folder) is the first, but with its ship unknown then (ship_at)
@@ -6650,9 +6671,11 @@ def ggg_entries(db, id64):
 
 
 def ggg_scan_times(db, id64, records):
-    """records with "scan_ts": the times of your own scans of each body (the first and the latest)."""
-    times = {r["name"]: [r["first_ts"], r["ts"]] for r in db.execute("SELECT name, ts, first_ts FROM own_bodies WHERE system=?", (id64,))}
-    return [dict(r, scan_ts=times[r.get("name")]) if r.get("name") in times else r for r in records]
+    """records with "scan_ts": the times of your own scans of each body (the first and the latest), by body id, which
+    your records and Spansh's both carry (third in-depth review 2026-10-25: by name it never matched, the records'
+    names being short)."""
+    times = {r["body_id"]: [r["first_ts"], r["ts"]] for r in db.execute("SELECT body_id, ts, first_ts FROM own_bodies WHERE system=?", (id64,))}
+    return [dict(r, scan_ts=times[r.get("body_id")]) if r.get("body_id") in times else r for r in records]
 
 
 def ggg_bodies(db, id64, system_name, records):
@@ -6883,8 +6906,9 @@ def curiosities(r, parent=None, raw=None):
     if planet and (g.get("confirmed") or any("green" in str((c or {}).get("name") or "").lower() and "gas giant" in
                                               str((c or {}).get("name") or "").lower() for c in r.get("codex") or [])):
         of = g.get("of") or 1
-        out.append(("green gas giant", "a green gas giant: one of the rarest sights" if of == 1
-                    else f"one of these {of} giants is a green gas giant (the codex does not say which)"))
+        # "one of N" in the tag too: the overlay's "Also here" prints the tag alone (third in-depth review 2026-10-25)
+        out.append(("green gas giant", "a green gas giant: one of the rarest sights") if of == 1 else
+                   (f"green gas giant (one of {of})", f"one of these {of} giants is a green gas giant (the codex does not say which)"))
     return out
 
 
@@ -10084,7 +10108,8 @@ class State:
         if cfg.get("radar"):
             # docked at a planetary port the ship is "landed" there, but the surface radar has nothing to look for
             # (in-depth review 2026-10-25: since it shows when empty, it stayed up the whole time docked)
-            docked = bool(((self.journals.status_json or {}).get("flags") or 0) & FLAG_DOCKED)
+            st_ = self.journals.status_json or {}   # on foot in its hangar or concourse too (third in-depth review)
+            docked = bool((st_.get("flags") or 0) & FLAG_DOCKED or (st_.get("flags2") or 0) & ON_FOOT_DOCKED)
             dock = self.docking_shown(now)
             surf = None if dock else self.surface_summary(now)
             p = outrider.overlay.pad_panel(dock, pal, size["radar"], pid="radar") if dock else \

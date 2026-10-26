@@ -40,6 +40,16 @@ def _ring_width(e):
     return max(widths) if widths else None
 
 
+def _pressure_words(pa):
+    """A pressure in words: atm when it is thick enough to read so, else Pa (third in-depth review 2026-10-25: a few Pa
+    read "0.0000 atm")."""
+    if pa >= 0.05 * 101325:
+        return f"{pa / 101325:,.1f} atm"
+    if pa >= 1000:
+        return f"{pa / 101325:,.3f} atm"
+    return f"{pa:,.1f} Pa" if pa >= 1 else f"{pa:.2g} Pa"
+
+
 # (key, label, which bodies, the figure, highest (True) or lowest, its words)
 RECORDS = [
     ("hot_star", "Hottest star", _star, lambda e: _num(e.get("SurfaceTemperature")), True, lambda v: f"{v:,.0f} K"),
@@ -56,8 +66,7 @@ RECORDS = [
      lambda e: _num(e.get("SurfaceGravity")), True, lambda v: f"{v / G:,.2f} g"),
     # an airless body's 0 holds no record (in-depth review 2026-10-25: "Thickest atmosphere 0.0 atm"); a thin one shows
     # its figure, not 0.0
-    ("pressure", "Thickest atmosphere", _solid, lambda e: _num(e.get("SurfacePressure")) or None, True,
-     lambda v: f"{v / 101325:,.1f} atm" if v >= 0.05 * 101325 else f"{v / 101325:,.4f} atm"),
+    ("pressure", "Thickest atmosphere", _solid, lambda e: _num(e.get("SurfacePressure")) or None, True, lambda v: _pressure_words(v)),
     ("spin", "Fastest spin", _planet, lambda e: abs(_num(e.get("RotationPeriod")) or 0) or None, False,
      lambda v: f"{v / 3600:,.2f} h" if v >= 3600 else f"{v / 60:,.1f} min"),
     # a retrograde orbit's period is negative (the author's journals): its length is what counts

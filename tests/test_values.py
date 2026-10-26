@@ -414,6 +414,7 @@ class MoreCuriosities(unittest.TestCase):
         giant = {"name": "S 2", "type": "Planet", "subtype": "Sudarsky class I gas giant", "radius_km": 70000, "body_id": 2}
         self.assertEqual(self.tags(dict(giant, ggg={"confirmed": True, "of": 1})), ["green gas giant"])
         cur = ed_outrider.system_curiosities("S", [giant], greens={"S 2": {"confirmed": True, "of": 2}})
+        self.assertEqual(cur["S 2"][0][0], "green gas giant (one of 2)")   # the overlay prints the tag alone
         self.assertIn("one of these 2", cur["S 2"][0][1])
 
     def test_tiny_world_tiny_star_and_extreme_orbit(self):

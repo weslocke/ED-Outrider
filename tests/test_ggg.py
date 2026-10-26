@@ -79,6 +79,25 @@ class GreenCodex(unittest.TestCase):
                                        [ammonia, self.giant("S 26", 26, "Sudarsky class III gas giant")]), {"S 29": {"confirmed": True, "of": 1}})
         self.assertEqual(G.green_count([(1200302, "x", 0, "2026-10-10T23:00:00Z")], [self.giant("S 26", 26, "Sudarsky class III gas giant")]), 1)
 
+    def test_the_same_second_through_the_journal(self):
+        """Third in-depth review 2026-10-25: the scan times were looked up by the journal's full body name while the
+        records carry short ones, so the same-second match never fired outside the unit test. Through the journal and
+        system_detail: two class III giants, the green entry in the second of the second one's scan."""
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        j.handle({"event": "FSDJump", "timestamp": "2026-10-10T21:20:00Z", "StarSystem": "Byoo", "SystemAddress": 9, "StarPos": [0, 0, 0]})
+        for i, sec in ((24, "21:22:30"), (61, "21:22:34")):
+            j.handle({"event": "Scan", "timestamp": f"2026-10-10T{sec}Z", "ScanType": "Detailed", "StarSystem": "Byoo", "SystemAddress": 9,
+                      "BodyID": i, "BodyName": f"Byoo {i}", "PlanetClass": "Sudarsky class III gas giant", "SurfaceTemperature": 100.0,
+                      "MassEM": 300.0, "Radius": 7e7, "DistanceFromArrivalLS": 100.0})
+        db.execute("INSERT INTO codex (ts, entry_id, name, system, body_id) VALUES ('2026-10-10T21:22:34Z', 1200702, "
+                   "'Green Class III Gas Giant', 9, 0)")
+        db.commit()
+        st = ed_outrider.State(db, j, ed_outrider.Spansh(db), 25)
+        rows = {b["name"]: b.get("ggg") for b in st.system_detail(9)["bodies"] if b.get("type") == "Planet"}
+        self.assertEqual(rows, {"24": None, "61": {"confirmed": True, "of": 1}})
+
     def test_here_and_nearby_with_the_star_s_body_id(self):
         db = ed_outrider.open_db(":memory:")
         self.addCleanup(db.close)

@@ -9959,7 +9959,12 @@ const releasePayloads = async () => {
       // committing a mineral's own threshold keeps the fields in place (in-depth review 2026-10-25: the rebuild threw the
       // focus away): the same element before and after its change
       got.keepField = w.eval(`(() => { const f = document.querySelector("#prospectOpts [data-ppct]"); if (!f) return "no field";
-        f.dispatchEvent(new Event("change", {bubbles: true})); return document.querySelector("#prospectOpts [data-ppct]") === f; })()`);
+        f.dispatchEvent(new Event("change", {bubbles: true})); const same = document.querySelector("#prospectOpts [data-ppct]") === f;
+        // what is kept shows: a refused 150 clears, 2.5 reads 3 (third in-depth review 2026-10-25)
+        const keep = f.value; f.value = "150"; f.dispatchEvent(new Event("change", {bubbles: true})); const a = f.value;
+        f.value = "2.5"; f.dispatchEvent(new Event("change", {bubbles: true})); const b = f.value;
+        f.value = keep; f.dispatchEvent(new Event("change", {bubbles: true}));
+        return [same, a, b]; })()`);
       w.eval(`miningSet({combined: true, pct: 50}); drawMiningRings()`);
       got.combined = [w.eval(`prospectHit({painite: 5, platinum: 41})`) === null,   // Platinum's own 40 met, the sum 46 under 50
                       [...d.querySelectorAll("#prospectOpts [data-ppct]")].every(f => f.disabled)];
@@ -9998,6 +10003,25 @@ const releasePayloads = async () => {
         RING_PRICES.clear();
         return JSON.stringify(out);
       })()`));
+      // B3 (third in-depth review 2026-10-25): a failed lookup is asked again for Search's body panel too, and redrawn
+      got.prices3 = JSON.parse(await w.eval(`(async () => {
+        RING_PRICES.clear(); RING_PRICE_TIMERS.clear();
+        const realST = window.setTimeout; let fire = null; window.setTimeout = (f) => { fire = f; return 1; };
+        const b = {full_name: "X 1", rings: [{name: "X 1 A Ring", type: "Metallic", hotspots: {Painite: 1}}]};
+        let n = 0; const asks = [async () => null, async () => [{station: "Hub", system: "S", distance: 5, price: 100000}]];
+        const realAsk = holdSellAsk; holdSellAsk = async () => asks[Math.min(n++, 1)]();
+        Object.assign(sBody, {sys: "81", name: "X 1", data: b});
+        const panel = document.getElementById("sBodyPanel");
+        await ringPricesAsk(b, "81");
+        renderBodyInto(panel, b, "X 1", "closeSearchBody()", "81");
+        const before = (panel.querySelector(".ringprices") || {}).textContent;
+        RING_PRICES.set("81|Painite", Object.assign(RING_PRICES.get("81|Painite"), {at: -1e9}));
+        await fire();
+        const after = (panel.querySelector(".ringprices") || {}).textContent;
+        window.setTimeout = realST; holdSellAsk = realAsk; RING_PRICES.clear(); RING_PRICE_TIMERS.clear();
+        Object.assign(sBody, {sys: null, name: null, data: null}); panel.innerHTML = "";
+        return JSON.stringify([/failed/.test(before || ""), /Painite 100k/.test(after || ""), n]);
+      })()`));
       // C: the 2+ tick goes with the form
       const hm = d.getElementById("sHotMin");
       hm.checked = true;
@@ -10010,6 +10034,10 @@ const releasePayloads = async () => {
       got.mainOnly = [d.getElementById("sMainOnly").disabled];
       smin.value = keepMin; smin.dispatchEvent(new w.Event("input"));
       got.mainOnly.push(d.getElementById("sMainOnly").disabled);
+      // 25 is sent as 1 (a whole 1 to 20): "arrival star only" stays in hand (third in-depth review 2026-10-25)
+      smin.value = "25"; smin.dispatchEvent(new w.Event("input"));
+      got.mainOnly.push(d.getElementById("sMainOnly").disabled);
+      smin.value = keepMin; smin.dispatchEvent(new w.Event("input"));
       // Clear empties "at least": "arrival star only" back in hand (in-depth review 2026-10-25: left greyed, in force)
       smin.value = "3"; smin.dispatchEvent(new w.Event("input"));
       const keepForm = w.eval("JSON.stringify(formParams())");
@@ -10035,14 +10063,15 @@ const releasePayloads = async () => {
       hits: JSON.stringify(["Painite, 27 percent", null, "Platinum, 31 percent", "Platinum, 35 percent"]),
       fields: [["platinum", "", "30", false], ["painite", "25", "30", false]],
       saved1: JSON.stringify({painite: 25, platinum: 40}), saved2: JSON.stringify({platinum: 40}), combined: [true, true],
-      keepField: true,
+      keepField: [true, "", "3"],
+      prices3: [true, true, 2],
       prices2: ["Best nearby: not known (the price lookup failed; asked again in a few minutes)", "Best nearby: asking…", true, true, true],
       prices: [true, false, ["Painite", "Platinum", "Alexandrite", "Alexandrite"], "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly · Alexandrite: lookup failed (asked again in a few minutes)",
                true, "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly",
                "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly)",
                "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly"],
       hotMin: [2, false],
-      mainOnly: [true, false, false],
+      mainOnly: [true, false, false, false],
       ms: JSON.stringify([{hotspots: ["Painite"], rings: [], name: "Painite"}, {hotspots: ["Void Opal"], rings: [], name: "Void Opal"},
                           {hotspots: [], rings: ["Metallic", "Metal Rich"], name: "Bertrandite"}, null, null]),
       btn: [true, "", ""],
