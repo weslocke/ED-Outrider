@@ -2,6 +2,29 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · Bug check fixes: what the Fable review of the work since d17eee4 found
+Ten bugs, each confirmed by a second agent; none high. Explorer, mining and search:
+- **Shepherd moon** never showed in Here (only Nearby): it read the parent's rings from a field that is a count on
+  Here's rows. `ring_list` reads either shape.
+- **Your records:** a nav beacon read replaced the body's own scan line (which the records leave out), so the body
+  dropped from them; the beacon's read now never replaces your scan's. A rescan on a return visit re-dated a
+  years-old record today and marked it 🏆 new: each body is dated by your first scan of it (`own_bodies.first_ts`),
+  the farthest system by your first jump there. The scan count no longer counts beacon reads. PARSER_VERSION 62
+  re-reads the journals once for the dates.
+- **Search:** "arrival star only" with "at least 2" stars could never match (the arrival star is one): every star of
+  the system counts then, and the tick is greyed (`search_criteria`, now a function of its own).
+- **Ring prices:** "Best nearby: asking…" stayed after a failed lookup with nothing asking; it says the lookup failed
+  and is asked again in a few minutes. A second body of the system opened while the first's lookup ran waits for it.
+- **Green gas giants:** a codex line naming no class over two giants of different classes counted ×2 in Nearby; each
+  line counts once (`ggg.green_count`).
+Screenshots:
+- **The backlog button** queued again the shot being converted (out of the queue, not yet recorded): a duplicate set,
+  or with `original = delete` its good record replaced by an error after a minute's wait. The shot in progress
+  (`shots_current`) is skipped like a queued one.
+- **The crop:** an emptied box counted as 0 and saved a zero-size crop the server dropped; Save now refuses with the
+  reason, and a box being retyped leaves the last whole crop.
+- **Pillow 11 or newer** (requirements.txt): Pillow 10 writes a JPG without its XMP and says nothing.
+
 ## 2026-10-25 · Screenshots: WebP, a crop, copies only, the clipboard, the shot's date
 - The author asked for a lossy PNG with a quality; measured on a real 3072 x 1728 shot, a 256-colour PNG was 4.6 MB
   (or 1.5 MB dithered, worse than JPG), so **WebP** instead: the full size as PNG, JPG or WebP at `quality` (90: 1 MB

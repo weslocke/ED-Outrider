@@ -3519,14 +3519,27 @@ async function ringPricesAsk(b, sys, ask = m => holdSellAsk(m, 1, 100, "price", 
     const c = RING_PRICES.get(`${sys}|${m}`);
     return !c || (!c.busy && now - c.at > (c.failed ? RING_PRICE_RETRY_MS : RING_PRICE_TTL_MS));
   });
-  if (!due.length) return false;
-  await Promise.all(due.map(async m => {
+  // a lookup another panel started is waited for too (review 2026-10-25: a second body of the system opened meanwhile
+  // said "asking…" and was never drawn again)
+  const waiting = bodyHotMinerals(b).map(m => RING_PRICES.get(`${sys}|${m}`)).filter(c => c && c.busy && c.wait).map(c => c.wait);
+  if (!due.length && !waiting.length) return false;
+  await Promise.all([...waiting, ...due.map(m => {
     const key = `${sys}|${m}`;
-    RING_PRICES.set(key, Object.assign(RING_PRICES.get(key) || {}, {busy: true}));
-    const rows = await ask(m);
-    RING_PRICES.set(key, {at: now, best: rows ? rows[0] || null : null, failed: !rows, busy: false});
-  }));
+    const wait = (async () => {
+      const rows = await ask(m);
+      RING_PRICES.set(key, {at: now, best: rows ? rows[0] || null : null, failed: !rows, busy: false});
+    })();
+    RING_PRICES.set(key, Object.assign(RING_PRICES.get(key) || {}, {busy: true, wait}));
+    return wait;
+  })]);
   return true;
+}
+// the line's stand-in while it has no price: asking (a lookup is under way or not yet made), or the lookup failed and
+// is asked again in a few minutes (review 2026-10-25: "asking…" stayed after a failure, with nothing asking)
+function ringPricesWait(b, sys) {
+  const cs = bodyHotMinerals(b).map(m => RING_PRICES.get(`${sys}|${m}`));
+  return cs.length && cs.every(c => c && c.failed && !c.busy) ? "Best nearby: not known (the price lookup failed; asked again in a few minutes)"
+    : "Best nearby: asking…";
 }
 // "Best nearby: Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum 210k cr/t (…)": the minerals priced, highest first,
 // then those with no buyer within 100 ly; "" while none is known. html: the panel's (escaped, the places muted)
@@ -5473,7 +5486,7 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
       return `<tr class="ring"><td>${esc(short(r.name))}</td><td>${esc(r.type || "")}</td><td class="num">${r.mass != null ? n(r.mass, 0) : ""}</td><td class="num">${r.inner_km != null ? n(r.inner_km, 0) : ""}</td><td class="num">${r.outer_km != null ? n(r.outer_km, 0) : ""}</td><td class="num">${r.width_km != null ? n(r.width_km, 0) : ""}</td><td class="num">${r.density != null ? n(r.density, 4) : ""}</td></tr>` +
         `<tr class="hs"><td colspan="7">${hs.length ? `<ul>${hs.map(([k, v]) => `<li><b>${esc(k)}</b> ×${v}</li>`).join("")}</ul>` : r.mapped ? "mapped · no hotspots" : "not mapped"}</td></tr>`;
     }).join("") + `</tbody></table>` + (sys != null && bodyHotMinerals(d).length
-      ? `<div class="ringprices">${ringPricesLine(d, sys, true) || `<span class="unk">Best nearby: asking…</span>`}</div>` : ""));
+      ? `<div class="ringprices">${ringPricesLine(d, sys, true) || `<span class="unk">${esc(ringPricesWait(d, sys))}</span>`}</div>` : ""));
   // Order: bio first (it decides whether to land), then rings and composition, then physical | orbit, then value.
   let bioSec = "";
   if (row.bio || (row.genera || []).length || (row.organics || []).length || (row.codex || []).length) {
@@ -9261,6 +9274,14 @@ function formParams() {
     around: sAround.value || "here", around_name: document.getElementById("sAroundName").value.trim(),   // S49
   };
 }
+// "at least 2" stars counts every star in the system, so "arrival star only" is off then (the server ignores it too;
+// review 2026-10-25: the two together could never match)
+function sMainOnlyShown() {
+  const many = Number(document.getElementById("sStarsMin").value) > 1, b = document.getElementById("sMainOnly");
+  b.disabled = many;
+  b.closest("label").title = many ? "every star of the system counts when you ask for at least 2" : "";
+}
+document.getElementById("sStarsMin").addEventListener("input", sMainOnlyShown);
 function loadForm(p) {
   if (!p) return;
   document.getElementById("sRadius").value = p.radius ?? 100;
@@ -9271,6 +9292,7 @@ function loadForm(p) {
   document.getElementById("sMining").checked = p.mining === true;
   document.getElementById("sHotMin").checked = p.hotspots_min === 2;
   for (const [id, k] of [["sStarsMin", "stars_min"], ["sPlanetsMin", "planets_min"]]) document.getElementById(id).value = p[k] > 1 ? p[k] : "";
+  sMainOnlyShown();
   const mn = document.getElementById("sMineral"); mn.value = p.mining_mineral || ""; if (mn.selectedIndex < 0) mn.value = "";
   sAround.value = p.around || "here"; if (sAround.selectedIndex < 0) sAround.value = "here";
   document.getElementById("sAroundName").value = p.around_name || "";
@@ -13973,10 +13995,14 @@ function shotCropRead() {
   document.getElementById("shotCropOn").checked = ok;
   document.querySelectorAll("#shotSettings .cropv").forEach(el => { el.value = ok ? v[el.dataset.i] : ""; });
 }
+// the four boxes as numbers; an empty one is no number (review 2026-10-25: Number("") is 0, and a width cleared to
+// retype saved a zero-size crop the server dropped)
+const shotCropValues = () => [...document.querySelectorAll("#shotSettings .cropv")].map(el => el.value.trim() === "" ? NaN : Number(el.value));
+const shotCropBad = () => { const v = shotCropValues(); return document.getElementById("shotCropOn").checked && (!v.every(isFinite) || v[2] < 1 || v[3] < 1); };
 function shotCropWrite() {
-  const f = shotCropField(), on = document.getElementById("shotCropOn").checked;
-  const v = [...document.querySelectorAll("#shotSettings .cropv")].map(el => Number(el.value));
-  f.value = on && v.every(x => isFinite(x)) ? v.join(", ") : "";
+  const f = shotCropField(), on = document.getElementById("shotCropOn").checked, v = shotCropValues();
+  if (!on) f.value = "";
+  else if (v.every(isFinite)) f.value = v.join(", ");   // a box being retyped leaves the last whole crop until it is a number
   f.dataset.dirty = "1"; shotSizeBoxes();
 }
 function shotCropDraw() {
@@ -14005,6 +14031,7 @@ SC_FIELDS().forEach(el => el.addEventListener(el.type === "checkbox" || el.tagNa
 async function saveShotCfg() {
   const msg = document.getElementById("shotMsg"), out = {};
   const say = (t, bad) => { msg.textContent = t; msg.className = bad ? "hint warnc" : "hint"; };
+  if (shotCropBad()) { say("Not saved: the crop's four boxes need numbers, its width and height at least 1 %", true); return; }
   for (const el of SC_FIELDS()) {
     if (scNow(el) === el.dataset.orig) continue;
     let v = el.type === "checkbox" ? el.checked : el.value.trim();

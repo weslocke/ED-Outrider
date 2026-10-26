@@ -9970,12 +9970,35 @@ const releasePayloads = async () => {
         RING_PRICES.clear();
         return JSON.stringify(out);
       })()`));
+      // B2 (review 2026-10-25): a failed lookup says so rather than "asking…"; a second body of the system opened while
+      // the first's lookup runs waits for it and is drawn again
+      got.prices2 = JSON.parse(await w.eval(`(async () => {
+        RING_PRICES.clear();
+        const b = {rings: [{name: "A Ring", hotspots: {Painite: 1}}]}, c = {rings: [{name: "B Ring", hotspots: {Painite: 3}}]};
+        await ringPricesAsk(b, "78", async () => null, 1000);
+        const failed = ringPricesWait(b, "78");
+        RING_PRICES.clear();
+        let release; const slow = new Promise(r => { release = r; });
+        const first = ringPricesAsk(b, "79", async () => { await slow; return [{station: "Hub", system: "S", distance: 5, price: 100000}]; }, 1000);
+        const asking = ringPricesWait(c, "79");
+        const second = ringPricesAsk(c, "79", async () => { throw new Error("asked twice"); }, 1000);
+        release();
+        const out = [failed, asking, await first, await second, ringPricesLine(c, "79").startsWith("Best nearby")];
+        RING_PRICES.clear();
+        return JSON.stringify(out);
+      })()`));
       // C: the 2+ tick goes with the form
       const hm = d.getElementById("sHotMin");
       hm.checked = true;
       got.hotMin = [w.eval("formParams().hotspots_min")];
       w.eval(`loadForm({...formParams(), hotspots_min: 1})`);
       got.hotMin.push(hm.checked);
+      // "at least 2" stars: "arrival star only" greyed (every star counts; review 2026-10-25)
+      const smin = d.getElementById("sStarsMin"), keepMin = smin.value;
+      smin.value = "2"; smin.dispatchEvent(new w.Event("input"));
+      got.mainOnly = [d.getElementById("sMainOnly").disabled];
+      smin.value = keepMin; smin.dispatchEvent(new w.Event("input"));
+      got.mainOnly.push(d.getElementById("sMainOnly").disabled);
       // D: the mission's search: a hotspot, ring types for one without hotspots, nothing for what no ring gives
       got.ms = w.eval(`JSON.stringify(["painite", "opal", "bertrandite", "tea", null].map(missionSearch))`);
       got.btn = [w.eval(`missionFindBtn({mining: true, commodity_id: "bertrandite"})`).includes('data-missionfind="bertrandite"'),
@@ -9995,11 +10018,13 @@ const releasePayloads = async () => {
       hits: JSON.stringify(["Painite, 27 percent", null, "Platinum, 31 percent", "Platinum, 35 percent"]),
       fields: [["platinum", "", "30", false], ["painite", "25", "30", false]],
       saved1: JSON.stringify({painite: 25, platinum: 40}), saved2: JSON.stringify({platinum: 40}), combined: [true, true],
+      prices2: ["Best nearby: not known (the price lookup failed; asked again in a few minutes)", "Best nearby: asking…", true, true, true],
       prices: [true, false, ["Painite", "Platinum", "Alexandrite", "Alexandrite"], "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly",
                true, "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly",
                "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly)",
                "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly"],
       hotMin: [2, false],
+      mainOnly: [true, false],
       ms: JSON.stringify([{hotspots: ["Painite"], rings: [], name: "Painite"}, {hotspots: ["Void Opal"], rings: [], name: "Void Opal"},
                           {hotspots: [], rings: ["Metallic", "Metal Rich"], name: "Bertrandite"}, null, null]),
       btn: [true, "", ""],
@@ -10175,6 +10200,21 @@ const releasePayloads = async () => {
       [fmt.value, q("medium").value, q("small").value, q("crop").value] = keep; shotCropRead(); shotSizeBoxes();
       SC_FIELDS().forEach(el => { el.dataset.dirty = ""; }); data.screenshots = ls;
       return o; })()`);
+    // an emptied crop box is no number: Save refuses rather than store a zero-size crop (review 2026-10-25)
+    got.cropempty = await (async () => {
+      const q = k => w.document.querySelector('#shotSettings .scfg[data-key="' + k + '"]'), on = w.document.getElementById("shotCropOn");
+      const keep = q("crop").value, posted = [], real = w.fetch;
+      w.fetch = (u, o) => { if (o && o.method === "POST") posted.push(String(u)); return real(u, o); };
+      on.checked = true; on.onchange({target: on});
+      const wd = w.document.querySelector('#shotSettings .cropv[data-i="2"]'); wd.value = ""; wd.dispatchEvent(new w.Event("input"));
+      const field = q("crop").value;
+      await w.eval("saveShotCfg()");
+      const o = [field, w.document.getElementById("shotMsg").textContent, posted.length];
+      w.fetch = real; q("crop").value = keep; w.eval("shotCropRead(); shotSizeBoxes(); SC_FIELDS().forEach(el => { el.dataset.dirty = ''; })");
+      w.document.getElementById("shotMsg").textContent = "";
+      return o;
+    })();
+    want.cropempty = ["10, 10, 80, 75", "Not saved: the crop's four boxes need numbers, its width and height at least 1 %", 0];
     want.shotui = [true, true, true, false, false, "10, 10, 80, 75", "10, 20, 80, 75", false, "api/screenshots/7/image?size=thumb", "20%", "", true];
     // the body's hover card: your screenshots of it, the newest three as thumbnails (the author, 2026-10-25)
     got.shotpop = w.eval(`(() => { const d = document.createElement("div");

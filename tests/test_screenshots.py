@@ -381,6 +381,22 @@ class Server(unittest.TestCase):
             again, _ = asyncio.run(self.backlog())
         self.assertEqual((again["queued"], again["skipped"]), (0, 2))   # converted already: left alone
 
+    def test_the_backlog_skips_the_shot_being_converted(self):
+        """Review 2026-10-25: a HighRes shot mid-conversion (out of the queue, not yet recorded) was queued again by the
+        backlog button; with original = delete the second run replaced its good record with an error."""
+        jd = os.path.join(self.d, "journals")
+        os.makedirs(jd)
+        with open(os.path.join(jd, "Journal.2026-10-25T150000.01.log"), "w") as f:
+            f.write('{"timestamp":"2026-10-25T20:33:35Z", "event":"Screenshot", "Filename":"\\\\ED_Pictures\\\\Screenshot_0002.bmp", '
+                    '"System":"Sys", "Body":"Sys 2 a"}\n')
+        p = bmp(os.path.join(self.pictures, "Screenshot_0002.bmp"))
+        t = ed_outrider.ts_seconds("2026-10-25T20:33:37Z")
+        os.utime(p, (t, t))
+        self.st.shots_current = {"ts": "2026-10-25T20:33:35Z", "original": "Screenshot_0002.bmp"}
+        with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", [jd]):
+            out, status = asyncio.run(self.st.shots_backlog())
+        self.assertEqual((status, out["queued"], out["skipped"], self.st.shots_queue), (200, 0, 1, []))
+
     def test_the_backlog_with_the_switch_off(self):
         self.st.shots_cfg.update(enabled=False)
         bmp(os.path.join(self.pictures, "Screenshot_0004.bmp"))
@@ -398,6 +414,14 @@ class Server(unittest.TestCase):
         if self.st.shots_task:
             await self.st.shots_task
         return out
+
+
+class Requirements(unittest.TestCase):
+    def test_pillow_writes_jpg_xmp(self):
+        """Review 2026-10-25: Pillow writes a JPG's XMP from 11 only (10 drops it without a word)."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "requirements.txt")) as f:
+            pin = next(ln for ln in f if ln.lower().startswith("pillow"))
+        self.assertGreaterEqual(int(pin.split(">=")[1].split(".")[0]), 11)
 
 
 class Folders(unittest.TestCase):

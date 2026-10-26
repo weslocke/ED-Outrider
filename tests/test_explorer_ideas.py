@@ -29,6 +29,12 @@ class AtLeastN(unittest.TestCase):
         scrit = dict(CRIT, stars={"M (Red dwarf) Star"}, main_only=False)
         self.assertIn("stars", ed_outrider.match_system("S", stars, dict(scrit, stars_min=2)))
         self.assertNotIn("stars", ed_outrider.match_system("S", stars, dict(scrit, stars_min=3)))
+        # "arrival star only" (the form's default) with "at least 2": every star counts (review 2026-10-25: the arrival
+        # star alone could never be two, so it matched nothing)
+        crit = ed_outrider.search_criteria({"stars": ["M"], "main_only": True, "stars_min": 2}, None)
+        self.assertFalse(crit["main_only"])
+        self.assertIn("stars", ed_outrider.match_system("S", stars, dict(CRIT, **{k: crit[k] for k in ("stars", "main_only", "stars_min")})))
+        self.assertTrue(ed_outrider.search_criteria({"stars": ["M"], "main_only": True}, None)["main_only"])   # one: as ticked
 
     def test_the_limits(self):
         self.assertEqual([ed_outrider.search_min(v) for v in (None, 0, 1, 2, 20, 21, "3", True, 2.5)],

@@ -75,6 +75,26 @@ class Server(unittest.TestCase):
         again = asyncio.run(self.state.body_records())
         self.assertEqual({r["key"]: r["body"] for r in again["records"]}["high_g"], "A 2")
 
+    def test_dated_by_the_first_scan_and_never_lost_to_a_nav_beacon(self):
+        """Review 2026-10-25: a return visit's AutoScan re-dated a years-old record today (marked 🏆 new), a nav beacon
+        read replaced the body's own scan (which the records leave out) so it dropped from them, and the scan count
+        said beacon reads were left out while counting them."""
+        j = self.j
+        body = dict(BodyID=1, BodyName="Sys A 1", StarSystem="Sys", SystemAddress=7, PlanetClass="Icy body", Landable=True,
+                    SurfaceGravity=2.5 * G, Radius=1e6, DistanceFromArrivalLS=10)
+        j.handle({"event": "FSDJump", "timestamp": "2023-05-01T00:00:00Z", "StarSystem": "Sys", "SystemAddress": 7, "StarPos": [3, 4, 0]})
+        j.handle(dict(body, event="Scan", timestamp="2023-05-01T00:01:00Z", ScanType="Detailed"))
+        j.handle({"event": "FSDJump", "timestamp": "2026-10-20T00:00:00Z", "StarSystem": "Sys", "SystemAddress": 7, "StarPos": [3, 4, 0]})
+        j.handle(dict(body, event="Scan", timestamp="2026-10-20T00:01:00Z", ScanType="AutoScan"))
+        j.handle(dict(body, event="Scan", timestamp="2026-10-20T00:02:00Z", ScanType="NavBeaconDetail"))
+        j.handle(dict(body, event="Scan", timestamp="2026-10-20T00:02:00Z", ScanType="NavBeaconDetail", BodyID=2, BodyName="Sys A 2"))
+        self.db.commit()
+        out = ed_outrider.body_records(self.db)
+        rec = {r["key"]: r for r in out["records"]}
+        self.assertEqual((rec["high_g"]["body"], rec["high_g"]["ts"]), ("A 1", "2023-05-01T00:01:00Z"))
+        self.assertEqual(rec["far_sol"]["ts"], "2023-05-01T00:00:00Z")   # your first jump there
+        self.assertEqual(out["bodies"], 1)                               # A 2, a beacon read only: not counted
+
 
 if __name__ == "__main__":
     unittest.main()

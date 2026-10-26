@@ -165,6 +165,14 @@ def match_green(entries, records):
     return out
 
 
+def green_count(entries, records):
+    """How many green giants a system's codex lines confirm: each line that matches a giant counts once (review
+    2026-10-25: a line naming no class over two giants of different classes was counted once per class, x2), never
+    more than the giants matched."""
+    matched = [e for e in entries if match_green([e], records)]
+    return min(len(matched), len(match_green(entries, records)))
+
+
 def predict_record(r):
     """predict() for one of Outrider's body records (yours from the journal, or Spansh's from someone else's scan:
     both keep the journal's own temperature): the class from ed.PlanetClass (or subtype), the mass from ed.MassEM (a

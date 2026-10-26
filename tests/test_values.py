@@ -402,6 +402,9 @@ class MoreCuriosities(unittest.TestCase):
         self.assertEqual(self.tags(inside, ringed), ["shepherd moon"])
         self.assertEqual(self.tags(outside, ringed), [])
         self.assertNotIn("shepherd moon", self.tags(inside, {"name": "A", "type": "Star", "radius_km": 7e5, "rings": ringed["rings"]}))   # a star's: no
+        # Here's page row: rings is a count there, the list under ring_details (review 2026-10-25: never fired in Here)
+        row = dict(ringed, rings=1, ring_details=ed_outrider.ring_stats(ringed["rings"]))
+        self.assertEqual(self.tags(inside, row), ["shepherd moon"])
 
     def test_tiny_world_tiny_star_and_extreme_orbit(self):
         self.assertEqual(self.tags({"name": "1 a", "type": "Planet", "radius_km": 183}), ["tiny world"])

@@ -1674,7 +1674,7 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 #     (one after a long break keeps its hotspot), a legacy folder's stints are not today's ship's
 # 58: each mining session keeps where it mined (play_activity's mining places: the ring, the SRV's body): Sessions' Where
 # 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
-PARSER_VERSION = 61
+PARSER_VERSION = 62
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1700,6 +1700,7 @@ PARSER_VERSION = 61
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    62: "Your records are dated by when you first scanned each body, and a nav beacon read no longer hides one",
     61: "geology formations logged in your codex keep where they are, so a screenshot taken near one names it",
     60: "a deposit into your carrier's bank counts toward its weeks of upkeep (the Fable bug check of 2026-10-24)",
     59: "a death on foot or in the SRV no longer clears the ore you mined (the ship and its hold survive), an older "
@@ -1881,7 +1882,7 @@ CREATE TABLE IF NOT EXISTS spansh_reported (
 CREATE TABLE IF NOT EXISTS own_systems (
     id64 INTEGER PRIMARY KEY, name TEXT, body_count INTEGER, all_found INTEGER);
 CREATE TABLE IF NOT EXISTS own_bodies (
-    system INTEGER, body_id INTEGER, name TEXT, record TEXT, ts TEXT, raw TEXT, ship_id INTEGER,
+    system INTEGER, body_id INTEGER, name TEXT, record TEXT, ts TEXT, raw TEXT, ship_id INTEGER, first_ts TEXT,
     PRIMARY KEY (system, body_id));
 -- Barycentres (the Null entries in a body's Parents): their orbit, from ScanBaryCentre.
 CREATE TABLE IF NOT EXISTS own_barycentres (
@@ -5559,7 +5560,7 @@ class Journals:
             if record and ev.get("BodyID") is not None:
                 # A body is news once: the Detailed rescan the game writes after mapping it (SAAScanComplete)
                 # and AutoScans on a return visit replace the row but must not announce it again.
-                known = self.db.execute("SELECT record, ts, ship_id FROM own_bodies WHERE system=? AND body_id=?",
+                known = self.db.execute("SELECT record, ts, ship_id, raw, first_ts FROM own_bodies WHERE system=? AND body_id=?",
                                         (system, ev["BodyID"])).fetchone()
                 # an FSS (Detailed) of the body said its signals; a later AutoScan or nav-beacon read replacing the row
                 # must not make them "not counted" again (review: "bio possible" on a body already checked)
@@ -5573,9 +5574,21 @@ class Journals:
                 # the ship of the first scan: a rescan (the Detailed one after mapping, a return visit) keeps it; an older
                 # scan read late (a legacy folder) is the first, but with its ship unknown then (ship_at)
                 first_ship = known["ship_id"] if known and ts >= (known["ts"] or "") else self.ship_at(ts)
-                self.db.execute("INSERT OR REPLACE INTO own_bodies (system, body_id, name, record, ts, raw, ship_id) "
-                                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                (system, ev["BodyID"], ev["BodyName"], json.dumps(record), ts, json.dumps(ev), first_ship))
+                # when you first scanned it (Your records' date: review 2026-10-25, a rescan on a return visit dated a
+                # years-old record today and marked it new); an older scan read late (a legacy folder) moves it back
+                first_ts = min(ts, (known["first_ts"] or known["ts"] or ts)) if known else ts
+                # a nav beacon's read never replaces your own scan's line (review 2026-10-25: Your records leave beacon
+                # reads out, so the body dropped from them)
+                raw = json.dumps(ev)
+                if known and ev.get("ScanType") in NAV_BEACON_SCANS and known["raw"]:
+                    try:
+                        if json.loads(known["raw"]).get("ScanType") not in NAV_BEACON_SCANS:
+                            raw = known["raw"]
+                    except (TypeError, ValueError):
+                        pass
+                self.db.execute("INSERT OR REPLACE INTO own_bodies (system, body_id, name, record, ts, raw, ship_id, first_ts) "
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                (system, ev["BodyID"], ev["BodyName"], json.dumps(record), ts, raw, first_ship, first_ts))
                 flag = lambda k: None if k not in ev else int(bool(ev[k]))
                 undisc = ts if ev.get("WasDiscovered") is False else None
                 if record["type"] == "Star" and not known and live_event(ts):
@@ -6588,10 +6601,9 @@ def ggg_bodies(db, id64, system_name, records):
         p = outrider.ggg.predict_record(r)
         if p:
             out.append({"body": short_name(system_name, r.get("name") or "") or r.get("name"), "chance": p["chance"]})
-    # the green giants logged: each one named, and "one of 2" of a class counted once (as Nearby's tag shows it)
-    sure = [r for r in records if green.get(r.get("name"), {}).get("of") == 1]
-    groups = {(outrider.ggg.record_class(r), green[r["name"]]["of"]) for r in records if green.get(r.get("name"), {}).get("of", 1) > 1}
-    return out, len(sure) + len(groups)
+    # the green giants logged: each codex line counted once, "one of 2" too (as Nearby's tag shows it)
+    entries = [(r[0], r[1], r[2]) for r in db.execute("SELECT entry_id, name, body_id FROM codex WHERE system=?", (id64,))]
+    return out, outrider.ggg.green_count(entries, records)
 
 
 def rare_star_words(subtype):
@@ -6742,6 +6754,13 @@ def ring_stats(rings):
     return out
 
 
+def ring_list(r):
+    """A body's rings as a list: a page row keeps them under ring_details (rings is a count there), a stored record
+    under rings."""
+    r = r or {}
+    return r["ring_details"] if isinstance(r.get("ring_details"), list) else r["rings"] if isinstance(r.get("rings"), list) else []
+
+
 def curiosities(r, parent=None, raw=None):
     """Observatory-style "interesting body" flags: [(tag, why)]. `parent` is the record this body orbits
     (if a body), `raw` your own Scan event (rotation, tidal lock). Only facts that are known are tested: nothing is
@@ -6750,8 +6769,7 @@ def curiosities(r, parent=None, raw=None):
     out = []
     planet = r.get("type") == "Planet"
     g, landable = r.get("gravity"), r.get("landable")
-    # a page row keeps its rings under ring_details (rings is a count there); a stored record has the list
-    rings = r["ring_details"] if isinstance(r.get("ring_details"), list) else r["rings"] if isinstance(r.get("rings"), list) else []
+    rings = ring_list(r)
     if planet and landable and rings:
         out.append(("ringed landable", "a landable body with rings: the view from the surface"))
     if planet and landable and g and g > 3:
@@ -6779,8 +6797,9 @@ def curiosities(r, parent=None, raw=None):
     # the checks planned with the first set and not built then (explorer ideas, 2026-10-25), each counted on the
     # author's 26,748 scans first: 32 shepherd moons, 5 tiny worlds, 10 tiny stars, 7 extreme orbits (an inclination
     # check fired on 1,374: left out)
-    outer = max((x["outer"] for x in (parent or {}).get("rings") or [] if isinstance(x, dict) and x.get("outer")), default=None) \
-        if parent and parent.get("type") == "Planet" and isinstance(parent.get("rings"), list) else None
+    # the parent's rings in either shape (review 2026-10-25: Here's rows hold a count under rings, so this never fired there)
+    outer = max((x["outer"] for x in ring_list(parent) if isinstance(x, dict) and x.get("outer")), default=None) \
+        if parent and parent.get("type") == "Planet" else None
     if planet and outer and sma_km and sma_km * 1000 < outer:
         out.append(("shepherd moon", f"orbits inside {parent['name']}'s rings"))
     if planet and rk and rk < TINY_WORLD_KM:
@@ -8011,7 +8030,9 @@ def body_records(db):
     """State.body_records' work on `db`: {records: outrider.records.records(...), bodies: how many scans it read}."""
     names = {r["id64"]: r["name"] for r in db.execute("SELECT id64, name FROM jumps ORDER BY ts")}
     bodies = []
-    for r in db.execute("SELECT system, name, ts, raw FROM own_bodies"):
+    # each body dated by your first scan of it, each system by your first jump there (review 2026-10-25: a rescan or a
+    # return visit re-dated a record and marked it new)
+    for r in db.execute("SELECT system, name, coalesce(first_ts, ts) AS ts, raw FROM own_bodies"):
         try:
             raw = json.loads(r["raw"]) if r["raw"] else None
         except ValueError:
@@ -8019,8 +8040,10 @@ def body_records(db):
         system = names.get(r["system"]) or (raw or {}).get("StarSystem")
         bodies.append((r["system"], system, short_name(system, r["name"]) if system else r["name"], r["ts"], raw))
     jumps = [(r["id64"], r["name"], r["x"], r["y"], r["z"], r["ts"]) for r in db.execute(
-        "SELECT id64, name, x, y, z, max(ts) AS ts FROM jumps GROUP BY id64")]
-    return {"records": outrider.records.records(bodies, jumps), "bodies": len(bodies)}
+        "SELECT id64, name, x, y, z, min(ts) AS ts FROM jumps GROUP BY id64")]
+    # the scans the records were taken from: nav beacon reads are left out of both (review 2026-10-25)
+    n = sum(1 for b in bodies if isinstance(b[4], dict) and b[4].get("ScanType") not in outrider.records.NAV_BEACON)
+    return {"records": outrider.records.records(bodies, jumps), "bodies": n}
 
 
 class State:
@@ -8051,6 +8074,7 @@ class State:
         self.sights_range = SIGHTS_RANGE   # [server] sights_range (run() sets it); 0: no catalogued sights at all
         self.shots_cfg = dict(outrider.screenshots.DEFAULTS)   # [screenshots] (run() sets it; Settings applies it at once)
         self.shots_queue, self.shots_task = [], None   # shots waiting for the converter, its task (one at a time)
+        self.shots_current = None   # the shot being converted now: out of the queue, not yet recorded (the backlog skips it)
         self.shots_last = None     # the last conversion: {ok, ts, full, subject, error} (Settings and the card)
         self._sights = (None, [], {})      # (meta sights' checked, entries, by id64): read again when a check stored new ones
         self.reported_seen = None  # the overlay_detail key of the last look that found no life
@@ -11857,11 +11881,13 @@ class State:
 
     async def shots_run(self):
         while self.shots_queue:
-            shot = self.shots_queue.pop(0)
+            shot = self.shots_current = self.shots_queue.pop(0)
             try:
                 await self.shot_convert(shot)
             except Exception as e:  # noqa: BLE001 -- one shot's failure never stops the others
                 print(f"screenshots: {shot.get('original')}: {type(e).__name__}: {e}", file=sys.stderr)
+            finally:
+                self.shots_current = None
 
     def shot_subject(self, shot):
         """What a surface shot shows (outrider.screenshots.nearest_subject): your sample spots (bio_spots: a finished run's
@@ -11978,7 +12004,10 @@ class State:
                 shot = dict(shot)
             else:
                 shot = {"ts": iso_ts(mtime), "original": name, "system": None, "body": None, "cmdr": None}
-            if (shot["ts"], name) in done or any(q.get("original") == name and q.get("ts") == shot["ts"] for q in self.shots_queue):
+            # converted already, waiting, or converting now (review 2026-10-25: a HighRes shot mid-conversion was queued
+            # again, and with original = delete its good record became an error)
+            if (shot["ts"], name) in done or any(q.get("original") == name and q.get("ts") == shot["ts"]
+                                                 for q in self.shots_queue + [self.shots_current or {}]):
                 skipped += 1
                 continue
             shot.setdefault("system_id", None)
@@ -20329,6 +20358,27 @@ def search_min(v):
     return v if isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= 20 else 1
 
 
+def search_criteria(params, db):
+    """Search's form (its params) as the criteria match_system and the Spansh queries use."""
+    return {
+        "stars": {st for k in params.get("stars") or [] for st in STAR_GROUPS.get(k, [])},
+        # "at least 2" stars counts every star of the system: the arrival star alone could never be two (review
+        # 2026-10-25: the search ran and found nothing, saying nothing)
+        "main_only": bool(params.get("main_only", True)) and search_min(params.get("stars_min")) <= 1,
+        "planets": set(params.get("planets") or []) & (set(PLANET_TYPES) | {GGG_OPTION[0]}),
+        "rings": set(params.get("rings") or []) & set(RING_TYPES),
+        "hotspots": set(params.get("hotspots") or []) & set(HOTSPOT_MINERALS),
+        "hotspots_min": 2 if params.get("hotspots_min") == 2 else 1,   # "2+ in a ring": anything else is 1
+        # "at least N" of a section's ticks in one system (explorer ideas, 7): 1 to 20, anything else 1
+        "stars_min": search_min(params.get("stars_min")), "planets_min": search_min(params.get("planets_min")),
+        # ticked bio thresholds are OR'd like any other section: the lowest one decides
+        "bio": min((BIO_SEARCH[k][1] for k in params.get("bio") or [] if k in BIO_SEARCH), default=None),
+        # planetary mining locations (S4), with an optional mineral from the survey (an unknown name counts as none)
+        "mining": {"mineral": params.get("mining_mineral") if params.get("mining_mineral") in searchable_minerals(db) else None}
+                  if params.get("mining") is True else None,
+    }
+
+
 def match_system(system, records, crit):
     """Which of the ticked criteria this system satisfies: {section: [descriptions]}."""
     stars = [r for r in records if r["type"] == "Star"]
@@ -20471,21 +20521,7 @@ class Searcher:
         you = None if pos["around"] == "here" else you
         source = "spansh" if params.get("source") == "spansh" else "local"
         radius = max(1.0, min(float(params.get("radius") or 100), SEARCH_MAX_RADIUS[source]))
-        crit = {
-            "stars": {st for k in params.get("stars") or [] for st in STAR_GROUPS.get(k, [])},
-            "main_only": bool(params.get("main_only", True)),
-            "planets": set(params.get("planets") or []) & (set(PLANET_TYPES) | {GGG_OPTION[0]}),
-            "rings": set(params.get("rings") or []) & set(RING_TYPES),
-            "hotspots": set(params.get("hotspots") or []) & set(HOTSPOT_MINERALS),
-            "hotspots_min": 2 if params.get("hotspots_min") == 2 else 1,   # "2+ in a ring": anything else is 1
-            # "at least N" of a section's ticks in one system (explorer ideas, 7): 1 to 20, anything else 1
-            "stars_min": search_min(params.get("stars_min")), "planets_min": search_min(params.get("planets_min")),
-            # ticked bio thresholds are OR'd like any other section: the lowest one decides
-            "bio": min((BIO_SEARCH[k][1] for k in params.get("bio") or [] if k in BIO_SEARCH), default=None),
-            # planetary mining locations (S4), with an optional mineral from the survey (an unknown name counts as none)
-            "mining": {"mineral": params.get("mining_mineral") if params.get("mining_mineral") in searchable_minerals(self.db) else None}
-                      if params.get("mining") is True else None,
-        }
+        crit = search_criteria(params, self.db)
         sections = [k for k in ("stars", "planets", "rings", "hotspots", "bio", "mining") if crit[k] is not None and crit[k] != set()]
         if not sections:
             return self.update(seq, running=False, status="tick at least one star, planet, ring, hotspot, exobiology or mining option")

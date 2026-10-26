@@ -41,7 +41,7 @@ every ring is mapped); hover it for each ring's type and hotspots under it, the 
 your record there; the body's own hover card adds each ring's width and density. Click a body with hotspots and its
 details add **Best nearby**: each hotspot mineral's best sell price within 100 ly (stations, from Spansh's markets),
 highest first, so you know which hotspot to drop into; asked once in half an hour, then shown in the Rings hover too
-("from you" for a system you are not in).
+("from you" for a system you are not in). When the lookup fails it says so, and asks again a few minutes later.
 The to-do line ticks itself off as you honk, map and sample, in a suggested order with supercruise time and
 credits per minute ("~2 min · 450k/min"; "skip?" when not worth the trip). Bio nobody has set foot on is
 valued with the ×5 first-footfall bonus, except in a populated system: Vista Genomics never pays it there. A bio line's
@@ -139,7 +139,8 @@ unfinished exobiology or planetary mining locations (one mineral, if you like) w
 Outrider knows (<i>Local</i>) or everything reported (<i>Spansh</i>; mining locations are Local only, as Spansh cannot
 filter on them); <i>2+ in a ring</i> keeps the rings with two or more hotspots of one mineral ticked (more places to
 drop in, and where hotspots overlap); <i>at least N</i> under Stars or Planets keeps the systems with that many of the
-kinds ticked (two Earth-likes, three neutron stars; with two kinds ticked, any mix of them); 🎯 after a result's name
+kinds ticked (two Earth-likes, three neutron stars; with two kinds ticked, any mix of them; for stars it counts every
+star of the system, so *arrival star only* is greyed then); 🎯 after a result's name
 targets it in the galaxy map, where auto-target can work. Planets has
 <i>Potential green gas giant</i> too (see
 <a href="#-potential-green-gas-giants">below</a>). The name box finds any system (what Outrider knows,

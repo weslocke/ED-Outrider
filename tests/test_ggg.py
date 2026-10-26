@@ -73,6 +73,16 @@ class GreenCodex(unittest.TestCase):
         db.execute("INSERT INTO codex (ts, entry_id, name, system, body_id) VALUES ('t', 1200502, 'Green Class I Gas Giant', 9, 0)")
         recs = [{"name": "S", "body_id": 0, "type": "Star", "subtype": "G"}, dict(self.giant("S B 3", 4), temperature=250.0)]
         self.assertEqual(ed_outrider.ggg_bodies(db, 9, "S", recs), ([], 1))   # confirmed: not a guess any more, counted
+        # a line naming no class over two giants of different classes is one green giant, not one per class (review
+        # 2026-10-25: Nearby said x2); two lines, one per class, are two
+        db.execute("DELETE FROM codex")
+        db.execute("INSERT INTO codex (ts, entry_id, name, system, body_id) VALUES ('t', 1234, 'Green Gas Giant', 9, 0)")
+        two = [recs[0], self.giant("S 1", 1), self.giant("S 2", 2, "Sudarsky class III gas giant")]
+        self.assertEqual(ed_outrider.ggg_bodies(db, 9, "S", two)[1], 1)
+        db.execute("DELETE FROM codex")
+        db.execute("INSERT INTO codex (ts, entry_id, name, system, body_id) VALUES ('t', 1200502, 'Green Class I Gas Giant', 9, 0)")
+        db.execute("INSERT INTO codex (ts, entry_id, name, system, body_id) VALUES ('t', 1200702, 'Green Class III Gas Giant', 9, 0)")
+        self.assertEqual(ed_outrider.ggg_bodies(db, 9, "S", two)[1], 2)
         self.assertEqual(ed_outrider.ggg_state(recs[1], ed_outrider.ggg_green(db, 9, recs).get("S B 3")), {"confirmed": True, "of": 1})
 
 
