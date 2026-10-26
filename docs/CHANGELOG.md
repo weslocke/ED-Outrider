@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · 🏆 on a system that holds a record, in Nearby and Boxel view
+- The author: "I had one in this boxel, can't find it": only Here's body rows had the 🏆. A system that holds one of
+  Your records (any of its bodies, or the farthest system) now has 🏆 beside its name in Nearby's list and Boxel view's,
+  its hover naming the record and the body (`sysRecordMark`). The lists ask for the records themselves when your scans
+  or position moved since the last answer (`recordsWanted`: once per change, a minute's pause after a failure); before,
+  only Here's load asked (fc36336).
+- The author confirmed WebP and the clipboard's small copy (made when no small copy is kept) in game.
+
 ## 2026-10-26 · The clipboard's copy made when not kept; a shot in space named once
 - The author: "the medium copy" chosen for the clipboard with no medium copy ticked put the full-size picture there,
   far too big to paste. A medium or small copy, or the crop, not kept as a file is now made for the clipboard alone
