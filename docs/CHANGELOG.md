@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Broken codex pictures passed over
+- A picture in a codex folder that does not open (empty, not a picture, unreadable) is passed over: a folder of only
+  those shows Canonn's picture, not a broken one (`screenshots.readable`, a header read). Checked as the author asked:
+  no export folder set and no Pictures folder found, a folder that does not exist, a file in its place, Biology/ a
+  file and Geology/ unreadable, Pillow not installed: the checklists answer and show Canonn's.
+
 ## 2026-10-26 · 📷 on the checklists beside what you have pictures of
 - With **Show your own pictures on the Bio/Geo checklists** on, a 📷 sits beside each Exo-Biology and Geology entry you
   have pictures of in your codex folders, and beside each such colour of an open species, where 🔍 nearby and the

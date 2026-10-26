@@ -698,6 +698,36 @@ class Server(unittest.TestCase):
         self.assertEqual((geo["Water Ice Geyser"]["own_pics"], geo["Water Geyser"]["own_pics"]), ([""], []))
         self.assertEqual(S.codex_folders(None), set())
 
+    def test_broken_pictures_are_passed_over(self):
+        """The author asked that a missing or odd codex folder be handled gracefully (2026-10-26): no folder set, none
+        there, a file in its place, all show Canonn's; and a folder of pictures that do not open (empty, not a picture,
+        unreadable) shows Canonn's too, not a broken one; a good one among them is always the one shown."""
+        canonn = {"url": "https://c/y.jpg", "cmdr": "Someone"}
+        self.st._codex_images = {"bacterium bullaris - yellow": [canonn["url"], canonn["cmdr"]]}
+        self.st.shots_cfg["codex_show"] = True
+        sid = "$Codex_Ent_Bacterial_10_Name;"
+        yellow = lambda: self.st.checklist_species(sid)[0]["images"]["yellow"]
+        for folder in (os.path.join(self.d, "missing"), os.path.join(self.d, "afile")):
+            if folder.endswith("afile"):
+                open(folder, "w").close()
+            self.st.shots_cfg["folder"] = folder
+            self.assertEqual(yellow(), canonn, folder)
+        self.st.shots_cfg["folder"] = self.out
+        with unittest.mock.patch.object(S, "pictures_from_journals", return_value=None):
+            self.st.shots_cfg.update(folder="", pictures="")
+            self.assertEqual(yellow(), canonn)
+            self.assertEqual(self.st.checklist_picture(sid, "Yellow")[0], {"image": None})
+        self.st.shots_cfg.update(folder=self.out, pictures=self.pictures)
+        folder = os.path.join(self.out, "Biology", "Bacterium", "Bacterium Bullaris", "Yellow")
+        os.makedirs(folder)
+        open(os.path.join(folder, "empty.png"), "w").close()
+        with open(os.path.join(folder, "text.jpg"), "w") as f:
+            f.write("not a picture")
+        self.assertEqual(yellow(), canonn)
+        Image.new("RGB", (10, 10)).save(os.path.join(folder, "good.png"))
+        self.assertEqual({yellow()["file"] for _ in range(20)}, {"good.png"})
+        self.assertEqual(self.st.checklist_picture(sid, "Yellow", "good.png")[0]["image"]["file"], "good.png")   # the only one
+
     def test_a_reread_fills_a_tags_variant(self):
         """Review 2026-10-26: a plant tagged before bio_tags.variant existed kept NULL through a journal re-read (its
         INSERT OR IGNORE), so its shot was never filed by colour."""

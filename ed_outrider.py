@@ -12437,9 +12437,13 @@ class State:
         # only what codex_picture serves: a folder or file linked from outside the export folder would be a broken
         # picture in Canonn's place (review 2026-10-26)
         names = [n for n in S.codex_pictures(folder) if S.under(root, os.path.join(folder, n))] if folder else []
-        if not names:
+        # at random, the one shown last only when there is no other; one that does not open (empty, not a picture,
+        # unreadable) is passed over, so a folder of broken files shows Canonn's, not a broken picture
+        order = random.sample(names, len(names))
+        order.sort(key=lambda n: n == avoid)
+        name = next((n for n in order if S.readable(os.path.join(folder, n))), None)
+        if name is None:
             return None
-        name = random.choice([n for n in names if n != avoid] or names)
         path = os.path.join(folder, name)
         try:   # its time in the link: a picture edited in place is not the browser's cached one (review 2026-10-26)
             v = int(os.path.getmtime(path))

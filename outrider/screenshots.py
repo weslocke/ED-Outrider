@@ -290,6 +290,19 @@ def picture_facts(path, Image=None):
             "body": short_body(system, body) if short else body or None}
 
 
+def readable(path, Image=None):
+    """Whether `path` opens as one of CODEX_DECODERS (its header read, not its pixels); True when Pillow is not
+    installed (nothing to check with: the file is served as it is)."""
+    Image = Image or pillow()
+    if Image is None:
+        return True
+    try:
+        with Image.open(path, formats=CODEX_DECODERS):
+            return True
+    except Exception:  # noqa: BLE001 -- empty, not a picture, unreadable
+        return False
+
+
 def under(root, path):
     """Whether `path` (links followed) is inside the folder `root` (a drive or "/" too)."""
     return bool(root and path) and os.path.realpath(path).startswith(os.path.join(os.path.realpath(root), ""))
