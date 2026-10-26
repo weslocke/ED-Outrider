@@ -4070,6 +4070,7 @@ function unsoldHtml(u) {
 }
 
 function render() {
+  recordsWanted();   // the lists' 🏆
   renderUploads();
   renderOverlay();
   if (!data) return;
@@ -4240,7 +4241,7 @@ function render() {
     return `<tr class="${cls}" data-id="${esc(s.id)}">
       <td class="bmcell">${bmIcon(s.id, s.name, bms)}</td>
       <td class="name" data-name="${esc(s.name)}" title="click to copy">${aimCol ? `<span class="nearaim">${nearAimBtn(s)}</span>` : ""}${isPrev
-        ? `<span class="prevmark" title="you just came from here">↩</span>` : ""}${nameWords(s.name)}${firstsIcon(s.firsts)}<div class="sf3 sub2">${status}</div></td>
+        ? `<span class="prevmark" title="you just came from here">↩</span>` : ""}${nameWords(s.name)}${firstsIcon(s.firsts)}${sysRecordMark(s.id)}<div class="sf3 sub2">${status}</div></td>
       <td class="num dist"${far && !elsewhere ? ` title="beyond your max jump range"` : ""}>${s.distance.toFixed(2)}</td>
       <td class="num fromcol"${far ? ` title="beyond your max jump range"` : ""}>${elsewhere && ly != null ? ly.toFixed(2) : ""}</td>
       <td class="num hide-sm c2hide">${jumps == null ? "" : jumps === 1 ? "1" : `<span class="unk">${jumps}</span>`}</td>
@@ -4500,7 +4501,7 @@ function drawBoxel() {
     const rowHtml = r => { const s = r.summary, open = r.id && (r.visited || r.spansh);
       return `<tr class="${[r.visited && "visited", r.n === d.next && "next", !r.visited && !r.spansh && "try", d.skip_known && r.scanned && !r.visited && "skipped",
                            open && pinnedSystem === r.id && "pinned"].filter(Boolean).join(" ")}"${open ? ` data-id="${esc(r.id)}"` : ""}>` +
-        `<td class="n">-${r.n}</td><td class="name copy" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${s ? firstsIcon(s.firsts) : ""}</td>` +
+        `<td class="n">-${r.n}</td><td class="name copy" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${s ? firstsIcon(s.firsts) : ""}${sysRecordMark(r.id)}</td>` +
         `<td class="num">${r.distance != null ? r.distance.toFixed(1) : ""}</td>` +
         `<td>${r.visited ? `<span class="ok" title="you have been here">✓ visited</span>` : r.spansh ? boxelKnown(r) : `<span class="unk">to try</span>`}</td>` +
         `<td>${s ? star(s) : ""}</td><td${s && s.id ? ` class="bodies" data-pop data-id="${esc(s.id)}"` : ""}>${s ? bodies(s) : ""}</td><td class="num"${s ? ` title="${valueTitle(s)}"` : ""}>${s ? valueCell(s) : ""}</td>` +
@@ -5771,12 +5772,24 @@ async function loadRecords(any = false) {
   const key = `${data && data.scan_version}|${data && data.position && data.position.id}`;
   if (key === REC.key) return;
   REC.key = key;
-  try { REC.d = await apiJson("api/records"); } catch (err) { REC.d = {error: err.message}; REC.key = null; }
+  try { REC.d = await apiJson("api/records"); } catch (err) { REC.d = {error: err.message}; REC.key = null; REC.failed = Date.now(); }
   renderRecords();
   if (view === "here" && hereData) renderHere();   // its 🏆 marks
+  if (view === "near" || view === "overview") { render(); drawBoxel(); }   // the lists' 🏆
 }
 // Here's 🏆 (explorer ideas, item 4): asked a few seconds after Here loads, so a burst of FSS scans is one request
-function recordsSoon() { clearTimeout(REC.soon); REC.soon = setTimeout(() => loadRecords(true), 3000); }
+function recordsSoon() { clearTimeout(REC.soon); REC.soon = setTimeout(() => { REC.soon = null; loadRecords(true); }, 3000); }
+// the lists' 🏆 (Nearby, Boxel view: the author, 2026-10-26, "I had one in this boxel, can't find it"): asked when
+// your scans or position moved since the last answer, once (a redraw while one is due asks nothing more)
+function recordsWanted() {
+  if (!data || REC.soon || (REC.failed && Date.now() - REC.failed < 60000)) return;   // a failure: again after a minute
+  if (`${data.scan_version}|${data.position && data.position.id}` !== REC.key) recordsSoon();
+}
+// a system that holds one of Your records (any of its bodies, or the system farthest from Sol): 🏆 on its row
+function sysRecordMark(id64) {
+  const held = id64 == null ? [] : ((REC.d && REC.d.records) || []).filter(r => r.id64 === String(id64));
+  return held.length ? ` <span class="rec" title="${esc(held.map(r => `Your record: ${r.label}, ${r.text}${r.body ? ` (body ${r.body})` : ""}`).join("\n"))}">🏆</span>` : "";
+}
 document.addEventListener("click", e => { if (e.target.closest("#hereCopyMd")) copyText(systemSummaryMd(hereData), "the system summary"); });
 // a body of Here that holds one of Your records: 🏆, the records in its title (visual only: the voice says no records)
 function recordMark(id64, name) {

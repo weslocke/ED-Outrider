@@ -579,10 +579,20 @@ const releasePayloads = async () => {
       out.marked = !!document.querySelector('#boxelTable tr.pinned[data-id="9001"]');
       showPop(document.querySelector('#boxelTable td.bodies[data-pop]'), 10, 10);
       out.pop = document.getElementById("pop").textContent.includes("Bx AB-C d1-0");
-      hidePop(); [boxelData, pinnedSystem] = saved; pane.hidden = wasHidden; drawBoxel();
+      // a system holding one of Your records has 🏆 on its row, in the boxel list and in Nearby's (the author, 2026-10-26)
+      const savedRec = REC.d, nid = data.systems[0] && data.systems[0].id;
+      REC.d = {records: [{label: "Biggest planet", text: "77,691 km", body: "4", system: "Bx AB-C d1-0", id64: "9001"},
+                         {label: "Hottest star", text: "9,000 K", body: "A", system: "N", id64: String(nid)}]};
+      drawBoxel(); render();
+      out.bxRec = (document.querySelector('#boxelTable tr[data-id="9001"] .rec') || {}).title || "";
+      out.bxNone = !document.querySelector('#boxelTable tr[data-id="9002"] .rec');
+      out.nearRec = !!(nid && document.querySelector(\`#rows tr[data-id="\${nid}"] .rec\`));
+      REC.d = savedRec;
+      hidePop(); [boxelData, pinnedSystem] = saved; pane.hidden = wasHidden; drawBoxel(); render();
       return JSON.stringify(out); })()`));
     const ok = JSON.stringify(res.ids) === '["9001","9002"]' && JSON.stringify(res.pops) === '["9001"]' && JSON.stringify(res.pinned) === '["9001"]' &&
-               res.marked && res.pop && errors.length === before;
+               res.marked && res.pop && res.bxRec === "Your record: Biggest planet, 77,691 km (body 4)" && res.bxNone && res.nearRec &&
+               errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| boxel rows open in Here, hover card |", JSON.stringify(res), errors.slice(before));
   }
   // the records a body holds said on its card and in its panel, not only in the 🏆's hover (the author, 2026-10-26)

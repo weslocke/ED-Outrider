@@ -169,7 +169,8 @@ device. <b>Your records</b>, folded at the end, lists the most extreme bodies am
 star, hottest and coldest planet, highest and lowest gravity you could land on, the highest-gravity Earth-like, the
 thickest atmosphere, the fastest spin, the widest ring...) and the system farthest from Sol you have been to; 🔍 opens
 the body in Here. A record set in the last day is marked **🏆 new**, and in Here a body that holds one of your records
-has a 🏆 beside its name (hover it for which; its hover card and its details panel say so too).
+has a 🏆 beside its name (hover it for which; its hover card and its details panel say so too). In Nearby's list,
+standard or Boxel view, a system that holds one has a 🏆 beside its name, its hover naming the record and the body.
 <br><br><img src="../images/firsts.png" alt="My firsts">
 </td>
 </tr>
