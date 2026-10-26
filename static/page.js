@@ -4495,12 +4495,15 @@ function drawBoxel() {
         : !d.complete ? `<button type="button" class="try" data-bxdone="1" title="finished with this boxel, complete or not: it leaves the recommendations (a kept boxel is let go)">✓ Done with this boxel</button>` : "") +
       (d.end != null ? `<button type="button" class="try" data-bxretry="1" title="a failed search is not always a missing name: offer the numbers above it again">retry above -${d.end}</button>` : "") +
       (!b.standard ? `<span class="unk">a hand-made sector: ${mk("destination")}target cannot check its systems</span>` : "") + `</div>`;
-    const rowHtml = r => { const s = r.summary;
-      return `<tr class="${[r.visited && "visited", r.n === d.next && "next", !r.visited && !r.spansh && "try", d.skip_known && r.scanned && !r.visited && "skipped"].filter(Boolean).join(" ")}">` +
+    // a system you or Spansh know opens in Here on a click, and its bodies cell has Nearby's hover card (the author,
+    // 2026-10-26: neither worked in Boxel view); one only to try has nothing for Here to show
+    const rowHtml = r => { const s = r.summary, open = r.id && (r.visited || r.spansh);
+      return `<tr class="${[r.visited && "visited", r.n === d.next && "next", !r.visited && !r.spansh && "try", d.skip_known && r.scanned && !r.visited && "skipped",
+                           open && pinnedSystem === r.id && "pinned"].filter(Boolean).join(" ")}"${open ? ` data-id="${esc(r.id)}"` : ""}>` +
         `<td class="n">-${r.n}</td><td class="name copy" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${s ? firstsIcon(s.firsts) : ""}</td>` +
         `<td class="num">${r.distance != null ? r.distance.toFixed(1) : ""}</td>` +
         `<td>${r.visited ? `<span class="ok" title="you have been here">✓ visited</span>` : r.spansh ? boxelKnown(r) : `<span class="unk">to try</span>`}</td>` +
-        `<td>${s ? star(s) : ""}</td><td>${s ? bodies(s) : ""}</td><td class="num"${s ? ` title="${valueTitle(s)}"` : ""}>${s ? valueCell(s) : ""}</td>` +
+        `<td>${s ? star(s) : ""}</td><td${s && s.id ? ` class="bodies" data-pop data-id="${esc(s.id)}"` : ""}>${s ? bodies(s) : ""}</td><td class="num"${s ? ` title="${valueTitle(s)}"` : ""}>${s ? valueCell(s) : ""}</td>` +
         `<td>${pc && b.standard && !r.visited ? hwyAimBtn(r.name, "boxel", r.n, true) : ""}</td></tr>`; };
     html += `<table id="boxelTable"><thead><tr><th class="num">#</th><th>System</th><th class="num">Dist</th><th>Status</th><th>Main star</th><th>Bodies</th><th class="num">Value now / max</th><th></th></tr></thead>` +
       `<tbody>${d.rows.map(rowHtml).join("")}</tbody></table>`;
@@ -4723,9 +4726,9 @@ function pinSystem(id) {
   // the system you are in is not "pinned": Here shows it anyway, with its to-do line
   pinnedSystem = posId() === String(id) ? null : String(id);
   forgetOtherHere();
-  if (selectedBody) closeBody(); hidePop(); render(); renderHere(); paneTop("hereMain");
+  if (selectedBody) closeBody(); hidePop(); render(); renderHere(); drawBoxel(); paneTop("hereMain");
 }
-function unpinSystem() { pinnedSystem = null; forgetOtherHere(); if (selectedBody) closeBody(); render(); renderHere(); paneTop("hereMain"); }
+function unpinSystem() { pinnedSystem = null; forgetOtherHere(); if (selectedBody) closeBody(); render(); renderHere(); drawBoxel(); paneTop("hereMain"); }
 let hereRefreshError = null;
 async function loadHere() {
   const id = shownSystem(); if (!id) return;
@@ -9589,7 +9592,7 @@ document.addEventListener("click", e => {
   // a click anywhere on a Nearby row (the Overview's too) but its name (copies), ☆ or a control shows the system in
   // Here beside the list; the same system again closes it (S73). Not after a drag that selected text. The tablet's
   // tap opens the row's sheet instead (tabRowTap, which stops this click)
-  const row = e.target.closest("#rows tr[data-id]");
+  const row = e.target.closest("#rows tr[data-id], #boxelTable tr[data-id]");
   if (row && !e.target.closest("td.name, td.bmcell, [data-bm], button, a, input, select, label") && !selectingIn(row))
     return row.dataset.id === pinnedSystem ? unpinSystem() : pinSystem(row.dataset.id);
   const bm = e.target.closest("[data-bm]");
@@ -9706,7 +9709,9 @@ function showPop(td, x, y) {
     pop.style.display = "block"; placePop(x, y);
     return;
   }
-  const s = data && data.systems.find(s => s.id === td.dataset.id);
+  // a Nearby row's system, else a boxel row's (Boxel view: often outside Nearby's sphere)
+  const s = data && (data.systems.find(s => s.id === td.dataset.id) ||
+                     ((boxelData && boxelData.rows) || []).map(r => r.summary).find(x => x && x.id === td.dataset.id));
   if (!s) return hidePop();
   popId = td.dataset.id;
   pop.innerHTML = popHtml(s); pop.style.display = "block"; placePop(x, y);

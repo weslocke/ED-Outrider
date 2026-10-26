@@ -494,8 +494,9 @@ th[data-sort].on.rev::after { content: " ▴"; }
 #hereHead .pintag { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin-right: 4px; }
 #rows td.bodies { cursor: pointer; }
 /* a click anywhere on a Nearby row but its name and ☆ shows the system (S73); not the tablet (its tap opens the sheet) */
-body:not(.tablet) #rows tr[data-id] { cursor: pointer; } #rows td.bmcell { cursor: auto; }
-body:not(.tablet) #rows tr[data-id]:not(.pinned):hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+body:not(.tablet) #rows tr[data-id], body:not(.tablet) #boxelTable tr[data-id] { cursor: pointer; } #rows td.bmcell { cursor: auto; }
+body:not(.tablet) #rows tr[data-id]:not(.pinned):hover td,
+body:not(.tablet) #boxelTable tr[data-id]:not(.pinned):hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 /* Nearby with a pinned system: list on the left, panel on the right at 40 % */
 main.nearPinned { display: flex; align-items: flex-start; gap: 16px; }
 main.nearPinned > #nearWrap { flex: 1 1 60%; min-width: 0; }
@@ -508,8 +509,8 @@ main.nearPinned > #hereView #hereTable .hide-sm, main.nearPinned > #hereView .hi
 main.nearPinned > #hereView #hereTable th, main.nearPinned > #hereView #hereTable td { padding: 4px 4px; font-size: 12px; }
 main.nearPinned > #hereView #hereTable td.bio { max-width: 180px; }
 @media (max-width: 900px) { main.nearPinned { display: block; } main.nearPinned > #hereView { position: static; max-height: none; border-left: 0; padding-left: 0; } }
-#rows tr.pinned td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-#rows tr.pinned td.bodies { cursor: pointer; }
+#rows tr.pinned td, #boxelTable tr.pinned td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+#rows tr.pinned td.bodies, #boxelTable td.bodies { cursor: pointer; }
 
 /* ---- Bio/Geo: My Samples (the exobiology log) ---- */
 #bioView { margin-top: 12px; } #bioView .exports a { color: var(--info); }

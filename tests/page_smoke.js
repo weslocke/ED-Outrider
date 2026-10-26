@@ -555,6 +555,36 @@ const releasePayloads = async () => {
       "Amethyst · Image: CMDR Someone, via Canonn"]) && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| codex picture caption |", JSON.stringify(got), errors.slice(before));
   }
+  // Boxel view: a known system's row opens it in Here and its bodies cell has Nearby's hover card (the author, 2026-10-26)
+  {
+    const w = dom.window, before = errors.length;
+    const res = JSON.parse(w.eval(`(() => {
+      const saved = [boxelData, pinnedSystem], pane = document.getElementById("boxelPane"), wasHidden = pane.hidden;
+      const sum = Object.assign({}, data.systems[0] || {}, {id: "9001", id64: 9001, name: "Bx AB-C d1-0"});
+      boxelData = {boxel: {prefix: "Bx AB-C d1-", label: "Bx AB-C d1", mc: "d", size: 80, kind: "x", standard: true, here: true, picked: false},
+        rows: [{n: 0, name: "Bx AB-C d1-0", id: "9001", visited: true, spansh: false, distance: 1, summary: sum},
+               {n: 1, name: "Bx AB-C d1-1", id: "9002", visited: false, spansh: true, distance: 2, summary: null, known: {bodies: 1, count: 3}},
+               {n: 2, name: "Bx AB-C d1-2", id: "9003", visited: false, spansh: false, distance: null, summary: null}],
+        next: 2, end: null, top: 1, visited: 1, spansh: 1};
+      pane.hidden = false; drawBoxel();
+      const out = {ids: [...document.querySelectorAll("#boxelTable tr[data-id]")].map(tr => tr.dataset.id),
+                   pops: [...document.querySelectorAll("#boxelTable td.bodies[data-pop]")].map(td => td.dataset.id)};
+      const realPin = pinSystem, pinned = [];
+      pinSystem = id => pinned.push(id);   // the click's effect, without loading Here for a made-up system
+      document.querySelector('#boxelTable tr[data-id="9001"] td.num').click();
+      document.querySelector('#boxelTable tr[data-id="9001"] td.name').click();   // the name copies, never opens
+      pinSystem = realPin;
+      out.pinned = pinned;
+      pinnedSystem = "9001"; drawBoxel();
+      out.marked = !!document.querySelector('#boxelTable tr.pinned[data-id="9001"]');
+      showPop(document.querySelector('#boxelTable td.bodies[data-pop]'), 10, 10);
+      out.pop = document.getElementById("pop").textContent.includes("Bx AB-C d1-0");
+      hidePop(); [boxelData, pinnedSystem] = saved; pane.hidden = wasHidden; drawBoxel();
+      return JSON.stringify(out); })()`));
+    const ok = JSON.stringify(res.ids) === '["9001","9002"]' && JSON.stringify(res.pops) === '["9001"]' && JSON.stringify(res.pinned) === '["9001"]' &&
+               res.marked && res.pop && errors.length === before;
+    console.log(ok ? "OK" : "FAIL", "| boxel rows open in Here, hover card |", JSON.stringify(res), errors.slice(before));
+  }
   // the records a body holds said on its card and in its panel, not only in the 🏆's hover (the author, 2026-10-26)
   {
     const w = dom.window, before = errors.length;

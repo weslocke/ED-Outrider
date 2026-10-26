@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Boxel view: a system opens in Here, its bodies have the hover card
+- The author: in Nearby's Boxel view (the Overview's too) a click on a system did not show it in Here, and its bodies
+  had no hover card. A row of a system you visited or Spansh knows now opens it in Here as a Nearby row does (the same
+  system again closes it; its name still copies), is highlighted while shown, and its bodies cell has Nearby's card
+  (from the row's own summary: a boxel's systems are often outside Nearby's sphere). A number only to try has nothing
+  for Here to show and stays as it was.
+
 ## 2026-10-26 · Docs brought up to date for the next release
 - A pre-release sweep (seven doc sets, each checked against the code by one agent and its edits re-checked by another):
   the README's feature rows (codex folders and your own pictures, sights, Your records, the trail, seconds to full,
