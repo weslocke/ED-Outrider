@@ -2569,6 +2569,37 @@ class BatchBState(unittest.TestCase):
         self.assertTrue(ed_outrider.codex_sure_group(exact, known, exact=True))    # Paleas logged in Lime, this is Teal
         self.assertFalse(ed_outrider.codex_sure_group(dict(g, variant="Stratum Paleas - Lime"), known, exact=True))
 
+    def test_what_a_body_orbits_and_how_far(self):
+        """Hiner399, discussion #3 (2026-10-26): a moon's or a second star's planet's distance from what it orbits, beside
+        the distance from arrival; the orbit's size (semi-major axis), its range when eccentric; nothing where the
+        distance from arrival says it already (the arrival star's planets, the barycentre it is in)."""
+        ls = ed_outrider.LIGHT_SPEED
+        star = lambda ts, bid, name, parents, sma, **kw: self.planet(ts, 1, bid, name, StarType="K", PlanetClass=None,
+                                                                     Parents=parents, SemiMajorAxis=sma, **kw)
+        star("2026-01-01T00:00:10Z", 1, "A", [{"Null": 0}], 50 * ls, DistanceFromArrivalLS=0.0)
+        star("2026-01-01T00:00:11Z", 2, "B", [{"Null": 0}], 250_000 * ls, DistanceFromArrivalLS=253_000.0)
+        self.planet("2026-01-01T00:00:12Z", 1, 3, "A 1", Parents=[{"Star": 1}, {"Null": 0}], SemiMajorAxis=300 * ls, DistanceFromArrivalLS=300.0)
+        self.planet("2026-01-01T00:00:13Z", 1, 4, "B 1", Parents=[{"Star": 2}, {"Null": 0}], SemiMajorAxis=15 * ls,
+                    Eccentricity=0.2, DistanceFromArrivalLS=253_012.0)
+        self.planet("2026-01-01T00:00:14Z", 1, 5, "B 1 c", Parents=[{"Planet": 4}, {"Star": 2}, {"Null": 0}],
+                    SemiMajorAxis=0.05 * ls, Eccentricity=0.01, DistanceFromArrivalLS=253_012.5)
+        self.db.execute("INSERT OR REPLACE INTO own_systems (id64, name, body_count, all_found) VALUES (1, 'S1', 5, 1)")
+        self.db.commit()
+        rows = {b["name"]: b for b in self.state.system_detail(1)["bodies"]}
+        main = next(b["name"] for b in rows.values() if b.get("main"))
+        self.assertEqual(rows["B 1"]["orbit"], {"of": "B", "short": "B", "ls": 15.0, "near": 12.0, "far": 18.0})
+        self.assertEqual(rows["B 1 c"]["orbit"], {"of": "B 1", "short": "B 1", "ls": 0.05})   # under 5 %: no range
+        self.assertIsNone(rows["A 1"]["orbit"])                    # the arrival star's: its distance from arrival says it
+        self.assertIsNone(rows[main]["orbit"])
+        other = "B" if main == "A" else "A"                        # the other star orbits the barycentre the main one is in
+        self.assertIsNone(rows[other]["orbit"])
+        # a pair of planets round their own barycentre: named by both; one known so far: "a barycentre"
+        self.planet("2026-01-01T00:00:15Z", 1, 6, "B 2", Parents=[{"Null": 7}, {"Star": 2}, {"Null": 0}], SemiMajorAxis=2 * ls)
+        b2 = lambda: next(b for b in self.state.system_detail(1)["bodies"] if b["name"] == "B 2")["orbit"]
+        self.assertEqual((b2()["of"], b2()["short"]), ("a barycentre", "barycentre"))
+        self.planet("2026-01-01T00:00:16Z", 1, 8, "B 3", Parents=[{"Null": 7}, {"Star": 2}, {"Null": 0}], SemiMajorAxis=3 * ls)
+        self.assertEqual((b2()["of"], b2()["ls"]), ("the B 2 + B 3 barycentre", 2.0))
+
     def test_a_boxel_system_spansh_knows_is_located(self):
         """Review 2026-10-26: a Boxel view row Spansh knows, outside Nearby's sphere, opened Here on "unknown system"."""
         ed_outrider.meta_set(self.db, "boxel_spansh", {"Drojau TF-H c13-": {"systems": {"12": {"id64": 3375408059762, "x": 1.0, "y": 2.0, "z": 3.0}}}})

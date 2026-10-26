@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · What a body orbits and how far
+- Hiner399 (discussion #3): beside a moon's or a second star's planet's distance from arrival, how far it is from what
+  it orbits. Here's LS column has "↳ 15 ls · B" under it, the body's card "orbits B at 15 ls" and its panel an Orbits
+  row, with the closest and farthest points when the orbit is 5 % eccentric or more (your scans: the Scan's
+  Eccentricity); km for a tight moonlet; a barycentre named by its members ("the A 3 + A 4 barycentre", "a barycentre"
+  while only one is known). Nothing for the arrival star's planets or the barycentre it is in, whose distance from
+  arrival says it (`orbit_facts`, from the semi-major axis and build_tree's parents). Checked on the author's real
+  systems (Smojooe TW-E c11-2: B 1 1,853 ls from arrival, 7.9 ls from B).
+
 ## 2026-10-26 · Boxel view: a complete boxel is done by itself; Done always offered
 - The author: once a boxel ran out of candidates (its end known, every number below it visited: "✓ complete") it was
   not done: bright on the sector map, still kept, and the Done button gone until a Retry above the end brought it

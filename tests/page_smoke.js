@@ -614,15 +614,17 @@ const releasePayloads = async () => {
       REC.d = {records: [{key: "hot", label: "Hottest planet", text: "1,203 K", body: "4", system: "Smojooe AB-C d1-2", id64: "77", ts: new Date().toISOString()},
                          {key: "far", label: "Farthest system", text: "12,000 ly", body: null, system: "X", id64: "77"},
                          {key: "big", label: "Largest planet", text: "70,000 km", body: "5", system: "Smojooe AB-C d1-2", id64: "77"}]};
-      const card = bodyPopHtml({name: "4", type: "Planet", subtype: "Rocky body"}, null, "77");
+      const orbit = {of: "B 1", short: "B 1", ls: 0.05, near: 0.04, far: 0.06};
+      const card = bodyPopHtml({name: "4", type: "Planet", subtype: "Rocky body", orbit}, null, "77");
       const other = bodyPopHtml({name: "4", type: "Planet", subtype: "Rocky body"}, null, "78");
       const div = document.createElement("div");
-      renderBodyInto(div, {full_name: "Smojooe AB-C d1-2 4", own: {}, spansh: {}, row: {}}, "4", "closeBody()", "77");
+      renderBodyInto(div, {full_name: "Smojooe AB-C d1-2 4", own: {}, spansh: {}, row: {orbit}}, "4", "closeBody()", "77");
       const panel = div.textContent, whole = recordsHeld("77", "Smojooe AB-C d1-2 5").map(r => r.key);
       REC.d = saved;
       return JSON.stringify({card, other, panel, whole}); })()`));
     const ok = /Your record</.test(res.card) && /Hottest planet<\/span><b>1,203 K <span class="ok"[^>]*>new<\/span><\/b>/.test(res.card) &&
                !/Largest|Farthest/.test(res.card) && !/Your record/.test(res.other) && /Your recordHottest planet1,203 K new/.test(res.panel) &&
+               /orbits B 1 at 14,990 km \(11,992 km to 17,988 km\)/.test(res.card) && /OrbitsB 1 at 14,990 km/.test(res.panel) &&
                JSON.stringify(res.whole) === '["big"]' && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| records on the body's card |", JSON.stringify(res).slice(0, 400), errors.slice(before));
   }
@@ -1267,13 +1269,17 @@ const releasePayloads = async () => {
                       !!seenSp && !!seenSp.querySelector(".clcam")];   // its 📷 too (2026-10-26)
         // 📷 beside a species whose colour your codex folders have a picture of (the author, 2026-10-26): a finished
         // one, a run under way and a composition scan's codex line; none without
-        const picB = Object.assign({}, fake, {name: "Fake 3", genera: ["Bacterium", "Fungoida"], bio_guess: [],
+        const picB = Object.assign({}, fake, {name: "Fake 3", genera: ["Bacterium", "Fungoida"], bio_guess: [], dist_ls: 253012,
+          orbit: {of: "B", short: "B", ls: 15, near: 12, far: 18},
           organics: [{genus: "Bacterium", species: "Bacterium Aurasus", variant: "Bacterium Aurasus - Green", samples: 3, done: true, lost: false, value: 1000000, own_pic: true},
                      {genus: "Fungoida", species: "Fungoida Stabitis", variant: "Fungoida Stabitis - Green", samples: 1, done: false, lost: false, value: 2000000, own_pic: false}],
           codex: [{name: "Bacterium Aurasus - Green", new: false, voucher: 1, own_pic: true}, {name: "Stratum Paleas - Lime", new: false, own_pic: true}]});
         hereData = Object.assign({}, hd, {bodies: [picB], tree: null}); renderHere();
         const prow = document.querySelector('#hereRows tr[data-body="Fake 3"]');
         o.ownPic = prow ? [...prow.querySelectorAll("td.bio .sp")].map(e => !!e.querySelector(".clcam")) : null;
+        // what it orbits under its distance from arrival (Hiner399, discussion #3)
+        const ob = prow && prow.querySelector(".orbit");
+        o.orbit = ob ? [ob.textContent, ob.title] : null;
         o.ownPicLegend = [...document.querySelectorAll("#hereLegend .lgi")].some(e => /codex folders/.test(e.parentElement ? e.parentElement.textContent : ""));
         // the icon legend under the list (the author, 2026-10-10): only the icons this list shows; none, no footer
         const plain = {first_discovered: false, first_mapped: false, mapped: false, first_footfall: false, scanned: true, rings: 0,
@@ -1406,7 +1412,7 @@ const releasePayloads = async () => {
     w.setTimeout = realST; w.fetch = realFetch;
     w.eval("search = null; searchWant = 0; searchRefused = false; render()");
     w.speak = realSpeak; w.play = realPlay;
-    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1, true], ownPic: [true, false, true], ownPicLegend: true, legend: true, noDss: true, finished: true, mat: true,
+    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1, true], ownPic: [true, false, true], orbit: ["↳ 15 ls · B", "orbits B at 15 ls (12 ls to 18 ls): the orbit's size (its semi-major axis), not today's distance"], ownPicLegend: true, legend: true, noDss: true, finished: true, mat: true,
                   streak: 2, nulls: ["{}", "ts"], impNull: "bioSort", saved: true, dock: "2026-01-01T01:00:00Z", hlRender: true, more: true};
     const want2 = {onbody: true, here: true, logError: null};
     const goodH = JSON.stringify(out) === JSON.stringify(want) && JSON.stringify(out2) === JSON.stringify(want2)

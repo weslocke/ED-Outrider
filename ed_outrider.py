@@ -2791,6 +2791,36 @@ def build_tree(system, bodies):
     return tree, {c[1]: p for c, p in parent.items() if c[0] == "b"}
 
 
+ORBIT_RANGE_ECC = 0.05   # an orbit this eccentric or more: its closest and farthest points said too
+
+
+def orbit_facts(b, parent, main, main_parent, bary_label, raw=None):
+    """What a body orbits and how far: its orbit's size (the semi-major axis), {of, short, ls, near?, far?}, for Here,
+    its card and its panel (Hiner399's ask, discussion #3, 2026-10-26: a moonlet's distance to its moon was hidden in the
+    details). None where the distance from arrival says it already (a body of the arrival star, or of the barycentre it
+    is in) or nothing is known. `parent`: build_tree's for the body (("b", name), ("n", id), ("g", letters));
+    `bary_label`: a barycentre key -> its label ("A+B"); `raw`: your Scan line (its Eccentricity: the range)."""
+    sma = b.get("sma_ls")
+    if not parent or not sma or b.get("name") == main:
+        return None
+    if parent[0] == "b":
+        if parent[1] == main:
+            return None
+        of = short = parent[1]
+    elif parent[0] in ("n", "g"):
+        if parent == main_parent:
+            return None
+        label = bary_label(parent)
+        of, short = (f"the {label} barycentre", label) if label else ("a barycentre", "barycentre")
+    else:
+        return None
+    out = {"of": of, "short": short, "ls": sma}
+    ecc = (raw or {}).get("Eccentricity")
+    if isinstance(ecc, (int, float)) and ORBIT_RANGE_ECC <= ecc < 1:
+        out.update(near=sma * (1 - ecc), far=sma * (1 + ecc))
+    return out
+
+
 def record_from_search(system, b):
     st = b.get("subtype")
     return {"name": short_name(system, b.get("name")), "type": b.get("type"), "subtype": st,
@@ -13057,10 +13087,22 @@ class State:
             if r_["raw"]:
                 raws[short_name(name, r_["name"])] = json.loads(r_["raw"])
         cur = system_curiosities(name, out, raws)
+        main = next((b["name"] for b in out if b.get("main")), None)
+        labels = {}
+
+        def walk(nodes):   # the barycentres' labels ("A+B") by their keys
+            for nd in nodes:
+                if nd["kind"] == "barycentre":
+                    labels[("n", nd["id"]) if nd["id"] is not None else ("g", nd["label"].replace("+", ""))] = nd["label"]
+                walk(nd["children"])
+        walk(tree)
+        # named by two or more members ("A+B", "B 2 + B 3"); one known member names nothing ("a barycentre")
+        bary = lambda key: labels.get(key) if "+" in str(labels.get(key, "")) else None  # noqa: E731
         for b in out:
             p = parent_of.get(b["name"])
             b["is_moon"] = bool(p and p[0] == "b" and types.get(p[1]) == "Planet")
             b["curiosities"] = [{"tag": t, "why": w} for t, w in cur.get(b["name"], [])]
+            b["orbit"] = orbit_facts(b, p, main, parent_of.get(main), bary, raws.get(b["name"]))
             del b["parents_full"]
         # Spansh knows bodies here but their details have not landed yet (a refresh is fetching them):
         # the page asks again until they have, instead of keeping search-level rows and a guessed tree

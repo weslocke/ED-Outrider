@@ -5007,8 +5007,8 @@ function renderHere() {
                     !b.first_mapped && b.mapped && `<span class="fl unk" title="mapped (not first)">🗺</span>`,
                     b.first_footfall && `<span class="fl" title="first footfall">👣</span>`, !b.scanned && `<span class="unk" title="known to Spansh, not scanned by you">—</span>`].filter(Boolean).join("");
     return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${pinMarkFor(h.id64, b.name)}${codexTypeMark(b.codex_type, h.region)}${codexGeoMark(b.codex_geo, h.region)}${recordMark(h.id64, b.name)}${b.shots ? ` <span class="shotmark" title="${b.shots} screenshot${b.shots === 1 ? "" : "s"} of it: click the body for all of them">📷${b.shots > 1 ? b.shots : ""}</span>` : ""}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
-      <td>${sfText(b.type === "Star" ? "star" : "planet", b.subtype || "")}${b.type === "Star" ? (b.scoopable ? ` <span class="scoop">⛽</span>` : "") : ""}${b.rings ? `<span class="sf2"> ${icon("ring", "i-ring", b.rings, ringsText(b))}</span>` : ""}${b.dist_ls != null ? `<div class="sf2 sub2 unk">${Math.round(b.dist_ls).toLocaleString()} ls</div>` : ""}</td>
-      <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}</td>
+      <td>${sfText(b.type === "Star" ? "star" : "planet", b.subtype || "")}${b.type === "Star" ? (b.scoopable ? ` <span class="scoop">⛽</span>` : "") : ""}${b.rings ? `<span class="sf2"> ${icon("ring", "i-ring", b.rings, ringsText(b))}</span>` : ""}${b.dist_ls != null ? `<div class="sf2 sub2 unk">${Math.round(b.dist_ls).toLocaleString()} ls${b.orbit ? ` · ↳ ${esc(orbitLs(b.orbit.ls))}` : ""}</div>` : ""}</td>
+      <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}${b.orbit ? `<div class="sub2 unk orbit" title="${esc(orbitTitle(b.orbit))}">↳ ${esc(orbitLs(b.orbit.ls))} · ${esc(b.orbit.short)}</div>` : ""}</td>
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
       <td class="hide-sm c2hide">${b.type === "Planet" ? (atm ? sfText("atmosphere", atm) : b.landable ? dual("none · landable", "landable") : "") : ""}${b.stale_bio ? ` <span class="unk old" title="${esc(staleBodyTitle(b))}">${dual("landable? (old data)", "landable?", {title: `landable? (old data): ${staleBodyTitle(b)}`})}</span>` : ""}${b.bio_unknown ? ` <span class="warnc" title="${BIO_UNKNOWN_TITLE}">${dual("bio possible: check the FSS", "🧬?")}</span>` : ""}</td>
       <td class="bio">${bio.join(" ")}${geoTag(b)}${volcanoIcon(b)}${codex}${siteTags(b.sites, b.sites_reported)}${b.mining || (b.mined || []).length ? `<span class="sf2"> ${mineTag(b)}</span>` : ""}</td>
@@ -5383,11 +5383,17 @@ document.getElementById("hereSchematic").addEventListener("click", e => {
 const staleBodyTitle = b => `Last reported ${(b.updated || "").slice(0, 10)} by a pre-Odyssey client: thin-atmosphere worlds were marked not landable and bio was not reported. May hold unsampled life; footfall unknown. Your own scan replaces this.`;
 // ---- body hover summary ----
 const fmtK = n => n == null ? "?" : Math.round(n).toLocaleString();
+// what a body orbits and how far: its orbit's size, the semi-major axis (Hiner399's ask, discussion #3, 2026-10-26);
+// km for a tight moonlet, ls otherwise; the closest and farthest points for an eccentric orbit
+const orbitLs = v => v < 0.1 ? `${Math.round(v * 299792.458).toLocaleString()} km` : v < 10 ? `${v.toFixed(1)} ls` : `${Math.round(v).toLocaleString()} ls`;
+const orbitText = o => !o ? "" : `orbits ${o.of} at ${orbitLs(o.ls)}${o.near != null ? ` (${orbitLs(o.near)} to ${orbitLs(o.far)})` : ""}`;
+const orbitTitle = o => `${orbitText(o)}: the orbit's size (its semi-major axis), not today's distance`;
 // region: the region of the system the body is in (a search result may be elsewhere than Here)
 function bodyPopHtml(b, region, sys = null) {   // sys: the body's system id64 string (your mining record on its rings)
   const isStar = b.type === "Star";
   const phys = [
     b.dist_ls != null && `${fmtK(b.dist_ls)} ls from arrival`,
+    b.orbit && `<span title="${esc(orbitTitle(b.orbit))}">${esc(orbitText(b.orbit))}</span>`,
     !isStar && b.gravity != null && `${b.gravity.toFixed(2)} g`,
     b.temperature != null && `${fmtK(b.temperature)} K`,
     !isStar && b.atmosphere && b.atmosphere !== "None" && esc(b.atmosphere) + (b.pressure != null ? ` (${b.pressure < 0.01 ? b.pressure.toFixed(4) : b.pressure.toFixed(2)} atm)` : ""),
@@ -5526,6 +5532,7 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
     ["Reserves", esc(pick(own.ReserveLevel, sp.reserveLevel))],
   ]));
   orbitSec = sec("orbit", "Orbit and rotation", kv([
+    ["Orbits", row.orbit ? `<span title="${esc(orbitTitle(row.orbit))}">${esc(row.orbit.of)} at ${esc(orbitLs(row.orbit.ls))}${row.orbit.near != null ? ` <span class="unk">(${esc(orbitLs(row.orbit.near))} to ${esc(orbitLs(row.orbit.far))})</span>` : ""}</span>` : null],
     ["Orbital period", days(pick(own.OrbitalPeriod, sp.orbitalPeriod != null ? sp.orbitalPeriod * 86400 : null))],
     ["Semi-major axis", has(own.SemiMajorAxis) ? `${n(own.SemiMajorAxis / 1.496e11, 4)} AU` : has(sp.semiMajorAxis) ? `${n(sp.semiMajorAxis, 4)} AU` : null],
     ["Eccentricity", n(pick(own.Eccentricity, sp.orbitalEccentricity), 4)],
