@@ -96,5 +96,23 @@ class Server(unittest.TestCase):
         self.assertEqual(out["bodies"], 1)                               # A 2, a beacon read only: not counted
 
 
+    def test_a_beacon_read_first_and_zero_figures(self):
+        """In-depth review 2026-10-25: a body first read off a nav beacon was dated by that read; an airless body's 0
+        held "Thickest atmosphere 0.0 atm", an arrival star's 0 "Farthest from its arrival star"; a thin one read 0.0."""
+        j = self.j
+        body = dict(BodyID=3, BodyName="Sys B 1", StarSystem="Sys", SystemAddress=7, PlanetClass="Rocky body", Landable=True,
+                    SurfaceGravity=3.5 * G, Radius=1e6, DistanceFromArrivalLS=0, SurfacePressure=0.0)
+        j.handle({"event": "FSDJump", "timestamp": "2024-05-01T00:00:00Z", "StarSystem": "Sys", "SystemAddress": 7, "StarPos": [3, 4, 0]})
+        j.handle(dict(body, event="Scan", timestamp="2024-05-01T00:01:00Z", ScanType="NavBeaconDetail"))
+        j.handle(dict(body, event="Scan", timestamp="2026-10-25T00:01:00Z", ScanType="Detailed"))
+        self.db.commit()
+        rec = {r["key"]: r for r in ed_outrider.body_records(self.db)["records"]}
+        self.assertEqual(rec["high_g"]["ts"], "2026-10-25T00:01:00Z")   # your own scan, not the beacon's
+        self.assertNotIn("pressure", rec)
+        self.assertNotIn("far_out", rec)
+        thin = R.records([(1, "S", "1", "t", scan("S 1", PlanetClass="Rocky body", SurfacePressure=500.0, Radius=1e6))])
+        self.assertEqual({r["key"]: r["text"] for r in thin}["pressure"], "0.0049 atm")
+
+
 if __name__ == "__main__":
     unittest.main()

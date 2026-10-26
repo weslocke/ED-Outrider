@@ -2,6 +2,21 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · In-depth review fixes (2): records, curiosities, green gas giants, sights, Search
+- **Your records:** a body first read off a nav beacon is dated by your own scan of it; an airless body's 0 holds no
+  "Thickest atmosphere" record, an arrival star's 0 no "Farthest from its arrival star"; a thin atmosphere shows its
+  figure (0.0049 atm, not 0.0). PARSER_VERSION 63 re-reads the journals once for the dates.
+- **Curiosities:** Here's rows carry no StarType, so white dwarfs, neutron stars and black holes were "tiny stars"
+  there (and in the 📋 summary and the overlay): the subtype tells them apart too. The "green gas giant" curiosity
+  never fired (it read the giant's codex, but the entry is the star's): it comes from the system's matched giants.
+  The 📋 summary shows a reason only for a figure, a body's name in it ("inside 2's rings") being none.
+- **Green gas giants:** the entry is written in the same second as the giant's Scan (4 of 4 in a capture of every
+  player's EDDN traffic), which now names it among several of a class; an entry whose class no giant here has
+  confirms one rather than nothing; "one of N" giants are worded so in Now and the summary, never each called green.
+- **EDAstro sights:** the catalogue is read from the database once, not per Nearby row; an unchanged one (EDAstro
+  sends no validators: the whole 2.2 MB comes daily) is not stored again; the guide says so.
+- **Search:** Clear gives "arrival star only" back (it stayed greyed and in force).
+
 ## 2026-10-25 · In-depth review fixes (1): screenshots and the rail
 The in-depth Fable review of d17eee4..5a06e97 (11 areas, two reviewers each, every finding checked by two skeptics):
 - **Never converted twice:** a journal re-read (PARSER_VERSION 62 is one) replays the last five minutes' Screenshot

@@ -156,9 +156,16 @@ const GGG_SVG = `<svg viewBox="0 0 18 14" width="17" height="13" aria-hidden="tr
 const gggIcon = (sure, title, n = 1) => `<span class="ggg${sure ? " sure" : ""}" title="${esc(title)}">${GGG_SVG}${sure ? "" : "?"}${n > 1 ? "×" + n : ""}</span>`;
 // confirmed: your codex logged a green giant of its class here; of > 1: one of that many, the journal never says which
 // (its codex entry names the system's main star, not the giant)
-const gggTitle = g => g.confirmed ? (g.of > 1 ? `a green gas giant of this class is in your codex here: one of these ${g.of} (the game does not say which)`
+const gggTitle = g => g.confirmed ? (g.of > 1 ? `a green gas giant is in your codex here: one of these ${g.of} (nothing says which)`
     : "a green gas giant: your codex entry confirms it")
   : `a potential green gas giant (${g.chance}): the community's seven-layer ladder model puts a cloud layer exactly on a colour border (layer ${g.rung}, ${g.border} K). A guess: check it in the system map, the codex confirms it`;
+// the giants a codex entry confirms, in words: each one known by name; "one of" those nothing tells apart (in-depth
+// review 2026-10-25: Now and the Markdown named every one of them green). B: how a name is written (the Markdown's bold)
+function gggSureWords(sure, B = x => x) {
+  const one = sure.filter(b => !(b.ggg.of > 1)), some = sure.filter(b => b.ggg.of > 1);
+  return [one.length && `Green gas giant${one.length > 1 ? "s" : ""}: ${one.map(b => B(b.name)).join(", ")}`,
+          some.length && `Green gas giant, one of: ${some.map(b => B(b.name)).join(", ")} (the codex does not say which)`].filter(Boolean).join(" · ");
+}
 const nameWords = n => { const split = esc(n).split(" ").map(w => /-/.test(w) ? `<span class="nw">${w}</span>` : w).join(" ");
   return split === esc(n) ? split : `<span class="c2hide">${esc(n)}</span><span class="sf2">${split}</span>`; };
 // a plain text in both forms
@@ -1433,7 +1440,7 @@ function renderNow() {
       const guess = gggs.filter(b => !b.ggg.confirmed), sure = gggs.filter(b => b.ggg.confirmed);
       lines.push(`<div class="now-line now-ggg">` + (guess.length ? `${gggIcon(false, gggTitle(guess[0].ggg))} <span class="ok">Potential green gas giant${guess.length > 1 ? "s" : ""}: ` +
         `${guess.map(b => `${esc(b.name)}${b.ggg.chance === "possible" ? " (possible)" : ""}`).join(", ")}</span> <span class="unk">· check in the system map</span>` : "") +
-        (sure.length ? `${guess.length ? " · " : ""}${gggIcon(true, gggTitle(sure[0].ggg))} <span class="ok">Green gas giant${sure.length > 1 ? "s" : ""}: ${sure.map(b => esc(b.name)).join(", ")}</span>` : "") + `</div>`);
+        (sure.length ? `${guess.length ? " · " : ""}${gggIcon(true, gggTitle(sure[0].ggg))} <span class="ok">${esc(gggSureWords(sure))}</span>` : "") + `</div>`);
     }
     if (data.mining_live && data.mining_live.text)   // mining D: the strip while you mine in a ring (the overlay's too)
       lines.push(`<div class="now-line now-mine">${esc(data.mining_live.text)}</div>`);
@@ -4804,11 +4811,15 @@ function systemSummaryMd(h) {
   const notable = h.bodies.filter(b => b.notable && NOTABLE[b.notable] || b.terraformable)
     .map(b => `${B(b.name)}: ${NOTABLE[b.notable] || b.subtype || ""}${b.terraformable ? " (terraformable)" : ""}`.trim());
   if (notable.length) out.push(`- Notable: ${notable.join(", ")}`);
-  const ggg = h.bodies.filter(b => b.ggg);
-  if (ggg.length) out.push(`- ${ggg.some(b => b.ggg.confirmed) ? "Green gas giant" : "Potential green gas giant"}: ` +
-    ggg.map(b => `${B(b.name)}${b.ggg.confirmed ? "" : ` (${b.ggg.chance})`}`).join(", "));
+  const sure = h.bodies.filter(b => b.ggg && b.ggg.confirmed), guess = h.bodies.filter(b => b.ggg && !b.ggg.confirmed);
+  if (sure.length) out.push(`- ${gggSureWords(sure, B)}`);
+  if (guess.length) out.push(`- Potential green gas giant: ${guess.map(b => `${B(b.name)} (${b.ggg.chance})`).join(", ")}`);
+  // a reason only when it adds a figure: a body's name in it ("orbits inside 2's rings") is no figure (in-depth review)
+  // (a name only where the reasons put one: before "'s" or at the end, so body "3" leaves "3 radii from 2" its figure)
+  const names = h.bodies.map(b => b.name).filter(Boolean).sort((a, b) => b.length - a.length);
+  const figure = why => /\d/.test(names.reduce((t, n) => t.replace(new RegExp(`(^|\\s)${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=['’]s\\b|$)`, "g"), "$1"), why || ""));
   const cur = h.bodies.filter(b => (b.curiosities || []).length)
-    .map(b => `${B(b.name)}: ${b.curiosities.map(c => `${c.tag}${/\d/.test(c.why || "") ? ` (${c.why})` : ""}`).join(", ")}`);
+    .map(b => `${B(b.name)}: ${b.curiosities.map(c => `${c.tag}${figure(c.why) ? ` (${c.why})` : ""}`).join(", ")}`);
   if (cur.length) out.push(`- Curiosities: ${cur.join("; ")}`);
   for (const b of h.bodies) {
     const orgs = (b.organics || []).filter(o => !o.lost), fct = bioFactor(b);
@@ -9311,7 +9322,9 @@ sForm.addEventListener("change", saveForm);
 document.getElementById("sClear").onclick = () => {
   sForm.querySelectorAll("input[data-group]").forEach(b => b.checked = false); syncScoop();
   document.getElementById("sMining").checked = false; document.getElementById("sHotMin").checked = false;
-  document.getElementById("sStarsMin").value = document.getElementById("sPlanetsMin").value = ""; document.getElementById("sMineral").value = ""; saveForm();
+  document.getElementById("sStarsMin").value = document.getElementById("sPlanetsMin").value = ""; document.getElementById("sMineral").value = "";
+  sMainOnlyShown();   // "at least" emptied: "arrival star only" back in hand (in-depth review 2026-10-25: left greyed)
+  saveForm();
 };
 loadForm(store.get("search", null));
 

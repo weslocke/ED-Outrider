@@ -67,6 +67,18 @@ class GreenCodex(unittest.TestCase):
         self.assertEqual(G.match_green([(1200502, "x", 46)], [star, one, other]), {"S 2": {"confirmed": True, "of": 1}})
         self.assertEqual(G.match_green([(1300501, "High metal content world", 0)], [star, one]), {})
 
+    def test_the_scan_in_the_entry_s_second(self):
+        """In-depth review 2026-10-25, from a capture of every player's EDDN traffic: the green entry is written in the
+        same second as the giant's Scan (4 of 4), which names it among three of a class; and an entry whose class no
+        giant here has (water life over an ammonia-life giant) still confirms one rather than nothing."""
+        threes = [dict(self.giant(f"S {i}", i, "Sudarsky class III gas giant"), scan_ts=[f"2026-10-10T21:22:{30 + i}Z"]) for i in (1, 2, 4)]
+        self.assertEqual(G.match_green([(1200702, "x", 0, "2026-10-10T21:22:34Z")], threes), {"S 4": {"confirmed": True, "of": 1}})
+        self.assertEqual(len(G.match_green([(1200702, "x", 0, "2026-10-10T23:00:00Z")], threes)), 3)   # no such scan: one of 3
+        ammonia = dict(self.giant("S 29", 29, "Gas giant with ammonia based life"), scan_ts=["2026-10-10T22:00:02Z"])
+        self.assertEqual(G.match_green([(1200302, "$Codex_Ent_Green_Giant_With_Water_Life_Name;", 0, "2026-10-10T22:00:02Z")],
+                                       [ammonia, self.giant("S 26", 26, "Sudarsky class III gas giant")]), {"S 29": {"confirmed": True, "of": 1}})
+        self.assertEqual(G.green_count([(1200302, "x", 0, "2026-10-10T23:00:00Z")], [self.giant("S 26", 26, "Sudarsky class III gas giant")]), 1)
+
     def test_here_and_nearby_with_the_star_s_body_id(self):
         db = ed_outrider.open_db(":memory:")
         self.addCleanup(db.close)

@@ -406,6 +406,16 @@ class MoreCuriosities(unittest.TestCase):
         row = dict(ringed, rings=1, ring_details=ed_outrider.ring_stats(ringed["rings"]))
         self.assertEqual(self.tags(inside, row), ["shepherd moon"])
 
+    def test_review_2_tiny_star_and_green_giant(self):
+        """In-depth review 2026-10-25: Here's rows carry no StarType, so a white dwarf was a "tiny star" there; the green
+        gas giant curiosity read the giant's codex, but the entry is the star's: it never fired."""
+        for sub in ("White Dwarf (DA) Star", "Neutron Star", "Black Hole"):
+            self.assertEqual(self.tags({"name": "B", "type": "Star", "subtype": sub, "radius_km": 7000}), [], sub)
+        giant = {"name": "S 2", "type": "Planet", "subtype": "Sudarsky class I gas giant", "radius_km": 70000, "body_id": 2}
+        self.assertEqual(self.tags(dict(giant, ggg={"confirmed": True, "of": 1})), ["green gas giant"])
+        cur = ed_outrider.system_curiosities("S", [giant], greens={"S 2": {"confirmed": True, "of": 2}})
+        self.assertIn("one of these 2", cur["S 2"][0][1])
+
     def test_tiny_world_tiny_star_and_extreme_orbit(self):
         self.assertEqual(self.tags({"name": "1 a", "type": "Planet", "radius_km": 183}), ["tiny world"])
         self.assertEqual(self.tags({"name": "1 b", "type": "Planet", "radius_km": 301}), [])

@@ -247,7 +247,7 @@ up it says "checking…", never the previous target's verdict.
   from [EDAstro's Galactic Encyclopedia Catalog](https://edastro.com/gec/) (the community's curated sights: scenery,
   planetary and stellar features, green gas giants, nebulae...; its page opens from the name), within 500 ly
   (`[server] sights_range`; 0 turns it off and nothing is fetched). Here's heading names the sights of a system that
-  has one, and Nearby's row has 📜. The catalogue is asked for once a day, only when it changed, and never shipped.
+  has one, and Nearby's row has 📜. The catalogue is asked for once a day (stored again only when it changed) and never shipped.
 - An **at-risk line** shows what is aboard against your rebuy ("🗺 380M · 🧬 412M aboard · 3.2× rebuy · 4 d
   unsold"), only once that is over your amber level or rebuy multiple; a ship bought with Arx (its hull has no credit
   value) gets no rebuy multiple. Docked where your data sells it says what
@@ -321,8 +321,10 @@ journal's own figures for: your scans, and Spansh's records of other people's.
 
 - **A green planet with "?"** marks a potential one: beside the body in Here, on the system's row in Nearby (a
   system worth going to), and a Now line ("Potential green gas giant: B 3 · check in the system map"). Without the
-  "?" it is confirmed: your codex has its green entry (the game logs it on the system, not the giant, so with two giants
-  of that class both get the mark, "one of these 2" in the hover).
+  "?" it is confirmed: your codex has its green entry. The game files it on the system's main star, not the giant, but
+  writes it in the same second as your scan of the giant, which names it; only when no scan of yours shares that
+  second (a system you never scanned yourself) do the giants of its class all get the mark, "one of these 2" in the
+  hover and "one of" in Now and the 📋 summary.
 - **"Potential green gas giant"** is said when one of your own scans fits (its own switch under Discoveries).
 - "likely" is a confirmed rule of the model, "possible" a derived one. It is a guess about where to look: some kinds
   (Class II, V, helium giants) and some temperatures cannot be predicted at all, and nothing is said for them.

@@ -1683,7 +1683,7 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 #     (one after a long break keeps its hotspot), a legacy folder's stints are not today's ship's
 # 58: each mining session keeps where it mined (play_activity's mining places: the ring, the SRV's body): Sessions' Where
 # 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
-PARSER_VERSION = 62
+PARSER_VERSION = 63
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1709,6 +1709,7 @@ PARSER_VERSION = 62
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    63: "a body first read off a nav beacon is dated by your own scan of it in Your records, and green gas giants are told apart by the scan written with their codex entry",
     62: "Your records are dated by when you first scanned each body, and a nav beacon read no longer hides one",
     61: "geology formations logged in your codex keep where they are, so a screenshot taken near one names it",
     60: "a deposit into your carrier's bank counts toward its weeks of upkeep (the Fable bug check of 2026-10-24)",
@@ -5591,7 +5592,21 @@ class Journals:
                 first_ship = known["ship_id"] if known and ts >= (known["ts"] or "") else self.ship_at(ts)
                 # when you first scanned it (Your records' date: review 2026-10-25, a rescan on a return visit dated a
                 # years-old record today and marked it new); an older scan read late (a legacy folder) moves it back
-                first_ts = min(ts, (known["first_ts"] or known["ts"] or ts)) if known else ts
+                # a nav beacon's read is not your scan: it never dates the body, and your own scan after one dates it
+                # (in-depth review 2026-10-25: a beacon-first body was dated by the beacon read)
+                beacon = ev.get("ScanType") in NAV_BEACON_SCANS
+                try:
+                    known_beacon = bool(known and known["raw"] and json.loads(known["raw"]).get("ScanType") in NAV_BEACON_SCANS)
+                except (TypeError, ValueError):
+                    known_beacon = False
+                if not known:
+                    first_ts = ts
+                elif beacon and not known_beacon:
+                    first_ts = known["first_ts"] or known["ts"] or ts
+                elif known_beacon and not beacon:
+                    first_ts = ts
+                else:
+                    first_ts = min(ts, (known["first_ts"] or known["ts"] or ts))
                 # a nav beacon's read never replaces your own scan's line (review 2026-10-25: Your records leave beacon
                 # reads out, so the body dropped from them)
                 raw = json.dumps(ev)
@@ -6599,10 +6614,20 @@ def ggg_state(record, green=None):
 
 
 def ggg_green(db, id64, records):
-    """outrider.ggg.match_green for a system: its codex lines matched to its giants by class (the entry's BodyID is the
-    main star's, not the giant's)."""
-    return outrider.ggg.match_green([(r[0], r[1], r[2]) for r in db.execute(
-        "SELECT entry_id, name, body_id FROM codex WHERE system=?", (id64,))], records)
+    """outrider.ggg.match_green for a system: its codex lines matched to its giants (the entry's BodyID is the main
+    star's, not the giant's): by the scan of yours written in the entry's second, else by class."""
+    return outrider.ggg.match_green(ggg_entries(db, id64), ggg_scan_times(db, id64, records))
+
+
+def ggg_entries(db, id64):
+    """A system's codex lines for match_green: (entry_id, name, body_id, ts)."""
+    return [(r[0], r[1], r[2], r[3]) for r in db.execute("SELECT entry_id, name, body_id, ts FROM codex WHERE system=?", (id64,))]
+
+
+def ggg_scan_times(db, id64, records):
+    """records with "scan_ts": the times of your own scans of each body (the first and the latest)."""
+    times = {r["name"]: [r["first_ts"], r["ts"]] for r in db.execute("SELECT name, ts, first_ts FROM own_bodies WHERE system=?", (id64,))}
+    return [dict(r, scan_ts=times[r.get("name")]) if r.get("name") in times else r for r in records]
 
 
 def ggg_bodies(db, id64, system_name, records):
@@ -6617,8 +6642,7 @@ def ggg_bodies(db, id64, system_name, records):
         if p:
             out.append({"body": short_name(system_name, r.get("name") or "") or r.get("name"), "chance": p["chance"]})
     # the green giants logged: each codex line counted once, "one of 2" too (as Nearby's tag shows it)
-    entries = [(r[0], r[1], r[2]) for r in db.execute("SELECT entry_id, name, body_id FROM codex WHERE system=?", (id64,))]
-    return out, outrider.ggg.green_count(entries, records)
+    return out, outrider.ggg.green_count(ggg_entries(db, id64), ggg_scan_times(db, id64, records))
 
 
 def rare_star_words(subtype):
@@ -6819,7 +6843,7 @@ def curiosities(r, parent=None, raw=None):
         out.append(("shepherd moon", f"orbits inside {parent['name']}'s rings"))
     if planet and rk and rk < TINY_WORLD_KM:
         out.append(("tiny world", f"{rk:,.0f} km in radius"))
-    if r.get("type") == "Star" and rk and rk < TINY_STAR_KM and not degenerate_star((r.get("ed") or {}).get("StarType")):
+    if r.get("type") == "Star" and rk and rk < TINY_STAR_KM and not degenerate_star((r.get("ed") or {}).get("StarType"), r.get("subtype")):
         out.append(("tiny star", f"{rk:,.0f} km in radius, a twentieth of the Sun's or less"))
     ecc = raw.get("Eccentricity")
     if isinstance(ecc, (int, float)) and ecc >= EXTREME_ECCENTRICITY:
@@ -6827,9 +6851,15 @@ def curiosities(r, parent=None, raw=None):
     rare = RARE_PLANETS.get(r.get("subtype") or "")
     if planet and rare:   # rare classes: a sight, if not a fortune
         out.append(rare)
-    if planet and any("green" in str((c or {}).get("name") or "").lower() and "gas giant" in str((c or {}).get("name") or "").lower()
-                      for c in r.get("codex") or []):   # the codex is the only place the game says it
-        out.append(("green gas giant", "a green gas giant: one of the rarest sights"))
+    # the codex is the only place the game says it, and its entry is filed under the main star: the system's matched
+    # giants (ggg: Here's rows; system_curiosities' greens for Nearby) say which (in-depth review 2026-10-25: this never
+    # fired once the entry was known to be the star's); a giant's own entry (an older journal) still counts
+    g = r.get("ggg") if isinstance(r.get("ggg"), dict) else {}
+    if planet and (g.get("confirmed") or any("green" in str((c or {}).get("name") or "").lower() and "gas giant" in
+                                              str((c or {}).get("name") or "").lower() for c in r.get("codex") or [])):
+        of = g.get("of") or 1
+        out.append(("green gas giant", "a green gas giant: one of the rarest sights" if of == 1
+                    else f"one of these {of} giants is a green gas giant (the codex does not say which)"))
     return out
 
 
@@ -6840,10 +6870,13 @@ EXTREME_ECCENTRICITY = 0.9     # an orbit at least this eccentric: 7 of the auth
 CLOSE_BINARY_LS = 5.0          # two stars round one barycentre closer than this: 52 pairs in the author's 3,401 systems
 
 
-def degenerate_star(star_type):
-    """A white dwarf, neutron star or black hole (journal StarType): tiny by nature, never a curiosity for its size."""
+def degenerate_star(star_type, subtype=None):
+    """A white dwarf, neutron star or black hole (journal StarType, else the subtype's words: Here's rows carry no
+    StarType, in-depth review 2026-10-25): tiny by nature, never a curiosity for its size."""
     t = str(star_type or "")
-    return t in ("N", "H", "SupermassiveBlackHole") or t.startswith("D")
+    words = str(subtype or "").lower()
+    return t in ("N", "H", "SupermassiveBlackHole") or t.startswith("D") or \
+        any(w in words for w in ("white dwarf", "neutron", "black hole"))
 
 
 RARE_PLANETS = {"Water giant": ("water giant", "a water giant: rare"),
@@ -6852,11 +6885,13 @@ RARE_PLANETS = {"Water giant": ("water giant", "a water giant: rare"),
                 "Class V gas giant": ("class V giant", "a Sudarsky class V gas giant: rare")}
 
 
-def system_curiosities(system, records, raws=None):
+def system_curiosities(system, records, raws=None, greens=None):
     """{short body name: [(tag, why)]} for a system, the same for Here and Nearby. A body's parent is the
     body it directly orbits (never through a barycentre: an orbit around a shared centre is measured from
     that centre, so comparing it with a star's radius would be meaningless)."""
-    raws = raws or {}
+    raws, greens = raws or {}, greens or {}
+    # the giants a green codex entry confirms (ggg_green), for records that do not carry their ggg (Nearby's)
+    records = [dict(x, ggg=greens[x.get("name")]) if x.get("name") in greens else x for x in records]
     by_id = {x.get("body_id"): x for x in records if x.get("body_id") is not None}
     first = lambda x: next((q for q in x.get("parents_full") or [] if q["kind"] != "Ring"), None)
     out = {}
@@ -11813,10 +11848,13 @@ class State:
         """(entries, {id64: [entries]}) from the last copy kept (meta sights); empty with the feature off or none yet."""
         if not self.sights_range:
             return [], {}
-        d = meta_get(self.db, "sights") or {}
-        if self._sights[0] != d.get("checked"):
+        # read once (in-depth review 2026-10-25: the whole catalogue was parsed again for every Nearby row and payload);
+        # sights_check replaces it when a new one comes
+        if not self.__dict__.get("_sights_read"):
+            d = meta_get(self.db, "sights") or {}
             entries = d.get("data") or []
             self._sights = (d.get("checked"), entries, outrider.sights.by_system(entries))
+            self._sights_read = True
         return self._sights[1], self._sights[2]
 
     def sights_here(self, id64):
@@ -11835,16 +11873,21 @@ class State:
         return self._sight_near[1]
 
     async def sights_check(self):
-        """One conditional ask of EDAstro's GEC; a new answer is kept (meta sights), an unchanged one only dated. Raises
-        on a failure (the loop waits SIGHTS_CHECK_RETRY)."""
+        """One ask of EDAstro's GEC (conditional, though EDAstro sends no validators: the whole catalogue comes each
+        time); a different catalogue is kept (meta sights) and shown at once, the same one only dated (meta
+        sights_checked: the 2.2 MB answer is not stored again, in-depth review 2026-10-25). Raises on a failure (the loop
+        waits SIGHTS_CHECK_RETRY)."""
         d = meta_get(self.db, "sights") or {}
         status, data, etag, modified = await self.spansh.get_if_changed(GEC_URL, d.get("etag"), d.get("modified"))
-        d = dict(d, checked=time.time())
+        now = time.time()
         if status == 200:
-            d.update(data=outrider.sights.compact(data), etag=etag, modified=modified)
-        meta_set(self.db, "sights", d)
+            new = outrider.sights.compact(data)
+            if new != d.get("data"):
+                meta_set(self.db, "sights", dict(d, data=new, etag=etag, modified=modified, checked=now))
+                self._sights, self._sights_read = (now, new, outrider.sights.by_system(new)), True
+                self.bump()
+        meta_set(self.db, "sights_checked", now)
         self.db.commit()
-        self.bump()
 
     async def watch_sights(self):
         """[server] sights_range above 0: EDAstro's catalogued sights, at start and once a day (only the request: nothing
@@ -13742,7 +13785,7 @@ class State:
         s["pois"] = [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))]
         raws = {short_name(base["name"], r_["name"]): json.loads(r_["raw"]) for r_ in self.db.execute(
             "SELECT name, raw FROM own_bodies WHERE system=? AND raw IS NOT NULL", (id64,))}
-        cur = system_curiosities(base["name"], records, raws)
+        cur = system_curiosities(base["name"], records, raws, ggg_green(self.db, id64, records))
         s["curiosity_list"] = [{"body": bn, "tag": t, "why": w} for bn, lst in cur.items() for t, w in lst]
         s["curiosities"] = len(s["curiosity_list"])
         if not s["bodies_known"]:

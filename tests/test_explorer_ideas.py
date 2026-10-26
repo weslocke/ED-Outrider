@@ -3,6 +3,7 @@ Search's "at least N" (7), EDSM's first reporter (5), the surface trail (1), cat
 import asyncio
 import time
 import unittest
+import unittest.mock
 
 from support import ed_outrider  # also puts the repository root on sys.path
 
@@ -174,6 +175,19 @@ class Sights(unittest.TestCase):
         asyncio.run(st.sights_check())                         # unchanged: asked with its etag, the copy kept
         self.assertEqual(asked, [(ed_outrider.GEC_URL, None), (ed_outrider.GEC_URL, "e1")])
         self.assertEqual(st.sight_near()["name"], "Lyceum")
+        # read from the database once, not per Nearby row (in-depth review 2026-10-25); an unchanged answer is not
+        # stored again (EDAstro sends no validators: the whole catalogue comes every day)
+        st2 = self.state()
+        st2.spansh.get_if_changed = lambda url, etag=None, modified=None: fake(url, None, None)
+        asyncio.run(st2.sights_check())
+        stored = ed_outrider.meta_get(st2.db, "sights")
+        with unittest.mock.patch.object(ed_outrider, "meta_get", side_effect=AssertionError("read again")):
+            for _ in range(5):
+                st2.sights_here(42)
+        with unittest.mock.patch.object(ed_outrider, "meta_set", wraps=ed_outrider.meta_set) as ms:
+            asyncio.run(st2.sights_check())
+        self.assertEqual([c.args[1] for c in ms.call_args_list], ["sights_checked"])
+        self.assertEqual(ed_outrider.meta_get(st2.db, "sights"), stored)
         st.sights_range = 50                                   # out of reach
         st._sight_near = (None, None)
         self.assertIsNone(st.sight_near())

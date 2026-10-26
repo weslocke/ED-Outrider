@@ -10006,6 +10006,12 @@ const releasePayloads = async () => {
       got.mainOnly = [d.getElementById("sMainOnly").disabled];
       smin.value = keepMin; smin.dispatchEvent(new w.Event("input"));
       got.mainOnly.push(d.getElementById("sMainOnly").disabled);
+      // Clear empties "at least": "arrival star only" back in hand (in-depth review 2026-10-25: left greyed, in force)
+      smin.value = "3"; smin.dispatchEvent(new w.Event("input"));
+      const keepForm = w.eval("JSON.stringify(formParams())");
+      d.getElementById("sClear").click();
+      got.mainOnly.push(d.getElementById("sMainOnly").disabled);
+      w.eval(`loadForm(${keepForm}); saveForm()`);
       // D: the mission's search: a hotspot, ring types for one without hotspots, nothing for what no ring gives
       got.ms = w.eval(`JSON.stringify(["painite", "opal", "bertrandite", "tea", null].map(missionSearch))`);
       got.btn = [w.eval(`missionFindBtn({mining: true, commodity_id: "bertrandite"})`).includes('data-missionfind="bertrandite"'),
@@ -10031,7 +10037,7 @@ const releasePayloads = async () => {
                "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly)",
                "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly"],
       hotMin: [2, false],
-      mainOnly: [true, false],
+      mainOnly: [true, false, false],
       ms: JSON.stringify([{hotspots: ["Painite"], rings: [], name: "Painite"}, {hotspots: ["Void Opal"], rings: [], name: "Void Opal"},
                           {hotspots: [], rings: ["Metallic", "Metal Rich"], name: "Bertrandite"}, null, null]),
       btn: [true, "", ""],
@@ -10061,7 +10067,7 @@ const releasePayloads = async () => {
     const w = dom.window, before = errors.length;
     const got = [w.eval(`gggTitle({confirmed: true, of: 1})`), w.eval(`gggTitle({confirmed: true, of: 2})`)];
     const want = ["a green gas giant: your codex entry confirms it",
-                  "a green gas giant of this class is in your codex here: one of these 2 (the game does not say which)"];
+                  "a green gas giant is in your codex here: one of these 2 (nothing says which)"];
     const goodGG = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodGG;
     console.log(goodGG ? "OK" : "FAIL", "| green gas giant confirmed |", goodGG ? "one, or one of N" : JSON.stringify(got), errors.slice(before));
@@ -10238,6 +10244,19 @@ const releasePayloads = async () => {
     })();
     want.review2 = ["api/screenshots/5/image?size=crop", "5, 5, 50, 50", true, false, 'Not saved: "moved to" needs a folder for the BMPs',
                     'Not saved: "moved to" cannot be the game\'s own Pictures folder', "Screenshots"];
+    // green giants nothing tells apart are "one of", never each named green; a curiosity's reason only for a figure,
+    // a body's name in it is none (in-depth review 2026-10-25)
+    got.gggWords = w.eval(`(() => {
+      const g = (n, of) => ({name: n, ggg: {confirmed: true, of}});
+      const md = systemSummaryMd({name: "Sys", id64: "7", bodies: [g("A 1", 1), g("B 2", 2), g("B 3", 2), {name: "B 4", ggg: {confirmed: false, chance: "likely"}},
+        {name: "2"}, {name: "3", curiosities: [{tag: "close orbit", why: "orbits 3 radii from 2"}]},
+        {name: "2 a", curiosities: [{tag: "shepherd moon", why: "orbits inside 2's rings"}, {tag: "tiny world", why: "183 km in radius"}]}]});
+      return [gggSureWords([g("A 1", 1), g("B 2", 2), g("B 3", 2)]), md.split("\\n").filter(l => /green gas giant|Curiosities/i.test(l))];
+    })()`);
+    want.gggWords = ["Green gas giant: A 1 · Green gas giant, one of: B 2, B 3 (the codex does not say which)",
+      ["- Green gas giant: **A 1** · Green gas giant, one of: **B 2**, **B 3** (the codex does not say which)",
+       "- Potential green gas giant: **B 4** (likely)",
+       "- Curiosities: **3**: close orbit (orbits 3 radii from 2); **2 a**: shepherd moon, tiny world (183 km in radius)"]];
     // an emptied crop box is no number: Save refuses rather than store a zero-size crop (review 2026-10-25)
     got.cropempty = await (async () => {
       const q = k => w.document.querySelector('#shotSettings .scfg[data-key="' + k + '"]'), on = w.document.getElementById("shotCropOn");

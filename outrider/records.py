@@ -54,14 +54,16 @@ RECORDS = [
     ("low_g", "Lowest gravity, landable", _landable, lambda e: _num(e.get("SurfaceGravity")), False, lambda v: f"{v / G:,.3f} g"),
     ("elw_g", "Highest-gravity Earth-like", lambda e: e.get("PlanetClass") == "Earthlike body",
      lambda e: _num(e.get("SurfaceGravity")), True, lambda v: f"{v / G:,.2f} g"),
-    ("pressure", "Thickest atmosphere", _solid, lambda e: _num(e.get("SurfacePressure")), True,
-     lambda v: f"{v / 101325:,.1f} atm"),
+    # an airless body's 0 holds no record (in-depth review 2026-10-25: "Thickest atmosphere 0.0 atm"); a thin one shows
+    # its figure, not 0.0
+    ("pressure", "Thickest atmosphere", _solid, lambda e: _num(e.get("SurfacePressure")) or None, True,
+     lambda v: f"{v / 101325:,.1f} atm" if v >= 0.05 * 101325 else f"{v / 101325:,.4f} atm"),
     ("spin", "Fastest spin", _planet, lambda e: abs(_num(e.get("RotationPeriod")) or 0) or None, False,
      lambda v: f"{v / 3600:,.2f} h" if v >= 3600 else f"{v / 60:,.1f} min"),
     # a retrograde orbit's period is negative (the author's journals): its length is what counts
     ("orbit", "Shortest orbit", _planet, lambda e: abs(_num(e.get("OrbitalPeriod")) or 0) or None, False,
      lambda v: f"{v / 3600:,.1f} h" if v < 172800 else f"{v / 86400:,.1f} days"),
-    ("far_out", "Farthest from its arrival star", lambda e: True, lambda e: _num(e.get("DistanceFromArrivalLS")), True,
+    ("far_out", "Farthest from its arrival star", lambda e: True, lambda e: _num(e.get("DistanceFromArrivalLS")) or None, True,
      lambda v: f"{v:,.0f} ls"),
     ("wide_ring", "Widest ring", _planet, _ring_width, True, lambda v: f"{v / 1000:,.0f} km"),
 ]

@@ -144,20 +144,37 @@ def record_class(r):
     return gas_class(ed.get("PlanetClass") or r.get("subtype"))
 
 
+def _seconds(ts):
+    """The journal's "2026-10-25T22:00:02Z" -> whole seconds since the epoch, or None."""
+    import datetime
+    try:
+        return int(datetime.datetime.strptime(str(ts), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc).timestamp())
+    except ValueError:
+        return None
+
+
 def match_green(entries, records):
     """Which of a system's bodies its green giant codex entries mean: {body name: {"confirmed": True, "of": n}} (n > 1:
-    one of n giants of that class, the journal never says which). entries: (entry_id, name, body_id) of the system's
-    codex lines. A giant of the class the entry names, at the entry's own body (an older journal, a test) first;
-    else the only one of that class; else the ones the model flags among them; else all of them."""
+    one of n giants, nothing says which). entries: (entry_id, name, body_id[, ts]) of the system's codex lines;
+    records may carry "scan_ts", the times of your own scans of the body. The giant whose Scan was written in the
+    entry's own second first (4 of 4 in a capture of every player's EDDN traffic: the in-depth review of 2026-10-25),
+    else one at the entry's own body (an older journal, a test), else by the class the entry names: the only one, the
+    ones the model flags, all of them; a class no giant here has (the capture's water-life entry over an ammonia-life
+    giant) falls back to every giant rather than confirming nothing."""
     out = {}
-    for entry_id, name, body_id in entries:
+    for e in entries:
+        entry_id, name, body_id = e[0], e[1], e[2]
+        ts = _seconds(e[3]) if len(e) > 3 and e[3] else None
         cls = green_class(entry_id, name)
         if cls is None:
             continue
-        giants = [r for r in records if r.get("type") == "Planet" and record_class(r) and (not cls or record_class(r) == cls)]
+        every = [r for r in records if r.get("type") == "Planet" and record_class(r)]
+        same = [r for r in every if ts is not None and any(t is not None and abs(t - ts) <= 1
+                                                            for t in (_seconds(x) for x in r.get("scan_ts") or []))]
+        giants = [r for r in every if not cls or record_class(r) == cls] or every
         own = [r for r in giants if body_id is not None and r.get("body_id") == body_id]
         flagged = [r for r in giants if predict_record(r)]
-        pick = own or (giants if len(giants) == 1 else flagged or giants)
+        pick = (same if len(same) == 1 else []) or own or (giants if len(giants) == 1 else flagged or giants)
         for r in pick:
             if r.get("name"):
                 had = out.get(r["name"])
