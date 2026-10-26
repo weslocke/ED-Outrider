@@ -1228,10 +1228,11 @@ const releasePayloads = async () => {
         const seenB = Object.assign({}, fake, {name: "Fake 2", genera: ["Bacterium"], organics: [],
           bio_guess: [{genus: "Bacterium", best: "Bacterium Vesicula", species: ["Bacterium Vesicula"], value: 1000000, seen: true,
                        variants: ["Bacterium Vesicula - Red"], variant: "Bacterium Vesicula - Red"}],
-          codex: [{name: "Bacterium Vesicula - Red", new: true}]});
+          codex: [{name: "Bacterium Vesicula - Red", new: true, own_pic: true}]});
         hereData = Object.assign({}, hd, {bodies: [seenB], tree: null}); renderHere();
         const srow = document.querySelector('#hereRows tr[data-body="Fake 2"]'), seenSp = srow && srow.querySelector("td.bio .sp.seen");
-        o.seenMark = [!!seenSp && /✦/.test(seenSp.textContent), srow ? (srow.querySelector("td.bio").textContent.match(/📖/g) || []).length : -1];
+        o.seenMark = [!!seenSp && /✦/.test(seenSp.textContent), srow ? (srow.querySelector("td.bio").textContent.match(/📖/g) || []).length : -1,
+                      !!seenSp && !!seenSp.querySelector(".clcam")];   // its 📷 too (2026-10-26)
         // 📷 beside a species whose colour your codex folders have a picture of (the author, 2026-10-26): a finished
         // one, a run under way and a composition scan's codex line; none without
         const picB = Object.assign({}, fake, {name: "Fake 3", genera: ["Bacterium", "Fungoida"], bio_guess: [],
@@ -1373,7 +1374,7 @@ const releasePayloads = async () => {
     w.setTimeout = realST; w.fetch = realFetch;
     w.eval("search = null; searchWant = 0; searchRefused = false; render()");
     w.speak = realSpeak; w.play = realPlay;
-    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1], ownPic: [true, false, true], ownPicLegend: true, legend: true, noDss: true, finished: true, mat: true,
+    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1, true], ownPic: [true, false, true], ownPicLegend: true, legend: true, noDss: true, finished: true, mat: true,
                   streak: 2, nulls: ["{}", "ts"], impNull: "bioSort", saved: true, dock: "2026-01-01T01:00:00Z", hlRender: true, more: true};
     const want2 = {onbody: true, here: true, logError: null};
     const goodH = JSON.stringify(out) === JSON.stringify(want) && JSON.stringify(out2) === JSON.stringify(want2)
