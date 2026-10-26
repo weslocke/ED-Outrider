@@ -10,8 +10,9 @@ size to settle. Names like Screenshot_0001 are reused once the folder is emptied
 Each shot becomes a full-size PNG (or JPG) under [screenshots] folder, in a subfolder by commander (and system), with
 optional `medium/` and `small/` JPG copies beside it (long edge, never upscaled: for Reddit and the like), the
 system, body, position, commander and what it shows (a plant or a formation within subject_m: `subject`) written
-into the image; with [screenshots] codex on, a shot of a plant or formation also copied to Biology/<genus>/<species> or
-Geology/<group>/<name> under the export folder (the player's own codex: `codex_dir`). Pure but for the files: the server queues the shots and runs `convert` on a worker. Needs Pillow (an
+into the image; with [screenshots] codex on, a shot of a plant or formation also copied to Biology/<genus>/<species>/<colour> or
+Geology/<group>/<name> under the export folder (the player's own codex: `codex_dir`), which the checklists show
+pictures from with codex_show (`codex_pictures`). Pure but for the files: the server queues the shots and runs `convert` on a worker. Needs Pillow (an
 optional package: `pillow()` says whether it is there).
 """
 import datetime
@@ -24,7 +25,8 @@ import time
 DEFAULTS = {"enabled": False, "pictures": "", "folder": "", "by_cmdr": True, "by_system": False, "subfolder": "",
             "filename": "{system} {body} {date} {time}{highres}", "format": "png", "quality": 90, "full": True,
             "medium": 0, "small": 0, "crop": "", "crop_px": 0, "copies_format": "jpg", "copies_quality": 85,
-            "original": "keep", "move_to": "", "subject_m": 50.0, "clipboard": "", "codex": False}
+            "original": "keep", "move_to": "", "subject_m": 50.0, "clipboard": "", "codex": False,
+            "codex_show": False}
 MEDIUM_PX, SMALL_PX = 1920, 1080   # the sizes a ticked copy starts at (long edge, px)
 FORMATS = ("png", "jpg", "webp")   # the full size: lossless PNG; JPG and WebP at `quality` (WebP: smaller at the same)
 COPY_FORMATS = ("jpg", "webp")     # medium, small and the crop, at `copies_quality`
@@ -33,10 +35,12 @@ EXT = {"png": "png", "jpg": "jpg", "webp": "webp"}
 MIME = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}
 ORIGINALS = ("keep", "delete", "move")
 TOKENS = ("cmdr", "system", "body", "date", "time", "highres", "subject")
-# [screenshots] codex: a shot of a plant or formation copied under the export folder to Biology/<genus>/<species> or
-# Geology/<group>/<name>, the shipped lists' English names (bio_rules.json, geo_codex.json), so the folders are the same
-# in any game language and can be looked up by them
+# [screenshots] codex: a shot of a plant or formation copied under the export folder to Biology/<genus>/<species>/<colour>
+# or Geology/<group>/<name>, the shipped lists' English names (bio_rules.json and its colour tables, geo_codex.json), so
+# the folders are the same in any game language; codex_show: the checklists show a picture from them (CODEX_IMAGES:
+# any the player puts there too, edited or cropped)
 CODEX_FOLDERS = {"bio": "Biology", "geo": "Geology"}
+CODEX_IMAGES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
 NAME_MAX = 150           # characters of a file or folder name (Windows' path limit is near)
 PICTURES_TAIL = ("Frontier Developments", "Elite Dangerous")
 WAIT_S, POLL_S = 60.0, 0.5   # how long a shot's file may take to appear and settle (a HighRes one: under 3 s, 2026-10-25)
@@ -216,17 +220,29 @@ def nearest_subject(lat, lon, radius, subjects, max_m):
         return None
     s = best[1]
     return {"kind": s.get("kind"), "name": s.get("name"), "entry_id": s.get("entry_id"), "group": s.get("group"),
-            "entry": s.get("entry"), "dist": round(best[0])}
+            "entry": s.get("entry"), "colour": s.get("colour"), "dist": round(best[0])}
 
 
 def codex_dir(root, subject):
-    """[screenshots] codex: the folder a shot of `subject` is copied to, root/Biology/<genus>/<species> or
-    root/Geology/<group>/<name>; None without a subject whose group and entry are known (never filed by a guess)."""
+    """[screenshots] codex: the folder of `subject`'s pictures, root/Biology/<genus>/<species>/<colour> (no colour
+    folder for a species with none: colour "") or root/Geology/<group>/<name>; None without a subject whose group,
+    entry and (biology) colour are known: never filed by a guess."""
     s = subject or {}
     top = CODEX_FOLDERS.get(s.get("kind"))
-    if not top or not s.get("group") or not s.get("entry"):
+    if not root or not top or not s.get("group") or not s.get("entry") or (s["kind"] == "bio" and s.get("colour") is None):
         return None
-    return os.path.join(root, top, safe_name(s["group"]), safe_name(s["entry"]))
+    return os.path.join(root, top, safe_name(s["group"]), safe_name(s["entry"]),
+                        *([safe_name(s["colour"])] if s["kind"] == "bio" and s["colour"] else []))
+
+
+def codex_pictures(folder):
+    """The pictures in a codex folder (CODEX_IMAGES, files only, not hidden), by name; [] when there is none."""
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return []
+    return sorted(n for n in names if not n.startswith(".") and os.path.splitext(n)[1].lower() in CODEX_IMAGES
+                  and os.path.isfile(os.path.join(folder, n)))
 
 
 def free_path(folder, name):

@@ -126,10 +126,15 @@ package (see [Install and run](install.md)), and is off until you tick it.
   → Details, its "Date taken" in your local time) and PNG's own text.
 - **Your own codex:** with **Also copy those shots into your own codex folders** ticked, a shot that knows its plant
   or formation is also copied, as its full-size picture (else the first copy made), to
-  `Biology/<genus>/<species>/` or `Geology/<group>/<formation>/` inside the export folder, whichever commander took
-  it: `Biology/Tussock/Tussock Albata/Smojooe UW-E c11-28 7 f 2026-10-26 08-51-14.jpg`. The folders take the English
-  names whatever the game's language. A shot of a plant you have not sampled or tagged yet knows no plant, so it is
-  not copied.
+  `Biology/<genus>/<species>/<colour>/` (a species with no colours, such as the anemones, has no colour folder) or
+  `Geology/<group>/<formation>/` inside the export folder, whichever commander took it:
+  `Biology/Tussock/Tussock Albata/Green/Smojooe UW-E c11-28 7 f 2026-10-26 08-51-14.jpg`. The folders take the
+  English names whatever the game's language. A shot of a plant you have not sampled or tagged yet knows no plant,
+  so it is not copied.
+- **Your pictures on the checklists:** **Show your own pictures on the Bio/Geo checklists** makes the Exo-Biology and
+  Geology checklists show one of your own pictures of a species' colour or a formation, picked at random from its
+  codex folder each time you open it, instead of Canonn's; Canonn's still shows where the folder is missing or has
+  none. Any picture in the folder counts (PNG, JPG, WebP, GIF), so crop or edit the copies, or add your own.
 - **Finding them again:** a 📷 beside a body you photographed in Here, its hover card shows the newest three, and the body's panel lists its shots with a
   small picture (click it to open it larger: the medium copy when there is one), the time and what it shows; **📍**
   beside a surface shot pins where it was taken.

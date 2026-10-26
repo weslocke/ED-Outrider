@@ -6814,12 +6814,15 @@ function renderBio() {
 // colours, what gives each, and a galaxy map of where it can grow with your samples as dots ----
 const CL = {data: null, key: null, open: null, species: null, map: null, colour: null, find: null};
 // an entry's picture: Canonn's screenshot (linked, never copied), credited to the commander who took it
+// a checklist entry's picture: one of your own (Settings -> Screenshots: your codex folders, a random one each time) or
+// Canonn's, credited
 function clFigure(img, alt, colour) {
   if (!img || !img.url) return "";
-  return `<figure class="climg"><a href="${esc(img.url)}" target="_blank" rel="noopener noreferrer" title="open it full size">` +
+  const credit = img.own ? `<span title="${esc(img.file || "")}">Your picture</span>, from your codex folders`
+    : `Image: ${img.cmdr ? `CMDR ${esc(img.cmdr)}, ` : ""}via <a href="https://canonn.science/codex/" target="_blank" rel="noopener noreferrer">Canonn</a>`;
+  return `<figure class="climg"><a href="${esc(img.full || img.url)}" target="_blank" rel="noopener noreferrer" title="open it full size">` +
     `<img src="${esc(img.url)}" alt="${esc(alt)}" loading="lazy" referrerpolicy="no-referrer"></a>` +
-    `<figcaption>${colour ? `${esc(colour)} · ` : ""}Image: ${img.cmdr ? `CMDR ${esc(img.cmdr)}, ` : ""}via ` +
-    `<a href="https://canonn.science/codex/" target="_blank" rel="noopener noreferrer">Canonn</a></figcaption></figure>`;
+    `<figcaption>${colour ? `${esc(colour)} · ` : ""}${credit}</figcaption></figure>`;
 }
 const CL_WORD = {sold: "sold", aboard: "aboard", lost: "lost", logged: "logged"};
 // Bio/Geo's three views: My Samples ("runs"), the Exo-Biology checklist ("check"), Geology ("geo": the codex's Geology and Anomalies)

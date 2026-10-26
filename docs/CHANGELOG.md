@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Your own pictures on the Bio/Geo checklists; codex folders by colour
+- **Codex folders by colour:** a biology shot is copied to `Biology/<genus>/<species>/<colour>/` (no colour folder
+  for a species with none). The colour is the species table's English one, from the variant's codex code now kept
+  with each sample spot and tagged plant (`bio_spots.variant`, `bio_tags.variant`), else from the name's colour; one
+  that cannot be told is not copied.
+- **Settings → Screenshots → Show your own pictures on the Bio/Geo checklists** (`[screenshots] codex_show`, off by
+  default): the Exo-Biology and Geology checklists show a random picture from the entry's codex folder (any picture
+  put there, edited or cropped) instead of Canonn's, which still shows where there is none. Served by GET
+  `/api/codex_picture`, by name inside that folder only, shrunk to 960 px for the panel; a click opens the file.
+
 ## 2026-10-26 · Screenshots: your own codex folders
 - **Settings → Screenshots → Also copy those shots into your own codex folders** (`[screenshots] codex`, off by
   default): a shot that knows its plant or formation is also copied (its full-size picture, else the first copy made)

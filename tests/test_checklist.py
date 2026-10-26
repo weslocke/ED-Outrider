@@ -47,6 +47,18 @@ class Checklist(unittest.TestCase):
         self.assertIsNone(cl.colour_of("Aleoida Arcus", "Aleoida Arcus"))          # before the 2023 patch
         self.assertIsNone(cl.colour_of("Other Thing - Teal", "Aleoida Arcus"))
 
+    def test_variant_colour(self):
+        """A sample's colour in English whatever the game's language (the screenshot codex folders): its variant's codex
+        code first (a star class, a material), else its name's colour when the table has it; "" with no colours."""
+        self.assertEqual(cl.variant_colour(SPECIES[0], "$Codex_Ent_Aleoids_01_F_Name;"), "Teal")
+        self.assertEqual(cl.variant_colour(SPECIES[0], "$Codex_Ent_Aleoids_01_m_Name;"), "Emerald")   # any case
+        self.assertEqual(cl.variant_colour(SPECIES[1], "$Codex_Ent_Bacterial_04_Polonium_Name;", "Bakterium - Gelb"), "Gold")
+        self.assertEqual(cl.variant_colour(SPECIES[1], None, "Bacterium Nebulus - magenta"), "Magenta")   # older rows
+        self.assertIsNone(cl.variant_colour(SPECIES[1], None, "Bacterium Nebulus - Gelb"))   # not in its table
+        self.assertIsNone(cl.variant_colour(SPECIES[1], "$Codex_Ent_Bacterial_04_Tin_Name;"))   # nor that material
+        self.assertIsNone(cl.variant_colour(SPECIES[1], "$Codex_Ent_Bacterial_04_Name;", "Bacterium Nebulus"))
+        self.assertEqual(cl.variant_colour(SPECIES[2], None, "Roseum Sinuous Tubers"), "")   # no colours: one for all
+
     def test_duplicate_species_merged(self):
         merged, names = cl.merge_species(SPECIES)
         self.assertEqual([s["name"] for s in merged], ["Aleoida Arcus", "Bacterium Nebulus", "Roseum Sinuous Tubers",

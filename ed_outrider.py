@@ -1166,7 +1166,8 @@ def screenshots_settings(ss, num, flag):
             "copies_quality": clamp("copies_quality", int),
             "clipboard": clip if clip in outrider.screenshots.CLIPBOARD else d["clipboard"],
             "original": orig if orig in outrider.screenshots.ORIGINALS else d["original"], "move_to": path("move_to"),
-            "subject_m": clamp("subject_m", float), "codex": flag("screenshots", ss, "codex", d["codex"])}
+            "subject_m": clamp("subject_m", float), "codex": flag("screenshots", ss, "codex", d["codex"]),
+            "codex_show": flag("screenshots", ss, "codex_show", d["codex_show"])}
 
 
 def settings_from(cfg, args, env_journals=None, detected=((), ())):
@@ -1530,7 +1531,8 @@ clipboard = {q(st["screenshots"]["clipboard"])}   # after each shot, put this pi
 original = {q(st["screenshots"]["original"])}   # the game's BMP after converting: "keep", "delete" or "move"
 move_to = {q(st["screenshots"]["move_to"])}   # where "move" puts it
 subject_m = {n(st["screenshots"]["subject_m"])}   # m: a surface shot names the plant or formation this close (0 = never)
-codex = {"true" if st["screenshots"]["codex"] else "false"}   # also copy such a shot to Biology/<genus>/<species> or Geology/<group>/<name> in the export folder: your own codex
+codex = {"true" if st["screenshots"]["codex"] else "false"}   # also copy such a shot to Biology/<genus>/<species>/<colour> or Geology/<group>/<name> in the export folder: your own codex
+codex_show = {"true" if st["screenshots"]["codex_show"] else "false"}   # the Bio/Geo checklists show a random picture from those folders (Canonn's when there is none)
 
 [assistant]
 enabled = {"true" if st["assistant"]["enabled"] else "false"}   # the voice's AI layer for questions the fixed phrases do not match (resources/ask.json); nothing is sent anywhere while false
@@ -2034,9 +2036,12 @@ CREATE TABLE IF NOT EXISTS sample_points (
     PRIMARY KEY (system, body_id, species, n));
 -- Every sample's position, kept (sample_points' are dropped when the run completes): what a screenshot shows (the
 -- author, 2026-10-25: a shot taken just after the Analyse found nothing). Live only, like sample_points.
--- name: the variant's ("Bacterium Bullaris - Yellow"), kept here because an abandoned run's own_organic row goes.
+-- name: the variant's ("Bacterium Bullaris - Yellow"), kept here because an abandoned run's own_organic row goes;
+-- variant: its codex code ("$Codex_Ent_Bacterial_10_Polonium_Name;"), the colour in any game language (NULL before
+-- 2026-10-26: the name's colour then).
 CREATE TABLE IF NOT EXISTS bio_spots (
     system INTEGER, body_id INTEGER, species TEXT, genus TEXT, lat REAL, lon REAL, ts TEXT, name TEXT,
+    variant TEXT,
     PRIMARY KEY (system, body_id, species, ts));
 INSERT OR IGNORE INTO bio_spots (system, body_id, species, genus, lat, lon, ts)
     SELECT system, body_id, species, genus, lat, lon, ts FROM sample_points;
@@ -2047,6 +2052,7 @@ INSERT OR IGNORE INTO bio_spots (system, body_id, species, genus, lat, lon, ts)
 -- the same rows.
 CREATE TABLE IF NOT EXISTS bio_tags (
     system INTEGER, body_id INTEGER, species TEXT, genus TEXT, name TEXT, lat REAL, lon REAL, ts TEXT,
+    variant TEXT,
     PRIMARY KEY (system, body_id, species, ts));
 -- Geology formations logged in the codex (a "Geology and anomalies" CodexEntry: geysers, fumaroles, vents...) where they
 -- are: the event's Latitude/Longitude (all 26 of the author's carried one, 2026-10-25), else yours from the live
@@ -4714,7 +4720,7 @@ class Journals:
                             (r["system"], r["body_id"], r["species"], ts))
         self.db.execute(f"DELETE FROM own_organic WHERE {where}", args)
 
-    def note_sample_point(self, system, body, species, genus, kind, n, ts, name=None):
+    def note_sample_point(self, system, body, species, genus, kind, n, ts, name=None, variant=None):
         """Remember where a sample was taken, from the live Status.json reading (at most a second old at
         walking pace). Only live play records positions: a journal read later has no position to pair with."""
         # Only points older than this line: a journal re-read replays the Log that began the run you are on,
@@ -4745,8 +4751,8 @@ class Journals:
             self.db.execute("INSERT OR REPLACE INTO sample_points VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                             (system, body, species, genus, n, st["lat"], st["lon"], ts))
         # every sample's spot, the Analyse's too (review 2026-10-25: a shot where the run completed named nothing)
-        self.db.execute("INSERT OR IGNORE INTO bio_spots (system, body_id, species, genus, lat, lon, ts, name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        (system, body, species, genus, st["lat"], st["lon"], ts, name))
+        self.db.execute("INSERT OR IGNORE INTO bio_spots (system, body_id, species, genus, lat, lon, ts, name, variant)"
+                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (system, body, species, genus, st["lat"], st["lon"], ts, name, variant))
 
     def note_bio_tag(self, ev, system, ts):
         """A biology CodexEntry (the composition scanner, or a first Log) is a waypoint for that species on that body
@@ -4777,8 +4783,9 @@ class Journals:
             except ValueError:
                 return
             lat, lon = st["lat"], st["lon"]
-        self.db.execute("INSERT OR IGNORE INTO bio_tags VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        (system, ev["BodyID"], species, genus, name, lat, lon, ts))
+        # the codex code is the variant's ("$Codex_Ent_Tussocks_01_F_Name;"): its colour in any language
+        self.db.execute("INSERT OR IGNORE INTO bio_tags (system, body_id, species, genus, name, lat, lon, ts, variant)"
+                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (system, ev["BodyID"], species, genus, name, lat, lon, ts, ev.get("Name")))
 
     def note_geo_tag(self, ev, system, ts):
         """A geology CodexEntry ("Geology and anomalies" with a body: a geyser, fumarole, vent...) where it is: the
@@ -5610,7 +5617,7 @@ class Journals:
                 (system, body, species, ev.get("Genus_Localised"), ev.get("Species_Localised"),
                  ev.get("Variant_Localised"), samples, done, ts, self.ship_at(ts)))
             self.note_sample_point(system, body, species, ev.get("Genus"), kind, samples, ts,
-                                   ev.get("Variant_Localised") or ev.get("Species_Localised"))
+                                   ev.get("Variant_Localised") or ev.get("Species_Localised"), ev.get("Variant"))
             self.body_touched.add((system, body))
             if kind == "Analyse":   # "Stratum Tectonicas complete, 19.2 million; two left here" (priced by State)
                 self.moment("bio_done", ts, system=system, body_id=body,
@@ -12070,17 +12077,23 @@ class State:
             "SELECT species, species_name, variant_name FROM own_organic WHERE system=? AND body_id=?", (sid, bid))}
         # the spot's own name, else the run's, else the rules' species name: never the raw codex code (review 2026-10-25:
         # an abandoned run's own_organic row is gone)
-        rules = {sp["id"]: sp for sp in ((outrider.bio.load_rules() or {}).get("species") or [])} if outrider.bio else {}
-        # group and entry: the shipped lists' English genus and species (formation group and name), [screenshots] codex's
-        # folders; None when the list does not have it (that shot is not filed)
-        bio = lambda species: {"group": (rules.get(species) or {}).get("genus"), "entry": (rules.get(species) or {}).get("name")}  # noqa: E731
+        R = (outrider.bio.load_rules() or {}) if outrider.bio else {}
+        rules = {sp["id"]: sp for sp in outrider.checklist.merge_species(R.get("species") or [])[0] if sp.get("id")}
+
+        def bio(r, name):
+            """group, entry, colour: the shipped lists' English genus, species and colour, [screenshots] codex's folders
+            (None when the list does not have it, or the colour cannot be told: that shot is not filed)."""
+            sp = rules.get(r["species"])
+            return {"group": sp and sp.get("genus"), "entry": sp and sp.get("name"),
+                    "colour": outrider.checklist.variant_colour(sp, r["variant"], name) if sp else None}
         geo = {e["id"]: e for e in self.geo_codex()}
-        subjects = [dict(bio(r["species"]), kind="bio", name=r["name"] or variants.get(r["species"]) or bio(r["species"])["entry"],
-                         lat=r["lat"], lon=r["lon"])
-                    for r in self.db.execute("SELECT species, lat, lon, name FROM bio_spots WHERE system=? AND body_id=?", (sid, bid))]
-        subjects = [x for x in subjects if x["name"] and not str(x["name"]).startswith("$")]
-        subjects += [dict(bio(r["species"]), kind="bio", name=r["name"], lat=r["lat"], lon=r["lon"]) for r in self.db.execute(
-            "SELECT species, name, lat, lon FROM bio_tags WHERE system=? AND body_id=?", (sid, bid))]
+        subjects = []
+        for r in self.db.execute("SELECT species, lat, lon, name, variant FROM bio_spots WHERE system=? AND body_id=?", (sid, bid)):
+            name = r["name"] or variants.get(r["species"]) or (rules.get(r["species"]) or {}).get("name")
+            if name and not str(name).startswith("$"):
+                subjects.append(dict(bio(r, name), kind="bio", name=name, lat=r["lat"], lon=r["lon"]))
+        subjects += [dict(bio(r, r["name"]), kind="bio", name=r["name"], lat=r["lat"], lon=r["lon"]) for r in self.db.execute(
+            "SELECT species, name, lat, lon, variant FROM bio_tags WHERE system=? AND body_id=?", (sid, bid))]
         subjects += [{"kind": "geo", "name": r["name"], "entry_id": r["entry_id"], "lat": r["lat"], "lon": r["lon"],
                       "group": (geo.get(r["entry_id"]) or {}).get("group"), "entry": (geo.get(r["entry_id"]) or {}).get("name")}
                      for r in self.db.execute("SELECT entry_id, name, lat, lon FROM geo_tags WHERE system=? AND body_id=?", (sid, bid))]
@@ -12261,31 +12274,38 @@ class State:
         src = next((r[k] for k in ("medium", "full", "crop") if ok(r[k])), None)
         if not src or outrider.screenshots.pillow() is None:
             return None
-        key = (sid, os.path.getmtime(src))
+        data = await self._shot_thumb((sid, os.path.getmtime(src)), src)
+        return (data, "image/jpeg") if data else None
+
+    async def _shot_thumb(self, key, src, px=None):
+        """A JPG of src at most px (SHOT_THUMB_PX) on its long edge, kept in _shot_thumbs by key; None when Pillow cannot
+        read it."""
         if key not in self._shot_thumbs:
             # one made at a time, and a picture asked for twice at once made once (review 2026-10-25: a body panel's
             # thumbnails each decoded a full-size HighRes picture, several at once, on the shared executor)
             busy = self.__dict__.setdefault("_shot_thumb_busy", {})
             task = busy.get(key)
             if task is None:
-                task = busy[key] = asyncio.ensure_future(self._shot_thumb_make(key, src))
+                task = busy[key] = asyncio.ensure_future(self._shot_thumb_make(key, src, px))
             try:
                 data = await asyncio.shield(task)
             except Exception:  # noqa: BLE001 -- a picture Pillow cannot read: no thumbnail (a 404), never a 500
                 return None
             if data is None:
                 return None
-        return self._shot_thumbs[key], "image/jpeg"
+        return self._shot_thumbs[key]
 
-    async def _shot_thumb_make(self, key, src):
+    async def _shot_thumb_make(self, key, src, px=None):
         """shot_image's thumbnail of src, made on a worker under one lock: decoded at a reduced size where the format
         allows (JPG's draft), shrunk before any colour conversion, kept in _shot_thumbs."""
+        side = px or self.SHOT_THUMB_PX
+
         def make():
             import io
             Image = outrider.screenshots.pillow()   # its decompression-bomb guard raised for HighRes pictures
             with Image.open(src) as im:
-                im.draft("RGB", (self.SHOT_THUMB_PX, self.SHOT_THUMB_PX))
-                im.thumbnail((self.SHOT_THUMB_PX, self.SHOT_THUMB_PX))
+                im.draft("RGB", (side, side))
+                im.thumbnail((side, side))
                 small = im.convert("RGB")
                 buf = io.BytesIO()
                 small.save(buf, "JPEG", quality=80)
@@ -12302,6 +12322,43 @@ class State:
             return data
         finally:
             self.__dict__.get("_shot_thumb_busy", {}).pop(key, None)
+
+    CODEX_VIEW_PX = 960   # a codex picture as a checklist panel shows it (the panel's width, 260 px high at most)
+
+    def codex_own(self, kind, group, entry, colour=""):
+        """[screenshots] codex_show: one of your own pictures of a checklist entry, picked at random from its codex
+        folder (outrider.screenshots.codex_dir: a species' colour, "" for one with none; a formation), as the checklist's
+        image ({url, full, own, file}); None when it is off or the folder has none (Canonn's then)."""
+        if not self.shots_cfg.get("codex_show"):
+            return None
+        S = outrider.screenshots
+        folder = S.codex_dir(self.shots_folders()[1], {"kind": kind, "group": group, "entry": entry, "colour": colour})
+        names = S.codex_pictures(folder) if folder else []
+        if not names:
+            return None
+        name = random.choice(names)
+        q = urllib.parse.urlencode({"kind": kind, "group": group, "entry": entry, "colour": colour or "", "file": name})
+        return {"url": f"api/codex_picture?{q}", "full": f"api/codex_picture?{q}&size=full", "own": True, "file": name}
+
+    async def codex_picture(self, q):
+        """GET /api/codex_picture?kind=&group=&entry=&colour=&file=&size=view|full (codex_own's links): a picture in a
+        codex folder, by its name there only (never a path), under the export folder; the full file, or a JPG at most
+        CODEX_VIEW_PX (a HighRes PNG is far too big for a panel). -> (path or bytes, content type) or None."""
+        S = outrider.screenshots
+        root = self.shots_folders()[1]
+        folder = S.codex_dir(root, {"kind": q.get("kind"), "group": q.get("group"), "entry": q.get("entry"),
+                                    "colour": q.get("colour") or ""})
+        name = q.get("file") or ""
+        ext = os.path.splitext(name)[1].lower()
+        if not folder or not name or name != os.path.basename(name) or "/" in name or "\\" in name or ext not in S.CODEX_IMAGES:
+            return None
+        p = os.path.join(folder, name)
+        if not os.path.isfile(p) or not os.path.realpath(p).startswith(os.path.join(os.path.realpath(root), "")):
+            return None
+        if q.get("size") == "full" or ext == ".gif" or S.pillow() is None:
+            return p, S.CODEX_IMAGES[ext]
+        data = await self._shot_thumb((p, os.path.getmtime(p), self.CODEX_VIEW_PX), p, self.CODEX_VIEW_PX)
+        return (data, "image/jpeg") if data else None
 
     def shots_summary(self):
         """The payload's screenshots block on the game PC (None elsewhere): {on, why, pictures, folder, n (converted so
@@ -13445,7 +13502,7 @@ class State:
         regions = e.get("regions") or {}
         img = self.codex_images().get(e["name"].lower())
         return {"id": str(e["id"]), "name": e["name"], "kind": e.get("kind"), "group": e.get("group"),
-                "image": {"url": img[0], "cmdr": img[1]} if img else None,
+                "image": self.codex_own("geo", e.get("group"), e["name"]) or ({"url": img[0], "cmdr": img[1]} if img else None),
                 "regions": {r: "yes" for r, n in regions.items() if n}, "sites": regions, "sites_total": sum(regions.values()),
                 "runs": runs}, 200
 
@@ -13469,9 +13526,14 @@ class State:
             state = fate[0] if fate else (organic_state(self.db, r["done_ts"]) if r["done_ts"] else None) or "in progress"
             runs.append({"x": loc[1], "z": loc[3], "state": state, "system": loc[0]})
         regions = outrider.checklist.where(sp, outrider.bio.ruleset_region_ok, len(R["region_names"]) - 1)
-        # its pictures (Canonn's, linked): one per colour ("" for a species with no colour table), by the codex's names
+        # its pictures: one per colour ("" for a species with no colour table), one of your own (codex_own) else
+        # Canonn's (linked, by the codex's names)
         imgs, have = {}, self.codex_images()
         for colour, _ in outrider.checklist.colours(sp) or [("", None)]:
+            own = self.codex_own("bio", sp.get("genus"), sp["name"], colour)
+            if own:
+                imgs[colour.lower()] = own
+                continue
             hit = have.get(f"{sp['name']} - {colour}".lower() if colour else sp["name"].lower())
             if not hit and not colour and sp.get("genus"):   # Canonn keys Bark Mound as the game does: "bark mounds"
                 hit = have.get(sp["genus"].lower())
@@ -21539,6 +21601,16 @@ def make_app(state, hosts=None):
         except ValueError:
             return web.json_response({"error": "system: an id64"}, status=400)
 
+    async def codex_picture_view(request):
+        """GET /api/codex_picture?kind=&group=&entry=&colour=&file=&size=: one of your own codex pictures (State.codex_picture)."""
+        got = await state.codex_picture(request.query)
+        if not got:
+            raise web.HTTPNotFound()
+        body, ctype = got
+        if isinstance(body, bytes):
+            return web.Response(body=body, content_type=ctype, headers={"Cache-Control": "max-age=600"})
+        return web.FileResponse(body, headers={"Content-Type": ctype, "Cache-Control": "max-age=600"})
+
     async def screenshot_image(request):
         """GET /api/screenshots/{id}/image?size=thumb|small|medium|crop|full: one shot's image (only files the record names)."""
         try:
@@ -22917,6 +22989,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/records", records_view)
     app.router.add_get("/api/screenshots", screenshots_view)
     app.router.add_get("/api/screenshots/{id}/image", screenshot_image)
+    app.router.add_get("/api/codex_picture", codex_picture_view)
     app.router.add_post("/api/screenshots/backlog", screenshots_backlog)
     app.router.add_get("/api/folders", pc_only(folders_view))   # names only, never a file
     app.router.add_get("/api/left", left_view)

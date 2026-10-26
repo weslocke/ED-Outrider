@@ -3,6 +3,7 @@ are taken (outrider/screenshots.py, State.shot_convert), what a surface shot sho
 backlog, the endpoints. Fakes only: a tiny BMP made here, temp folders, never the player's."""
 import asyncio
 import datetime
+import io
 import json
 import os
 import shutil
@@ -10,6 +11,7 @@ import tempfile
 import time
 import unittest
 import unittest.mock
+import urllib.parse
 
 from support import ed_outrider  # also puts the repository root on sys.path
 import outrider.screenshots as S  # noqa: E402
@@ -94,7 +96,8 @@ class Names(unittest.TestCase):
                  "group": "Stratum", "entry": "Stratum Tectonicas"},
                 {"kind": "geo", "name": "Water Ice Geyser", "entry_id": 1400258, "lat": 0.0, "lon": 0.002}]   # ~35 m
         self.assertEqual(S.nearest_subject(0.0, 0.0, R, subs, 50), {"kind": "bio", "name": "Stratum Tectonicas - Lime", "entry_id": None,
-                                                                    "group": "Stratum", "entry": "Stratum Tectonicas", "dist": 17})
+                                                                    "group": "Stratum", "entry": "Stratum Tectonicas", "colour": None,
+                                                                    "dist": 17})
         self.assertIsNone(S.nearest_subject(0.0, 0.0, R, subs, 10))     # none that close
         self.assertIsNone(S.nearest_subject(None, None, R, subs, 50))   # a shot from the air
         self.assertIsNone(S.nearest_subject(0.0, 0.0, R, subs, 0))      # off
@@ -106,14 +109,27 @@ class Names(unittest.TestCase):
         """[screenshots] codex: Biology/<genus>/<species> or Geology/<group>/<name> under the export folder; never filed
         by a guess (no group or entry, another kind, no subject)."""
         root = os.path.join("x", "out")
-        self.assertEqual(S.codex_dir(root, {"kind": "bio", "name": "Tussock Albata - Green", "group": "Tussock", "entry": "Tussock Albata"}),
-                         os.path.join(root, "Biology", "Tussock", "Tussock Albata"))
+        self.assertEqual(S.codex_dir(root, {"kind": "bio", "name": "Tussock Albata - Green", "group": "Tussock", "entry": "Tussock Albata",
+                                            "colour": "Green"}), os.path.join(root, "Biology", "Tussock", "Tussock Albata", "Green"))
+        # a species with no colours: no colour folder; one whose colour cannot be told: not filed
+        self.assertEqual(S.codex_dir(root, {"kind": "bio", "group": "Anemone", "entry": "Luteolum Anemone", "colour": ""}),
+                         os.path.join(root, "Biology", "Anemone", "Luteolum Anemone"))
+        self.assertIsNone(S.codex_dir(root, {"kind": "bio", "group": "Tussock", "entry": "Tussock Albata", "colour": None}))
+        self.assertIsNone(S.codex_dir(None, {"kind": "geo", "group": "Geyser", "entry": "Water Geyser"}))
         self.assertEqual(S.codex_dir(root, {"kind": "geo", "name": "Geysir d'eau", "group": "Geyser", "entry": "Water Geyser"}),
                          os.path.join(root, "Geology", "Geyser", "Water Geyser"))   # the English name, whatever the game's
         self.assertEqual(S.codex_dir(root, {"kind": "geo", "group": "A/B", "entry": "C:D"}), os.path.join(root, "Geology", "A_B", "C_D"))
         for subj in (None, {"kind": "bio", "name": "X", "group": None, "entry": "X"}, {"kind": "bio", "group": "G"},
                      {"kind": "other", "group": "G", "entry": "E"}):
             self.assertIsNone(S.codex_dir(root, subj), subj)
+        # the pictures in one: images only, files only, not hidden
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        for n in ("b.JPG", "a.png", "c.webp", ".hidden.png", "notes.txt", "x.bmp"):
+            open(os.path.join(d, n), "w").close()
+        os.mkdir(os.path.join(d, "sub.png"))
+        self.assertEqual(S.codex_pictures(d), ["a.png", "b.JPG", "c.webp"])
+        self.assertEqual(S.codex_pictures(os.path.join(d, "none")), [])
 
     def test_journal_shots(self):
         d = tempfile.mkdtemp()
@@ -436,6 +452,52 @@ class Server(unittest.TestCase):
         [card] = [n for n in self.st.notices.active() if n["key"] == "screenshots"]
         self.assertIn("codex", card["text"])
 
+    def test_checklists_show_your_own_pictures(self):
+        """[screenshots] codex_show (the author, 2026-10-26): a checklist entry's picture is one of your own from its codex
+        folder (a species' colour, a formation), any picture there, picked at random; Canonn's where there is none; the
+        pictures served by name inside that folder only, shrunk for the panel."""
+        sid = "$Codex_Ent_Bacterial_10_Name;"
+        yellow = os.path.join(self.out, "Biology", "Bacterium", "Bacterium Bullaris", "Yellow")
+        geyser = os.path.join(self.out, "Geology", "Geyser", "Water Ice Geyser")
+        for folder, names in ((yellow, ("mine.png", "cropped.png")), (geyser, ("g.png",))):
+            os.makedirs(folder)
+            for n in names:
+                Image.new("RGB", (2000, 1000), (200, 180, 20)).save(os.path.join(folder, n))
+        canonn = {"bacterium bullaris - yellow": ["https://c/y.jpg", "Someone"], "bacterium bullaris - red": ["https://c/r.jpg", "Other"],
+                  "water ice geyser": ["https://c/g.jpg", "Third"]}
+        self.st._codex_images = canonn
+        sp, _ = self.st.checklist_species(sid)
+        self.assertEqual(sp["images"]["yellow"], {"url": "https://c/y.jpg", "cmdr": "Someone"})   # off by default: Canonn's
+        self.st.shots_cfg["codex_show"] = True
+        seen = set()
+        for _ in range(40):
+            sp, _ = self.st.checklist_species(sid)
+            seen.add(sp["images"]["yellow"]["file"])
+        self.assertEqual(seen, {"mine.png", "cropped.png"})                                  # at random, from the folder
+        self.assertEqual(sp["images"]["red"], {"url": "https://c/r.jpg", "cmdr": "Other"})  # no folder: Canonn's
+        img = sp["images"]["yellow"]
+        self.assertTrue(img["own"] and img["url"].startswith("api/codex_picture?") and img["full"].endswith("&size=full"))
+        q = dict(urllib.parse.parse_qsl(img["url"].split("?", 1)[1]))
+        body, ctype = asyncio.run(self.st.codex_picture(q))
+        self.assertEqual(ctype, "image/jpeg")
+        with Image.open(io.BytesIO(body)) as im:
+            self.assertEqual(max(im.size), self.st.CODEX_VIEW_PX)                            # shrunk for the panel
+        self.assertEqual(asyncio.run(self.st.codex_picture(dict(q, size="full"))), (os.path.join(yellow, q["file"]), "image/png"))
+        geo, _ = self.st.checklist_geo(1400258)
+        self.assertEqual((geo["image"]["file"], geo["image"]["own"]), ("g.png", True))
+        # never anything but a picture in that folder: a path, a parent, another folder's, a file that is not a picture
+        with open(os.path.join(self.out, "secret.png"), "wb") as f:
+            f.write(b"x")
+        open(os.path.join(yellow, "notes.txt"), "w").close()
+        for bad in (dict(q, file="../../../../secret.png"), dict(q, file=os.path.join(self.out, "secret.png")), dict(q, file=".."),
+                    dict(q, file="notes.txt"), dict(q, file="none.png"), dict(q, kind="other"), dict(q, colour="Red"),
+                    dict(q, group="..", entry="..", colour="..")):
+            self.assertIsNone(asyncio.run(self.st.codex_picture(bad)), bad)
+        # an empty folder: Canonn's
+        shutil.rmtree(geyser)
+        os.makedirs(geyser)
+        self.assertEqual(self.st.checklist_geo(1400258)[0]["image"], {"url": "https://c/g.jpg", "cmdr": "Third"})
+
     def test_on_foot_the_position_is_status_jsons(self):
         """The author, 2026-10-25: three shots of a bacterium on foot named nothing: on foot the Screenshot line has no
         Latitude/Longitude, so the live Status.json's over that body at that moment is the shot's."""
@@ -477,9 +539,19 @@ class Server(unittest.TestCase):
         self.run_queue()
         [r] = self.db.execute("SELECT * FROM screenshots").fetchall()
         self.assertEqual(json.loads(r["subject"])["name"], "Bacterium Bullaris - Yellow")
-        # [screenshots] codex: the rules' genus and species, the colour in the name only
-        self.assertEqual(self.st.shots_last["codex"], os.path.join(self.out, "Biology", "Bacterium", "Bacterium Bullaris",
+        # [screenshots] codex: the rules' genus, species and colour (from the variant's code, kept with each spot)
+        self.assertEqual(self.st.shots_last["codex"], os.path.join(self.out, "Biology", "Bacterium", "Bacterium Bullaris", "Yellow",
                                                                    os.path.basename(r["full"])))
+        self.assertEqual({x[0] for x in self.db.execute("SELECT variant FROM bio_spots")}, {"$Codex_Ent_Bacterial_10_Polonium_Name;"})
+        # another game language: the colour still from the code; a spot from before the code was kept: from the name,
+        # when it is an English colour of the species' table, else not filed
+        self.db.execute("UPDATE bio_spots SET name='Bakterium Bullaris - Gelb'")
+        shot = {"system_id": 9, "body": "Sys 2 a", "lat": 0.0, "lon": 0.0302}
+        self.assertEqual(self.st.shot_subject(shot)[1]["colour"], "Yellow")
+        self.db.execute("UPDATE bio_spots SET variant=NULL")
+        self.assertIsNone(self.st.shot_subject(shot)[1]["colour"])
+        self.db.execute("UPDATE bio_spots SET name='Bacterium Bullaris - Yellow'")
+        self.assertEqual(self.st.shot_subject(shot)[1]["colour"], "Yellow")
         self.assertTrue(os.path.basename(r["full"]).startswith("2 a Bacterium Bullaris - Yellow"), r["full"])
         with Image.open(r["full"]) as im:
             self.assertIn("<rdf:li>Yellow</rdf:li>", im.text["XML:com.adobe.xmp"])   # the colour, a keyword of its own

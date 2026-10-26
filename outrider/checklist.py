@@ -11,6 +11,7 @@ For each species and region:
             state there and what gives it ("F, G stars", "polonium"); a species with no colour table (anemones, brain
             trees, tubers...) is its own one variant
 """
+import re
 
 STATES = ("sold", "aboard", "lost", "logged")   # best first
 RANK = {s: i for i, s in enumerate(STATES)}
@@ -63,6 +64,26 @@ def colour_of(variant, species_name):
         return None
     head, colour = v.rsplit(" - ", 1)
     return colour.strip().lower() or None if head.strip().lower() == (species_name or "").lower() else None
+
+
+def variant_colour(species, variant_id=None, name=None):
+    """A sample's colour as its species' table names it (English, whatever the game's language): from its variant's
+    codex code ("$Codex_Ent_Tussocks_01_F_Name;": the star class F; "..._Bacterial_10_Polonium_Name;": polonium), else
+    the colour at the end of its name ("Bacterium Bullaris - Yellow") when the table has it. "" for a species with no
+    colours (one picture for all), None when it cannot be told."""
+    known = colours(species)
+    if not known:
+        return ""
+    c = species.get("colors") or {}
+    m = re.match(r"^\$Codex_Ent_[A-Za-z]+_\d+_(\w+)_Name;$", str(variant_id or ""))
+    if m:
+        key = m.group(1).lower()
+        for table in (c.get("star") or {}, c.get("element") or {}):
+            hit = next((v for k, v in table.items() if str(k).lower() == key and isinstance(v, str) and v), None)
+            if hit:
+                return hit
+    said = colour_of(name, species.get("name"))
+    return next((colour for colour, _ in known if colour.lower() == said), None) if said else None
 
 
 def merge_species(species_list):
