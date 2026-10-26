@@ -60,8 +60,9 @@ update Outrider.
 - **evdev** (Linux only) for auto honk, auto-target, the control rail and the co-pilot button (Windows needs
   nothing extra for the first three). It is built from
   source, so it needs your distribution's Python development headers.
-- **Pillow** (`pillow`, about 10 MB) to convert the game's screenshots as you take them
-  ([Screenshots](automation.md#-screenshots)); without it they stay the game's BMPs.
+- **Pillow** (`pillow`, about 10 MB) to convert the game's screenshots as you take them, copy them into your own codex
+  folders and shrink those pictures for the Bio/Geo checklists ([Screenshots](automation.md#-screenshots)); without
+  it they stay the game's BMPs (pictures already in your codex folders still show, at full size).
 
 If one of these will not install, the launcher still starts Outrider without it and says what is off and how to add
 it; once you have fixed that (say `sudo apt install python3-dev`), start it with `OUTRIDER_REINSTALL=1
@@ -69,7 +70,8 @@ it; once you have fixed that (say `sudo apt install python3-dev`), start it with
 starts with the packages already installed and installs a new required one at the next start; a new optional one
 (Pillow, say) waits for `OUTRIDER_REINSTALL=1` once you are online, as the launcher's message says.
 
-Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste) need **`xclip`**
+Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste), and a screenshot put on
+the clipboard, need **`xclip`**
 (used wherever there is an X display: X11, and Wayland desktops with XWayland, which the game runs under) or
 **`wl-copy`** (the `wl-clipboard` package, for Wayland without one), from your distribution, e.g. `sudo apt install
 xclip`. On GNOME's Wayland `xclip` matters: `wl-copy` there takes the keyboard focus for a moment to copy, which can
@@ -169,6 +171,8 @@ folder from a network share, and serve the pages and the tablet from there.
 > - **The Highway's clipboard copy** of the next system
 > - **Play speech and sounds on this PC**
 > - **The [in-game overlay](overlay.md)**
+> - **[Screenshots](automation.md#-screenshots)** converted as you take them (the game's Pictures folder is on the
+>   game PC; the image has no Pillow)
 >
 > If you use any of these, run Outrider on the game PC (Getting started), or run both: each keeps its own database
 > and they don't interfere.

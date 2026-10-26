@@ -13346,7 +13346,7 @@ function overlayHtml(o) {
     // each panel's own row: its on/off box (what it shows on hover), then where it goes; a panel switched off is dimmed
     // then whether it hides in your ship while the HUD is in combat mode (analysis only, D2a) and while docked (the author,
     // 2026-10-14: the radar has no box, it shows only on a body's surface); data-find: Find a setting finds them by key
-    const docked = id === "radar" ? `<td class="ovana unk" title="the radar shows only on a body's surface">–</td>`
+    const docked = id === "radar" ? `<td class="ovana unk" title="the radar shows only on or low over a body, never while docked">–</td>`
       : `<td class="ovana"><input type="checkbox" data-ovdocked="${id}" data-find="overlay.hide_docked"${dock.has(id) ? " checked" : ""} title="${esc(name)}: hidden while docked${id === "body" ? " (still shown over the galaxy map)" : ""}"></td>`;
     const onFoot = `<td class="ovana"><input type="checkbox" data-ovfoot="${id}" data-find="overlay.hide_on_foot"${foot.has(id) ? " checked" : ""} title="${esc(name)}: hidden on foot"></td>`;
     return `<tr class="${on ? "" : "ovoff"}"><th><label title="${esc(what)}" data-find="overlay.${id === "radar" ? "radar" : id + "_panel"}"><input type="checkbox" data-ovpanel="${id}"${on ? " checked" : ""}> ${esc(name)}</label></th>` +

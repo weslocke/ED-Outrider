@@ -16,7 +16,8 @@ system where it finished; a carrier trip is kept apart from both.
 
 - **Two plotters.** **Exact** (the default) plans every jump with its fuel and refuel stops from your ship's own
   figures (drive, masses, tanks, Guardian booster, engineering) and your cargo; tick **no neutron boosts** for a
-  route of regular jumps only (no neutron stars to fly past). **Neutron** plans waypoints only,
+  route of regular jumps only (no neutron stars to fly past), and **use injections**, **exclude secondary stars** or
+  **already supercharged** as you need them. **Neutron** plans waypoints only,
   from a range, the supercharge (×4, or ×6 with the SCO Mk II) and an efficiency: for a ship you haven't flown, or
   a quick plot.
 - **Ship.** Any ship you have flown, as of its latest Loadout. The neutron plotter's **Range** starts at that
@@ -31,8 +32,9 @@ system where it finished; a carrier trip is kept apart from both.
   text (a paragraph or a link is refused). Linux needs `xclip` (X11 or XWayland) or `wl-paste` (Wayland), the same packages that
   copy the next system; Search's Find a system by name and the Nearby Focus/Lock, Search and Nearest "a system…"
   boxes have one too.
-- **Conservative range** (off by default): jumps a margin (5 ly) shorter than the ship's range, leaving room for a
-  fuller tank.
+- **Conservative range** (off by default): jumps a margin (5 ly, in the **by** box beside it) shorter than the ship's
+  range, leaving room for a fuller tank; a neutron jump is shorter by the margin times the supercharge (the note beside
+  it says both: "≈ 5 ly shorter jumps, about 20 ly on a ×4 neutron jump").
 - **A system Spansh doesn't know yet.** Spansh can only plot between systems it has heard of, and a system you
   have just discovered may not be one of them. Outrider then plots from (or to) a system Spansh knows close by, on
   the way, and puts yours back as the route's first (or last) jump: "Spansh doesn't know Drojau SL-D a53-5 yet: the
@@ -71,6 +73,8 @@ arrive there: "The next 3
   needs a permit is marked 🔒 and the head says so ("Sol needs a permit you may not have: the route ends there").
 - **Clipboard.** On arrival the next system's name goes on the desktop clipboard for the galaxy map (Linux:
   `wl-copy` or `xclip`, see [Getting started](install.md#-getting-started); Windows: built in; on the game PC only).
+  A screenshot set to go on the clipboard ([Screenshots](automation.md#-screenshots)) takes its place; the next
+  arrival copies the next system again.
 - **The voice:** "Next Neutron Highway Stop: Hwy Stop 38, with three jumps left to refuel. Boost your FSD to
   continue.", plus refuel stops, detours, "Back on the highway", "Highway complete" and the fuel warning.
 - **A finished route clears itself** when you jump out of its last system (any route: the Highway, Road to Riches,
@@ -82,6 +86,9 @@ of systems, maximum distance, minimum value, mapping value, avoiding Thargoid sy
 shows each system with what is left to do there, the bodies by name under the one you are at and the next, ✔ scanned
 and ✔✔ mapped from your journal; on arrival the voice says how many bodies are worth the stop and the best of them,
 and once they are done, the next system. It is not auto-targeted on its own: a Road to Riches is for stopping, not hurrying past.
+When Spansh finds nothing to visit (from inside the bubble, Sol or Lave, it answers the start system alone) the plot is
+refused with what to change: "Spansh found nothing to visit with those settings: try starting further out from the
+bubble, a larger radius or a lower minimum value". Exomastery is refused the same way, and the world routes below.
 Systems ahead that you have already finished (an earlier trip, or out of order) are passed over: the next stop is the
 first one with work left, "Next: Pru Aim XY-Z d1 · 3 jumps · 6 of 22 · skipping 2 done" (hover for their names; the jumps count from where you are, through the systems passed
 over), and
@@ -108,7 +115,8 @@ limited to those kinds of planet, as Spansh's own pages plot them, with the same
 the mapping value. Terraformable asks only for the terraformable ones (worth about 460 thousand or more mapped; Spansh's
 own rocky and HMC page lists every plain rocky body too, worth a couple of thousand). These worlds are worth mapping, so
 a body is done once it is scanned and mapped. Followed like Road to Riches; the end is "Earth-like route complete."
-(or "Ammonia route complete.", "Terraformable route complete.").
+(or "Ammonia route complete.", "Terraformable route complete."). A plot with nothing to visit is refused as Road to
+Riches' is, without the lower minimum value (they have none to lower).
 
 **A sweep.** Tick systems in **Left behind**, **My firsts** (with show lost: the systems whose data was lost),
 **Bookmarks** or **Search**'s results, then **🧹 Plot a sweep (N)** beside any of those lists (the ticks are one set across them, kept until
@@ -158,7 +166,8 @@ on a server, without the keyboard, or while the box below lists a missing bindin
 is greyed out too, and a failed row gets no ⟳ Retry).
 
 **🎯 and Plot route anywhere.** A 🎯 also sits beside each bookmark, the header's next stop, the Nearest finder's rows,
-Search's results and the Exo-Biology and Geology checklists' "🔍 nearby" rows (never your own system), and left of
+Search's results, the Exo-Biology and Geology checklists' "🔍 nearby" rows, Now's nearest catalogued sight, and a
+mining session's place and each ring of Hotspots in CMDR → Sessions (never your own system), and left of
 each system's name in Nearby (the Overview's too, in a column of their own). **Plot route** beside a bookmark or the
 next stop (or on the Map's tapped card) puts the system in To and opens the form; it plots at once when you follow no
 route, and with one it waits for your Plot (a new plot replaces the route you follow). A click on a system in the Map tab targets it the same

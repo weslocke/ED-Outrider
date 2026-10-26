@@ -46,10 +46,12 @@ before.
   **Docked** box (see [Settings](#settings)).
 - **The surface radar**, on a body (landed, in the SRV, on foot) or low over it: heading up, you in the middle, N on
   the rim; the sample points of your run with their colony rings, red while you are inside one and green once you are
-  clear; tagged plants, the ship and your rigs. Underneath: how far the next sample must be, or "Clear: sample here".
+  clear; tagged plants, the ship, your rigs and your surface pins (the one you are heading for named). Underneath: how
+  far and which way that pin is ("📍 Wreck 12.4 km, 30° left"), how far the next sample must be, or "Clear: sample here".
   It shows with nothing on it too (you, N and its edge), as the page's surface map does: low over a body looking for
-  geology, say (not while docked at a planetary port). A faint line is your trail on this body this visit, as on the
-  page's map. A compass grid turns with
+  geology, say (not while docked at a planetary port, nor on foot in its hangar or concourse). A faint line is your
+  trail on this body this visit, where you drove, walked or flew low (below `[defaults] surface_alt`, 1,000 m), as on
+  the page's map. A compass grid turns with
   you: ticks on the rim every 15° (longest at N, E, S, W, with their letters), a crosshair and quarter rings.
   **Docking** takes the radar's place (its corner, size and switch: the radar has nothing to show in space; at a
   planetary port the pad comes first until you touch down): from the moment a station gives you a pad until you touch
@@ -170,8 +172,8 @@ Under **Hide in mode**, **Combat** keeps a panel off in your ship while the HUD 
 in analysis mode, so the screen stays clear in a fight. In the SRV and on foot (no HUD modes there) and over the
 galaxy map it shows as the others. **Docked** hides a panel while you are docked (the ship at a station, a carrier or
 a port, or you on foot in a station, hangar or social space); ticked to start with for the system, Target, Now and
-Bio signals panels, not for the system strip and the alerts. The radar has no Docked box: it shows only on a body's
-surface. The Target panel still shows over the galaxy map while docked, so you see the system you pick. **Foot** hides a
+Bio signals panels, not for the system strip and the alerts. The radar has no Docked box: it shows only on a body or
+low over it. The Target panel still shows over the galaxy map while docked, so you see the system you pick. **Foot** hides a
 panel on foot, anywhere (in a station or on a planet's surface); none is ticked to start with. The system, Target and radar
 panels start on; the system strip, Now, Bio signals
 and Alerts start off. The **theme** colours and frames the panels as the page's themes do (Elite's orange with

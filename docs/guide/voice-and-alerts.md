@@ -321,7 +321,8 @@ the sentence ends:
   What the voice says: biological, geological, and **possible new codex entries**, each its own tick). The last says,
   once the body's scan is in, what its signals could log that your codex lacks, as Here's ✦ (this region) and ✪
   (never logged) mark it: "Possible new codex entries on body A 3: Bacterium Acies - Teal, new in this region; Water Ice
-  Geyser, never logged". It is on by default and said whether or not the counts are. Geology is said at once (it
+  Geyser, never logged" (four names at most, then "and 2 more"; once per body each visit). It is on by default and said
+  whether or not the counts are. Geology is said at once (it
   depends on the body alone). Biology is said at once only when every genus the body could have is new to you; while
   some are and some are not and bodies are still unfound (a star yet to be found can rule a genus in or out), it waits
   for the FSS's "all found" and is said then if it still is.

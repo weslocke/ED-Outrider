@@ -45,12 +45,12 @@ also run 24/7 on a home server in Docker.
 |---|---|
 | 🔭 **Find the undiscovered** | Every known system within 25 ly is listed. If the galaxy map shows one that *isn't* on the page, nobody with an uploader has been there. |
 | 🔊 **Hear it before you jump** | Target a system and get a fanfare if it's a brand-new discovery, a cheerful note if it's known but unscanned, a thud if it's been done. |
-| 🪐 **See the whole system** | Every body: value, gravity, atmosphere, rings and hotspots, curiosities, and which exobiology species it could hold — before you probe or land. |
-| 🌟 **Rare finds flagged** | Rare stars, stellar phenomena, Guardian and Thargoid sites, Titans and other signals worth a detour, potential green gas giants and star or planet types new to your codex: marked in Nearby and Here, most of them said out loud when you find them. |
+| 🪐 **See the whole system** | Every body: value, gravity, atmosphere, rings and hotspots, curiosities, and which exobiology species it could hold — before you probe or land. 📋 copies a short summary of it in Markdown, ready to post. |
+| 🌟 **Rare finds flagged** | Rare stars, stellar phenomena, Guardian and Thargoid sites, Titans and other signals worth a detour, potential green gas giants, EDAstro's catalogued sights near you, and star or planet types, species and geology new to your codex: marked in Nearby and Here, most of them said out loud when you find them. |
 | ⚠️ **Don't leave money behind** | Target onward with mapping or exobiology worth your while still undone and the page says so, out loud if you like. Ordinary systems stay quiet. |
 | 💰 **Know what's on board** | Unsold cartographics and exobiology in credits, bonuses included, and your unsold 🏁 first discoveries. Dock somewhere that buys it and it tells you to sell. |
-| 🌿 **On the ground** | What is left to sample on the body, a countdown to the next colony (on foot, in the SRV or flying low to the next spot), and a warning when a run elsewhere would be discarded. |
-| ⛽ **Fuel you can trust** | Jumps left at max range and at your pace, laden range, fuel per hop, how scoopable your recent stars have been, and a nudge to top up before a dry stretch. |
+| 🌿 **On the ground** | What is left to sample on the body, a countdown to the next colony (on foot, in the SRV or flying low to the next spot), your trail on the surface map (the ground already looked over), and a warning when a run elsewhere would be discarded. |
+| ⛽ **Fuel you can trust** | Jumps left at max range and at your pace, laden range, fuel per hop, how scoopable your recent stars have been, the seconds to a full tank while you scoop, and a nudge to top up before a dry stretch. |
 | 🧭 **Decide where to go** | Unfinished systems nearby, the nearest buyers for your data, bookmarks and a next stop, stellar phenomena, and a search across Spansh. |
 | 📦 **Boxel by boxel** | Work through the boxel you are in by number: what you and Spansh know of each system, the next one to try with 🎯, the nearest boxels of each kind, and a map of the sector's boxels. |
 | 🛣 **Neutron Highway** | Plot a neutron route with Spansh for any ship you have flown; Outrider follows it as you fly and says the next stop. |
@@ -60,13 +60,13 @@ also run 24/7 on a home server in Docker.
 | 💱 **Trading, kept small** | Where to sell or buy what you carry, from Spansh's markets, and Spansh's trade planner as a route Outrider follows and talks you through. |
 | 📜 **Your logbook** | Every journal event in a searchable log, every exobiology sample and what became of it, and a schematic of the system. |
 | 🧑‍🚀 **Your CMDR** | The CMDR tab: ranks with the way to the next, credits and assets, every ship (its build one click from EDSY or Coriolis) and stored module, engineering blueprints against your materials, the missions you hold, how your combat and mining sessions went, and what exploration, exobiology and mining earned you, month by month. |
-| 📈 **The long view** | Each trip from sale to sale with what it actually paid, what each ship loss cost, your best finds, ranks and career statistics. |
+| 📈 **The long view** | Each trip from sale to sale with what it actually paid, what each ship loss cost, your best finds, your records (the most extreme bodies among your own scans), ranks and career statistics. |
 | 🗣 **A voice with personality** | A natural neural voice in eleven personalities, from down to business, sarcastic or sweet to Vulcan, Klingon or a smuggler, briefing you on arrival and warning before you leave something unfinished. |
-| ⛏️ **Ring mining** | Rings worth mining called out, a limpet reminder on undocking, prospector call-outs for the minerals you pick, the hold's minutes to full on Now and the overlay, and every hotspot's record in CMDR → Sessions. |
+| ⛏️ **Ring mining** | Rings worth mining called out, a limpet reminder on undocking, prospector call-outs for the minerals you pick (each at its own threshold if you like), what a ring's hotspot minerals sell for nearby, the hold's minutes to full on Now and the overlay, and every hotspot's record in CMDR → Sessions. |
 | ⛏️ **Rhino mining** | A heading-up surface map on Now with your rigs, sample points and ship, and every collection kept per body. |
 | 📱 **A tablet in the cockpit** | Every page in a touch layout with eleven themes, alerts as banners, game buttons on a control rail, and the voice on the tablet if you like. |
 | 🎙️ **Ask out loud** | "Hey Vespa, status report": answered in the voice from what Outrider knows, with an optional AI for anything else; Settings lists every command it knows. |
-| 📷 **Screenshots** | The game's F10 and Alt+F10 BMPs converted as you take them to PNG, JPG or WebP, named after where they were taken, in a folder per commander (and system), with medium, small and cropped copies to post, one of them on the clipboard if you like, and what a surface shot shows: the plant or formation beside you. |
+| 📷 **Screenshots** | The game's F10 and Alt+F10 BMPs converted as you take them to PNG, JPG or WebP, named after where they were taken, in a folder per commander (and system), with medium, small and cropped copies to post, one of them on the clipboard if you like, and what a surface shot shows: the plant or formation beside you. Tagged shots can also go into codex folders of your own (by species and colour, or formation), and the Bio/Geo checklists can show your pictures there in place of Canonn's. |
 | 🎯 **Automation (game PC; Linux, Windows experimental)** | Auto honk fires the Discovery Scanner on arrival, auto-target targets the next route system after a supercharge and any system from a 🎯 (its galaxy-map keys yours to change, with a cheatsheet), and one HOTAS button (Linux) targets the next route system with a tap, gives a status report with a double tap and hushes with a hold. |
 
 ## 🚀 Getting started
@@ -75,7 +75,8 @@ also run 24/7 on a home server in Docker.
 ./launch_outrider.sh   # Linux, Python 3.11 or newer
 ```
 
-On **Windows**, install [Python](https://www.python.org/downloads/) 3.11 or newer and double-click
+On **Windows**, install [Python](https://www.python.org/downloads/) 3.11 or newer (3.14 at most for the natural
+voice) and double-click
 **`launch_outrider.bat`**. Then open **<http://127.0.0.1:8025/>** and go fly. The first run sets up a Python
 environment; after that it starts at once. On a home server, a Docker image runs it around the clock (the game-PC
 automation is off there).
@@ -96,7 +97,7 @@ Everything about installing, the optional parts, Docker, other devices and backu
 | <a id="-the-neutron-highway"></a>**[Plot Route](docs/guide/plot-route.md)** | The Neutron Highway (exact and neutron plotters), Road to Riches, Exomastery and trade routes, following a route, 🎯 and auto-target, the nearest place to dock |
 | <a id="-cargo-and-your-carrier"></a><a id="-trading"></a>**[Cargo and trading](docs/guide/cargo-and-trading.md)** | Your hold and your fleet carrier's (tracked, no Frontier sign-in), the carrier's tritium, Sell / Buy from Spansh's markets, trade routes |
 | <a id="-alerts"></a><a id="-the-voice"></a><a id="-ask-outrider-by-voice"></a><a id="-ask-an-ai-about-your-game"></a>**[Voice and alerts](docs/guide/voice-and-alerts.md)** | What Outrider tells you and when, the voice and its personalities, editing and banning lines, asking by voice (and the list of commands), asking an AI |
-| <a id="-auto-honk"></a><a id="-the-co-pilot-button"></a>**[Automation](docs/guide/automation.md)** | Auto honk and the co-pilot button (on the game PC) |
+| <a id="-auto-honk"></a><a id="-the-co-pilot-button"></a>**[Automation](docs/guide/automation.md)** | Auto honk, the co-pilot button and screenshots (on the game PC) |
 | <a id="-on-a-tablet"></a>**[On a tablet](docs/guide/tablet.md)** | The touch layout at /tablet, its eleven themes, the control rail, the Android app |
 | **[In-game overlay](docs/guide/overlay.md)** | Panels drawn over the game: the system worth your time, the body you are heading to, a surface radar, the system strip, Now (To-Do & Info), bio signals, alerts; arranging them |
 | **[Uploads](docs/guide/uploads.md)** | EDDN, EDSM and Inara (opt-in, off by default): what is sent and never sent, one uploader at a time, the keys |

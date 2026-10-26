@@ -45,6 +45,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/target.py` | Auto-target: the galaxy-map steps every 🎯 and the Highway press (Linux; Windows experimental; optional); `--show` |
 | `outrider/target_help.py` | The steps' Macro cheatsheet (Settings → Auto-target links it): every command, control, key name and alias, from the code |
 | `outrider/game_window.py` | Elite's window for auto-target: brought to the front before a run, checked to be in front before every key |
+| `outrider/screenshots.py` | Screenshots (game PC; converting needs Pillow): the game's BMPs converted to PNG, JPG or WebP with their copies, crop and metadata, what a surface shot shows, your codex folders and their pictures on the Bio/Geo checklists, the folder picker |
 | `outrider/bio.py` | The exobiology predictor; `--backtest` scores it against your journals, `--update-rules` fetches the rules by hand |
 | `resources/bio_rules.json` | Spawn rules, nebulae and regions from BioScan and klightspeed's region map; ExploData's colour variants are downloaded beside it into `bio_colours.json` on the first start, never shipped (`outrider/bio.py`) |
 | `outrider/checklist.py` | The Exo-Biology and Geology checklists: every species and site by galactic region, with what you have done with it there |
@@ -53,10 +54,12 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/ggg.py` | Potential green gas giants: the community's seven-layer ladder model, from a scan's temperature, mass and radius |
 | `outrider/codex_bodies.py` | Which codex entry a star or planet type logs, for the ✦ / ✪ on types new to your codex |
 | `outrider/codex_geo.py` | Which geology codex entries a body's volcanism could log, for the ✦ / ✪ on geology new to your codex |
+| `outrider/sights.py` | Catalogued sights: EDAstro's Galactic Encyclopedia Catalog (fetched once a day at runtime, never shipped) cut to what the page shows, and the nearest within `[server] sights_range` |
 | `outrider/boxel.py` | Boxels: a procedural name's boxel, its place and its systems' addresses, for Boxel mode and the sector map |
 | `outrider/riches.py` | The survey routes (Road to Riches, Exomastery, Earth-like, ammonia and terraformable worlds, sweeps), one table of their kinds: Spansh's answer as route rows, what is still to do in a system, the arrival lines |
 | `outrider/commander.py` | The CMDR tab: your ranks, money and fleet, inventory, engineering blueprints against your materials, missions, and combat and mining sessions, folded from the journals as they are read and kept in the database |
 | `outrider/earnings.py` | The CMDR tab's Earnings: what exploration, exobiology and mining paid you, when, where and with which ship |
+| `outrider/records.py` | My firsts → Your records (and Here's 🏆): the most extreme bodies among your own scans and the system farthest from Sol, from the Scan lines Outrider keeps (nav beacon reads left out) |
 | `outrider/shipyard_links.py` | A ship's build as an EDSY or Coriolis link (the format EDMC uses), from its latest Loadout |
 | `resources/blueprints.json` | Ship-module engineering blueprints by kind of module (materials per grade, that kind's engineers), built from EDCD's coriolis-data at a pinned commit by `scripts/build_blueprints.py` (it fetches the files itself) |
 | `outrider/uploads.py` | Uploads (opt-in, off by default): the session each journal line belongs to, the outbox, what may be sent |
@@ -75,8 +78,9 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `tests/` | `python3 -m unittest discover tests`; `node tests/page_smoke.js <port> [path to node_modules with jsdom]` for the page, against a scratch server only (it refuses 8025 and a missing port) |
 | `tests/fixtures/` | Synthetic sample journals (a made-up commander and systems) for tests and scratch servers |
 | `Dockerfile`, `docker-compose.yml`, `docker/` | Running Outrider as a server in Docker (see [Running as a server](install.md#-running-as-a-server-docker)); `docker/entrypoint.sh` writes the first config and checks the folders can be written |
-| `launch_outrider.sh`, `launch_outrider.bat` | Start Outrider (Linux and macOS; Windows), making `.venv` and installing `requirements.txt` first when needed (`OUTRIDER_REINSTALL=1` installs again), checking for a newer certifi once a week, and PyQt6 when the in-game overlay is on |
+| `launch_outrider.sh`, `launch_outrider.bat` | Start Outrider (Linux and macOS; Windows), making `.venv` and installing `requirements.txt` first when needed (`OUTRIDER_REINSTALL=1` installs again), checking for a newer certifi once a week, and PyQt6 when the in-game overlay is on; they pick a Python that Piper's voices can be installed into |
 | `scripts/install_requirements.py` | The launchers' install step: all of `requirements.txt` at once, else one line at a time, so an optional package that will not build (evdev, piper-tts, pillow) or no network does not stop Outrider starting. Exit 0 all installed, 2 only optional ones missing, 3 a required one failed but the installed packages still run Outrider (offline), 1 Outrider cannot run |
+| `scripts/python_check.py` | Whether a Python can install Piper's voices (64-bit 3.11 to 3.14; onnxruntime has no other builds): the launchers use it to pick a Python and to say so before the setup; `--ok` exits 0 when this Python suits, silently |
 | `scripts/verify.sh` | Every check in one go: unit tests, lint, `node --check static/page.js` (the page's JavaScript syntax), the page smoke test on a throwaway server (and a clean stop) |
 | `scripts/docker_bundle.sh` | A Docker release bundle in `dist/` (git-ignored): the built image saved with a compose file that runs it (no checkout or build on the server) |
 | `scripts/build_codex_images.py`, `scripts/build_geo_codex.py` | Rebuild `resources/codex_images.json` and `resources/geo_codex.json` from Canonn's codex reference (read only) |

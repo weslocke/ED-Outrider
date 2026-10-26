@@ -92,8 +92,9 @@ package (see [Install and run](install.md)), and is off until you tick it.
 
 - **Which shots:** the game's own, F10 and Alt+F10 (HighRes: four times the size, a few seconds to convert, and on
   Linux GNOME uses Alt+F10 for "toggle maximisation" until you free it in its keyboard settings). Steam's F12
-  screenshots are not the game's and are left alone. Outrider takes the place and the commander from the journal's
-  line for the shot, so the name is right even after you have jumped on.
+  screenshots are not the game's and are left alone. The **Screenshot** and **HighRes shot** buttons at the end of
+  [the tablet's control rail](tablet.md#-on-a-tablet) press F10 and Alt+F10 for you. Outrider takes the place and the
+  commander from the journal's line for the shot, so the name is right even after you have jumped on.
 - **Folders:** **Game's pictures** is where the game saves its BMPs (empty: Outrider finds it beside the journals);
   **Export pictures to** is where the PNGs or JPGs go (empty: a `Converted` folder inside the game's pictures). Type
   a path, or **📁** beside the field browses the game PC's folders (always the game PC's, whichever browser the page is open in). They are sorted into **a
@@ -113,7 +114,8 @@ package (see [Install and run](install.md)), and is off until you tick it.
 - **The clipboard:** **After each shot, copy** the full size, a copy or the crop to the clipboard, ready to paste
   into Discord or a post (the shots you take, never the ones converted later); when that picture is not made, the
   first one that is goes instead, and the status line says so. It replaces what was on the clipboard, a system name
-  copied for the galaxy map included.
+  copied for the galaxy map included. On Linux it needs `xclip` or `wl-copy`, as the Highway's copy does (see
+  [Install and run](install.md#-getting-started)); Windows has its own.
 - **The game's BMP:** kept (the default), deleted or moved to a folder of your choice (not the game's own), and only
   once every picture has been written and read back whole. If it cannot be moved or deleted, the pictures are kept
   and a card says why.
@@ -132,20 +134,21 @@ package (see [Install and run](install.md)), and is off until you tick it.
   `Geology/<group>/<formation>/` inside the export folder, whichever commander took it:
   `Biology/Tussock/Tussock Albata/Green/Smojooe UW-E c11-28 7 f 2026-10-26 08-51-14.jpg`. The folders take the
   English names whatever the game's language. A shot of a plant you have not sampled or tagged yet knows no plant,
-  so it is not copied.
+  so it is not copied, nor is one whose colour cannot be told.
 - **Your pictures on the checklists:** **Show your own pictures on the Bio/Geo checklists** makes the Exo-Biology and
   Geology checklists show one of your own pictures of a species' colour or a formation, picked at random from its
   codex folder each time you open it (and at each click on a colour), instead of Canonn's; Canonn's still shows where the folder is missing or has
-  none. Any picture in the folder counts (PNG, JPG, WebP, GIF), so crop or edit the copies, or add your own. Under the
-  picture: "Your picture: 2026-10-26, Smojooe UW-E c11-28 7 f" (when and where it was taken) as far as the picture says
-  (Outrider writes it in; an editor may drop it), else "Your picture, from your codex folders". A 📷 beside an entry
+  none. Any picture in the folder counts (PNG, JPG, WebP, GIF), so crop or edit the copies, or add your own; one that
+  does not open (empty, or not really a picture) is passed over. Under the picture: "Your picture: 2026-10-26, Smojooe
+  UW-E c11-28 7 f" (when and where it was taken) as far as the picture says (Outrider writes it in; an editor may drop
+  it), else "Your picture, from your codex folders"; a click on it opens it full size. A 📷 beside an entry
   on the checklists, and beside each colour when a species is open, says you have pictures of your own of it.
 - **Finding them again:** a 📷 beside a body you photographed in Here, its hover card shows the newest three, and the body's panel lists its shots with a
-  small picture (click it to open it larger: the medium copy when there is one), the time and what it shows; **📍**
+  small picture (click it to open it larger: the medium copy when there is one, else the largest kept), the time and what it shows; **📍**
   beside a surface shot pins where it was taken.
 - **The ones already there:** **Convert the screenshots already there** does the BMPs left in the Pictures folder,
   each matched to its journal line by name and time (one with none is converted with no system), and leaves those
-  done already alone. It works with the switch off.
+  done already alone, and empty ones (the game never wrote them). It works with the switch off.
 - When one fails (the folder not writable, the file never written), a card says why; the Settings section says what
   keeps it off (Pillow missing, the Pictures folder not found, not the game PC).
 

@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Docs brought up to date for the next release
+- A pre-release sweep (seven doc sets, each checked against the code by one agent and its edits re-checked by another):
+  the README's feature rows (codex folders and your own pictures, sights, Your records, the trail, seconds to full,
+  the Markdown summary, mining's thresholds and ring prices), install (Pillow's uses, Docker's switched-off list, the
+  screenshot clipboard's xclip / wl-copy), the developer page's module table (records, screenshots, sights,
+  python_check), views, voice and automation, settings, overlay, Plot Route, cargo, the code map, the design notes
+  (this release's decisions) and the journal reference (FSSBodySignals before the Scan, the variant's codex code).
+- The overlay settings' Docked cell for the radar says it shows on or low over a body, never while docked.
+
 ## 2026-10-26 · A body's records on its card and in its panel
 - A body holding one of Your records (the 🏆 beside its name) says which on its hover card and in its details panel
   ("🏆 Your record · Biggest planet 77,691 km", "new" when set in the last day), as the author asked: the 🏆's own

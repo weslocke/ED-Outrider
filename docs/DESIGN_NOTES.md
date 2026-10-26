@@ -122,8 +122,15 @@ upstream project's choices, not rules of the game.
   and a codex entry replaces it. It needs the journal's own temperature (green windows can be 0.00002 K wide): yours
   and Spansh's records keep it (checked: Spansh's equals the journal's); its class rules are a table. Written from the
   published rules; checked against Canonn's implementation on 21,747 giants (the author's 1,735 and 20,000 made up):
-  the same verdict every time. The author's 1,017 predictable giants: none called green, none in the codex. Not a
-  curiosity (it would blend in there): its own mark, Now line and alert.
+  the same verdict every time. The author's 1,017 predictable giants: none called green, none in the codex. A guess is
+  not a curiosity (it would blend in there): its own mark, Now line and alert; a giant your codex confirmed is one.
+- **A green giant's codex entry names the giant by its Scan's second, else by class** (2026-10-25,
+  `outrider.ggg.match_green`): the entry's `BodyID` is the main star's, never the giant's, so the ✓ matched by body
+  never came. The only giant scanned in the entry's own second is the one (your first, first FSS and latest scan's
+  times are kept for it: `own_bodies.fss_ts`); else the entry's own body (an older journal), else by the class its
+  entry id gives (its type's + 1): the only giant of it, else the ones the model flags, else all of them (every giant
+  when none has that class). With several, nothing says which: "one of N", never each called green, and counted once
+  in Nearby (`ggg.green_count`).
 - **✦ / ✪ on star and planet types go by EntryID, shown only** (2026-10-12, `outrider/codex_bodies.py`). The codex
   logs each body type once per region, but its localised names are ambiguous for planets ("Terraformable", "Standard
   gas giant"), so the table maps a body's class, luminosity, terraforming and atmosphere to the game's IDs, read from
@@ -184,11 +191,12 @@ upstream project's choices, not rules of the game.
   credits row; its fixed overlaps list turned down: "don't want to ship a fixed dataset"). **Each mineral's own
   threshold** (`pcts`) applies to the plain call-out only: combined is a sum, which one number judges. **A ring's prices**
   are asked when a body panel opens, never from a hover (a title cannot wait, and hovering across Here would ask Spansh for
-  every ringed body); once per mineral and system for 30 minutes, a failure kept 2 so a redraw never asks again, the
-  distances from you (the lookup measures from the ship). **Search's 2+** is one tick, not a count: three of one mineral
-  in a ring is rare. **A mining mission's search** follows the commodity's journal id, not its localised words; a
-  mission held from before got no id and no 🔍 rather than a re-read of its own; the re-reads of versions 61-63 read
-  every MissionAccepted again anyway, so only a mission whose acceptance is in no journal read has none.
+  every ringed body); once per mineral and system for 30 minutes, a failure kept 2 so a redraw never asks again at
+  once, then asked again for a body panel (Here's or Search's) still showing that system, the distances from you (the
+  lookup measures from the ship). **Search's 2+** is one tick, not a count: three of one mineral in a ring is rare.
+  **A mining mission's search** follows the commodity's journal id, not its localised words; a mission held from
+  before got no id and no 🔍 rather than a re-read of its own; the re-reads of versions 61-64 read every
+  MissionAccepted again anyway, so only a mission whose acceptance is in no journal read has none.
 - **Mining stints and their hotspots** (mining B-D, 2026-10-19; the review of 2026-10-20). A stint runs from a drop
   into a ring (`SupercruiseExit` or a login's `Location` with `BodyType: PlanetaryRing`) to leaving it: `MINING_CLOSE`
   is SupercruiseEntry, FSDJump, CarrierJump, Docked and Died, **not a logout or LoadGame**: the login's Location says
@@ -220,9 +228,10 @@ upstream project's choices, not rules of the game.
   are the only uploads. Every other outside call is a read-only lookup: Spansh, EDSM, GitHub (the bio rules, ExploData's
   colour tables and the update check), Hugging Face for voices (the page plays a voice's ▶ sample from Piper's samples
   site), Canonn (its codex reference once a day; the page loads the checklists' pictures from Canonn's storage), EDAstro
-  for the DSSA carrier list when the Nearest finder opens. The one exception is the AI layer (off by default,
-  `[assistant]`): it sends the question and the read-only tools' answers to the endpoint the player configures, so it is
-  not a read-only lookup. This is the one full list.
+  for the DSSA carrier list when the Nearest finder opens and its catalogued sights once a day (off with `[server]
+  sights_range = 0`). The one exception is the AI layer (off by default, `[assistant]`): it sends the question and the
+  read-only tools' answers to the endpoint the player configures, so it is not a read-only lookup. This is the one
+  full list.
 - **EDSM has no test endpoint**, so its developer switch is a dry run (`OUTRIDER_EDSM_DRYRUN=1`: requests built and
   logged to `data/edsm-dryrun.jsonl` without the key, nothing sent; the rows end as `dry` and are never sent later).
   EDDN's is its `/test` schemas (`OUTRIDER_EDDN_TEST=1`). Neither is a setting.
@@ -442,7 +451,9 @@ upstream project's choices, not rules of the game.
   per tap, only for signed-in devices (or this PC), only while the game is live, never while one of the other two is
   pressing, and only the binding the game itself has for that control; there are no macros or sequences on it (Board
   ship and Disembark were dropped for that reason). Status.json is the only confirmation; a press that is not
-  confirmed says so rather than guessing.
+  confirmed says so rather than guessing. Hide UI, Screenshot and HighRes (2026-10-25, at the end of every set) press
+  the game's own fixed keys, Ctrl+Alt+G, F10 and Alt+F10, which no .binds file holds (`outrider.rail.FIXED_KEYS`):
+  nothing in Status.json shows them, so they are a plain press with no state, never "Sent, waiting for the game".
 - **The MCP bridge reads the running server, never the database** (PLAN-mcp): every summary lives in `State`, so the
   bridge asks the read-only GET routes over 127.0.0.1 and reuses them; the password never applies to it (loopback).
   Its tools are defined once in `outrider/tools.py`, so the voice's AI layer offers the same ones. MCP's stdio
@@ -533,7 +544,11 @@ upstream project's choices, not rules of the game.
   Spansh's own pages ask the Road to Riches router for one body type with min_value 1 (probe P3, 2026-10-13), so they
   are Road to Riches rows whose map always counts (their worth is the map). Their moments and a sweep's use Road to
   Riches' alerts row ("Survey routes"), the moment's `route` naming the kind: one switch for the routes you stop and scan
-  on, not three more rows.
+  on, not three more rows. Terraformable world routes are the same with rocky and high metal content worlds and a
+  100,000 cr minimum, which leaves the plain ones out (Spansh tests it against the scan value). **A body route with no
+  body on it is refused** (2026-10-26, `riches.survey_rows`): from inside the bubble (Sol, Lave) Spansh answers the
+  start system alone, which stored would be a route already complete; the words say to start further out or widen the
+  radius, and to lower the minimum value only where the plot has one (the world routes have none).
 - **A sweep** (S51) is the slot's route through systems ticked in Left behind, My firsts (lost ones: the rescan trip) and
   Bookmarks, in the order Spansh's tourist router picks (probe P2): one set of ticks across the three lists, in that page
   only (a reload forgets them; they are a trip being put together, not a setting). Its stops ask nothing but arriving:
@@ -738,7 +753,7 @@ upstream project's choices, not rules of the game.
   fixed rules (Now hidden docked since 2026-10-10, the Target panel since D1); its default when the key is missing,
   System, Target, Now and Bio (`overlay.HIDE_DOCKED_DEFAULT`), keeps them and adds the two other panels about flying,
   while the strip and the alerts stay: what an older config gets without a word. The radar is never in it (it shows
-  only on a body's surface: no box, a dash). The Target panel over the galaxy map is shown docked whatever the list
+  only on or low over a body, wherever the page's surface map does, even with nothing on it: no box, a dash). The Target panel over the galaxy map is shown docked whatever the list
   says: you pick the next system there before you undock. The test panels and Arrange mode are the exception: they show over the game's window
   whatever is in front. Nothing shows while the game loads (2026-10-11): after a crash the game writes no Shutdown and
   leaves Status.json saying live with the dead session's flags until the new session is in, so from a game launch (a
@@ -905,7 +920,7 @@ upstream project's choices, not rules of the game.
   last known values (fuel from the last reading, else the last jump, else a full tank; the Data tile doesn't flag the
   old journal). Nothing is invented (a target the game cleared stays cleared), every guard still reads the real
   Status.json, and the virtual keyboard, the co-pilot button, the clipboard and the overlay window are off whatever
-  the config says.
+  the config says; no screenshot is converted.
 - **Here's bio items never break inside themselves,** and a compact table shows a codex entry as 📖 ✦ with the name
   in its tooltip (the run beside it already names the species), so a row stays one or two lines beside an open panel.
 - **History's sessions are split by 2 h without a jump.** A session's window runs from its login (the latest one
@@ -950,6 +965,8 @@ upstream project's choices, not rules of the game.
   page loads a picture from Canonn when an entry is opened, captioned with the commander and Canonn. The running
   server refreshes the link list from Canonn once a day into data/codex_images.json (about 650 KB asked for, nothing
   sent), used when sound (at least 500 entries) and else the shipped copy, so new pictures appear without a release.
+  Your own pictures can take their place (`[screenshots] codex_show`, below): they are yours, on your PC, so nothing
+  is copied or shipped there either.
 - **A plot's end Spansh does not know yet is stood in for** (2026-10-09). Both ends are looked up in Spansh's search
   before every plot (a system known here, even where you are, is not necessarily one Spansh knows). One it does not
   know, but Outrider can place, is replaced by a Spansh system near it: of those within the ship's range, the one
@@ -1540,12 +1557,98 @@ upstream project's choices, not rules of the game.
   and `geo_tags` are live-only (a geology CodexEntry's position could be rebuilt from the journals, but a position from
   Status.json could not), so both stay out of `RESET_JOURNAL_DATA`. A shot names its subject only from your own
   sample spots (`bio_spots`: kept after the run completes, when `sample_points` are dropped), composition scans and codex formations within `[screenshots] subject_m`: never from another player's
-  data. Your own bio/geo pictures in the checklists in place of Canonn's are a later step.
+  data. On foot the journal's line has no position, so the live Status.json's over that body within 90 s stands in
+  (`note_screenshot`), never another body's.
 - **The folder picker is the game PC's, names only** (2026-10-25, the author asked for folder selection): a browser
   cannot hand a page a folder's path (a directory input gives files, never where they are), and the page may be on the
   tablet anyway, so 📁 asks Outrider for a folder's subfolders (`/api/folders`, `pc_only`, behind the sign-in like
   every route): never a file, never a write. A folder that is not there yet opens at its nearest parent; an export or
   "moved to" folder is made when the first shot needs it, the game's own Pictures folder never is (it is said so).
+- **A shot's files: WebP rather than a lossy PNG, the crop in percent, the clipboard for live shots only** (2026-10-25,
+  ideas from EDDiscovery's list). The author asked for a lossy PNG with a quality; measured on a real 3072 x 1728 shot,
+  a 256-colour PNG was 4.6 MB (1.5 MB dithered, and worse than a JPG), so WebP instead (at quality 90 about 1 MB
+  against a JPG's 1.2 MB); a picture over libwebp's 16,383 px a side (a 5K screen's HighRes) is written as JPG. The crop
+  is left, top, width and height in % of the picture, so one setting fits a normal and a HighRes shot; one past the
+  picture's edge is refused when saved, never trimmed into numbers nobody typed. The clipboard gets a picture after
+  each live shot only, never the backlog's or the start-up catch-up's. Every picture carries what it shows as XMP, EXIF
+  and PNG text, and its system and body in XMP fields of Outrider's own (`XMP_NS`), read back for the checklists'
+  captions. Pillow 11 or newer (`requirements.txt`): Pillow 10 writes a JPG without its XMP and says nothing.
+- **Codex folders are a copy, under the export folder, in English, never filed by a guess** (2026-10-26, `[screenshots]
+  codex`, off by default): a shot that knows its plant or formation is also saved to `Biology/<genus>/<species>/<colour>/`
+  (no colour folder for a species with none) or `Geology/<group>/<formation>/` inside the export folder, whichever
+  commander took it: a copy beside the shot's own, never instead of it. The names are the shipped lists' English ones
+  (the exobiology rules and their colour tables, `geo_codex.json`) in any game language, so the checklists find them.
+  The colour is the species table's, from the variant's codex code kept with each sample spot and tagged plant
+  (`bio_spots.variant`, `bio_tags.variant`: the star class or material), else the colour at the end of its name, else
+  a species' only colour (`checklist.variant_colour`). A shot whose subject is not named, or whose colour cannot be
+  told, is not copied: no plant's at all while the colour tables are not loaded, when every species would look
+  colourless.
+  The copy is the picture exported, or (`codex_format`, `codex_quality`) the game's shot converted again at full size,
+  so the everyday pictures can be small and the codex ones fine (a full size already in that format and quality is
+  copied). One that fails halfway leaves nothing behind, and a failure is said on the screenshots card: the shot
+  itself is kept.
+- **Your own pictures on the checklists follow one switch** (2026-10-26, `[screenshots] codex_show`, off by default):
+  the Exo-Biology and Geology checklists show a random picture from the entry's codex folder (any picture put there,
+  edited or cropped, not only Outrider's), Canonn's where there is none, and each click on a colour picks another (GET
+  `/api/checklist/picture`). The 📷 beside the entries and colours you have pictures of shows only while it is on, as
+  the panel shows Canonn's otherwise (`own_pics`, one walk of the folders per checklist). Only what is inside the
+  export folder is offered or served (GET `/api/codex_picture`, by name inside that folder, never a path; a folder or
+  file linked from outside is passed over), opened only as PNG, JPG, WebP or GIF whatever its name says (an EPS named
+  .png ran Ghostscript), shrunk to 960 px for the panel, a click opening the file. A picture that does not open (empty,
+  not a picture, unreadable) is passed over too, so a folder of broken files shows Canonn's, never a broken picture.
+  The caption's date and place are read from the picture itself (EXIF's date, else XMP's; the system and body from
+  Outrider's own fields, else its keywords); "from your codex folders" when it says nothing (an editor dropped it).
+- **The codex line waits for an open guess** (2026-10-26; Settings → Voice → Say signals as the FSS finds them:
+  possible new codex entries, `[defaults] speak_codex_signals`, on by default): once a body's Scan is in (the
+  FSSBodySignals line comes a second before it), the species its signals could be and the geology its volcanism could
+  show that your codex lacks, as Here's ✦ / ✪ judge them; at most four names, once per body and visit, live only.
+  Biology is said at once only when every genus the body could have is new; otherwise it waits for all bodies found and
+  is said then if it still is (`codex_deferred`): the author's Smojooe TW-E c11-2 C 1 was called "Prasinum
+  Bioluminescent Anemone, never logged", and the finished FSS showed a logged Bacterium. Geology depends on the body
+  alone: said at once. Its own tick beside the two counts, so the counts can be off and the codex finds still said.
+  Star and planet types stay shown only (above).
+- **Your records are shown, never said** (2026-10-25, My firsts → Your records, `outrider/records.py`): the most extreme
+  bodies among your own scans and the system farthest from Sol, from the Scan lines Outrider keeps. A nav beacon's read
+  is never one, as it is never a discovery; each body is dated by your first scan of it (`own_bodies.first_ts`: before,
+  a rescan on a return visit re-dated a years-old record "new"). An airless body's 0 holds no "Thickest atmosphere", an
+  arrival star's 0 no "Farthest from its arrival star". Worked out on a worker only when a scan or a jump was added, and asked
+  for (GET `/api/records`) only while the box is open or 3 s after Here loads, so a burst of FSS scans is one request.
+  A body holding one has 🏆 in Here, and its hover card and details panel name the record ("new" when set in the last
+  day). Visual only: the discovery streak's "no records or milestones" (above) stands.
+- **Five more curiosities, each counted first** (2026-10-25): a shepherd moon (it orbits inside its planet's rings), a
+  tiny world (under 300 km in radius), a tiny star (under a twentieth of the Sun's radius; white dwarfs, neutron stars
+  and black holes are small by nature and left out), an extreme orbit (eccentricity 0.9 or more) and a close binary
+  (two stars round one barycentre under 5 ls apart), each counted on the author's 26,748 scans first so none is noise
+  (5 tiny worlds, 7 extreme orbits); a steep inclination fired on 1,374 bodies and was left out.
+- **Catalogued sights are EDAstro's, fetched, never shipped or said** (2026-10-25, `outrider/sights.py`): the Galactic
+  Encyclopedia Catalog (CMDR Orvidius's curated sights) is CC BY-NC-SA 3.0, so it is fetched at runtime, kept out of
+  the repository and the image, and credited in the README and on every link. Asked once a day and stored only when it
+  changed (EDAstro sends no validators, so the whole list comes each day). Now names the nearest within `[server]
+  sights_range` (500 ly; 0 turns it off and nothing is fetched), Here's heading a system's sights, Nearby's row 📜.
+  Nothing is spoken.
+- **EDSM's first reporter is worded as EDSM's** (2026-10-25): the target's EDSM answer (the bodies Outrider already asks
+  for) carries each body's first reporter, so the earliest goes in the target counts' hover and, kept for that system
+  (`State.edsm_first`, the last `EDSM_FIRST_KEEP`), Here's heading ("EDSM: since 2016"). No extra request. Always "first
+  reported to EDSM", never the game's discovery tag: they are different records.
+- **The 📋 system summary is Markdown lists only** (2026-10-25, page.js `systemSummaryMd`): Reddit's Markdown wants
+  lists, so no tables; body names are bold with a colon after them ("**4 c a**: moon of a moon": the plain name ran
+  into its curiosity), and a curiosity's reason shows only when it adds a figure. Built from Here's own answer:
+  nothing is asked. Green gas giants nothing tells apart ("one of N") are on their own line, not among the curiosities.
+- **Search's "at least N"** (2026-10-25, `search_min`: 1 to 20): a system matches with that many bodies among a
+  section's ticks (two Earth-likes; with two kinds ticked, two of either). Local counts your cache; Spansh's answer
+  comes body by body and is counted per system, so a cut answer can undercount (said as before). "Arrival star only"
+  with at least 2 stars counts every star of the system (the arrival star alone is never two) and greys.
+- **The seconds to a full tank come from Status.json** (2026-10-25, `ScoopWatch.to_full`): the journal's FuelScoop comes
+  every 5 t and at the scoop's end, too seldom, so the rate is the tank's rise over the last 8 s of readings (it falls
+  with the distance from the star, so a short window follows it). Past two hours there is no line: at the scoop zone's
+  edge the rate falls toward nothing.
+- **The launchers pick a Python that Piper can be installed into** (2026-10-25, issue #13): Piper needs onnxruntime,
+  built for 64-bit Python 3.11 to 3.14 only (`scripts/python_check.py` `PIPER_PYTHONS`), so the newest Python is not
+  always the right one (3.15 gave "conflicting dependencies"). The Windows launcher tries `py -3.14` down to `py -3.11`
+  before `py -3`, the Linux one `python3`, then `python3.14` down to `python3.11`, each only when it is 64-bit and has
+  venv; `PYTHON=` still wins. With none that suits Outrider still runs, with the browser's voice, and a block before
+  the setup says how to get Piper (install 3.14, delete `.venv`). An existing `.venv` is kept, except one made by a
+  Python older than 3.11.
 
 ## Known limits
 
@@ -1612,12 +1715,17 @@ upstream project's choices, not rules of the game.
   the tablet) posts, so with none open anywhere the panel stays empty (see the decision above).
 
 - **The surface trail is live only** (2026-10-25): it is this visit's, so a table to keep it through a restart or
-  a re-read would only keep a line nobody looks at again; a restart starts a new one. It is drawn on the surface map
-  and, since the author asked for it there too (2026-10-25), on the overlay's radar: the stretches within its edge only.
+  a re-read would only keep a line nobody looks at again; a restart starts a new one. It is only the ground looked
+  over (driving, walking, landed, or below the surface map's 1,000 m, `SurfaceTrail`): an orbital-cruise pass or the
+  glide down adds nothing, and a high stretch between two low ones is a gap, never a line across it. It is drawn on
+  the surface map and, since the author asked for it there too (2026-10-25), on the overlay's radar: the stretches
+  within its edge only.
 
 - **A screenshot is shown only from the folder it was converted into while that is still the output folder**
-  (2026-10-25): `shot_image` serves a path the record names only under `[screenshots] folder`, so after the folder is
-  changed (or the files moved), the body panel's older pictures read as missing; the files themselves are untouched.
+  (2026-10-25): `shot_image` serves a path the record names only under the export folder (`[screenshots] folder`, else
+  the Pictures folder's `Converted`), so after the folder is changed (or the files moved), the body panel's older
+  pictures read as missing; the files themselves are untouched. The codex folders are looked for under the export
+  folder too (2026-10-26): after a change the checklists show Canonn's until the folders are moved there with it.
 
 ## Not yet tried in a live game
 
@@ -1640,6 +1748,10 @@ confirmed while playing. Treat reports about them as likely real.
   author (the first on-foot shots named nothing: fixed, not retried); the subject from a real sample spot or formation,
   WebP, the crop, copies only, the clipboard (Windows' especially) and the backlog on a full Pictures folder were tried
   on fakes only.
+- The codex line's wait for the FSS's end (`codex_deferred`, 2026-10-26): made after the author's live report of a
+  species said too early, tested with synthetic events only, not yet heard in game.
+- A green gas giant confirmed by your own codex entry (`outrider.ggg.match_green`, 2026-10-25): built on the four green
+  entries in a capture of every player's EDDN traffic and on synthetic journals; the author has logged none.
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen
   in the author's journals (the carrier was bought before them).
 - Status.json Flags2 on-foot-in-station bits (3, 13, 14) counting as docked.
@@ -1679,8 +1791,9 @@ confirmed while playing. Treat reports about them as likely real.
   check (tested on the sample journals and with a slowed import); the launcher and plain `python ed_outrider.py` were restarted
   on a scratch server (the same PID, a new run). Auto honk's readiness (S69) on a PC where `/dev/uinput` is missing or
   not writable.
-- The Highway's plots against live Spansh (both plotters send the requests Spansh's site and Auto_Neutron send;
-  tested with a mocked Spansh), following a route in game, and whether a name copied by `wl-copy`/`xclip` pastes
+- The Highway's plots in a live game (both plotters send the requests Spansh's site and Auto_Neutron send; every
+  Spansh call Outrider makes was run against the live site with the code's own requests and parsers on 2026-10-26,
+  the tests use a mocked Spansh), following a route in game, and whether a name copied by `wl-copy`/`xclip` pastes
   into the galaxy map under Proton. The too-heavy warning, the short-of-the-refuel-stop warning (S1), the last-scoopable-star
   warning (S2, on the game's route and the Highway), the wrong-target check (S11: Status.json's Destination and
   NavRoute.json as the game writes them when a route is plotted, retargeted from the navigation panel, or reached) and a

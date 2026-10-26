@@ -29,11 +29,12 @@ The **Materials** tab starts with your **Cargo**.
   - This is the only way to track a carrier's cargo without signing in to Frontier's servers (their companion API,
     as EDMC and Inara do). Outrider deliberately never does that: it reads your own journal files and queries only
     public, read-only services, so your Frontier account is never involved.
-- **The Carrier tile** shows its tritium while tritium is on a sell order: the depot, the total with the hold, and
-  how many 500 ly jumps that gives ("Total Tritium: 14,199 t (151 jumps)", worked out jump by jump with the game's
-  fuel formula: the carrier's cargo weighs, the space a buy order only reserves does not). Without one the tile is as
-  before. No carrier, no tile; a carrier being decommissioned says so in red with the scrap date, and once it is gone,
-  "Decommissioned" and the date (a carrier bought since takes its place).
+- **The Carrier tile** shows the tritium in its depot ("Tritium: 1,000t"), and while tritium is on a sell order the
+  total with the hold beside it ("Tritium: 1,000t/14,199t"); hover it for how many 500 ly jumps that gives (worked
+  out jump by jump with the game's fuel formula, the depot topped up from the hold as it runs low: the carrier's cargo
+  weighs, the space a buy order only reserves does not). No carrier, no tile; a carrier being decommissioned says so
+  in red with the scrap date, and once it is gone, "Decommissioned" and the date (a carrier bought since takes its
+  place).
 - **The trip to you:** while your carrier is elsewhere (and no jump or carrier trip is under way), the tile says what
   meeting takes, short: "To it 5 jumps · to you 3, ≈340 t" (your jumps to it, amber when your tank covers fewer; its
   carrier jumps to you and their tritium), and when the depot holds less, "140 t short" in red (amber when tritium on a
@@ -43,13 +44,14 @@ The **Materials** tab starts with your **Cargo**.
   line, each lighter than the last (the real trip is never shorter). A booked jump says its own: "(432 ly jump ≈ 96 t;
   depot after ≈ 572 t)", and "⚠ last jump it can pay" when the depot after it (with a tritium sell order in its hold)
   cannot pay a full 500 ly jump more: red with no tritium in its hold, amber when moving it in would. The journal reads the depot only when you open the carrier's management (or deposit
-  tritium): after a jump since, the tile shows "≈ 534t", the reading less the jumps' burn, until you open it again. The game's fuel formula is checked against your carrier's own jumps (what the depot held
+  tritium): after a jump since, the tile shows "≈534t", the reading less the jumps' burn, until you open it again. The game's fuel formula is checked against your carrier's own jumps (what the depot held
   before and after each one, from its stats and your tritium deposits): once three are measured, their median scales
   the figures (at most ±20%), and the hover says so ("checked against your carrier's last 12 jumps: no correction
   needed"). Tritium other players donate is not in your journal, so such a jump reads low; the median rides over it.
-- **Services and upkeep:** a service suspended in the carrier's management shows as its name and a red ✗ ("UC ✗",
-  "Redemption office ✗"; "suspended" on hover), beside "Vista ✓" for one that is on, from its last stats or the newer of them and your last docking there. Under them,
-  "balance 1.33B · ~83 wks upkeep now", counted down a week of upkeep for each week since its stats (an estimate: the
+- **Services and upkeep:** Universal Cartographics and Vista Genomics, the services that buy what an explorer
+  carries: "UC ✓" for one that is on, its name and a red ✗ for one suspended in the carrier's management ("UC ✗";
+  "suspended" on hover), "no Vista" for one not installed, from its last stats or the newer of them and your last
+  docking there. Under them, "Balance 1.33B · ~83 wks upkeep now", counted down a week of upkeep for each week since its stats (an estimate: the
   market moves the balance too; the hover has the stats' own figure and how old they are), amber under 4 weeks; then a
   card says so too, and the **Carrier upkeep low** alert row (off until you tick it) adds a notification and a line;
   none of it while the carrier is being decommissioned. The
@@ -88,7 +90,9 @@ players last reported, so the newer the data, the safer the trip.
   services (and whether it buys exploration data and samples too), with Copy, Bookmark and **Plot route here**.
   **Buy something else** looks up any commodity. When Spansh's commodity list cannot be read, the lookup goes on
   with the journal's own name for it and says so. While mining, a full hold runs this lookup for the most you carry and
-  says where to sell it ([Voice and alerts](voice-and-alerts.md)).
+  says where to sell it ([Voice and alerts](voice-and-alerts.md)). The same lookup prices a ring's hotspot minerals:
+  a body panel with hotspots shows each one's best sell price within 100 ly, highest first (**Best nearby**, see
+  [the views](views.md)).
 - **One shipload or all of it:** when a line is more than your ship's hold (its size, not what is free), the bar
   switches between "All 16,000 t" and "One shipload 720 t" ("≈ 23 shiploads for all of it"); a shipload asks for
   stations that take (or have) that much: "Sell 720 t of 16,000 t". Not shown before the game has written your ship's

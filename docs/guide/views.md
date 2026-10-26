@@ -8,8 +8,9 @@
 <tr>
 <td width="50%" valign="top">
 <b>Nearby</b> — every known system within range (20–50 ly, the Where tile's dropdown): distance, how much
-is scanned, the main star and whether it scoops, notable bodies, curiosities (🔭: odd orbits, ringed landables, rare
-classes such as water giants, helium giants, Sudarsky class V and green gas giants) and a credit estimate. Sort,
+is scanned, the main star and whether it scoops, notable bodies, curiosities (🔭: odd orbits, shepherd moons inside
+their planet's rings, close binary stars, tiny worlds and stars, ringed landables, rare classes such as water giants,
+helium giants, Sudarsky class V and green gas giants) and a credit estimate. Sort,
 hide visited and fully scanned systems, or keep only those one jump away. <i>🪦 pre-Odyssey</i> beside the status (🪦
 alone when the pane is narrow) marks a system whose Spansh data was all reported before Odyssey's surface data (the
 legacy split of 29 November 2022): its thin-atmosphere worlds were marked not landable and its life never reported, so
@@ -39,14 +40,17 @@ community survey's mineral odds for that ground (odds, not contents) and what yo
 Rings shows the count and, once one is mapped, "1🗺/5": rings mapped and the hotspots in them ("2🗺/20" alone when
 every ring is mapped); hover it for each ring's type and hotspots under it, the body's reserves (pristine, major...) and
 your record there; the body's own hover card adds each ring's width and density. Click a body with hotspots and its
-details add **Best nearby**: each hotspot mineral's best sell price within 100 ly (stations, from Spansh's markets),
+details (here or in Search) add **Best nearby**: each hotspot mineral's best sell price within 100 ly (stations, from Spansh's markets),
 highest first, so you know which hotspot to drop into; asked once in half an hour, then shown in the Rings hover too
 ("from you" for a system you are not in). When the lookup fails it says so, and asks again a few minutes later.
 The to-do line ticks itself off as you honk, map and sample, in a suggested order with supercruise time and
 credits per minute ("~2 min · 450k/min"; "skip?" when not worth the trip). Bio nobody has set foot on is
 valued with the ×5 first-footfall bonus, except in a populated system: Vista Genomics never pays it there. A bio line's
 ✪ (✦: this region only) says a species that could be there is new to your codex; hover it for which. Before the DSS
-the table and the body's hover mark each possible genus the same way.
+the table and the body's hover mark each possible genus the same way. 🔭 beside a body is a curiosity (hover it for
+why; its panel has a 🔭 Curiosities section), and 🏆 says it holds one of your records (My firsts' Your records): the
+body's hover card and the top of its panel name each one with its figure ("Biggest planet 77,691 km"), "new" when set
+in the last day.
 A footer under the list says what each icon means, for the icons that system's list shows (none, no footer); it
 stays in view while the list scrolls.
 "🧬? check in the FSS" marks a landable body you have only from an AutoScan or a nav beacon, whose signals nobody
@@ -140,7 +144,7 @@ Outrider knows (<i>Local</i>) or everything reported (<i>Spansh</i>; mining loca
 filter on them); <i>2+ in a ring</i> keeps the rings with two or more hotspots of one mineral ticked (more places to
 drop in, and where hotspots overlap); <i>at least N</i> under Stars or Planets keeps the systems with that many of the
 kinds ticked (two Earth-likes, three neutron stars; with two kinds ticked, any mix of them; for stars it counts every
-star of the system, so *arrival star only* is greyed then); 🎯 after a result's name
+star of the system, so <i>arrival star only</i> is greyed then); 🎯 after a result's name
 targets it in the galaxy map, where auto-target can work. Planets has
 <i>Potential green gas giant</i> too (see
 <a href="#-potential-green-gas-giants">below</a>). The name box finds any system (what Outrider knows,
@@ -165,7 +169,7 @@ device. <b>Your records</b>, folded at the end, lists the most extreme bodies am
 star, hottest and coldest planet, highest and lowest gravity you could land on, the highest-gravity Earth-like, the
 thickest atmosphere, the fastest spin, the widest ring...) and the system farthest from Sol you have been to; 🔍 opens
 the body in Here. A record set in the last day is marked **🏆 new**, and in Here a body that holds one of your records
-has a 🏆 beside its name (hover it for which).
+has a 🏆 beside its name (hover it for which; its hover card and its details panel say so too).
 <br><br><img src="../images/firsts.png" alt="My firsts">
 </td>
 </tr>
@@ -357,7 +361,7 @@ scan logs none), and combinations never seen on EDDN (water or CO2 features on a
 body) get no mark.
 
 These marks are shown only, but what a body's signals could log (its species and its geology) is also said as the FSS
-finds them (⚙ Settings → Voice → possible new codex entries: see [Voice and alerts](voice-and-alerts.md)). A type the journals give no codex entry for (a class II giant star, a helium gas giant) gets
+finds them (⚙ Settings → Voice → What the voice says → possible new codex entries: see [Voice and alerts](voice-and-alerts.md)). A type the journals give no codex entry for (a class II giant star, a helium gas giant) gets
 no mark, nor does a body Spansh lists without its luminosity or atmosphere. With no body type in your journals at all
 (no codex line, no scan of your own) there is nothing to compare with, and nothing is marked.
 
@@ -455,7 +459,11 @@ links to them (they load from Canonn when you open an entry; click one for full 
 colour under a species for that colour's picture. A few entries have none yet; Outrider asks Canonn for its latest
 list once a day, so new pictures appear as they are added. With **⚙ Settings → Screenshots → Show your own pictures
 on the Bio/Geo checklists** ticked, a picture of your own from your codex folders shows instead wherever you have one
-(see [Screenshots](automation.md#-screenshots)).
+(see [Screenshots](automation.md#-screenshots)), picked at random; a click on a colour you have several pictures of
+picks another, and a click on the picture opens it full size. Under it, when and where you took it ("Amethyst · Your
+picture: 2026-10-26, Smojooe UW-E c11-34 6 b", as far as the picture itself says), else "Your picture, from your codex
+folders". A 📷 beside an entry, and beside each colour of an open species, says you have pictures of your own of it.
+A picture in the folder that does not open (empty, not a picture) is passed over, and Canonn's shows if none does.
 
 Journals from before a 2023 game update don't name a sample's colour, so those samples count the species but not a
 colour.
@@ -599,7 +607,7 @@ above the list:
   not counted, the same rule as Earnings below.
   **Hotspots**: every ring you mined (all time), by hotspot: a stretch from your drop into the ring until you leave
   it counts as a stint. Per hotspot: stints, the **hit rate** (rocks not mined before that met the call-out's minerals
-  and threshold in Settings → Mining, so it fills in once you tick some), your best ship's tons an hour there, **≈ cr/h**
+  and thresholds in Settings → Mining, a mineral's own where it has one, so it fills in once you tick some), your best ship's tons an hour there, **≈ cr/h**
   at what your mined ore actually sold for (* when some of its minerals never sold), tons refined and the last visit;
   sort by t/h, hit rate or last visit, 🎯 targets the system. The hotspot is the one you dropped on (Outrider reads it
   live; the game's journal never says which, so older mining shows "hotspot not known", and a drop on the ring itself
