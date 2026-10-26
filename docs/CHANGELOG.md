@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Version 2026.10.29, Build Your Own Codex
+- Screenshots converted as you take them, your own codex folders and pictures on the Bio/Geo checklists, the possible
+  new codex entries spoken, Your records, orbits, the trail and compass, sights, the explorer ideas, the mining ideas,
+  the launchers' Piper check (#13), and four Fable and three Opus review rounds' fixes. What's new has its section.
+  PARSER_VERSION 65: one re-read at the first start (from 2026.10.28's 60); Pillow >= 11 a new optional package.
+
 ## 2026-10-26 · Docs caught up for the release
 - The code map names this round's pieces (`orbit_facts`, `boxel_complete_done` and `boxel_reopened`, `recordsWanted`,
   `sysRecordsHeld`, `codex_sure_group`, the clipboard's made copies and `CLIPBOARD_MAX_PX`); the README's system and

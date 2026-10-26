@@ -11,6 +11,111 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## 2026.10.29 · 26 October 2026 · Build Your Own Codex
+
+**Build your own codex: your screenshots converted and named as you take them, filed by species, colour and
+formation, and shown on the Bio/Geo checklists. Also the possible new codex entries spoken as the FSS finds them, Your
+records, how far a moon is from what it orbits, a trail and a compass on the surface map, catalogued sights nearby, and
+over 100 fixes from seven code reviews.**
+
+> [!IMPORTANT]
+> **The first start re-reads your journals once** (geology positions, green gas giants told apart by your first FSS
+> scan, mining places): a few seconds, or a few minutes for years of journals. Outrider **backs up your database
+> first**, and the page shows how far it has got. Your bookmarks, pins, routes and settings are kept.
+
+> [!NOTE]
+> **Screenshots need the optional Pillow package** on the game PC. The launcher installs it by itself at the first
+> start after updating (or the first one online). If it could not be installed, the launcher says so; once that is
+> fixed, start once with `OUTRIDER_REINSTALL=1` (see [Install and run](install.md)).
+
+### 📷 Screenshots
+
+- **⚙ Settings → Screenshots** (new, game PC, off until ticked): each F10 and Alt+F10 (HighRes) shot is turned from
+  the game's huge BMP into a PNG, JPG or WebP named after where it was taken (`Smojooe UW-E c11-22 2 a 2026-10-25
+  20-33-35.png`), in a folder per commander (and per system, or your own pattern). 📁 beside each folder field browses
+  the game PC's folders.
+- **Smaller copies to post**: medium (1920 px) and small (1080 px), **a crop** of the same part of every shot (drawn
+  on your latest shot as you set it), or the copies alone; JPG or WebP at their own quality.
+- **After each shot, copy** the full size, a copy or the crop **to the clipboard**, ready to paste into Discord: a
+  medium or small one is made for the clipboard even when you keep no such file, and nothing over 3,840 px goes there
+  (a HighRes shot is shrunk). On Linux this needs `xclip` or `wl-copy`.
+- **What a shot shows**: a shot on a surface within 50 m of a plant you sampled or tagged, or a geology formation you
+  logged, knows it ("Bacterium Bullaris - Yellow", "Water Ice Geyser"), on foot too. It goes in the file name with
+  `{subject}`, and with the system, body, position, commander and time into the picture itself (XMP, EXIF, PNG text:
+  Windows' Properties and photo managers show it).
+- **The game's BMP** is kept, deleted or moved once every picture is written and read back whole.
+- **Finding them again**: 📷 beside a body you photographed in Here, the newest three on its hover card, all of them
+  in its panel with 📍 to pin where each was taken. **Convert the screenshots already there** does the BMPs left in the
+  Pictures folder.
+- **Every rail** (ship, SRV, Nomad, fighter, on foot) gets **Hide UI**, **Screenshot** and **HighRes** buttons at its
+  end (remove them like any other; a set you edited keeps its own buttons: add them with Edit); a set now holds up to
+  11 buttons. On Linux, GNOME takes Alt+F10 (HighRes) until you free it in its keyboard settings.
+
+### 🖼 Your own codex
+
+- **Also save tagged screenshots into your codex folders**: a shot that knows its plant (and its colour) or
+  formation is also saved to `Biology/<genus>/<species>/<colour>/` or `Geology/<group>/<formation>/` inside the export
+  folder, as a copy of the exported picture or as its own full-size PNG, JPG or WebP (small everyday pictures, fine
+  codex ones). The folders take the English names whatever the game's language.
+- **Show your own pictures on the Bio/Geo checklists**: the Exo-Biology and Geology checklists show one of your own
+  pictures of a species' colour or a formation, picked at random each time (and at each click on a colour), instead
+  of Canonn's; Canonn's still shows where you have none. Crop or edit the copies, or add your own. Under it: "Your
+  picture: 2026-10-26, Smojooe UW-E c11-34 6 b". A 📷 beside an entry, and beside each colour of an open species,
+  says you have pictures of it, and in Here's bio column a 📷 beside a species says you already have that colour.
+
+### 🔭 Exploring and exobiology
+
+- **Possible new codex entries said as the FSS finds them** (⚙ Settings → Voice → What the voice says, beside
+  biological and geological, on to start): "Possible new codex entries on body A 3: Bacterium Acies - Teal, new in this
+  region; Water Ice Geyser, never logged". Its own tick, so you can turn the signal counts off and keep it. A guess
+  that could still change waits until you have scanned every body.
+- **Your records** at the end of My firsts: the most extreme bodies among your own scans (hottest, biggest, fastest
+  spin, widest ring…) and the system farthest from Sol. A body that holds one has 🏆 in Here, and its hover card and
+  panel say which; Nearby's and Boxel view's lists mark a system that holds one.
+- **Five more curiosities** (🔭): shepherd moon, tiny world, tiny star, extreme orbit, close binary.
+- **📋 A system summary in Markdown**, beside Here's ⬇ CSV: your firsts, notable worlds, curiosities, the life sampled
+  and still to sample, ring hotspots and what it is worth, ready for Reddit or Discord.
+- **A green gas giant your codex logged is confirmed** (✓): the codex entry names the main star, not the giant, so it
+  is now matched by the giant's class.
+- **Catalogued sights near you**, from EDAstro's Galactic Encyclopedia Catalog: Now names the nearest within 500 ly
+  with 🎯, Here's heading names a system's, Nearby marks them 📜 (⚙ Settings → Server → Nearby's sights range, 500
+  ly; 0 turns it off and nothing is fetched).
+- **Who first reported a system to EDSM**, in the target's hover and Here's heading.
+- **The codex marks before the DSS**: the possible genera in Here's table and hover carry their ✪ / ✦, and the to-do
+  line's mark names what it counts.
+- **Search**: "at least N" stars or planets of the kinds ticked (two Earth-likes in one system), and rings with **2+
+  hotspots** of a mineral.
+- **What a body orbits and how far** (thanks to Hiner399): under a moon's or a second star's planet's distance from
+  arrival in Here, "↳ 15 ls · B"; its card and panel say "orbits B at 15 ls", with the closest and farthest points of
+  an eccentric orbit.
+
+### 🌍 On the surface
+
+- **Your trail** on the surface map and the overlay's radar: where you have driven, walked or flown low on this body,
+  so the ground already searched for the last species shows.
+- **A compass grid** on both: ticks every 15°, N E S W, a crosshair along your heading and quarter rings.
+- The overlay's radar now shows on a body or low over it even with nothing on it.
+
+### ⛽ ⛏ 🗺 Elsewhere
+
+- **While scooping**, Now's fuel line and the overlay say the seconds to a full tank.
+- **Mining**: each mineral its own threshold in the prospector call-out; a body panel with hotspots names the best
+  price nearby for each of its minerals; a mining mission's 🔍 in CMDR → Missions finds hotspots of its commodity.
+- **Nearby's Boxel view**: a click on a system you visited or Spansh knows shows it in Here, and its bodies have the
+  hover card, as in the Standard view; a boxel you have run out of numbers in is marked done by itself (dimmed on the
+  sector map, a kept one let go), and Done is always offered.
+- **Plot Route**: a Road to Riches or world route with nothing to visit (as from inside the bubble) says so and what
+  to change, instead of storing a route already complete.
+
+### 🛠 Install and fixes
+
+- **The launchers pick a Python that Piper's voices work with** (3.11 to 3.14): with only Python 3.15 they say so and
+  how to get Piper (thanks to Call-me-EnvY, issue #13). A `.venv` made by a Python older than 3.11 is made again.
+- **Over 100 fixes** from seven code reviews of everything above: screenshots, the clipboard, records, green gas
+  giants, the trail, mining, the launchers, the codex folders and the checklists' pictures.
+
+---
+
 ## 2026.10.28 · 24 October 2026 · The Mining Release
 
 **Ring mining from the first limpet to the sale, auto-target that copes with any search, Settings tidied, new voice
