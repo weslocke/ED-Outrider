@@ -17412,7 +17412,7 @@ class State:
         # ✓ complete: the end is known and every number below it visited (no button needed); done: you said so (meta
         # boxel_done). Either way Next offers nothing more (the rows' own 🎯 still work)
         complete = end is not None and all(n in visited for n in range(end))   # end 0: an empty boxel, complete too
-        done = prefix in (meta_get(self.db, "boxel_done") or {})
+        done = (complete and self.boxel_complete_done(prefix)) or prefix in (meta_get(self.db, "boxel_done") or {})
         # skip (opt-in): Next passes over the systems someone has fully scanned (every body reported); one only passed
         # through or partly scanned still has its first discoveries open (review suggestion, 2026-10-12)
         skip = bool(meta_get(self.db, "boxel_skip_known"))
@@ -17643,7 +17643,7 @@ class State:
                   if str(k).isdigit() and isinstance(v, dict)}
         end = self.boxel_end(prefix, set(visited) | set(spansh))
         complete = end is not None and all(n in visited for n in range(end))
-        done = prefix in (meta_get(self.db, "boxel_done") or {})
+        done = (complete and self.boxel_complete_done(prefix)) or prefix in (meta_get(self.db, "boxel_done") or {})
         n = None if complete or done else boxel_next_number(visited, spansh, end, bool(meta_get(self.db, "boxel_skip_known")))
         sp = spansh.get(n) or {}
         return {"prefix": prefix, "label": b["label"], "picked": b["picked"], "standard": bool(b.get("standard")), "n": n,
@@ -17696,6 +17696,22 @@ class State:
         self.db.commit()
         return True
 
+    def boxel_complete_done(self, prefix):
+        """A complete boxel (out of numbers to try: its end known, every number below it visited) is marked done by itself
+        (the author, 2026-10-26: it stayed bright on the sector map, and kept, until Done was pressed): meta boxel_done
+        with `auto`, a kept one let go, as Done does. Not one reopened with "undo done" (meta boxel_reopened). -> done."""
+        marks = meta_get(self.db, "boxel_done") or {}
+        if prefix in marks:
+            return True
+        if prefix in (meta_get(self.db, "boxel_reopened") or {}):
+            return False
+        marks[prefix] = {"ts": iso_ts(time.time()), "visited": len(self.boxel_visited(prefix)), "auto": True}
+        meta_set(self.db, "boxel_done", marks)
+        if ((meta_get(self.db, "boxel_active") or {}).get("prefix")) == prefix:
+            meta_set(self.db, "boxel_active", None)   # the boxel you are in is followed again
+        self.db.commit()
+        return True
+
     def boxel_mark_done(self, done=True):
         """Mark the boxel being explored done with (or not): kept in meta boxel_done {prefix: {ts, visited}}; a kept boxel
         marked done is let go (the boxel you are in is followed again). False when no boxel is being explored."""
@@ -17703,13 +17719,17 @@ class State:
         if not b:
             return False
         marks = meta_get(self.db, "boxel_done") or {}
+        reopened = meta_get(self.db, "boxel_reopened") or {}
         if done:
             marks[b["prefix"]] = {"ts": iso_ts(time.time()), "visited": len(self.boxel_visited(b["prefix"]))}
+            reopened.pop(b["prefix"], None)
             if b["picked"]:
                 meta_set(self.db, "boxel_active", None)
-        else:
+        else:   # undone by hand: never marked done by itself again (boxel_complete_done)
             marks.pop(b["prefix"], None)
+            reopened[b["prefix"]] = iso_ts(time.time())
         meta_set(self.db, "boxel_done", marks)
+        meta_set(self.db, "boxel_reopened", reopened)
         self.db.commit()
         self.bump()
         return True
@@ -17724,7 +17744,7 @@ class State:
         known = set(visited) | {int(k) for k in (cache.get("systems") or {}) if str(k).isdigit()}
         end = self.boxel_end(prefix, known)
         if end is not None and set(range(end)) <= set(visited):   # end 0: empty, complete too
-            return "complete"
+            return "done" if self.boxel_complete_done(prefix) else "complete"
         return None
 
     def boxel_clear_end(self):
@@ -17733,6 +17753,11 @@ class State:
         ends = meta_get(self.db, "boxel_ends") or {}
         if b and ends.pop(b["prefix"], None) is not None:
             meta_set(self.db, "boxel_ends", ends)
+            # not complete after all: a done mark it got by itself goes too (a Done pressed by hand stays)
+            marks = meta_get(self.db, "boxel_done") or {}
+            if (marks.get(b["prefix"]) or {}).get("auto"):
+                marks.pop(b["prefix"])
+                meta_set(self.db, "boxel_done", marks)
             self.db.commit()
         self.bump()
 

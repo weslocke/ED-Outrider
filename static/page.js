@@ -4497,7 +4497,9 @@ function drawBoxel() {
       (pc ? `<label title="arriving in a system of the kept boxel, auto-target its next one (after the Highway's delay)"><input type="checkbox" id="bxAuto"${d.auto ? " checked" : ""}> auto-target the next on arrival${d.auto && !b.picked ? ` <span class="warnc">(keep a boxel first)</span>` : ""}</label>` : "") +
       `<label title="Next and the auto-target pass over the systems someone has fully scanned (every body reported to Spansh); one only passed through or partly scanned still has first discoveries to find"><input type="checkbox" id="bxSkip"${d.skip_known ? " checked" : ""}> skip systems already fully scanned</label>` +
       (d.done ? `<button type="button" class="try" data-bxdone="0" title="take the done mark back">undo done</button>`
-        : !d.complete ? `<button type="button" class="try" data-bxdone="1" title="finished with this boxel, complete or not: it leaves the recommendations (a kept boxel is let go)">✓ Done with this boxel</button>` : "") +
+        // a complete one too (the author, 2026-10-26: out of candidates, Done only came back after a Retry): it lets a
+        // kept boxel go, which complete alone does not
+        : `<button type="button" class="try" data-bxdone="1" title="finished with this boxel, complete or not: it leaves the recommendations (a kept boxel is let go)">✓ Done with this boxel</button>`) +
       (d.end != null ? `<button type="button" class="try" data-bxretry="1" title="a failed search is not always a missing name: offer the numbers above it again">retry above -${d.end}</button>` : "") +
       (!b.standard ? `<span class="unk">a hand-made sector: ${mk("destination")}target cannot check its systems</span>` : "") + `</div>`;
     // a system you or Spansh know opens in Here on a click, and its bodies cell has Nearby's hover card (the author,

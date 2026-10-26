@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Boxel view: a complete boxel is done by itself; Done always offered
+- The author: once a boxel ran out of candidates (its end known, every number below it visited: "✓ complete") it was
+  not done: bright on the sector map, still kept, and the Done button gone until a Retry above the end brought it
+  back. A complete boxel is now marked done by itself (`boxel_complete_done`: meta boxel_done with `auto`, a kept boxel
+  let go, as Done does); a Retry takes that mark back with the end (a Done pressed by hand stays); "undo done" reopens
+  it for good (meta boxel_reopened: never marked by itself again until Done is pressed). The Done button shows
+  whenever the boxel is not marked done.
+
 ## 2026-10-26 · Opus review 7 fixes: a held codex line said once, "sure" made strict, the lists
 An Opus bug check of ce9a8df..HEAD again, with review 6's fixes (52 agents, 21 findings, about 14 distinct, all
 confirmed but one split; project/done/reviews/review-2026-10-26):

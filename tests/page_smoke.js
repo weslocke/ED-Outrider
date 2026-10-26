@@ -594,11 +594,15 @@ const releasePayloads = async () => {
       boxelData.rows.push({n: 3, name: "Bx AB-C d1-3", visited: true, spansh: false, summary: Object.assign({}, sum, {id: "9005"})});
       pane.hidden = false; drawBoxel();
       out.handMade = !!document.querySelector('#boxelTable tr[data-id="9005"]');
+      // a complete boxel (out of candidates) still offers Done (the author, 2026-10-26)
+      boxelData.complete = true; boxelData.end = 4; drawBoxel();
+      out.doneOffered = !!document.querySelector('#boxelPane [data-bxdone="1"]');
+      boxelData.complete = false; boxelData.end = null;
       boxelData.rows.pop();
       REC.d = savedRec;
       hidePop(); [boxelData, pinnedSystem] = saved; pane.hidden = wasHidden; drawBoxel(); render();
       return JSON.stringify(out); })()`));
-    const ok = JSON.stringify(res.ids) === '["9001","9002"]' && JSON.stringify(res.pops) === '["9001"]' && JSON.stringify(res.pinned) === '["9001"]' && res.handMade && res.cardRec &&
+    const ok = JSON.stringify(res.ids) === '["9001","9002"]' && JSON.stringify(res.pops) === '["9001"]' && JSON.stringify(res.pinned) === '["9001"]' && res.handMade && res.cardRec && res.doneOffered &&
                res.marked && res.pop && res.bxRec === "Your record: Biggest planet, 77,691 km (body 4)" && res.bxNone && res.nearRec &&
                errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| boxel rows open in Here, hover card |", JSON.stringify(res), errors.slice(before));
