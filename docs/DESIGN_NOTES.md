@@ -1605,7 +1605,9 @@ upstream project's choices, not rules of the game.
   Biology is said at once only when every genus the rules allow the body (not just the guessed few) is new; otherwise
   it waits until your scans reach the system's body count (the honk's "all found" does not count: in a system others
   discovered it comes before you have scanned anything) and is said then if it still is (`codex_deferred`, decided
-  once per body: a line said is never held back later): the author's Smojooe TW-E c11-2 C 1 was called "Prasinum
+  once per body: a line said is never held back later, nor said again once released; "sure" means every species the
+  genus could be is unlogged in any colour, or the body's exact variant is; held lines live in memory, so a restart
+  before every body is scanned drops them, a known limit): the author's Smojooe TW-E c11-2 C 1 was called "Prasinum
   Bioluminescent Anemone, never logged", and the finished FSS showed a logged Bacterium. Geology depends on the body
   alone: said at once. Its own tick beside the two counts, so the counts can be off and the codex finds still said.
   Star and planet types stay shown only (above).

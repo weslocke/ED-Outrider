@@ -4071,7 +4071,8 @@ function unsoldHtml(u) {
 
 function render() {
   recordsWanted();   // the lists' 🏆
-  if (boxelPinDrawn !== pinnedSystem) drawBoxel();   // a pin cleared elsewhere (a tab switch): its row's highlight goes
+  if (boxelPinDrawn !== pinnedSystem || boxelRecDrawn !== REC.ver) drawBoxel();   // a pin cleared elsewhere (a tab switch),
+  // or records that came while another tab was open (review 2026-10-26): the rows' highlight and 🏆 follow
   renderUploads();
   renderOverlay();
   if (!data) return;
@@ -4470,11 +4471,11 @@ const boxelCodeLine = (mc, c) => { const y = c && c.yours;
   return `<b>${mc}</b> · ${c ? c.size : ""} ly cubes · ${esc(c ? c.kind : "")}` + (y && y.systems ? ` <span class="bxyours">· from your ${y.systems} ${mc} system${y.systems === 1 ? "" : "s"}: ` +
     `${Math.round(100 * y.bio / y.systems)}% with biology${y.elw ? `, ${y.elw} Earth-like` : ""}${y.ww ? `, ${y.ww} water world${y.ww === 1 ? "" : "s"}` : ""}` +
     `${y.terraformable ? `, ${y.terraformable} terraformable` : ""}</span>` : ""); };
-var boxelPinDrawn = null;   // (var: render may run before this line) the pin the boxel table was last drawn with (render redraws it when that changes)
+var boxelPinDrawn = null, boxelRecDrawn;   // (var: render may run before this line) the pin the boxel table was last drawn with (render redraws it when that changes)
 function drawBoxel() {
   const el = document.getElementById("boxelPane");
   if (!el || el.hidden) return;
-  boxelPinDrawn = pinnedSystem;
+  boxelPinDrawn = pinnedSystem; boxelRecDrawn = REC.ver;
   const d = boxelData, pc = data && data.game_pc !== false;
   let html = "";
   if (!d) html = `<div class="unk">loading…</div>`;
@@ -5779,11 +5780,15 @@ async function loadRecords(any = false) {
   REC.key = key;
   // a failure keeps the last good answer (review 2026-10-26: one failed ask took every 🏆 away): said in My firsts,
   // asked again after a minute
+  REC.askedAt = Date.now(); REC.askedPos = data && data.position && data.position.id;
   let got;
   try { got = await apiJson("api/records"); } catch (err) { got = {error: err.message}; }
+  const before = JSON.stringify((REC.d && REC.d.records) || null);
   if (!got || got.error) { REC.key = null; REC.failed = Date.now(); REC.d = REC.d && !REC.d.error ? Object.assign({}, REC.d, {stale: got && got.error}) : got; }
   else { REC.d = got; REC.failed = null; }
   renderRecords();
+  if (JSON.stringify((REC.d && REC.d.records) || null) === before) return;   // nothing new: nothing redrawn (review 2026-10-26)
+  REC.ver = (REC.ver || 0) + 1;
   // every place a 🏆 shows (review 2026-10-26: Here in the Overview or beside a pinned row, and an open body panel,
   // kept their old marks): Here, its body panel, Search's, the lists
   if (hereData && (view === "here" || view === "overview" || (view === "near" && pinnedSystem))) renderHere();
@@ -5798,7 +5803,9 @@ function recordsSoon() { clearTimeout(REC.soon); REC.soon = setTimeout(() => { R
 // your scans or position moved since the last answer, once (a redraw while one is due asks nothing more)
 function recordsWanted() {
   if (!data || REC.soon || (REC.failed && Date.now() - REC.failed < 60000)) return;   // a failure: again after a minute
-  if (`${data.scan_version}|${data.position && data.position.id}` !== REC.key) recordsSoon();
+  // at most every 30 s through a burst of scans (review 2026-10-26: every 3 s through an FSS), at once after a jump
+  const pos = data.position && data.position.id;
+  if (`${data.scan_version}|${pos}` !== REC.key && (pos !== REC.askedPos || !REC.askedAt || Date.now() - REC.askedAt > 30000)) recordsSoon();
 }
 // a system that holds one of Your records (any of its bodies, or the system farthest from Sol): 🏆 on its row
 const sysRecordsHeld = id64 => id64 == null ? [] : ((REC.d && REC.d.records) || []).filter(r => r.id64 === String(id64));
@@ -5831,7 +5838,8 @@ function renderRecords() {
     `<td>${r.body ? `${esc(r.body)} <span class="goto" data-body="${esc(r.body)}" data-bsys="${esc(r.id64)}" title="open ${esc(r.body)} in Here">🔍</span>`
       : `<span class="goto" data-goto="${esc(r.id64)}" title="open ${esc(r.system || "")} in Here">⌖</span>`}${r.body === r.system ? "" : ` <span class="unk">${esc(r.system || "")}</span>`}</td>` +
     `<td class="unk c2hide">${esc(day(r.ts))}${recordNew(r) ? ` <span class="ok" title="set in the last day">🏆 new</span>` : ""}</td></tr>`).join("") +
-    `</tbody></table><div class="hint">From your ${d.bodies.toLocaleString()} scans kept in your journals (nav beacon reads left out); Farthest from Sol from every system you have been to.</div>`;
+    `</tbody></table><div class="hint">From your ${d.bodies.toLocaleString()} scans kept in your journals (nav beacon reads left out); Farthest from Sol from every system you have been to.</div>` +
+    (d.stale ? `<div class="hint warnc">Could not be brought up to date (${esc(d.stale)}): asked again in a minute.</div>` : "");
 }
 document.getElementById("recordsBox").addEventListener("toggle", e => {
   store.set("recordsOpen", e.target.open);
@@ -6908,7 +6916,8 @@ async function loadChecklist(force = false) {
   // the colour tables' state too (S7): the note's "downloading…" / "failed", and the colours once they are in
   const br = data && data.bio_rules, colKey = br ? `${br.colours}|${(br.colours_job || {}).state}` : "";
   // a converted shot too: its codex picture's 📷 (review 2026-10-26)
-  const key = `${kind}|${want}|${data && data.scan_version}|${want === "here" ? posId() : ""}|${colKey}|${((data && data.screenshots) || {}).n || 0}`;
+  const shots = (data && data.screenshots) || {};
+  const key = `${kind}|${want}|${data && data.scan_version}|${want === "here" ? posId() : ""}|${colKey}|${shots.n || 0}|${shots.folder || ""}`;
   if (!force && key === CL.key) return;
   // every change (region, list, a scan) asks, and only the newest answer is drawn: a region picked while an answer
   // was on its way was dropped (the Fable review of 2026-10-10, #6); a list switched meanwhile asks anew (setBioMode)
@@ -6921,6 +6930,11 @@ async function loadChecklist(force = false) {
   if (d.error) CL.key = null;   // asked again at the next render
   CL.data = d;
   renderChecklist();
+  // a shot saved or the pictures' settings changed: the open species' pictures too (review 2026-10-26: its panel kept
+  // Canonn's while its row had the 📷)
+  const sk = `${shots.n || 0}|${shots.folder || ""}|${CL.picKey || ""}`;
+  if (CL.open && CL.shotKey !== undefined && CL.shotKey !== sk && !d.error) clLoadSpecies(CL.open);
+  CL.shotKey = sk;
 }
 // a completion figure as the page shows it: "41.20%" (the share of each possible species' colours found, averaged)
 const clPct = v => v == null ? "" : `${v.toFixed(2)}%`;
@@ -7013,8 +7027,9 @@ async function clColour(colour) {
   const sp = CL.species, img = sp && sp.images && sp.images[colour];
   clColour.want = colour;   // the latest click wins (review 2026-10-26: an earlier pick's late answer took the panel back)
   if (!img || !img.own) { CL.colour = colour; renderChecklist(); return; }
-  if (clColour.busy === colour) return;   // that colour's pick still coming: let go; another colour is its own
-  clColour.busy = colour;
+  const bk = `${sp.id}|${colour}`;
+  if (clColour.busy === bk) return;   // that colour's pick still coming: let go; another colour (or species) is its own
+  clColour.busy = bk;
   try {
     let d;
     try { d = await apiJson(`api/checklist/picture?species=${encodeURIComponent(sp.id)}&colour=${encodeURIComponent(colour)}&avoid=${encodeURIComponent(img.file || "")}`); }
@@ -7025,7 +7040,7 @@ async function clColour(colour) {
     if (CL.species !== sp || clColour.want !== colour) return;   // another species or colour clicked meanwhile
     CL.colour = colour;   // the one picked (or, failing that, the one it had)
     renderChecklist();
-  } finally { if (clColour.busy === colour) clColour.busy = null; }
+  } finally { if (clColour.busy === bk) clColour.busy = null; }
 }
 // 📷: pictures of your own of it in your codex folders (Settings → Screenshots; the author, 2026-10-26)
 function clCam(on) { return on ? ' <span class="clcam" title="you have pictures of your own of it (your codex folders)">📷</span>' : ""; }
@@ -14234,6 +14249,7 @@ async function saveShotCfg() {
   r = r || {error: "?"};
   if (r.error) { say(`Not saved: ${r.error}`, true); return; }
   SC_FIELDS().forEach(el => { el.dataset.dirty = ""; });
+  CL.key = null; CL.picKey = Date.now();   // the checklists' pictures and 📷 follow a saved change (review 2026-10-26)
   await loadShotCfg();
   msg.innerHTML = savedNote(r); msg.className = "hint ok";
 }

@@ -88,6 +88,18 @@ class Server(unittest.TestCase):
         self.j.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(self.now - 600 + s), "StarSystem": name,
                        "SystemAddress": id64, "StarPos": [x, y, z]})
 
+    def test_review_7_rows(self):
+        """Review 2026-10-26: a hand-made sector's name Spansh knows carries its id64 (a click opens it in Here), and a
+        visited system Spansh knows is never "not in Spansh" on its card."""
+        self.jump(0, (11, "Col 285 Sector WG-B c14-0", -141.125, 56.28125, 215.0625))
+        ed_outrider.meta_set(self.db, "boxel_spansh", {"Col 285 Sector WG-B c14-": {"ts": ed_outrider.iso_ts(self.now), "systems": {
+            "0": {"id64": 11, "x": -141.125, "y": 56.28125, "z": 215.0625}, "3": {"id64": 33, "x": -140.0, "y": 56.0, "z": 215.0}}}})
+        v = self.state.boxel_view()
+        self.assertFalse(v["boxel"]["standard"])
+        rows = {r["n"]: r for r in v["rows"]}
+        self.assertEqual((rows[3]["id"], rows[3]["spansh"], rows[3]["visited"]), ("33", True, False))
+        self.assertEqual((rows[0]["summary"]["source"], rows[0]["summary"]["own_scans"]), ("boxel", True))
+
     def test_the_list_targets_and_end(self):
         self.jump(0, REAL[0])   # Drojau TF-H c13-0
         self.jump(5, REAL[1])   # ... c13-5

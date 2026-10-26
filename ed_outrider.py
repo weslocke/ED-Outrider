@@ -6066,6 +6066,17 @@ def codex_new_group(g, known):
     return bool(g.get("best")) and g["best"].lower() not in species
 
 
+def codex_sure_group(g, known, exact=False):
+    """Would a genus group SURELY earn a new codex entry, whatever it turns out to be? Stricter than codex_new_group
+    (review 2026-10-26: "could be new" was taken for "surely new"): its exact variant when the body says it (`exact`: a
+    sample's, a composition scan's) is unlogged; else every species it could be is unlogged in any colour."""
+    names, species = known
+    if exact and g.get("variant"):
+        return g["variant"].lower() not in names
+    cands = [c.get("name") for c in g.get("species") or [] if c.get("name")] or [g.get("best")]
+    return all(c and c.lower() not in species for c in cands)
+
+
 def codex_have(g, known):
     """The colours of a group's likeliest species already in your codex in the region (`known` is codex_species()),
     title-cased and sorted: what a ✦ on another colour of the same species says you have ("Lime", "Aquamarine")."""
@@ -10437,7 +10448,7 @@ class State:
 
     CODEX_SAY_MAX = 4   # names said in a codex_signals line; the rest as "and N more"
 
-    def codex_signal_facts(self, sid, body_id, held=False):
+    def codex_signal_facts(self, sid, body_id, held=False, again=False):
         """What the FSS's signals on a body could log that your codex lacks (the ✦ / ✪ of Here's table): its likeliest
         species by the rules (leaving_summary's bio_pending: those new here and those new anywhere, one name per species,
         its colour when only one is new) and the geology its volcanism could show (codex_geo, against codex_types as the
@@ -10466,12 +10477,17 @@ class State:
             if bio and not held:
                 # said or held, decided once per body and visit (review 2026-10-26: a recomputation after more scans held
                 # back a line already said, and said it again later)
+                # a decision first made when the moment is worked out again (`again`: the page has already passed it)
+                # is held, so codex_release says it (review 2026-10-26: decided "said" then, it was never heard)
                 if (sid, body_id) not in self.codex_decided:
-                    self.codex_decided[(sid, body_id)] = "held" if not b.get("codex_sure") and not self.all_bodies_found(sid) else "said"
-                if self.codex_decided[(sid, body_id)] == "held":
+                    self.codex_decided[(sid, body_id)] = "held" if again or (not b.get("codex_sure") and not self.all_bodies_found(sid)) else "said"
+                decided = self.codex_decided[(sid, body_id)]
+                if decided == "held":
                     self.codex_deferred.setdefault(sid, set()).add(body_id)   # said once every body is scanned (codex_release)
-                else:
+                elif decided == "said":
                     items += bio
+                # "released": codex_release said it; the old moment worked out again says nothing more (review 2026-10-26:
+                # it held the body again and the line was said twice or more)
             elif bio:
                 items += bio
         if sig and sig["geo"] and not held:
@@ -10507,7 +10523,10 @@ class State:
             if sid != here:
                 del self.codex_deferred[sid]
             elif self.all_bodies_found(sid):
-                facts = [f for f in (self.codex_signal_facts(sid, bid, held=True) for bid in sorted(self.codex_deferred.pop(sid))) if f]
+                bids = sorted(self.codex_deferred.pop(sid))
+                for bid in bids:
+                    self.codex_decided[(sid, bid)] = "released"
+                facts = [f for f in (self.codex_signal_facts(sid, bid, held=True) for bid in bids) if f]
                 if facts:
                     self.journals.moment("codex_held", iso_ts(time.time() if now is None else now), system=str(sid), codex=facts)
 
@@ -10603,7 +10622,7 @@ class State:
         elif kind == "approach":
             extra.update(self.approach_facts(sid, m["body_id"], m.get("body_name")))
         elif kind == "codex_signals":
-            facts = self.codex_signal_facts(sid, m["body_id"])
+            facts = self.codex_signal_facts(sid, m["body_id"], again=hit is not None)
             if facts is None:
                 extra = None
             else:
@@ -12304,7 +12323,9 @@ class State:
         # made only from a whole picture at least as big (review 2026-10-26: a "small copy" was cut from the crop, a
         # "medium copy" was the small one at small size): the medium from the full size, the small from either
         bigger = {"medium": ("full",), "small": ("full", "medium"), "crop": ("full", "medium")}
-        src = next((got[k] for k in bigger.get(want, ()) if got.get(k)), None)
+        edge = lambda k: int(cfg.get(k) or 0) or (S.MEDIUM_PX if k == "medium" else S.SMALL_PX)   # noqa: E731
+        # a kept medium copy smaller than the small one asked for is no source for it (review 2026-10-26)
+        src = next((got[k] for k in bigger.get(want, ()) if got.get(k) and not (k == "medium" and want == "small" and edge("medium") < edge("small"))), None)
         px, crop, note = 0, None, ""
         if got.get(want):
             key, path = want, got[want]
@@ -12534,13 +12555,15 @@ class State:
 
         def check(species=None, variant=None, name=None):
             m = BIO_CODEX_RE.match(str(variant or ""))   # the species from its variant's code, in any language
-            sp = (by_id.get(species) or (by_id.get(f"$Codex_Ent_{m.group(1)}_{m.group(2)}_Name;") if m else None)
+            sp = (by_id.get(species) or by_id.get(variant)   # a colourless species' code is its own id (no number)
+                  or (by_id.get(f"$Codex_Ent_{m.group(1)}_{m.group(2)}_Name;") if m else None)
                   or by_id.get(names.get(str(name or "").split(" - ")[0].strip().lower())))
             if not sp:
                 return False
             folder = S.codex_dir(root, {"kind": "bio", "group": sp.get("genus"), "entry": sp["name"],
                                         "colour": outrider.checklist.variant_colour(sp, variant, name, tables)})
             return bool(folder) and os.path.normcase(folder) in have
+        check.knows = lambda code: bool(code) and (code in by_id or bool(BIO_CODEX_RE.match(code)))   # a plant's code
         return check
 
     def codex_marks(self, out, kind):
@@ -12732,7 +12755,7 @@ class State:
             "codex_region_names": codex_names(bid, groups, known_codex) if region else [],
             "codex_galaxy_names": codex_names(bid, groups, known_all),
             "codex_sure": bool(possible if possible is not None else groups) and all(
-                codex_new_group(g, known_codex if region else known_all)
+                codex_sure_group(g, known_codex if region else known_all, g.get("seen") or g["genus"] in logged.get(bid, {}))
                 for g in with_logged_variants(possible if possible is not None else groups, logged.get(bid, {})))}
         # the x5 first-footfall bonus per body, as body_bio / approach_facts apply it. A separate factor: potential
         # stays bonus-free, so the bio threshold compares what it always did
@@ -12894,7 +12917,8 @@ class State:
                                                        # subcategory tells a plant from a geyser; a plant's code says it
                                                        # in any game language)
                                                        "entry_id": r["entry_id"] if "organic" in (r["subcategory"] or "").lower()
-                                                       or BIO_CODEX_RE.match(r["code"] or "") else None}
+                                                       or BIO_CODEX_RE.match(r["code"] or "") or getattr(own_pic, "knows", lambda c: False)(r["code"])
+                                                       else None}
             if row["entry_id"]:   # a plant's entry ("Stratum Paleas - Lime"): 📷 when your codex folders have it
                 row["own_pic"] = own_pic(None, r["code"], r["name"])
             codex.setdefault(r["body_id"], []).append(row)
@@ -17369,6 +17393,8 @@ class State:
                  "scanned": n in spansh and boxel_fully_scanned(sp)}
             if b.get("standard"):
                 r["id"] = str(outrider.boxel.id64(b["sector_index"], b["boxel"], b["mc"], n))
+            elif sp.get("id64"):   # a hand-made sector's name Spansh knows: its id64 (review 2026-10-26: no click to Here)
+                r["id"] = str(sp["id64"])
             where = visited.get(n) or spansh.get(n)
             xyz = ({"x": where[2], "y": where[3], "z": where[4]} if n in visited else
                    {k: where.get(k) for k in "xyz"} if where else None)
@@ -17378,6 +17404,8 @@ class State:
                 id64 = visited[n][0]
                 try:
                     r["summary"] = self.row(id64, ("own", {"name": name, "x": visited[n][2], "y": visited[n][3], "z": visited[n][4], "records": []}))
+                    if n in spansh and r["summary"].get("source") == "own":   # its card never says "not in Spansh" (review 2026-10-26)
+                        r["summary"].update(source="boxel", own_scans=True)
                 except (KeyError, TypeError, ValueError) as e:   # a row that cannot be made: the list still shows
                     print(f"boxel: no summary for {name} ({type(e).__name__}: {e})", file=sys.stderr)
             rows.append(r)

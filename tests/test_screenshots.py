@@ -787,6 +787,20 @@ class Server(unittest.TestCase):
         b = next(b for b in self.st.system_detail(9)["bodies"] if b["name"] == "2 a")
         self.assertEqual([(c["name"], c.get("own_pic")) for c in b["codex"] if c["entry_id"]], [("Stratum Paleas - Hellgrün", True)])
 
+    def test_here_marks_a_colourless_species_by_its_code(self):
+        """Review 2026-10-26 (7): a colourless species' code has no number ("$Codex_Ent_Seed_Name;": Roseum Brain Tree):
+        in another game language its composition scan got no 📷 (and no Bioforge link)."""
+        self.j.handle({"event": "CodexEntry", "timestamp": self.at(5), "EntryID": 2100401, "Name": "$Codex_Ent_Seed_Name;",
+                       "Name_Localised": "Rosa Hirnbaum", "Category": "$Codex_Category_Biology;",
+                       "SubCategory": "$Codex_SubCategory_Organic_Structures;", "SubCategory_Localised": "Organische Strukturen",
+                       "System": "Sys", "SystemAddress": 9, "BodyID": 6, "Latitude": 0.0, "Longitude": 0.003})
+        folder = os.path.join(self.out, "Biology", "Brain Trees", "Roseum Brain Tree")
+        os.makedirs(folder)
+        Image.new("RGB", (10, 10)).save(os.path.join(folder, "a.png"))
+        b = next(b for b in self.st.system_detail(9)["bodies"] if b["name"] == "2 a")
+        self.assertEqual([(c["name"], c["entry_id"], c.get("own_pic")) for c in b["codex"] if c["name"] == "Rosa Hirnbaum"],
+                         [("Rosa Hirnbaum", 2100401, True)])
+
     def test_a_reread_fills_a_tags_variant(self):
         """Review 2026-10-26: a plant tagged before bio_tags.variant existed kept NULL through a journal re-read (its
         INSERT OR IGNORE), so its shot was never filed by colour."""
@@ -923,7 +937,14 @@ class Server(unittest.TestCase):
                        "System": "Sys", "Body": "Sys 2 a"})
         self.run_queue()
         self.assertEqual(self.st.shots_last["clipboard"], "the medium copy was not made: copied the small copy")
-        self.st.shots_cfg.update(full=True, small=0)
+        # a kept medium copy smaller than the small one asked for is no source for it (review 2026-10-26, 7)
+        self.st.shots_cfg.update(clipboard="small", full=False, medium=800, small=0)
+        bmp(os.path.join(self.pictures, "Screenshot_0006.bmp"), 3072, 1728)
+        self.j.handle({"event": "Screenshot", "timestamp": self.at(39), "Filename": "\\ED_Pictures\\Screenshot_0006.bmp",
+                       "System": "Sys", "Body": "Sys 2 a"})
+        self.run_queue()
+        self.assertEqual(self.st.shots_last["clipboard"], "the small copy was not made: copied the medium copy")
+        self.st.shots_cfg.update(full=True, small=0, medium=0)
         # the full size chosen (or the fallback) of a HighRes shot: never bigger than CLIPBOARD_MAX_PX
         self.st.shots_cfg.update(clipboard="full")
         bmp(os.path.join(self.pictures, "Screenshot_0009.bmp"), 5000, 2800)

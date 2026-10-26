@@ -667,14 +667,19 @@ const releasePayloads = async () => {
       await w.eval(`clColour("red")`);
       // a Canonn colour clicked while an own picture's pick is coming: the later click stays (review 2026-10-26)
       await w.eval(`Promise.all([clColour("lime"), clColour("red")])`);
-      const out = {file: w.eval(`CL.species.images.lime.file`), colour: w.eval(`CL.colour`)};
+      const raceColour = w.eval(`CL.colour`);   // the later click (red) stays
+      // the same colour of another species is its own pick, never dropped as "still coming" (review 2026-10-26, 7)
+      await w.eval(`(() => { const a = CL.species, b = {id: "$S2;", images: {lime: {url: "api/codex_picture?f=3", own: true, file: "c.png"}}};
+        const one = clColour("lime"); CL.species = b; CL.open = "$S2;"; return Promise.all([one, clColour("lime")]); })()`);
+      const out = {file: w.eval(`CL.species.images.lime.file`), colour: w.eval(`CL.colour`), raceColour};
       w.eval(`CL.open = null; CL.species = null; CL.colour = null; CL_PIC_WAIT = 3000`);
       return out;
     };
     const res = await run();
+    w.eval(`CL.open = null; CL.species = null; CL.colour = null`);
     w.apiJson = realApi;
-    const ok = asked.length === 2 && /api\/checklist\/picture\?species=%24S1%3B&colour=lime&avoid=a\.png/.test(asked[0]) &&
-               res.file === "b.png" && res.colour === "red" && errors.length === before;
+    const ok = asked.length === 4 && asked.some(u => /species=%24S2%3B/.test(u)) && /api\/checklist\/picture\?species=%24S1%3B&colour=lime&avoid=a\.png/.test(asked[0]) &&
+               res.file === "b.png" && res.colour === "lime" && res.raceColour === "red" && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| codex picture per click |", JSON.stringify(asked), JSON.stringify(res), errors.slice(before));
   }
   // auto-target's results: their own alerts row (spoken, not notified by default; its speech tick can switch them off)

@@ -2531,6 +2531,20 @@ class BatchBState(unittest.TestCase):
             held = [m for m in self.j.moments if m["kind"] == "codex_held"]
             self.assertEqual([m["codex"] for m in held], [[{"body": "A 5", "items": [{"name": "Stratum Tectonicas - Teal", "galaxy": True}], "more": 0}]])
             self.assertEqual(self.state.codex_deferred, {})
+            # review 2026-10-26 (7): the old moment worked out again after the release (a scan moved scan_version) never
+            # holds it again, so it is not said twice
+            self.assertIsNone(self.state.codex_signal_facts(1, 5, again=True))
+            self.assertEqual(self.state.codex_deferred, {})
+            self.state.codex_release()
+            self.assertEqual(len([m for m in self.j.moments if m["kind"] == "codex_held"]), 1)
+            # a body first judged when its moment is worked out again (the page already passed it) is held, not lost
+            self.planet("2026-01-01T00:05:00Z", 1, 6, "A 6", Landable=True, PlanetClass="Rocky body", MassEM=0.2)
+            self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:06:00Z", "SystemAddress": 1, "BodyName": "S1 A 6",
+                           "BodyID": 6, "Signals": [{"Type": ed_outrider.BIO, "Count": 2}]})
+            self.db.commit()
+            self.state._leaving.clear()
+            self.assertIsNone(self.state.codex_signal_facts(1, 6, again=True))
+            self.assertEqual(self.state.codex_decided[(1, 6)], "held")
         # a held body whose guess settled on a logged species says nothing; a system you left forgets its held lines
         with unittest.mock.patch.object(outrider.bio, "predict", return_value=[dict(self.CANDS[1], variants=["Concha Biconcavis - Red"])]):
             self.state._leaving.clear()
@@ -2540,6 +2554,20 @@ class BatchBState(unittest.TestCase):
             self.state.codex_deferred, self.state.codex_decided = {99: {1}}, {(99, 1): "held", (1, 4): "said"}
             self.state.codex_release()
             self.assertEqual((self.state.codex_deferred, self.state.codex_decided), ({}, {(1, 4): "said"}))
+
+    def test_codex_sure_is_strict(self):
+        """Review 2026-10-26 (7): "sure" took "could be new" (one unlogged colour candidate, the likeliest species alone)
+        for "surely new"; a genus is sure only when every species it could be is unlogged in any colour, or the body
+        says its exact variant and that is unlogged."""
+        known = ({"stratum paleas - lime"}, {"stratum paleas"})
+        g = {"genus": "Stratum", "best": "Stratum Tectonicas", "variants": ["Stratum Tectonicas - Teal"],
+             "species": [{"name": "Stratum Tectonicas"}, {"name": "Stratum Paleas"}]}
+        self.assertTrue(ed_outrider.codex_new_group(g, known))             # could be new...
+        self.assertFalse(ed_outrider.codex_sure_group(g, known))           # ...but may be the logged Paleas
+        self.assertTrue(ed_outrider.codex_sure_group(dict(g, species=[{"name": "Stratum Tectonicas"}]), known))
+        exact = dict(g, variant="Stratum Paleas - Teal")
+        self.assertTrue(ed_outrider.codex_sure_group(exact, known, exact=True))    # Paleas logged in Lime, this is Teal
+        self.assertFalse(ed_outrider.codex_sure_group(dict(g, variant="Stratum Paleas - Lime"), known, exact=True))
 
     def test_a_boxel_system_spansh_knows_is_located(self):
         """Review 2026-10-26: a Boxel view row Spansh knows, outside Nearby's sphere, opened Here on "unknown system"."""

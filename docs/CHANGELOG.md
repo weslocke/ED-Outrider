@@ -2,6 +2,26 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Opus review 7 fixes: a held codex line said once, "sure" made strict, the lists
+An Opus bug check of ce9a8df..HEAD again, with review 6's fixes (52 agents, 21 findings, about 14 distinct, all
+confirmed but one split; project/done/reviews/review-2026-10-26):
+- **A held codex line was said twice or more:** the old moment, worked out again after a scan, held the body again
+  after codex_release had said it; a released body is now "released" for good. A body first judged when its moment
+  was worked out again (the page already past it) is held, so the release says it, not dropped.
+- **"Sure" is strict:** every species the genus could be must be unlogged in any colour (or the body's exact variant,
+  from a sample or a composition scan); it took "could be new" (one unlogged colour candidate, the likeliest species
+  alone) for "surely new" (`codex_sure_group`).
+- **In other game languages** a colourless species' composition scan (its code has no number: "$Codex_Ent_Seed_Name;")
+  gets its 📷 and its Bioforge link.
+- **The clipboard:** a kept medium copy smaller than the small one asked for is not used for it; the hint says "from
+  the full size or a bigger copy".
+- **Boxel view:** a hand-made sector's rows Spansh knows carry its id64 (they open in Here); a visited system Spansh
+  knows is never "not in Spansh" on its card; records that came while another tab was open are drawn on return.
+- **Records on the page:** redrawn only when they changed (Search's open panel was rebuilt on every refresh); asked
+  at most every 30 s through a burst of scans, at once after a jump; a refresh that failed is said in My firsts.
+- **The checklist:** its 📷 and the open species' pictures follow a saved picture setting and a codex save; a click
+  on the same colour of another species is never dropped as "still coming".
+
 ## 2026-10-26 · A system's hover card names its records
 - The author: the 🏆 showed on a Boxel view row, but the system's hover card (Nearby's and Boxel view's bodies cell)
   said nothing of it. The card now opens with "🏆 Your record · Biggest planet (4) 77,691 km" (`sysRecordsHeld`).
