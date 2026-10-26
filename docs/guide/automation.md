@@ -102,7 +102,8 @@ package (see [Install and run](install.md)), and is off until you tick it.
 - **Files:** **File name** builds each name from `{system}` `{body}` (short: `2 a`) `{date}` `{time}` (your local
   time) `{cmdr}` `{highres}` and `{subject}` (below); a name already there gets " (2)". **Full-size picture as** PNG
   (lossless, the default: about 8.5 MB for a 3072 x 1728 shot), JPG or WebP at a **quality** (90: about 1.2 MB as JPG,
-  1 MB as WebP, the smallest at the same quality). Untick **keep the full-size picture** to keep only the copies and
+  1 MB as WebP, the smallest at the same quality; WebP takes 16,383 px a side at most, so a bigger HighRes shot is
+  written as JPG). Untick **keep the full-size picture** to keep only the copies and
   the crop (with none of them, the full size is written anyway). Each file's date is when the shot was taken.
 - **Copies to post:** tick **medium** (1920 px on the long edge) and/or **small** (1080 px), in `medium/` and `small/`
   folders beside the full size, never enlarged. **A crop** cuts the same part out of every shot into `crop/`: left,
@@ -110,17 +111,19 @@ package (see [Install and run](install.md)), and is off until you tick it.
   optionally **resized to** a long edge in px; the middle without the HUD's edges, say, or a square for an avatar. The
   copies and the crop are JPG (posts anywhere) or WebP (smaller; Discord and browsers show it) at their own quality (85).
 - **The clipboard:** **After each shot, copy** the full size, a copy or the crop to the clipboard, ready to paste
-  into Discord or a post (the shots you take, never the ones converted later). It replaces what was on the clipboard,
-  a system name copied for the galaxy map included.
-- **The game's BMP:** kept (the default), deleted or moved to a folder of your choice, and only once every image has
-  been written and read back.
+  into Discord or a post (the shots you take, never the ones converted later); when that picture is not made, the
+  first one that is goes instead, and the status line says so. It replaces what was on the clipboard, a system name
+  copied for the galaxy map included.
+- **The game's BMP:** kept (the default), deleted or moved to a folder of your choice (not the game's own), and only
+  once every picture has been written and read back whole. If it cannot be moved or deleted, the pictures are kept
+  and a card says why.
 - **What it shows:** a shot taken on a surface within 50 m (**Note the plant or formation a surface shot shows**) of a plant you sampled
   or tagged with the composition scanner, or of a geology formation you logged in your codex, knows what it shows: the
   variant ("Stratum Tectonicas - Lime") or the formation ("Water Ice Geyser"), kept with the shot, written into the
   image and in the name when you add `{subject}` to it. On foot the game's line has no position, so Outrider takes
   yours from that moment. Every picture carries its title, a description (system, body, what it shows, position,
   commander, time) and keywords inside it, in the places viewers look: XMP (photo managers), EXIF (Windows' Properties
-  → Details) and PNG's own text.
+  → Details, its "Date taken" in your local time) and PNG's own text.
 - **Finding them again:** a 📷 beside a body you photographed in Here, its hover card shows the newest three, and the body's panel lists its shots with a
   small picture (click it to open it larger: the medium copy when there is one), the time and what it shows; **📍**
   beside a surface shot pins where it was taken.

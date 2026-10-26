@@ -2,6 +2,32 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-25 · In-depth review fixes (1): screenshots and the rail
+The in-depth Fable review of d17eee4..5a06e97 (11 areas, two reviewers each, every finding checked by two skeptics):
+- **Never converted twice:** a journal re-read (PARSER_VERSION 62 is one) replays the last five minutes' Screenshot
+  lines, and a rolled-back tick handled its line again: a second conversion replaced the good record with an error
+  (or wrote " (2)" copies). `State.shot_known` (a record without an error, waiting, or converting) drops it; the
+  tick's checkpoint keeps `shots_new`.
+- **The backlog:** a long session's part 2 keeps part 1's commander (no "Unknown commander" folder); a Pictures folder
+  that does not exist is said up front (no raw error, no minute's wait per shot).
+- **The files:** WebP takes 16,383 px a side, so a bigger HighRes is written as JPG (the conversion failed whole);
+  every picture is decoded whole before the BMP goes (a JPG's header only was checked); EXIF dates are local with
+  OffsetTime (viewers showed UTC as local); a name with no ASCII form is never written "CMDR " (Łukasz, Sjöberg fold).
+- **The BMP:** "moved to" with no folder, or the game's own folder, is refused at Save and said if met (it was kept
+  without a word, or renamed in place and converted again by every backlog run); one that cannot be moved or deleted
+  no longer turns a good conversion into a failure: the pictures are recorded and a card says the BMP stayed.
+- **What a shot shows:** the Analyse sample's spot is kept, and each spot keeps its name (`bio_spots.name`), so a shot
+  at an abandoned run's spot is not named "$Codex_Ent_...".
+- **Thumbnails:** one made at a time, a picture asked twice at once made once, JPGs decoded at a reduced size, a
+  picture Pillow cannot read a 404 not a 500; Pillow's size guard raised for every use (a 5K HighRes thumbnail failed
+  after a restart). The crop preview draws on the latest whole picture, never on a crop.
+- **Settings:** a crop cut away at the picture's edge is refused (it was stored as nothing); a re-tick keeps the typed
+  crop; an emptied size keeps its tick while retyped; the File name hint says " (HighRes)"; the clipboard's fallback
+  is said; the failure card has its Screenshots button.
+- **The body panel's picture link** opens the largest picture kept (a 404 with no full size).
+- **The rail:** Hide UI, Screenshot and HighRes are never "Sent, waiting for the game" (nothing can confirm them);
+  the editor says up to 11.
+
 ## 2026-10-25 · Bug check fixes: what the Fable review of the work since d17eee4 found
 Ten bugs, each confirmed by a second agent; none high. Explorer, mining and search:
 - **Shepherd moon** never showed in Here (only Nearby): it read the parent's rings from a field that is a count on

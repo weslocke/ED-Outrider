@@ -101,6 +101,16 @@ class Names(unittest.TestCase):
                     '"Width":3072, "Height":1728, "System":"Sys", "Body":"Sys 2 a", "Latitude":-41.6, "Longitude":-113.8, "Heading":129 }\n')
         [s] = S.journal_shots([p, os.path.join(d, "missing.log")])
         self.assertEqual((s["original"], s["cmdr"], s["body"], s["lat"]), ("Screenshot_0002.bmp", "Hefay", "Sys 2 a", -41.6))
+        # a long session's part 2 has no LoadGame: it keeps part 1's commander; a new session's part 1 starts afresh
+        # (review 2026-10-25: part 2's shots were filed under "Unknown commander")
+        p2, p3 = os.path.join(d, "Journal.2026-10-25T150000.02.log"), os.path.join(d, "Journal.2026-10-26T150000.01.log")
+        with open(p2, "w") as f:
+            f.write('{"timestamp":"2026-10-25T23:00:00Z", "event":"Fileheader", "part":2}\n'
+                    '{"timestamp":"2026-10-25T23:01:00Z", "event":"Screenshot", "Filename":"\\\\ED_Pictures\\\\Screenshot_0003.bmp"}\n')
+        with open(p3, "w") as f:
+            f.write('{"timestamp":"2026-10-26T15:00:00Z", "event":"Fileheader", "part":1}\n'
+                    '{"timestamp":"2026-10-26T15:01:00Z", "event":"Screenshot", "Filename":"\\\\ED_Pictures\\\\Screenshot_0004.bmp"}\n')
+        self.assertEqual([x["cmdr"] for x in S.journal_shots([p, p2, p3])], ["Hefay", "Hefay", None])
 
 
 @unittest.skipIf(Image is None, "Pillow is not installed")
@@ -130,7 +140,8 @@ class Convert(unittest.TestCase):
                          "<xmp:CreateDate>2026-10-25T20:33:35Z</xmp:CreateDate>", "<rdf:li>CMDR Hefay</rdf:li>"):
                 self.assertIn(want, xmp)
             ex = im.getexif()
-            self.assertEqual((ex[0x013B], ex.get_ifd(0x8769)[0x9003]), ("CMDR Hefay", "2026:10:25 20:33:35"))
+            local = datetime.datetime(2026, 10, 25, 20, 33, 35, tzinfo=datetime.timezone.utc).astimezone()
+            self.assertEqual((ex[0x013B], ex.get_ifd(0x8769)[0x9003]), ("CMDR Hefay", local.strftime("%Y:%m:%d %H:%M:%S")))
         with Image.open(paths["medium"]) as im:
             self.assertEqual((im.format, im.size), ("JPEG", (1920, 1080)))
             ex = im.getexif()
@@ -171,12 +182,53 @@ class Convert(unittest.TestCase):
         bare = S.plan_paths(dict(S.DEFAULTS, full=False), S.fields_for(shot), os.path.join(self.d, "o3"))
         self.assertTrue(bare["full"].endswith(".png"))
 
+    def test_review_2_files(self):
+        """The in-depth review of 2026-10-25: WebP past its 16383 px limit as JPG; every picture decoded whole before
+        the original may go; EXIF dates local with their offset; a name with no ASCII form never an empty credit."""
+        src = bmp(os.path.join(self.d, "HighResScreenShot_1.bmp"), 16400, 8)
+        shot = {"ts": "2026-10-25T20:33:35Z", "system": "Sys", "body": "Sys 2 a", "cmdr": "Сёма"}
+        cfg = dict(S.DEFAULTS, format="webp", medium=1920, copies_format="webp")
+        paths = S.plan_paths(cfg, S.fields_for(shot), os.path.join(self.d, "out"))
+        out = S.convert(src, paths, cfg, shot)
+        self.assertTrue(paths["full"].endswith(".jpg") and paths["full"] in out["written"], paths["full"])   # too wide for WebP
+        self.assertTrue(paths["medium"].endswith(".webp"))
+        with Image.open(paths["full"]) as im:
+            ex = im.getexif()
+            local = datetime.datetime(2026, 10, 25, 20, 33, 35, tzinfo=datetime.timezone.utc).astimezone()
+            z = local.strftime("%z")
+            ifd = ex.get_ifd(0x8769)
+            self.assertEqual((ifd[0x9003], ifd[0x9011]), (local.strftime("%Y:%m:%d %H:%M:%S"), f"{z[:3]}:{z[3:]}"))
+            self.assertNotIn(0x013B, ex)                     # Artist: nothing left of "Сёма" in ASCII, so left out
+            self.assertNotIn("CMDR", ex[0x010E])
+            self.assertEqual(bytes(ex[0x9C9D]).decode("utf-16-le").rstrip("\0"), "CMDR Сёма")   # XPAuthor has it all
+        self.assertEqual(S.ascii_fold("Łukasz Sjöberg °"), "Lukasz Sjoberg")
+        # a JPG whose body is bad is caught by the read-back (verify() read its header only)
+        small = bmp(os.path.join(self.d, "Screenshot_0002.bmp"), 640, 360)
+        jpg = dict(S.DEFAULTS, format="jpg")
+        real_save = Image.Image.save
+
+        def broken(im, fp, *a, **k):
+            real_save(im, fp, *a, **k)
+            if isinstance(fp, str) and fp.endswith(".jpg"):
+                with open(fp, "r+b") as f:
+                    f.truncate(os.path.getsize(fp) // 2)
+        with unittest.mock.patch.object(Image.Image, "save", broken), self.assertRaises(OSError):
+            S.convert(small, S.plan_paths(jpg, S.fields_for(shot), os.path.join(self.d, "o2")), jpg, shot)
+
     def test_crop_text(self):
         self.assertEqual(S.parse_crop("10, 10, 80, 75"), (10, 10, 80, 75))
         self.assertEqual(S.parse_crop("90 0 50 100"), (90, 0, 10, 100))     # cut at the picture's edge
         for bad in ("", "10, 10, 80", "a, b, c, d", "0, 0, 0.5, 50"):
             self.assertIsNone(S.parse_crop(bad))
         self.assertEqual(S.crop_box((3072, 1728), (10, 10, 80, 75)), (307, 173, 2765, 1469))
+
+    def test_moved_to_needs_a_folder_that_is_not_the_games(self):
+        src = bmp(os.path.join(self.d, "a.bmp"))
+        with self.assertRaisesRegex(ValueError, "no folder"):
+            S.finish_original(src, dict(S.DEFAULTS, original="move", move_to=""), "x")
+        with self.assertRaisesRegex(ValueError, "own Pictures folder"):
+            S.finish_original(src, dict(S.DEFAULTS, original="move", move_to=self.d + os.sep), "x")
+        self.assertTrue(os.path.isfile(src))
 
     def test_the_original(self):
         src = bmp(os.path.join(self.d, "a.bmp"))
@@ -326,13 +378,80 @@ class Server(unittest.TestCase):
         self.shoot(name="Screenshot_0002.bmp")
         self.j.shots_new[0]["ts"] = self.at(31)
         self.run_queue()
-        self.assertEqual(self.st.shots_last["clipboard"], "copied the medium copy")
+        self.assertEqual(self.st.shots_last["clipboard"], "the crop was not made: copied the medium copy")
         self.st.shots_queue.append(dict(self.j.shots_new[0] if self.j.shots_new else {"ts": self.at(32)}, original="Screenshot_0003.bmp",
                                         ts=self.at(32), backlog=True, system="Sys", body="Sys 2 a", system_id=9))
         bmp(os.path.join(self.pictures, "Screenshot_0003.bmp"), 320, 180)
         self.run_queue()
         self.assertEqual(len(copied), 2)   # the backlog's never
         self.assertIsNone(self.st.shots_last["clipboard"])
+
+    def test_review_2_server(self):
+        """The in-depth review of 2026-10-25, the server's side of screenshots."""
+        # a Screenshot line handled again (a re-read replays the last minutes, a rolled-back tick its line) never
+        # converts the shot a second time
+        self.st.shots_cfg.update(original="delete")
+        self.shoot()
+        self.run_queue()
+        [good] = [dict(r) for r in self.db.execute("SELECT * FROM screenshots")]
+        cp = self.j.checkpoint()
+        self.shoot(make=False)
+        self.assertEqual(len(self.j.shots_new), 1)
+        self.j.restore(cp)
+        self.assertEqual(self.j.shots_new, [])                 # the retry's line is noted once, not twice
+        self.shoot(make=False)
+        self.st.shots_step()
+        self.assertEqual(self.st.shots_queue, [])              # converted already: dropped
+        self.assertEqual([dict(r) for r in self.db.execute("SELECT * FROM screenshots")], [good])
+        # a BMP that cannot be moved: the pictures are recorded, the card says the BMP stayed, the backlog skips it
+        self.st.shots_cfg.update(original="move", move_to="")
+        self.shoot(name="Screenshot_0005.bmp")
+        self.j.shots_new[0]["ts"] = self.at(40)
+        self.run_queue()
+        r = self.db.execute("SELECT * FROM screenshots WHERE original='Screenshot_0005.bmp'").fetchone()
+        self.assertEqual((r["error"], bool(r["full"])), (None, True))
+        self.assertIn("no folder", self.st.shots_last["original_error"])
+        [card] = [n for n in self.st.notices.active() if n["key"] == "screenshots"]
+        self.assertIn("was not moved or deleted", card["text"])
+        self.assertTrue(self.st.shot_known(self.at(40), "Screenshot_0005.bmp"))
+        # the preview's picture is the latest whole one: a shot with only its crop kept is passed over
+        self.db.execute("INSERT INTO screenshots (ts, original, crop) VALUES ('2026-10-25T23:59:00Z', 'x.bmp', '/x/crop/x.jpg')")
+        self.assertEqual(self.st.shots_summary()["last_id"], r["id"])
+        # a picture Pillow cannot read: no thumbnail (404), never an exception (500)
+        bad = os.path.join(self.out, "bad.png")
+        with open(bad, "wb") as f:
+            f.write(b"\x89PNG not really")
+        self.db.execute("UPDATE screenshots SET full=?, medium=NULL, small=NULL WHERE id=?", (bad, r["id"]))
+        self.assertIsNone(asyncio.run(self.st.shot_image(r["id"], "thumb")))
+        # a Pictures folder that is not there: said, never a raw error
+        self.st.shots_cfg.update(pictures=os.path.join(self.d, "nope"))
+        self.assertIn("does not exist", self.st.shots_why_off())
+        out, status = asyncio.run(self.st.shots_backlog())
+        self.assertEqual(status, 409)
+        # [screenshots] crop: one cut away at the picture's edge is refused when saved, not stored as ""
+        with self.assertRaises(ValueError):
+            ed_outrider.CONFIG_CHECKS["screenshots", "crop"]("99.5, 0, 10, 100")
+        self.assertEqual(ed_outrider.CONFIG_CHECKS["screenshots", "crop"](""), "")
+
+    def test_review_2_samples(self):
+        """The Analyse sample's spot is kept, and a spot keeps its name after its run is abandoned (review 2026-10-25:
+        a shot at the third sample named nothing; one at an abandoned run's spot was named "$Codex_Ent_...")."""
+        def run(species, variant, lon0, kinds):
+            ev = {"Genus": "$Codex_Ent_Bacterial_Genus_Name;", "Species": species, "Variant": species.replace("_Name;", "_Y_Name;"),
+                  "Variant_Localised": variant, "SystemAddress": 9, "Body": 6}
+            for i, kind in enumerate(kinds):
+                t = self.at(5 + i + (0 if "10" in species else 10))
+                self.j.status_json = {"live": True, "ts": t, "body": "Sys 2 a", "lat": 0.0, "lon": lon0 + 0.03 * i}
+                self.j.handle(dict(ev, event="ScanOrganic", timestamp=t, ScanType=kind))
+        run("$Codex_Ent_Bacterial_10_Name;", "Bacterium Bullaris - Yellow", 0.010, ["Log", "Sample", "Analyse"])
+        self.assertIn(0.07, [round(r["lon"], 5) for r in self.db.execute("SELECT lon FROM bio_spots")])   # the Analyse's spot
+        run("$Codex_Ent_Bacterial_01_Name;", "Bacterium Aurasus - Green", 0.500, ["Log"])
+        run("$Codex_Ent_Bacterial_02_Name;", "Bacterium Nebulus - Teal", 0.900, ["Log"])           # abandons Aurasus' run
+        self.assertIsNone(self.db.execute("SELECT 1 FROM own_organic WHERE species='$Codex_Ent_Bacterial_01_Name;'").fetchone())
+        _, subj = self.st.shot_subject({"system_id": 9, "body": "Sys 2 a", "lat": 0.0, "lon": 0.5001})
+        self.assertEqual(subj["name"], "Bacterium Aurasus - Green")
+        _, subj = self.st.shot_subject({"system_id": 9, "body": "Sys 2 a", "lat": 0.0, "lon": 0.0701})
+        self.assertEqual(subj["name"], "Bacterium Bullaris - Yellow")
 
     def test_a_catch_up_never_converts_and_off_drops(self):
         self.j.handle({"event": "Screenshot", "timestamp": "2020-01-01T00:00:00Z", "Filename": "\\ED_Pictures\\old.bmp"})

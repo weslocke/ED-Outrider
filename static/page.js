@@ -5549,8 +5549,10 @@ async function loadShotList(el) {
   if (!r || r.error) { el.innerHTML = `<span class="unk">${esc((r && r.error) || "could not read them")}</span>`; return; }
   const shots = (r.shots || []).filter(x => !x.error);
   el.innerHTML = shots.length ? shots.map(x => {
-    const big = x.sizes.includes("medium") ? "medium" : "full";
-    return `<figure class="shot"><a href="api/screenshots/${x.id}/image?size=${big}" target="_blank" rel="noopener" title="open it (${big === "medium" ? "the medium copy" : "full size"})">` +
+    // the largest picture kept (review 2026-10-25: with no full size kept the link was a 404)
+    const big = ["medium", "full", "crop", "small"].find(s => x.sizes.includes(s)) || "thumb";
+    const bigWord = {medium: "the medium copy", full: "full size", crop: "the crop", small: "the small copy", thumb: "a thumbnail"}[big];
+    return `<figure class="shot"><a href="api/screenshots/${x.id}/image?size=${big}" target="_blank" rel="noopener" title="open it (${bigWord})">` +
       `<img src="api/screenshots/${x.id}/image?size=thumb" alt="" loading="lazy"></a><figcaption>${esc(localDay(x.ts))} ${esc(localTime(x.ts))}` +
       `${x.subject ? ` · ${esc(x.subject.name)} <span class="unk">${x.subject.dist} m</span>` : ""}` +
       `${x.lat != null && x.lon != null ? ` <button type="button" class="mini" data-shotpin="${x.id}" data-lat="${x.lat}" data-lon="${x.lon}" data-name="${esc(`📷 ${localTime(x.ts)}`)}" title="pin where it was taken">📍</button>` : ""}` +
@@ -13976,7 +13978,10 @@ async function loadShotCfg() {
 function shotSizeBoxes() {
   for (const b of document.querySelectorAll("#shotSettings .shotsize")) {
     const f = document.querySelector(`#shotSettings .scfg[data-key="${b.dataset.for}"]`);
-    b.checked = Number(f.value) > 0; f.disabled = !b.checked;
+    // an emptied size being retyped keeps its tick (review 2026-10-25: a crop or format change disabled it under
+    // the cursor); 0 unticks
+    if (f.value.trim() !== "") b.checked = Number(f.value) > 0;
+    f.disabled = !b.checked;
   }
   // the full size's quality only for a JPG or WebP; the copies' format and quality only with a copy or the crop; the
   // crop's box only while it is ticked
@@ -13998,7 +14003,12 @@ function shotCropRead() {
 // the four boxes as numbers; an empty one is no number (review 2026-10-25: Number("") is 0, and a width cleared to
 // retype saved a zero-size crop the server dropped)
 const shotCropValues = () => [...document.querySelectorAll("#shotSettings .cropv")].map(el => el.value.trim() === "" ? NaN : Number(el.value));
-const shotCropBad = () => { const v = shotCropValues(); return document.getElementById("shotCropOn").checked && (!v.every(isFinite) || v[2] < 1 || v[3] < 1); };
+// as the server reads it: the box is cut at the picture's edge, and what is left must be 1 % or more (review
+// 2026-10-25: left 99.5, width 10 passed here and was dropped there)
+const shotCropBad = () => {
+  const v = shotCropValues(), cut = (at, len) => Math.min(100 - Math.min(100, Math.max(0, at)), len);
+  return document.getElementById("shotCropOn").checked && (!v.every(isFinite) || cut(v[0], v[2]) < 1 || cut(v[1], v[3]) < 1);
+};
 function shotCropWrite() {
   const f = shotCropField(), on = document.getElementById("shotCropOn").checked, v = shotCropValues();
   if (!on) f.value = "";
@@ -14016,7 +14026,9 @@ function shotCropDraw() {
   Object.assign(b.style, {left: `${x}%`, top: `${y}%`, width: `${Math.max(0, Math.min(100 - x, v[2]))}%`, height: `${Math.max(0, Math.min(100 - y, v[3]))}%`});
 }
 document.getElementById("shotCropOn").onchange = e => {
-  if (e.target.checked && !shotCropField().value) {   // a first box: the middle, the HUD's edges left out
+  // a first box (the middle, the HUD's edges left out) only when the boxes are empty: a re-tick keeps what they hold
+  // (review 2026-10-25: an untick and re-tick put the default back over a typed crop)
+  if (e.target.checked && shotCropValues().every(Number.isNaN)) {
     [10, 10, 80, 75].forEach((x, i) => { document.querySelector(`#shotSettings .cropv[data-i="${i}"]`).value = x; });
   }
   shotCropWrite();
@@ -14031,7 +14043,17 @@ SC_FIELDS().forEach(el => el.addEventListener(el.type === "checkbox" || el.tagNa
 async function saveShotCfg() {
   const msg = document.getElementById("shotMsg"), out = {};
   const say = (t, bad) => { msg.textContent = t; msg.className = bad ? "hint warnc" : "hint"; };
-  if (shotCropBad()) { say("Not saved: the crop's four boxes need numbers, its width and height at least 1 %", true); return; }
+  if (shotCropBad()) { say("Not saved: the crop's four boxes need numbers, its width and height at least 1 % inside the picture", true); return; }
+  // "moved to" needs a folder that is not the game's own (review 2026-10-25: the BMP was kept without a word, or
+  // renamed in place and converted again by every backlog run)
+  const q = k => document.querySelector(`#shotSettings .scfg[data-key="${k}"]`);
+  const norm = p => String(p || "").trim().replace(/[\\/]+$/, "").toLowerCase();
+  if (q("original").value === "move") {
+    if (!q("move_to").value.trim()) { say("Not saved: \"moved to\" needs a folder for the BMPs", true); return; }
+    if (norm(q("move_to").value) === norm(q("pictures").value || (data && data.screenshots && data.screenshots.pictures))) {
+      say("Not saved: \"moved to\" cannot be the game's own Pictures folder", true); return;
+    }
+  }
   for (const el of SC_FIELDS()) {
     if (scNow(el) === el.dataset.orig) continue;
     let v = el.type === "checkbox" ? el.checked : el.value.trim();
@@ -14414,6 +14436,7 @@ const NOTICE_ACTIONS = {
   "retry:bio_colours": ["Retry", () => bioColoursRetry()],
   "open:server:commander": ["Commander filter", () => openServerSettings("journals", "commander")],
   "commander:keep": ["Keep one commander", () => keepCommander()],
+  "open:screenshots": ["Screenshots", () => openSettingsSection("screenshots")],
 };
 // S9-S4: the "also logs CMDR B" card's button: [journals] commander set to the commander with the most journals, then
 // Outrider restarts and reads every journal again under it (another one: Settings → Server → [journals] commander)
@@ -14456,7 +14479,7 @@ let noticeDrawn = null;
 function noticeAction(a) {
   if (!a || !Object.prototype.hasOwnProperty.call(NOTICE_ACTIONS, a)) return null;
   // the tablet has no Server settings, nor Uploads
-  return TABLET && (a.startsWith("open:server") || a === "open:uploads" || a === "commander:keep") ? null : NOTICE_ACTIONS[a];
+  return TABLET && (a.startsWith("open:server") || a === "open:uploads" || a === "commander:keep" || a === "open:screenshots") ? null : NOTICE_ACTIONS[a];
 }
 function renderNotices() {
   const bar = document.getElementById("noticeBar");
@@ -15079,11 +15102,11 @@ function tabRailMode(b, r, now = Date.now()) {
   const p = TB.railPending[b.id];
   if (disconnected) return "nolink";
   if (!b.bound) return "bind";
+  if (b.press) return "press";   // a fixed key: a plain press, never pending
   if (p && p.ctx === r.context) {
     if (p.until && now < p.until) return "pending";
     if (p.notUntil && now < p.notUntil) return "notconf";
   }
-  if (b.press) return "press";   // a fixed key (Hide UI, Screenshot, HighRes): a plain press, no state to show
   return !b.reported || b.state == null ? "unknown" : b.state === "na" ? "na" : b.state === "off" ? "off" : "on";
 }
 function tabRailTick(now = Date.now()) {   // confirmed, or past its time: SENT ends
@@ -15127,7 +15150,9 @@ async function tabRailPress(id) {
   const app = window.OutriderApp;
   if (app && typeof app.haptic === "function") { try { app.haptic(20); } catch {} }
   else if (navigator.vibrate) { try { navigator.vibrate(20); } catch {} }
-  TB.railPending[id] = {ctx: r.context, before: b.state, until: Date.now() + (r.confirm_s || 4) * 1000};
+  // a fixed key (Hide UI, Screenshot, HighRes): nothing can confirm it, so no "Sent, waiting for the game" (review
+  // 2026-10-25: the button was locked 4 s after every tap)
+  if (!b.press) TB.railPending[id] = {ctx: r.context, before: b.state, until: Date.now() + (r.confirm_s || 4) * 1000};
   tabDrawRail();
   let res;
   try { res = await apiJson("api/rail/press", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({context: r.context, id})}); }

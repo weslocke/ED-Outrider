@@ -580,7 +580,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
     <ol id="tabRailRows" class="tb-railrows"></ol>
     <div class="tb-row"><select id="tabRailAdd" aria-label="a button to add"></select><button type="button" id="tabRailAddBtn" class="tb-btn">Add</button></div>
     <div class="tb-acts"><button type="button" id="tabRailSave" class="tb-btn">Save</button><button type="button" id="tabRailReset" class="tb-btn">Back to the defaults</button></div>
-    <p class="tb-note" id="tabRailNote">One key per button, up to 8, stored on the PC. A button needs a keyboard binding in your controls preset.</p>
+    <p class="tb-note" id="tabRailNote">One key per button, up to 11, stored on the PC. A button needs a keyboard binding in your controls preset (Hide UI, Screenshot and HighRes shot press the game's own keys).</p>
   </form>
 </dialog>
 <dialog id="tabSettings" class="tb-sheet" aria-labelledby="tabSetTitle">
@@ -953,7 +953,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <h4 class="hchead">Files</h4>
       <div class="mod inlineopts" data-find="screenshots.filename">
         <label title="each picture's name, from {system} {body} {date} {time} {cmdr} {highres} {subject}">File name <input type="text" class="scfg" data-sec="screenshots" data-key="filename" size="44" spellcheck="false" autocapitalize="off"></label>
-        <span class="hint">{system} {body} {date} {time} {cmdr} {highres} (" HighRes" for an Alt+F10 shot) {subject} (the plant or formation, below)</span></div>
+        <span class="hint">{system} {body} {date} {time} {cmdr} {highres} (" (HighRes)" for an Alt+F10 shot) {subject} (the plant or formation, below)</span></div>
       <div class="mod inlineopts" data-find="screenshots.format screenshots.quality screenshots.full">
         <label title="PNG keeps every pixel (a large file); JPG and WebP are far smaller, WebP the smallest at the same quality">Full-size picture as <select class="scfg" data-sec="screenshots" data-key="format"><option value="png">PNG (lossless)</option><option value="jpg">JPG</option><option value="webp">WebP (smallest)</option></select></label>
         <label id="shotFullQ" title="50 to 100: higher is sharper and larger">at quality <input type="number" class="scfg" data-sec="screenshots" data-key="quality" min="50" max="100" step="1"></label>
@@ -984,7 +984,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <span id="shotMoveTo" hidden><input type="text" class="scfg" data-sec="screenshots" data-key="move_to" size="34" placeholder="a folder for the BMPs" spellcheck="false" autocapitalize="off" title="the folder the game's BMPs are moved to" aria-label="the folder the game's BMPs are moved to"><button type="button" class="mini folderpick" data-pick="move_to" title="choose the folder on the game PC" aria-label="choose the folder the BMPs are moved to">📁</button></span></div>
       <div class="mod inlineopts" data-find="screenshots.clipboard">
         <label title="after each shot you take (never the ones converted later), that picture goes on the clipboard, ready to paste into Discord or a post">After each shot, copy <select class="scfg" data-sec="screenshots" data-key="clipboard"><option value="">nothing</option><option value="full">the full-size picture</option><option value="medium">the medium copy</option><option value="small">the small copy</option><option value="crop">the crop</option></select> to the clipboard</label>
-        <span class="hint">it replaces whatever was on the clipboard (a system name copied for the galaxy map, say)</span></div>
+        <span class="hint">it replaces whatever was on the clipboard (a system name copied for the galaxy map, say); when that picture is not made, the first one that is goes instead, and the status line above says so</span></div>
       <h4 class="hchead">What a shot shows</h4>
       <label data-find="screenshots.subject_m" class="mod" title="a shot taken on a surface this close to a plant you sampled or scanned, or a geology formation you logged in your codex, keeps its name (0: never)">Note the plant or formation a surface shot shows, when it is within <input type="number" class="scfg" data-sec="screenshots" data-key="subject_m" min="0" max="500" step="1" title="metres (0: never)"> m
         <span class="hint">a plant you sampled or tagged with the composition scanner, or a geology formation you logged in your codex: its name ("Stratum Tectonicas - Lime", "Water Ice Geyser") is kept with the shot, written into the picture and offered as {subject} for the file name; 0: never</span></label>

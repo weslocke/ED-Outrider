@@ -36,6 +36,7 @@ NAME_MAX = 150           # characters of a file or folder name (Windows' path li
 PICTURES_TAIL = ("Frontier Developments", "Elite Dangerous")
 WAIT_S, POLL_S = 60.0, 0.5   # how long a shot's file may take to appear and settle (a HighRes one: under 3 s, 2026-10-25)
 MAX_PIXELS = 400_000_000     # Pillow's decompression-bomb guard raised past any HighRes shot (a 4K screen's: 133 MP)
+WEBP_MAX_PX = 16383          # libwebp's longest side: a bigger picture (a 5K screen's HighRes) is written as JPG instead
 PNG_LEVEL = 1                # zlib level: lossless either way, a HighRes shot in seconds rather than tens of seconds
 
 
@@ -43,6 +44,7 @@ def pillow():
     """PIL.Image, or None when Pillow is not installed (the feature then says so and stays off)."""
     try:
         from PIL import Image
+        Image.MAX_IMAGE_PIXELS = MAX_PIXELS   # for every use (review 2026-10-25: a thumbnail after a restart hit the default)
     except ImportError:
         return None
     return Image
@@ -201,11 +203,26 @@ def nearest_subject(lat, lon, radius, subjects, max_m):
     return {"kind": s.get("kind"), "name": s.get("name"), "entry_id": s.get("entry_id"), "dist": round(best[0])}
 
 
+def description_parts(m):
+    """The description's parts from metadata(): where, what it shows, the position, by whom, when."""
+    return [p for p in (m["where"], m["subject"], m["position"], m["cmdr"] and f"CMDR {m['cmdr']}",
+                        m["when_iso"] and m["when_iso"].replace("T", " ").replace("Z", " UTC")) if p]
+
+
 def description(shot):
     """The words written into the image: where it was taken, what it shows, by whom, when."""
-    m = metadata(shot)
-    return " · ".join(p for p in (m["where"], m["subject"], m["position"], m["cmdr"] and f"CMDR {m['cmdr']}",
-                                  m["when_iso"] and m["when_iso"].replace("T", " ").replace("Z", " UTC")) if p)
+    return " · ".join(description_parts(metadata(shot)))
+
+
+# letters NFKD does not take apart, for EXIF's ASCII fields
+ASCII_LETTERS = str.maketrans({"Ł": "L", "ł": "l", "Ø": "O", "ø": "o", "Æ": "AE", "æ": "ae", "Œ": "OE", "œ": "oe",
+                               "ß": "ss", "Đ": "D", "đ": "d", "Þ": "Th", "þ": "th", "ı": "i", "°": ""})
+
+
+def ascii_fold(text):
+    """Text for an EXIF ASCII field: accents dropped ("Sjöberg" -> "Sjoberg"), what has no ASCII form left out."""
+    import unicodedata
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKD", str(text).translate(ASCII_LETTERS)).encode("ascii", "ignore").decode()).strip()
 
 
 def when_seconds(ts):
@@ -241,10 +258,14 @@ def metadata(shot):
         position = f"latitude {shot['lat']:.5f}, longitude {shot['lon']:.5f}"
         if shot.get("heading") is not None:
             position += f", heading {shot['heading']}°"
-    when_iso = when_exif = None
+    when_iso = when_exif = when_offset = None
     try:
         t = datetime.datetime.strptime(shot["ts"], "%Y-%m-%dT%H:%M:%SZ")
-        when_iso, when_exif = t.strftime("%Y-%m-%dT%H:%M:%SZ"), t.strftime("%Y:%m:%d %H:%M:%S")
+        # EXIF's dates are read as local time by every viewer (Windows' "Date taken" too): this PC's local time, as the
+        # file name, with its offset in OffsetTime (review 2026-10-25: UTC showed hours off); XMP keeps the Z
+        local = t.replace(tzinfo=datetime.timezone.utc).astimezone()
+        z = local.strftime("%z")
+        when_iso, when_exif, when_offset = t.strftime("%Y-%m-%dT%H:%M:%SZ"), local.strftime("%Y:%m:%d %H:%M:%S"), f"{z[:3]}:{z[3:]}"
     except (KeyError, TypeError, ValueError):
         pass
     keywords = ["Elite Dangerous", system, body]
@@ -257,7 +278,7 @@ def metadata(shot):
     keywords = list(dict.fromkeys(k for k in keywords if k))
     title = " · ".join(p for p in (subj.get("name"), where) if p) or "Elite Dangerous"
     return {"title": title, "where": where, "subject": subject, "position": position, "cmdr": shot.get("cmdr") or "",
-            "when_iso": when_iso, "when_exif": when_exif, "keywords": keywords}
+            "when_iso": when_iso, "when_exif": when_exif, "when_offset": when_offset, "keywords": keywords}
 
 
 def xmp_packet(m, desc):
@@ -291,22 +312,26 @@ def convert(src, paths, cfg, shot, Image=None):
     xmp = xmp_packet(m, desc)
 
     def exif():
-        import unicodedata
-        ascii_ = lambda v: unicodedata.normalize("NFKD", v.replace(" · ", " | ")).encode("ascii", "ignore").decode()   # noqa: E731
         xp = lambda v: v.encode("utf-16-le") + b"\0\0"   # noqa: E731  Windows' Properties -> Details, any script
         e = Image.Exif()
-        # ImageDescription and Artist are ASCII: folded to it ("Sjöberg" becomes "Sjoberg"); the XP* fields hold it all
-        e[0x010E] = ascii_(desc)
+        # ImageDescription and Artist are ASCII: folded to it ("Sjöberg" becomes "Sjoberg"); a name with nothing left
+        # (Cyrillic, Japanese...) is left out rather than written "CMDR " (review 2026-10-25); the XP* fields hold it all
+        name = ascii_fold(m["cmdr"])
+        e[0x010E] = " | ".join(f for f in (ascii_fold(p) for p in description_parts(m)
+                                           if not (m["cmdr"] and p == f"CMDR {m['cmdr']}" and not name)) if f)
         e[0x0131] = "ED Outrider"                          # Software
         if m["cmdr"]:
-            e[0x013B] = ascii_("CMDR " + m["cmdr"])         # Artist
+            if name:
+                e[0x013B] = "CMDR " + name                  # Artist
             e[0x9C9D] = xp("CMDR " + m["cmdr"])             # XPAuthor
         e[0x9C9B] = xp(m["title"])                          # XPTitle
         e[0x9C9C] = xp(desc)                                # XPComment
         e[0x9C9E] = xp("; ".join(m["keywords"]))            # XPKeywords
         if m["when_exif"]:
-            e[0x0132] = m["when_exif"]                      # DateTime (UTC, as the journal)
-            e.get_ifd(0x8769)[0x9003] = m["when_exif"]      # DateTimeOriginal
+            e[0x0132] = m["when_exif"]                      # DateTime (local, as the file name)
+            ifd = e.get_ifd(0x8769)
+            ifd[0x9003] = m["when_exif"]                    # DateTimeOriginal
+            ifd[0x9010] = ifd[0x9011] = m["when_offset"]    # OffsetTime, OffsetTimeOriginal ("-04:00")
         return e
 
     written = []
@@ -317,7 +342,16 @@ def convert(src, paths, cfg, shot, Image=None):
     w, h = img.size
     os.makedirs(paths["dir"], exist_ok=True)
 
-    def save(pic, path, fmt, quality):
+    def save(pic, key, fmt, quality):
+        path = paths[key]
+        if fmt == "webp" and max(pic.size) > WEBP_MAX_PX:
+            # libwebp takes 16383 px a side at most (review 2026-10-25: a 5K screen's HighRes failed whole): this one
+            # as JPG, its path in `paths` so the record names it
+            stem, n = os.path.splitext(path)[0], 2
+            path = stem + ".jpg"
+            while os.path.exists(path):
+                path, n = f"{stem} ({n}).jpg", n + 1
+            paths[key], fmt = path, "jpg"
         if fmt == "png":
             info = PngImagePlugin.PngInfo()   # PNG's own keys, XMP, and EXIF in an eXIf chunk
             info.add_itxt("Title", m["title"])
@@ -327,7 +361,7 @@ def convert(src, paths, cfg, shot, Image=None):
             info.add_text("Software", "ED Outrider")
             info.add_text("Source", "Elite Dangerous")
             if m["when_exif"]:
-                info.add_text("Creation Time", m["when_exif"])
+                info.add_text("Creation Time", f"{m['when_exif']} {m['when_offset']}")
             info.add_itxt("XML:com.adobe.xmp", xmp)
             pic.save(path, "PNG", compress_level=PNG_LEVEL, pnginfo=info, exif=exif())
         elif fmt == "webp":   # method 4: Pillow's default speed; ~1 MB for a 3072 x 1728 shot at 90 (measured 2026-10-25)
@@ -344,20 +378,20 @@ def convert(src, paths, cfg, shot, Image=None):
         return pic.resize((max(1, round(pw * k)), max(1, round(ph * k))), Image.Resampling.LANCZOS, reducing_gap=3.0) if k < 1 else pic
 
     if paths.get("full"):
-        save(img, paths["full"], cfg.get("format") if cfg.get("format") in FORMATS else "png", cfg.get("quality") or 90)
+        save(img, "full", cfg.get("format") if cfg.get("format") in FORMATS else "png", cfg.get("quality") or 90)
     cfmt, cq = (cfg.get("copies_format") if cfg.get("copies_format") in COPY_FORMATS else "jpg"), cfg.get("copies_quality") or 85
     for key in ("medium", "small"):
         if paths.get(key):
             os.makedirs(os.path.dirname(paths[key]), exist_ok=True)
-            save(fit(img, int(cfg.get(key) or 0)), paths[key], cfmt, cq)
+            save(fit(img, int(cfg.get(key) or 0)), key, cfmt, cq)
     box = parse_crop(cfg.get("crop"))
     if paths.get("crop") and box:
         os.makedirs(os.path.dirname(paths["crop"]), exist_ok=True)
-        save(fit(img.crop(crop_box((w, h), box)), int(cfg.get("crop_px") or 0)), paths["crop"], cfmt, cq)
+        save(fit(img.crop(crop_box((w, h), box)), int(cfg.get("crop_px") or 0)), "crop", cfmt, cq)
     img.close()
-    for p in written:   # each read back before the original may go
+    for p in written:   # each decoded whole before the original may go (verify() reads a JPG's header only: review 2026-10-25)
         with Image.open(p) as chk:
-            chk.verify()
+            chk.load()
     t = when_seconds(shot.get("ts"))
     if t is not None:   # the file's date is the shot's (EDDiscovery's too): a backlog's pictures sort by when they were taken
         for p in written:
@@ -372,7 +406,14 @@ def finish_original(src, cfg, full):
     if how == "delete":
         os.remove(src)
         return None
-    if how == "move" and cfg.get("move_to"):
+    if how == "move":
+        # never silently kept (review 2026-10-25): no folder, or the game's own folder (a rename there, which the next
+        # backlog run converts again) is said; the pictures are fine, the caller notes it
+        where = os.path.normcase(os.path.abspath(cfg.get("move_to") or ""))
+        if not cfg.get("move_to"):
+            raise ValueError("'moved to' has no folder: the game's BMP was kept")
+        if where == os.path.normcase(os.path.abspath(os.path.dirname(src))):
+            raise ValueError("'moved to' is the game's own Pictures folder: the BMP was kept")
         os.makedirs(cfg["move_to"], exist_ok=True)
         stem, ext = os.path.splitext(os.path.basename(src))
         dest, n = os.path.join(cfg["move_to"], stem + ext), 2
@@ -399,19 +440,23 @@ def journal_shots(paths):
     body, lat, lon, heading, width, height, cmdr: the file's commander (its LoadGame or Commander line)}: what
     "convert what is already there" matches the Pictures folder's files to. Reads only the lines that matter."""
     import json
-    out = []
+    out, cmdr = [], None
     for p in paths:
-        cmdr = None
         try:
             with open(p, "rb") as f:
                 for raw in f:
-                    if b'"event":"Screenshot"' not in raw and b'"Commander"' not in raw:
+                    if b'"event":"Screenshot"' not in raw and b'"Commander"' not in raw and b'"Fileheader"' not in raw:
                         continue
                     try:
                         ev = json.loads(raw)
                     except ValueError:
                         continue
-                    if ev.get("event") in ("LoadGame", "Commander") and ev.get("Commander" if ev["event"] == "LoadGame" else "Name"):
+                    if ev.get("event") == "Fileheader":
+                        # a new session starts a part 1; a long one goes on in part 2, 3... with no LoadGame line, so
+                        # it keeps its first part's commander (review 2026-10-25: those shots came out "Unknown")
+                        if (ev.get("part") or 1) <= 1:
+                            cmdr = None
+                    elif ev.get("event") in ("LoadGame", "Commander") and ev.get("Commander" if ev["event"] == "LoadGame" else "Name"):
                         cmdr = ev.get("Commander") if ev["event"] == "LoadGame" else ev.get("Name")
                     elif ev.get("event") == "Screenshot" and ev.get("Filename"):
                         out.append({"ts": ev.get("timestamp"), "original": re.split(r"[\\/]", str(ev["Filename"]))[-1],

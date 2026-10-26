@@ -999,7 +999,16 @@ CONFIG_RANGES = {
 # discussion #12; Settings -> Auto honk; review 2026-10-23 L1, L5)
 CONFIG_CHECKS = {**{("highway", "autotarget_" + k): _config_plot_steps for k in ("search", "submit", "plot", "target")},
                  ("highway", "autotarget_keys"): _config_target_keys,
+                 ("screenshots", "crop"): lambda v: _config_crop(v),
                  **{k: _config_range(*r) for k, r in CONFIG_RANGES.items()}}
+
+
+def _config_crop(v):
+    """[screenshots] crop: empty, or a box parse_crop takes (review 2026-10-25: one cut away at the edge was stored as
+    "" without a word)."""
+    if not isinstance(v, str) or (v.strip() and not outrider.screenshots.parse_crop(v)):
+        raise ValueError("must be left, top, width, height in %, the width and height at least 1 % inside the picture")
+    return v
 
 
 def _config_button(v):
@@ -1958,10 +1967,12 @@ CREATE TABLE IF NOT EXISTS sample_points (
     PRIMARY KEY (system, body_id, species, n));
 -- Every sample's position, kept (sample_points' are dropped when the run completes): what a screenshot shows (the
 -- author, 2026-10-25: a shot taken just after the Analyse found nothing). Live only, like sample_points.
+-- name: the variant's ("Bacterium Bullaris - Yellow"), kept here because an abandoned run's own_organic row goes.
 CREATE TABLE IF NOT EXISTS bio_spots (
-    system INTEGER, body_id INTEGER, species TEXT, genus TEXT, lat REAL, lon REAL, ts TEXT,
+    system INTEGER, body_id INTEGER, species TEXT, genus TEXT, lat REAL, lon REAL, ts TEXT, name TEXT,
     PRIMARY KEY (system, body_id, species, ts));
-INSERT OR IGNORE INTO bio_spots SELECT system, body_id, species, genus, lat, lon, ts FROM sample_points;
+INSERT OR IGNORE INTO bio_spots (system, body_id, species, genus, lat, lon, ts)
+    SELECT system, body_id, species, genus, lat, lon, ts FROM sample_points;
 -- Plants tagged with the composition scanner (a biology CodexEntry), BioScan's waypoints: where to go for the next
 -- sample. The position is the event's Latitude/Longitude when it has them (on foot), else Status.json's at that
 -- moment (the ship's or SRV's scanner: "scan as close to the plant as you can"). Live only, like sample_points: a
@@ -3563,12 +3574,14 @@ class Journals:
                 set(self.body_touched), set(self.approached), self.brief_key,
                 set(self.regions_said), set(self.rings_said), self.region_entered, self.jumponium, dict(self.sale_run or {}) or None,
                 json.loads(json.dumps(self.burst)), self.uploads.snapshot() if self.uploads else None,
-                json.loads(json.dumps(self.nsp_burst)), json.loads(json.dumps(self.docking_hold)), self.chat_seq, list(self.chat))
+                json.loads(json.dumps(self.nsp_burst)), json.loads(json.dumps(self.docking_hold)), self.chat_seq, list(self.chat),
+                list(self.shots_new))
 
     def restore(self, cp):
         (self.moment_seq, moments, self.last_heat, touched, approached, self.brief_key,
          regions, rings, self.region_entered, self.jumponium, self.sale_run, self.burst, uploads, self.nsp_burst, self.docking_hold,
-         self.chat_seq, chat) = cp
+         self.chat_seq, chat, shots_new) = cp
+        self.shots_new = list(shots_new)   # a rolled-back tick's retry notes its Screenshot lines again
         self.chat = collections.deque(chat, maxlen=CHAT_KEEP)
         if self.uploads and uploads:
             self.uploads.restore(uploads)
@@ -4634,7 +4647,7 @@ class Journals:
                             (r["system"], r["body_id"], r["species"], ts))
         self.db.execute(f"DELETE FROM own_organic WHERE {where}", args)
 
-    def note_sample_point(self, system, body, species, genus, kind, n, ts):
+    def note_sample_point(self, system, body, species, genus, kind, n, ts, name=None):
         """Remember where a sample was taken, from the live Status.json reading (at most a second old at
         walking pace). Only live play records positions: a journal read later has no position to pair with."""
         # Only points older than this line: a journal re-read replays the Log that began the run you are on,
@@ -4650,10 +4663,9 @@ class Journals:
                 since = ts
             self.db.execute("DELETE FROM bio_tags WHERE system=? AND body_id=? AND species=? AND ts BETWEEN ? AND ?",
                             (system, body, species, since, ts))
-        if kind == "Analyse":   # the run is complete: nothing left to space
+        if kind == "Analyse":   # the run is complete: nothing left to space (its spot is still kept in bio_spots below)
             self.db.execute("DELETE FROM sample_points WHERE system=? AND body_id=? AND species=? AND ts <= ?",
                             (system, body, species, ts))
-            return
         st = self.status_json or {}
         if not st.get("live") or st.get("lat") is None or st.get("lon") is None or not st.get("ts"):
             return
@@ -4662,10 +4674,12 @@ class Journals:
                 return
         except ValueError:
             return
-        self.db.execute("INSERT OR REPLACE INTO sample_points VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        (system, body, species, genus, n, st["lat"], st["lon"], ts))
-        self.db.execute("INSERT OR IGNORE INTO bio_spots VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        (system, body, species, genus, st["lat"], st["lon"], ts))
+        if kind != "Analyse":
+            self.db.execute("INSERT OR REPLACE INTO sample_points VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                            (system, body, species, genus, n, st["lat"], st["lon"], ts))
+        # every sample's spot, the Analyse's too (review 2026-10-25: a shot where the run completed named nothing)
+        self.db.execute("INSERT OR IGNORE INTO bio_spots (system, body_id, species, genus, lat, lon, ts, name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        (system, body, species, genus, st["lat"], st["lon"], ts, name))
 
     def note_bio_tag(self, ev, system, ts):
         """A biology CodexEntry (the composition scanner, or a first Log) is a waypoint for that species on that body
@@ -5525,7 +5539,8 @@ class Journals:
                                                      samples, done_ts, ts, ship_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (system, body, species, ev.get("Genus_Localised"), ev.get("Species_Localised"),
                  ev.get("Variant_Localised"), samples, done, ts, self.ship_at(ts)))
-            self.note_sample_point(system, body, species, ev.get("Genus"), kind, samples, ts)
+            self.note_sample_point(system, body, species, ev.get("Genus"), kind, samples, ts,
+                                   ev.get("Variant_Localised") or ev.get("Species_Localised"))
             self.body_touched.add((system, body))
             if kind == "Analyse":   # "Stratum Tectonicas complete, 19.2 million; two left here" (priced by State)
                 self.moment("bio_done", ts, system=system, body_id=body,
@@ -11863,16 +11878,29 @@ class State:
             return NOT_GAME_PC if not self.game_pc else "not while simulating"
         if outrider.screenshots.pillow() is None:
             return "the Pillow package is not installed (OUTRIDER_REINSTALL=1, then start ED Outrider)"
-        if not self.shots_folders()[0]:
+        pictures = self.shots_folders()[0]
+        if not pictures:
             return "the game's Pictures folder was not found: set it in Settings -> Screenshots"
+        if not os.path.isdir(pictures):   # a typo, a moved prefix (review 2026-10-25: a raw error, a minute's wait per shot)
+            return f"the game's Pictures folder {pictures} does not exist: check it in Settings -> Screenshots"
         return ""
+
+    def shot_known(self, ts, original):
+        """A shot converted already (a record without an error), waiting, or converting now: never queued again (a
+        journal re-read replays the last minutes' Screenshot lines, a rolled-back tick handles its line twice: review
+        2026-10-25, a second conversion replaced the good record with an error)."""
+        if any(q.get("original") == original and q.get("ts") == ts for q in self.shots_queue + [self.shots_current or {}]):
+            return True
+        return self.db.execute("SELECT 1 FROM screenshots WHERE ts=? AND original=? AND error IS NULL", (ts, original)).fetchone() is not None
 
     def shots_step(self):
         """Every tick: the live Screenshot events the journal reader noted go to the converter (one task, one shot at a
         time); none while the feature is off (they are dropped: Settings' "convert what is already there" catches up)."""
         new, self.journals.shots_new = self.journals.shots_new, []
         if new and not self.shots_why_off():
-            self.shots_queue += new
+            for shot in new:
+                if not self.shot_known(shot.get("ts"), shot.get("original")):
+                    self.shots_queue.append(shot)
         if self.shots_queue and (self.shots_task is None or self.shots_task.done()):
             try:
                 self.shots_task = asyncio.get_running_loop().create_task(self.shots_run())
@@ -11906,8 +11934,12 @@ class State:
         sid, bid = shot["system_id"], body["body_id"]
         variants = {r["species"]: r["variant_name"] or r["species_name"] for r in self.db.execute(
             "SELECT species, species_name, variant_name FROM own_organic WHERE system=? AND body_id=?", (sid, bid))}
-        subjects = [{"kind": "bio", "name": variants.get(r["species"]) or r["species"], "lat": r["lat"], "lon": r["lon"]}
-                    for r in self.db.execute("SELECT species, lat, lon FROM bio_spots WHERE system=? AND body_id=?", (sid, bid))]
+        # the spot's own name, else the run's, else the rules' species name: never the raw codex code (review 2026-10-25:
+        # an abandoned run's own_organic row is gone)
+        rules = {sp["id"]: sp["name"] for sp in ((outrider.bio.load_rules() or {}).get("species") or [])} if outrider.bio else {}
+        subjects = [{"kind": "bio", "name": r["name"] or variants.get(r["species"]) or rules.get(r["species"]), "lat": r["lat"], "lon": r["lon"]}
+                    for r in self.db.execute("SELECT species, lat, lon, name FROM bio_spots WHERE system=? AND body_id=?", (sid, bid))]
+        subjects = [x for x in subjects if x["name"] and not str(x["name"]).startswith("$")]
         subjects += [{"kind": "bio", "name": r["name"], "lat": r["lat"], "lon": r["lon"]} for r in self.db.execute(
             "SELECT name, lat, lon FROM bio_tags WHERE system=? AND body_id=?", (sid, bid))]
         subjects += [{"kind": "geo", "name": r["name"], "entry_id": r["entry_id"], "lat": r["lat"], "lon": r["lon"]}
@@ -11931,7 +11963,10 @@ class State:
             if not src or not S.wait_ready(src):
                 raise FileNotFoundError(f"{shot.get('original')} never appeared in {pictures}")
             out = S.convert(src, paths, cfg, shot)
-            out["original"] = S.finish_original(src, cfg, paths["full"])
+            try:   # the pictures are written and checked: a BMP that cannot be moved or deleted is said, not a failure
+                out["original"] = S.finish_original(src, cfg, paths["full"])   # (review 2026-10-25: recorded as failed)
+            except (OSError, ValueError) as e:
+                out["original_error"] = str(e) if isinstance(e, ValueError) else f"{type(e).__name__}: {e}"
             return out
         err, out = None, None
         try:
@@ -11949,10 +11984,14 @@ class State:
                          (out or {}).get("width"), (out or {}).get("height"), err))
         self.db.commit()
         clip = await self.shot_clipboard(cfg, got) if not err and not shot.get("backlog") else None
+        kept = (out or {}).get("original_error")
         self.shots_last = {"ok": not err, "ts": shot["ts"], "full": next((p for p in got.values() if p), None) if not err else None,
-                           "subject": subject, "error": err, "original": shot.get("original"), "clipboard": clip}
+                           "subject": subject, "error": err, "original": shot.get("original"), "clipboard": clip, "original_error": kept}
         if err:
             self.notices.set("screenshots", f"A screenshot could not be converted ({shot.get('original')}): {err}", "warn", "open:screenshots")
+        elif kept:
+            self.notices.set("screenshots", f"A screenshot was converted, but its BMP ({shot.get('original')}) was not moved or "
+                                            f"deleted: {kept}", "warn", "open:screenshots")
         else:
             self.notices.clear("screenshots")
         self.bump()
@@ -11966,6 +12005,9 @@ class State:
         key = next((k for k in (want, "medium", "small", "crop", "full") if got.get(k)), None)
         if not key or not self.clipboard:
             return "not copied: " + ("no picture" if not key else "no clipboard here")
+        # the one chosen, else the first one made, said so (review 2026-10-25: a different picture went without a word)
+        name = lambda k: "full-size picture" if k == "full" else k + (" copy" if k != "crop" else "")   # noqa: E731
+        instead = f"the {name(want)} was not made: " if key != want else ""
 
         def work():
             png, dib = outrider.screenshots.clipboard_image(got[key])
@@ -11974,7 +12016,7 @@ class State:
             ok, why = await asyncio.get_running_loop().run_in_executor(None, work)
         except Exception as e:  # noqa: BLE001 -- a picture that could not be read back: said, never raised
             ok, why = False, f"{type(e).__name__}: {e}"
-        return f"copied the {'full-size picture' if key == 'full' else key + (' copy' if key != 'crop' else '')}" if ok else f"not copied: {why}"
+        return f"{instead}copied the {name(key)}" if ok else f"not copied: {why}"
 
     async def shots_backlog(self):
         """POST /api/screenshots/backlog: the BMPs already in the game's Pictures folder, each matched to its journal
@@ -12006,8 +12048,7 @@ class State:
                 shot = {"ts": iso_ts(mtime), "original": name, "system": None, "body": None, "cmdr": None}
             # converted already, waiting, or converting now (review 2026-10-25: a HighRes shot mid-conversion was queued
             # again, and with original = delete its good record became an error)
-            if (shot["ts"], name) in done or any(q.get("original") == name and q.get("ts") == shot["ts"]
-                                                 for q in self.shots_queue + [self.shots_current or {}]):
+            if (shot["ts"], name) in done or self.shot_known(shot["ts"], name):
                 skipped += 1
                 continue
             shot.setdefault("system_id", None)
@@ -12057,20 +12098,45 @@ class State:
             return None
         key = (sid, os.path.getmtime(src))
         if key not in self._shot_thumbs:
-            def make():
-                import io
-                Image = outrider.screenshots.pillow()
-                with Image.open(src) as im:
-                    im = im.convert("RGB")
-                    im.thumbnail((self.SHOT_THUMB_PX, self.SHOT_THUMB_PX))
-                    buf = io.BytesIO()
-                    im.save(buf, "JPEG", quality=80)
-                return buf.getvalue()
-            data = await asyncio.get_running_loop().run_in_executor(None, make)
+            # one made at a time, and a picture asked for twice at once made once (review 2026-10-25: a body panel's
+            # thumbnails each decoded a full-size HighRes picture, several at once, on the shared executor)
+            busy = self.__dict__.setdefault("_shot_thumb_busy", {})
+            task = busy.get(key)
+            if task is None:
+                task = busy[key] = asyncio.ensure_future(self._shot_thumb_make(key, src))
+            try:
+                data = await asyncio.shield(task)
+            except Exception:  # noqa: BLE001 -- a picture Pillow cannot read: no thumbnail (a 404), never a 500
+                return None
+            if data is None:
+                return None
+        return self._shot_thumbs[key], "image/jpeg"
+
+    async def _shot_thumb_make(self, key, src):
+        """shot_image's thumbnail of src, made on a worker under one lock: decoded at a reduced size where the format
+        allows (JPG's draft), shrunk before any colour conversion, kept in _shot_thumbs."""
+        def make():
+            import io
+            Image = outrider.screenshots.pillow()   # its decompression-bomb guard raised for HighRes pictures
+            with Image.open(src) as im:
+                im.draft("RGB", (self.SHOT_THUMB_PX, self.SHOT_THUMB_PX))
+                im.thumbnail((self.SHOT_THUMB_PX, self.SHOT_THUMB_PX))
+                small = im.convert("RGB")
+                buf = io.BytesIO()
+                small.save(buf, "JPEG", quality=80)
+            return buf.getvalue()
+        lock = self.__dict__.setdefault("_shot_thumb_lock", asyncio.Lock())
+        try:
+            async with lock:
+                if key in self._shot_thumbs:
+                    return self._shot_thumbs[key]
+                data = await asyncio.get_running_loop().run_in_executor(None, make)
             while len(self._shot_thumbs) >= self.SHOT_THUMBS:
                 self._shot_thumbs.pop(next(iter(self._shot_thumbs)))
             self._shot_thumbs[key] = data
-        return self._shot_thumbs[key], "image/jpeg"
+            return data
+        finally:
+            self.__dict__.get("_shot_thumb_busy", {}).pop(key, None)
 
     def shots_summary(self):
         """The payload's screenshots block on the game PC (None elsewhere): {on, why, pictures, folder, n (converted so
@@ -12079,9 +12145,13 @@ class State:
             return None
         pictures, root = self.shots_folders()
         why = self.shots_why_off()
-        n, last_id = self.db.execute("SELECT count(*), max(id) FROM screenshots WHERE error IS NULL").fetchone()
+        n = self.db.execute("SELECT count(*) FROM screenshots WHERE error IS NULL").fetchone()[0]
+        # the latest shot with a whole picture kept: Settings' crop preview draws on it (review 2026-10-25: with only the
+        # crop kept, the box was drawn on the crop itself)
+        last_id = self.db.execute("SELECT max(id) FROM screenshots WHERE error IS NULL AND "
+                                  "(full IS NOT NULL OR medium IS NOT NULL OR small IS NOT NULL)").fetchone()[0]
         return {"on": not why, "why": why or None, "pictures": pictures, "folder": root, "n": n,   # n: Here reloads on a new one
-                "last_id": last_id,   # Settings' crop preview draws on it
+                "last_id": last_id,
                 "queued": len(self.shots_queue) + (1 if self.shots_task and not self.shots_task.done() else 0),
                 "last": self.shots_last}
 

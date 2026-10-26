@@ -5021,6 +5021,13 @@ const releasePayloads = async () => {
                       data.rail.buttons = data.rail.buttons.slice(0, 8); tabDrawRail();
                       [s.className, s.disabled, s.getAttribute("aria-label"), document.querySelector('#tabRail [data-rail="galmap"]').className, many,
                        document.getElementById("tabRailList").classList.contains("many")].join("|")`));
+      // a fixed key (Hide UI, Screenshot, HighRes): no "Sent / waiting for the game" after a tap (review 2026-10-25)
+      tw.eval(`data.rail = {context: "foot", label: "On foot", why: null, can_press: true, why_not: null, confirm_s: 4, max: 11,
+                buttons: [{id: "shot", label: "Screenshot", action: "Screenshot", action_label: "Screenshot", bound: true, keys: "F10",
+                           state: null, reported: false, states: 2, amber: false, press: true}]}; tabDrawRail()`);
+      tw.eval(`document.querySelector('#tabRail [data-rail="shot"]').click()`);
+      await sleep(50);
+      o.push(tw.eval(`(() => { const b = document.querySelector('#tabRail [data-rail="shot"]'); return [b.className, b.disabled, Object.keys(TB.railPending).length].join("|"); })()`));
       tw.fetch = real;
       return o;
     })();
@@ -5234,7 +5241,7 @@ const releasePayloads = async () => {
       schemArt: [true, true, 2, true, false, true, true, false],
       ask: [true, "Fuel at 41 percent.", 0, "Nearest unvisited: Smojooe ZC-D c12-2, 10.8 light years.", false, 1, true],
       rail: [3, "tb-rb off", true, true, "Ship controls", "tb-rb pending", '[{"context":"ship","id":"gear"}]', "tb-rb on", "tb-rb notconf",
-             "tb-rb nolink|no rail: docked|0", "tb-rb na|true|in supercruise|N/A", "tb-rb press|false|shot|tb-rb unknown|true|false"],
+             "tb-rb nolink|no rail: docked|0", "tb-rb na|true|in supercruise|N/A", "tb-rb press|false|shot|tb-rb unknown|true|false", "tb-rb press|false|0"],
       serverRail: ["none", true],
       reload: [true, true, false, false, 0, false, 0, true, true, 1], hint: [true, false], searchSheet: "123456", popKeeps: true, link: ["linked", "unlinked · retrying", "unlinked · retrying"], pill: [true, "tb-link linked"],
       banner: [true, true, true, 0], sheet: [true, true, true, true, true, true, true], sheetHere: [false, "here"], tabAround: [true, true],
@@ -10200,6 +10207,37 @@ const releasePayloads = async () => {
       [fmt.value, q("medium").value, q("small").value, q("crop").value] = keep; shotCropRead(); shotSizeBoxes();
       SC_FIELDS().forEach(el => { el.dataset.dirty = ""; }); data.screenshots = ls;
       return o; })()`);
+    // the in-depth review of 2026-10-25, the page's side: the picture link opens the largest picture kept; a re-tick of
+    // the crop keeps the typed box; an emptied size keeps its tick through a crop change; "moved to" needs a folder that
+    // is not the game's own; the failure card has its Screenshots button
+    got.review2 = await (async () => {
+      const q = k => w.document.querySelector('#shotSettings .scfg[data-key="' + k + '"]'), o = [], real = w.fetch;
+      w.fetch = u => /api\/screenshots\?/.test(String(u)) ? Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"},
+        json: async () => ({shots: [{id: 5, ts: "2026-10-25T20:00:00Z", sizes: ["small", "crop"], lat: null, lon: null}]})}) : real(u);
+      const el = w.document.createElement("div"); el.dataset.sys = "9"; el.dataset.body = "S 1";
+      await w.eval("loadShotList")(el);
+      o.push(el.querySelector("a").getAttribute("href"));
+      w.fetch = real;
+      const keep = ["crop", "medium", "original", "move_to", "pictures"].map(k => q(k).value), on = w.document.getElementById("shotCropOn");
+      q("crop").value = "5, 5, 50, 50"; w.eval("shotCropRead(); shotSizeBoxes()");
+      on.checked = false; on.onchange({target: on}); on.checked = true; on.onchange({target: on});
+      o.push(q("crop").value);
+      const mb = w.document.querySelector('#shotSettings .shotsize[data-for="medium"]');
+      q("medium").value = "1920"; w.eval("shotSizeBoxes()"); q("medium").value = "";
+      const c0 = w.document.querySelector('#shotSettings .cropv[data-i="0"]'); c0.value = "6"; c0.dispatchEvent(new w.Event("input"));
+      o.push(mb.checked, q("medium").disabled);
+      q("medium").value = "1920"; q("original").value = "move"; q("move_to").value = "";
+      await w.eval("saveShotCfg()"); o.push(w.document.getElementById("shotMsg").textContent);
+      q("pictures").value = "/g/Pictures"; q("move_to").value = "/g/Pictures/";
+      await w.eval("saveShotCfg()"); o.push(w.document.getElementById("shotMsg").textContent);
+      ["crop", "medium", "original", "move_to", "pictures"].forEach((k, i) => { q(k).value = keep[i]; });
+      w.eval("shotCropRead(); shotSizeBoxes(); shotMoveShown(); SC_FIELDS().forEach(el => { el.dataset.dirty = ''; })");
+      w.document.getElementById("shotMsg").textContent = "";
+      o.push(w.eval("(noticeAction('open:screenshots') || [])[0] || null"));
+      return o;
+    })();
+    want.review2 = ["api/screenshots/5/image?size=crop", "5, 5, 50, 50", true, false, 'Not saved: "moved to" needs a folder for the BMPs',
+                    'Not saved: "moved to" cannot be the game\'s own Pictures folder', "Screenshots"];
     // an emptied crop box is no number: Save refuses rather than store a zero-size crop (review 2026-10-25)
     got.cropempty = await (async () => {
       const q = k => w.document.querySelector('#shotSettings .scfg[data-key="' + k + '"]'), on = w.document.getElementById("shotCropOn");
@@ -10214,7 +10252,7 @@ const releasePayloads = async () => {
       w.document.getElementById("shotMsg").textContent = "";
       return o;
     })();
-    want.cropempty = ["10, 10, 80, 75", "Not saved: the crop's four boxes need numbers, its width and height at least 1 %", 0];
+    want.cropempty = ["10, 10, 80, 75", "Not saved: the crop's four boxes need numbers, its width and height at least 1 % inside the picture", 0];
     want.shotui = [true, true, true, false, false, "10, 10, 80, 75", "10, 20, 80, 75", false, "api/screenshots/7/image?size=thumb", "20%", "", true];
     // the body's hover card: your screenshots of it, the newest three as thumbnails (the author, 2026-10-25)
     got.shotpop = w.eval(`(() => { const d = document.createElement("div");
