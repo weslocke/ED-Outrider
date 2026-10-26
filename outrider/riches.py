@@ -115,8 +115,10 @@ def survey_rows(kind, result):
         return tourist_rows(result)
     rows = riches_rows(result)
     if not any(r["bodies"] for r in rows):
-        raise RichesError("Spansh found nothing to visit with those settings: try starting further out from the bubble, "
-                          "a larger radius or a lower minimum value")
+        # a lower minimum only where the plot has one (review 2026-10-26: the world routes have none)
+        lower = " or a lower minimum value" if "min_value" in survey_kind(kind).fields else ""
+        raise RichesError(f"Spansh found nothing to visit with those settings: try starting further out from the bubble, "
+                          f"a larger radius{lower}")
     return rows
 
 

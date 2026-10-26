@@ -181,6 +181,10 @@ class Convert(unittest.TestCase):
                       dict(shot, system="Sol", body="Earth"))
         self.assertEqual(S.picture_facts(os.path.join(self.d, "old.jpg")), want)
         self.assertEqual(S.picture_facts(os.path.join(self.d, "earth.jpg")), {"taken": local, "system": None, "body": None})
+        # a body not named after its system: its own name alone, not "Sol Earth" (review 2026-10-26)
+        S.convert(src, {"dir": self.d, "full": os.path.join(self.d, "earth2.jpg")}, dict(S.DEFAULTS, format="jpg"),
+                  dict(shot, system="Sol", body="Earth"))
+        self.assertEqual(S.picture_facts(os.path.join(self.d, "earth2.jpg")), {"taken": local, "system": None, "body": "Earth"})
         # an edit that kept the XMP but not the EXIF: the date from XMP (local); a picture with nothing: {}
         with Image.open(os.path.join(self.d, "a.png")) as im:
             im.save(os.path.join(self.d, "edited.jpg"), "JPEG", xmp=im.info["XML:com.adobe.xmp"].encode())
@@ -190,6 +194,67 @@ class Convert(unittest.TestCase):
         with open(os.path.join(self.d, "junk.png"), "wb") as f:
             f.write(b"not a picture")
         self.assertEqual(S.picture_facts(os.path.join(self.d, "junk.png")), {})
+
+    def test_picture_facts_never_decodes_nor_stalls(self):
+        """Review 2026-10-26: a PNG without EXIF was decoded whole; any decoder Pillow has opened a dropped-in file (an EPS
+        named .png ran Ghostscript); a crafted XMP packet took minutes; a date out of range raised."""
+        from PIL import PngImagePlugin
+        m = S.metadata({"ts": "2026-10-26T12:51:14Z", "system": "Sys", "body": "Sys 2 a"})
+        info = PngImagePlugin.PngInfo()
+        info.add_itxt("XML:com.adobe.xmp", S.xmp_packet(m, "d"))
+        p = os.path.join(self.d, "noexif.png")
+        Image.new("RGB", (64, 36)).save(p, "PNG", pnginfo=info)
+        with unittest.mock.patch.object(PngImagePlugin.PngImageFile, "load", side_effect=AssertionError("decoded")):
+            got = S.picture_facts(p)
+        self.assertEqual((got["system"], got["body"], len(got["taken"])), ("Sys", "2 a", 10))   # the date from the XMP
+        eps = os.path.join(self.d, "pack.png")
+        with open(eps, "w") as f:
+            f.write("%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 10 10\nnewpath 0 0 moveto 10 10 lineto stroke\nshowpage\n")
+        with unittest.mock.patch("subprocess.check_call", side_effect=AssertionError("ghostscript ran")), \
+                unittest.mock.patch("subprocess.Popen", side_effect=AssertionError("ghostscript ran")):
+            self.assertEqual(S.picture_facts(eps), {})
+        info = PngImagePlugin.PngInfo()
+        info.add_itxt("XML:com.adobe.xmp", "<edo:System>" * 40000 + "<rdf:Bag>" + "<rdf:li>" * 20000)
+        p = os.path.join(self.d, "crafted.png")
+        Image.new("RGB", (8, 8)).save(p, "PNG", pnginfo=info)
+        t = time.monotonic()
+        self.assertEqual(S.picture_facts(p), {})
+        self.assertLess(time.monotonic() - t, 2)
+        for when, xmp in (("0000:00:00 00:00:00", "<xmp:CreateDate>0001-01-01T00:00:00Z</xmp:CreateDate>"),
+                          ("2026:13:40 00:00:00", "<xmp:CreateDate>9999-12-31T23:59:59Z</xmp:CreateDate>")):
+            e = Image.Exif()
+            e.get_ifd(0x8769)[0x9003] = when
+            p = os.path.join(self.d, "dates.jpg")
+            Image.new("RGB", (8, 8)).save(p, "JPEG", exif=e, xmp=xmp.encode())
+            got = S.picture_facts(p)   # never raises
+            self.assertNotEqual(got.get("taken"), when[:10].replace(":", "-"))
+
+    def test_a_failed_codex_save_leaves_nothing(self):
+        """Review 2026-10-26: a copy or a conversion that failed halfway left a broken picture the checklists picked."""
+        src = bmp(os.path.join(self.d, "Screenshot_0001.bmp"), 64, 36)
+        shot = {"ts": "2026-10-25T20:33:35Z", "system": "Sys", "body": "Sys 2 a"}
+        cfg = dict(S.DEFAULTS, format="jpg")
+        paths = S.plan_paths(cfg, S.fields_for(shot), os.path.join(self.d, "out"))
+        written = S.convert(src, paths, cfg, shot)["written"]
+        folder = os.path.join(self.d, "codex")
+
+        def half(a, b, *k, **kw):
+            with open(b, "wb") as f:
+                f.write(b"half")
+            raise OSError("disk full")
+        with unittest.mock.patch.object(S.shutil, "copy2", half), self.assertRaises(OSError):
+            S.to_codex(src, written, None, folder, cfg, shot)
+        self.assertEqual(os.listdir(folder), [])
+        real = S.convert
+
+        def half_convert(src_, paths_, *a, **kw):
+            with open(paths_["full"], "wb") as f:
+                f.write(b"half")
+            raise OSError("disk full")
+        with unittest.mock.patch.object(S, "convert", half_convert), self.assertRaises(OSError):
+            S.to_codex(src, written, None, folder, dict(cfg, codex_format="png"), shot)
+        self.assertEqual(os.listdir(folder), [])
+        self.assertIs(S.convert, real)
 
     def test_to_codex(self):
         """[screenshots] codex_format (the author, 2026-10-26: small everyday shots, fine codex pictures): "" copies the
@@ -515,6 +580,15 @@ class Server(unittest.TestCase):
         self.assertIsNone(self.st.shots_last["codex"])
         [card] = [n for n in self.st.notices.active() if n["key"] == "screenshots"]
         self.assertIn("codex", card["text"])
+        # with the BMP not moved too: both said (review 2026-10-26: the codex failure hid behind the BMP's)
+        self.st.shots_cfg.update(original="move", move_to="")
+        self.shoot("Screenshot_0006.bmp")
+        self.run_queue()
+        [card] = [n for n in self.st.notices.active() if n["key"] == "screenshots"]
+        self.assertIn("was not moved or deleted", card["text"])
+        self.assertIn("not copied to your codex folders", card["text"])
+        self.assertTrue(self.st.shots_last["codex_error"])
+        self.st.shots_cfg.update(original="keep")
         # a codex format: the game's BMP converted again before it is deleted (small JPGs everyday, a PNG for the codex)
         os.remove(os.path.join(self.out, "Geology"))
         self.st.shots_cfg.update(format="jpg", codex_format="png", original="delete")
@@ -586,6 +660,34 @@ class Server(unittest.TestCase):
         shutil.rmtree(geyser)
         os.makedirs(geyser)
         self.assertEqual(self.st.checklist_geo(1400258)[0]["image"], {"url": "https://c/g.jpg", "cmdr": "Third"})
+        # review 2026-10-26: the link carries the file's time (an edit in place is not the cached one); a folder linked
+        # from outside the export folder is not offered (codex_picture would refuse it): Canonn's; an EPS named .png is
+        # never decoded
+        Image.new("RGB", (40, 20)).save(os.path.join(geyser, "g.png"))
+        img = self.st.checklist_geo(1400258)[0]["image"]
+        self.assertIn(f"&v={int(os.path.getmtime(os.path.join(geyser, 'g.png')))}", img["url"])
+        self.assertIsNotNone(asyncio.run(self.st.codex_picture(dict(urllib.parse.parse_qsl(img["url"].split("?", 1)[1])))))
+        elsewhere = os.path.join(self.d, "elsewhere")
+        shutil.move(os.path.join(self.out, "Geology"), elsewhere)
+        os.symlink(elsewhere, os.path.join(self.out, "Geology"))
+        self.assertEqual(self.st.checklist_geo(1400258)[0]["image"], {"url": "https://c/g.jpg", "cmdr": "Third"})
+        with open(os.path.join(yellow, "pack.png"), "w") as f:
+            f.write("%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 10 10\nnewpath 0 0 moveto 10 10 lineto stroke\nshowpage\n")
+        q = {"kind": "bio", "group": "Bacterium", "entry": "Bacterium Bullaris", "colour": "Yellow", "file": "pack.png"}
+        with unittest.mock.patch("subprocess.check_call", side_effect=AssertionError("ghostscript ran")), \
+                unittest.mock.patch("subprocess.Popen", side_effect=AssertionError("ghostscript ran")):
+            self.assertIsNone(asyncio.run(self.st.codex_picture(q)))
+
+    def test_a_reread_fills_a_tags_variant(self):
+        """Review 2026-10-26: a plant tagged before bio_tags.variant existed kept NULL through a journal re-read (its
+        INSERT OR IGNORE), so its shot was never filed by colour."""
+        ev = {"event": "CodexEntry", "timestamp": self.at(5), "EntryID": 2370101, "Name": "$Codex_Ent_Tussocks_01_F_Name;",
+              "Name_Localised": "Tussock Pennata - Yellow", "Category": "$Codex_Category_Biology;", "System": "Sys",
+              "SystemAddress": 9, "BodyID": 6, "Latitude": 0.0, "Longitude": 0.002}
+        self.j.handle(ev)
+        self.db.execute("UPDATE bio_tags SET variant=NULL")
+        self.j.handle(ev)
+        self.assertEqual([r[0] for r in self.db.execute("SELECT variant FROM bio_tags")], ["$Codex_Ent_Tussocks_01_F_Name;"])
 
     def test_on_foot_the_position_is_status_jsons(self):
         """The author, 2026-10-25: three shots of a bacterium on foot named nothing: on foot the Screenshot line has no
@@ -641,6 +743,11 @@ class Server(unittest.TestCase):
         self.assertIsNone(self.st.shot_subject(shot)[1]["colour"])
         self.db.execute("UPDATE bio_spots SET name='Bacterium Bullaris - Yellow'")
         self.assertEqual(self.st.shot_subject(shot)[1]["colour"], "Yellow")
+        # the colour tables not loaded yet (a first start offline): every species would look colourless: not filed
+        # (review 2026-10-26)
+        R = ed_outrider.outrider.bio.load_rules()
+        with unittest.mock.patch.object(ed_outrider.outrider.bio, "load_rules", return_value=dict(R, colours=False)):
+            self.assertIsNone(self.st.shot_subject(shot)[1]["colour"])
         self.assertTrue(os.path.basename(r["full"]).startswith("2 a Bacterium Bullaris - Yellow"), r["full"])
         with Image.open(r["full"]) as im:
             self.assertIn("<rdf:li>Yellow</rdf:li>", im.text["XML:com.adobe.xmp"])   # the colour, a keyword of its own

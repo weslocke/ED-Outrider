@@ -41,6 +41,9 @@ TOKENS = ("cmdr", "system", "body", "date", "time", "highres", "subject")
 # any the player puts there too, edited or cropped)
 CODEX_FOLDERS = {"bio": "Biology", "geo": "Geology"}
 CODEX_FORMATS = ("", "png", "jpg", "webp")   # "": a copy of the picture exported; else the shot converted again, full size
+CODEX_DECODERS = ("PNG", "JPEG", "WEBP", "GIF")   # what a codex folder's picture is opened as, whatever its name says
+# (review 2026-10-26: an EPS named .png ran Ghostscript); XMP_MAX: the metadata read (Outrider's own is under 2 KB)
+XMP_MAX = 65536
 CODEX_IMAGES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
 NAME_MAX = 150           # characters of a file or folder name (Windows' path limit is near)
 PICTURES_TAIL = ("Frontier Developments", "Elite Dangerous")
@@ -238,43 +241,58 @@ def codex_dir(root, subject):
 
 def picture_facts(path, Image=None):
     """When and where a picture was taken, from what Outrider wrote into it: {taken: "YYYY-MM-DD" (this PC's local date,
-    as the file names), system, body (short: "7 f")}, each None when it is not there. The system and body from XMP_NS's
-    fields, else (a picture from before them, 2026-10-26) the keywords' system and body when the body's name starts with
-    the system's; the date from EXIF's DateTimeOriginal, else XMP's CreateDate. {} for a picture with none of it (edited
-    by a program that drops it, or not Outrider's). Reads the header, never the pixels."""
+    as the file names), system, body}, each None when it is not there: the system and the short body ("7 f") when the
+    body's name starts with the system's, else the body's whole name alone ("Earth", not "Sol Earth": review
+    2026-10-26). The system and body from XMP_NS's fields, else (a picture from before them, 2026-10-26) the keywords'
+    when the body's name starts with the system's; the date from EXIF's DateTimeOriginal, else XMP's CreateDate. {} for a
+    picture with none of it (edited by a program that drops it, or not Outrider's). Reads the header only (a PNG's EXIF
+    from its eXIf chunk: getexif would decode a PNG without one), as CODEX_DECODERS, the XMP's first XMP_MAX characters
+    with patterns that stay linear (review 2026-10-26: a crafted packet froze the server)."""
     from xml.sax.saxutils import unescape
     Image = Image or pillow()
     if Image is None:
         return {}
     try:
-        with Image.open(path) as im:
+        with Image.open(path, formats=CODEX_DECODERS) as im:
             xmp = im.info.get("xmp") or im.info.get("XML:com.adobe.xmp") or ""
-            exif = im.getexif()
+            exif = Image.Exif()
+            if im.info.get("exif"):
+                exif.load(im.info["exif"])
             when = exif.get_ifd(0x8769).get(0x9003) or exif.get(0x0132)
-    except Exception:  # noqa: BLE001 -- not a picture Pillow reads: nothing known
+    except Exception:  # noqa: BLE001 -- not a picture Pillow reads (or a broken EXIF): nothing known
         return {}
-    xmp = xmp.decode("utf-8", "replace") if isinstance(xmp, bytes) else str(xmp)
-    field = lambda tag: (lambda m: unescape(m.group(1)).strip() if m else None)(re.search(rf"<{tag}>(.*?)</{tag}>", xmp, re.S))  # noqa: E731
+    xmp = (xmp.decode("utf-8", "replace") if isinstance(xmp, bytes) else str(xmp))[:XMP_MAX]
+
+    def field(tag):
+        m = re.search(rf"<{tag}>([^<]*)</{tag}>", xmp)   # the values are escaped: no "<" inside
+        return unescape(m.group(1)).strip() if m else None
     system, body = field("edo:System"), field("edo:Body")
     if not system:
-        bag = re.search(r"<dc:subject>\s*<rdf:Bag>(.*?)</rdf:Bag>", xmp, re.S)
-        kw = [unescape(k).strip() for k in re.findall(r"<rdf:li>(.*?)</rdf:li>", bag.group(1), re.S)] if bag else []
+        start = xmp.find("<dc:subject>")
+        end = xmp.find("</rdf:Bag>", start) if start >= 0 else -1
+        kw = [unescape(k).strip() for k in re.findall(r"<rdf:li>([^<]*)</rdf:li>", xmp[start:end])] if end > start else []
         if len(kw) >= 3 and kw[0] == "Elite Dangerous" and kw[2].startswith(kw[1] + " "):
             system, body = kw[1], kw[2]
     taken = None
     m = re.match(r"(\d{4}):(\d{2}):(\d{2})", str(when or ""))
-    if m:
+    if m and int(m.group(1)) >= 1970 and 1 <= int(m.group(2)) <= 12 and 1 <= int(m.group(3)) <= 31:
         taken = "-".join(m.groups())
     else:
-        iso = field("xmp:CreateDate")
         try:
-            t = datetime.datetime.strptime(iso or "", "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+            t = datetime.datetime.strptime(field("xmp:CreateDate") or "", "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
             taken = t.astimezone().strftime("%Y-%m-%d")
-        except ValueError:
+        except (ValueError, OverflowError, OSError):   # a date out of this PC's range (year 1, before 1970 on Windows)
             pass
     if not (taken or system or body):
         return {}
-    return {"taken": taken, "system": system or None, "body": short_body(system, body) if body else None}
+    short = bool(system and body and body.startswith(system + " "))
+    return {"taken": taken, "system": system if short or not body else None,
+            "body": short_body(system, body) if short else body or None}
+
+
+def under(root, path):
+    """Whether `path` (links followed) is inside the folder `root` (a drive or "/" too)."""
+    return bool(root and path) and os.path.realpath(path).startswith(os.path.join(os.path.realpath(root), ""))
 
 
 def codex_pictures(folder):
@@ -305,15 +323,28 @@ def to_codex(src, written, full, folder, cfg, shot, Image=None):
     fmt = fmt if fmt in FORMATS else ""
     same = full and os.path.splitext(full)[1][1:].lower() == EXT.get(fmt) and (
         fmt == "png" or int(cfg.get("quality") or 90) == int(cfg.get("codex_quality") or 90))
+    os.makedirs(folder, exist_ok=True)
     if not fmt or same:
         pic = full if fmt else written[0]
-        os.makedirs(folder, exist_ok=True)
-        dest = free_path(folder, os.path.basename(pic))
-        shutil.copy2(pic, dest)
-        return dest
-    paths = {"dir": folder, "full": free_path(folder, f"{os.path.splitext(os.path.basename(written[0]))[0]}.{EXT[fmt]}")}
-    convert(src, paths, dict(cfg, format=fmt, quality=cfg.get("codex_quality") or 90, full=True, medium=0, small=0, crop=""),
-            shot, Image)
+        made = [free_path(folder, os.path.basename(pic))]
+        paths = {"full": made[0]}
+    else:
+        made = [free_path(folder, f"{os.path.splitext(os.path.basename(written[0]))[0]}.{EXT[fmt]}")]
+        paths = {"dir": folder, "full": made[0]}
+    try:
+        if not fmt or same:
+            shutil.copy2(pic, made[0])
+        else:
+            convert(src, paths, dict(cfg, format=fmt, quality=cfg.get("codex_quality") or 90, full=True, medium=0, small=0,
+                                     crop=""), shot, Image)
+    except BaseException:
+        # nothing half written left behind for the checklists to pick (review 2026-10-26): the names chosen here only
+        for p in {made[0], paths["full"]}:
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+        raise
     return paths["full"]   # a JPG instead of a WebP past libwebp's size
 
 

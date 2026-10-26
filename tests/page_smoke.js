@@ -522,6 +522,11 @@ const releasePayloads = async () => {
       store.set("sayCodex", false);
       data.moments = [mk(3, {kind: "codex_signals", system: "9", body: "B 4", more: 2, items: [{name: "Stratum Tectonicas", galaxy: true}]})];
       onData();
+      // a line held back while the genus was open is said once every body is found (the author's C 1, 2026-10-26)
+      store.set("sayCodex", true);
+      data.moments = [mk(4, {kind: "fss_done", system: "9", count: 5, leaving: {body_count: 5, bio_pending: [], unmapped: [], unmapped_all: []},
+                             codex: [{body: "C 1", more: 0, items: [{name: "Bacterium Vesicula - Lime", galaxy: false}]}]})];
+      onData();
       out.one = codexSignalsText({body: "B 4", more: 0, items: [{name: "Stratum Tectonicas", galaxy: true}]});
       out.more = codexSignalsText({body: "B 4", more: 2, items: [{name: "Stratum Tectonicas", galaxy: true}]});
       data.moments = saved; [speechOn, isSpeaker, lastMomentSeq] = flags;
@@ -529,7 +534,9 @@ const releasePayloads = async () => {
       return JSON.stringify(out); })()`));
     w.speak = realSpeak; w.play = realPlay;
     const words = said.map(x => x[0]).join("|");
-    const ok = res.byDefault && res.box && words === "Possible new codex entries on body B 3: Bacterium Acies - Teal, new in this region; Water Ice Geyser, never logged." &&
+    const ok = res.byDefault && res.box && said[0][0] === "Possible new codex entries on body B 3: Bacterium Acies - Teal, new in this region; Water Ice Geyser, never logged." &&
+               said[said.length - 1][0] === "Possible new codex entry on body C 1: Bacterium Vesicula - Lime, new in this region." &&
+               !said.some(x => /body B 4/.test(x[0])) &&
                res.one === "Possible new codex entry on body B 4: Stratum Tectonicas, never logged." &&
                res.more === "Possible new codex entries on body B 4: Stratum Tectonicas, never logged; and 2 more." && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| codex signals spoken |", words, JSON.stringify(res), errors.slice(before));
@@ -554,12 +561,12 @@ const releasePayloads = async () => {
     const realApi = w.apiJson;
     w.apiJson = async url => { asked.push(url); return {image: {url: "api/codex_picture?f=2", own: true, file: "b.png"}}; };
     const run = async () => {
-      w.eval(`CL.open = "$S1;"; CL.species = {id: "$S1;", images: {lime: {url: "api/codex_picture?f=1", own: true, file: "a.png"},
+      w.eval(`CL_PIC_WAIT = 20; CL.open = "$S1;"; CL.species = {id: "$S1;", images: {lime: {url: "api/codex_picture?f=1", own: true, file: "a.png"},
                                                                red: {url: "https://c/r.jpg", cmdr: "X"}}}`);
-      await w.eval(`clColour("lime")`);
+      await w.eval(`Promise.all([clColour("lime"), clColour("lime")])`);   // a double click: one pick (review 2026-10-26)
       await w.eval(`clColour("red")`);
       const out = {file: w.eval(`CL.species.images.lime.file`), colour: w.eval(`CL.colour`)};
-      w.eval(`CL.open = null; CL.species = null; CL.colour = null`);
+      w.eval(`CL.open = null; CL.species = null; CL.colour = null; CL_PIC_WAIT = 3000`);
       return out;
     };
     const res = await run();

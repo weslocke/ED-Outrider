@@ -2482,6 +2482,42 @@ class BatchBState(unittest.TestCase):
             self.state._leaving.clear()
             self.assertEqual(self.state.codex_signal_facts(1, 4)["items"], [{"name": "Stratum Tectonicas", "galaxy": True}])
 
+    def test_codex_line_names_region_and_galaxy_and_waits_for_an_open_guess(self):
+        """Review 2026-10-26: a species never logged hid another new only here (and every name was said "never logged");
+        and the author's C 1: "Prasinum Bioluminescent Anemone, never logged" was said while the body could still be a
+        logged Bacterium, which the finished FSS showed it was. An open guess waits for every body to be found."""
+        region = outrider.bio.region_name(0, 0, 0)
+        if not region:
+            self.skipTest("no bio_rules.json")
+        self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, PlanetClass="Rocky body", MassEM=0.2)
+        self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:02:00Z", "SystemAddress": 1, "BodyName": "S1 A 4",
+                       "BodyID": 4, "Signals": [{"Type": ed_outrider.BIO, "Count": 2}]})
+        self.db.execute("INSERT OR REPLACE INTO own_systems (id64, name, body_count, all_found) VALUES (1, 'S1', 5, 0)")
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES ('t', 1, 'Concha Biconcavis - Red', 'Elsewhere')")
+        self.db.commit()
+        cands = [dict(self.CANDS[0], variants=["Stratum Tectonicas - Teal"]), dict(self.CANDS[1], variants=["Concha Biconcavis - Red"])]
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=cands):
+            # both new here, whatever it turns out to be: said at once, each with its own mark
+            self.assertEqual(self.state.codex_signal_facts(1, 4)["items"],
+                             [{"name": "Stratum Tectonicas - Teal", "galaxy": True}, {"name": "Concha Biconcavis - Red", "galaxy": False}])
+            self.assertEqual(self.state.codex_deferred, {})
+            # Concha logged here too: the body may be a logged Concha, so nothing is said until every body is found
+            self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES ('t2', 2, 'Concha Biconcavis - Red', ?)", (region,))
+            self.db.commit()
+            self.state._leaving.clear()
+            self.assertIsNone(self.state.codex_signal_facts(1, 4))
+            self.assertEqual(self.state.codex_deferred, {1: {4}})
+            done = {"kind": "fss_done", "system": 1, "seq": 9999}
+            self.db.execute("UPDATE own_systems SET all_found=1 WHERE id64=1")
+            self.db.commit()
+            self.assertEqual(self.state.moment_extra(done)["codex"],
+                             [{"body": "A 4", "items": [{"name": "Stratum Tectonicas - Teal", "galaxy": True}], "more": 0}])
+        # judged again at the end: the guess settled on a logged species: nothing said
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=[dict(self.CANDS[1], variants=["Concha Biconcavis - Red"])]):
+            self.state._leaving.clear()
+            self.state._moment_extra.clear()
+            self.assertEqual(self.state.moment_extra(dict(done, seq=10000))["codex"], [])
+
     def test_codex_marks_before_the_dss_settled_like_the_line(self):
         """Fourth in-depth review 2026-10-25: the table's options were marked from the raw guess while the line first
         took the species your codex entry on the body names; and the line's hover named the first colour candidate,

@@ -58,6 +58,16 @@ class Checklist(unittest.TestCase):
         self.assertIsNone(cl.variant_colour(SPECIES[1], "$Codex_Ent_Bacterial_04_Tin_Name;"))   # nor that material
         self.assertIsNone(cl.variant_colour(SPECIES[1], "$Codex_Ent_Bacterial_04_Name;", "Bacterium Nebulus"))
         self.assertEqual(cl.variant_colour(SPECIES[2], None, "Roseum Sinuous Tubers"), "")   # no colours: one for all
+        # review 2026-10-26: no colour tables loaded yet (a first start offline): every species looks colourless, so
+        # nothing is told; a species with one colour has it whatever the code says
+        self.assertIsNone(cl.variant_colour(SPECIES[2], None, "Roseum Sinuous Tubers", tables=False))
+        self.assertIsNone(cl.variant_colour(SPECIES[1], "$Codex_Ent_Bacterial_04_Polonium_Name;", tables=False))
+        one = {"name": "Stratum Araneamus", "colors": {"star": {"B": "Emerald", "A": "Emerald"}}}
+        self.assertEqual(cl.variant_colour(one, "$Codex_Ent_Stratum_04_F_Name;", "Stratum Araneamus"), "Emerald")
+        # the misspelled duplicate's colour conditions join the kept one's (Stratum Aranaemus held F)
+        merged, _ = cl.merge_species([dict(SPECIES[3], colors={"star": {"F": "Lime", "G": "Lime"}}), SPECIES[4]])
+        self.assertEqual((merged[0]["name"], merged[0]["colors"]), ("Stratum Araneamus", {"star": {"F": "Lime", "G": "Lime"}}))
+        self.assertEqual(SPECIES[4]["colors"], {"star": {"F": "Lime"}})   # the rules' own entry untouched
 
     def test_duplicate_species_merged(self):
         merged, names = cl.merge_species(SPECIES)

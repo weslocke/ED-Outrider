@@ -66,11 +66,14 @@ def colour_of(variant, species_name):
     return colour.strip().lower() or None if head.strip().lower() == (species_name or "").lower() else None
 
 
-def variant_colour(species, variant_id=None, name=None):
+def variant_colour(species, variant_id=None, name=None, tables=True):
     """A sample's colour as its species' table names it (English, whatever the game's language): from its variant's
     codex code ("$Codex_Ent_Tussocks_01_F_Name;": the star class F; "..._Bacterial_10_Polonium_Name;": polonium), else
-    the colour at the end of its name ("Bacterium Bullaris - Yellow") when the table has it. "" for a species with no
-    colours (one picture for all), None when it cannot be told."""
+    the colour at the end of its name ("Bacterium Bullaris - Yellow") when the table has it, else a species' only
+    colour. "" for a species with no colours (one picture for all), None when it cannot be told; None too while the
+    colour tables are not loaded (`tables` false: outrider.bio's R["colours"]), when every species looks colourless."""
+    if not tables:
+        return None
     known = colours(species)
     if not known:
         return ""
@@ -83,7 +86,9 @@ def variant_colour(species, variant_id=None, name=None):
             if hit:
                 return hit
     said = colour_of(name, species.get("name"))
-    return next((colour for colour, _ in known if colour.lower() == said), None) if said else None
+    hit = next((colour for colour, _ in known if colour.lower() == said), None) if said else None
+    # one colour only (Stratum Araneamus: Emerald by any star): that one, whatever the code (review 2026-10-26)
+    return hit or (known[0][0] if len(known) == 1 else None)
 
 
 def merge_species(species_list):
@@ -100,9 +105,26 @@ def merge_species(species_list):
         if genus and genus != name and genus.rstrip("s") == name:
             names.setdefault(genus, sid)
         have = by_id.get(sid)
-        if have is None or (not have.get("rulesets") and sp.get("rulesets")):
+        if have is None:
             by_id[sid] = sp
+        elif not have.get("rulesets") and sp.get("rulesets"):
+            by_id[sid] = _with_colours(sp, have)
+        else:
+            by_id[sid] = _with_colours(have, sp)
     return list(by_id.values()), names
+
+
+def _with_colours(keep, drop):
+    """`keep` with the colour conditions only the duplicate `drop` has, in the same kind of table (review 2026-10-26: the
+    misspelled Stratum Aranaemus held the F star's Emerald, lost with it); `keep` itself when there are none."""
+    kc, dc = keep.get("colors") or {}, drop.get("colors") or {}
+    merged = dict(kc)
+    for table in ("star", "element"):
+        if isinstance(dc.get(table), dict) and (table in kc or not kc):
+            extra = {k: v for k, v in dc[table].items() if k not in (kc.get(table) or {})}
+            if extra:
+                merged[table] = {**(kc.get(table) or {}), **extra}
+    return dict(keep, colors=merged) if merged != kc else keep
 
 
 def _records(species_list, names, runs, codex):

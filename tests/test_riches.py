@@ -645,6 +645,15 @@ class SurveyKinds(unittest.TestCase):
         self.assertTrue(all(b["scan"] >= 100000 for r in tf for b in r["bodies"]))
         self.assertEqual({b["subtype"] for r in tf for b in r["bodies"]}, {"High metal content world", "Rocky body"})
 
+    def test_an_empty_body_route_says_what_can_be_changed(self):
+        """Review 2026-10-26: the world routes (Earth-like, ammonia, terraformable) have no minimum value to lower."""
+        start = [dict(RESULT[0], bodies=[])]
+        for kind, lower in (("riches", True), ("exo", True), ("elw", False), ("aw", False), ("tf", False)):
+            with self.assertRaises(riches.RichesError) as e:
+                riches.survey_rows(kind, start)
+            self.assertIn("found nothing to visit", str(e.exception))
+            self.assertEqual("minimum value" in str(e.exception), lower, kind)
+
     def test_plot_worlds(self):
         """S52: an Earth-like world route plots through Road to Riches' endpoint with Spansh's own page's fields
         (body_types, min_value 1, no mapping value: the map always counts), and is followed as Road to Riches is, with

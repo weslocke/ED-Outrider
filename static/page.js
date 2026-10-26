@@ -6960,16 +6960,25 @@ function renderChecklist() {
 // a species' colours, dropped down under its row: each with what gives it and your state; one with a picture shows it
 // a colour clicked: its picture; one of your own is picked again at each click (the author, 2026-10-26), another than
 // the one shown, swapped in when the answer comes (the old one stays meanwhile: no blank)
+// (review 2026-10-26: loaded before the switch, so the panel never stands empty; a click while one is coming is let
+// go, or both would avoid the same picture and the second change nothing)
+let CL_PIC_WAIT = 3000;   // ms a re-picked picture is waited for before the switch
 async function clColour(colour) {
   const sp = CL.species, img = sp && sp.images && sp.images[colour];
-  CL.colour = colour;
-  if (!img || !img.own) { renderChecklist(); return; }
-  let d;
-  try { d = await apiJson(`api/checklist/picture?species=${encodeURIComponent(sp.id)}&colour=${encodeURIComponent(colour)}&avoid=${encodeURIComponent(img.file || "")}`); }
-  catch { d = null; }
-  if (CL.species !== sp || CL.colour !== colour) return;   // another species or colour meanwhile
-  if (d && d.image) sp.images[colour] = d.image;
-  renderChecklist();
+  if (!img || !img.own) { CL.colour = colour; renderChecklist(); return; }
+  if (clColour.busy) return;
+  clColour.busy = true;
+  try {
+    let d;
+    try { d = await apiJson(`api/checklist/picture?species=${encodeURIComponent(sp.id)}&colour=${encodeURIComponent(colour)}&avoid=${encodeURIComponent(img.file || "")}`); }
+    catch { d = null; }
+    if (d && d.image && d.image.url)   // at most CL_PIC_WAIT: a slow picture then loads in place
+      await new Promise(ok => { const im = new Image(); im.onload = im.onerror = ok; im.src = d.image.url; setTimeout(ok, CL_PIC_WAIT); });
+    if (CL.species !== sp) return;   // another species opened meanwhile
+    if (d && d.image) sp.images[colour] = d.image;
+    CL.colour = colour;   // the one picked (or, failing that, the one it had)
+    renderChecklist();
+  } finally { clColour.busy = false; }
 }
 function clVariantRows(r) {
   const {imgs, pick} = clPick(r);
@@ -10286,6 +10295,11 @@ function onData() {
                                                     (fold ? " " + jumponiumSaid(jp) : "")});
         if (jp && fold && jumponiumOn()) toast(`⛽ ${jp.body}: ${(jp.name || jp.material).toLowerCase()} ${jp.pct}%`);
         if (jp && !(fold && said)) sayJumponium(jp);
+        // the codex lines held back while the body's genus was still open (codex_signal_facts), now every body is found
+        for (const c of m.codex || []) {
+          const t = codexSignalsText(c);
+          if (t && saySignals("codex") && speechOn && speakerHere() && !hushed()) speak(t, {kind: "signals"});
+        }
       }
       else if (m.kind === "mapped" && m.body && sayMapped()) {   // a planet mapped: what it pays and what is next
         const t = mappedText(m);

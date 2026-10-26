@@ -356,7 +356,8 @@ section) list every kind its volcanism allows, the new ones marked ✪ or ✦. Y
 scan logs none), and combinations never seen on EDDN (water or CO2 features on a rocky body, anything on a rocky ice
 body) get no mark.
 
-Shown only, never spoken. A type the journals give no codex entry for (a class II giant star, a helium gas giant) gets
+These marks are shown only, but what a body's signals could log (its species and its geology) is also said as the FSS
+finds them (⚙ Settings → Voice → possible new codex entries: see [Voice and alerts](voice-and-alerts.md)). A type the journals give no codex entry for (a class II giant star, a helium gas giant) gets
 no mark, nor does a body Spansh lists without its luminosity or atmosphere. With no body type in your journals at all
 (no codex line, no scan of your own) there is nothing to compare with, and nothing is marked.
 

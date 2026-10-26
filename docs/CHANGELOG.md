@@ -2,6 +2,29 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Opus review fixes; the codex line waits for an open guess
+An Opus multi-agent review of 88ac010..HEAD (6 areas x 2 lenses, 2 skeptics per finding: 23 findings, 16 distinct,
+all confirmed; project/done/reviews/review-2026-10-26):
+- **The codex line waits for an open guess** (the author's Smojooe TW-E c11-2 C 1: "Prasinum Bioluminescent Anemone,
+  never logged" was said for a body the finished FSS showed was a logged Bacterium): biology is said at once only when
+  every genus the body could have is new; otherwise it waits for "all found" (`codex_deferred`, said after the FSS
+  debrief) and is said then if it still is. Geology is said at once. The line names species new only here beside
+  those never logged, each with its own words (one never-logged species hid the others).
+- **Pictures in the codex folders:** opened only as PNG, JPG, WebP or GIF whatever the name (an EPS named .png ran
+  Ghostscript); a PNG without EXIF is no longer decoded whole on the server's loop; the metadata read is capped and
+  linear (a crafted packet froze the server); a date out of range no longer fails the panel; a folder linked from
+  outside the export folder is not offered (a broken picture in Canonn's place); the link carries the file's time (an
+  edit in place showed the cached one); the caption says "Earth", not "Sol Earth".
+- **Codex folders:** no colour is told while the colour tables are not loaded (every species looked colourless, so
+  shots were filed with no colour folder); a species with one colour has it whatever the code (Stratum Araneamus by an
+  F star; the misspelled duplicate's colour conditions are merged in); a journal re-read fills `bio_tags.variant` in
+  on older rows; a copy or conversion that fails halfway leaves nothing behind; a codex failure is said beside a BMP
+  not moved (it was hidden behind it).
+- **The checklist:** a re-picked picture is loaded before the switch (the panel stood empty), and a click while one
+  is coming is let go (two would avoid the same picture).
+- **Routes:** an empty Earth-like, ammonia or terraformable route no longer suggests a lower minimum value (they have
+  none). The guide says the codex finds are spoken.
+
 ## 2026-10-26 · A colour's own picture picked again at each click
 - On the Exo-Biology checklist, each click on a colour picks another of your own pictures of it (not the one shown,
   when there are two or more): GET `/api/checklist/picture`, asked only when that colour's picture is one of yours;
