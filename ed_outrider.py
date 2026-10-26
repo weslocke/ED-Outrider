@@ -12414,7 +12414,9 @@ class State:
             return None
         name = random.choice(names)
         q = urllib.parse.urlencode({"kind": kind, "group": group, "entry": entry, "colour": colour or "", "file": name})
-        return {"url": f"api/codex_picture?{q}", "full": f"api/codex_picture?{q}&size=full", "own": True, "file": name}
+        # when and where it was taken, when the picture says (Outrider wrote it in; an edit may have dropped it)
+        return dict(S.picture_facts(os.path.join(folder, name)), url=f"api/codex_picture?{q}", full=f"api/codex_picture?{q}&size=full",
+                    own=True, file=name)
 
     async def codex_picture(self, q):
         """GET /api/codex_picture?kind=&group=&entry=&colour=&file=&size=view|full (codex_own's links): a picture in a

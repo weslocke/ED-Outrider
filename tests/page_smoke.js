@@ -534,6 +534,20 @@ const releasePayloads = async () => {
                res.more === "Possible new codex entries on body B 4: Stratum Tectonicas, never logged; and 2 more." && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| codex signals spoken |", words, JSON.stringify(res), errors.slice(before));
   }
+  // a checklist picture of your own says when and where it was taken, as far as the picture says (the author, 2026-10-26)
+  {
+    const w = dom.window, before = errors.length;
+    const cap = img => { const d = w.document.createElement("div"); d.innerHTML = w.eval(`clFigure(${JSON.stringify(img)}, "x", "Amethyst")`);
+                         return d.querySelector("figcaption").textContent; };
+    const own = {url: "api/codex_picture?f=1", full: "api/codex_picture?f=1&size=full", own: true, file: "a.png"};
+    const got = [cap(Object.assign({taken: "2026-10-26", body: "7 f", system: "Smojooe UW-E c11-28"}, own)),
+                 cap(Object.assign({taken: "2026-10-26", body: null, system: null}, own)), cap(own),
+                 cap({url: "https://c/x.jpg", cmdr: "Someone"})];
+    const ok = JSON.stringify(got) === JSON.stringify(["Amethyst · Your picture, taken: 2026-10-26 on body 7 f in system Smojooe UW-E c11-28",
+      "Amethyst · Your picture, taken: 2026-10-26", "Amethyst · Your picture, from your codex folders",
+      "Amethyst · Image: CMDR Someone, via Canonn"]) && errors.length === before;
+    console.log(ok ? "OK" : "FAIL", "| codex picture caption |", JSON.stringify(got), errors.slice(before));
+  }
   // auto-target's results: their own alerts row (spoken, not notified by default; its speech tick can switch them off)
   {
     const w = dom.window, before = errors.length, said = [];

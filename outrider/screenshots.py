@@ -236,6 +236,47 @@ def codex_dir(root, subject):
                         *([safe_name(s["colour"])] if s["kind"] == "bio" and s["colour"] else []))
 
 
+def picture_facts(path, Image=None):
+    """When and where a picture was taken, from what Outrider wrote into it: {taken: "YYYY-MM-DD" (this PC's local date,
+    as the file names), system, body (short: "7 f")}, each None when it is not there. The system and body from XMP_NS's
+    fields, else (a picture from before them, 2026-10-26) the keywords' system and body when the body's name starts with
+    the system's; the date from EXIF's DateTimeOriginal, else XMP's CreateDate. {} for a picture with none of it (edited
+    by a program that drops it, or not Outrider's). Reads the header, never the pixels."""
+    from xml.sax.saxutils import unescape
+    Image = Image or pillow()
+    if Image is None:
+        return {}
+    try:
+        with Image.open(path) as im:
+            xmp = im.info.get("xmp") or im.info.get("XML:com.adobe.xmp") or ""
+            exif = im.getexif()
+            when = exif.get_ifd(0x8769).get(0x9003) or exif.get(0x0132)
+    except Exception:  # noqa: BLE001 -- not a picture Pillow reads: nothing known
+        return {}
+    xmp = xmp.decode("utf-8", "replace") if isinstance(xmp, bytes) else str(xmp)
+    field = lambda tag: (lambda m: unescape(m.group(1)).strip() if m else None)(re.search(rf"<{tag}>(.*?)</{tag}>", xmp, re.S))  # noqa: E731
+    system, body = field("edo:System"), field("edo:Body")
+    if not system:
+        bag = re.search(r"<dc:subject>\s*<rdf:Bag>(.*?)</rdf:Bag>", xmp, re.S)
+        kw = [unescape(k).strip() for k in re.findall(r"<rdf:li>(.*?)</rdf:li>", bag.group(1), re.S)] if bag else []
+        if len(kw) >= 3 and kw[0] == "Elite Dangerous" and kw[2].startswith(kw[1] + " "):
+            system, body = kw[1], kw[2]
+    taken = None
+    m = re.match(r"(\d{4}):(\d{2}):(\d{2})", str(when or ""))
+    if m:
+        taken = "-".join(m.groups())
+    else:
+        iso = field("xmp:CreateDate")
+        try:
+            t = datetime.datetime.strptime(iso or "", "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+            taken = t.astimezone().strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+    if not (taken or system or body):
+        return {}
+    return {"taken": taken, "system": system or None, "body": short_body(system, body) if body else None}
+
+
 def codex_pictures(folder):
     """The pictures in a codex folder (CODEX_IMAGES, files only, not hidden), by name; [] when there is none."""
     try:
@@ -360,23 +401,29 @@ def metadata(shot):
     keywords = list(dict.fromkeys(k for k in keywords if k))
     title = " · ".join(p for p in (subj.get("name"), where) if p) or "Elite Dangerous"
     return {"title": title, "where": where, "subject": subject, "position": position, "cmdr": shot.get("cmdr") or "",
-            "when_iso": when_iso, "when_exif": when_exif, "when_offset": when_offset, "keywords": keywords}
+            "when_iso": when_iso, "when_exif": when_exif, "when_offset": when_offset, "keywords": keywords,
+            "system": system, "body": body}
+
+
+XMP_NS = "https://github.com/weslocke/ED-Outrider/xmp/1.0/"   # Outrider's own fields: the system and body, read back (picture_facts)
 
 
 def xmp_packet(m, desc):
     """An XMP packet (what photo managers, Windows and exiftool read first): Dublin Core title, description, creator,
-    keywords; the time and the tool."""
+    keywords; the time and the tool; the system and body in fields of Outrider's own (XMP_NS)."""
     from xml.sax.saxutils import escape as x
     alt = lambda v: f'<rdf:Alt><rdf:li xml:lang="x-default">{x(v)}</rdf:li></rdf:Alt>'   # noqa: E731
     bag = "".join(f"<rdf:li>{x(k)}</rdf:li>" for k in m["keywords"])
     return ('<?xpacket begin="\ufeff" id="W5M0MpCehiHzreSzNTczkc9d"?>'
             '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
-            '<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xmp="http://ns.adobe.com/xap/1.0/">'
+            f'<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:edo="{XMP_NS}">'
             f"<dc:title>{alt(m['title'])}</dc:title><dc:description>{alt(desc)}</dc:description>"
             + (f"<dc:creator><rdf:Seq><rdf:li>{x('CMDR ' + m['cmdr'])}</rdf:li></rdf:Seq></dc:creator>" if m["cmdr"] else "")
             + f"<dc:subject><rdf:Bag>{bag}</rdf:Bag></dc:subject>"
             + (f"<xmp:CreateDate>{m['when_iso']}</xmp:CreateDate>" if m["when_iso"] else "")
-            + "<xmp:CreatorTool>ED Outrider</xmp:CreatorTool></rdf:Description></rdf:RDF></x:xmpmeta>"
+            + "<xmp:CreatorTool>ED Outrider</xmp:CreatorTool>"
+            + "".join(f"<edo:{k}>{x(v)}</edo:{k}>" for k, v in (("System", m.get("system")), ("Body", m.get("body"))) if v)
+            + "</rdf:Description></rdf:RDF></x:xmpmeta>"
             '<?xpacket end="w"?>')
 
 

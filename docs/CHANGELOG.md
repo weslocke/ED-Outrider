@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Your checklist pictures say when and where they were taken
+- Under one of your own pictures on the Bio/Geo checklists: "Amethyst · Your picture, taken: 2026-10-26 on body 7 f in
+  system Smojooe UW-E c11-28", read from the picture itself (`screenshots.picture_facts`: EXIF's date, else XMP's);
+  "from your codex folders" when it says nothing (an editor dropped it, or not Outrider's).
+- Every picture now carries its system and body in XMP fields of Outrider's own (`XMP_NS`); one from before them is
+  read from its keywords when the body's name starts with the system's.
+
 ## 2026-10-26 · Possible new codex entries said as the FSS finds signals
 - **⚙ Settings → Voice → Say signals as the FSS finds them: possible new codex entries** (per browser, `[defaults]
   speak_codex_signals`, on by default): once a body's scan is in (the game writes FSSBodySignals a second before it),

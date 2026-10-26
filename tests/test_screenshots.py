@@ -159,6 +159,38 @@ class Convert(unittest.TestCase):
         self.d = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.d)
 
+    def test_picture_facts(self):
+        """When and where a picture was taken, read back from what Outrider wrote into it (the checklists' caption, the
+        author 2026-10-26): its own XMP fields in every format; a picture from before them by its keywords; nothing from
+        a picture with none of it."""
+        src = bmp(os.path.join(self.d, "Screenshot_0001.bmp"), 64, 36)
+        shot = {"ts": "2026-10-26T12:51:14Z", "system": "Smojooe UW-E c11-28", "body": "Smojooe UW-E c11-28 7 f",
+                "subject": {"kind": "bio", "name": "Tussock Albata - Green", "dist": 3}, "cmdr": "Hefay"}
+        local = datetime.datetime(2026, 10, 26, 12, 51, 14, tzinfo=datetime.timezone.utc).astimezone().strftime("%Y-%m-%d")
+        want = {"taken": local, "system": "Smojooe UW-E c11-28", "body": "7 f"}
+        for fmt in S.FORMATS:
+            p = os.path.join(self.d, f"a.{S.EXT[fmt]}")
+            S.convert(src, {"dir": self.d, "full": p}, dict(S.DEFAULTS, format=fmt), shot)
+            self.assertEqual(S.picture_facts(p), want, fmt)
+        # a picture from before the fields (2026-10-26): its keywords, when the body's name starts with the system's
+        real = S.xmp_packet
+        old = lambda m, d: real({k: v for k, v in m.items() if k not in ("system", "body")}, d)   # noqa: E731
+        with unittest.mock.patch.object(S, "xmp_packet", old):
+            S.convert(src, {"dir": self.d, "full": os.path.join(self.d, "old.jpg")}, dict(S.DEFAULTS, format="jpg"), shot)
+            S.convert(src, {"dir": self.d, "full": os.path.join(self.d, "earth.jpg")}, dict(S.DEFAULTS, format="jpg"),
+                      dict(shot, system="Sol", body="Earth"))
+        self.assertEqual(S.picture_facts(os.path.join(self.d, "old.jpg")), want)
+        self.assertEqual(S.picture_facts(os.path.join(self.d, "earth.jpg")), {"taken": local, "system": None, "body": None})
+        # an edit that kept the XMP but not the EXIF: the date from XMP (local); a picture with nothing: {}
+        with Image.open(os.path.join(self.d, "a.png")) as im:
+            im.save(os.path.join(self.d, "edited.jpg"), "JPEG", xmp=im.info["XML:com.adobe.xmp"].encode())
+            im.save(os.path.join(self.d, "bare.png"), "PNG")
+        self.assertEqual(S.picture_facts(os.path.join(self.d, "edited.jpg")), want)
+        self.assertEqual(S.picture_facts(os.path.join(self.d, "bare.png")), {})
+        with open(os.path.join(self.d, "junk.png"), "wb") as f:
+            f.write(b"not a picture")
+        self.assertEqual(S.picture_facts(os.path.join(self.d, "junk.png")), {})
+
     def test_to_codex(self):
         """[screenshots] codex_format (the author, 2026-10-26: small everyday shots, fine codex pictures): "" copies the
         first picture written; a format converts the game's BMP again at full size at codex_quality, unless the full
@@ -527,6 +559,13 @@ class Server(unittest.TestCase):
         self.assertEqual(asyncio.run(self.st.codex_picture(dict(q, size="full"))), (os.path.join(yellow, q["file"]), "image/png"))
         geo, _ = self.st.checklist_geo(1400258)
         self.assertEqual((geo["image"]["file"], geo["image"]["own"]), ("g.png", True))
+        self.assertNotIn("taken", geo["image"])   # a picture that says nothing of itself: the caption says where it is from
+        # one Outrider made says when and where it was taken
+        os.remove(os.path.join(geyser, "g.png"))
+        shot = {"ts": "2026-10-26T12:51:14Z", "system": "Sys", "body": "Sys 2 a", "subject": {"kind": "geo", "name": "Water Ice Geyser"}}
+        S.convert(bmp(os.path.join(self.d, "src.bmp")), {"dir": geyser, "full": os.path.join(geyser, "g.jpg")}, dict(S.DEFAULTS, format="jpg"), shot)
+        img = self.st.checklist_geo(1400258)[0]["image"]
+        self.assertEqual((img["file"], img["system"], img["body"], len(img["taken"])), ("g.jpg", "Sys", "2 a", 10))
         # never anything but a picture in that folder: a path, a parent, another folder's, a file that is not a picture
         with open(os.path.join(self.out, "secret.png"), "wb") as f:
             f.write(b"x")
