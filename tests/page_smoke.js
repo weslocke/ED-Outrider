@@ -10303,9 +10303,12 @@ const releasePayloads = async () => {
       };
       w.document.querySelector('#shotSettings .folderpick[data-pick="pictures"]').click(); await sleep(50);
       o.push(w.document.getElementById("folderMsg").textContent);
+      const fld = q("folder"), keepF = fld.value;
       w.document.querySelector('#shotSettings .folderpick[data-pick="folder"]').click(); await sleep(50);
-      o.push(w.document.getElementById("folderMsg").textContent.includes("made when needed"));
-      w.eval('tabClose(document.getElementById("folderDlg"))');
+      o.push(w.document.getElementById("folderMsg").textContent.includes("Use this folder keeps it"));
+      w.document.getElementById("folderUse").click();   // a typed new folder is kept, not its parent (fourth review)
+      o.push(fld.value);
+      fld.value = keepF; fld.dataset.dirty = "";
       const list = w.document.createElement("div"); list.className = "shotlist"; list.dataset.sys = "9"; list.dataset.body = "S 1";
       list.innerHTML = '<button type="button" data-shotpin="5" data-lat="1" data-lon="2" data-name="x">📍</button>';
       w.document.body.appendChild(list);
@@ -10324,7 +10327,7 @@ const releasePayloads = async () => {
       w.fetch = real;
       return o;
     })();
-    want.review3 = ["/home/typo does not exist: pick the folder the game saves its screenshots in", true, 1, true, false, true];
+    want.review3 = ["/home/typo does not exist: pick the folder the game saves its screenshots in", true, "/home/typo", 1, true, false, true];
     // an emptied crop box is no number: Save refuses rather than store a zero-size crop (review 2026-10-25)
     got.cropempty = await (async () => {
       const q = k => w.document.querySelector('#shotSettings .scfg[data-key="' + k + '"]'), on = w.document.getElementById("shotCropOn");

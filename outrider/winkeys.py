@@ -183,16 +183,22 @@ def _set_clipboard(formats, what):
         raise OSError(ctypes.get_last_error(), "the clipboard is in use by another program")
     try:
         u32.EmptyClipboard()
+        taken = 0
         for fmt, data in formats:
-            data = bytes(data)   # a memoryview (clipboard_image's buffers) for ctypes.memmove
+            data = bytes(data)
             h = k32.GlobalAlloc(0x0002, len(data))   # GMEM_MOVEABLE
             if not h:
+                if taken:   # the first format is on the clipboard: a later one refused is no failure (fourth review)
+                    break
                 raise OSError(ctypes.get_last_error(), "no memory for the clipboard")
             p = k32.GlobalLock(h)
             ctypes.memmove(p, data, len(data))
             k32.GlobalUnlock(h)
             if not u32.SetClipboardData(fmt, h):   # on success the clipboard owns h
                 k32.GlobalFree(h)
+                if taken:
+                    break
                 raise OSError(ctypes.get_last_error(), f"Windows did not take {what}")
+            taken += 1
     finally:
         u32.CloseClipboard()

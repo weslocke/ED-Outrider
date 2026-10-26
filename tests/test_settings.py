@@ -349,6 +349,18 @@ class HomedKeys(TempConfig):
     and skip are read on every honk, so a save applies them at once; its key and hold, and the co-pilot button, wait for
     the next start. The overlay's system-panel time and radar range go through POST /api/overlay like its other fields."""
 
+    def test_moved_to_is_checked_expanded_at_save(self):
+        """Fourth in-depth review 2026-10-25: "~/x" in one box and its absolute spelling in the other passed the page's
+        check; the server compares them expanded and refuses at Save, not at every shot."""
+        s = self.state
+        out, status = s.config_save({"screenshots": {"pictures": "~/EDPics", "original": "move", "move_to": os.path.expanduser("~/EDPics/")}})
+        self.assertEqual(status, 400)
+        self.assertIn("own Pictures folder", out["error"])
+        out, status = s.config_save({"screenshots": {"original": "move", "move_to": ""}})
+        self.assertEqual((status, "needs a folder" in out["error"]), (400, True))
+        out, status = s.config_save({"screenshots": {"pictures": "~/EDPics", "original": "move", "move_to": "~/Kept"}})
+        self.assertEqual(status, 200)
+
     def test_auto_honk_and_copilot_fields(self):
         s = self.state
         out, status = s.config_save({"autohonk": {"delay": 3.5, "skip_honked": False}})

@@ -14142,9 +14142,12 @@ async function folderGo(path) {
   document.getElementById("folderUp").disabled = !r.parent;
   document.getElementById("folderDrives").innerHTML = (r.drives || []).map(d => `<button type="button" data-drive="${esc(d)}">${esc(d)}</button>`).join(" ");
   document.getElementById("folderHidN").textContent = r.hidden ? `(${r.hidden})` : "";
-  // the game's own folder is never made: only the export and "moved to" folders are (third in-depth review 2026-10-25)
+  // the game's own folder is never made: only the export and "moved to" folders are (third in-depth review 2026-10-25);
+  // a typed new folder is kept for Use this folder until you browse elsewhere (fourth: it filled in the parent)
   const made = FP.field && FP.field.dataset.key !== "pictures";
-  msg.textContent = r.error || (r.missing ? (made ? `${r.missing} is not there yet (it is made when needed): showing the nearest folder that is`
+  FP.want = made && r.missing && !r.file ? r.missing : null;
+  msg.textContent = r.error || (r.file ? `${r.file} is a file, not a folder: showing the folder it is in`
+    : r.missing ? (made ? `${r.missing} is not there yet: Use this folder keeps it (it is made when the first shot needs it), or pick one here`
     : `${r.missing} does not exist: pick the folder the game saves its screenshots in`) : "");
   msg.hidden = !msg.textContent;
   document.getElementById("folderList").innerHTML = r.dirs.length || r.more
@@ -14171,7 +14174,7 @@ document.getElementById("folderHidden").onchange = () => folderGo(FP.path);
 document.getElementById("folderPath").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); folderGo(e.target.value.trim()); } });
 document.getElementById("folderUse").onclick = () => {
   if (FP.field && FP.path) {
-    FP.field.value = FP.path; FP.field.dataset.dirty = "1"; FP.field.dispatchEvent(new Event("input", {bubbles: true}));
+    FP.field.value = FP.want || FP.path; FP.field.dataset.dirty = "1"; FP.field.dispatchEvent(new Event("input", {bubbles: true}));
     const m = document.getElementById("shotMsg"); m.textContent = "not saved yet: Save keeps it"; m.className = "hint";
   }
   tabClose(document.getElementById("folderDlg"));

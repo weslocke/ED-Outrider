@@ -22,6 +22,15 @@ def bmp(path, w=64, h=36, colour=(200, 120, 40)):
     return path
 
 
+class _Fn:
+    """A stand-in Win32 function: callable, and takes the argtypes / restype a ctypes function is given."""
+    def __init__(self, f):
+        self.f = f
+
+    def __call__(self, *a):
+        return self.f(*a)
+
+
 class Names(unittest.TestCase):
     def test_safe_and_render(self):
         self.assertEqual(S.safe_name('Sys: A/B <1>?'), "Sys_ A_B _1__")
@@ -231,6 +240,42 @@ class Convert(unittest.TestCase):
         png, dib = S.clipboard_image(src, dib=False)
         self.assertEqual((bytes(png[:4]), dib), (b"\x89PNG", None))
         self.assertTrue(len(S.clipboard_image(src)[1]) > 0)
+
+    def test_review_4_files(self):
+        """Fourth in-depth review 2026-10-25: the clipboard's picture is plain bytes (a kept slice of a live view made
+        its buffer un-closeable); a file typed where a folder goes is said to be a file."""
+        src = bmp(os.path.join(self.d, "c.bmp"), 64, 36)
+        png, dib = S.clipboard_image(src)
+        self.assertEqual((type(png), type(dib)), (bytes, bytes))
+        r = S.list_folders(src)
+        self.assertEqual((r["file"], r["missing"], r["path"]), (src, None, self.d))
+
+    def test_review_4_windows_clipboard(self):
+        """The picture is on the Windows clipboard once CF_DIB is set: the PNG format refused after it is no failure."""
+        import ctypes
+        import types
+        import outrider.winkeys as W
+        bufs, set_calls = [], []
+
+        def alloc(flags, n):
+            bufs.append(ctypes.create_string_buffer(n))
+            return len(bufs)
+        k32 = types.SimpleNamespace(GlobalAlloc=alloc, GlobalLock=lambda h: ctypes.addressof(bufs[h - 1]),
+                                    GlobalUnlock=lambda h: None, GlobalFree=lambda h: None)
+        u32 = types.SimpleNamespace(OpenClipboard=lambda h: 1, EmptyClipboard=lambda: 1, CloseClipboard=lambda: 1,
+                                    SetClipboardData=lambda fmt, h: (set_calls.append(fmt), fmt == 8)[1],
+                                    RegisterClipboardFormatW=lambda n: 49300)
+        for ns in (k32, u32):   # the argtypes / restype attributes the real functions take
+            for name in vars(ns).copy():
+                setattr(ns, name, _Fn(getattr(ns, name)))
+        with unittest.mock.patch.object(ctypes, "WinDLL", lambda name, **kw: k32 if name == "kernel32" else u32, create=True), \
+                unittest.mock.patch.object(ctypes, "get_last_error", lambda: 5, create=True):
+            W.set_clipboard_image(b"DIB", b"PNG")   # no exception: CF_DIB was taken
+            self.assertEqual(set_calls, [8, 49300])
+            set_calls.clear()
+            u32.SetClipboardData = _Fn(lambda fmt, h: (set_calls.append(fmt), False)[1])
+            with self.assertRaises(OSError):         # nothing taken at all: a failure
+                W.set_clipboard_image(b"DIB", b"PNG")
 
     def test_crop_text(self):
         self.assertEqual(S.parse_crop("10, 10, 80, 75"), (10, 10, 80, 75))
@@ -493,6 +538,18 @@ class Server(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ed_outrider.CONFIG_CHECKS["screenshots", "crop"](bad)
         self.assertEqual(ed_outrider.CONFIG_CHECKS["screenshots", "crop"]("10, 10, 90, 90"), "10, 10, 90, 90")
+
+    def test_review_4_server(self):
+        """Fourth in-depth review 2026-10-25: a file still growing after the minute is said to be, not "never appeared";
+        a drive or "/" as the export folder served nothing (the guard's prefix had a doubled separator)."""
+        self.shoot()
+        with unittest.mock.patch.object(S, "wait_ready", lambda *a, **k: False):
+            self.run_queue()
+        r = self.db.execute("SELECT * FROM screenshots").fetchone()
+        self.assertIn("still being written", r["error"])
+        self.st.shots_cfg.update(folder=os.path.abspath(os.sep))
+        self.db.execute("UPDATE screenshots SET full=?, error=NULL WHERE id=?", (os.path.join(self.pictures, "Screenshot_0001.bmp"), r["id"]))
+        self.assertIsNotNone(asyncio.run(self.st.shot_image(r["id"], "full")))
 
     def test_review_3_backlog_counts(self):
         """matched + unmatched add up to queued: a shot done already is not in them (third in-depth review)."""

@@ -1033,6 +1033,18 @@ CONFIG_CHECKS = {**{("highway", "autotarget_" + k): _config_plot_steps for k in 
                  **{k: _config_range(*r) for k, r in CONFIG_RANGES.items()}}
 
 
+def shots_move_problem(ss):
+    """Why [screenshots]' "moved to" cannot work, or None: no folder, or the game's own Pictures folder (the found one
+    when the setting is empty), compared expanded and normalised."""
+    if ss.get("original") != "move":
+        return None
+    if not ss.get("move_to"):
+        return "needs a folder for the BMPs"
+    norm = lambda p: os.path.normcase(os.path.abspath(os.path.expanduser(p))) if p else None   # noqa: E731
+    pictures = ss.get("pictures") or outrider.screenshots.pictures_from_journals(LIVE_DIRS)
+    return "cannot be the game's own Pictures folder" if pictures and norm(ss["move_to"]) == norm(pictures) else None
+
+
 def _config_crop(v):
     """[screenshots] crop: empty, or a box parse_crop takes (review 2026-10-25: one cut away at the edge was stored as
     "" without a word)."""
@@ -8697,6 +8709,10 @@ class State:
         except (outrider.config_edit.tomllib.TOMLDecodeError, ValueError) as e:
             return {"error": f"the change would not read back ({e}); nothing written"}, 400
         saved, after = self._config_settings(cfg)
+        if "screenshots" in changes:   # "moved to" checked with both folders expanded (fourth in-depth review: "~/x"
+            why = shots_move_problem(saved["screenshots"])   # beside its absolute spelling passed the page's check)
+            if why:
+                return {"error": f"[screenshots] move_to {why}"}, 400
         new = [x for x in after if x not in before]
         if new:
             return {"error": "nothing written: " + "; ".join(x.removeprefix("config: ") for x in new), "problems": new}, 400
@@ -12057,6 +12073,9 @@ class State:
 
         def work():
             if not src or not S.wait_ready(src):
+                if src and os.path.exists(src):   # there, but still growing after the minute (a slow disk: fourth review)
+                    raise TimeoutError(f"{shot.get('original')} was still being written after {S.WAIT_S:.0f} s: "
+                                       "Settings' \"Convert the screenshots already there\" converts it once it is done")
                 raise FileNotFoundError(f"{shot.get('original')} never appeared in {pictures}")
             if os.path.getsize(src) == 0:   # there, but the game never wrote it (third in-depth review 2026-10-25)
                 raise ValueError(f"{shot.get('original')} is empty (0 bytes): the game did not write it")
@@ -12193,7 +12212,8 @@ class State:
         if not r:
             return None
         _, root = self.shots_folders()
-        ok = lambda p: p and root and os.path.isfile(p) and os.path.realpath(p).startswith(os.path.realpath(root) + os.sep)
+        # under root (a drive or "/" too: join(..., "") gives one trailing separator, fourth in-depth review 2026-10-25)
+        ok = lambda p: p and root and os.path.isfile(p) and os.path.realpath(p).startswith(os.path.join(os.path.realpath(root), ""))
         mime = lambda p: outrider.screenshots.MIME.get(os.path.splitext(p)[1][1:].lower().replace("jpeg", "jpg"), "image/jpeg")   # noqa: E731
         if size in ("small", "medium", "crop", "full"):
             p = r[size]

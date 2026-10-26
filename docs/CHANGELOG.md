@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Fourth review fixes (1): screenshots and the clipboard
+The fourth in-depth Fable review (everything since d17eee4, each fix through its real path):
+- **A shot still being written** after the minute (a slow disk) is said so, not "never appeared".
+- **A drive or "/" as the export folder** served no picture at all (the folder guard's prefix had a doubled
+  separator): it is under the folder like any other.
+- **"Moved to"** is checked by the server at Save with both folders expanded ("~/x" beside its absolute spelling
+  passed the page's check, then failed at every shot).
+- **The folder picker** keeps a typed new folder for Use this folder (it filled in the parent), and says when a path
+  is a file, not a folder.
+- **The clipboard:** on Windows the picture is copied once CF_DIB is set (a refused PNG format after it said "not
+  copied"); the picture is handed over as bytes (a kept view made its buffer un-closeable: BufferError noise).
+
 ## 2026-10-25 · Third review fixes (2): green gas giants, the trail, records, mining, launchers
 - **Green gas giants:** the same-second match (c1da22b) never fired in the server: the scan times were looked up by
   the journal's full body name while the records carry short ones. They go by body id now, which your records and

@@ -258,7 +258,9 @@ def clipboard_image(path, Image=None, dib=True):
         if dib:
             bmp = io.BytesIO()
             im.save(bmp, "BMP")
-    return png.getbuffer(), (bmp.getbuffer()[14:] if bmp else None)   # CF_DIB: a BMP file without its 14-byte header
+    # bytes, not live views of the BytesIO (fourth in-depth review: a kept slice made the buffer un-closeable): one copy
+    # of each encoded picture, never of the image itself
+    return png.getvalue(), (bmp.getvalue()[14:] if bmp else None)   # CF_DIB: a BMP file without its 14-byte header
 
 
 def metadata(shot):
@@ -503,14 +505,17 @@ def list_folders(path, hidden=False):
     error}."""
     want = os.path.abspath(os.path.expanduser(path or "~"))
     p, missing = want, None
+    is_file = os.path.exists(want) and not os.path.isdir(want)   # a file, not a folder (fourth in-depth review)
     while not os.path.isdir(p):
         up = os.path.dirname(p)
         if up == p:
             break
         p, missing = up, want
+    if is_file:
+        missing = None
     parent = os.path.dirname(p)
     out = {"path": p, "parent": None if parent == p else parent, "sep": os.sep, "dirs": [], "hidden": 0, "more": 0,
-           "drives": drives(), "missing": missing, "error": None}
+           "drives": drives(), "missing": missing, "file": want if is_file else None, "error": None}
     try:
         with os.scandir(p) as it:
             names = []
