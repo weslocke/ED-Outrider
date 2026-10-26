@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Docs brought up to date with the review rounds
+- The README's Screenshots line names WebP, the crop and the clipboard; the code map has the green giant matching
+  (`match_green`, `ggg_scan_times` with `fss_ts`) and how Your records are dated; the journal reference names `fss_ts`;
+  the "not yet tried in game" list says what of screenshots the author has used live and what only fakes have tried.
+
 ## 2026-10-26 · Fourth review fixes (2): codex marks, green gas giants, the trail, records, launchers
 - **Codex marks before the DSS:** the table's possible genera were marked from the raw guess while the to-do line
   first took the species your codex entry on the body names (and the colour logged): they are settled the same way

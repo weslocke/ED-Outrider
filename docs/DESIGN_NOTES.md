@@ -1636,9 +1636,10 @@ confirmed while playing. Treat reports about them as likely real.
   HighRes (Alt+F10) through the rail's virtual keyboard was not tried.
 - A screenshot on the Windows clipboard (`winkeys.set_clipboard_image`: CF_DIB and the registered PNG format, 2026-10-25):
   written to the Win32 API, run only on Linux (xclip) by the author.
-- Screenshot converting end to end in a live session (the event's timing, the subject from a real sample spot or
-  formation, the backlog on a full Pictures folder): the converter was tried on the author's real F10 and HighRes BMPs
-  (2026-10-25), the rest on fakes.
+- Screenshots after the review rounds' fixes (2026-10-25/26): live conversion of F10 and HighRes shots worked for the
+  author (the first on-foot shots named nothing: fixed, not retried); the subject from a real sample spot or formation,
+  WebP, the crop, copies only, the clipboard (Windows' especially) and the backlog on a full Pictures folder were tried
+  on fakes only.
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen
   in the author's journals (the carrier was bought before them).
 - Status.json Flags2 on-foot-in-station bits (3, 13, 14) counting as docked.
