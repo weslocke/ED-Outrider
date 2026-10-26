@@ -410,6 +410,8 @@ class RichesRoute(unittest.TestCase):
         self.jump(-100, 1001, "Alpha Rich", 0)
         for script, why in (([(400, {"error": "Could not find starting system"})], "Spansh: Could not find starting system"),
                             ([(200, {"job": "e", "status": "ok", "result": []})], "found no route"),
+                            # Spansh's answer from inside the bubble (Sol, Lave: 2026-10-26): the start alone, nothing to visit
+                            ([(200, {"job": "e", "status": "ok", "result": [dict(RESULT[0], bodies=[])]})], "found nothing to visit"),
                             ([(200, {"job": "e", "status": "ok", "result": {"unknown": 1}})], "shape Outrider does not know"),
                             ([ed_outrider.ClientError("refused")], "cannot be reached")):
             self.spansh(script)

@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Spansh queries checked against the live site; an empty body route is said
+- Every Spansh call Outrider makes was run against the live site with the code's own requests and parsers: the
+  system sphere, dumps, id64 lookups, body search (Earth-likes, reported biology, species landmarks), station search
+  (services, market, dock with carriers and material traders), commodity and system names, the neutron, exact,
+  Road to Riches (riches, Earth-like, ammonia, terraformable), Exomastery, tourist, trade and fleet carrier plotters.
+  All still answer in the shapes Outrider reads.
+- **A body route with nothing on it:** from inside the bubble (Sol, Lave) Road to Riches and its world routes answer
+  the start system alone. That was stored as a one-stop route already complete; the plot now fails with words to
+  start further out, widen the radius or lower the minimum value.
+
 ## 2026-10-26 · Docs brought up to date with the review rounds
 - The README's Screenshots line names WebP, the crop and the clipboard; the code map has the green giant matching
   (`match_green`, `ggg_scan_times` with `fss_ts`) and how Your records are dated; the journal reference names `fss_ts`;

@@ -105,9 +105,19 @@ def survey_mapping(kind, options):
 
 
 def survey_rows(kind, result):
-    """Spansh's answer for a route of this kind as the slot's rows ([] for a trade answer that is no route)."""
+    """Spansh's answer for a route of this kind as the slot's rows ([] for a trade answer that is no route). A body
+    route with no body anywhere is refused: from inside the bubble (Sol, Lave) Spansh answers the start system alone
+    (probed 2026-10-26), which stored would be a route already complete."""
     parser = survey_kind(kind).parser
-    return trade_rows(result) if parser == "trade" else tourist_rows(result) if parser == "tourist" else riches_rows(result)
+    if parser == "trade":
+        return trade_rows(result)
+    if parser == "tourist":
+        return tourist_rows(result)
+    rows = riches_rows(result)
+    if not any(r["bodies"] for r in rows):
+        raise RichesError("Spansh found nothing to visit with those settings: try starting further out from the bubble, "
+                          "a larger radius or a lower minimum value")
+    return rows
 
 
 class RichesError(Exception):
