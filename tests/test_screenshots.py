@@ -678,6 +678,26 @@ class Server(unittest.TestCase):
                 unittest.mock.patch("subprocess.Popen", side_effect=AssertionError("ghostscript ran")):
             self.assertIsNone(asyncio.run(self.st.codex_picture(q)))
 
+    def test_checklist_rows_mark_your_pictures(self):
+        """The author, 2026-10-26: a 📷 beside each checklist entry (and colour) you have pictures of, from one walk of the
+        codex folders; none while codex_show is off; a folder with no picture, or past a colour's depth, marks nothing."""
+        bul = os.path.join(self.out, "Biology", "Bacterium", "Bacterium Bullaris")
+        for folder, name in ((os.path.join(bul, "Yellow"), "a.png"), (os.path.join(bul, "Red"), "notes.txt"),
+                             (os.path.join(bul, "Red", "deeper"), "x.png"),
+                             (os.path.join(self.out, "Geology", "Geyser", "Water Ice Geyser"), "g.jpg")):
+            os.makedirs(folder, exist_ok=True)
+            open(os.path.join(folder, name), "w").close()
+        self.assertEqual(S.codex_folders(self.out), {os.path.normcase(os.path.join(bul, "Yellow")),
+                                                     os.path.normcase(os.path.join(self.out, "Geology", "Geyser", "Water Ice Geyser"))})
+        rows = lambda kind: {r["name"]: r for g in self.st.checklist("all", kind)[0]["genera"] for r in g["species"]}
+        self.assertNotIn("own_pics", rows("bio")["Bacterium Bullaris"])   # off by default
+        self.st.shots_cfg["codex_show"] = True
+        bio, geo = rows("bio"), rows("geo")
+        self.assertEqual(bio["Bacterium Bullaris"]["own_pics"], ["yellow"])
+        self.assertEqual(bio["Bacterium Aurasus"]["own_pics"], [])
+        self.assertEqual((geo["Water Ice Geyser"]["own_pics"], geo["Water Geyser"]["own_pics"]), ([""], []))
+        self.assertEqual(S.codex_folders(None), set())
+
     def test_a_reread_fills_a_tags_variant(self):
         """Review 2026-10-26: a plant tagged before bio_tags.variant existed kept NULL through a journal re-read (its
         INSERT OR IGNORE), so its shot was never filed by colour."""

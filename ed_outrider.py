@@ -12449,6 +12449,24 @@ class State:
         # when and where it was taken, when the picture says (Outrider wrote it in; an edit may have dropped it)
         return dict(S.picture_facts(path), url=f"api/codex_picture?{q}", full=f"api/codex_picture?{q}&size=full", own=True, file=name)
 
+    def codex_marks(self, out, kind):
+        """[screenshots] codex_show: each checklist row's `own_pics`, the colours ("" for a species with none, and for a
+        formation) you have pictures of in your codex folders (the 📷 beside it, the author 2026-10-26); none while
+        it is off, as the panel then shows Canonn's."""
+        if not self.shots_cfg.get("codex_show"):
+            return out
+        S, root = outrider.screenshots, self.shots_folders()[1]
+        have = S.codex_folders(root)
+        if not have:
+            return out
+        for g in out.get("genera") or []:
+            for r in g.get("species") or []:
+                colours = [v.get("colour") or "" for v in (r.get("variants") or {}).get("list") or []] if kind == "bio" else [""]
+                r["own_pics"] = [c.lower() for c in dict.fromkeys(colours or [""])
+                                 if (lambda d: d and os.path.normcase(d) in have)(
+                                     S.codex_dir(root, {"kind": kind, "group": g.get("genus"), "entry": r.get("name"), "colour": c}))]
+        return out
+
     def checklist_picture(self, species_id, colour="", avoid=None):
         """GET /api/checklist/picture?species=<id>&colour=&avoid=<file>: another of your own pictures of a species' colour
         (each click on a colour picks again, the author 2026-10-26). -> ({image: codex_own's or None}, HTTP status)."""
@@ -13597,7 +13615,7 @@ class State:
             ids = {e["id"] for e in entries}
             codex = [{"entry_id": c["entry_id"], "region": number.get((c["region"] or "").lower())}
                      for c in self.db.execute("SELECT entry_id, region FROM codex") if c["entry_id"] in ids]
-            out = outrider.checklist.geo_table(entries, region, codex, count)
+            out = self.codex_marks(outrider.checklist.geo_table(entries, region, codex, count), "geo")
             done = outrider.checklist.geo_completion(entries, codex, count)
             return dict(out, kind="geo", regions=[{"id": i, "name": n, "completion": done.get(i)} for i, n in enumerate(names) if n],
                         completion_all=done["all"], here=here, region=region, region_name=names[region] if region else None), 200
@@ -13616,8 +13634,8 @@ class State:
                          "region": region_of(r["system"]), "state": state})
         codex = [{"name": c["name"], "region": number.get((c["region"] or "").lower())}
                  for c in self.db.execute("SELECT name, region FROM codex")]
-        out = outrider.checklist.table(R["species"], region, outrider.bio.ruleset_region_ok, runs, codex, count,
-                                         value_of=outrider.bio.species_value)
+        out = self.codex_marks(outrider.checklist.table(R["species"], region, outrider.bio.ruleset_region_ok, runs, codex, count,
+                                                        value_of=outrider.bio.species_value), "bio")
         done = outrider.checklist.completion(R["species"], outrider.bio.ruleset_region_ok, runs, codex, count)
         return dict(out, kind="bio", regions=[{"id": i, "name": n, "completion": done.get(i)} for i, n in enumerate(names) if n],
                     completion_all=done["all"], here=here, region=region, region_name=names[region] if region else None), 200

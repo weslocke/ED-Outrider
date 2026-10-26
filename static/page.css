@@ -1460,6 +1460,7 @@ body.app #richPane { grid-column: 1; grid-row: 2; }
 .clbox tr.clvar .cvc { flex: 0 0 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .clbox tr.clvar .cvw { flex: 1 1 auto; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .clbox tr.clvar .cvs { flex: 0 0 auto; }
+.clcam { font-size: 0.85em; margin-left: 3px; }   /* your own pictures of it (the checklists) */
 .clbox tr.clvar { cursor: default; } .clbox tr.clvar.climgrow { cursor: pointer; }
 .clbox tr.clvar.on { background: rgba(127, 127, 127, .24); }
 /* S29: 🔍 on a species or colour not found (a link-like button), and the nearest reported bodies in the side panel */

@@ -305,6 +305,23 @@ def codex_pictures(folder):
                   and os.path.isfile(os.path.join(folder, n)))
 
 
+def codex_folders(root):
+    """The codex folders under `root` holding a picture (CODEX_IMAGES), normcased: Biology's to the colour (three deep)
+    and Geology's to the formation (two), one walk for the whole checklist (its 📷 marks); links are not followed, as
+    codex_own offers nothing from outside the export folder."""
+    found = set()
+    for top, depth in ((CODEX_FOLDERS["bio"], 3), (CODEX_FOLDERS["geo"], 2)):
+        base = os.path.join(root or "", top)
+        if not root or not os.path.isdir(base):
+            continue
+        for d, dirs, files in os.walk(base):
+            if os.path.relpath(d, base).count(os.sep) + (d != base) >= depth:
+                dirs[:] = []   # no deeper than a colour (or a formation)
+            if any(not f.startswith(".") and os.path.splitext(f)[1].lower() in CODEX_IMAGES for f in files):
+                found.add(os.path.normcase(d))
+    return found
+
+
 def free_path(folder, name):
     """folder/name, else with " (2)", " (3)"... before its extension: the first one not taken."""
     stem, ext = os.path.splitext(name)

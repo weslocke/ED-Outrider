@@ -138,7 +138,8 @@ package (see [Install and run](install.md)), and is off until you tick it.
   codex folder each time you open it (and at each click on a colour), instead of Canonn's; Canonn's still shows where the folder is missing or has
   none. Any picture in the folder counts (PNG, JPG, WebP, GIF), so crop or edit the copies, or add your own. Under the
   picture: "Your picture: 2026-10-26, Smojooe UW-E c11-28 7 f" (when and where it was taken) as far as the picture says
-  (Outrider writes it in; an editor may drop it), else "Your picture, from your codex folders".
+  (Outrider writes it in; an editor may drop it), else "Your picture, from your codex folders". A 📷 beside an entry
+  on the checklists, and beside each colour when a species is open, says you have pictures of your own of it.
 - **Finding them again:** a 📷 beside a body you photographed in Here, its hover card shows the newest three, and the body's panel lists its shots with a
   small picture (click it to open it larger: the medium copy when there is one), the time and what it shows; **📍**
   beside a surface shot pins where it was taken.

@@ -6948,7 +6948,7 @@ function renderChecklist() {
       return `<tr class="${cls}${CL.open === r.id ? " on" : ""}" data-cl="${esc(r.id)}" title="${esc(tip)}"><td>${esc(r.short)}` +
         `${r.possible === "parts" ? ' <span class="clparts">◐</span>' : ""}</td><td>${r.state ? CL_WORD[r.state]
           : r.elsewhere ? `<span class="clelse" title="${esc(`found in another region: ${CL_WORD[r.elsewhere]}`)}">elsewhere</span>`
-          : clFindBtn(r, null, "🔍")}</td>` +
+          : clFindBtn(r, null, "🔍")}${clCam(r.own_pics && r.own_pics.length)}</td>` +
         `<td class="num">${geo ? (r.sites ? r.sites.toLocaleString() : "—") : `${r.variants.found} / ${r.variants.total}`}</td></tr>` +
         (!geo && CL.open === r.id ? clVariantRows(r) : "");
     }).join("") + "</table></div>";
@@ -6980,13 +6980,16 @@ async function clColour(colour) {
     renderChecklist();
   } finally { clColour.busy = false; }
 }
+// 📷: pictures of your own of it in your codex folders (Settings → Screenshots; the author, 2026-10-26)
+function clCam(on) { return on ? ' <span class="clcam" title="you have pictures of your own of it (your codex folders)">📷</span>' : ""; }
 function clVariantRows(r) {
   const {imgs, pick} = clPick(r);
   return r.variants.list.map(v => {
     const k = (v.colour || "").toLowerCase(), img = v.colour && imgs[k];
     return `<tr class="clvar${v.state ? ` cl-${v.state}` : ""}${img ? " climgrow" : ""}${img && k === pick ? " on" : ""}" data-colour="${esc(k)}"` +
       `${img ? ' title="show its picture"' : ""}><td colspan="3"><div class="cvrow"><span class="cvc">${v.colour ? esc(v.colour) : "its one variant"}</span>` +
-      `<span class="cvw">${esc(v.where || "")}</span><span class="cvs">${v.state ? CL_WORD[v.state] : v.colour ? clFindBtn(r, v.colour, "🔍 nearby") : ""}</span></div></td></tr>`;
+      `<span class="cvw">${esc(v.where || "")}</span><span class="cvs">${v.state ? CL_WORD[v.state] : v.colour ? clFindBtn(r, v.colour, "🔍 nearby") : ""}` +
+      `${clCam((r.own_pics || []).includes(k))}</span></div></td></tr>`;
   }).join("");
 }
 document.getElementById("clGrid").addEventListener("click", e => {

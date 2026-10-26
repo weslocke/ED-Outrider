@@ -555,6 +555,26 @@ const releasePayloads = async () => {
       "Amethyst · Image: CMDR Someone, via Canonn"]) && errors.length === before;
     console.log(ok ? "OK" : "FAIL", "| codex picture caption |", JSON.stringify(got), errors.slice(before));
   }
+  // 📷 beside an entry and a colour you have pictures of (the author, 2026-10-26)
+  {
+    const w = dom.window, before = errors.length;
+    const res = JSON.parse(w.eval(`(() => { const saved = [CL.data, CL.open, CL.species];
+      const v = (colour, state) => ({colour, state, where: "x"});
+      CL.data = Object.assign({}, saved[0] || {}, {kind: "bio", region: null, summary: {possible: 1, completion: 0, sold: 0, aboard: 0, colours: 2, colours_found: 0},
+        regions: [], genera: [{genus: "Bacterium", species: [
+          {id: "$B10;", name: "Bacterium Bullaris", short: "Bullaris", possible: "yes", state: "sold", value: 1, own_pics: ["yellow"],
+           variants: {found: 1, total: 2, list: [v("Yellow", "aboard"), v("Red", null)]}},
+          {id: "$B11;", name: "Bacterium Other", short: "Other", possible: "yes", state: null, value: 1, own_pics: [],
+           variants: {found: 0, total: 1, list: [v("Lime", null)]}}]}]});
+      CL.open = "$B10;"; CL.species = null;
+      renderChecklist();
+      const rows = [...document.querySelectorAll("#clGrid tr")].map(tr => [tr.textContent.replace(/\s+/g, " ").trim(), !!tr.querySelector(".clcam")]);
+      [CL.data, CL.open, CL.species] = saved; renderChecklist();
+      return JSON.stringify(rows); })()`));
+    const ok = res.length === 4 && res[0][1] && !res[3][1] && res.find(x => /^Yellow/.test(x[0]))[1] && !res.find(x => /^Red/.test(x[0]))[1] &&
+               errors.length === before;
+    console.log(ok ? "OK" : "FAIL", "| checklist 📷 marks |", JSON.stringify(res), errors.slice(before));
+  }
   // a colour clicked picks another of your own pictures (the author, 2026-10-26); a Canonn one asks nothing
   {
     const w = dom.window, before = errors.length, asked = [];

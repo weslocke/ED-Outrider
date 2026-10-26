@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · 📷 on the checklists beside what you have pictures of
+- With **Show your own pictures on the Bio/Geo checklists** on, a 📷 sits beside each Exo-Biology and Geology entry you
+  have pictures of in your codex folders, and beside each such colour of an open species, where 🔍 nearby and the
+  states are (`own_pics` on each row, from one walk of the folders: `screenshots.codex_folders`).
+
 ## 2026-10-26 · Opus review fixes; the codex line waits for an open guess
 An Opus multi-agent review of 88ac010..HEAD (6 areas x 2 lenses, 2 skeptics per finding: 23 findings, 16 distinct,
 all confirmed; project/done/reviews/review-2026-10-26):
