@@ -161,6 +161,7 @@ endpoints; a tiny BMP made in the test, temp folders), `test_records` (Your reco
 `test_mining_ideas` (Search's "2+ in a ring", a mining mission's search; the page's parts in `page_smoke.js`);
 unittest, in-memory SQLite). `support.py` holds the shared fixtures and fakes (`FakeGame`, `_fake_evdev`, `_HwSession`, `scan`, `T`...) and the helpers test classes share; import from it, never import a test class into another file (it would run twice). One file runs alone as `python3 -m unittest tests.test_highway` |
 | `tests/page_smoke.js` | Loads the page in jsdom from a running server, opens every view, drives many page functions |
+| `tests/page_unit.js` | page.js's pure functions (formatting, parsing, small rules) in about a second, no server: page.html and page.js from disk into jsdom; `t(name, fn)` with `node:assert`, `eq(src, want)` evaluates in the page |
 | `tests/fixtures/journals/` | Synthetic sample journals, `Status.json` and `NavRoute.json` (made-up commander and systems) |
 | `scripts/verify.sh` | Runs everything below in one go against a throwaway server |
 | `scripts/python_check.py` | Whether a Python can install Piper (issue #13: onnxruntime has no Python 3.15 build): `PIPER_PYTHONS` (3.11 to 3.14, 64-bit; move its top when onnxruntime publishes a newer one, the launchers' lists are tested against it), `why_not`, `has_venv` (Debian's missing ensurepip), `notice`; `--ok` (exit 0 when it suits) picks the launchers' Python (Windows `py -3.14` … `-3.11`, then `py -3`; Linux `python3`, then `python3.14` … `python3.11`), plain prints the notice before the setup; install_requirements names the reason when piper-tts fails |
@@ -297,7 +298,9 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
   playwright is only for optional screenshots and downloads no browser by itself).
 - **One command:** `scripts/verify.sh`. It runs the unit tests (a ResourceWarning, such as a database a test never
   closes, fails the run: `self.addCleanup(db.close)`), pyflakes (any warning fails), `node
-  --check static/page.js`, then starts a scratch server on a free port with a fresh database built from
+  --check static/page.js`, `tests/page_unit.js` (page.js's own functions, about a second: page.html with page.js
+  inlined, loaded from disk into jsdom with the search options verify writes from `SEARCH_OPTIONS`, fetch never
+  answering, `LC_ALL=en_US.UTF-8`), then starts a scratch server on a free port with a fresh database built from
   `tests/fixtures/journals`, a temporary config and no network, waits until GET `/api/starting` says "ready" (the
   starting page answers before that, S9), runs `tests/page_smoke.js`, and stops the server by its PID. Its service
   folder (S70) is a scratch one and systemctl is never run. All of it happens in a `mktemp` folder that is deleted afterwards. `VERBOSE=1` prints
@@ -551,8 +554,9 @@ limpet, hold, `prospect_hit` and `motherlode` keys about 16, `ring_found_many` 3
   rewrite `resources/bio_rules.json`, and don't write the real `data/speech_banned.json` (use a speech file in a
   temp folder: its bans go beside it).
 - **Every fix gets a test that fails without it.** Unit tests feed synthetic events to `Journals.handle()` on
-  `open_db(":memory:")`; page behaviour goes in `page_smoke.js`, injecting the data it needs through
-  `window.eval` rather than relying on anyone's real database.
+  `open_db(":memory:")`; a fix in one of page.js's own functions (a formatter, a parser, a rule that takes its
+  inputs) gets its test in `page_unit.js`; page behaviour (clicks, payloads, views) goes in `page_smoke.js`,
+  injecting the data it needs through `window.eval` rather than relying on anyone's real database.
 
 ## Recipes
 

@@ -58,6 +58,20 @@ step "node --check static/page.js"
 if ! command -v node >/dev/null 2>&1; then echo "node not found (Node.js 22 or newer is needed)"; FAIL=1
 elif node --check static/page.js; then echo "ok"; else FAIL=1; fi
 
+step "page unit tests (page.js's own functions, jsdom from disk, no server)"
+if ! command -v node >/dev/null 2>&1; then
+  echo "skipped: no node"
+elif [ ! -d "$MODS/jsdom" ]; then
+  echo "jsdom not found in $MODS: run npm install (or set NODE_MODULES)"; FAIL=1
+elif ! "$PY" -c 'import json, ed_outrider; print(json.dumps(dict(ed_outrider.SEARCH_OPTIONS, mining=[])))' >"$TMP/search_options.json"; then
+  echo "could not write the search options for it"; FAIL=1
+# a fixed locale: numbers are formatted by toLocaleString
+elif LC_ALL=en_US.UTF-8 node tests/page_unit.js "$TMP/search_options.json" "$MODS" >"$TMP/page_unit.log" 2>&1; then
+  tail -1 "$TMP/page_unit.log"
+else
+  grep -v "^OK" "$TMP/page_unit.log" | head -30; FAIL=1
+fi
+
 step "page smoke test on a scratch server"
 if ! command -v node >/dev/null 2>&1; then
   echo "skipped: no node"

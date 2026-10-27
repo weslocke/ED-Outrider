@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · page.js's own functions get a one-second test file
+- The review's suggestion #3: `tests/page_unit.js` loads page.html with page.js inlined into jsdom from disk (no
+  server, fetch never answering, the search options from a file verify writes) and checks page.js's pure functions:
+  `esc`, `credits` at its rounding edges, `tons` / `fmtK` / `signedCr` / `spokenNumber`, `etaText` / `spokenTime`,
+  `andList` / `orList`, `orbitLs`, `parsePinCoords` / `pinCoordText`, `starCode`, `shortForm`, `dual`, `prospectHit`
+  (a mineral's own threshold, combined) and `scSeconds`; its first check is that page.js loads with no payload at
+  all. verify.sh runs it after `node --check`, in a fixed locale (about a second). The guide: a fix in one of page.js's
+  own functions gets its test here, page behaviour stays in page_smoke.js.
+
 ## 2026-10-27 · A retried tick says a jumponium body in the FSS debrief, not on its own
 - Found while scoping the review's suggestion #4: `Journals.last_all_found` (the latest FSSAllBodiesFound) was not in
   `checkpoint()` / `restore()`, listed as "overwritten" by the retry. But `note_jumponium` reads it as a guard ("the
