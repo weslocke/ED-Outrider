@@ -28,6 +28,10 @@ class Phrases(unittest.TestCase):
         cases = {"Hey Vespa, status report.": "status_report", "vespa what's my fuel": "fuel", "How much am I carrying?": "unsold",
                  "next jump": "next_jump", "how many jumps left on the highway": "next_jump", "What's left here?": "whats_left",
                  "nearest unvisited system": "nearest_unvisited", "hush": "hush", "Vespa, be quiet!": "hush",
+                 # the review's #7: the lines that say "ask the navigator for the nearest scoopable star" get an answer
+                 "Navigator, what's the nearest scoopable star?": "nearest_scoop", "where can I scoop": "nearest_scoop",
+                 "find me a fuel star": "nearest_scoop", "nearest refuel": "nearest_dock",
+                 "nearest station with fuel": "nearest_dock",
                  "any green gas giants near here": "nearest_ggg",
                  "unhush": "unhush", "voice back please": "unhush", "jumps left": "fuel",
                  "what's the weather like": None, "": None, "hushpuppies": None,
@@ -67,6 +71,39 @@ class Phrases(unittest.TestCase):
                          ("10m", "I can hush for 10 or 30 minutes, or until the next jump. Quiet for 10 minutes."))
         self.assertEqual(ask.hush_words("hush")[1], "Quiet for 30 minutes.")   # no time said: no list of choices
 
+    def test_nearest_scoopable_star(self):
+        """The review's #7: the nearest known scoopable star from you, beyond one jump said; none known said with the
+        galaxy map's advice; Nearby set around another system said (a nearer one may be missing)."""
+        def get_with(change):
+            base = fake_get()
+
+            async def get(path, params):
+                d = await base(path, params)
+                change(path, d)
+                return d
+            return get
+        ans = lambda change: asyncio.run(ask.fixed_answer("nearest_scoop", get_with(change)))   # noqa: E731
+
+        def short_range(path, d):
+            if path == "/api/status":
+                d["jump_range"] = 12.0
+        self.assertEqual(ans(short_range), "Nearest known scoopable star: Far Rich, a K star, 20.5 light years, beyond one jump at your range.")
+
+        def none(path, d):
+            for x in d.get("systems") or []:
+                x["main_scoopable"] = False
+        self.assertEqual(ans(none), "No known scoopable star within 25 light years. Most unreported stars are scoopable: "
+                                    "check the galaxy map.")
+
+        def around(path, d):
+            if path == "/api/nearby":
+                d["near_around"] = {"around": "lock", "name": "Colonia", "x": 0, "y": 0, "z": 100}
+                d["position"].update(x=0, y=0, z=0)
+                for x in d["systems"]:
+                    x["xyz"] = [0, 0, 20.5] if x["name"] == "Far Rich" else [0, 0, 1]
+        self.assertEqual(ans(around), "Nearest known scoopable star: Far Rich, a K star, 20.5 light years, within one jump. "
+                                      "Nearby is set around Colonia, not around you: a nearer scoopable star may be missing.")
+
     def test_broken_phrase_file(self):
         with tempfile.TemporaryDirectory() as d:
             p = os.path.join(d, "ask.json")
@@ -83,6 +120,7 @@ class Phrases(unittest.TestCase):
         self.assertEqual(go("unsold"), "About 900 credits unsold: 600 cartographic and 300 exobiology.")
         self.assertEqual(go("next_jump"), "Next highway stop: Neu, 400 light years, a neutron star. 42 jumps left, refuel in 3.")
         self.assertEqual(go("nearest_unvisited"), "Nearest unvisited: Near New, 7.0 light years.")
+        self.assertEqual(go("nearest_scoop"), "Nearest known scoopable star: Far Rich, a K star, 20.5 light years, within one jump.")
         self.assertEqual(go("nearest_ggg"), "Nearest potential green gas giant: B 3 in Far Green, 30.0 light years. "
                                             "A guess from the ladder model: check it in the system map.")   # S27
         self.assertEqual(go("whats_left"), "Still to do here: find 1 more body in the FSS; biology on A 1; map A 2.")

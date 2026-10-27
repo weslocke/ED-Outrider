@@ -442,7 +442,8 @@ every open page. Outrider knows these without any AI: **where am I** (the system
 or near), **status report, fuel** (with your jump range: "how far can I jump"), **unsold, next stop** (of whichever
 route you follow: the Highway, Road to Riches, Exomastery, a world, sweep or trade route, the one plotted last; else
 your next stop, else the route plotted in the game), **what's left here,
-nearest unvisited, nearest station** (or carrier, Vista, cartographics, repair, refuel, shipyard, material trader,
+nearest unvisited, nearest scoopable star** (the nearest known one from you, and whether it is within one jump; most
+unreported stars can be scooped too), **nearest station** (or carrier, Vista, cartographics, repair, refuel, shipyard, material trader,
 raw material trader, "where can I sell": see
 [Nearest place to dock](plot-route.md#-nearest-place-to-dock); a place further than 500 ly also gets a neutron route
 plotted there while you follow none), **nearest green gas giant** (a guess from what
@@ -481,8 +482,9 @@ your model with real questions: tool calling varies, and a slow model runs into 
 An AI client you already use (Claude Code, the Claude desktop app, or any other MCP client) can ask Outrider questions
 in plain language: "what's worth landing on here?", "how much am I carrying unsold?", "what's left within 50 ly?",
 "how far to the next refuel on the highway?". Your client starts `python3 -m outrider.mcp` when it needs it (nothing
-to run or switch on in Outrider), which reads your running Outrider and answers through thirteen read-only tools:
-current status, this system, nearby systems, the nearest unvisited system, the nearest place to dock, the nearest
+to run or switch on in Outrider), which reads your running Outrider and answers through fourteen read-only tools:
+current status, this system, nearby systems, the nearest unvisited system, the nearest scoopable star, the nearest
+place to dock, the nearest
 potential green gas giants, one body, unsold data, work left behind, the Highway route, the next stop of whichever
 route you follow, travel history and materials. It can only read: it never presses keys, plots, bookmarks or hushes
 anything. Nothing extra to install.

@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · "Nearest scoopable star?" by voice
+- The review's suggestion #7: five shipped low-fuel lines say "ask the navigator for the nearest scoopable star", and
+  no command answered it. Now "nearest scoopable star", "where can I scoop", "fuel star"... answer "Nearest known
+  scoopable star: Far Rich, a K star, 20.5 light years, within one jump" (or "beyond one jump at your range"; "No
+  known scoopable star within 25 light years. Most unreported stars are scoopable: check the galaxy map."), and say
+  when Nearby is set around another system (a nearer one may be missing). From a new read-only tool,
+  `nearest_scoopable`, so the MCP bridge and the AI layer have it too (fourteen tools). "Nearest refuel" and "nearest
+  station with fuel" stay station questions. Answer only: nothing is targeted.
+
 ## 2026-10-27 · The lines' sample values come from the server: one place fewer per new line
 - The review's suggestion #14: page.js kept its own copy of the sample values the voice lab, Audition and the ▶ try
   button fill lines with (`LINE_SAMPLES`, 73 keys), and it had drifted from `outrider.speech.SAMPLES` (four keys only

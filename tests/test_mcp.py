@@ -95,7 +95,7 @@ class Registry(unittest.TestCase):
     def test_listing(self):
         names = [t["name"] for t in tools.listing()]
         self.assertEqual(len(names), len(set(names)))
-        for want in ("current_status", "this_system", "nearby_systems", "nearest_unvisited", "body_detail", "unsold_data",
+        for want in ("current_status", "this_system", "nearby_systems", "nearest_unvisited", "nearest_scoopable", "body_detail", "unsold_data",
                      "left_behind", "highway_route", "travel_history", "materials"):
             self.assertIn(want, names)
         for t in tools.listing():
@@ -142,6 +142,8 @@ class Registry(unittest.TestCase):
         self.assertEqual([x["name"] for x in near["systems"]], ["Far Rich", "Near Seen", "Near New"])   # by value; not here, not route-only
         self.assertEqual([x["name"] for x in run("nearby_systems", {})["systems"]], ["Near Seen", "Near New", "Far Rich"])
         self.assertEqual([x["name"] for x in run("nearby_systems", {"unvisited_only": True})["systems"]], ["Near New", "Far Rich"])
+        ns = run("nearest_scoopable")   # the review's #7: from you, the jump range said; not here
+        self.assertEqual((ns["nearest"]["name"], ns["nearest"]["one_jump"], ns["jump_range_ly"], ns["next_ones"]), ("Far Rich", True, 72.5, []))
         nu = run("nearest_unvisited")
         self.assertEqual((nu["nearest"]["name"], nu["nearest"]["distance_ly"], nu["next_ones"][0]["name"]), ("Near New", 7.0, "Far Rich"))
         calls = []

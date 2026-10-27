@@ -32,13 +32,16 @@ TEXT_MAX = 500
 # The review's batch H (2026-10-24): the bookmark commands first (a note after "bookmark this system" may hold any
 # word: "quiet", "this system"); "again" before unhush ("say again" is no unhush, "speak again" is); where_am_i after
 # next_jump ("where am i going" stays next_jump's); show_page last, and only with a page's name after it (page_named)
-COMMANDS = ("bookmark_remove", "bookmark_here", "again", "unhush", "hush", "nearest_ggg", "nearest_dock", "fsd_injection",
-            "travel_today", "left_behind", "this_body", "next_jump", "where_am_i", "status_report", "fuel", "unsold",
-            "whats_left", "nearest_unvisited", "show_page")
+# nearest_scoop after nearest_dock ("nearest station with fuel" stays a station) and before fuel and nearest_unvisited
+# (the review's suggestion #7, 2026-10-27: shipped lines tell you to ask the navigator for the nearest scoopable star)
+COMMANDS = ("bookmark_remove", "bookmark_here", "again", "unhush", "hush", "nearest_ggg", "nearest_dock", "nearest_scoop",
+            "fsd_injection", "travel_today", "left_behind", "this_body", "next_jump", "where_am_i", "status_report", "fuel",
+            "unsold", "whats_left", "nearest_unvisited", "show_page")
 # what the voice says it knows when nothing matched: one label per command, in the order said (a test checks every
 # command has one, so a new command is never left out of the list)
 LABELS = {"status_report": "a status report", "fuel": "fuel", "unsold": "unsold data", "next_jump": "the next jump",
           "whats_left": "what's left here", "nearest_unvisited": "the nearest unvisited system",
+          "nearest_scoop": "the nearest scoopable star",
           "nearest_dock": "the nearest station, carrier or material trader",
           "nearest_ggg": "the nearest potential green gas giant", "fsd_injection": "FSD injections",
           "travel_today": "how far today", "this_body": "this body", "left_behind": "what's left behind nearby",
@@ -490,6 +493,18 @@ async def fixed_answer(command, get, rows=10, text="", limits=None):
         if not x:
             return n.get("note") or "No known unvisited system nearby."
         return f"Nearest unvisited: {x['name']}, {ly(x.get('distance_ly'))} light years" + (", scoopable." if x.get("scoopable") else ".")
+    if command == "nearest_scoop":
+        n = await tools.call("nearest_scoopable", {}, get, rows)
+        if n.get("error"):
+            return n["error"]
+        x, note = n.get("nearest"), (f" {n['note']}." if n.get("note") else "")
+        if not x:
+            r = n.get("radius_ly")
+            within = f"within {round(r):,} light years" if isinstance(r, (int, float)) else "nearby"
+            return f"No known scoopable star {within}. Most unreported stars are scoopable: check the galaxy map.{note}"
+        star = f", {a_or_an(x['main_star'])} {x['main_star']} star" if x.get("main_star") and len(x["main_star"]) <= 2 else ""
+        reach = {True: ", within one jump", False: ", beyond one jump at your range"}.get(x.get("one_jump"), "")
+        return f"Nearest known scoopable star: {x['name']}{star}, {ly(x.get('distance_ly'))} light years{reach}.{note}"
     if command == "whats_left":
         s = await tools.call("this_system", {}, get, rows)
         if s.get("error"):
@@ -558,7 +573,7 @@ def route_words(r):
 
 # how the list groups the commands (a test checks each command is in exactly one)
 GROUPS = (("Where you are", ("where_am_i", "status_report", "fuel", "unsold", "whats_left", "this_body")),
-          ("Where to go", ("next_jump", "nearest_unvisited", "nearest_dock", "nearest_ggg", "left_behind")),
+          ("Where to go", ("next_jump", "nearest_unvisited", "nearest_scoop", "nearest_dock", "nearest_ggg", "left_behind")),
           ("Your trip and your materials", ("travel_today", "fsd_injection", "bookmark_here", "bookmark_remove")),
           ("The voice and the tablet", ("again", "hush", "unhush", "show_page")))
 # hush's times as they can be said (S32): (the mode, what it gives, examples); a test checks hush_mode reads each one so

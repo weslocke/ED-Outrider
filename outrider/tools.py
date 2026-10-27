@@ -186,6 +186,24 @@ async def nearest_unvisited(get, args, rows):
     return {"nearest": _sys_brief(xs[0]), "next_ones": [_sys_brief(x) for x in xs[1:min(len(xs), 1 + max(0, min(rows, 5) - 1))]]}
 
 
+@tool("nearest_scoopable", "The nearest known system whose main star can be scooped for fuel (KGBFOAM), from the "
+      "commander, and whether it is within one jump; any unreported star nearer could be scoopable too (most are).")
+async def nearest_scoopable(get, args, rows):
+    p = await get("/api/nearby")
+    here = (p.get("position") or {}).get("id")
+    xs, around = _from_you(p)
+    xs = sorted((x for x in xs if x.get("id") != here and x.get("main_scoopable") and x.get("distance") is not None),
+                key=lambda x: x["distance"])
+    jr = (await get("/api/status")).get("jump_range")
+    # the page's Nearby set around another system: its stars, measured from the commander; nearer ones may be missing
+    where = {"note": f"Nearby is set around {around}, not around you: a nearer scoopable star may be missing"} if around else {}
+    if not xs:
+        return {"nearest": None, "radius_ly": p.get("radius"), "jump_range_ly": jr, **where}
+    one = lambda x: None if not jr else x["distance"] <= jr
+    return {"nearest": dict(_sys_brief(xs[0]), one_jump=one(xs[0])), "jump_range_ly": jr, **where,
+            "next_ones": [dict(_sys_brief(x), one_jump=one(x)) for x in xs[1:min(len(xs), 1 + max(0, min(rows, 5) - 1))]]}
+
+
 @tool("nearest_dock", "The nearest stations and fleet carriers the commander can dock at (pad size, docking access, "
       "recent reports), from Spansh, the Deep Space Support Array's list and their own carrier; optionally only those "
       "with given services, a material trader among them.",
