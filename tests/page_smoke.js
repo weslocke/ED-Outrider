@@ -3,6 +3,14 @@
 // every view in turn and fails on any script error or a view that stays empty.
 // It clicks and POSTs, so it only ever runs against a SCRATCH server (scripts/verify.sh starts one): the port is
 // required, and 8025 (a real Outrider's default) is refused.
+// Named blocks (the review's #2): every check sits in a labelled block guarded by skip(label); SMOKE_ONLY=here,bio (a
+// comma list: exact labels or their starts) runs only those (the prelude and the shared fixtures always run), a crash
+// names the block it happened in, and `node tests/page_smoke.js --list` prints the labels with no server.
+// `scripts/verify.sh --smoke here,bio` runs a partial pass: a working aid, never a verify PASS.
+if (process.argv[2] === "--list") {
+  for (const m of require("fs").readFileSync(__filename, "utf8").matchAll(/^  (\w+): \{ if \(skip\("\1"\)\) break \1;/gm)) console.log(m[1]);
+  process.exit(0);
+}
 const port = process.argv[2];
 if (!/^\d+$/.test(port || "")) {
   console.error("usage: node tests/page_smoke.js <port of a scratch server> [node_modules]  (scripts/verify.sh starts one)");
@@ -15,6 +23,16 @@ if (port === "8025") {
 const mods = process.argv[3] || "node_modules";
 const {JSDOM} = require(require("path").resolve(mods, "jsdom"));
 const base = `http://127.0.0.1:${port}/`; const sleep = ms => new Promise(r => setTimeout(r, ms));
+const SMOKE_ONLY = (process.env.SMOKE_ONLY || "").split(",").map(x => x.trim()).filter(Boolean);
+const BLOCKS = {all: 0, ran: 0, current: "the prelude", start: 0, times: []};
+const blockEnd = () => { if (BLOCKS.start) BLOCKS.times.push([BLOCKS.current, Date.now() - BLOCKS.start]); BLOCKS.start = 0; };
+const skip = label => {
+  blockEnd();
+  BLOCKS.all++;
+  if (SMOKE_ONLY.length && !SMOKE_ONLY.some(p => label === p || label.startsWith(p))) return true;
+  BLOCKS.ran++; BLOCKS.current = label; BLOCKS.start = Date.now();
+  return false;
+};
 // The page's own requests in flight (the long poll, always open, does not count) and when the last one started or
 // ended: settle(maxMs) returns once none has been in flight for QUIET ms (the page has had its answers and drawn
 // them, late script errors included), or after maxMs at the latest (the old fixed sleep, now a ceiling).
@@ -62,6 +80,10 @@ const releasePayloads = async () => {
       w.localStorage.clear();
       w.scrollBy = () => {};
       w.HTMLCanvasElement.prototype.getContext = () => null;   // no canvas in jsdom: the page draws nothing and says nothing
+      // jsdom has no modal dialogs and lays nothing out: given here once for every block (two blocks used to add them,
+      // and the ones after leaned on that: the named blocks run alone, 2026-10-27)
+      if (!w.HTMLDialogElement.prototype.showModal) w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+      if (!w.Element.prototype.scrollIntoView) w.Element.prototype.scrollIntoView = function () {};
     }});
   const d = dom.window.document;
   // One rule for every 🎯 (the author, 2026-10-14): a 🎯 shows only where auto-target can work (canAim), which the
@@ -79,6 +101,14 @@ const releasePayloads = async () => {
     c.querySelectorAll(".mk").forEach(m => m.replaceWith(`[${[...m.classList].find(k => k.startsWith("mk-")).slice(3)}]`));
     return c.textContent; };
   dom.window.markText = markText;
+  // a block that reads Here's system (hereData) loads it itself when no block before it did (the named blocks run
+  // alone: SMOKE_ONLY), as the views loop does: Here opened and its answer waited for
+  const ensureHere = async () => {
+    if (dom.window.eval("!!(hereData && !hereData.error)")) return;
+    if (!d.getElementById("nowView").hidden) { d.getElementById("nowBack").click(); await sleep(300); }
+    d.querySelector('[data-view="here"]').click();
+    await settle(3000);
+  };
   // The CMDR tab's Earnings (GET api/commander/earnings, outrider/earnings.py's shape), made up: five months of all
   // time (one empty), a carto sale, a mining one (20 t mined of 30 sold), a bio one at a carrier with no ship known; the
   // period's own label per answer; and a database with no sale at all. Used by the desktop block and the tablet's.
@@ -131,6 +161,7 @@ const releasePayloads = async () => {
   const views = [["overview", "#ovPanes"], ["near", "#rows"], ["here", "#hereRows"], ["bio", "#bioRows"], ["bm", "#bmTable"],
                  ["search", "#searchForm"], ["hist", "#histRows"], ["log", "#logRows"], ["mat", "#matGrid"], ["firsts", "#firstsRows"], ["hwy", "#hwyHead"], ["now", "#nowView"]];
   let allOk = ok;
+  views: { if (skip("views")) break views;
   for (const [v, sel] of views) {
     const btn = d.querySelector(`[data-view="${v}"]`);
     if (!btn) { console.log("FAIL | no view button", v); allOk = false; continue; }
@@ -147,9 +178,10 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "|", v.padEnd(8), "|", (el ? el.textContent.trim().replace(/\s+/g, " ").slice(0, 90) : "missing " + sel), errors.slice(before));
   }
+  }
   // the exobiology checklist: Bio/Geo -> Exo-Biology shows genus boxes from api/checklist, a click opens the species'
   // panel (its colours; the map needs a canvas, which jsdom has not), and Runs comes back
-  {
+  exobiology_checklist: { if (skip("exobiology_checklist")) break exobiology_checklist;
     holdPayloads();
     if (!d.getElementById("nowView").hidden) { d.getElementById("nowBack").click(); await sleep(500); }
     const before = errors.length;
@@ -237,7 +269,7 @@ const releasePayloads = async () => {
   }
   // the map reopened while its request was on its way asks again with the same key: the older request's failure
   // must not throw the newer answer away (#7 of the Fable review, 2026-10-10)
-  {
+  map_an_older_requests_failure_keeps_the: { if (skip("map_an_older_requests_failure_keeps_the")) break map_an_older_requests_failure_keeps_the;
     const before = errors.length;
     const res = JSON.parse(await dom.window.eval(`(async () => {
       const real = apiJson, pend = [], savedPos = data.position, savedData = M.data;
@@ -258,6 +290,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| map: an older request's failure keeps the newer answer |", JSON.stringify(res), errors.slice(before));
   }
   // the schematic toggle inside Here (Now mode hides the view buttons: ✕ back first)
+  here_schematic: { if (skip("here_schematic")) break here_schematic;
   if (!d.getElementById("nowView").hidden) { d.getElementById("nowBack").click(); await sleep(500); }
   d.querySelector('[data-view="here"]').click(); await settle(1500);
   const tog = d.querySelector('[data-mode="schematic"]');
@@ -278,9 +311,10 @@ const releasePayloads = async () => {
     console.log(good2 ? "OK" : "FAIL", "| tree+split |", `${treeRows} rows, ${indented} indented, schematic kept: ${schKept}`, errors.slice(before2));
     d.querySelector('[data-mode="list"]').click();
   } else { console.log("FAIL | no schematic toggle"); allOk = false; }
+  }
   // a payload the page cannot draw (systems not a list: render() throws) must not stop the polling: the
   // Data tile says so, and the next long poll still goes out
-  {
+  bad_payload: { if (skip("bad_payload")) break bad_payload;
     const w = dom.window, realFetch = w.fetch; let nearby = 0, injected = false;
     const good = JSON.stringify(w.eval("data")), bad = Object.assign(JSON.parse(good), {systems: 7});
     w.fetch = (u, o) => {
@@ -302,7 +336,7 @@ const releasePayloads = async () => {
   }
   // holdPayloads (the blocks below that inject state): a payload the server sends meanwhile waits and the injected state
   // stays; releasePayloads lets it in
-  {
+  payload_hold: { if (skip("payload_hold")) break payload_hold;
     const w = dom.window, before = errors.length;
     await settle(1000);
     holdPayloads();
@@ -321,7 +355,7 @@ const releasePayloads = async () => {
   }
   // values: a logged species is priced as itself (x5 on a first footfall), a lost one says so, a genus with
   // samples under way is listed once, and a jet-cone charge boosts only the first jump of a trip
-  {
+  values: { if (skip("values")) break values;
     const w = dom.window, before = errors.length;
     const pop = w.eval(`bodyPopHtml({name: "X 1", type: "Planet", bio: 2, genera: ["Bacterium"], value_parts: {bio_factor: 5},
       bio_guess: [{genus: "Bacterium", best: "Bacterium Nebulus", value: 9116600, species: ["Nebulus", "Cerbrus"]}],
@@ -344,7 +378,7 @@ const releasePayloads = async () => {
   }
   // click to copy: a Here body name copies that name, the current system (a .copy span) its name, and an
   // element without data-name copies nothing (it used to copy "undefined")
-  {
+  copy: { if (skip("copy")) break copy;
     const w = dom.window, before = errors.length, copied = [], realCopy = w.copyText;
     if (!d.getElementById("nowView").hidden) { d.getElementById("nowBack").click(); await sleep(300); }
     d.querySelector('[data-view="here"]').click(); await sleep(1000);
@@ -361,7 +395,7 @@ const releasePayloads = async () => {
     console.log(goodC ? "OK" : "FAIL", "| copy |", `copied ${JSON.stringify(copied)}`, errors.slice(before));
   }
   // a failed /api/log says so (not 'loading…' forever) and the next load tries again
-  {
+  log_error: { if (skip("log_error")) break log_error;
     const w = dom.window, realFetch = w.fetch, before = errors.length;
     w.fetch = (u, o) => String(u).startsWith("api/log")
       ? Promise.resolve(new Response(JSON.stringify({error: "boom"}), {status: 500, headers: {"Content-Type": "application/json"}}))
@@ -377,7 +411,7 @@ const releasePayloads = async () => {
   }
   // robustness: an errored system lookup is asked again once due, a search whose polls keep failing stops
   // saying 'searching…', the unsold thresholds show the configured values, Materials refetches after a jump
-  {
+  retries: { if (skip("retries")) break retries;
     holdPayloads();
     const w = dom.window, realFetch = w.fetch, realST = w.setTimeout, before = errors.length, asked = [];
     let sysFail = true;
@@ -416,7 +450,7 @@ const releasePayloads = async () => {
   }
   // the speech queue: danger jumps ahead of queued finds (and cuts short the one playing), a find about a system
   // you have left is dropped, heat is said once per cooldown; the pure pick/expire rules too
-  {
+  speech_queue: { if (skip("speech_queue")) break speech_queue;
     holdPayloads();
     const w = dom.window, before = errors.length, spoken = [], stopped = [];
     const realSay = w.sayNow, savedPos = w.eval("data.position && JSON.stringify([data.position.id64, data.position.id])");
@@ -461,7 +495,7 @@ const releasePayloads = async () => {
   }
   // a jump clears the queue: lines queued (and the one playing) about the old system go, the FSD line is said,
   // danger lines and lines asked for by hand stay
-  {
+  jump_clears_speech: { if (skip("jump_clears_speech")) break jump_clears_speech;
     const w = dom.window, before = errors.length, spoken = [], stopped = [];
     const realSay = w.sayNow, saved = w.eval("[speechOn, isSpeaker]");
     w.eval("speechOn = true; isSpeaker = true; speechItems = []; speechLast = {}");
@@ -483,7 +517,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| jump clears speech |", spoken.join(" / "), "| cut:", stopped.join(), errors.slice(before));
   }
   // the Neutron Highway's moments (H1): said in their plain words under their own alerts row, not notified by default
-  {
+  highway_moments_spoken: { if (skip("highway_moments_spoken")) break highway_moments_spoken;
     const w = dom.window, before = errors.length, said = [];
     const realPlay = w.play, realSpeak = w.speak;
     w.speak = (t, o) => said.push([t, (o || {}).kind]); w.play = () => {};
@@ -505,7 +539,7 @@ const releasePayloads = async () => {
   }
   // the FSS's possible new codex entries (the author, 2026-10-26): their own tick, said with the counts' ticks off, on by
   // default, quiet when unticked
-  {
+  codex_signals_spoken: { if (skip("codex_signals_spoken")) break codex_signals_spoken;
     const w = dom.window, before = errors.length, said = [];
     const realPlay = w.play, realSpeak = w.speak;
     w.speak = (t, o) => said.push([t, (o || {}).kind]); w.play = () => {};
@@ -541,7 +575,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| codex signals spoken |", words, JSON.stringify(res), errors.slice(before));
   }
   // a checklist picture of your own says when and where it was taken, as far as the picture says (the author, 2026-10-26)
-  {
+  codex_picture_caption: { if (skip("codex_picture_caption")) break codex_picture_caption;
     const w = dom.window, before = errors.length;
     const cap = img => { const d = w.document.createElement("div"); d.innerHTML = w.eval(`clFigure(${JSON.stringify(img)}, "x", "Amethyst")`);
                          return d.querySelector("figcaption").textContent; };
@@ -555,7 +589,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| codex picture caption |", JSON.stringify(got), errors.slice(before));
   }
   // Boxel view: a known system's row opens it in Here and its bodies cell has Nearby's hover card (the author, 2026-10-26)
-  {
+  boxel_rows_open_in_here_hover_card: { if (skip("boxel_rows_open_in_here_hover_card")) break boxel_rows_open_in_here_hover_card;
     const w = dom.window, before = errors.length;
     const res = JSON.parse(w.eval(`(() => {
       const saved = [boxelData, pinnedSystem], pane = document.getElementById("boxelPane"), wasHidden = pane.hidden;
@@ -608,7 +642,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| boxel rows open in Here, hover card |", JSON.stringify(res), errors.slice(before));
   }
   // the records a body holds said on its card and in its panel, not only in the 🏆's hover (the author, 2026-10-26)
-  {
+  records_on_the_bodys_card: { if (skip("records_on_the_bodys_card")) break records_on_the_bodys_card;
     const w = dom.window, before = errors.length;
     const res = JSON.parse(w.eval(`(() => { const saved = REC.d;
       REC.d = {records: [{key: "hot", label: "Hottest planet", text: "1,203 K", body: "4", system: "Smojooe AB-C d1-2", id64: "77", ts: new Date().toISOString()},
@@ -629,7 +663,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| records on the body's card |", JSON.stringify(res).slice(0, 400), errors.slice(before));
   }
   // 📷 beside an entry and a colour you have pictures of (the author, 2026-10-26)
-  {
+  checklist_marks: { if (skip("checklist_marks")) break checklist_marks;
     const w = dom.window, before = errors.length;
     const res = JSON.parse(w.eval(`(() => { const saved = [CL.data, CL.open, CL.species];
       const v = (colour, state) => ({colour, state, where: "x"});
@@ -649,7 +683,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| checklist 📷 marks |", JSON.stringify(res), errors.slice(before));
   }
   // a failed api/records keeps the 🏆 already shown and asks again a minute later (review 2026-10-26)
-  {
+  records_kept_on_a_failed_ask: { if (skip("records_kept_on_a_failed_ask")) break records_kept_on_a_failed_ask;
     const w = dom.window, before = errors.length;
     const realApi = w.apiJson;
     w.eval(`window.__rec = [REC.d, REC.key, REC.failed]; REC.d = {bodies: 1, records: [{label: "Biggest planet", text: "1 km", body: "4", system: "S", id64: "77"}]}; REC.key = null;`);
@@ -662,7 +696,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| records kept on a failed ask |", JSON.stringify(res), errors.slice(before));
   }
   // a colour clicked picks another of your own pictures (the author, 2026-10-26); a Canonn one asks nothing
-  {
+  codex_picture_per_click: { if (skip("codex_picture_per_click")) break codex_picture_per_click;
     const w = dom.window, before = errors.length, asked = [];
     const realApi = w.apiJson;
     w.apiJson = async url => { asked.push(url); return {image: {url: "api/codex_picture?f=2", own: true, file: "b.png"}}; };
@@ -689,7 +723,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| codex picture per click |", JSON.stringify(asked), JSON.stringify(res), errors.slice(before));
   }
   // auto-target's results: their own alerts row (spoken, not notified by default; its speech tick can switch them off)
-  {
+  auto_target_results_spoken: { if (skip("auto_target_results_spoken")) break auto_target_results_spoken;
     const w = dom.window, before = errors.length, said = [];
     const realPlay = w.play, realSpeak = w.speak;
     w.speak = (t, o) => said.push([t, (o || {}).kind]); w.play = () => {};
@@ -719,7 +753,7 @@ const releasePayloads = async () => {
   }
   // a body someone else mapped (the author, 2026-10-09): no find alert for it; one "already mapped" line per system
   // instead; never in the leaving list
-  {
+  mapped_by_someone_else: { if (skip("mapped_by_someone_else")) break mapped_by_someone_else;
     holdPayloads();
     const w = dom.window, before = errors.length, said = [];
     const realPlay = w.play, realSpeak = w.speak;
@@ -746,7 +780,7 @@ const releasePayloads = async () => {
   }
   // one speaker: a window that is not the speaker still shows the alert but plays and says nothing; the
   // ▶ voice button still speaks; a danger line comes only from business and never swears
-  {
+  one_speaker: { if (skip("one_speaker")) break one_speaker;
     const w = dom.window, before = errors.length, calls = [];
     const realPlay = w.play, realSpeak = w.speak;
     w.play = n => calls.push("play " + n); w.speak = t => calls.push("speak");
@@ -781,7 +815,7 @@ const releasePayloads = async () => {
   }
   // Batch 6 call-outs: the words the page composes from each moment's facts, your thresholds applied, and the
   // honk left unspoken behind the arrival briefing (plain wording: no speech.json lines while this runs)
-  {
+  call_outs: { if (skip("call_outs")) break call_outs;
     const w = dom.window, before = errors.length, said = [];
     const realSpeak = w.speak, realPlay = w.play;
     w.speak = t => said.push(t); w.play = () => {};
@@ -881,7 +915,7 @@ const releasePayloads = async () => {
   }
   // Batch 7: the unreported horizon (empty, normal, sphere_cut), the streak strip and its once-per-streak lines,
   // the suggested order, the backup line, portable settings, the Last session card and bio in ship losses
-  {
+  batch_7: { if (skip("batch_7")) break batch_7;
     const w = dom.window, before = errors.length, said = [];
     const realSpeak = w.speak, realPlay = w.play;
     w.speak = t => said.push(t); w.play = () => {};
@@ -978,7 +1012,7 @@ const releasePayloads = async () => {
                 JSON.stringify(said) === JSON.stringify(wantSaid) ? `streak lines ${said.length}` : JSON.stringify(said), goodLoss ? "losses ok" : lossTxt.slice(0, 200), errors.slice(before));
   }
   // Batch C (the page): what each fix changed, checked on the live page with made-up data
-  {
+  batch_c: { if (skip("batch_c")) break batch_c;
     holdPayloads();
     const w = dom.window, before = errors.length, said = [], toasts = [];
     const realSpeak = w.speak, realPlay = w.play, realToast = w.toast, realFetch = w.fetch;
@@ -1166,7 +1200,7 @@ const releasePayloads = async () => {
   }
   // F62: a refused search POST says so instead of showing the previous search's results as the new ones, and an
   // older result (a poll sent before the POST) is not taken for the search just started
-  {
+  search_refused: { if (skip("search_refused")) break search_refused;
     const w = dom.window, realFetch = w.fetch, realST = w.setTimeout, before = errors.length;
     const json = (body, status) => Promise.resolve(new Response(JSON.stringify(body), {status, headers: {"Content-Type": "application/json"}}));
     const old = {seq: 3, running: false, status: "7 systems (old search)", results: [{id: "1", name: "Old", distance: 1, matches: {}}]};
@@ -1194,7 +1228,8 @@ const releasePayloads = async () => {
     console.log(goodF ? "OK" : "FAIL", "| search refused |", `refused: ${refused.status} (${refused.n} rows), then: ${fresh.status}`, errors.slice(before));
   }
   // Batch 3 (review 2026-09-30b): the page's fixes, each on made-up data, everything restored afterwards
-  {
+  batch_3_page: { if (skip("batch_3_page")) break batch_3_page;
+    await ensureHere();   // its own Here data when it runs alone
     holdPayloads();
     const w = dom.window, realFetch = w.fetch, before = errors.length, said = [];
     const realSpeak = w.speak, realPlay = w.play;
@@ -1424,7 +1459,7 @@ const releasePayloads = async () => {
   }
   // Suggestions batch S1: first footfall x5 and gravity in the suggested order and the leaving alert, signals never
   // DSS'd in Left behind, bodies not on Spansh, Now's heading-to line, and what the backup zip holds
-  {
+  batch_s1: { if (skip("batch_s1")) break batch_s1;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const saved = {position: data.position, destination: data.destination, on_body: data.on_body}, hd = hereData, ld = leftData;
@@ -1494,7 +1529,7 @@ const releasePayloads = async () => {
   }
   // batch S2 (the voice): procedural names spoken letter by letter, one personality per system, the welcome back
   // and ship-loss texts (ship_lost business-only), and the spoken-line transcript with each line's fate
-  {
+  batch_s2: { if (skip("batch_s2")) break batch_s2;
     holdPayloads();
     const w = dom.window, before = errors.length, got = {}, bad = [];
     got.names = w.eval(`["Drojau LL-O b26-3 is undiscovered.", "Docked at Jaques Station.", "Out Of The Blue (K7F-3XZ)", "Syreadiae JX-F c0, 42 ly"].map(spokenText)`);
@@ -1567,7 +1602,7 @@ const releasePayloads = async () => {
   }
   // batch S2b: a sale that left data aboard: the facts line (cartographics and samples), its card under the header
   // (a new sale clears it) and the spoken line wrapping the facts
-  {
+  batch_s2b: { if (skip("batch_s2b")) break batch_s2b;
     const w = dom.window, before = errors.length, bad = [];
     const got = JSON.parse(w.eval(`(() => {
       const texts = [saleLeftText({kind: "sale_left", sold_systems: 50, sold_value: 14814687, left_systems: 43, left_value: 2026392, left_firsts: 270}),
@@ -1596,7 +1631,7 @@ const releasePayloads = async () => {
   }
   // batch S3: the colour variant after the guess and in the ✦ title (species wording kept when unsure); the name box
   // finds the system you are in (a local answer: no EDSM call) and opens Here, and an over-long name is refused
-  {
+  batch_s3: { if (skip("batch_s3")) break batch_s3;
     const w = dom.window, before = errors.length, got = {}, bad = [];
     got.variant = w.eval(`[variantTxt({variants: ["Bacterium Aurasus - Teal"]}), variantTxt({variants: ["Fungoida Setisis - Yellow", "Fungoida Setisis - Grey"]}), variantTxt({variants: []}), variantTxt(null)]
       .map(h => h.replace(/<[^>]+>/g, "").trim())`);
@@ -1638,7 +1673,7 @@ const releasePayloads = async () => {
   // switch shows its options and plots through api/riches/plot (polled); its systems with their bodies (done, at, next)
   // in the tab's list; with a Highway route too, a switch picks the route shown; Clear route clears the one shown.
   // Every request is answered here.
-  {
+  riches_in_plot_route: { if (skip("riches_in_plot_route")) break riches_in_plot_route;
     const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, realFetch = w.fetch, calls = [];
@@ -1760,7 +1795,7 @@ const releasePayloads = async () => {
   }
   // a trade route in the slot (Spansh's trade planner): the Trade plotter's own options (no destination, ship or range),
   // its stops with what to sell and buy, its own heading row, the line under the tiles with the station, its alert
-  {
+  trade_route: { if (skip("trade_route")) break trade_route;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length;
     d.querySelector('[data-view="hwy"]').click(); await sleep(100);
@@ -1812,7 +1847,7 @@ const releasePayloads = async () => {
   }
   // the line under the tiles for every route (the author, 2026-10-07): a survey route's own (💰 Road to Riches, 🧬
   // Exomastery), the Highway's, and with both the one Plot Route shows (this device's choice, else the newer)
-  {
+  route_line: { if (skip("route_line")) break route_line;
     const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
     const w = dom.window, d = w.document, before = errors.length, got = {};
     const line = () => markText(d.getElementById("hwyLine")).replace(/\s+/g, " ").trim();
@@ -1849,7 +1884,7 @@ const releasePayloads = async () => {
   }
   // the game's own route (NavRoute.json) is labelled "In-Game Route:" (the author, 2026-10-12): Outrider's route is the
   // "Next:" line, and the two differ until 🎯 targets its next stop
-  {
+  in_game_route: { if (skip("in_game_route")) break in_game_route;
     const w = dom.window, d = w.document, before = errors.length;
     const got = w.eval(`(() => { const saved = data.route;
       data.route = {hops: [{name: "Drojau ST-D b18-4", star_class: "M", scoopable: true, ly: 70.1, known: true},
@@ -1864,7 +1899,7 @@ const releasePayloads = async () => {
   // a hop's chip claims "not reported to Spansh" (✦) only when Spansh was asked and has no record (known false): one
   // never asked (null) claims nothing (Kurbo26, GitHub discussion #3: Sol said "not reported to Spansh"); the arrival
   // briefing and a Nearby stand-in Spansh's answer did not cover read the same way
-  {
+  route_chips_and_spansh: { if (skip("route_chips_and_spansh")) break route_chips_and_spansh;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => { const saved = data.route, el = document.getElementById("routeStrip");
       data.route = {hops: [{name: "Sol", star_class: "G", scoopable: true, ly: 8.6, known: null},
@@ -1887,7 +1922,7 @@ const releasePayloads = async () => {
   // the In-Game Route's chips copy their system's name; ⛽ after the last hop the tank makes without scooping (the
   // server's fuel_reach), ⛽✓ at the end when it makes them all, "⛽ N" past the chips shown, nothing without a figure
   // (Kurbo26, GitHub discussion #3)
-  {
+  route_chips_copy_fuel_reach: { if (skip("route_chips_copy_fuel_reach")) break route_chips_copy_fuel_reach;
     const w = dom.window, before = errors.length, copied = [], realCopy = w.copyText;
     w.copyText = t => copied.push(t);
     const got = JSON.parse(w.eval(`(() => { const saved = data.route, el = document.getElementById("routeStrip"), o = {};
@@ -1916,7 +1951,7 @@ const releasePayloads = async () => {
     console.log(good ? "OK" : "FAIL", "| route chips copy, fuel reach |", good ? "a chip copies its name; ⛽ where the tank runs out, ⛽✓ when it makes the route" : JSON.stringify(got), errors.slice(before));
   }
   // the game logged a plot but wrote no NavRoute.json (2026-10-14): the payload's minimal form, said in words, no chips
-  {
+  in_game_route_not_written: { if (skip("in_game_route_not_written")) break in_game_route_not_written;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => { const saved = data.route, el = document.getElementById("routeStrip");
       data.route = {minimal: true, hops: [], jumps_left: 2, destination: "Smojooe SJ-I b23-0", ts: "2026-10-14T09:11:58Z"};
@@ -1932,7 +1967,7 @@ const releasePayloads = async () => {
   // #5: 📋 beside each system or station name field, shown only when GET api/clipboard says this device can; a tap
   // fills the field from the game PC's clipboard as typing would: Plot Route's To only fills (no plot), Nearby's
   // Focus/Lock name acts on it; a refusal is said and leaves the field alone
-  {
+  paste_buttons: { if (skip("paste_buttons")) break paste_buttons;
     const w = dom.window, d = w.document, realFetch = w.fetch, before = errors.length, asked = [];
     let can = false, answer = {text: "Smojooe GW-W c1-4"};
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
@@ -1974,7 +2009,7 @@ const releasePayloads = async () => {
   }
   // #3 docking: the pad in large letters on Now, said every time on its own row (Comms; notify off), a refusal's words
   // said and shown; nothing for a "clear"
-  {
+  docking: { if (skip("docking")) break docking;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, said = [], told = [], d0 = JSON.stringify({docking: data.docking ?? null}), m0 = data.moments, lib = speechLib;
@@ -2037,7 +2072,7 @@ const releasePayloads = async () => {
   }
   // 🛣 beside the carrier's 🎯 (the author, 2026-10-14): an exact route there at once, from 250 ly away only; a Highway
   // route you follow is replaced only after Replace; the tile says it is plotting; a failed plot's reason is a toast
-  {
+  carrier_route: { if (skip("carrier_route")) break carrier_route;
     holdPayloads();
     const w = dom.window, d = w.document, realFetch = w.fetch, before = errors.length, posted = [];
     let plotting = {state: "running", plotter: "exact", to: "Smojooe AR-E b25-8"};
@@ -2084,7 +2119,7 @@ const releasePayloads = async () => {
     console.log(good ? "OK" : "FAIL", "| carrier route |", good ? "🛣 from 250 ly, an exact plot, ask before replacing, plotting shown, a failure said" : JSON.stringify(o), errors.slice(before));
   }
   // Settings links to the project on GitHub, with the version running (desktop at the top; the tablet's sheet too)
-  {
+  settings_github: { if (skip("settings_github")) break settings_github;
     const w = dom.window, d = w.document, before = errors.length;
     w.eval('data.outrider = "2026.10.99"; render()');
     const a = d.querySelector(".sethead .setlinks a"), t = d.querySelectorAll("#tabSettings a[href*='github.com']");
@@ -2097,7 +2132,7 @@ const releasePayloads = async () => {
   }
   // Cargo: the Carrier tile's tritium only with a tritium sell order (else as before, one line); the Materials tab's
   // Cargo (the ship with what you paid, the carrier's marks and its sync line); Recount lists only what is not confirmed
-  {
+  cargo: { if (skip("cargo")) break cargo;
     const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
     const w = dom.window, d = w.document, before = errors.length;
     const got = w.eval(`(() => {
@@ -2177,7 +2212,7 @@ const releasePayloads = async () => {
   }
   // "Sell all" (the review's #15): shown with two lines or more you can sell; the stations ranked for the whole hold in
   // the lookup's box (Takes "3/4 lines", Pays, the profit), a row opened lists each line it takes and what it doesn't buy
-  {
+  sell_all: { if (skip("sell_all")) break sell_all;
     const w = dom.window, d = w.document, before = errors.length, got = {}, asked = [];
     w.eval(`window.__saKeep = {cg: cargoData, api: apiJson, lk: Object.assign({}, LK)}`);
     w.__saAsked = asked;
@@ -2224,7 +2259,7 @@ const releasePayloads = async () => {
   // The Carrier tile's trip to you (S13 A: red short, amber when the hold covers it), a booked jump's burn, a suspended
   // service in red (S55 B), the balance and weeks of upkeep (S61: amber under 4, "as of" when old); your carrier among
   // the nearest places to sell with its carrier jumps (S55 A)
-  {
+  carrier_trip: { if (skip("carrier_trip")) break carrier_trip;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const saved = data.carrier, savedS = data.sellers, o = {}, line = () => document.getElementById("carrierLine");
@@ -2281,7 +2316,7 @@ const releasePayloads = async () => {
       `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
   }
   // S13 B: the trip's and a booked jump's tritium say whether the carrier's own measured jumps scale the formula
-  {
+  carrier_burn_factor: { if (skip("carrier_burn_factor")) break carrier_burn_factor;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const saved = data.carrier, o = {}, line = () => document.getElementById("carrierLine");
@@ -2314,7 +2349,7 @@ const releasePayloads = async () => {
   }
   // The Sell / Buy lookup: a line's Sell asks the server (stubbed here: the scratch server has no Spansh) with that
   // line's commodity, tons and hold; a row opens on a click; Closest and the carriers box ask again
-  {
+  cargo_lookup: { if (skip("cargo_lookup")) break cargo_lookup;
     const w = dom.window, d = w.document, before = errors.length;
     w.eval(`window.__asked = []; window.__realApi = apiJson;
       apiJson = async (u, o) => {
@@ -2329,6 +2364,9 @@ const releasePayloads = async () => {
            carrier: false, pad: "L", price: 302844, qty: 150647, value: 19382016, profit: 16488576, age_s: 30000,
            services: ["Market", "Universal Cartographics", "Vista Genomics"], uc: true, vista: true, also: []}]};
       };`);
+    if (!d.querySelector('#cargoList tr[data-from="ship"][data-cid="platinum"]'))   // the cargo block's lines, when it runs alone
+      w.eval(`renderCargo({ship: {name: "Caspian Explorer", type: "explorer_nx", capacity: 64, lines: [{id: "platinum", name: "Platinum", count: 64,
+        avg: 45210, priced: 64, lots: 2, avg_text: "Avg 45,210 cr/t (2 lots)", stolen: 0, mission: 0}]}, carrier: null})`);
     d.querySelector('#cargoList tr[data-from="ship"] [data-look="sell"]').click();
     await sleep(50);
     const got = {};
@@ -2360,7 +2398,7 @@ const releasePayloads = async () => {
   // S58: a confirmed count says how old it is ("✓ 9 d" from a day on, amber over 7) and, past 7 days, the carrier's heading
   // asks for a market read; S56: a line bigger than the ship's hold can be asked as one shipload (hold capacity), not
   // before a Loadout says the hold; S57: Recount refuses a name that is no commodity with "Did you mean" buttons
-  {
+  s58_s56_s57_cargo: { if (skip("s58_s56_s57_cargo")) break s58_s56_s57_cargo;
     const w = dom.window, d = w.document, before = errors.length;
     w.eval(`window.__s5Asked = []; window.__s5Real = apiJson; window.__s5Recount = []; window.__s5Cargo = cargoData;
       apiJson = async (u, o) => {
@@ -2431,7 +2469,7 @@ const releasePayloads = async () => {
       `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
   }
   // S63: History's sold column after 🧬 and the ✗ in a session's cell, its hover saying each death and what it was
-  {
+  s63_history: { if (skip("s63_history")) break s63_history;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const h = histData, open = new Set(openSessions), o = {};
@@ -2474,7 +2512,7 @@ const releasePayloads = async () => {
   // Nearest place to dock: the finder beside To asks api/nearest (stubbed: the scratch server has no Spansh), shows the
   // rows with the DSSA badge and the docking warnings, asks again when a filter changes (remembered per device), and
   // Plot here fills To and posts the plot
-  {
+  nearest_dock: { if (skip("nearest_dock")) break nearest_dock;
     const w = dom.window, d = w.document, before = errors.length;
     w.eval(`window.__nAsked = []; window.__nReal = apiJson;
       apiJson = async (u, o) => {
@@ -2528,7 +2566,7 @@ const releasePayloads = async () => {
   // S54: material traders. A short material on the Materials tab offers "⇄ nearest raw trader"; it opens the finder
   // with that trader asked for (the select shows it) without touching the saved filter; the rows say each trader's
   // kind; a later plain opening asks with the saved filter again; Plot here from there brings Plot Route forward
-  {
+  s54_material_traders: { if (skip("s54_material_traders")) break s54_material_traders;
     const w = dom.window, d = w.document, before = errors.length;
     w.eval(`window.__tAsked = []; window.__tReal = apiJson; window.__tKeep = {need: NR.need, md: matData, v0: view};
       NR.need = ["UC"]; saveNearest();
@@ -2590,7 +2628,7 @@ const releasePayloads = async () => {
   }
   // G2.2, F48, F64: a bad server copy (a list that is not a list, a null object, a number for 'saved') does not stop
   // the page: a fresh browser still starts polling
-  {
+  bad_server_copy: { if (skip("bad_server_copy")) break bad_server_copy;
     const html2 = (await (await fetch(base)).text()).replace(/window\.SERVER_DEFAULTS = .*?;<\/script>/s,
       'window.SERVER_DEFAULTS = {"version": 1, "settings": {"log": {"days": "7", "cats": 1, "known": true}, "bioSort": null}, "saved": 1727700000};</script>');
     const errs2 = [];
@@ -2610,7 +2648,7 @@ const releasePayloads = async () => {
   // [speech] server_player = "off", so it answers 503 and this browser says the line instead (nothing is lost,
   // and no "click to allow Piper audio" toast); a sound the PC cannot play is played here; the sound button
   // does not ask for a click while the tick is on
-  {
+  play_on_this_pc: { if (skip("play_on_this_pc")) break play_on_this_pc;
     const w = dom.window, realFetch = w.fetch, before = errors.length, asked = [];
     w.fetch = (u, o) => {
       const p = realFetch(u, o);
@@ -2655,7 +2693,7 @@ const releasePayloads = async () => {
   // the browser holds audio back until a click: a red pill on the menu bar and 🔇 in the title, Outrider told (the
   // tablet asks too), and the line waits for the click, then plays in Piper (here: the server's Piper answer stubbed
   // as failed) or is dropped when it waited too long; never the browser's voice
-  {
+  audio_held_back: { if (skip("audio_held_back")) break audio_held_back;
     const w = dom.window, before = errors.length, real = w.fetch, reported = [], said = [];
     const LOST_PREP = /text=(Lost contact with Outrider\.|No alerts until it is back\.)/;
     w.fetch = (u, o) => {
@@ -2702,7 +2740,7 @@ const releasePayloads = async () => {
   // in the header); a co-pilot request is acted on once, and only in the speaking window; the status report; a 👎
   // bans a line (the server's answer stubbed: the scratch server's speech file is the repo's, never written here);
   // isRoutine, and a routine arrival plays the routine sound instead of speaking
-  {
+  batch_b_voice: { if (skip("batch_b_voice")) break batch_b_voice;
     const w = dom.window, before = errors.length, got = {}, bad = [], realFetch = w.fetch;
     const realSay = w.sayNow, flags = w.eval("[speechOn, isSpeaker]");
     const savedData = w.eval("JSON.stringify(data)"), savedLib = w.eval("JSON.stringify(speechLib)");
@@ -2815,7 +2853,7 @@ const releasePayloads = async () => {
   // Batch C: Now's at-risk line (normal, docked where it sells, a high-g approach; hidden while the haul is small),
   // captions filled in a window that is not speaking, a caption tap posting a replay without leaving Now, the bar,
   // ✕ back and a double tap; a ?mode=now window stays on Now with its URL; ↗ opens ?mode=now (once)
-  {
+  batch_c_now: { if (skip("batch_c_now")) break batch_c_now;
     holdPayloads();
     const w = dom.window, before = errors.length, got = {}, bad = [], realFetch = w.fetch, posted = [];
     const savedData = w.eval("JSON.stringify(data)"), flags = w.eval("[speechOn, isSpeaker, alertSpeak.sampling]");
@@ -2918,7 +2956,7 @@ const releasePayloads = async () => {
   }
   // Batch D: the widened fuel_target (a top-up at a scoopable star; one card when both rules match; once per system),
   // the in-system scoopable star's wording (said only when one is known), "under N jumps", the fuel tile and the target cost
-  {
+  batch_d_fuel: { if (skip("batch_d_fuel")) break batch_d_fuel;
     const w = dom.window, before = errors.length, got = {}, bad = [];
     const savedData = w.eval("JSON.stringify(data)"), realAlert = w.alertOut, cards = [];
     w.alertOut = (kind, title, body, o = {}) => { if (kind === "fuel") cards.push({title, body, tag: o.tag || null, say: typeof o.say === "function" ? o.say() : o.say, key: w.eval("lineKey")}); return true; };
@@ -2993,7 +3031,7 @@ const releasePayloads = async () => {
   // Batch E: the x5 per-run tile line, the trip's sale check line, the run in progress elsewhere (strip line and the
   // discard card), the region crossing (folded into the briefing, or alone) and the jumponium call-out (off by default;
   // folded into the FSS debrief, or alone)
-  {
+  batch_e_exobio: { if (skip("batch_e_exobio")) break batch_e_exobio;
     const w = dom.window, before = errors.length, got = {}, bad = [];
     const savedData = w.eval("JSON.stringify(data)"), realAlert = w.alertOut, realToast = w.toast, cards = [], toasts = [];
     const flags = w.eval("JSON.stringify([speechOn, isSpeaker, alertSpeak, alertCfg, alertSound, lastMomentSeq])");
@@ -3077,7 +3115,7 @@ const releasePayloads = async () => {
     allOk = allOk && goodE;
     console.log(goodE ? "OK" : "FAIL", "| batch E exobio |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}` : "x5 runs line, sale check line, elsewhere strip + discard card, a run's pay from sample 1, region folded or alone, jumponium off by default / folded / alone", errors.slice(before));
   }
-  {   // batch F: the pre-Odyssey mark (Nearby, Left behind, Here) and the firsts watch (My firsts, the Unsold tile)
+  batch_f_spansh: { if (skip("batch_f_spansh")) break batch_f_spansh;   // batch F: the pre-Odyssey mark (Nearby, Left behind, Here) and the firsts watch (My firsts, the Unsold tile)
     const w = dom.window, d = w.document, before = errors.length, bad = [], got = {};
     // the text a table shows while it fits: the compact forms (.sf, .sf1, .sf2) left out
     const txt = h => { const el = d.createElement("div"); el.innerHTML = h; el.querySelectorAll(".sf, .sf1, .sf2").forEach(e => e.remove()); return el.textContent; };
@@ -3104,7 +3142,7 @@ const releasePayloads = async () => {
     allOk = allOk && goodF;
     console.log(goodF ? "OK" : "FAIL", "| batch F spansh |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}` : "old-data mark in Nearby/Left behind/Here, seen-by-others cell and Unsold tile count", errors.slice(before));
   }
-  {   // batch G: "· verified" on the Data tile, and auto honk's learned fire groups (rendered only: nothing is posted)
+  batch_g_honk_backups: { if (skip("batch_g_honk_backups")) break batch_g_honk_backups;   // batch G: "· verified" on the Data tile, and auto honk's learned fire groups (rendered only: nothing is posted)
     const w = dom.window, d = w.document, before = errors.length, bad = [], got = {};
     const txt = h => { const el = d.createElement("div"); el.innerHTML = h; return el.textContent; };
     const ts = new Date(Date.now() - 3 * 3600000).toISOString();
@@ -3128,7 +3166,7 @@ const releasePayloads = async () => {
     console.log(goodGH ? "OK" : "FAIL", "| batch G honk/backups |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}` : "verified on the Data tile, learned fire groups line + forget, group letter in the spoken miss", errors.slice(before));
   }
   // Batch M4: the ⛏ column in Here, its survey-odds pop-up, and the same in the body pop-up and panel
-  {
+  m4_mining_column: { if (skip("m4_mining_column")) break m4_mining_column;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const hd = hereData, hk = hereKey, o = {};
@@ -3164,7 +3202,7 @@ const releasePayloads = async () => {
     console.log(goodM ? "OK" : "FAIL", "| M4 mining column |", goodM ? "⛏ counts, survey odds on hover, body pop-up and panel" : JSON.stringify({want, got}), errors.slice(before));
   }
   // Batch M4b: "Mined previously" under the survey odds in the ⛏ pop-up and the panel, and on a body with no survey count
-  {
+  m4b_mined_previously: { if (skip("m4b_mined_previously")) break m4b_mined_previously;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const hd = hereData, hk = hereKey, o = {};
@@ -3203,7 +3241,7 @@ const releasePayloads = async () => {
   }
   // M2 surface map: shows below the altitude and hides above it, heading-up, rings to scale, rig slots and states,
   // an off-map chevron, the legend, the strip copy and the settings round trip (the canvas itself is not drawn here)
-  {
+  m2_surface_map: { if (skip("m2_surface_map")) break m2_surface_map;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, v0 = view, s0 = data.surface, cfg0 = localStorage.getItem("surfaceCfg");
@@ -3293,7 +3331,7 @@ const releasePayloads = async () => {
   // M2 fit: Now's map fits the screen. A wide landscape screen gets two columns (the map sized to the height left and
   // what the lines need), a portrait tablet or phone the map under the lines sized to the height left; the classes
   // follow the map shown and hidden
-  {
+  m2_map_fits_the_screen: { if (skip("m2_map_fits_the_screen")) break m2_map_fits_the_screen;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, v0 = view, s0 = data.surface;
@@ -3331,7 +3369,7 @@ const releasePayloads = async () => {
   // Overview's surface map: the same map and legend in the lower half of the system pane while the map is shown (the
   // strip's copy stands down there), sized to the box; an open body panel takes the spot and the map comes back when
   // it is closed; hidden with the map off or another system pinned into it
-  {
+  overview_surface_map: { if (skip("overview_surface_map")) break overview_surface_map;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, v0 = view, s0 = data.surface, ov0 = {...ovState}, cfg0 = localStorage.getItem("surfaceCfg");
@@ -3397,7 +3435,7 @@ const releasePayloads = async () => {
   }
   // Codex finds say why: a body under the bio threshold kept by the ✦ tick is spoken as "new to your codex here"
   // in the leaving warning and the FSS debrief (and drops out with the tick off); the Where line keeps only the star
-  {
+  codex_finds_say_why: { if (skip("codex_finds_say_why")) break codex_finds_say_why;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const keep = localStorage.getItem("codexNewCounts"), o = {};
@@ -3444,7 +3482,7 @@ const releasePayloads = async () => {
   // Batch A (review 2026-10-01): R27 the N and the rim tags centred on every frame (a stand-in canvas whose
   // save/restore keeps the text alignment, as a real one does), R30 two species on a body never share a colour (these
   // two hash to the same one), S1 the rigs-out moment's alert and card, and a rig slot's ✕ marking it picked up
-  {
+  batch_a_surface: { if (skip("batch_a_surface")) break batch_a_surface;
     const w = dom.window, before = errors.length, bad = [];
     const realFetch = w.fetch, posted = [];
     w.fetch = (u, o) => String(u).startsWith("api/rigs/remove") ? (posted.push(o && o.body),
@@ -3500,7 +3538,7 @@ const releasePayloads = async () => {
   // Batch B (review 2026-10-01) R13: Vista Genomics sales since the last cartographic sale show as the trip under
   // way (its payout and x5 check) with no loss to draw it, and a player who sells only exobiology gets that row
   // instead of "No sales on record yet."
-  {
+  r13_trip_under_way: { if (skip("r13_trip_under_way")) break r13_trip_under_way;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const h = histData, cur = {start: null, end: null, paid_bio: 2000000, paid: 2000000, paid_carto: null,
@@ -3518,7 +3556,7 @@ const releasePayloads = async () => {
   }
   // S15: the Materials tab's synthesis: the FSD injections' cards open, Ship upkeep / SRV / Other folded into one line
   // each (grades as B×4 S×1 P×0), a recipe of your own ✓ with its date, the fold kept per device ("synthOpen")
-  {
+  synthesis_groups: { if (skip("synthesis_groups")) break synthesis_groups;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, md = matData, keep = store.get("synthOpen", []);
@@ -3561,7 +3599,7 @@ const releasePayloads = async () => {
       `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
   }
   // M3: Materials' Mining sites (one row per body, open in Here, forget after a confirm) and the rig restock recipe
-  {
+  m3_mining_sites: { if (skip("m3_mining_sites")) break m3_mining_sites;
     const w = dom.window, before = errors.length;
     const served = await fetch(base + "api/materials").then(r => r.json());
     const realFetch = w.fetch, posted = [];   // forget is caught here; the refetch of the list goes to the server
@@ -3611,7 +3649,7 @@ const releasePayloads = async () => {
   // the targeted body (not when it is the next stop; a finished one only "nothing to do" after the fuel); S3 every
   // line of a pool before a repeat, kept across a reload, and ▶ voice samples not counted; S8 the mapped call-out's
   // words and its tick; S9 the session tally and its 🔇 (the grid's tick kept in step) with an undo
-  {
+  batch_d_voice: { if (skip("batch_d_voice")) break batch_d_voice;
     holdPayloads();
     const w = dom.window, before = errors.length, got = {}, bad = [], realFetch = w.fetch;
     const flags = w.eval("[speechOn, isSpeaker]"), savedData = w.eval("JSON.stringify(data)"), savedLib = w.eval("JSON.stringify(speechLib)");
@@ -3763,7 +3801,7 @@ const releasePayloads = async () => {
   // Batch F (review 2026-10-01): S4 Search's mining section (the form, a hit that opens Here) and Nearby's ⛏ count on the
   // row and in the pop-up; S5 core modules under the level (the hull-area line, the dialog's level, welcome back, status
   // report, nothing when all are fine); S10 This session on Now in place of Last session
-  {
+  batch_f_s4_s5_s10: { if (skip("batch_f_s4_s5_s10")) break batch_f_s4_s5_s10;
     const w = dom.window, before = errors.length, got = {}, bad = [];
     const savedData = w.eval("JSON.stringify(data)"), savedSearch = w.localStorage.getItem("search"), savedView = w.eval("view");
     got.form = w.eval(`(() => { const m = document.getElementById("sMining"), n = document.getElementById("sMineral");
@@ -3833,7 +3871,7 @@ const releasePayloads = async () => {
     allOk = allOk && goodF;
     console.log(goodF ? "OK" : "FAIL", "| batch F S4/S5/S10 |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}` : "mining search and Nearby ⛏, core modules under the level, This session on Now", errors.slice(before));
   }
-  {   // the rescan checklist: "within N ly" beside show lost, and each lost row's progress (colour and text)
+  rescan_checklist: { if (skip("rescan_checklist")) break rescan_checklist;   // the rescan checklist: "within N ly" beside show lost, and each lost row's progress (colour and text)
     const w = dom.window, d = w.document, before = errors.length, bad = [], got = {};
     const savedF = w.eval("JSON.stringify(firstsData)"), savedLost = w.eval("fShowLost.checked"), savedWithin = w.eval("fWithin.value");
     const savedSort = w.eval("sortKeys.firsts"), savedSorts = w.localStorage.getItem("sorts");
@@ -3928,7 +3966,7 @@ const releasePayloads = async () => {
   // Overview's map stays in the system pane, sized by its box (no window-height inline style); scrolling goes to the
   // pane (a row jump, the Log keeping your place and fetching more near the end, Page Down); the tiles fold into one
   // line that is stored, exported and coloured like its tiles.
-  {
+  app_layout: { if (skip("app_layout")) break app_layout;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, v0 = view, s0 = data.surface, ov0 = {...ovState}, d0 = JSON.stringify({u: data.unsold, f: data.fuel});
@@ -4015,7 +4053,7 @@ const releasePayloads = async () => {
   }
   // Compact tables: the level decision (pure), the abbreviations, both forms in the cells with the full text in the
   // short form's title, and fitTable toggling compact / compact2 by fit with stubbed sizes (jsdom has no layout)
-  {
+  compact_tables: { if (skip("compact_tables")) break compact_tables;
     const w = dom.window, before = errors.length;
     // Here's rows from the system shown, loaded now: a check before may have left Here between systems (it shows no
     // rows then; the last system's rows used to stay)
@@ -4127,7 +4165,7 @@ const releasePayloads = async () => {
   const hwyPayload = (fx, plotting = null) => ({route: fx ? fx.route : null, plotting, fleet: hwyFleet, ship_id: 7, cargo: 4,
     position: {name: "Hwy Stop 37", id: "7000000037", x: 630, y: 0, z: 3480},
     clipboard: {enabled: true, available: false, tool: null, why: "neither", last: null}, autotarget: {enabled: false}, defaults: {efficiency: 60}});
-  {
+  highway_tab: { if (skip("highway_tab")) break highway_tab;
     const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, realCopy = w.copyText, calls = [], copied = [];
@@ -4292,7 +4330,7 @@ const releasePayloads = async () => {
   // the plot form follows the current ship and cargo (review F3); only the newest answer of a loader counts (Codex F11:
   // Highway and Left behind); a failed region map is asked again after a back-off, a missing one never (review F14).
   // Every request is answered here: nothing reaches the server
-  {
+  highway_form_and_late_answers: { if (skip("highway_form_and_late_answers")) break highway_form_and_late_answers;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, got = {};
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
@@ -4370,7 +4408,7 @@ const releasePayloads = async () => {
   }
   // the Highway tab's auto-target box: the toggle and the delay (POSTed), "test now" with its countdown and a refusal in
   // its words, the last result, missing bindings, the steps. Every request is answered here: nothing reaches the server
-  {
+  highway_auto_target_box: { if (skip("highway_auto_target_box")) break highway_auto_target_box;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, calls = [], got = {};
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
@@ -4436,7 +4474,7 @@ const releasePayloads = async () => {
   // from its defaults, Save sends only the changed keys to POST api/config, a refusal shows the server's words and keeps
   // what was typed (a payload meanwhile does not overwrite it), an empty part is refused here, ▶ test now starts the
   // same test as Plot Route's. Every request is answered here: nothing reaches the server
-  {
+  settings_auto_target: { if (skip("settings_auto_target")) break settings_auto_target;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, posts = [], got = {};
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
@@ -4529,7 +4567,7 @@ const releasePayloads = async () => {
   }
   // review batch 6 on the page: Here follows the in-game target without a scan (F4); the fuel tile when the first
   // reading is on foot or in the SRV (F9); no "still aboard" on an undock from an estimate made before the sale (F39)
-  {
+  batch_6_page_fixes: { if (skip("batch_6_page_fixes")) break batch_6_page_fixes;
     const w = dom.window, before = errors.length;
     if (!d.getElementById("nowView").hidden) { d.getElementById("nowBack").click(); await sleep(300); }
     d.querySelector('[data-view="here"]').click(); await sleep(1500);
@@ -4574,7 +4612,7 @@ const releasePayloads = async () => {
   // review batch 8 on the page: the carrier's last minute (F37), the loss card's My firsts link (F23), no scroll to a
   // hidden row (F17), a browser-voice error not "said" (F44), a dropped heat line does not cool the next (F46), the
   // (A+B)+(C+D) schematic (F40), exact string ids (Codex C2)
-  {
+  batch_8_page_fixes: { if (skip("batch_8_page_fixes")) break batch_8_page_fixes;
     holdPayloads();
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
@@ -4650,7 +4688,7 @@ const releasePayloads = async () => {
     await releasePayloads();
   }
   // S13: Outrider gone quiet: said once after the grace, in the browser's voice; said again when it is back
-  {
+  lost_contact: { if (skip("lost_contact")) break lost_contact;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const realSpeak = speak, realToast = toast, realNow = Date.now, said = [], f = [speechOn, isSpeaker], realLost = sayLost;
@@ -4676,7 +4714,7 @@ const releasePayloads = async () => {
   // batch 11 (voice): the jump line held from the charge and said in the tunnel (S14), from speech.json (S15); the next
   // line sent with the PC's play request (S11); the volume (S12); your own sound's length holds the voice (S16); the
   // last said line with ▶ (S18)
-  {
+  batch_11_voice: { if (skip("batch_11_voice")) break batch_11_voice;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, f = [speechOn, isSpeaker, alertSpeak.jump, lastMomentSeq], realSay = sayNow;
@@ -4717,7 +4755,8 @@ const releasePayloads = async () => {
   }
   // batch 12 (page): colony distance (S1), Here's sortable columns (S19), the link pill (S41), the dialog's chips
   // (S43), tiles folding on a small window (S44), a cut tile line's tooltip (S17)
-  {
+  batch_12_page: { if (skip("batch_12_page")) break batch_12_page;
+    await ensureHere();   // its own Here data when it runs alone
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, c0 = data.colony;
@@ -4798,7 +4837,7 @@ const releasePayloads = async () => {
       : "colony distance, sortable Here, link pill, dialog chips, tiles auto-fold, cut lines titled", errors.slice(before));
   }
   // F45: the unsold pop-up's headings: a ship loss with no sale before it counts from the loss; bio from any death
-  {
+  unsold_headings: { if (skip("unsold_headings")) break unsold_headings;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const heads = u => [...new DOMParser().parseFromString(unsoldHtml(u), "text/html").querySelectorAll(".lbl")].map(e => e.textContent);
@@ -4817,7 +4856,7 @@ const releasePayloads = async () => {
   // Target next (review Q4): the line's button and the box's (POST api/highway/target; the countdown on the button; the
   // tab not opened, the name not copied), a row's Retry while the failed run's row is still the one to target; and
   // the Highway in the spoken status report and welcome (S2). Every request is answered here: nothing reaches the server
-  {
+  highway_target_next: { if (skip("highway_target_next")) break highway_target_next;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, realCopy = w.copyText, calls = [], copied = [], got = {};
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
@@ -4883,7 +4922,7 @@ const releasePayloads = async () => {
   // S74: a run that brings the game to the front itself (no countdown: "bringing the game to the front"), the server's
   // countdown after all when the game did not come (its reason on the box and the button), and the box's line saying
   // whether it brings the game forward or why not. Every request is answered here: nothing reaches the server
-  {
+  target_brings_the_game_forward: { if (skip("target_brings_the_game_forward")) break target_brings_the_game_forward;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, got = {};
     const json = o => Promise.resolve(new Response(JSON.stringify(o), {status: 200, headers: {"Content-Type": "application/json"}}));
@@ -4926,10 +4965,12 @@ const releasePayloads = async () => {
   // too much fuel for the next jump: the warning in the strip and the Highway header; the Conservative range option
   // (off by default, [highway] defaults when this browser has none, the note, the plot body, saved per browser) and
   // the header's "conservative −5 ly"
-  {
+  highway_too_heavy_and_conservative_range: { if (skip("highway_too_heavy_and_conservative_range")) break highway_too_heavy_and_conservative_range;
     const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, got = {}, calls = [];
+    // injections ticked, as the Highway tab's block left them (it may not have run: SMOKE_ONLY)
+    w.document.getElementById("hwyInject").checked = true; w.document.getElementById("hwyInject").dispatchEvent(new w.Event("change"));
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
     const fx = hwyFixture();
     fx.route.id = fx.summary.id = "hwy-heavy";
@@ -4986,7 +5027,7 @@ const releasePayloads = async () => {
   }
   // off route: the Highway list marks the nearest route system (from the live summary, so it follows each jump without
   // a fetch) and scrolls it into view in the pane, never the window; a nearest among the done rows shows while folded
-  {
+  highway_nearest_off_route: { if (skip("highway_nearest_off_route")) break highway_nearest_off_route;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, got = {};
     const off = hwyFixture({off: true});
@@ -5033,7 +5074,7 @@ const releasePayloads = async () => {
   // the Highway map's background: the region layer from api/regions decoded as the server reads it, the landmarks'
   // projection, the corner toggles (per device), and the drawing order on a recording canvas: image, regions, names and
   // landmarks under the route, which still draws on top
-  {
+  highway_map_background: { if (skip("highway_map_background")) break highway_map_background;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, got = {};
     if (!d.getElementById("nowView").hidden) { d.getElementById("nowBack").click(); await sleep(300); }
@@ -5120,7 +5161,7 @@ const releasePayloads = async () => {
   // ---- the tablet layout (GET /tablet, PLAN-tablet phase 3): the same page in its own shell. The desktop page above
   // never shows the shell; the tablet opens on Now, shows every page from its nav, never speaks or plays sounds, goes to
   // Now while the surface map shows and back after, says the link in words, and opens a row's facts in a sheet.
-  {
+  tablet_layout: { if (skip("tablet_layout")) break tablet_layout;
     holdPayloads();
     const desk = [!d.body.classList.contains("tablet"), d.getElementById("tabNav").hidden, d.getElementById("tabMain").hidden,
                   !d.documentElement.dataset.theme];
@@ -5541,7 +5582,7 @@ const releasePayloads = async () => {
   }
   // Settings (was the alerts dialog): folding sections remembered per device, open/close all, and Server settings drawn
   // from the config file (GET api/config) with only the keys you change sent; never saved here (no POST)
-  {
+  settings: { if (skip("settings")) break settings;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(await (async () => {
       // jsdom has no modal dialogs; earlier steps here opened sections, so start as a device that never has
@@ -5576,7 +5617,7 @@ const releasePayloads = async () => {
     console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "15 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
   }
   // Plot Route: Clear route while a survey or trade plot runs into an empty slot stops that plot (it cleared the Highway)
-  {
+  plot_route_clear_during_a_survey_plot: { if (skip("plot_route_clear_during_a_survey_plot")) break plot_route_clear_during_a_survey_plot;
     const w = dom.window, d = w.document, before = errors.length, real = w.fetch, posted = [];
     const json = body => Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
     w.fetch = (u, o) => o && o.method === "POST" && /clear$/.test(String(u)) ? (posted.push(String(u).replace(/.*api\//, "")), json({ok: true}))
@@ -5595,7 +5636,7 @@ const releasePayloads = async () => {
   }
   // notable stellar phenomena (the author's three rings, 2026-10-11): counted in words, Nearby's 🌀 with the count, a line
   // in Now, and the alert said with delight from its own lines
-  {
+  stellar_phenomena: { if (skip("stellar_phenomena")) break stellar_phenomena;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(await w.eval(`(async () => {
       const o = {};
@@ -5648,7 +5689,7 @@ const releasePayloads = async () => {
     console.log(ok ? "OK" : "FAIL", "| stellar phenomena |", ok ? "counted, in Now and the 🌀, said from its lines" : JSON.stringify(got), errors.slice(before));
   }
   // Settings > In-game overlay: the switches and each panel's place from data.overlay; a change posts it (stubbed)
-  {
+  settings_in_game_overlay: { if (skip("settings_in_game_overlay")) break settings_in_game_overlay;
     holdPayloads();
     const w = dom.window, before = errors.length, real = w.fetch, posted = [];
     const json = body => Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
@@ -5786,7 +5827,7 @@ const releasePayloads = async () => {
   // S8: the overlay pill beside the link pill: data.overlay.pill in three words, the reason on hover; "not the active
   // window" amber only while this page has the focus, red otherwise; none with no pill or on a server; the tablet's
   // link line adds it; Settings says the same. S25: "Keep showing when Elite is not the active window" posts.
-  {
+  overlay_pill: { if (skip("overlay_pill")) break overlay_pill;
     holdPayloads();
     const w = dom.window, before = errors.length, real = w.fetch, posted = [];
     const json = body => Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
@@ -5831,7 +5872,7 @@ const releasePayloads = async () => {
   // S26: the overlay's Alerts panel: every alert the page shows is posted (api/overlay/alert, stubbed) while the
   // overlay and its Alerts panel are on, on the game PC, and the kind is switched on in this browser (any of notify
   // with notifications on, its sound, speak); danger by the speech queue's rank or the danger sound
-  {
+  overlay_alerts: { if (skip("overlay_alerts")) break overlay_alerts;
     const w = dom.window, before = errors.length, real = w.fetch, posted = [];
     w.fetch = (u, o) => /api\/overlay\/alert$/.test(String(u)) && o && o.method === "POST"
       ? (posted.push(JSON.parse(o.body)), Promise.resolve({ok: true, status: 200, json: async () => ({kept: true})})) : real(u, o);
@@ -5868,7 +5909,7 @@ const releasePayloads = async () => {
   }
   // Settings > Voice > More voices: Piper's catalogue from the server (stubbed here: no network), one language at a time;
   // "Download and use" asks the server for that voice (POST api/voice, stubbed: nothing downloads)
-  {
+  more_voices: { if (skip("more_voices")) break more_voices;
     holdPayloads();
     const w = dom.window, before = errors.length, real = w.fetch, posted = [];
     const cat = {current: "en_GB-cori-medium", voices: [
@@ -5920,7 +5961,7 @@ const releasePayloads = async () => {
   }
   // the desktop theme (Settings > Display): Default - Outrider and the tablet's nine; a choice is set on <html>, changes
   // the colours, is remembered for this browser; the Default again removes it
-  {
+  desktop_theme: { if (skip("desktop_theme")) break desktop_theme;
     const w = dom.window, d = w.document, before = errors.length, sel = d.getElementById("deskTheme");
     const bg = () => w.getComputedStyle(d.documentElement).getPropertyValue("--bg").trim();
     const got = {opts: [...sel.options].map(o => o.value), first: sel.options[0].textContent, label: (sel.options[1] || {}).textContent};
@@ -5937,7 +5978,7 @@ const releasePayloads = async () => {
   }
   // a newer release (payload update, [server] update_check): the Update pill shows it, opens how to update for this
   // install (Docker here) with GitHub's link, "Skip this version" hides it for that version only; none: no pill
-  {
+  update_pill: { if (skip("update_pill")) break update_pill;
     const w = dom.window, d = w.document, before = errors.length, pill = d.getElementById("updPill");
     w.localStorage.removeItem("updateSkip");
     w.eval(`data.update = {version: "9999.1.1", current: "2026.10.13", published: "2026-10-06", kind: "docker",
@@ -5962,7 +6003,7 @@ const releasePayloads = async () => {
     console.log(goodUp ? "OK" : "FAIL", "| update pill |", goodUp ? "shown for a newer release, how to update (Docker), skip this version, the next one shows again" : JSON.stringify(got), errors.slice(before));
   }
   // server mode (payload game_pc false): what needs the game PC is left out of the desktop page; back with game_pc true
-  {
+  server_mode: { if (skip("server_mode")) break server_mode;
     const w = dom.window, before = errors.length;
     const shown = sel => { const e = w.document.querySelector(sel); return !!e && w.getComputedStyle(e).display !== "none"; };
     const look = () => ["#hwyAuto", 'details.setsec[data-sec-key="honk"]', 'label:has(#serverPlay)', '#alertChips .pcOnly'].map(shown);
@@ -5976,7 +6017,7 @@ const releasePayloads = async () => {
   }
   // plugin gaps B: plants tagged with the composition scanner on the surface map (hollow rings in the species' colour,
   // faint where a sample would not count) and the strip's "tagged: 524 m, turn 90° right"
-  {
+  bio_tags: { if (skip("bio_tags")) break bio_tags;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const s = {lat: 0, lon: 0, radius: 1e6, heading: 0, bio: [], tags: [
@@ -6023,7 +6064,7 @@ const releasePayloads = async () => {
     console.log(goodT ? "OK" : "FAIL", "| bio tags |", goodT ? "tagged plants drawn (faint where a sample would not count), the strip's turn to the nearest" : JSON.stringify(got), errors.slice(before));
   }
   // plugin gaps C: "bio possible" bodies, Here's bio filters (per device), the flying-low card, the ruled-out genera
-  {
+  bio_marks: { if (skip("bio_marks")) break bio_marks;
     const w = dom.window, before = errors.length;
     const got = await w.eval(`(async () => {
       const o = {};
@@ -6054,7 +6095,7 @@ const releasePayloads = async () => {
     console.log(goodC ? "OK" : "FAIL", "| bio marks |", goodC ? "bio possible, Here's filters, flying-low card, the ruled-out genera" : JSON.stringify(got), errors.slice(before));
   }
   // uploads A3: Settings → Uploads from the payload: the switches, a hold, a test-only EDDN, EDSM's accounts (no key)
-  {
+  uploads_settings: { if (skip("uploads_settings")) break uploads_settings;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const u = {eddn: {on: true, available: true, test: true, queued: 2, sent_24h: 40, dropped_24h: 1, held: null, blocked: null},
@@ -6084,7 +6125,7 @@ const releasePayloads = async () => {
     console.log(goodU ? "OK" : "FAIL", "| uploads settings |", goodU ? "the switches, a hold, test only, EDSM's account without its key" : JSON.stringify(got), errors.slice(before));
   }
   // the Data tile's upload line: per service in use, sent / waiting / refused, test and dry-run marks; empty when none
-  {
+  uploads_in_the_data_tile: { if (skip("uploads_in_the_data_tile")) break uploads_in_the_data_tile;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const t = h => { const d = document.createElement("div"); d.innerHTML = h; return [...d.children].map(c => c.textContent).join(" | "); };
@@ -6101,7 +6142,7 @@ const releasePayloads = async () => {
   // "Lost contact" was said, the tablet banner's danger by tag, one "Undiscovered", Here empty while another system
   // loads, the newest body answer only, typed cargo fields kept, a fresh lookup heading, an unnamed carrier, alert ticks
   // across windows, the chip jump clear of the sticky header, the route alerts' names, the tablet's voice label
-  {
+  the_sweeps_page_fixes: { if (skip("the_sweeps_page_fixes")) break the_sweeps_page_fixes;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const r = {}, src = f => String(f);
@@ -6147,7 +6188,7 @@ const releasePayloads = async () => {
   }
   // the Fable sweep of 2026-10-09 (the page): co-pilot lines only where a voice is, the long poll's timeout, a superseded
   // auto-target run, the 🔔 and a reset followed across windows, a declined confirm, Save redrawn with the focus kept
-  {
+  the_fable_sweeps_page_fixes: { if (skip("the_fable_sweeps_page_fixes")) break the_fable_sweeps_page_fixes;
     const w = dom.window, before = errors.length;
     const got = await w.eval(`(async () => {
       const r = {}, src = f => String(f);
@@ -6209,7 +6250,7 @@ const releasePayloads = async () => {
   }
   // the bug check of 2026-10-09 (the Uploads section): its message survives the redraw, a failed request redraws the
   // server's state, the box is ticked by what was switched, typed EDSM fields survive a redraw of the counts
-  {
+  uploads_section_messages_and_state: { if (skip("uploads_section_messages_and_state")) break uploads_section_messages_and_state;
     const w = dom.window, before = errors.length, realFetch = w.fetch;
     const answers = [];
     w.fetch = (u, o) => /^api\/uploads/.test(String(u)) ? (answers.length ? answers.shift() : Promise.reject(new TypeError("Failed to fetch")))
@@ -6243,7 +6284,8 @@ const releasePayloads = async () => {
 
   // review 2026-10-08 #15-#18: answers that arrive out of order. An older, slower request lands after a newer one:
   // its answer (or its failure) must not replace the newer one's
-  {
+  answers_out_of_order: { if (skip("answers_out_of_order")) break answers_out_of_order;
+    await ensureHere();   // its own Here data when it runs alone
     holdPayloads();
     const w = dom.window, before = errors.length, realF = w.fetch, got = {};
     const here = w.eval("posId()");
@@ -6332,7 +6374,7 @@ const releasePayloads = async () => {
   }
   // the voice lab (2026-10-11; it was voice_lab.py): Settings > Voice shows a several-person voice's speaker; the lab
   // steps through speakers (each played, through api/say with the speaker), uses one, plays and cuts a line, saves a WAV
-  {
+  voice_lab: { if (skip("voice_lab")) break voice_lab;
     const w = dom.window, realFetch = w.fetch, before = errors.length, said = [], posted = [];
     const people = [{id: 0, name: "p225"}, {id: 1, name: "p226"}, {id: 2, name: "p227"}];
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
@@ -6427,7 +6469,7 @@ const releasePayloads = async () => {
   }
   // boxel exploration (2026-10-11): Nearby's Standard / Boxel switch shows the boxel's list (visited with your scans,
   // Spansh's, the ones to try), the warning, Target next and 🎯 by number, Keep, and the recommended boxels by mass code
-  {
+  boxel_mode: { if (skip("boxel_mode")) break boxel_mode;
     holdPayloads(); const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
     const w = dom.window, realFetch = w.fetch, before = errors.length, posted = [];
     const view = {boxel: {prefix: "Drojau TF-H c13-", label: "Drojau TF-H c13", mc: "c", size: 40, kind: "K and M stars, some G", standard: true,
@@ -6515,7 +6557,7 @@ const releasePayloads = async () => {
   }
   // green gas giants (2026-10-12): the ladder model's guess as a green planet with "?", a confirmed one without; on the
   // body in Here, a Now line ("check in the system map"), Nearby's tag, the legend, and its own alert switch
-  {
+  green_gas_giants: { if (skip("green_gas_giants")) break green_gas_giants;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const o = {}, hd0 = hereData, v0 = view;
@@ -6542,7 +6584,7 @@ const releasePayloads = async () => {
   // S7 (batch 16): ExploData's colour tables missing: "colours unavailable · Retry" in Here's legend (with bio shown) and
   // the Exo-Biology checklist's line, "downloading…" / "failed: <why>" while it runs or after, nothing once they are in;
   // the banner's card has Retry, which posts api/bio/colours (the scratch server's ExploData is offline: it fails there)
-  {
+  colour_tables_missing: { if (skip("colour_tables_missing")) break colour_tables_missing;
     holdPayloads();
     const w = dom.window, before = errors.length;
     const real = w.fetch, posted = [];
@@ -6589,7 +6631,7 @@ const releasePayloads = async () => {
   }
   // S6 (batch 16): someone else's scans of your unsold firsts: a card and a notification each time under its own alerts
   // row, the days worded from the timestamps, "so far today", spoken only when the server says (at most once in 30 min)
-  {
+  firsts_scanned_by_others: { if (skip("firsts_scanned_by_others")) break firsts_scanned_by_others;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, said = [], told = [], realSpeak = speak, realNotify = notify, m0 = data.moments;
@@ -6616,7 +6658,7 @@ const releasePayloads = async () => {
   }
   // Suggestions (D): S9-S1 the rescan trip on the Next line, the leaving words and the briefing; S9-S28 lost sample runs
   // in My firsts; S9-S3 sites reported by others; S9-S27 Left behind sorted by Worth; S9-S26 the Map's work left
-  {
+  suggestions_d: { if (skip("suggestions_d")) break suggestions_d;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, lost = {bodies: [{name: "A 2", value: 3000000}, {name: "A 3", value: 1100000}], value: 4100000};
@@ -6651,7 +6693,7 @@ const releasePayloads = async () => {
   }
   // Suggestions (E): S9-S5 a sold run's paid figure; S9-S7 the suit row (danger, spoken by default); S9-S29 the
   // Exomastery arrival's codex clause, only with Codex finds count on
-  {
+  suggestions_e: { if (skip("suggestions_e")) break suggestions_e;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, txt = h => h.replace(/<[^>]+>/g, "");
@@ -6678,7 +6720,7 @@ const releasePayloads = async () => {
   }
   // Suggestions (F): S9-S9 the time left at your pace; S9-S8 re-plot from here (off the route, another ship); S9-S32
   // the permit lock on a row; S5-S5 Plot route on the Map's tapped card; S9-S33 "← destination"
-  {
+  suggestions_f: { if (skip("suggestions_f")) break suggestions_f;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {};
@@ -6704,7 +6746,7 @@ const releasePayloads = async () => {
   }
   // Suggestions (G): S9-S14 Sell asks for the legal tons; S9-S11 the last jump it can pay; S9-S12 tritium aboard and the
   // buy button; S9-S13 the upkeep counted down, its row off until ticked; S4-S4 the depot reading's age
-  {
+  suggestions_g: { if (skip("suggestions_g")) break suggestions_g;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, txt = h => h.replace(/<[^>]+>/g, "");
@@ -6726,7 +6768,7 @@ const releasePayloads = async () => {
   }
   // Suggestions (H): S9-S16 "show" is the tablet's alone (a desktop window stays on its page); S9-S34 a voice answer's
   // personality line, only for a key the page lists
-  {
+  suggestions_h: { if (skip("suggestions_h")) break suggestions_h;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, was = view, seq = lastCopilotSeq;
@@ -6742,7 +6784,7 @@ const releasePayloads = async () => {
   }
   // Bug check 2026-10-24, batch 1: the Map's work-left colouring asks once (it looped and froze the page); the folded
   // tiles line's countdown updated in place; the buy button leaves the hold's tritium out; a bookmark's note said once
-  {
+  bug_check_1: { if (skip("bug_check_1")) break bug_check_1;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, was = [leftData, firstsData, M.workAsked, loadLeft, loadFirsts, data.carrier];
@@ -6765,7 +6807,7 @@ const releasePayloads = async () => {
   }
   // S9-S20: an upload on hold gets its own alerts row, off until ticked (the card comes from the server either way),
   // said by Comms; S7-S6: an empty backfill Preview says why ("412 lines left out, the Legacy game ...")
-  {
+  upload_on_hold_empty_preview: { if (skip("upload_on_hold_empty_preview")) break upload_on_hold_empty_preview;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => JSON.stringify({
       row: ALERTS.some(a => a[0] === "uploadheld") && !!ALERT_NAMES.uploadheld && !!ROW_WORDS.uploadheld && !UNSPOKEN.has("uploadheld"),
@@ -6782,7 +6824,7 @@ const releasePayloads = async () => {
   // Batch 23: S1, one fuel window on an exact-plotter route (the line, its spoken clause, the overlay's copy of the words,
   // its own alerts row and speech key, said in business as danger, silent at a refuel stop); S19, the target's jump cost
   // and the scoopable share on Now, the same helpers as the header and the fuel tile
-  {
+  batch_23_fuel_window_and_nows_jump_cost: { if (skip("batch_23_fuel_window_and_nows_jump_cost")) break batch_23_fuel_window_and_nows_jump_cost;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, said = [], told = [], realSpeak = speak, realNotify = notify, m0 = data.moments, d0 = JSON.stringify(data);
@@ -6844,7 +6886,7 @@ const releasePayloads = async () => {
   // Batch 24: S2, the last scoopable star before a stretch the fuel won't cover: its own alerts row and speech key (the
   // author's line, said in business as danger; one star and no amount in plain words), the bit on the In-Game Route
   // strip (else on the route line under the header) and Now, and the top-up card quiet where it is said
-  {
+  batch_24_last_scoopable_star: { if (skip("batch_24_last_scoopable_star")) break batch_24_last_scoopable_star;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const o = {}, said = [], told = [], realSpeak = speak, realNotify = notify, m0 = data.moments, d0 = JSON.stringify(data), v0 = view;
@@ -6911,7 +6953,7 @@ const releasePayloads = async () => {
   // Batch 25: S12 (a survey route's next stop past the systems you finished: "skipping 2 done", their names in the
   // hover) and S11 (the wrong-jump check on every copy of the route's line, its own alerts row, notify off by default,
   // and the wrong_target key)
-  {
+  batch_25_wrong_target_and_finished_syste: { if (skip("batch_25_wrong_target_and_finished_syste")) break batch_25_wrong_target_and_finished_syste;
     const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
@@ -6971,7 +7013,7 @@ const releasePayloads = async () => {
   }
   // star and planet types new to your codex (2026-10-12): ✦ not in this region's codex, ✪ in none; Here's name cell,
   // Nearby's tag naming each, the legend; nothing at all without a single body type logged
-  {
+  codex_body_types: { if (skip("codex_body_types")) break codex_body_types;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const o = {}, hd0 = hereData, v0 = view, ct0 = data.codex_types;
@@ -7000,7 +7042,7 @@ const releasePayloads = async () => {
   }
   // S22 (2026-10-12): geology a body's volcanism could log, ✦ when any of its set is new to your codex here, ✪ when one
   // is in it nowhere; its own legend row (the bio ✪ / ✦ rows are not lit by it); the approach card names them
-  {
+  codex_geology: { if (skip("codex_geology")) break codex_geology;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const o = {}, hd0 = hereData, v0 = view, ct0 = data.codex_types;
@@ -7029,7 +7071,7 @@ const releasePayloads = async () => {
   }
   // S23 (2026-10-12): species other commanders reported to Spansh, 👥 beside the guess (a fact, with its colour), a line
   // of their own for a genus not named yet, none for a genus you analysed; the legend's row. S27: Search's planet option
-  {
+  reported_species: { if (skip("reported_species")) break reported_species;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const o = {}, hd0 = hereData, v0 = view;
@@ -7059,7 +7101,7 @@ const releasePayloads = async () => {
   // S24 / S29 (batch 18): your runs on bodies like this in the guess's hover only (Here's, the body panel's "likely"), and
   // the Exo-Biology checklist's 🔍 on a species and a colour not found: the nearest reported bodies in the side panel
   // (api/checklist/find answered here), with ✓ visited, ☆ (opens the bookmark), Copy and ✕; none on a species found
-  {
+  own_runs_find_nearby: { if (skip("own_runs_find_nearby")) break own_runs_find_nearby;
     holdPayloads(); const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
     const w = dom.window, before = errors.length;
     const got = JSON.parse(await w.eval(`(async () => {
@@ -7139,7 +7181,7 @@ const releasePayloads = async () => {
   }
   // S73 (2026-10-12): a click anywhere on a Nearby row shows the system in Here (again: closes it); the name still
   // copies, ☆ still opens the bookmark, a drag that selected text opens nothing
-  {
+  nearby_row_click: { if (skip("nearby_row_click")) break nearby_row_click;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const o = {}, v0 = view, c0 = copyText, b0 = openBookmark;
@@ -7167,7 +7209,7 @@ const releasePayloads = async () => {
   // 🎯 on Nearby's rows (the author, 2026-10-14): S31's route "system" by the row's exact id64 string, where auto-target
   // can work (the game PC, available: as a Map click), none on your own system's row; a click targets without opening
   // (S73) or copying the row; the tablet's row sheet offers 🎯 Target. The post is stubbed
-  {
+  nearby: { if (skip("nearby")) break nearby;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, sent = [];
     w.fetch = (u, o) => {
@@ -7227,7 +7269,7 @@ const releasePayloads = async () => {
   // its POSTs stubbed here), the strip naming the centre (its name copies; ↻ refresh, ✕ back to you), Dist from there with
   // a From you column and Jumps from you, the Where tile's "around"; a centre that names nothing says why; Spansh's cut
   // sphere said plainly; the mass code and "No scan data only" filters (per device) and ⧉ Copy visible; Boxel mode's hint
-  {
+  nearby_around: { if (skip("nearby_around")) break nearby_around;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, sent = [];
     w.fetch = (u, o) => {
@@ -7337,7 +7379,7 @@ const releasePayloads = async () => {
   }
   // One rule for every 🎯 (the author, 2026-10-14): on the game PC with auto-target available and no binding missing,
   // a route row's, the route line's, the carrier's, S31's (sysAimBtn), Nearby's and a failed row's Retry; otherwise none
-  {
+  one_rule: { if (skip("one_rule")) break one_rule;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const keep = {pc: data.game_pc, at: data.autotarget, run: hwyRun}, out = {};
@@ -7365,7 +7407,7 @@ const releasePayloads = async () => {
   }
   // S75 (2026-10-12): the jump range under the ship in the Commander tile; "from X (Y ly)" beside the system's name
   // (no "came"); no "nearest known unvisited" in the Where tile, while Now keeps it
-  {
+  header_tiles_s75: { if (skip("header_tiles_s75")) break header_tiles_s75;
     const w = dom.window, before = errors.length;
     const got = w.eval(`(() => {
       const o = {}, keep = {ship: data.ship, previous: data.previous, jump_range: data.jump_range, jump_range_now: data.jump_range_now, boost: data.boost};
@@ -7399,7 +7441,7 @@ const releasePayloads = async () => {
   // S5a / S5b (2026-10-12): the notices banner (the server's notices: escaped text, a known action's button, an
   // unknown action left out, ✕ hides it here at once and tells the server) and Settings -> Server's Show log (what the
   // scratch server printed, from GET api/serverlog, with where the file is)
-  {
+  notices_and_the_log: { if (skip("notices_and_the_log")) break notices_and_the_log;
     holdPayloads();
     const w = dom.window, before = errors.length;
     if (!w.HTMLDialogElement.prototype.showModal) w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
@@ -7446,7 +7488,7 @@ const releasePayloads = async () => {
   // it did at start), holds with Try again (POST api/uploads/retry; the scratch server answers "not on hold"), no hover-only
   // "last error"; the outage moments notify under their own alerts row, never spoken; the card's Uploads button opens
   // Settings at Uploads
-  {
+  uploads_recent_and_outage: { if (skip("uploads_recent_and_outage")) break uploads_recent_and_outage;
     holdPayloads();
     const w = dom.window, before = errors.length;
     if (!w.HTMLDialogElement.prototype.showModal) w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
@@ -7517,7 +7559,7 @@ const releasePayloads = async () => {
   // internet connection"; a failed search's own status keeps the horizon quiet); the Check buttons beside the EDSM and
   // Inara keys (EDSM's on the scratch server itself: offline, so "Couldn't reach EDSM", the typed key in the POST body;
   // Inara's answer stubbed: ✓ with the profile link)
-  {
+  lookups_down_and_key_checks: { if (skip("lookups_down_and_key_checks")) break lookups_down_and_key_checks;
     holdPayloads();
     const w = dom.window, before = errors.length;
     const real = w.fetch, posted = [];
@@ -7593,7 +7635,7 @@ const releasePayloads = async () => {
   // Server with [journals] live focused; Docker's words instead; no position yet: "No FSD jump yet"), and Settings ->
   // Server -> Backups (Back up now on the scratch server, its zip listed with what made it, the restore command for
   // this install, Copy)
-  {
+  first_run_and_backups_s43_s44: { if (skip("first_run_and_backups_s43_s44")) break first_run_and_backups_s43_s44;
     holdPayloads();
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
@@ -7655,7 +7697,7 @@ const releasePayloads = async () => {
   // as `python -`; with data.restart.can: a confirm, POST api/restart (answered here: nothing restarts), "Restarting…",
   // the update line's Restart now, done on another run_id) and Auto honk's readiness (the scratch server's own answer,
   // which only looks; then a not-ready one with its fix and Copy)
-  {
+  restart_and_auto_honk_readiness_s10_s69: { if (skip("restart_and_auto_honk_readiness_s10_s69")) break restart_and_auto_honk_readiness_s10_s69;
     holdPayloads();
     const w = dom.window, before = errors.length;
     const realFetch = w.fetch, realConfirm = w.confirm, realCopy = w.copyText, posted = [], copied = [], asked = [];
@@ -7718,7 +7760,7 @@ const releasePayloads = async () => {
   // another device gets the command with Copy, Docker / macOS the reason), Outrider starting again (503 "starting" from
   // the poll: "starting · 41%", not "not connected", and Restarting… says what it is doing; a normal answer clears it),
   // and the starting page itself (static/starting.html) in a window of its own, reloading once Outrider is ready
-  {
+  service_and_starting_s70_s9: { if (skip("service_and_starting_s70_s9")) break service_and_starting_s70_s9;
     holdPayloads();
     const w = dom.window, before = errors.length;
     const realFetch = w.fetch, realConfirm = w.confirm, realCopy = w.copyText, posted = [], copied = [], asked = [];
@@ -7815,7 +7857,7 @@ const releasePayloads = async () => {
   // while an upload is in use; ticked, the query asks the server for unsent lines and the category boxes dim); Settings ->
   // Uploads' Fill gaps in EDSM's flight log (a Check fills from / to, Send only for the previewed range and after a
   // confirm, Stop / Go on by the progress; the posts stubbed: nothing reaches EDSM)
-  {
+  upload_marks_and_edsm_backfill: { if (skip("upload_marks_and_edsm_backfill")) break upload_marks_and_edsm_backfill;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, realConfirm = w.confirm, posted = [], asked = [];
     w.fetch = (u, o) => {
@@ -7921,7 +7963,7 @@ const releasePayloads = async () => {
   // Stop; once done, "N visits from EDSM, <from> to <to> · Remove them", a confirm, then remove); History's sessions
   // "from EDSM" with no counts of what you did and the From EDSM line; the Map's hover says where the visit is from.
   // The posts are stubbed: nothing reaches EDSM
-  {
+  edsm_flight_log_import: { if (skip("edsm_flight_log_import")) break edsm_flight_log_import;
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, realConfirm = w.confirm, posted = [], asks = [];
     w.fetch = (u, o) => {
@@ -7987,7 +8029,8 @@ const releasePayloads = async () => {
   // the faint path from the arrival star with rough leg times, the checklist numbered alike; a tap on a number makes
   // that body the first stop (posted: one order for every window, Now and the voice), "↺ order" puts it back; a first
   // stop of another system changes nothing. The posts are stubbed
-  {
+  s30_schematic_stops: { if (skip("s30_schematic_stops")) break s30_schematic_stops;
+    await ensureHere();   // its own Here data when it runs alone
     holdPayloads();
     const w = dom.window, before = errors.length, realFetch = w.fetch, posted = [];
     w.fetch = (u, o) => {
@@ -8059,7 +8102,7 @@ const releasePayloads = async () => {
   // id64 sent as its exact string (over 2^53); Plot route fills To and plots only when no route is followed. S72: a click
   // on the Map targets the system when auto-target can work on this PC, else copies its name; the card and the hint under
   // the map say which; your own system is copied; a touch card has 🎯 Target and Copy name. The posts are stubbed
-  {
+  s31_aim_and_plot_anywhere_s72_map_click: { if (skip("s31_aim_and_plot_anywhere_s72_map_click")) break s31_aim_and_plot_anywhere_s72_map_click;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, realFetch = w.fetch, sent = [];
     w.fetch = (u, o) => {
@@ -8155,7 +8198,7 @@ const releasePayloads = async () => {
   // found by api/find first and sent as its exact id64, a name not found said without searching, the "from you" hover.
   // S50: the Map draws the route (mapRouteMarks: dashed legs from you, ◎ the next stop, the legend's entries, the card's
   // line) and asks again on a new plot. Every request is stubbed
-  {
+  s49_around_another_system_s50_route_on_t: { if (skip("s49_around_another_system_s50_route_on_t")) break s49_around_another_system_s50_route_on_t;
     holdPayloads();
     const w = dom.window, d = w.document, realFetch = w.fetch, before = errors.length, asked = [], big = "9007199254740993";
     const json = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), {status, headers: {"Content-Type": "application/json"}}));
@@ -8248,7 +8291,7 @@ const releasePayloads = async () => {
   // S51: a sweep: ticks in Bookmarks, Left behind and My firsts (lost systems only), one set across the three; "Plot a
   // sweep (N)" posts them to api/riches/plot {kind: "sweep"} and Plot Route shows the route (its head: the systems ticked
   // and those Spansh did not know); a refusal is said beside the button. G4: the line's glyph and words per kind. Stubbed
-  {
+  s51_sweep_s52_kinds: { if (skip("s51_sweep_s52_kinds")) break s51_sweep_s52_kinds;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, realFetch = w.fetch, posts = [];
     let plotAnswer = {ok: true, plotting: {state: "running", kind: "sweep", from: "Home", started: new Date().toISOString()}}, plotStatus = 202;
@@ -8319,7 +8362,7 @@ const releasePayloads = async () => {
   }
   // S35: Settings' last section, Questions asked: two questions asked of the scratch server (a phrase, then none with the
   // AI off), newest first, each with what it matched and the answer; it follows the payload's ask_seq while open; Copy
-  {
+  s35_questions_asked: { if (skip("s35_questions_asked")) break s35_questions_asked;
     const w = dom.window, d = w.document, before = errors.length;
     w.eval(`const dla = document.getElementById("alertDialog"); dla.showModal ? dla.showModal() : dla.setAttribute("open", "");
       document.getElementById("askLogBox").open = true; loadAskLog()`);
@@ -8346,7 +8389,7 @@ const releasePayloads = async () => {
   // S37: any view in its own window: the ↗ in a tab's corner opens ?view=<it> in a named window (a second press brings
   // it forward), the main window's view untouched; a window at ?view=bm shows Bookmarks without the tab row, never saves
   // the view, sends ⌖ to the main window while it is open (else shows Here itself, with ↩ back); a bad view falls back
-  {
+  s37_view_windows: { if (skip("s37_view_windows")) break s37_view_windows;
     const w = dom.window, d = w.document, before = errors.length;
     const opened = [], realOpen = w.open, view0 = w.eval("view"), stored0 = w.localStorage.getItem("view");
     w.open = (u, n) => { opened.push([u, n]); return {closed: false, focus() { opened.push("focus"); }}; };
@@ -8397,7 +8440,7 @@ const releasePayloads = async () => {
   }
   // Review fixes: a hush asked by voice is said by its answer (the three lengths first when another time was asked),
   // once, in place of the page's own news of the hush; a hush from the button still says the page's words
-  {
+  review_hush_answer: { if (skip("review_hush_answer")) break review_hush_answer;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const said = [], realSpeak = speak, flags = [speechOn, isSpeaker, lastCopilotSeq, hushState, hushKey], d0 = JSON.stringify(data);
@@ -8418,7 +8461,7 @@ const releasePayloads = async () => {
   }
   // Review fixes: a view window (S37) given the voice while the main window that opened it waits in line (the main window
   // reloaded) hands it back and queues again; taken on purpose (Speak from this window) it keeps it. Web Locks faked
-  {
+  review_view_window_voice: { if (skip("review_view_window_voice")) break review_view_window_voice;
     const before = errors.length, errs = [];
     // one lock, its queue in order; a steal rejects the holder's request; an aborted wait leaves the queue
     const locks = {holder: null, queue: [],
@@ -8466,7 +8509,7 @@ const releasePayloads = async () => {
   // next line and "say again" do; Settings → Voice → Personality voices draws each personality's voice and speaker,
   // posts a change, a speaker and a reset (api/voice/style, answered here), ▶ plays a line as it is heard; the voice
   // lab's Give to this personality posts the lab's voice and person, and a line played there is in the personality's
-  {
+  s40_personality_voices: { if (skip("s40_personality_voices")) break s40_personality_voices;
     holdPayloads();
     const w = dom.window, d = w.document, realFetch = w.fetch, before = errors.length, said = [], posted = [], played = [];
     const people = [{id: 0, name: "p225"}, {id: 1, name: "p226"}, {id: 2, name: "p227"}, {id: 3, name: "p228"}];
@@ -8573,7 +8616,7 @@ const releasePayloads = async () => {
   // a fuel-low line by the Engineer with the Danger switch off and by Tactical with it on, a moved row by its new member;
   // a member who cannot speak (data.crew's fill) and a row no role covers are the XO's (the main voice, as before);
   // with the crew off the same lines are exactly as before (styleVoice, no role)
-  {
+  crew_batch_1: { if (skip("crew_batch_1")) break crew_batch_1;
     holdPayloads();
     const w = dom.window, before = errors.length, played = [];
     const realFetch = w.fetch, savedServer = w.localStorage.getItem("speakOnServer");
@@ -8648,7 +8691,7 @@ const releasePayloads = async () => {
   // follow the number picked; the table's nine rows (the XO first, highlighted, no ↺), a member's selects and speaker,
   // Speaks for (Tactical's danger lines in red), ↺ and a name posting; the Alerts column (a danger row's "spoken by
   // Tactical") and a moved row posting; all of it hidden with the crew off; Find a setting finds the new rows
-  {
+  crew_batch_2_settings: { if (skip("crew_batch_2_settings")) break crew_batch_2_settings;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, posted = [];
     const realFetch = w.fetch;
@@ -8814,7 +8857,7 @@ const releasePayloads = async () => {
   // sentence's start, also after a filled {text}) or the member's name, "Mira"; a member never says a line naming itself (a
   // row moved to the Engineer, the XO standing in); the voice lab's crew lines take made-up names for a member without,
   // and Audition: crew lines plays one per alert in each personality
-  {
+  crew_batch_3_lines: { if (skip("crew_batch_3_lines")) break crew_batch_3_lines;
     holdPayloads();
     const w = dom.window, before = errors.length;
     const served = await (await fetch(base + "api/speech")).json();
@@ -8880,7 +8923,7 @@ const releasePayloads = async () => {
   // Server settings key loaded without opening its section), opens their sections and says how many; every section is
   // found by a word of its own rows and by its name; nothing matching says so; clearing puts every section back as it
   // was, and settingsOpen is never written meanwhile
-  {
+  s39_find_a_setting: { if (skip("s39_find_a_setting")) break s39_find_a_setting;
     const w = dom.window, d = w.document, before = errors.length;
     if (!w.HTMLDialogElement.prototype.showModal) w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
     w.localStorage.setItem("settingsOpen", JSON.stringify({alerts: false, voice: true}));
@@ -8950,7 +8993,7 @@ const releasePayloads = async () => {
   // Settings made easier (the author, 2026-10-23): every key taken out of the Server list (GET api/config's `homed`) is
   // found by Find a setting through its own section's data-find; Auto honk's and the co-pilot button's fields are drawn
   // from it and save only what changed, like Server settings
-  {
+  settings_homed_keys: { if (skip("settings_homed_keys")) break settings_homed_keys;
     const w = dom.window, d = w.document, before = errors.length, realFetch = w.fetch, got = {};
     if (!w.HTMLDialogElement.prototype.showModal) w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
     // the last section is remembered by name (review 2026-10-23 L4): a number from before the reshuffle opens none
@@ -8996,7 +9039,7 @@ const releasePayloads = async () => {
   // Settings -> Alerts in groups (the author, 2026-10-23): each group's heading at its first row, in ALERT_GROUPS' order
   // and covering every row; every row named (ALERT_NAMES) before its line; the fine print in the line's hover; the
   // Spoken lines tally says the rows' own names
-  {
+  alerts_in_groups: { if (skip("alerts_in_groups")) break alerts_in_groups;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       // Settings -> Alerts, then Settings -> Mining's own table (ring and Rhino: MINING_ALERTS)
@@ -9026,7 +9069,7 @@ const releasePayloads = async () => {
   // S53: Import… beside Bookmarks' Export: a picked CSV file goes to the scratch server, which merges it ("2 added, 0
   // already there", a bad row said with its line); the rows arrive with the exact id64 above 2^53, a sweep tick and Plot
   // route; the same file again adds nothing; a file it cannot read is said in red. The two bookmarks are removed after.
-  {
+  s53_bookmarks_import: { if (skip("s53_bookmarks_import")) break s53_bookmarks_import;
     const w = dom.window, d = w.document, before = errors.length, view0 = w.eval("view");
     w.eval(`document.querySelector('[data-view="bm"]').click()`);
     await settle(800);
@@ -9071,7 +9114,7 @@ const releasePayloads = async () => {
   }
   // the Android app has no file picker: with window.OutriderApp, every control that opens one (one per file input) is
   // hidden and its note shows; in a browser they show and the notes do not
-  {
+  no_file_picker_in_the_app: { if (skip("no_file_picker_in_the_app")) break no_file_picker_in_the_app;
     const w = dom.window, d = w.document, before = errors.length;
     const state = () => [["bmImport", "settingsImport"].map(id => !d.getElementById(id).hidden),
       [...d.querySelectorAll(".nopicker")].map(n => !n.hidden)];
@@ -9095,7 +9138,7 @@ const releasePayloads = async () => {
   // the api/export links stay): with window.OutriderApp no control that saves one shows ([data-blobsave], each saved
   // through saveBlob, the one place a page-made file is saved), their notes do, and saveBlob refuses; in a browser they
   // show and Export settings saves a blob
-  {
+  no_page_made_saves_in_the_app: { if (skip("no_page_made_saves_in_the_app")) break no_page_made_saves_in_the_app;
     const w = dom.window, d = w.document, before = errors.length;
     const src = await (await fetch(base + "static/page.js")).text();
     const count = re => (src.match(re) || []).length;
@@ -9132,7 +9175,7 @@ const releasePayloads = async () => {
   // the voice commands (Settings → Voice's fold, GET api/ask/commands): every command of the server's list, grouped,
   // with what it does, its phrases and the words that narrow it; the Settings filter finds it by "voice commands" and
   // "phrases", and a phrase's word ("vista") finds it too
-  {
+  voice_commands: { if (skip("voice_commands")) break voice_commands;
     const w = dom.window, d = w.document, before = errors.length;
     const api = await (await fetch(base + "api/ask/commands")).json();
     if (!w.HTMLDialogElement.prototype.showModal) w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
@@ -9174,7 +9217,7 @@ const releasePayloads = async () => {
   // controls above the pane in the themed switch, green / red the theme's own colours, the credits and the carrier the
   // tiles' (the payload's), a tab asked again only when the payload's commander_version moves (Engineering also on the
   // materials' version), not on a timer; Engineering's filter; the missions' time left counted at each draw
-  {
+  commander: { if (skip("commander")) break commander;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {}, asked = [];
     w.__cmAsked = asked;
@@ -9427,7 +9470,7 @@ const releasePayloads = async () => {
   // Inventory's ship pictures (2026-10-15): a mouse resting 2 s on a ship's row shows its type's picture in a card (none
   // before), gone when it leaves; a touch's pointer does nothing (the tablet's tap, in the tablet block); a type with no
   // picture (a hull newer than SHIP_NAMES) shows nothing; Escape closes; another tab of the CMDR view closes it
-  {
+  ship_pictures: { if (skip("ship_pictures")) break ship_pictures;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {};
     w.eval(`window.__scKeep = {api: apiJson, ver: data.commander_version};
@@ -9500,7 +9543,7 @@ const releasePayloads = async () => {
   // &month= (per device), a slow older answer never drawn over a newer one; the monthly chart to one scale (3-4 ticks the
   // axis reaches, a zero month with no bar, the period's months highlighted, a bar picks its month); each table; the CSV
   // link (a server link: the Android app saves it); the estimates labelled; History's Trips; a database with no sale
-  {
+  earnings: { if (skip("earnings")) break earnings;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {}, asked = [];
     w.__emAsked = asked; w.__emAnswers = JSON.stringify(EARN);
@@ -9658,7 +9701,7 @@ const releasePayloads = async () => {
   // Which header tiles this device shows (the author, 2026-10-14): Settings → Display ticks them; an unticked one is
   // left out (tile and one line), the wide grid has a column per tile shown, at least one stays, per device (not a
   // shared setting), and the one-line / six-tile modes still work
-  {
+  header_tiles_shown: { if (skip("header_tiles_shown")) break header_tiles_shown;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {};
     const box = d.getElementById("tilesShown"), cb = k => box.querySelector(`[data-tile="${k}"]`);
@@ -9710,7 +9753,7 @@ const releasePayloads = async () => {
   }
   // The Fable sweep of 2026-10-17's page fixes: a chat line replayed (▶, a Now caption, the co-pilot's again) stays private;
   // Here's 📍 only for the system you are in; the XO compared as the one personality ticked; the legend's first 📍
-  {
+  sweep_fixes_2026_10_17: { if (skip("sweep_fixes_2026_10_17")) break sweep_fixes_2026_10_17;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {}, posts = [];
     const realFetch = w.fetch;
@@ -9769,7 +9812,7 @@ const releasePayloads = async () => {
   }
   // Review 2026-10-20 L12, L13: a pin changed in any system (pins.v) asks for the list again (a pin added from another
   // window on another system's body went unnoticed), and Here redraws its 📍 marks when this system's counts change
-  {
+  pins_anywhere: { if (skip("pins_anywhere")) break pins_anywhere;
     holdPayloads();
     const w = dom.window, before = errors.length, got = {};
     w.eval(`window.__pv = {pins: data.pins, sig: PINS.sig, counts: PINS.counts, rh: renderHere, lp: loadPins, hd: hereData};
@@ -9800,7 +9843,7 @@ const releasePayloads = async () => {
   // Surface pins (#16): the coordinates read in every common layout; the spoken words; the active pin's line; the map's
   // pins and the legend (tap one to go there, 📍 on a site pins it); a body panel's Pins (what it reads as, Add); the 📍
   // on a body with pins; Bookmarks' list; the Navigator's line; the status report leads with it
-  {
+  surface_pins: { if (skip("surface_pins")) break surface_pins;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {}, posts = [];
     const realFetch = w.fetch;
@@ -9885,7 +9928,7 @@ const releasePayloads = async () => {
   // api/body/sites once; the Pins heading counts the ones not pinned yet; each has 📍 pin it (a geology formation its
   // reported spot nearest you on that body), a pinned one ✓; drawn again, not asked again; a body without those
   // signals, or not landable, never asks
-  {
+  known_sites: { if (skip("known_sites")) break known_sites;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {}, posts = [], asked = [];
     const realFetch = w.fetch;
@@ -9950,7 +9993,7 @@ const releasePayloads = async () => {
   // Carrier trips (#19): the Carrier plotter's own form (figures from the journal, To me, + via) posting api/carrier/trip;
   // the tile's one movement line (the leg, 📋, departs / cooldown / ready / ready?, ✕; off the trip with re-plot), ⚠ when
   // the depot cannot pay for the next leg; the ready line said once; the arrival's words; Plot Route's trip list
-  {
+  carrier_trips: { if (skip("carrier_trips")) break carrier_trips;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {}, posts = [];
     const realFetch = w.fetch;
@@ -10038,7 +10081,7 @@ const releasePayloads = async () => {
   // Chat read aloud by Comms (#17): nothing from the first payload; the ticked channels, a mention through an unticked
   // one and through the gap; one sender's messages in a row as one line; one line per CHAT_GAP; "and N more" past
   // CHAT_SUMMARY; a stale one shown, not said; the three headers; a link and emoji; 🔇 mutes a sender; private to the PC
-  {
+  chat_read_aloud: { if (skip("chat_read_aloud")) break chat_read_aloud;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {};
     w.eval(`window.__ch = {chat: data.chat, speak, flags: [speechOn, isSpeaker], hush: hushState, alert: lastAlert, q: JSON.stringify(CHATQ),
@@ -10109,7 +10152,7 @@ const releasePayloads = async () => {
   }
   // Rings to mine (Settings → Mining, the author 2026-10-18): nothing until a type is ticked; a ticked type said (the
   // ring phrased with its reserves), others not; one payload's bodies in one line; pristine only; the row and its controls
-  {
+  rings_to_mine: { if (skip("rings_to_mine")) break rings_to_mine;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {};
     w.eval(`window.__rg = {data, speak, flags: [speechOn, isSpeaker], hush: hushState, alert: lastAlert, aspeak: alertSpeak.ring,
@@ -10313,7 +10356,7 @@ const releasePayloads = async () => {
   }
   // Four mining additions, ideas from EliteMining's feature list (2026-10-24): a threshold per mineral (A), a ring's
   // hotspot minerals by price nearby (B), Search's 2+ in a ring (C), a mining mission's 🔍 (D)
-  {
+  mining_ideas: { if (skip("mining_ideas")) break mining_ideas;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {};
     w.eval(`window.__mi = {mstore: localStorage.getItem("mining"), sstore: localStorage.getItem("search"), view,
@@ -10463,7 +10506,7 @@ const releasePayloads = async () => {
       : "a threshold per mineral (combined keeps one), a ring's minerals by price (cached, a failure retried), Search's 2+, a mining mission's search", errors.slice(before));
   }
   // The leaving line's ✪ / ✦ names what it counts (the author, 2026-10-24: a bare ✪ after "👣×5" read as a count)
-  {
+  leaving_lines_codex_mark: { if (skip("leaving_lines_codex_mark")) break leaving_lines_codex_mark;
     const w = dom.window, before = errors.length;
     const mark = b => { const h = new w.DOMParser().parseFromString(w.eval(`planText({kind: "bio", b: ${JSON.stringify(b)}})`), "text/html").querySelector(".cxnew");
       return h ? [h.textContent, h.title] : null; };
@@ -10477,7 +10520,7 @@ const releasePayloads = async () => {
     console.log(goodCX ? "OK" : "FAIL", "| leaving line's codex mark |", goodCX ? "names the species it counts" : JSON.stringify(got), errors.slice(before));
   }
   // A green gas giant your codex logged, matched by class: "one of these N" when the system has several of it
-  {
+  green_gas_giant_confirmed: { if (skip("green_gas_giant_confirmed")) break green_gas_giant_confirmed;
     const w = dom.window, before = errors.length;
     const got = [w.eval(`gggTitle({confirmed: true, of: 1})`), w.eval(`gggTitle({confirmed: true, of: 2})`)];
     const want = ["a green gas giant: your codex entry confirms it",
@@ -10488,7 +10531,7 @@ const releasePayloads = async () => {
   }
   // My firsts → Your records (the author, 2026-10-25): a row per record, 🔍 for a body, ⌖ for a system, a star named as its
   // system said once
-  {
+  your_records: { if (skip("your_records")) break your_records;
     const w = dom.window, d = w.document, before = errors.length;
     w.eval(`window.__rec = JSON.stringify(REC); REC.d = {bodies: 27455, records: [
       {key: "high_g", label: "Highest gravity, landable", text: "4.74 g", body: "1", system: "Sys", id64: "7", ts: "2025-10-02T00:00:00Z"},
@@ -10505,7 +10548,7 @@ const releasePayloads = async () => {
     console.log(goodRC ? "OK" : "FAIL", "| your records |", goodRC ? "rows, links, a star named as its system once" : JSON.stringify(got), errors.slice(before));
   }
   // Explorer ideas (project/PLAN-explorer-ideas-2026-10-25.md): one block, a check per item
-  {
+  explorer_ideas: { if (skip("explorer_ideas")) break explorer_ideas;
     const w = dom.window, before = errors.length, got = {}, want = {};
     // 2: the seconds to a full tank while scooping
     got.toFull = w.eval(`[toFullText(38), toFullText(60), toFullText(125)]`);
@@ -10675,6 +10718,7 @@ const releasePayloads = async () => {
     // the third in-depth review of 2026-10-25: the picker says the game's own folder is never made; 📍 pins a shot once;
     // a hidden, emptied quality box does not refuse Save; a crop past the edge is refused as typed
     got.review3 = await (async () => {
+      await w.eval("loadShotCfg()");   // Settings → Screenshots as the server has it (an earlier block's Settings may not have run)
       const q = k => w.document.querySelector('#shotSettings .scfg[data-key="' + k + '"]'), o = [], real = w.fetch, posts = [];
       w.fetch = (u, opt) => {
         if (/api\/folders/.test(String(u))) return Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"},
@@ -10741,7 +10785,7 @@ const releasePayloads = async () => {
   }
   // The geology a body's signals could be (the author, 2026-10-19): the body card names the kinds its volcanism allows,
   // each new to your codex marked (✪ anywhere, ✦ this region), and how one is logged
-  {
+  geology_kinds: { if (skip("geology_kinds")) break geology_kinds;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const saved = data.codex_types; data.codex_types = {"Inner Orion Spur": [1400102], "Odin's Hold": [1400402]};
@@ -10761,7 +10805,7 @@ const releasePayloads = async () => {
     console.log(okG ? "OK" : "FAIL", "| geology kinds |", okG ? "the body card names the kinds its volcanism allows, new ones marked, how to log one" : JSON.stringify(got), errors.slice(before));
   }
   // 🎯 on a Search result (the author, 2026-10-19): where auto-target can work, never on the system you are in
-  {
+  search_target: { if (skip("search_target")) break search_target;
     const w = dom.window, d = w.document, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
       const saved = {search, gp: data.game_pc, at: data.autotarget};
@@ -10780,7 +10824,7 @@ const releasePayloads = async () => {
   }
   // #11 (Kurbo26): pre-Odyssey Spansh data: Nearby's pill (🪦 when narrow), Here's header date, never routine, the
   // briefing's clause and line, the Now line until your own scans have every body
-  {
+  pre_odyssey_data: { if (skip("pre_odyssey_data")) break pre_odyssey_data;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {};
     w.eval(`window.__po = {data, hereData, speak, flags: [speechOn, isSpeaker], hush: hushState, alert: lastAlert, aspeak: alertSpeak.brief, rq: localStorage.getItem("routineQuiet")};
@@ -10825,7 +10869,7 @@ const releasePayloads = async () => {
   // Main personality (the author, 2026-10-16): beside Main voice, one personality or "A mix…" (the boxes and One
   // personality per system); a browser with one ticked gets the dropdown, with several the mix; the explanation says
   // what they are for with the crew on and off; with profanity names the personalities that never swear, the short way
-  {
+  main_personality: { if (skip("main_personality")) break main_personality;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {};
     const sel = d.getElementById("speechMain"), box = d.getElementById("speechMixBox"), hint = d.getElementById("mainHint");
@@ -10884,7 +10928,7 @@ const releasePayloads = async () => {
   // toggle off) and dropped after an alert, a monologue in space and on a planet (landed or in orbit), a line missing a
   // value never said; the two clocks, the grace, the rare cap, quiet while something is queued or the game has a
   // screen open; Settings' controls posting their changes
-  {
+  space_chatter: { if (skip("space_chatter")) break space_chatter;
     holdPayloads();
     const w = dom.window, d = w.document, before = errors.length, got = {}, posts = [];
     const served = await (await fetch(base + "api/speech")).json();
@@ -11037,7 +11081,7 @@ const releasePayloads = async () => {
     console.log(goodCH ? "OK" : "FAIL", "| space chatter |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "who may talk to whom, a dialogue in order with names in the captions (dropped after an alert), monologues in space, landed and in orbit, no half-filled line, the clocks and what keeps it quiet, Settings posting", errors.slice(before));
   }
-  {   // the full Fable review of 2026-10-23, fix batch 6: the page's behaviour (S5-B3..B9, B11)
+  review_fixes_6: { if (skip("review_fixes_6")) break review_fixes_6;   // the full Fable review of 2026-10-23, fix batch 6: the page's behaviour (S5-B3..B9, B11)
     const w = dom.window, d = w.document, before = errors.length, got = {};
     {
       // S5-B3: a tile redrawn each second keeps its nodes when only a countdown moved
@@ -11111,11 +11155,20 @@ const releasePayloads = async () => {
       : "countdowns update in place, mapped by others, from you, the lone star's ring, the line on the followed route, a mention read, the newest Boxel answer, an unsaved edit kept", errors.slice(before));
   }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
+  origin_guard: { if (skip("origin_guard")) break origin_guard;
   const post = origin => fetch(base + "api/radius", {method: "POST", body: "{}",
     headers: Object.assign({"Content-Type": "application/json"}, origin ? {Origin: origin} : {})}).then(r => r.status);
   const [foreign, own] = [await post("http://evil.example"), await post(base.slice(0, -1))];
   const goodG = foreign === 403 && own === 400;
   allOk = allOk && goodG;
   console.log(goodG ? "OK" : "FAIL", "| origin guard |", `foreign ${foreign}, same origin ${own}`);
+  }
+  blockEnd();
+  console.log(`ran ${BLOCKS.ran} of ${BLOCKS.all} blocks${SMOKE_ONLY.length ? ` (SMOKE_ONLY=${SMOKE_ONLY.join(",")})` : ""}`);
+  if (process.env.VERBOSE) for (const [b, ms] of BLOCKS.times.sort((a, b) => b[1] - a[1]).slice(0, 10)) console.log(`  ${(ms / 1000).toFixed(1)} s  ${b}`);
+  if (SMOKE_ONLY.length && !BLOCKS.ran) { console.log(`FAIL | SMOKE_ONLY=${SMOKE_ONLY.join(",")} matched no block (--list names them)`); process.exit(2); }
   process.exit(allOk ? 0 : 1);
-})();
+})().catch(e => {   // a throw in a block: named, not an anonymous unhandled rejection
+  console.log("FAIL | crashed in block", BLOCKS.current, "|", (e && e.stack) || e);
+  process.exit(1);
+});

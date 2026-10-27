@@ -160,7 +160,7 @@ endpoints; a tiny BMP made in the test, temp folders), `test_records` (Your reco
 `test_explorer_ideas` (Search's "at least N", EDSM's first reporter, the trail, catalogued sights) and
 `test_mining_ideas` (Search's "2+ in a ring", a mining mission's search; the page's parts in `page_smoke.js`);
 unittest, in-memory SQLite). `support.py` holds the shared fixtures and fakes (`FakeGame`, `_fake_evdev`, `_HwSession`, `scan`, `T`...) and the helpers test classes share; import from it, never import a test class into another file (it would run twice). One file runs alone as `python3 -m unittest tests.test_highway` |
-| `tests/page_smoke.js` | Loads the page in jsdom from a running server, opens every view, drives many page functions |
+| `tests/page_smoke.js` | Loads the page in jsdom from a running server, opens every view, drives many page functions; each check a labelled block (`skip`, `SMOKE_ONLY`, `--list`) |
 | `tests/page_unit.js` | page.js's pure functions (formatting, parsing, small rules) in about a second, no server: page.html and page.js from disk into jsdom; `t(name, fn)` with `node:assert`, `eq(src, want)` evaluates in the page |
 | `tests/fixtures/journals/` | Synthetic sample journals, `Status.json` and `NavRoute.json` (made-up commander and systems) |
 | `scripts/verify.sh` | Runs everything below in one go against a throwaway server |
@@ -305,6 +305,13 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
   starting page answers before that, S9), runs `tests/page_smoke.js`, and stops the server by its PID. Its service
   folder (S70) is a scratch one and systemctl is never run. All of it happens in a `mktemp` folder that is deleted afterwards. `VERBOSE=1` prints
   every smoke line and the server log.
+- **A partial smoke run while working:** `scripts/verify.sh --smoke here,bio` (labels, or their starts) runs only
+  those blocks of `tests/page_smoke.js` against its scratch server (about 10 s), with no unit tests or lint, and ends
+  "SMOKE PASS (partial …; not a verify PASS)": a commit still needs the full run (a full run clears an exported
+  `SMOKE_ONLY`). Every top-level block is `  name: { if (skip("name")) break name;` (`node tests/page_smoke.js --list`
+  names them; `tests/test_smoke_blocks.py` fails on a block with no label, a guard naming another, or a label used
+  twice); the prelude and the shared fixtures (`hwyFixture`...) always run. A crash names its block; `VERBOSE=1`
+  lists the ten slowest. A new block must stand alone: each was run by itself once (2026-10-27).
 - By hand: `python3 -m unittest discover tests` (one file: `python3 -m unittest tests.test_highway`);
   `node tests/page_smoke.js <port> [node_modules]` against a scratch server only: it clicks and POSTs, needs the port
   and refuses 8025. Waits in it: `settle(maxMs)` (the page's requests answered and quiet) rather than a fixed sleep,

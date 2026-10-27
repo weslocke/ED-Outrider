@@ -4,6 +4,9 @@
 # tests/fixtures/journals.
 #
 #   scripts/verify.sh
+#   scripts/verify.sh --smoke here,bio   a partial pass while working: only those smoke blocks (labels or their starts;
+#                                        node tests/page_smoke.js --list names them), no unit tests or lint. Never a
+#                                        verify PASS: a commit still needs the full run.
 #
 # Needs: pip install -r requirements.txt -r requirements-dev.txt, and npm install (jsdom) in the repo root.
 # Environment: PYTHON (default .venv/bin/python if present, else python3), NODE_MODULES (default ./node_modules),
@@ -17,6 +20,16 @@
 # Everything it makes goes in a mktemp folder that is deleted at the end; the server is stopped by its PID.
 set -u
 cd "$(dirname "$0")/.." || exit 1
+
+# --smoke <labels>: a partial smoke run (the review's #2); otherwise SMOKE_ONLY is cleared, so an exported one can never
+# quietly shrink the full verify
+PARTIAL=""
+if [ "${1:-}" = "--smoke" ]; then
+  if [ -z "${2:-}" ]; then echo "usage: scripts/verify.sh --smoke label[,label...]  (node tests/page_smoke.js --list names them)"; exit 2; fi
+  PARTIAL=1; export SMOKE_ONLY="$2"
+else
+  unset SMOKE_ONLY
+fi
 
 PY=${PYTHON:-}
 if [ -z "$PY" ]; then
@@ -38,6 +51,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+if [ -z "$PARTIAL" ]; then
 step "unit tests ($PY)"
 # ResourceWarnings shown (they are raised in finalizers, so -W error would not fail the run): any in the log fails it
 if "$PY" -W always::ResourceWarning -m unittest discover tests 2>"$TMP/unit.log"; then tail -3 "$TMP/unit.log"; else tail -40 "$TMP/unit.log"; FAIL=1; fi
@@ -52,6 +66,7 @@ elif command -v pyflakes >/dev/null 2>&1; then
   if pyflakes ed_outrider.py outrider/*.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
 else
   echo "pyflakes not installed: skipped (pip install -r requirements-dev.txt)"
+fi
 fi
 
 step "node --check static/page.js"
@@ -176,7 +191,7 @@ EOF
     smoke_rc=$?
     if [ -n "${VERBOSE:-}" ]; then cat "$TMP/smoke.log"; else grep -v '^OK' "$TMP/smoke.log"; fi
     ok=$(grep -c '^OK' "$TMP/smoke.log"); bad=$(grep -c '^FAIL' "$TMP/smoke.log")
-    echo "smoke: $ok OK, $bad FAIL"
+    echo "smoke: $ok OK, $bad FAIL ($(grep -m1 '^ran ' "$TMP/smoke.log" | sed 's/^ran //'))"
     if [ "$bad" != 0 ] || [ "$ok" = 0 ] || [ "$smoke_rc" != 0 ]; then FAIL=1; fi
     if [ -n "${VERBOSE:-}" ]; then echo "--- server log"; cat "$TMP/server.log"; fi
     # SIGTERM (docker stop, systemd) stops it as Ctrl-C does: its cleanup runs and it exits 0
@@ -191,5 +206,7 @@ EOF
 fi
 
 step "result"
-if [ "$FAIL" = 0 ]; then echo "PASS"; else echo "FAILED"; fi
+if [ -n "$PARTIAL" ]; then
+  if [ "$FAIL" = 0 ]; then echo "SMOKE PASS (partial: $SMOKE_ONLY; not a verify PASS)"; else echo "FAILED (partial: $SMOKE_ONLY)"; fi
+elif [ "$FAIL" = 0 ]; then echo "PASS"; else echo "FAILED"; fi
 exit "$FAIL"

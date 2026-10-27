@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · Named smoke blocks: a partial run in about ten seconds
+- The review's suggestion #2. Every check in `tests/page_smoke.js` is a labelled block guarded by `skip(label)` (184:
+  the 181 blocks, the views loop, the schematic, the origin guard; labels from the check names); `SMOKE_ONLY=here,bio`
+  runs those (labels or their starts) and `node tests/page_smoke.js --list` names them. A crash names its block, the
+  run ends "ran N of 184 blocks", a SMOKE_ONLY matching nothing fails, `VERBOSE=1` lists the ten slowest.
+  `scripts/verify.sh --smoke sell_all,known` runs a partial pass (no unit tests or lint, about 9 s) that ends "SMOKE
+  PASS (partial …; not a verify PASS)"; a full verify clears an exported SMOKE_ONLY. `tests/test_smoke_blocks.py`
+  fails on a block with no label, a guard naming another or a label used twice. Every block was run by itself once.
+
 ## 2026-10-27 · "Sell all": stations ranked for the whole hold
 - The review's suggestion #15. **Sell all** on the Cargo section's ship line (two sellable lines or more) asks GET
   `/api/cargo/hold` (`State.cargo_hold_lookup`): one Spansh station search per line for the `HOLD_LINES_MAX` (4)
