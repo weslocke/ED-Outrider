@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · Sweep ticks on the checklists' 🔍 nearby lists
+- The review's suggestion #12: each row of a species', colour's or formation's 🔍 nearby list has the sweep's tick,
+  and the list its own "🧹 Plot a sweep (N)" bar (`swbarHtml`, the markup the page's four static bars carry); the ticks
+  are the page's one set, so a body ticked for each missing species plots one trip to them all. `clDrawSide` calls
+  `drawSweep` once it has drawn. A sweep's stops still carry no body or species (said in the guide).
+
 ## 2026-10-27 · Now's at-risk line names where to sell, with 🎯 and 🛣
 - The review's suggestion #11: "… · 6 d unsold · sell (UC + Vista): Far Sys 412 ly 🎯 🛣". `sellers_summary` gains
   `sell` per service: the nearest permanent station or your own carrier (another player's may have moved or be

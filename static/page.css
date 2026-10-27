@@ -1473,7 +1473,8 @@ body.app #richPane { grid-column: 1; grid-row: 2; }
 .clfindh { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
 .clfindt { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
 .clfindt td { padding: 1px 4px; white-space: nowrap; }
-.clfindt td:first-child { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.clfindt td:first-child { width: 1px; padding-right: 0; }   /* the sweep tick */
+.clfindt td:nth-child(2) { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 .clfindt td.num { text-align: right; }
 .clmapbox { position: relative; }
 .cltip { position: absolute; pointer-events: none; z-index: 5; padding: 3px 7px; border-radius: 4px; font-size: 12px; white-space: nowrap;

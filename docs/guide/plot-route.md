@@ -119,7 +119,8 @@ a body is done once it is scanned and mapped. Followed like Road to Riches; the 
 Riches' is, without the lower minimum value (they have none to lower).
 
 **A sweep.** Tick systems in **Left behind**, **My firsts** (with show lost: the systems whose data was lost),
-**Bookmarks** or **Search**'s results, then **🧹 Plot a sweep (N)** beside any of those lists (the ticks are one set across them, kept until
+**Bookmarks**, **Search**'s results or the Bio/Geo checklists' **🔍 nearby** lists (tick a body for each species you
+are missing, then plot one trip to them all; the route's stops don't say which body or species each was for), then **🧹 Plot a sweep (N)** beside any of those lists (the ticks are one set across them, kept until
 the page reloads). Spansh's tourist router puts them in the order to fly them, from where you are with your ship's range,
 and Plot Route shows the route: on each arrival the voice says the next stop, and "Sweep complete." at the last. A system
 Spansh doesn't know yet (a fresh discovery among your lost firsts, say) is left out, and the plot's message and the

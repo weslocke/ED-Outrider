@@ -448,7 +448,9 @@ for its name and your completion there. The line above the boxes counts it up: "
 **🔍** beside a species you have not found (and **🔍 nearby** beside a colour of it you have not found, and in its
 column) asks Spansh for the nearest bodies where commanders reported it, in that colour when you picked one: up to 25,
 nearest first, each with its distance, gravity, the colours reported there, ✓ if you have been to the system, ☆ to
-bookmark it, **Copy** for the name to paste into the galaxy map and, where auto-target can work, **🎯** to target it there. It needs the internet, and lists only what
+bookmark it, **Copy** for the name to paste into the galaxy map and, where auto-target can work, **🎯** to target it there;
+its tick adds the system to a sweep (one trip through every system ticked, from several species' lists too: see
+[Plot Route](plot-route.md)). It needs the internet, and lists only what
 commanders' uploads reported to Spansh.
 
 **Completion** counts what you have done, not only what is finished: each species that can grow in the region scores

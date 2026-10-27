@@ -558,7 +558,7 @@ upstream project's choices, not rules of the game.
   body on it is refused** (2026-10-26, `riches.survey_rows`): from inside the bubble (Sol, Lave) Spansh answers the
   start system alone, which stored would be a route already complete; the words say to start further out or widen the
   radius, and to lower the minimum value only where the plot has one (the world routes have none).
-- **A sweep** (S51) is the slot's route through systems ticked in Left behind, My firsts (lost ones: the rescan trip) and
+- **A sweep** (S51; the checklists' 🔍 nearby lists too since the review's #12, 2026-10-27) is the slot's route through systems ticked in Left behind, My firsts (lost ones: the rescan trip) and
   Bookmarks, in the order Spansh's tourist router picks (probe P2): one set of ticks across the three lists, in that page
   only (a reload forgets them; they are a trip being put together, not a setting). Its stops ask nothing but arriving:
   the next stop on each arrival, "Sweep complete." at the last row, never a stop passed over. Spansh refuses a sweep

@@ -7056,6 +7056,14 @@ const releasePayloads = async () => {
         o.rows = [...side.querySelectorAll(".clfindt tr")].map(tr => [...tr.cells].map(c => markText(c).trim()));
         o.head = side.querySelector(".clfindh span").textContent;
         o.foot = (side.querySelector(".clfind > .unk") || {}).textContent;
+        // the review's #12: a sweep tick on each row; ticked, the panel's own bar offers the sweep; a redraw keeps it
+        const tick = side.querySelector(".clfindt .swtick");
+        tick.checked = true; tick.dispatchEvent(new Event("change", {bubbles: true}));
+        const swb = side.querySelector(".swbtn");
+        o.sweep = [SW.names.has("Eol Prou LW-L c8-324"), !!swb && !swb.hidden && swb.textContent];
+        side.dataset.html = ""; clDrawSide();
+        o.sweepKept = side.querySelector(".clfindt .swtick").checked && !side.querySelector(".swbtn").hidden;
+        SW.names.clear(); drawSweep({});
         side.querySelector("[data-bm]").click(); o.bm = opened;
         side.querySelector("[data-clcopy]").click(); o.copied = copied;
         // a colour not found: its row's 🔍 nearby asks for that colour
@@ -7073,8 +7081,9 @@ const releasePayloads = async () => {
       return JSON.stringify(o); })()`));
     const want = {here: "likeliest by value: Acies / Informem\nyours on bodies like this (Icy body, thin N2, 75–100 K, Inner Orion Spur): Informem 11 of 14, Acies 3 of 14",
                   grid: ["🔍", false], open: "ves",
-                  rows: [["Eol Prou LW-L c8-324", "4 b", "7.2 ly", "0.34 g", "Mulberry", "✓", "☆", "Copy [destination]"]],   // S29's target button (S31)
+                  rows: [["", "Eol Prou LW-L c8-324", "4 b", "7.2 ly", "0.34 g", "Mulberry", "✓", "☆", "Copy [destination]"]],   // S29's target button (S31); #12's tick first
                   head: "Nearest reported: Bacterium Vesicula", foot: "143 more further away · reported to Spansh by commanders' uploads; distances from Colonia",
+                  sweep: [true, "🧹 Plot a sweep (1)"], sweepKept: true,
                   bm: ["89128321720906", "Eol Prou LW-L c8-324"], copied: "Eol Prou LW-L c8-324", colourBtn: "🔍 nearby",
                   asked: ["species=ves", "species=ves&colour=Mulberry"], head2: "Nearest reported: Bacterium Vesicula - Mulberry", closed: true};
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;

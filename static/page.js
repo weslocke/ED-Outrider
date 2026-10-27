@@ -4681,6 +4681,9 @@ function emptyMessage(rows) {
 // router flies them (POST api/riches/plot {kind: "sweep", systems}: the survey slot's route, so it replaces the one
 // there). One set of ticks across the three lists, kept by this page only; a successful plot unticks them.
 const SW = {names: new Set(), busy: false};
+// a sweep bar for a list drawn by script (the static ones are in page.html, the same markup): drawSweep() fills it
+const swbarHtml = () => `<span class="swbar"><button type="button" class="mini swbtn" hidden></button><button type="button" class="mini swclear" hidden ` +
+  `title="untick every system ticked for a sweep">✕ untick all</button><span class="swmsg" role="status"></span></span>`;
 const sweepTick = name => `<input type="checkbox" class="swtick" data-sweep="${esc(name)}"${SW.names.has(name) ? " checked" : ""} ` +
   `title="tick to plot a sweep through it" aria-label="sweep ${esc(name)}">`;
 function drawSweep(msg) {
@@ -7223,14 +7226,16 @@ function clFindHtml(r) {
   if (f.busy) return head + `<div class="unk">asking Spansh…</div></div>`;
   if (!a || a.error) return head + `<div class="noscoop">${esc(a ? a.error : "")}</div></div>`;
   if (!a.rows.length) return head + `<div class="unk">No body within ${a.radius.toLocaleString()} ly has it reported to Spansh.</div></div>`;
-  const rows = a.rows.map(x => `<tr><td title="${esc(x.system)}">${esc(x.system)}</td><td>${esc(x.body || "")}</td>` +
+  // a sweep tick on each (the review's #12): ticks from several species' lists plot one trip (Plot a sweep, S51)
+  const rows = a.rows.map(x => `<tr><td>${sweepTick(x.system)}</td><td title="${esc(x.system)}">${esc(x.system)}</td><td>${esc(x.body || "")}</td>` +
     `<td class="num">${x.ly == null ? "" : `${x.ly.toLocaleString(undefined, {maximumFractionDigits: 1})} ly`}</td>` +
     `<td class="num">${x.gravity == null ? "" : `${x.gravity.toFixed(2)} g`}</td>` +
     `<td>${f.colour ? "" : esc(x.colours.join(", "))}</td><td>${x.visited ? '<span class="good" title="you have been to this system">✓</span>' : ""}</td>` +
     `<td>${bmIcon(x.id, x.system, bms)}</td>` +
     `<td><button type="button" class="mini" data-clcopy="${esc(x.system)}" title="copy the system's name">Copy</button>${sysAimBtn(x.system, x.id)}</td></tr>`).join("");
   const more = a.count > a.rows.length ? `${(a.count - a.rows.length).toLocaleString()} more further away · ` : "";
-  return head + `<table class="clfindt">${rows}</table><div class="unk">${more}reported to Spansh by commanders' uploads; distances from ${esc(a.where || "you")}</div></div>`;
+  return head + `<table class="clfindt">${rows}</table><div class="unk">${more}reported to Spansh by commanders' uploads; distances from ${esc(a.where || "you")}</div>` +
+    `<div class="srow">${swbarHtml()}</div></div>`;
 }
 document.getElementById("clSide").addEventListener("click", e => {
   const fb = e.target.closest("[data-clfind]");
@@ -7272,7 +7277,7 @@ function clDrawSide() {
       `<div class="unk clmaplegend">${sp && sp.error ? esc(sp.error) : !sp ? "loading the map…"
         : `highlighted: where it can grow (paler: only in parts) · dots: your samples (${sp.runs.length})`}</div>`;
   }
-  if (side.dataset.html !== html) { side.innerHTML = html; side.dataset.html = html; CL.map = null; }
+  if (side.dataset.html !== html) { side.innerHTML = html; side.dataset.html = html; CL.map = null; drawSweep(); }
   clDrawMap();
 }
 // hovering a lit region of the map (one the species can grow in) names it, with your completion there; elsewhere nothing
