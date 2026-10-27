@@ -20664,6 +20664,7 @@ class State:
         # the error shown is this tick's: a row that failed to build sets it again below, and stays visible
         last_error, self.tail_error = self.tail_error, None
         seq_before, chat_before = self.journals.moment_seq, self.journals.chat_seq
+        hold_before = self.journals.docking_hold   # a grant held for the voice is shown at once (Kurbo26, 2026-10-26)
         pins_before = (self._pin_seen, self._pin_key)   # #16: rolled back with the moments it raised (sweep 2026-10-17)
         try:
             late = None
@@ -20770,8 +20771,10 @@ class State:
                     self.follow_up_failed(name, e)
             # a new moment (approach, left body, FSD supercharged...) is a call-out: the long poll answers now,
             # not at the next unrelated bump
-            # #17: so is another player's message (sweep 2026-10-17: a chat-only tick waited for an unrelated bump)
-            if self.tail_error != last_error or self.journals.moment_seq != seq_before or self.journals.chat_seq != chat_before:
+            # #17: so is another player's message (sweep 2026-10-17: a chat-only tick waited for an unrelated bump), and a
+            # docking grant: its moment is held for [speech] pad_delay, but Now's pad (and the tablet's switch to Now) is not
+            if self.tail_error != last_error or self.journals.moment_seq != seq_before or self.journals.chat_seq != chat_before \
+                    or self.journals.docking_hold is not hold_before:
                 self.bump()
         except Exception as e:
             # Never let one bad line, a locked database or a malformed NavRoute stop the

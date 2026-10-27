@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · The docking pad on Now at once, only its voice delayed
+- Kurbo26 (GitHub discussion #3, 2026-10-26): with `[speech] pad_delay` at 9 s the overlay showed the pad at once (it
+  asks every second) but Now's pad and the tablet's switch to Now waited for the voice. A held grant writes the pad
+  but raises no moment until `docking_release`, so a tick that read only that line woke no long poll. `tick()` now
+  bumps when `docking_hold` changes too. The line is still said after the delay.
+
 ## 2026-10-27 · The reader's saved state in two tables; every attribute placed
 - The review's suggestion #4. `Journals.SAVED` (30 rows: attribute, meta key, default) drives `reload()`, and
   `Journals.MEMORY` drives `checkpoint()` / `restore()` (deep copies, a dict instead of the 20-slot positional tuple
