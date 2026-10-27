@@ -2779,7 +2779,25 @@ const releasePayloads = async () => {
       data.ship = Object.assign({}, data.ship, {rebuy: 247.5e6}); data.since_sale = {ts: "2026-01-01T00:00:00Z", days: 6.7, jumps: 1, ly: 1};   // 6 whole days, never rounded up
       data.docked = null; data.on_body = null; nowStakes = null;
       const txt = r => r ? r.html.replace(/<[^>]+>/g, "") + (r.cls ? " |" : "") : null;
+      const sellers = data.sellers; data.sellers = null;
       out.normal = txt(nowRiskLine());
+      // the review's #11: where to sell it, 🛣 from 250 ly; one name when one place does both; the service holding most
+      const at = (name, system, ly) => ({name, system, id64: 777, distance: ly, carrier: false, yours: false, age_days: 3});
+      data.sellers = {uc: {sell: at("Port", "Far Sys", 412.4)}, vista: {sell: at("Port", "Far Sys", 412.4)}};
+      out.sellAt = txt(nowRiskLine());
+      data.sellers = {uc: {sell: at("Port", "Near Sys", 120)}, vista: {sell: at("Lab", "Lab Sys", 300)}};
+      out.sellNear = txt(nowRiskLine());   // bio holds most: Vista's
+      data.unsold = Object.assign({}, data.unsold, {bio: {estimated_value: 100e6}});
+      out.sellUc = txt(nowRiskLine());
+      data.unsold = Object.assign({}, data.unsold, {bio: {estimated_value: 412e6}});
+      const sent = [], wasFetch = window.fetch, hw = data.highway;
+      window.fetch = (u, o) => { if (String(u) === "api/highway/plot") { sent.push(JSON.parse(o.body).to); return Promise.resolve(new Response('{"error": "smoke"}', {status: 200})); } return wasFetch(u, o); };
+      const click = () => { const div = document.createElement("div"); div.innerHTML = nowRiskLine().html; document.body.appendChild(div);
+        div.querySelector('[data-nowsellplot="go"]').click(); div.remove(); };
+      data.highway = null; click();
+      data.highway = {destination: "Colonia", complete: false}; click();
+      out.sellPlot = [sent.slice(), /replace your route to Colonia/.test(nowRiskLine().html)];
+      NS.ask = false; data.highway = hw; window.fetch = wasFetch; data.sellers = sellers;
       data.docked = {station: "Carrier", has_uc: true, has_vista: false};
       out.sell = txt(nowRiskLine());
       data.docked = null;
@@ -2837,7 +2855,11 @@ const releasePayloads = async () => {
     await sleep(300);
     got.win = [dom2.window.eval("view"), dom2.window.location.search, d2.getElementById("nowBack").hidden, !d2.getElementById("nowView").hidden, errs2];
     dom2.window.close();
-    const want = {risk: {normal: "🗺 380.0M · 🧬 412.0M aboard · 3.2× rebuy · 6 d unsold |", sell: "💰 sell here: 380.0M |",
+    const want = {risk: {normal: "🗺 380.0M · 🧬 412.0M aboard · 3.2× rebuy · 6 d unsold |",
+                         sellAt: "🗺 380.0M · 🧬 412.0M aboard · 3.2× rebuy · 6 d unsold · sell (UC + Vista): Far Sys 412 ly 🛣 |",
+                         sellNear: "🗺 380.0M · 🧬 412.0M aboard · 3.2× rebuy · 6 d unsold · sell (Vista): Lab Sys 300 ly 🛣 |",
+                         sellUc: "🗺 380.0M · 🧬 100.0M aboard · 3.2× rebuy · 6 d unsold · sell (UC): Near Sys 120 ly |",
+                         sellPlot: [["Lab Sys"], true], sell: "💰 sell here: 380.0M |",
                          highg: "⚠ 2.4 g · 792.0M aboard · 3.2 rebuys |", shown: true, liftoff: true, small: null},
       caps: [["Leaving A 3 unfinished: Stratum 2 of 3."], 0, ["Line 1.", "Line 2.", "Line 3."]],
       tap: [[["api/copilot", {action: "replay", words: "Line 3."}], ["api/copilot", {action: "status"}], ["api/hush", {mode: "30m"}]], "now", false, false],

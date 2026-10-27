@@ -1186,6 +1186,22 @@ class Batch3Server(unittest.TestCase):
                                                   "uc": uc, "vista": []})
         self.assertEqual(self.state.sellers_summary()["uc"]["fresh"]["name"], "XYZ-123")
 
+    def test_the_place_to_sell_at(self):
+        """The review's #11 (Now's at-risk line): `sell` is the nearest permanent station (another player's carrier may
+        have moved or be closed), one with a large pad for a ship that needs one."""
+        self.jump("2026-01-01T00:00:00Z", 1, 0)
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 1200))
+        uc = [{"name": "XYZ-123", "type": "Drake-Class Carrier", "system": "C", "updated_at": now, "x": 40, "y": 0, "z": 0, "distance": 40},
+              {"name": "Outpost", "type": "Outpost", "system": "O", "updated_at": now, "large_pad": False, "x": 60, "y": 0, "z": 0, "distance": 60},
+              {"name": "Port", "type": "Coriolis Starport", "system": "P", "updated_at": now, "large_pad": True, "x": 400, "y": 0, "z": 0, "distance": 400}]
+        ed_outrider.meta_set(self.db, "sellers", {"pos": {"x": 0, "y": 0, "z": 0, "name": "S1"}, "fetched": time.time(),
+                                                  "uc": uc, "vista": []})
+        self.j.ship = {"type": "python"}
+        s = self.state.sellers_summary()
+        self.assertEqual((s["uc"]["nearest"]["name"], s["uc"]["sell"]["name"], s["vista"]["sell"]), ("XYZ-123", "Outpost", None))
+        self.j.ship = {"type": "anaconda"}   # a large pad: not the outpost
+        self.assertEqual(self.state.sellers_summary()["uc"]["sell"]["name"], "Port")
+
     def test_value_only_changes_leave_scan_version(self):   # G2.1
         import asyncio
         self.state.bases = {1: ("spansh", {"name": "S1", "x": 0, "y": 0, "z": 0, "records": []}),

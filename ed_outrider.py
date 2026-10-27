@@ -20376,7 +20376,9 @@ class State:
         seen by Spansh weeks ago may be long gone), and the nearest permanent station. Your own carrier (S55 A) is
         never Spansh's (possibly stale) report of it but the journal's: where it is now, in the Universal Cartographics
         list while UC is on (not suspended), in Vista's while Vista is, never once decommissioned; with how many
-        carrier jumps would bring it to you."""
+        carrier jumps would bring it to you. `sell` (the review's #11, Now's at-risk line): the nearest you would fly to,
+        a permanent station or your own carrier (another player's may have moved or be closed), with a large pad when
+        your ship needs one."""
         cur, pos = meta_get(self.db, "sellers"), self.journals.pos
         if not pos:
             return None
@@ -20390,6 +20392,7 @@ class State:
         if not cur and not own:
             return None
         cur = cur or {"pos": dict(pos), "uc": [], "vista": []}
+        large = outrider.cargo.SHIP_PAD.get(((self.journals.ship or {}).get("type") or "").lower()) == outrider.cargo.LARGE
 
         def mine(lst, on):
             lst = [x for x in lst if not (c.get("callsign") and x.get("name") == c.get("callsign"))]
@@ -20411,7 +20414,8 @@ class State:
             fresh = next((x for x in out if x["yours"] or not x["carrier"]
                           or (x["age_days"] if x["age_days"] is not None else 99) <= 14), None)
             station = next((x for x in out if not x["carrier"]), None)
-            return {"nearest": out[0] if out else None, "fresh": fresh, "station": station}
+            sell = next((x for x in out if (x["yours"] or not x["carrier"]) and (not large or x["carrier"] or x.get("large_pad"))), None)
+            return {"nearest": out[0] if out else None, "fresh": fresh, "station": station, "sell": sell}
         return {"from": cur["pos"].get("name"), "moved": round(dist(pos, cur["pos"]), 1),
                 "uc": pick(mine(cur["uc"], cs.get("has_uc"))), "vista": pick(mine(cur["vista"], cs.get("has_vista")))}
 

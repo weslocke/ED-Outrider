@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · Now's at-risk line names where to sell, with 🎯 and 🛣
+- The review's suggestion #11: "… · 6 d unsold · sell (UC + Vista): Far Sys 412 ly 🎯 🛣". `sellers_summary` gains
+  `sell` per service: the nearest permanent station or your own carrier (another player's may have moved or be
+  closed), with a large pad when your ship needs one (it ignored the pad before: an outpost could be the nearest). The
+  line names the service holding most of what is aboard, once when one place does both; 🛣 from 250 ly plots an exact
+  route at once with Plot Route's saved options (`plotExactTo`, the carrier tile's 🛣 made general), asking Replace /
+  Keep when you follow a route. Now's line only (the Unsold tile keeps its hover).
+
 ## 2026-10-27 · Your record at a hotspot as you drop in; this stint's hits on Now
 - The review's suggestion #9: dropping out of supercruise at a hotspot you have mined before (a mining ship, a live
   line) says "⛏ Alexandrite hotspot · you, 3 stints · 38 t/h · 41 % hits · last here 1 h 20 min ago" (moment

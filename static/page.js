@@ -457,18 +457,23 @@ function carrierPlot(c) {
 async function plotToCarrier() {
   const c = data && data.carrier;
   if (!c || !c.system) return;
-  const b = {plotter: "exact", to: c.system, injections: !!hwyCfg.injections, exclude_secondary: !!hwyCfg.exclude_secondary,
+  if (await plotExactTo(c.system)) CP.to = c.system;
+  renderCarrier();
+}
+// an exact route to `to` plotted at once with Plot Route's saved exact options (the carrier's 🛣, Now's sell 🛣): true
+// once Spansh took the job; a refusal's reason is a toast
+async function plotExactTo(to) {
+  const b = {plotter: "exact", to, injections: !!hwyCfg.injections, exclude_secondary: !!hwyCfg.exclude_secondary,
              supercharged: !!hwyCfg.supercharged, no_neutrons: !!hwyCfg.no_neutrons};
   if (hwyCfg.conservative != null) b.conservative = !!hwyCfg.conservative;
   if (b.conservative && hwyCfg.conservative_ly != null) b.conservative_ly = hwyCfg.conservative_ly;
   let r;
   try { r = await apiJson("api/highway/plot", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(b)}); }
   catch (err) { r = {error: err.message}; }
-  if (r.error) return toast(`No route plotted: ${r.error}`);
-  CP.to = c.system;
-  toast(`⏳ Plotting an exact route to ${c.system}`);
+  if (r.error) { toast(`No route plotted: ${r.error}`); return false; }
+  toast(`⏳ Plotting an exact route to ${to}`);
   await loadHwy(true);   // starts Plot Route's poll while it runs
-  renderCarrier();
+  return true;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest && e.target.closest("[data-carrierplot]");
@@ -1514,8 +1519,44 @@ function nowRiskLine() {
   const rebuy = riskRebuy(), ss = data.since_sale, days = ss && ss.days >= 1 ? Math.floor(ss.days) : 0;
   const kinds = [(u.carto || {}).estimated_payout && `🗺 ${credits(u.carto.estimated_payout)}`, (u.bio || {}).estimated_value && `🧬 ${credits(u.bio.estimated_value)}`].filter(Boolean);
   return {cls: lvl, html: [`<b>${kinds.length ? kinds.join(" · ") : credits(u.total)}</b> aboard`, rebuy ? `${(u.total / rebuy).toFixed(1)}× rebuy` : "",
-                           days ? `${days} d unsold` : ""].filter(Boolean).join(" · ")};
+                           days ? `${days} d unsold` : "", nowSellPart(u)].filter(Boolean).join(" · ")};
 }
+// the review's #11: where to sell what is at risk, with 🎯 and (from SELL_PLOT_MIN_LY) 🛣: the nearest place for the
+// service holding most of it (sellers_summary's `sell`: a station, or your own carrier, with a pad for your ship); one
+// name when that place does both. 🛣 replaces a route you follow only once you say so (NS.ask), as the carrier's does
+const SELL_PLOT_MIN_LY = CARRIER_PLOT_MIN_LY;
+const NS = {ask: false};
+function nowSell(u) {
+  const s = data && data.sellers;
+  if (!s || !u) return null;
+  const bio = (u.bio || {}).estimated_value || 0, carto = (u.carto || {}).estimated_payout || 0;
+  const svc = bio > carto ? "vista" : "uc", x = s[svc] && s[svc].sell;
+  if (!x || !x.system) return null;
+  const o = s[svc === "uc" ? "vista" : "uc"], other = o && o.sell;
+  const both = !!other && other.name === x.name && other.system === x.system;
+  return {...x, what: both ? "UC + Vista" : svc === "uc" ? "UC" : "Vista"};
+}
+function nowSellPart(u) {
+  const x = nowSell(u);
+  if (!x) return "";
+  const hw = data && data.highway, far = x.distance >= SELL_PLOT_MIN_LY, here = x.id64 != null && String(x.id64) === posId();
+  if (here) return "";
+  const title = `${x.yours ? "your carrier" : x.name} (${x.what})${x.age_days != null && !x.yours ? `, reported ${x.age_days} days ago` : ""}`;
+  const plot = !far ? "" : NS.ask && hw && !hw.complete
+    ? ` <span class="cpask">replace your route to ${esc(hw.destination || "its end")}? <button type="button" class="mini" data-nowsellplot="yes">Replace</button> <button type="button" class="mini" data-nowsellplot="no">Keep</button></span>`
+    : ` <button type="button" class="mini" data-nowsellplot="go" data-system="${esc(x.system)}" title="plot an exact route there now (Plot Route's exact options)">🛣</button>`;
+  return `<span class="nowsell" title="${esc(title)}">sell (${esc(x.what)}): <b>${esc(x.system)}</b> ${Math.round(x.distance).toLocaleString()} ly</span>` +
+    sysAimBtn(x.system, x.id64) + plot;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-nowsellplot]");
+  if (!b) return;
+  e.preventDefault();
+  const act = b.dataset.nowsellplot, hw = data && data.highway, x = nowSell(data && data.unsold);
+  NS.ask = act === "go" && !!hw && !hw.complete;
+  if (x && (act === "go" && !NS.ask || act === "yes")) plotExactTo(x.system);
+  renderNow();
+});
 // the stakes last until the jump, leaving the body, or lifting off after landing on it
 function nowStakesTick() {
   const s = nowStakes; if (!s) return;

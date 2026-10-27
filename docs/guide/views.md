@@ -262,7 +262,10 @@ up it says "checking…", never the previous target's verdict.
   (`[server] sights_range`; 0 turns it off and nothing is fetched). Here's heading names the sights of a system that
   has one, and Nearby's row has 📜. The catalogue is asked for once a day (stored again only when it changed) and never shipped.
 - An **at-risk line** shows what is aboard against your rebuy ("🗺 380M · 🧬 412M aboard · 3.2× rebuy · 4 d
-  unsold"), only once that is over your amber level or rebuy multiple; a ship bought with Arx (its hull has no credit
+  unsold · sell (UC + Vista): Far Sys 412 ly"), only once that is over your amber level or rebuy multiple. The place
+  to sell is the nearest station (or your own carrier) for whichever of the two holds most, with a large pad when your
+  ship needs one (another player's carrier is never named: it may have moved or be closed); 🎯 targets it, and from
+  250 ly 🛣 plots an exact route there at once (asking first when you follow a route); a ship bought with Arx (its hull has no credit
   value) gets no rebuy multiple. Docked where your data sells it says what
   selling here pays ("💰 sell here: 380M"); on a high-g approach it shows that approach's stakes instead.
 - **While mining in a ring** (a mining ship, in normal space): a ⛏ line with the ring and hotspot, tons an hour, the
