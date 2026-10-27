@@ -180,10 +180,12 @@ def original_path(pictures, filename):
 EMPTY_SETTLE_S = 5.0   # a file still empty this long is one the game will not write (not one it is about to)
 
 
-def wait_ready(path, timeout=WAIT_S, poll=POLL_S, sleep=time.sleep, clock=time.monotonic):
+def wait_ready(path, timeout=WAIT_S, poll=None, sleep=time.sleep, clock=time.monotonic):
     """True once `path` exists and its size has stayed the same over one poll (the game has finished writing it), or
     has stayed empty for EMPTY_SETTLE_S (third in-depth review 2026-10-25: an empty BMP waited the whole minute and was
-    called "never appeared"; the conversion then says it is empty); False after `timeout`. Run on a worker thread."""
+    called "never appeared"; the conversion then says it is empty); False after `timeout`. Run on a worker thread.
+    poll: POLL_S read at each call (the tests shorten it)."""
+    poll = POLL_S if poll is None else poll
     end, last, empty_since = clock() + timeout, None, None
     while clock() < end:
         try:

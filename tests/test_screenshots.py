@@ -483,6 +483,9 @@ class Server(unittest.TestCase):
     """The live event queued, converted on a worker, recorded, named after what it shows; the card on a failure."""
 
     def setUp(self):
+        p = unittest.mock.patch.object(S, "POLL_S", 0.01)   # a written file is seen settled at once (the game's: 0.5 s)
+        p.start()
+        self.addCleanup(p.stop)
         self.d = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.d)
         self.pictures, self.out = os.path.join(self.d, "pics"), os.path.join(self.d, "out")

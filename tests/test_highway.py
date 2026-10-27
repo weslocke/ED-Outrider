@@ -1811,7 +1811,14 @@ class MapRoute(unittest.TestCase):
 class HighwayAutoTarget(unittest.TestCase):
     """The Neutron Highway's auto-target (outrider/target.py): the steps from the author's bindings, the typing keymap,
     the guards, the runner against a simulated game on a FAKE virtual keyboard (never a uinput device, never a real
-    key), the lock with auto honk, the trigger, the "test now" endpoint and the toggle."""
+    key), the lock with auto honk, the trigger, the "test now" endpoint and the toggle. Every test runs the targeter
+    and the game on the fake clock (a run takes no real time: the review's suggestion #1, 2026-10-27), but those in
+    REAL_TIME: they need a thread or the server's loop to act while a run is under way."""
+
+    REAL_TIME = {"test_lock_with_honk", "test_route_cleared_or_replaced_stops_it", "test_switch_off_stops_a_run_under_way",
+                 "test_switch_off_with_auto_honk_off_closes_the_map",
+                 # its second Target next must find the first run (countdown 0) still under way: 409
+                 "test_target_next_endpoint"}
 
     def setUp(self):
         import tempfile
@@ -1852,10 +1859,14 @@ class HighwayAutoTarget(unittest.TestCase):
         self.copied = []
         self.targeter = outrider.target.Targeter(self.honker, [self.journals], self.cfg, log=lambda line: None,
                                                  copy=lambda t: self.copied.append(t) or setattr(self.game, "clipboard", t) or True)
+        if self._testMethodName not in self.REAL_TIME:
+            self.fake_time()
 
     def fake_time(self):
-        """Run the targeter and the game on a FakeClock: the run takes no real time."""
-        self.clock = use_fake_time(self.targeter, self.game)
+        """Run the targeter and the game on a FakeClock: the run takes no real time. The clock already on this
+        targeter is kept (setUp installs one), a targeter made since gets its own."""
+        if getattr(self, "clock", None) is None or self.targeter.clock is not self.clock:
+            self.clock = use_fake_time(self.targeter, self.game)
         return self.clock
 
     def run_target(self, name="Bridge B", id64=102, **kw):

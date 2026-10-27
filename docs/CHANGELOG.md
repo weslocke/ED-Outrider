@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · The slowest tests run on the fake clock: about 45 s off every verify
+- The review's suggestion #1, phase A (tests only). test_highway's `HighwayAutoTarget` runs every test's targeter and
+  game on the fake clock (`use_fake_time`) but the five in its `REAL_TIME`, which need a run still under way while
+  the server's loop or a thread acts (the lock with auto honk, a route cleared or the switch turned off mid-run, a
+  second Target next answered 409): 49 s to 16 s, steady over eight runs. The screenshot `Server` tests shorten the
+  file-settling poll (`screenshots.wait_ready` reads `POLL_S` at each call now; the game's stays 0.5 s): 14 s to 2.3 s.
+  The honk tests' real waits (test_devices, test_speech) are phase B, not done.
+
 ## 2026-10-27 · page.js's own functions get a one-second test file
 - The review's suggestion #3: `tests/page_unit.js` loads page.html with page.js inlined into jsdom from disk (no
   server, fetch never answering, the search options from a file verify writes) and checks page.js's pure functions:

@@ -548,7 +548,7 @@ limpet, hold, `prospect_hit` and `motherlode` keys about 16, `ring_found_many` 3
   scratch server, and the same for auto-target (it opens the galaxy map and types): tests use `FakeGame` (a fake
   device that plays the galaxy map) with `_fake_evdev()` (key codes, no `UInput`), never `Honker.open()` on real evdev.
   Never POST to `/api/highway/autotarget/test` or `/api/highway/target` on a server that sees a live game. Never activate a real window either (auto-target brings the game forward with wmctrl): `FakeDesktop` (`tests/support.py`) stands in for wmctrl and xprop. Use the existing fakes: `FakeGame`, `_fake_evdev()`,
-  `button_fake_evdev`, `FakeClock`/`use_fake_time` in `tests/support.py`, and the local `FakeHonker`/`FakeUI` classes
+  `button_fake_evdev`, `FakeClock`/`use_fake_time` in `tests/support.py` (test_highway's `HighwayAutoTarget` runs every test on it but those in its `REAL_TIME`, which need a run still under way while the loop or a thread acts: a new test that needs real time goes there; the screenshot `Server` tests shorten `screenshots.POLL_S`), and the local `FakeHonker`/`FakeUI` classes
   in `test_devices.py` and `test_config.py` as patterns. Never POST to `/api/autohonk` or `/api/autohonk/test` on a server that sees a live game.
 - **No stray side effects.** Don't download Piper voices into the real `data/piper-voices/`, don't let a test
   rewrite `resources/bio_rules.json`, and don't write the real `data/speech_banned.json` (use a speech file in a
