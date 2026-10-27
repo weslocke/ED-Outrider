@@ -1863,8 +1863,16 @@ async function loadPins() {
 }
 function refreshPinsUi() {
   for (const id of ["bodyPanel", "sBodyPanel"]) { const sec = document.querySelector(`#${id} [data-sec="pins"] .secbody`);
-    if (sec && sec.dataset.sys) sec.innerHTML = pinsListHtml(sec.dataset.sys, sec.dataset.body); }
+    if (!sec || !sec.dataset.sys) continue;
+    sec.innerHTML = pinsListHtml(sec.dataset.sys, sec.dataset.body);
+    const lbl = sec.parentNode.querySelector(".lbl"); if (lbl) lbl.textContent = pinsLabel(sec.dataset.sys, sec.dataset.body); }
   drawBmPins();
+}
+const bodyPins = (sys, body) => (PINS.list || []).filter(p => p.system === String(sys) && p.body === body);
+// the section's heading: its pins, and the known sites not pinned yet
+function pinsLabel(sys, body) {
+  const n = bodyPins(sys, body).length, k = knownLeft(sys, body);
+  return `📍 Pins${n ? ` · ${n}` : ""}${k ? ` · ${k} known site${k === 1 ? "" : "s"}` : ""}`;
 }
 async function pinsPost(body) {
   let r;
@@ -1876,8 +1884,8 @@ async function pinsPost(body) {
 }
 // a body's panel: its pins and the field to add one
 function pinsListHtml(sys, body) {
-  const mine = (PINS.list || []).filter(p => p.system === String(sys) && p.body === body);
-  return (mine.length ? `<div class="pinlist">` + mine.map((p, i) =>
+  const mine = bodyPins(sys, body);
+  return knownSitesHtml(sys, body, mine) + (mine.length ? `<div class="pinlist">` + mine.map((p, i) =>
     `<div class="pinrow${p.reached ? " unk" : ""}"><a href="#" data-pinact="${p.id}" title="go there: guided to it when you are on this body">◆ <b>${esc(p.name)}</b></a>` +
     ` <span class="unk">${esc(pinCoordText(p))}</span>${p.reached ? ` reached <button type="button" class="mini" data-pinreset="${p.id}" title="not reached after all">↺</button>` : ""}` +
     `${i ? ` <button type="button" class="mini" data-pinmove="${p.id}" data-dir="-1" title="earlier">▲</button>` : ""}` +
@@ -1887,9 +1895,58 @@ function pinsListHtml(sys, body) {
     `<input type="text" data-pinname placeholder="name (optional)" aria-label="pin name" size="12" maxlength="40">` +
     `<button type="button" class="mini" data-pinadd>Add pin</button> <span data-pinsee class="unk"></span></div>`;
 }
+// Known sites (the pins follow-up, the author 2026-10-26): the Guardian ruins and structures and the geology other
+// commanders reported to Canonn on a landable body with Guardian or geological signals (api/body/sites, asked once a
+// session per body, the server keeping Canonn's answers a day), each with 📍 pin it: no typing. A geology formation
+// pins its reported spot nearest you when you are on that body, else the first one reported. Pinned (a pin of that
+// name, or one at the spot): ✓.
+const KNOWN = new Map();   // "sys|full body name" -> {loading, sites, error, t}
+const KNOWN_RETRY_MS = 300000;   // a failed ask is tried again after this
+const knownWanted = row => !!(row && row.type !== "Star" && row.landable && ((row.sites && row.sites.guardian) || row.geo));
+function knownSpot(s, body) {
+  if (s.kind !== "geology") return [s.lat, s.lon];
+  const here = data && data.pins && data.pins.here, sf = data && data.surface;
+  if (!here || here.body !== body || !sf || sf.lat == null) return s.points[0];
+  const c = Math.cos(sf.lat * Math.PI / 180), d = p => (p[0] - sf.lat) ** 2 + ((((p[1] - sf.lon + 540) % 360) - 180) * c) ** 2;
+  return s.points.reduce((a, p) => d(p) < d(a) ? p : a);
+}
+const knownPinned = (s, at, mine) => mine.some(p => p.name === s.name || (Math.abs(p.lat - at[0]) < 1e-4 && Math.abs(p.lon - at[1]) < 1e-4));
+function knownLeft(sys, body) {
+  const k = KNOWN.get(`${sys}|${body}`), mine = bodyPins(sys, body);
+  return k && k.sites ? k.sites.filter(s => !knownPinned(s, knownSpot(s, body), mine)).length : 0;
+}
+function knownSitesHtml(sys, body, mine) {
+  const k = KNOWN.get(`${sys}|${body}`); if (!k) return "";
+  const head = `<div class="unk knownhead" title="reported by other commanders to Canonn (canonn.science): their positions, not the game's">Known sites, reported to Canonn</div>`;
+  if (!k.sites) return k.loading ? `<div class="unk knownhead">Known sites: asking Canonn…</div>` : `<div class="warnc knownhead">Known sites: ${esc(k.error || "no answer")}</div>`;
+  if (!k.sites.length) return `<div class="unk knownhead">Known sites: ${k.error ? esc(k.error) : "none with a position reported to Canonn"}</div>`;
+  return `<div class="knownsites">${head}` + k.sites.map((s, i) => {
+    const at = knownSpot(s, body);
+    return `<div class="pinrow">${s.kind === "guardian" ? SITE_LOOK.guardian[0] : "🪨"} <b>${esc(s.name)}</b> ` +
+      `<span class="unk">${s.kind === "geology" ? `${s.n} reported · ` : ""}${esc(pinCoordText({lat: at[0], lon: at[1]}))}</span> ` +
+      (knownPinned(s, at, mine) ? `<span class="ok">✓ pinned</span>`
+        : `<button type="button" class="mini" data-pinknown="${i}" title="add it to this body's pins (${s.kind === "geology" ? "the reported spot nearest you when you are on this body" : "its reported position"})">📍 pin it</button>`) + `</div>`;
+  }).join("") + (k.error ? `<div class="warnc">${esc(k.error)}</div>` : "") + `</div>`;
+}
+async function loadKnownSites(sec) {
+  const {sys, body, short} = sec.dataset, key = `${sys}|${body}`, had = KNOWN.get(key);
+  if (had && (had.loading || !had.error || Date.now() - had.t < KNOWN_RETRY_MS)) return;
+  KNOWN.set(key, {loading: true, sites: had && had.sites, t: Date.now()});
+  let r;
+  try { r = await apiJson(`api/body/sites?system=${encodeURIComponent(sys)}&name=${encodeURIComponent(short)}`); } catch (err) { r = {error: err.message}; }
+  KNOWN.set(key, {loading: false, sites: Array.isArray(r && r.sites) ? r.sites : null, error: r && r.error || null, t: Date.now()});
+  refreshPinsUi();
+}
 async function pinPanelClick(e) {
   const sec = e.target.closest('[data-sec="pins"]'); if (!sec) return false;
   const b = sec.querySelector(".secbody"), info = b && b.dataset;
+  const kn = e.target.closest("[data-pinknown]");
+  if (kn) {
+    const k = KNOWN.get(`${info.sys}|${info.body}`), s = k && k.sites && k.sites[Number(kn.dataset.pinknown)];
+    if (s) { const at = knownSpot(s, info.body);
+      pinsPost({action: "add", system: info.sys, sysname: info.sysname, body: info.body, name: s.name, lat: at[0], lon: at[1]}); }
+    return true;
+  }
   const act = e.target.closest("[data-pinact]"), rm = e.target.closest("[data-pinrm]"), mv = e.target.closest("[data-pinmove]"),
         rs = e.target.closest("[data-pinreset]"), add = e.target.closest("[data-pinadd]");
   if (act) { e.preventDefault(); pinsPost({action: "activate", id: Number(act.dataset.pinact)}); return true; }
@@ -5594,9 +5651,9 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
   const mineSec = row.mining || (row.mined || []).length ? sec("mining", row.mining ? `⛏ ${mineCount(row.mining)}` : "⛏ Mining",
     (row.mining ? row.mining_odds ? mineOddsHtml(row.mining_odds) : `<span class="unk">no survey odds for this ground</span>` : "") + minedHtml(row)) : "";
   // #16: the body's pins and the field to add one; folded until you open it while the body has none
-  const npins = (PINS.list || []).filter(p => p.system === String(d.id64) && p.body === d.full_name).length;
-  const pinSec = isStar ? "" : `<div class="sec${(bodySecs.pins ?? !npins) ? " closed" : ""}" data-sec="pins"><div class="lbl">📍 Pins${npins ? ` · ${npins}` : ""}</div>` +
-    `<div class="secbody" data-sys="${esc(d.id64)}" data-body="${esc(d.full_name)}" data-sysname="${esc(d.system || "")}">${pinsListHtml(d.id64, d.full_name)}</div></div>`;
+  const npins = bodyPins(d.id64, d.full_name).length;
+  const pinSec = isStar ? "" : `<div class="sec${(bodySecs.pins ?? !npins) ? " closed" : ""}" data-sec="pins"><div class="lbl">${esc(pinsLabel(d.id64, d.full_name))}</div>` +
+    `<div class="secbody" data-sys="${esc(d.id64)}" data-body="${esc(d.full_name)}" data-short="${esc(d.name)}" data-sysname="${esc(d.system || "")}"${knownWanted(row) ? " data-known" : ""}>${pinsListHtml(d.id64, d.full_name)}</div></div>`;
   // your screenshots of it (a player's request, 2026-10-25): filled once open (loadShotList), thumbnails to the copies
   const shotSec = row.shots && sys != null ? `<div class="sec${bodySecs.shots ? " closed" : ""}" data-sec="shots"><div class="lbl">📷 Screenshots · ${row.shots}</div>` +
     `<div class="secbody shotlist" data-sys="${esc(sys)}" data-body="${esc(d.full_name)}" data-sysname="${esc(d.system || "")}"><span class="unk">loading…</span></div></div>` : "";
@@ -5615,6 +5672,7 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
   panel.innerHTML = h.replace("</h3>", "</h3>" + bodyArtHtml(d));   // the picture beside the title, the text round it
   drawBodyArt(panel, d);
   const sl = panel.querySelector(".shotlist"); if (sl) loadShotList(sl);
+  const ks = panel.querySelector('[data-sec="pins"] .secbody[data-known]'); if (ks) loadKnownSites(ks);
 }
 // a body panel's screenshots: a thumbnail each (its page: the medium copy, else the full one), when, what it shows, and
 // 📍 to pin where it was taken (a surface shot)

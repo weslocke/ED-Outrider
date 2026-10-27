@@ -1535,6 +1535,15 @@ upstream project's choices, not rules of the game.
   by the system and the body's full name (the panel, the map and Status.json all have it; a body id is not always
   known). Only the active pin is guided or spoken: the others are drawn, never said. The tick refreshes the page as the
   guidance changes (State.pin_watch: a distance step and a 10° turn), so it moves from orbit, above the map's 1,000 m.
+- **Known sites from Canonn, in the Pins section** (the pins follow-up, the author 2026-10-26; project
+  PLAN-canonn-sites-2026-10-26): Guardian sites and geology, Canonn only (the author: not your own ApproachSettlement
+  lines, which would need a re-read). Canonn's CAPIv2 sites API (api.canonn.tech, with Guardian, Thargoid and crash-site
+  tables) no longer answers; its cloud functions do: `/settlement/<id64>` has Guardian ruins and structures with
+  positions (from ApproachSettlement), `getSystemPoi`'s codex reports have geology with positions but Guardian entries
+  without. Wrecks and Thargoid sites have no live source (the author: pin them where you stand). Asked only for a
+  landable body with the matching signal, so a panel opened on any other body costs nothing; worded "reported to
+  Canonn", never as the game's. One geology row per formation, not per report (reports of one vent run to dozens a
+  few metres apart): it pins the reported spot nearest you on that body.
 - **One commander per Outrider, by choice** (the full review's S9-S4, 2026-10-24): `[journals] commander` reads one
   commander's journal files (a file's commander is its first Commander or LoadGame line, a continuation part's its
   first part's; another's is skipped whole, a new live file waits for that line, one cut before it is read as before). Blank (the default) reads everyone, as

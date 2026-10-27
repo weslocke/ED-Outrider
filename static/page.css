@@ -1531,6 +1531,9 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 .lg-pin .tg.pin { color: var(--accent); }
 .lg-pin.cur b { color: var(--accent); }
 .pinrow { margin: 2px 0; }
+/* the known sites from Canonn above a body's pins, each with 📍 pin it */
+.knownhead { font-size: 12px; margin: 2px 0; }
+.knownsites { margin-bottom: 6px; }
 .pinrow a { text-decoration: none; }
 .pinadd input { margin-right: 4px; }
 .pintable { width: 100%; border-collapse: collapse; font-size: 13px; }

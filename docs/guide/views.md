@@ -525,6 +525,13 @@ back to.
   `12.34 S, 45.67 E`, text around them is fine; it shows what it read before you add it. On a body, **📍 Pin here** (by
   the map's legend title) pins where you are, and **📋** copies your coordinates to share. **📍** beside a site, a
   mining location or the ship in the legend pins it and takes you there.
+- **Known sites:** on a landable body with Guardian or geological signals, the 📍 Pins section also lists what other
+  commanders reported to [Canonn](https://canonn.science) with a position: Guardian ruins and structures ("Guardian
+  ruins 2", "Guardian structure (small)") and each geological formation ("Silicate Vapour Fumarole · 5 reported"), each
+  with **📍 pin it**. A formation pins its reported spot nearest you when you are on that body, else the first one
+  reported. One you have pinned shows ✓, and the section's heading counts the rest ("📍 Pins · 1 · 2 known sites").
+  Canonn is asked only for such a body, and its answer is kept a day. Wrecks, crash sites and Thargoid sites have no
+  live source: pin those where you stand or by their coordinates.
 - **Flying to one:** one pin is the target at a time: the one you tapped (in the legend or the panel), else the first
   not reached, in their order (▲ ▼ in the panel). From orbital cruise down, the strip and Now say how far and which
   way ("📍 Wreck: 12.4 km, turn 30° right"), the map draws it (on the rim when it is off the map) and the overlay's

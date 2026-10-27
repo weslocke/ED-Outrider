@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · Known sites from Canonn, each one tap from a pin
+- The pins follow-up the author asked to remember (2026-10-17): on a landable body with Guardian or geological
+  signals, the body panel's 📍 Pins lists what other commanders reported to Canonn with a position, Guardian ruins and
+  structures (Canonn's settlement reports: one per place, the game's own name and number winning over the same ruin
+  reported in other languages) and each geological formation (its codex reports, "5 reported"), each with **📍 pin
+  it** (a formation: its reported spot nearest you on that body). Pinned ones show ✓; the heading counts the rest
+  ("📍 Pins · 1 · 2 known sites"). Canonn is asked only for such a body, once a day per system (GET `/api/body/sites`,
+  `outrider/canonn_sites.py`); a failure is said in the section and tried again after five minutes. Canonn's older
+  sites API no longer answers, and wrecks and Thargoid sites have no live source: those stay pins you place yourself.
+
 ## 2026-10-26 · The schematic gives the orbit's distance too
 - Hiner399 (discussion #3, his screenshot from EDDiscovery's map): under a moon or another star's planet in Here's
   schematic, its distance from arrival and then from what it orbits, "2,026 ls / 2.6 ls" (`sdistHtml`, the same figure

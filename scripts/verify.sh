@@ -126,6 +126,8 @@ outrider.inara.URL = OFF             # nor Inara (its upload and the key Check)
 for k in outrider.readclient.URLS:   # nor EDSM's account reads (the key Check, its flight log)
     setattr(outrider.readclient, k, OFF)
 outrider.codex_images.REF = OFF      # nor Canonn for the checklists' pictures (the shipped list stays)
+import outrider.canonn_sites         # nor for a body's known sites (the body panel's Pins)
+outrider.canonn_sites.SETTLEMENT_URL = outrider.canonn_sites.POI_URL = OFF
 ed_outrider.DSSA_URL = OFF          # nor EDAstro for the DSSA list
 ed_outrider.GEC_URL = OFF           # nor for its catalogued sights
 ed_outrider.Clipboard.TOOLS = ()   # the desktop clipboard is never touched by the smoke test

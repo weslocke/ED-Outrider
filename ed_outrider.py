@@ -216,6 +216,7 @@ import outrider.backfill   # filling a gap in EDSM's flight log (S47): the event
 import outrider.edsmlog    # your EDSM flight log from before your journals (S67): kept entries, which count as visits
 import outrider.checklist  # the exobiology checklist: every species by region, with your state (pure)
 import outrider.codex_images  # the checklists' pictures: Canonn's links and credits, refreshed once a day
+import outrider.canonn_sites  # known Guardian sites and geology on a body, from Canonn (the body panel's Pins; pure)
 import outrider.overlay    # the in-game overlay's panels as draw lists (the window: python3 -m outrider.overlay_window)
 import outrider.overlay_runner  # Outrider runs that window itself on the game PC while the overlay is wanted
 import outrider.ggg        # potential green gas giants: the community's seven-layer ladder model (pure)
@@ -459,6 +460,10 @@ SIGHTS_RANGE = 500.0              # ly: Now names the nearest catalogued sight w
 SIGHTS_CHECK_START = 90           # s after the server starts before the first check
 SIGHTS_CHECK_EVERY = 86400        # s between checks
 SIGHTS_CHECK_RETRY = 3600         # s after a failed check
+CANONN_SITES_KEEP = 86400         # s a system's known sites from Canonn are kept before it is asked again
+CANONN_SITES_RETRY = 300          # s before a failed ask is tried again
+CANONN_SITES_SYSTEMS = 50         # systems kept in memory (the oldest dropped)
+CANONN_SITES_TIMEOUT = 45         # s: its answers take seconds (a busy system's codex reports run to 100 KB)
 UPDATE_CHECK_START = 60           # s after the server starts before the first check
 UPDATE_CHECK_EVERY = 86400        # s between checks
 UPDATE_CHECK_RETRY = 3600         # s to wait after a failed check (offline, GitHub down or throttled)
@@ -8378,6 +8383,9 @@ class State:
         self.unsold_task = None
         self.map_cache = {}        # (id64, radius) -> Spansh systems, so reopening the map is instant
         self.dump_cache = {}       # id64 -> (time, Spansh dump) for the body detail panel
+        # id64 -> {part ("settlement" | "poi"): (time, answer or None, error or None)}: Canonn's known sites, in memory
+        self.canonn_cache = {}
+        self.canonn_lock = asyncio.Lock()   # one ask at a time: two windows opening one body ask once
         self.history_cache = None  # S24: (key, species_history) -- your completed runs, counted again when they change
         self.checklist_finds = {}  # S29: (species, colour, where you are) -> (time.time(), answer): Spansh asked again after a while
         self.checklist_found = {}  # S29: id64 -> (name, x, y, z) of the systems a find listed, for locate (☆ on its rows)
@@ -13197,6 +13205,58 @@ class State:
         return {"system": detail["name"], "id64": str(id64), "name": body_name, "full_name": full,
                 "row": row, "own": own, "spansh": spansh, "rings": rings,
                 "spansh_error": locals().get("lookup_error")}
+
+    async def _canonn_ask(self, id64, part, url, params=None):
+        """One part of a system's known sites from Canonn ("settlement": its Guardian reports, "poi": its codex reports),
+        kept CANONN_SITES_KEEP (a failure CANONN_SITES_RETRY): (answer or None, error words or None)."""
+        now = time.time()
+        got = self.canonn_cache.get(id64, {}).get(part)
+        if got and now - got[0] < (CANONN_SITES_KEEP if got[2] is None else CANONN_SITES_RETRY):
+            return got[1], got[2]
+        try:
+            async with self.spansh.session.get(url, params=params, timeout=ClientTimeout(total=CANONN_SITES_TIMEOUT)) as r:
+                r.raise_for_status()
+                answer, err = await r.json(content_type=None), None
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:  # noqa: BLE001 -- offline, Canonn down or slow: said in the panel, asked again later
+            answer, err = None, f"Canonn could not be reached ({type(e).__name__})"
+        if id64 not in self.canonn_cache and len(self.canonn_cache) >= CANONN_SITES_SYSTEMS:
+            del self.canonn_cache[min(self.canonn_cache, key=lambda k: min(v[0] for v in self.canonn_cache[k].values()))]
+        self.canonn_cache.setdefault(id64, {})[part] = (now, answer, err)
+        return answer, err
+
+    async def canonn_sites(self, id64, body_name):
+        """GET /api/body/sites: the Guardian sites and the geology Canonn has positions for on one landable body (the body
+        panel's Pins: "📍 pin it"). Canonn is asked only for what the body has signals of (Guardian sites: its
+        settlement reports; geology: its codex reports). (answer {sites, error?}, HTTP status)."""
+        detail = self.system_detail(id64)
+        row = next((b for b in (detail or {}).get("bodies") or [] if b["name"] == body_name), None)
+        if not row:
+            return {"error": "no such body"}, 404
+        if row.get("type") == "Star" or not row.get("landable"):
+            return {"sites": []}, 200
+        sites, errors = [], []
+        async with self.canonn_lock:
+            if (row.get("sites") or {}).get("guardian") and row.get("body_id") is not None:
+                answer, err = await self._canonn_ask(id64, "settlement", outrider.canonn_sites.SETTLEMENT_URL.format(id64))
+                try:
+                    sites += outrider.canonn_sites.guardian_sites(answer, row["body_id"], row.get("radius_km")) if not err else []
+                except ValueError as e:
+                    err = str(e)
+                errors += [err] if err else []
+            if row.get("geo"):
+                answer, err = await self._canonn_ask(id64, "poi", outrider.canonn_sites.POI_URL,
+                                                     {"system": detail["name"], "odyssey": "Y"})
+                try:
+                    sites += outrider.canonn_sites.geology_sites(answer, body_name) if not err else []
+                except ValueError as e:
+                    err = str(e)
+                errors += [err] if err else []
+        out = {"sites": sites}
+        if errors:
+            out["error"] = errors[0]
+        return out, 200
 
     COUNT_QUERIES = {
         # by the first scan: undisc_ts moves on with every rescan of your own unsold discovery (still reads as
@@ -22137,6 +22197,16 @@ def make_app(state, hosts=None):
             return web.json_response({"error": "unknown system"}, status=404)
         return web.json_response(d)
 
+    async def body_sites_view(request):
+        """The known Guardian sites and geology on one body, from Canonn (State.canonn_sites): the body panel's Pins."""
+        try:
+            id64 = parse_id64(request.query["system"])
+            name = request.query["name"][:200]
+        except (KeyError, ValueError):
+            return web.json_response({"error": "bad request"}, status=400)
+        out, status = await state.canonn_sites(id64, name)
+        return web.json_response(out, status=status)
+
     async def history_view(request):
         try:
             days = max(1, min(int(request.query.get("days", 30)), 3650))
@@ -23365,6 +23435,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/folders", pc_only(folders_view))   # names only, never a file
     app.router.add_get("/api/left", left_view)
     app.router.add_get("/api/body", body_view)
+    app.router.add_get("/api/body/sites", body_sites_view)
     app.router.add_get("/api/find", find_view)
     app.router.add_get("/api/export", export_view)
     app.router.add_post("/api/search", search_start)

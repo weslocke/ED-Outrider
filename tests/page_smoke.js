@@ -9805,6 +9805,72 @@ const releasePayloads = async () => {
     console.log(goodPN ? "OK" : "FAIL", "| surface pins |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "coordinates in every layout, the spoken words, the line, the map and legend (go there, pin a site), a body's Pins (reads as, Add), the 📍, Bookmarks, the status report", errors.slice(before));
   }
+  // Known sites from Canonn (the pins follow-up, 2026-10-26): a landable body with Guardian or geological signals asks
+  // api/body/sites once; the Pins heading counts the ones not pinned yet; each has 📍 pin it (a geology formation its
+  // reported spot nearest you on that body), a pinned one ✓; drawn again, not asked again; a body without those
+  // signals, or not landable, never asks
+  {
+    holdPayloads();
+    const w = dom.window, d = w.document, before = errors.length, got = {}, posts = [], asked = [];
+    const realFetch = w.fetch;
+    const list = [{id: 1, system: "42", sysname: "Sys", body: "Sys B 7", short: "B 7", name: "Guardian ruins 1", lat: -46.57692, lon: 133.98511, reached: false}];
+    const sites = [{kind: "guardian", name: "Guardian ruins 1", lat: -46.57692, lon: 133.98511},
+                   {kind: "guardian", name: "Guardian structure (small)", lat: 11.42893, lon: -30.32794},
+                   {kind: "geology", name: "Silicate Vapour Fumarole", n: 3, points: [[-2.05, -68.9], [40, 10], [2.76, 95.5]]}];
+    const answer = b => Promise.resolve(new Response(JSON.stringify(b), {status: 200, headers: {"Content-Type": "application/json"}}));
+    w.fetch = (u, o) => {
+      const url = String(u);
+      if (url.startsWith("api/body/sites")) { asked.push(url); return answer({sites}); }
+      if (url === "api/pins") { if (o && o.method === "POST") posts.push(JSON.parse(o.body)); return answer(o && o.method === "POST" ? {ok: true, pins: []} : {pins: list}); }
+      return realFetch(u, o);
+    };
+    // the pins come through the fake (a list asked earlier may still be on its way: let it land first)
+    await sleep(50);
+    w.eval(`window.__ks = {pins: data.pins, surface: data.surface, list: PINS.list}; loadPins();`);
+    await sleep(30);
+    w.eval(`KNOWN.clear();
+      data.pins = {counts: {}, here: {body: "Sys B 7", pins: [], active: null}}; data.surface = Object.assign({}, data.surface, {lat: 39, lon: 11});
+      window.__bp = document.getElementById("bodyPanel"); __bp.hidden = false;
+      window.__kd = {id64: "42", system: "Sys", full_name: "Sys B 7", name: "B 7", row: {type: "Planet", landable: true, sites: {guardian: 2}, geo: 1},
+                     own: {PlanetClass: "Rocky body"}, spansh: null};
+      renderBodyInto(__bp, __kd, "B 7", "closeBody()")`);
+    try {
+      await sleep(50);
+      const sec = d.querySelector('#bodyPanel [data-sec="pins"]');
+      got.asked = asked.splice(0);
+      got.label = sec.querySelector(".lbl").textContent;
+      const rows = [...sec.querySelectorAll(".knownsites .pinrow")];
+      got.rows = rows.map(r => [r.querySelector("b").textContent, !!r.querySelector("[data-pinknown]"), /✓ pinned/.test(r.textContent)]);
+      got.geoAt = rows[2] && rows[2].querySelector(".unk").textContent;
+      sec.querySelector('[data-pinknown="2"]').click();
+      sec.querySelector('[data-pinknown="1"]').click();
+      await sleep(30);
+      got.posts = posts.splice(0);
+      w.eval(`renderBodyInto(__bp, __kd, "B 7", "closeBody()")`);
+      await sleep(30);
+      got.again = asked.splice(0).length;
+      w.eval(`renderBodyInto(__bp, Object.assign({}, __kd, {full_name: "Sys B 8", name: "B 8", row: {type: "Planet", landable: true, bio: 2}}), "B 8", "closeBody()");
+        renderBodyInto(__bp, Object.assign({}, __kd, {full_name: "Sys B 9", name: "B 9", row: {type: "Planet", landable: false, geo: 3}}), "B 9", "closeBody()");`);
+      await sleep(30);
+      got.others = [asked.splice(0).length, !!d.querySelector("#bodyPanel .knownsites, #bodyPanel .knownhead")];
+    } finally {
+      w.fetch = realFetch;
+      w.eval(`const k = window.__ks; Object.assign(data, {pins: k.pins, surface: k.surface}); PINS.list = k.list; KNOWN.clear();
+        document.getElementById("bodyPanel").hidden = true; delete window.__ks; delete window.__bp; delete window.__kd;`);
+      await releasePayloads();
+    }
+    const want = {asked: ["api/body/sites?system=42&name=B%207"], label: "📍 Pins · 1 · 2 known sites",
+      rows: [["Guardian ruins 1", false, true], ["Guardian structure (small)", true, false], ["Silicate Vapour Fumarole", true, false]],
+      geoAt: "3 reported · 40.0000° N, 10.0000° E",
+      posts: [{action: "add", system: "42", sysname: "Sys", body: "Sys B 7", name: "Silicate Vapour Fumarole", lat: 40, lon: 10},
+              {action: "add", system: "42", sysname: "Sys", body: "Sys B 7", name: "Guardian structure (small)", lat: 11.42893, lon: -30.32794}],
+      again: 0, others: [0, false]};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const goodKS = !bad.length && errors.length === before;
+    allOk = allOk && goodKS;
+    console.log(goodKS ? "OK" : "FAIL", "| known sites |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
+      : "asked once for a landable body with Guardian or geology signals, the heading's count, 📍 pin it (the nearest geology spot), ✓ pinned, never for other bodies", errors.slice(before));
+  }
   // Carrier trips (#19): the Carrier plotter's own form (figures from the journal, To me, + via) posting api/carrier/trip;
   // the tile's one movement line (the leg, 📋, departs / cooldown / ready / ready?, ✕; off the trip with re-plot), ⚠ when
   // the depot cannot pay for the next leg; the ready line said once; the arrival's words; Plot Route's trip list
