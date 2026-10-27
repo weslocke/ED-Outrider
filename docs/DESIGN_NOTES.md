@@ -208,7 +208,10 @@ upstream project's choices, not rules of the game.
   controller, never a collector alone (explorers carry one). The page's first payload baselines the mining warnings
   (`miningBaseline`): a new window never repeats "the hold is full". Hold-full's "where to sell" never names your own
   carrier as a place to sell. The limpet reminder stays quiet while the hold's contents are not known (a count-only
-  Cargo with more aboard than the lines known). A mining session's **Where** (CMDR → Sessions, the author,
+  Cargo with more aboard than the lines known). Limpets you could synthesise (the review's #10, 2026-10-27): whole Limpet
+  Basic syntheses (4 limpets each: the author's journal, 0 to 4 after one) that fit the free hold, from your own recipe
+  once made; nothing while the materials predate the login (`materials_stale`). Said as a plain sentence after the
+  personality's line (no speech key), and on the undock reminder in place of "turn back" (the advice changes). A mining session's **Where** (CMDR → Sessions, the author,
   2026-10-20) is the place it refined the most tons in, the others in a "+N" hover: each mining line's place is set as
   the line is read (the SRV's body, else the open stint's ring, else the system), so it follows the session's own
   counts, and a line older than what is known (a legacy folder read late) has none rather than a guess.

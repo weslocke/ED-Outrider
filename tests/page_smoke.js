@@ -10089,6 +10089,8 @@ const releasePayloads = async () => {
       got.limpetBox = lb.checked;
       lb.checked = true; lb.dispatchEvent(new w.Event("change", {bubbles: true}));
       got.limpetsOn = [feed(`{kind: "limpets", what: "none"}`), w.eval(`localStorage.getItem("mining")`), w.eval("lastAlert.title")];
+      // the review's #10: materials for some: you can synthesise them, not "turn back"
+      got.limpetsSynth = [feed(`{kind: "limpets", what: "none", synth: 12}`), w.eval("lastAlert.body")];
       got.tables = [[...d.querySelectorAll("#miningAlertOpts [data-aspeak]")].map(x => x.dataset.aspeak).join(),
                     !!d.querySelector('#alertOpts [data-aspeak="ring"], #alertOpts [data-aspeak="limpets"]'),
                     !!d.querySelector('#alertOpts [data-aspeak="hull"]'), d.querySelectorAll("#miningAlertOpts [data-acrew]").length];
@@ -10126,7 +10128,8 @@ const releasePayloads = async () => {
       const ml = (extra) => Object.assign({start: "s1", limpets: 10, full_min: 20, free: 30, held: [], text: "⛏ 4 B Ring · Platinum · 60 t/h"}, extra);
       w.eval("linePlain = true");
       got.warns = [warn(ml()), warn(ml({limpets: 5})), warn(ml({limpets: 4})), warn(ml({full_min: 4})), warn(ml({full_min: 3})),
-                   warn(ml({free: 0, full_min: 0})), warn(ml({start: "s2", limpets: 3, full_min: 1})), warn(ml({start: "s2", limpets: 3, full_min: 1}))];
+                   warn(ml({free: 0, full_min: 0})), warn(ml({start: "s2", limpets: 3, full_min: 1})), warn(ml({start: "s2", limpets: 3, full_min: 1})),
+                   warn(ml({start: "s4", limpets: 5, limpets_synth: 8}))];   // the review's #10
       w.eval("linePlain = false");
       // a page opened mid-stint (review 2026-10-20 M4): the first payload baselines the warnings, the next says nothing old
       w.eval(`data = Object.assign({}, data, {mining_live: ${JSON.stringify(ml({start: "s3", limpets: 2, free: 0, full_min: 0}))}});
@@ -10182,6 +10185,7 @@ const releasePayloads = async () => {
       tipGone: true,
       limpetsOff: [], limpetBox: false,
       limpetsOn: [[["No limpets aboard. Turn back for some before we head out.", "limpets"]], JSON.stringify({limpetWarn: true}), "No limpets aboard"],
+      limpetsSynth: [[["No limpets aboard, but you can synthesise 12.", "limpets"]], "you can synthesise 12 (Limpet Basic: iron and nickel)"],
       tables: ["ring,limpets,prospect,rigs,rigleash,rigsout", false, true, 6],
       pNone: [], pLode: [["Motherlode: Void Opal.", "prospect"]],
       pCfg: JSON.stringify({limpetWarn: true, minerals: ["platinum", "gold"], pct: 30, pcts: {}, combined: false, motherlode: true, rawHigh: false, limpetsLow: 5}),
@@ -10190,7 +10194,7 @@ const releasePayloads = async () => {
       hRec: ["Alexandrite: 2 stints · 40 t/h · 50 % hits", "  you, Alexandrite: 2 stints · 40 t/h · 50 % hits|  you, no hotspot: 1 stint", false],
       hCard: ["you, Alexandrite: 2 stints · 40 t/h · 50 % hits", "you, no hotspot: 1 stint"],
       warns: [[], [["5 limpets left.", "limpets"]], [], [["Hold full in about 4 minutes.", "limpets"]], [], [["The hold is full. Time to sell.", "limpets"]],
-              [["3 limpets left.", "limpets"]], []],
+              [["3 limpets left.", "limpets"]], [], [["5 limpets left. You can synthesise 8 more.", "limpets"]]],
       reopen: [],
       nowMine: "⛏ 4 B Ring · Platinum · 60 t/h",
       sell: [["near100", [["Best price for Platinum within 100 light-years: Hub in Sys, 34 light-years, 182k credits a ton.", "limpets"]], [[100, "price", false]]],

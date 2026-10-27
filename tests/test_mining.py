@@ -45,6 +45,18 @@ class LimpetReminder(unittest.TestCase):
         self.undock(7, Multicrew=True)
         self.assertEqual(self.said(), ["none"])
 
+    def test_limpets_you_could_synthesise_on_the_reminder(self):
+        """The review's #10: the reminder carries how many limpets your materials make (whole syntheses that fit the
+        hold); None while the materials are unknown for this login."""
+        self.loadout(0, "int_refinery_size4_class5", "int_dronecontrol_collection_size5_class5")
+        self.cargo(1, platinum=4)
+        self.undock(2)
+        self.assertEqual([m.get("synth") for m in self.j.moments if m["kind"] == "limpets"], [None])   # no Materials line yet
+        self.j.handle({"event": "LoadGame", "timestamp": self.at(3), "Commander": "X"})
+        self.j.handle({"event": "Materials", "timestamp": self.at(4), "Raw": [{"Name": "iron", "Count": 35}, {"Name": "nickel", "Count": 50}]})
+        self.undock(5)
+        self.assertEqual([m.get("synth") for m in self.j.moments if m["kind"] == "limpets"], [None, 12])
+
     def test_which_ships_count(self):
         """A refinery, a prospector controller, or a multi-limpet mining or universal one makes a mining ship; a ship
         without them (a collector alone included), or whose loadout or hold is not known, says nothing."""
@@ -264,6 +276,35 @@ class Stints(unittest.TestCase):
             info = {"name": "Sys", "mining": m["text"]}
             texts = [r[0] for it in O.strip_panel(info, pal)["items"] for r in it.get("runs", [])]
             self.assertIn(m["text"], texts)
+
+    def test_the_strip_says_the_limpets_you_could_synthesise(self):
+        """The review's #10: under LIMPETS_SYNTH_SHOW limpets the strip adds what your materials make, whole syntheses
+        that fit the free hold; not with the materials from before this login."""
+        self.j.handle({"event": "Loadout", "timestamp": self.at(1), "Ship": "python", "ShipID": 7, "ShipName": "Digger",
+                       "ShipIdent": "DG", "CargoCapacity": 64, "MaxJumpRange": 20.0, "Modules": [{"Slot": "Slot01", "Item": "int_refinery_size4_class5"}]})
+        self.j.handle({"event": "LoadGame", "timestamp": self.at(2), "Commander": "X"})
+        self.j.handle({"event": "Materials", "timestamp": self.at(3), "Raw": [{"Name": "iron", "Count": 25}, {"Name": "nickel", "Count": 40}]})
+        self.j.handle({"event": "Cargo", "timestamp": self.at(4), "Vessel": "Ship", "Count": 4,
+                       "Inventory": [{"Name": "drones", "Count": 4, "Stolen": 0}]})
+        self.drop(10, dest={"System": 9, "Body": 18, "Name": "$SAA_RingHotspot:#type=$Platinum_name;;"})
+        self.j.status_json = {"live": True, "flags": 0}
+        m = self.state.mining_live()
+        self.assertEqual((m["limpets"], m["free"], m["limpets_synth"]), (4, 60, 8))   # iron 25: two syntheses
+        self.assertIn("limpets 4 (+8 by synthesis)", m["text"])
+        self.j.handle({"event": "Cargo", "timestamp": self.at(20), "Vessel": "Ship", "Count": 59,
+                       "Inventory": [{"Name": "drones", "Count": 4, "Stolen": 0}, {"Name": "platinum", "Count": 55, "Stolen": 0}]})
+        self.assertEqual(self.state.mining_live()["limpets_synth"], 4)          # 5 t free: one synthesis fits
+        self.j.handle({"event": "LoadGame", "timestamp": self.at(400), "Commander": "X"})   # a login with no Materials line
+        m = self.state.mining_live()
+        self.assertIsNone(m["limpets_synth"])
+        self.assertIn("limpets 4 ·", m["text"] + " ·")
+
+    def test_limpets_makeable(self):
+        import outrider.materials as M
+        st = {"counts": {"iron": 25, "nickel": 40}, "recipes": {}}
+        self.assertEqual([M.limpets_makeable(st, f) for f in (100, 5, 3, None, True)], [8, 4, 0, None, None])
+        own = dict(st, recipes={"Limpet Basic": {"materials": {"iron": 5, "nickel": 5}, "n": 1}})   # your own recipe wins
+        self.assertEqual(M.limpets_makeable(own, 100), 20)
 
     def test_what_mined_ore_sold_for(self):
         self.db.execute("INSERT INTO mining_sales (ts, source, commodity, tons, mined_tons, total, mined_total, own_carrier) "

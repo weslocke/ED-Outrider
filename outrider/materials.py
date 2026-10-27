@@ -280,6 +280,25 @@ def apply(state, ev):
     return learned
 
 
+# limpets one Limpet Basic synthesis makes: the author's journal (2026-09-25 21:37:49 UTC: iron 10 + nickel 10 took the
+# ship's Cargo from 0 to 4), the published figure too
+LIMPETS_PER_SYNTH = 4
+
+
+def limpets_makeable(state, free):
+    """Limpets you could synthesise now (the review's #10): the whole Limpet Basic syntheses your materials allow (your
+    own recipe once you have made one, else the table's) that fit `free` tons of hold, times LIMPETS_PER_SYNTH (a
+    synthesis that would not fit is not counted: whether the game makes part of one is not known). None when the free
+    space is not known."""
+    if isinstance(free, bool) or not isinstance(free, (int, float)):
+        return None
+    r = SYNTH["Limpet basic"]
+    own = next((v for k, v in (state.get("recipes") or {}).items()
+                if k.lower() == r["name"].lower() and isinstance(v, dict) and v.get("materials")), None)
+    n, _ = craftable(state.get("counts") or {}, own["materials"] if own else r["materials"])
+    return min(n, int(max(0, free)) // LIMPETS_PER_SYNTH) * LIMPETS_PER_SYNTH
+
+
 def craftable(counts, recipe):
     """How many times a recipe can be made, and the material that runs out first."""
     best, limit = None, None

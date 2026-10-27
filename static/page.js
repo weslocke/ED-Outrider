@@ -3476,7 +3476,8 @@ function miningWarn(m) {
   if (!MW.low && m.limpets <= cfg.limpetsLow) {
     MW.low = true;
     alertOut("limpets", `Limpets: ${m.limpets} left`, m.text, {tag: "limpets_low",
-             say: () => line("limpets_low", {count: m.limpets}, `${m.limpets} limpets left.`)});
+             say: () => line("limpets_low", {count: m.limpets}, `${m.limpets} limpets left.`) +
+               (m.limpets_synth ? ` You can synthesise ${m.limpets_synth} more.` : "")});
   }
   if (!MW.near && m.full_min != null && m.full_min >= 2 && m.full_min <= 5) {
     MW.near = true;
@@ -10531,8 +10532,11 @@ function onData() {
       else if (m.kind === "ring" && m.body) ringHits.push(m);
       else if (m.kind === "prospect") prospectOut(m);
       else if (m.kind === "limpets" && m.what === "none" && miningCfg().limpetWarn)   // a mining ship undocked without limpets
-        alertOut("limpets", "No limpets aboard", "a mining ship left the pad without any (Settings → Mining)",
-                 {tag: "limpets_none", say: () => line("limpets_none", {}, "No limpets aboard. Turn back for some before we head out.")});
+        alertOut("limpets", "No limpets aboard", m.synth ? `you can synthesise ${m.synth} (Limpet Basic: iron and nickel)`
+                 : "a mining ship left the pad without any (Settings → Mining)",
+                 // the review's #10: materials for some: that, not "turn back" (a plain sentence: no personality says it)
+                 {tag: "limpets_none", say: () => m.synth ? `No limpets aboard, but you can synthesise ${m.synth}.`
+                   : line("limpets_none", {}, "No limpets aboard. Turn back for some before we head out.")});
       else if (m.kind === "upkeep_low" && m.weeks != null) {   // S9-S13: the carrier's upkeep counted down under 4 weeks
         const weeks = `${m.weeks < 10 ? Number(m.weeks).toFixed(1).replace(/\.0$/, "") : Math.floor(m.weeks)} week${m.weeks === 1 ? "" : "s"}`;
         alertOut("upkeep", `${m.carrier}: about ${weeks} of upkeep left`, "move credits into its bank in the carrier management", {tag: "upkeep_low",

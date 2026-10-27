@@ -460,6 +460,7 @@ SIGHTS_RANGE = 500.0              # ly: Now names the nearest catalogued sight w
 SIGHTS_CHECK_START = 90           # s after the server starts before the first check
 SIGHTS_CHECK_EVERY = 86400        # s between checks
 SIGHTS_CHECK_RETRY = 3600         # s after a failed check
+LIMPETS_SYNTH_SHOW = 10           # the mining strip adds "(+12 by synthesis)" while fewer limpets than this are aboard
 CANONN_SITES_KEEP = 86400         # s a system's known sites from Canonn are kept before it is asked again
 CANONN_SITES_RETRY = 300          # s before a failed ask is tried again
 CANONN_SITES_SYSTEMS = 50         # systems kept in memory (the oldest dropped)
@@ -4491,7 +4492,23 @@ class Journals:
                 or (sc.get("count") or 0) > sum(x.get("count") or 0 for x in lines.values()):
             return
         if self.mining_ship():
-            self.moment("limpets", ts, what="none")
+            # the review's #10: how many you could synthesise instead (the page says that rather than "turn back")
+            self.moment("limpets", ts, what="none", synth=self.limpets_synth(self.hold_free()))
+
+    def hold_free(self):
+        """The ship's free hold in tons (its capacity less the lines known, else the Cargo event's count), or None."""
+        sc, cap = self.ship_cargo, (self.ship or {}).get("cargo_capacity")
+        lines = sc.get("lines") or {}
+        count = sum(v.get("count") or 0 for v in lines.values()) if lines else sc.get("count")
+        return max(0, cap - count) if isinstance(cap, (int, float)) and isinstance(count, (int, float)) else None
+
+    def limpets_synth(self, free):
+        """Limpets your materials could make that fit `free` tons (outrider.materials.limpets_makeable), or None when
+        the materials are not known for this login (no snapshot, or one older than the login)."""
+        m = self.materials or {}
+        if not m.get("snapshot_ts") or materials_stale(m, self.commander):
+            return None
+        return outrider.materials.limpets_makeable(m, free)
 
     def handle_body(self, name, ev, ts):
         """ApproachBody (orbital cruise begins: the approach briefing, once per body per session), LeaveBody
@@ -10943,13 +10960,14 @@ class State:
             bits.append(f"{round(tph)} t/h")
         if free is not None:
             bits.append(f"hold {count:g}/{cap:g} t" + (f" ({', '.join(f'{j.mineral_name(k)} {v}' for k, v in held)})" if held else ""))
-        bits.append(f"limpets {limpets}")
+        synth = j.limpets_synth(free)
+        bits.append(f"limpets {limpets}" + (f" (+{synth} by synthesis)" if synth and limpets < LIMPETS_SYNTH_SHOW else ""))
         if full_min is not None:
             bits.append("hold full" if full_min == 0 else f"full in ~{full_min} min")
         return {"start": row["start_ts"], "ring": ring, "hotspot": hotspot, "hotspot_name": name, "tons": tons,
                 "tph": round(tph, 1) if tph else None, "count": count, "capacity": cap, "free": free,
                 "held": [[k, j.mineral_name(k), v] for k, v in held], "limpets": limpets, "full_min": full_min,
-                "text": " · ".join(bits)}
+                "limpets_synth": synth, "text": " · ".join(bits)}
 
     def mining_hotspots(self):
         """GET /api/mining/hotspots (and CMDR → Sessions): your mining stints by ring and hotspot (mining B), oldest

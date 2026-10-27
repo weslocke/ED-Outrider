@@ -75,7 +75,8 @@ the game too, for a few seconds each:
   abrasion blasting and sub-surface deposits; from the Elite Dangerous Wiki)
 - **no limpets aboard** as you undock in a mining ship (a refinery, a prospector limpet controller, or a mining or universal multi-limpet controller; a collector alone, as explorers carry, is not one)
   with none in the hold, while you can still turn back: **Remind me to take limpets** in Settings → Mining, off by
-  default. Mining's alerts, ring and Rhino, have their sound, notification, voice and crew switches in Settings →
+  default. When your materials make some (Limpet Basic: iron and nickel, four per synthesis, as many as fit the hold)
+  it says that instead: "No limpets aboard, but you can synthesise 12". Mining's alerts, ring and Rhino, have their sound, notification, voice and crew switches in Settings →
   Mining's own table (grouped Ring mining and Rhino mining), not under Alerts
 - **the prospector call-out**: as each prospector limpet reports, a rock with your threshold (30 % to start) of the
   minerals ticked in Settings → Mining is said ("Platinum, 34 percent"; a ticked mineral can have **its own
@@ -85,8 +86,9 @@ the game too, for a few seconds each:
   metals); a **motherlode** always (its own box). Duds and rocks mined before stay silent, and "Material content:
   High" (engineering materials, not the commodity) only when ticked. None ticked: only motherlodes
 - **while mining in a ring** (a mining ship, in normal space): Now and the overlay's system strip show the mining line
-  (the ring and hotspot, tons an hour, the hold and what it holds, limpets, minutes to full), and the Mining Officer
-  says, once a stint: **limpets low** (at the number in Settings → Mining, 5 to start), **hold nearly full** (about 5
+  (the ring and hotspot, tons an hour, the hold and what it holds, limpets, minutes to full; under 10 limpets, how many
+  more your materials could make: "limpets 4 (+12 by synthesis)"), and the Mining Officer says, once a stint:
+  **limpets low** (at the number in Settings → Mining, 5 to start, with "You can synthesise 12 more" when you can), **hold nearly full** (about 5
   minutes at your rate) and **hold full**, then where to sell the most you carry (the Sell lookup): the best price
   within 100 ly; out in the black, with none that close, the nearest buyer within 500, 2,500 or 10,000 ly (fleet
   carriers reported in the last week among them). Your own carrier is never named as a place to sell (it pays you

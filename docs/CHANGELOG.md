@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · Limpets: how many you can synthesise
+- The review's suggestion #10: `outrider.materials.limpets_makeable` (whole Limpet Basic syntheses your materials
+  allow, your own recipe over the table's, that fit the free hold, four limpets each: checked in the author's
+  journal, the hold went 0 to 4 after one). The mining strip (Now and the overlay) adds "(+8 by synthesis)" under
+  `LIMPETS_SYNTH_SHOW` (10) limpets; limpets low adds "You can synthesise 8 more."; the undock reminder with materials
+  for some says "No limpets aboard, but you can synthesise 12." instead of "turn back" (its moment carries `synth`).
+  Nothing while the materials predate this login. `Journals.hold_free` / `limpets_synth`.
+
 ## 2026-10-27 · "Nearest scoopable star?" by voice
 - The review's suggestion #7: five shipped low-fuel lines say "ask the navigator for the nearest scoopable star", and
   no command answered it. Now "nearest scoopable star", "where can I scoop", "fuel star"... answer "Nearest known
