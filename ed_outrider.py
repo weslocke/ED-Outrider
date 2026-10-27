@@ -3697,12 +3697,12 @@ class Journals:
                 set(self.regions_said), set(self.rings_said), set(self.codex_said), dict(self.fss_signals_pending), self.region_entered, self.jumponium, dict(self.sale_run or {}) or None,
                 json.loads(json.dumps(self.burst)), self.uploads.snapshot() if self.uploads else None,
                 json.loads(json.dumps(self.nsp_burst)), json.loads(json.dumps(self.docking_hold)), self.chat_seq, list(self.chat),
-                list(self.shots_new))
+                list(self.shots_new), dict(self.last_all_found or {}) or None)
 
     def restore(self, cp):
         (self.moment_seq, moments, self.last_heat, touched, approached, self.brief_key,
          regions, rings, codex_said, fss_pending, self.region_entered, self.jumponium, self.sale_run, self.burst, uploads, self.nsp_burst, self.docking_hold,
-         self.chat_seq, chat, shots_new) = cp
+         self.chat_seq, chat, shots_new, self.last_all_found) = cp
         self.shots_new = list(shots_new)   # a rolled-back tick's retry notes its Screenshot lines again
         self.chat = collections.deque(chat, maxlen=CHAT_KEEP)
         if self.uploads and uploads:

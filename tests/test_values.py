@@ -1729,6 +1729,25 @@ class BatchEExobio(unittest.TestCase):
     def rich(self, ts, body_id, pct, landable=True):
         return self.body_scan(ts, body_id, False, Landable=landable, Materials=[{"Name": "iron", "Percent": 20.0}, {"Name": "polonium", "Percent": pct}])
 
+    def test_jumponium_after_a_failed_tick(self):
+        """A tick that failed after a jumponium body's Scan and FSSAllBodiesFound is retried as one: the FSS debrief
+        names the body, never a call-out of its own (the 2026-10-27 scoping: last_all_found, read as a guard by
+        note_jumponium, was left set by the failed pass)."""
+        self.mats_login()
+        self.db.commit()
+        cp = self.j.checkpoint()
+        lines = [self.rich("2026-01-01T00:02:00Z", 3, 1.3),
+                 {"event": "FSSAllBodiesFound", "timestamp": "2026-01-01T00:03:00Z", "SystemName": "Sys", "SystemAddress": 1, "Count": 6}]
+        for ev in lines:
+            self.j.handle(ev)
+        self.db.rollback()            # the tick failed after handling them: State.tick's rollback, reload, restore
+        self.j.reload()
+        self.j.restore(cp)
+        for ev in lines:              # the retry
+            self.j.handle(ev)
+        self.assertEqual([m["kind"] for m in self.j.moments if m["kind"] in ("jumponium", "fss_done")], ["fss_done"])
+        self.assertEqual([m for m in self.j.moments if m["kind"] == "fss_done"][-1]["jumponium"]["body"], "3")
+
     def test_jumponium_fss_and_alone(self):
         self.mats_login()
         self.j.handle(self.rich("2026-01-01T00:02:00Z", 3, 1.3))

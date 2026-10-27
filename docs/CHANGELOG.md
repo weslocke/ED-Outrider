@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · A retried tick says a jumponium body in the FSS debrief, not on its own
+- Found while scoping the review's suggestion #4: `Journals.last_all_found` (the latest FSSAllBodiesFound) was not in
+  `checkpoint()` / `restore()`, listed as "overwritten" by the retry. But `note_jumponium` reads it as a guard ("the
+  FSS is done here: say it alone") while the retry replays the Scan, before FSSAllBodiesFound comes round again: a
+  failed tick holding both said the jumponium body as its own call-out and the debrief went without it. It is in the
+  checkpoint now (the registry test's "safe on a retry" list no longer has it); the guide's rule says when
+  "overwritten" is not enough.
+
 ## 2026-10-26 · Known sites from Canonn, each one tap from a pin
 - The pins follow-up the author asked to remember (2026-10-17): on a landable body with Guardian or geological
   signals, the body panel's 📍 Pins lists what other commanders reported to Canonn with a position, Guardian ruins and

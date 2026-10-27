@@ -3282,7 +3282,6 @@ class JournalsRegistry(unittest.TestCase):
         "bad_json_said": "which files a not-JSON line was said of: a retry says nothing again, which is the point",
         "jump_arrival": "the latest hyperspace arrival: overwritten",
         "supercruise_entry": "the latest SupercruiseEntry (auto-target's danger wait): overwritten, newest wins",
-        "last_all_found": "the latest FSSAllBodiesFound: overwritten",
         "last_honk": "the latest discovery scan: overwritten",
         "last_shutdown": "the latest Shutdown read: overwritten",
         "last_start_jump": "the latest hyperspace StartJump: overwritten",

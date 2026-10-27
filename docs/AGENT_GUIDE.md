@@ -378,7 +378,9 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
 - **Failed ticks.** A tick that raises is rolled back and `Journals.reload()` restores memory from the
   database; `checkpoint()`/`restore()` cover what lives only in memory (moments, sets of bodies touched,
   the collection under way...). New in-memory state changed by handling lines must be added to both, or a
-  retry announces things twice. A journal line that lacks a field is skipped with a log line
+  retry announces things twice. "Overwritten by the retry" is safe only when nothing reads it before the line that
+  sets it comes round again: a latest value another line's handler reads as a guard (`last_all_found`, read by
+  `note_jumponium`) goes in the checkpoint. A journal line that lacks a field is skipped with a log line
   (`KeyError`/`TypeError` are caught per line); database errors must propagate so the tick is retried. The
   follow-ups after the commit run one by one: an exception is reported (`follow_up_failed`: the traceback once, the
   error on the page; rolled back and reloaded only when the step left a transaction open) and the next one still runs,
