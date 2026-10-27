@@ -85,9 +85,14 @@ the game too, for a few seconds each:
   52 percent: Platinum 31, Gold 21": tick Platinum, Palladium, Gold, Silver and Osmium with 50 for a rock half precious
   metals); a **motherlode** always (its own box). Duds and rocks mined before stay silent, and "Material content:
   High" (engineering materials, not the commodity) only when ticked. None ticked: only motherlodes
+- **your record at a hotspot**: dropping out of supercruise at a hotspot you have mined before (a mining ship), the
+  Mining Officer says it: "⛏ Alexandrite hotspot · you, 3 stints · 38 t/h · 41 % hits · last here 1 h 20 min ago"
+  (your best ship's tons an hour, the hit rate against the call-out's minerals). Nothing at a hotspot new to you. Under
+  **Rings to mine** in Settings → Mining
 - **while mining in a ring** (a mining ship, in normal space): Now and the overlay's system strip show the mining line
   (the ring and hotspot, tons an hour, the hold and what it holds, limpets, minutes to full; under 10 limpets, how many
-  more your materials could make: "limpets 4 (+12 by synthesis)"), and the Mining Officer says, once a stint:
+  more your materials could make: "limpets 4 (+12 by synthesis)"; with minerals ticked for the call-out, this stint's
+  hits: "hits 3/8", on Now only), and the Mining Officer says, once a stint:
   **limpets low** (at the number in Settings → Mining, 5 to start, with "You can synthesise 12 more" when you can), **hold nearly full** (about 5
   minutes at your rate) and **hold full**, then where to sell the most you carry (the Sell lookup): the best price
   within 100 ly; out in the black, with none that close, the nearest buyer within 500, 2,500 or 10,000 ly (fleet

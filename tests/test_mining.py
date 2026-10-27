@@ -170,6 +170,39 @@ class Stints(unittest.TestCase):
         self.assertEqual([(m["untouched"], m["motherlode"], m["content"]) for m in p], [(True, None, "High"), (False, None, "High"), (True, "opal", "High")])
         self.assertEqual((p[2]["motherlode_name"], p[0]["names"]), ("Void Opal", {"platinum": "Platinum", "painite": "Painite"}))
 
+    def test_your_record_at_the_drop(self):
+        """The review's #9: a live drop at a hotspot in a mining ship is a moment (the page says your record there); none
+        aimed at the ring itself, in a ship with no mining kit, or for an old line. Each group carries the stint under way
+        (open_stint) and the latest closed stint's end, and the strip its system."""
+        hot = {"System": 9, "Body": 18, "Name": "$SAA_RingHotspot:#type=$Alexandrite_name;;"}
+        drops = lambda: [(m["ring"], m["hotspot"], m["name"], m["start"]) for m in self.j.moments if m["kind"] == "hotspot_drop"]   # noqa: E731
+        self.drop(0, dest=hot)                                   # Loadout without a mining kit: no moment
+        self.leave(10)
+        self.j.handle({"event": "Loadout", "timestamp": self.at(20), "Ship": "python", "ShipID": 7, "ShipName": "Digger",
+                       "ShipIdent": "DG", "CargoCapacity": 128, "MaxJumpRange": 20.0, "Modules": [{"Slot": "Slot01", "Item": "int_refinery_size4_class5"}]})
+        self.drop(30, dest=None)                                 # aimed at the ring: no moment
+        self.leave(40)
+        self.assertEqual(drops(), [])
+        self.drop(100, dest=hot)
+        self.prospect(110, platinum=31.5)
+        self.refine(120, "platinum")
+        self.leave(400)
+        self.drop(1000, dest=hot)
+        self.prospect(1010, platinum=10.0)
+        self.prospect(1020, remaining=50.0, gold=40.0)
+        self.refine(1030, "platinum")
+        self.assertEqual(drops(), [("4 B Ring", "alexandrite", "Alexandrite", self.at(100)), ("4 B Ring", "alexandrite", "Alexandrite", self.at(1000))])
+        g = self.groups()[("4 B Ring", "alexandrite")]
+        self.assertEqual((g["stints"], g["last_end"], g["open"]), (2, self.at(120), True))   # its last activity
+        self.assertEqual(g["open_stint"], {"start": self.at(1000), "ship_id": 7, "tons": 1, "seconds": 30, "refined": {"platinum": 1}, "prospects": 2})
+        self.j.status_json = {"live": True, "flags": 0}
+        self.assertEqual(self.state.mining_live()["system"], "9")
+        self.leave(1100)
+        g = self.groups()[("4 B Ring", "alexandrite")]
+        self.assertEqual((g["open_stint"], g["last_end"]), (None, self.at(1030)))
+        self.drop(2000, dest=hot, ts="2020-01-01T00:00:00Z")   # an old line: no moment
+        self.assertEqual(len(drops()), 2)
+
     def test_no_hotspot_unknown_and_empty(self):
         ring = {"System": 9, "Body": 18, "Name": "Sys 4 B Ring"}
         self.drop(0, dest=ring)                       # aimed at the ring itself: no hotspot

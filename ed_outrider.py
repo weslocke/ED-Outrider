@@ -5332,6 +5332,10 @@ class Journals:
                 m = RING_HOTSPOT.search(str(d.get("Name") or "")) if d.get("System") == system and d.get("Body") == ev.get("BodyID") else None
                 db.execute("INSERT OR REPLACE INTO mining_hotspot_drops VALUES (?, ?, ?, ?)",
                            (system, ev.get("BodyID"), ts, outrider.cargo.cid(m.group(1)) if m else ""))
+                if m and self.mining_ship():   # the review's #9: the page says your record at this hotspot, if any
+                    cid = outrider.cargo.cid(m.group(1))
+                    self.moment("hotspot_drop", ts, system=str(system), ring=short_name(ev.get("StarSystem"), ev.get("Body") or ""),
+                                hotspot=cid, name=self.mineral_name(cid), start=ts)
             self.mining_version += 1
             return
         if not row:
@@ -10964,7 +10968,7 @@ class State:
         bits.append(f"limpets {limpets}" + (f" (+{synth} by synthesis)" if synth and limpets < LIMPETS_SYNTH_SHOW else ""))
         if full_min is not None:
             bits.append("hold full" if full_min == 0 else f"full in ~{full_min} min")
-        return {"start": row["start_ts"], "ring": ring, "hotspot": hotspot, "hotspot_name": name, "tons": tons,
+        return {"start": row["start_ts"], "system": str(row["system"]), "ring": ring, "hotspot": hotspot, "hotspot_name": name, "tons": tons,
                 "tph": round(tph, 1) if tph else None, "count": count, "capacity": cap, "free": free,
                 "held": [[k, j.mineral_name(k), v] for k, v in held], "limpets": limpets, "full_min": full_min,
                 "limpets_synth": synth, "text": " · ".join(bits)}
@@ -10975,8 +10979,10 @@ class State:
         ring itself, or nothing), None for unknown (no live drop kept: older journals). Each group: stints, seconds
         (drop to last activity), tons and refined {mineral: t}, by_ship [{id, name, type, tons, seconds}], motherlodes,
         cracked, prospects [[{mineral: %}, untouched]] (the page rates them against your call-out's minerals), first
-        and last. per_ton: what your mined ore sold for, by mineral (mining_sales, your own carrier left out); names:
-        the minerals' display names."""
+        and last (the latest stint's start). last_end: the latest closed stint's end; open_stint {start, ship_id, tons,
+        seconds, refined, prospects (how many of `prospects`, at their end)}: the stint under way, so the page can tell
+        your record before it (the review's #9). per_ton: what your mined ore sold for, by mineral (mining_sales, your own
+        carrier left out); names: the minerals' display names."""
         db = self.db
         drops = {(r["system"], r["body_id"], r["start_ts"]): r["hotspot"] for r in db.execute("SELECT * FROM mining_hotspot_drops")}
         groups, minerals = {}, set()
@@ -10985,7 +10991,8 @@ class State:
             g = groups.setdefault((r["system"], r["ring"], hs), {
                 "system": str(r["system"]), "system_name": r["system_name"], "ring": short_name(r["system_name"], r["ring"] or ""),
                 "ring_full": r["ring"], "hotspot": hs, "stints": 0, "seconds": 0, "tons": 0, "refined": {}, "ships": {},
-                "motherlodes": 0, "cracked": 0, "prospects": [], "first": r["start_ts"], "last": r["start_ts"], "open": False})
+                "motherlodes": 0, "cracked": 0, "prospects": [], "first": r["start_ts"], "last": r["start_ts"], "open": False,
+                "last_end": None, "open_stint": None})
             refined = json.loads(r["refined"] or "{}")
             end = r["end_ts"] or r["last_ts"] or r["start_ts"]
             secs = max(0, round(ts_seconds(end) - ts_seconds(r["start_ts"])))
@@ -11006,6 +11013,11 @@ class State:
             minerals.update(k for mats, _ in prospects for k in mats)
             g["last"] = r["start_ts"]
             g["open"] = bool(r["open"])
+            if r["open"]:
+                g["open_stint"] = {"start": r["start_ts"], "ship_id": r["ship_id"], "tons": tons, "seconds": secs,
+                                   "refined": refined, "prospects": len(prospects)}
+            else:
+                g["last_end"], g["open_stint"] = end, None
         per_ton = {r[0]: round(r[1] / r[2]) for r in db.execute(
             "SELECT commodity, sum(mined_total), sum(mined_tons) FROM mining_sales WHERE own_carrier = 0 AND mined_tons > 0 "
             "GROUP BY commodity") if r[0] and r[2]}

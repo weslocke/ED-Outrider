@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · Your record at a hotspot as you drop in; this stint's hits on Now
+- The review's suggestion #9: dropping out of supercruise at a hotspot you have mined before (a mining ship, a live
+  line) says "⛏ Alexandrite hotspot · you, 3 stints · 38 t/h · 41 % hits · last here 1 h 20 min ago" (moment
+  `hotspot_drop`; the page's `hotspotDropOut` with the record from before this stint, `hotspotBefore`, whether
+  MINING.d has caught up with it or not), in plain words under the Rings to mine row; nothing at a hotspot new to you.
+  `mining_hotspots` groups carry `last_end` and `open_stint`; the strip carries its `system`. Now's mining line adds
+  " · hits 3/8": this stint's untouched rocks that passed your call-out (none with no mineral ticked; not on the
+  overlay, which cannot know the browser's call-out).
+
 ## 2026-10-27 · Limpets: how many you can synthesise
 - The review's suggestion #10: `outrider.materials.limpets_makeable` (whole Limpet Basic syntheses your materials
   allow, your own recipe over the table's, that fit the free hold, four limpets each: checked in the author's

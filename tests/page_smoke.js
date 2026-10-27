@@ -10122,6 +10122,21 @@ const releasePayloads = async () => {
       const ht = new w.DOMParser().parseFromString(w.eval(`hotspotsHtml(MINING.d)`), "text/html");
       got.hTable = [...ht.querySelectorAll("#cmHotspots tbody tr")].map(tr => [...tr.children].slice(1, 6).map(td => td.textContent.trim()));
       w.eval("delete window.__hb");
+      // the review's #9: dropping at that hotspot says your record there, without the stint just opened (whether MINING.d
+      // has caught up with it or not); a hotspot never mined says nothing; Now's line adds this stint's hits
+      w.eval(`window.__hsKeep = MINING.d; MINING.d = JSON.parse(JSON.stringify(MINING.d));
+        MINING.d.hotspots[0].last_end = new Date(Date.now() - 80 * 60000).toISOString(); MINING.d.hotspots[0].open_stint = null`);
+      const hdrop = start => `{kind: "hotspot_drop", system: "9", ring: "4 B Ring", hotspot: "alexandrite", name: "Alexandrite", start: "${start}"}`;
+      got.hDrop = [feed(hdrop("S1")), w.eval("lastAlert.title"), w.eval("lastAlert.body")];
+      w.eval(`(() => { const g = MINING.d.hotspots[0];
+        Object.assign(g, {stints: 3, tons: 85, seconds: 7800, refined: {platinum: 65, alexandrite: 20}, open: true,
+          ships: [{id: 7, name: "Digger", type: "python", tons: 85, seconds: 7800}], prospects: [...g.prospects, [{platinum: 60}, 1]],
+          open_stint: {start: "S2", ship_id: 7, tons: 5, seconds: 600, refined: {platinum: 5}, prospects: 1}}); lastAlert = null; })()`);
+      got.hDropCaught = [feed(hdrop("S2")), w.eval("lastAlert && lastAlert.body")];
+      got.hDropNew = [feed(`{kind: "hotspot_drop", system: "9", ring: "4 B Ring", hotspot: "painite", name: "Painite", start: "S3"}`)];
+      w.eval(`data = Object.assign({}, data, {mining_live: {start: "S2", system: "9", limpets: 10, text: "⛏ 4 B Ring · Alexandrite"}}); renderNow()`);
+      got.hHitsNow = d.querySelector("#nowBody .now-mine") ? d.querySelector("#nowBody .now-mine").textContent : null;
+      w.eval("MINING.d = window.__hsKeep; delete window.__hsKeep");
       // D, the mining strip's warnings: limpets low (the number in Settings → Mining), the hold nearly full (2 to 5
       // minutes), full; each once a stint; a new stint warns again; Now shows the line while mining
       const warn = m => JSON.parse(w.eval(`(() => { miningWarn(${JSON.stringify(m)}); return JSON.stringify(__spoken.splice(0)); })()`));
@@ -10197,6 +10212,11 @@ const releasePayloads = async () => {
               [["3 limpets left.", "limpets"]], [], [["5 limpets left. You can synthesise 8 more.", "limpets"]]],
       reopen: [],
       nowMine: "⛏ 4 B Ring · Platinum · 60 t/h",
+      hDrop: [[["Alexandrite hotspot: you've mined here 2 times, 40 tons an hour, 50 percent hits.", "ring"]], "⛏ Alexandrite hotspot",
+              "you, 2 stints · 40 t/h · 50 % hits · last here 1 h 20 min ago"],
+      hDropCaught: [[["Alexandrite hotspot: you've mined here 2 times, 40 tons an hour, 50 percent hits.", "ring"]],
+                    "you, 2 stints · 40 t/h · 50 % hits · last here 1 h 20 min ago"],
+      hDropNew: [[]], hHitsNow: "⛏ 4 B Ring · Alexandrite · hits 1/1",
       sell: [["near100", [["Best price for Platinum within 100 light-years: Hub in Sys, 34 light-years, 182k credits a ton.", "limpets"]], [[100, "price", false]]],
              ["wider", [["Nearest buyer for Platinum: Jaques Station in Colonia, 1,320 light-years, 175k credits a ton. Or your carrier, 12 light-years: somewhere to unload.", "limpets"]],
               [[100, "price", false], [10000, "near", true]]],   // one wider ask (review S5-S3)

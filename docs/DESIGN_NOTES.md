@@ -208,7 +208,11 @@ upstream project's choices, not rules of the game.
   controller, never a collector alone (explorers carry one). The page's first payload baselines the mining warnings
   (`miningBaseline`): a new window never repeats "the hold is full". Hold-full's "where to sell" never names your own
   carrier as a place to sell. The limpet reminder stays quiet while the hold's contents are not known (a count-only
-  Cargo with more aboard than the lines known). Limpets you could synthesise (the review's #10, 2026-10-27): whole Limpet
+  Cargo with more aboard than the lines known). Your record said at a hotspot's drop (the review's #9, 2026-10-27): a live SupercruiseExit aimed at
+  a hotspot in a mining ship is a `hotspot_drop` moment; the page says the group's record without the stint just opened
+  (`open_stint` subtracted when MINING.d has caught up, `hotspotBefore`), nothing at a hotspot never mined; plain words,
+  the `ring` row (no new row, no speech key). Now's "hits 3/8" is page-only: the hit rate needs the browser's call-out,
+  so the overlay strip (the server's text) cannot show it. Limpets you could synthesise (the review's #10, 2026-10-27): whole Limpet
   Basic syntheses (4 limpets each: the author's journal, 0 to 4 after one) that fit the free hold, from your own recipe
   once made; nothing while the materials predate the login (`materials_stale`). Said as a plain sentence after the
   personality's line (no speech key), and on the undock reminder in place of "turn back" (the advice changes). A mining session's **Where** (CMDR → Sessions, the author,

@@ -1451,7 +1451,7 @@ function renderNow() {
         (sure.length ? `${guess.length ? " · " : ""}${gggIcon(true, gggTitle(sure[0].ggg))} <span class="ok">${esc(gggSureWords(sure))}</span>` : "") + `</div>`);
     }
     if (data.mining_live && data.mining_live.text)   // mining D: the strip while you mine in a ring (the overlay's too)
-      lines.push(`<div class="now-line now-mine">${esc(data.mining_live.text)}</div>`);
+      lines.push(`<div class="now-line now-mine">${esc(data.mining_live.text)}${miningHitsNow(data.mining_live)}</div>`);
     if (hd && hd.spansh_old && !(hd.leaving && hd.leaving.all_found)) {   // #11: until your own scans have every body
       // short, so it fits one line in Now's large type (the author): the details are in the hover
       lines.push(`<div class="now-line now-old" title="${esc(spanshOldTitle(hd.spansh_old))}">🪦 ${esc(spanshOldNow(hd.spansh_old))}</div>`);
@@ -2512,7 +2512,7 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["chat", "other players' messages read aloud (channels in Settings → Voice → Chat), never an NPC's", null],
   ["uploads", "EDDN, EDSM or Inara failing for 15 minutes, and sending again", null],
   ["uploadheld", "an upload stopped until you act: a key refused or not saved, a kind of EDDN message refused", null],
-  ["ring", "a body just scanned has a ring of a type ticked above", "find"],
+  ["ring", "a body just scanned has a ring of a type ticked above; dropping at a hotspot you mined before, your record there", "find"],
   ["limpets", "no limpets as you undock a mining ship; while mining, limpets low, the hold nearly full and full, then where to sell", "alert"],
   ["prospect", "a prospected rock with your threshold of the minerals ticked above, and motherlodes", null],
   ["rigs", "the co-pilot button's rig confirmations, and what a rig collected", null],
@@ -2566,7 +2566,7 @@ const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, 
   uploads: "A card at the top of the page too. Never spoken.",
   upkeep: "The card at the top of the page comes either way; this adds the notification and the line, once per reading of the carrier's stats. Counted down from them a week at a time: an estimate (the market moves the balance too). Off until you tick it.",
   uploadheld: "The card at the top of the page comes either way (it goes once the hold ends); this adds the notification and the line. Off until you tick it.",
-  ring: "Settings → Mining's ring types, pristine ones only if ticked there. Once per body and visit; bodies scanned together in one line. Nothing until a type is ticked.",
+  ring: "Settings → Mining's ring types, pristine ones only if ticked there. Once per body and visit; bodies scanned together in one line. Nothing until a type is ticked. Dropping out of supercruise at a hotspot in a mining ship: your stints there before, your best ship's tons an hour, your hit rate (against the call-out's minerals) and when you were last there; nothing at a hotspot new to you.",
   limpets: "The undocking check only when ticked above. Each warning once a stint.",
   prospect: "Only a rock not mined before; duds stay silent.",
   rigs: "Placed, picked up, six out.",
@@ -3438,6 +3438,51 @@ function hotspotStats(g, cfg = miningCfg(), d = MINING.d) {
 }
 const hotspotName = (g, d = MINING.d) => g.hotspot ? ((d && d.names && d.names[g.hotspot]) || PROSPECT_NAMES[g.hotspot] || g.hotspot)
   : g.hotspot === "" ? "no hotspot" : "hotspot not known";
+// a hotspot group as it was before its stint under way began at `start` (the review's #9: the record said as you drop in
+// leaves out the stint just opened, whether or not MINING.d has caught up with it yet)
+function hotspotBefore(g, start) {
+  const os = g.open_stint;
+  if (!os || os.start !== start) return g;
+  const refined = {...(g.refined || {})};
+  for (const [k, t] of Object.entries(os.refined || {})) refined[k] = (refined[k] || 0) - t;
+  const tph = s => s.seconds ? s.tons / s.seconds : 0;
+  const ships = (g.ships || []).map(s => s.id === os.ship_id ? {...s, tons: s.tons - os.tons, seconds: s.seconds - os.seconds} : s)
+    .filter(s => s.seconds > 0 || s.tons > 0).sort((a, b) => tph(b) - tph(a));
+  const ps = g.prospects || [];
+  return {...g, stints: g.stints - 1, tons: g.tons - os.tons, seconds: g.seconds - os.seconds, refined, ships,
+          prospects: ps.slice(0, Math.max(0, ps.length - os.prospects)), open: false, open_stint: null};
+}
+// "1 h 20 min ago", "35 min ago", "on 2026-10-12" (past two days)
+const hotspotAgo = ts => {
+  const s = (Date.now() - Date.parse(ts)) / 1000;
+  if (!isFinite(s)) return "";
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min ago`;
+  if (s < 172800) { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return `${h} h${m ? ` ${m} min` : ""} ago`; }
+  return `on ${String(ts).slice(0, 10)}`;
+};
+// the moment hotspot_drop: "⛏ Alexandrite hotspot · you, 3 stints · 38 t/h · 41 % hits · last here 1 h 20 min ago",
+// said in plain words; nothing at a hotspot you have never mined (alerts are for the out of the ordinary)
+function hotspotDropOut(m) {
+  const g = ((MINING.d && MINING.d.hotspots) || []).find(x => x.system === m.system && x.ring === m.ring && x.hotspot === m.hotspot);
+  const b = g && hotspotBefore(g, m.start);
+  if (!b || !b.stints) return;
+  const s = hotspotStats(b), name = m.name || hotspotName(b);
+  const bits = [`${b.stints} stint${b.stints === 1 ? "" : "s"}`, s.tph != null && `${Math.round(s.tph)} t/h`,
+                s.rate != null && `${s.rate} % hits`, b.last_end && `last here ${hotspotAgo(b.last_end)}`].filter(Boolean);
+  alertOut("ring", `⛏ ${name} hotspot`, `you, ${bits.join(" · ")}`, {tag: "hotspot_drop",
+    say: () => `${name} hotspot: you've mined here ${b.stints === 1 ? "once" : `${b.stints} times`}` +
+      (s.tph != null ? `, ${Math.round(s.tph)} tons an hour` : "") + (s.rate != null ? `, ${s.rate} percent hits` : "") + "."});
+}
+// Now's mining line: this stint's untouched rocks that passed your call-out, " · hits 3/8" (the review's #9; nothing with
+// no mineral ticked, or before a rated rock)
+function miningHitsNow(ml) {
+  const cfg = miningCfg();
+  if (!ml || !cfg.minerals.length) return "";
+  const g = ((MINING.d && MINING.d.hotspots) || []).find(x => x.system === ml.system && x.open_stint && x.open_stint.start === ml.start);
+  const n = g ? g.open_stint.prospects : 0, rated = n ? g.prospects.slice(-n).filter(p => p[1]) : [];
+  if (!rated.length) return "";
+  return ` · <span title="this stint's untouched rocks that passed your prospector call-out (Settings → Mining)">hits ${rated.filter(p => prospectHit(p[0], cfg)).length}/${rated.length}</span>`;
+}
 // "Alexandrite: 3 stints · 38 t/h · 41 % hits" (Here's ring hover and body card)
 function hotspotLine(g) {
   const s = hotspotStats(g), n = g.stints;
@@ -10531,6 +10576,7 @@ function onData() {
                  say: () => line("upload_held", {service: m.name || "an upload"}, `${m.name || "An upload"} is on hold. Settings, Uploads has the reason.`)});
       else if (m.kind === "ring" && m.body) ringHits.push(m);
       else if (m.kind === "prospect") prospectOut(m);
+      else if (m.kind === "hotspot_drop") hotspotDropOut(m);
       else if (m.kind === "limpets" && m.what === "none" && miningCfg().limpetWarn)   // a mining ship undocked without limpets
         alertOut("limpets", "No limpets aboard", m.synth ? `you can synthesise ${m.synth} (Limpet Basic: iron and nickel)`
                  : "a mining ship left the pad without any (Settings → Mining)",
