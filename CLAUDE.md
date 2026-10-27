@@ -14,8 +14,8 @@ The rules that matter most:
 - Never touch the player's own running Outrider (port 8025) or their real `data/` (`ed_outrider.sqlite`, backups, ...)
   and `ed_outrider.toml`; never trigger auto honk or auto-target (key presses reach the focused window, a running game included) or read real
   input devices; use the fakes in `tests/support.py`. Stop any server you start by its PID.
-- Keep `SETTINGS_KEYS`/`BROWSER_SETTINGS` and the speech keys (`resources/speech.json`, `outrider.speech.KEYS`/`SAMPLES`,
-  `LINE_SAMPLES`, every `resources/personalities/*.json` with at least 10 lines each; a key the server names for a
+- Keep `SETTINGS_KEYS`/`BROWSER_SETTINGS` and the speech keys (`resources/speech.json`, `outrider.speech.KEYS`/`SAMPLES`
+  (the page gets the samples from the server), every `resources/personalities/*.json` with at least 10 lines each; a key the server names for a
   voice answer in page.js `SERVER_LINE_KEYS`) in step, and an alert row's
   `ROW_KEYS` (page.js and `outrider.speech`), `ROW_WORDS`, `ALERT_NAMES` (under its `ALERT_GROUPS` heading) and `CREW_ROLES`,
   a new auto-target control's `KEY_HELP` line, and a new config key in a Server group (`config_edit.GROUPS`) or homed

@@ -2021,7 +2021,7 @@ const releasePayloads = async () => {
       o.said = said.map(x => x[1]);
       o.row = ALERTS.some(a => a[0] === "docking") && alertCfgBase().docking === false && alertSpeakBase().docking === true &&
         !!ALERT_SHORT.docking && !!ALERT_NAMES.docking && SPEECH_SYS_BOUND.has("docking") && speechPrio("docking") === 1 &&
-        !!document.querySelector('#alertOpts [data-aspeak="docking"]') && !!LINE_SAMPLES.docking_granted && !!LINE_SAMPLES.docking_denied &&
+        !!document.querySelector('#alertOpts [data-aspeak="docking"]') &&
         JSON.stringify(ROW_KEYS.docking) === JSON.stringify(["docking_granted", "docking_denied"]);
       speak = realSpeak; notify = realNotify; speechLib = lib;
       [speechOn, isSpeaker, alertSpeak.docking] = flags; lastMomentSeq = flags[3];
@@ -6591,7 +6591,7 @@ const releasePayloads = async () => {
       o.est = txt(bioValueCell({state: "sold", paid: null, value: 3000000, factor: 1}));
       o.aboard = txt(bioValueCell({state: "aboard", paid: null, value: 3000000, factor: 1}));
       o.suit = ALERTS.some(a => a[0] === "suit" && a[2] === "danger") && alertSpeakBase().suit === true && DANGER.has("suit_low") &&
-        (ROW_KEYS.suit || []).includes("suit_low") && !!LINE_SAMPLES.suit_low;
+        (ROW_KEYS.suit || []).includes("suit_low");
       const was = codexNewCounts;
       codexNewCounts = () => false;
       o.cxOff = exoCodexWords({kind: "exo", codex_new: 2, codex_best: "Frutexa Flammasis"});
@@ -6646,7 +6646,7 @@ const releasePayloads = async () => {
       o.aboard = txt(carrierTripHtml({burn: 300, short: 240, covered: true, top_up: "aboard", ship: 300, hold: 0, depot: 60}, null));
       o.buy = (carrierTripHtml({burn: 300, short: 240, covered: false, top_up: null, ship: 40, hold: 0, depot: 60}, null).match(/data-buytritium="(\\d+)"/) || [])[1];
       o.weeks = txt(carrierFinanceHtml({balance: 100, reserve: 0, available: 0, ts: "2026-01-01T00:00:00Z", upkeep: 10, weeks: 12, weeks_now: 2, weeks_since: 10, warn: true}));
-      o.upkeepRow = ALERTS.some(a => a[0] === "upkeep") && alertCfgBase().upkeep === false && alertSpeakBase().upkeep === false && !!LINE_SAMPLES.upkeep_low;
+      o.upkeepRow = ALERTS.some(a => a[0] === "upkeep") && alertCfgBase().upkeep === false && alertSpeakBase().upkeep === false;
       o.age = [depotAge(new Date(Date.now() - 3 * 86400000).toISOString()).text, depotAge(new Date(Date.now() - 9 * 86400000).toISOString()).stale, depotAge(null)];
       return JSON.stringify(o); })()`));
     const want = {sell: [{tons: 3, of: 8, stolen: 3, mission: 2, black: false}, true], mission: true,
@@ -6665,10 +6665,9 @@ const releasePayloads = async () => {
       takeCopilot({seq: seq + 1, action: "show", page: "map", words: "The Map."});
       o.stayed = view === was;
       o.keys = SERVER_LINE_KEYS.slice();
-      o.sample = !!LINE_SAMPLES.bookmarked;
       lastCopilotSeq = seq;
       return JSON.stringify(o); })()`));
-    const want = {stayed: true, keys: ["bookmarked"], sample: true};
+    const want = {stayed: true, keys: ["bookmarked"]};
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| suggestions H |", good ? "show is the tablet's, the bookmarked line" : JSON.stringify({got, want}), errors.slice(before));
@@ -6703,10 +6702,10 @@ const releasePayloads = async () => {
     const got = JSON.parse(w.eval(`(() => JSON.stringify({
       row: ALERTS.some(a => a[0] === "uploadheld") && !!ALERT_NAMES.uploadheld && !!ROW_WORDS.uploadheld && !UNSPOKEN.has("uploadheld"),
       off: [alertCfgBase().uploadheld, alertSpeakBase().uploadheld, alertSoundBase().uploadheld],
-      keys: ROW_KEYS.uploadheld, sample: !!LINE_SAMPLES.upload_held,
+      keys: ROW_KEYS.uploadheld,
       left: bfLeftOut({left_out: [[412, "the Legacy game (3.8): nobody takes its data"], [1, "crew in another commander's ship"]]}),
       none: bfLeftOut({left_out: []})}))()`));
-    const want = {row: true, off: [false, false, false], keys: ["upload_held"], sample: true,
+    const want = {row: true, off: [false, false, false], keys: ["upload_held"],
                   left: ": 412 lines left out, the Legacy game (3.8): nobody takes its data; 1 line left out, crew in another commander's ship", none: ""};
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;
@@ -6742,7 +6741,7 @@ const releasePayloads = async () => {
       [speechOn, isSpeaker, alertSpeak.refuelshort] = flags; lastMomentSeq = flags[3];
       o.row = ALERTS.some(a => a[0] === "refuelshort") && alertCfg.refuelshort === true && !!ALERT_SHORT.refuelshort && !!ALERT_NAMES.refuelshort &&
         SPEECH_SYS_BOUND.has("refuelshort") && DANGER.has("fuel_short") && speechPrio("refuelshort", "fuel_short") === 0 &&
-        !!document.querySelector('#alertOpts [data-aspeak="refuelshort"]') && !!LINE_SAMPLES.fuel_short;
+        !!document.querySelector('#alertOpts [data-aspeak="refuelshort"]');
       // S19: Now shows the jump's cost and the scoopable share with the header's and the tile's own words
       data.target = {seq: lastSeq, fresh: false, id64: 7003, id: "7003", name: "Costed", star_class: "K", status: "partial", leaving: null,
                      hop: {ly: 56.7, fuel: 0.9, left: 20, reach: true}};
@@ -6792,7 +6791,7 @@ const releasePayloads = async () => {
       o.key = said.length ? said[0][0] : null; o.told = told.slice(); o.said = said.map(x => x[1]);
       o.row = ALERTS.some(a => a[0] === "lastscoop") && alertCfg.lastscoop === true && !!ALERT_SHORT.lastscoop && !!ALERT_NAMES.lastscoop &&
         SPEECH_SYS_BOUND.has("lastscoop") && DANGER.has("fuel_last_scoop") && speechPrio("lastscoop", "fuel_last_scoop") === 0 &&
-        !!document.querySelector('#alertOpts [data-aspeak="lastscoop"]') && !!LINE_SAMPLES.fuel_last_scoop;
+        !!document.querySelector('#alertOpts [data-aspeak="lastscoop"]');
       // the strip's bit: on the In-Game Route strip, else on the route line; Now under the fuel
       const q = sel => { const e = document.querySelector(sel); return e ? e.textContent.replace(/\\s+/g, " ").trim() : null; };
       data.dry_stretch = ws;
@@ -6880,7 +6879,7 @@ const releasePayloads = async () => {
       o.told = told; o.said = said;
       o.row = ALERTS.some(a => a[0] === "wrongtarget") && alertCfgBase().wrongtarget === false && alertSpeakBase().wrongtarget === true &&
         !!ALERT_SHORT.wrongtarget && !!ALERT_NAMES.wrongtarget && SPEECH_SYS_BOUND.has("wrongtarget") &&
-        !!document.querySelector('#alertOpts [data-aspeak="wrongtarget"]') && !!LINE_SAMPLES.wrong_target;
+        !!document.querySelector('#alertOpts [data-aspeak="wrongtarget"]');
       speak = realSpeak; notify = realNotify; speechLib = lib;
       [speechOn, isSpeaker, alertSpeak.wrongtarget] = flags; lastMomentSeq = flags[3];
       data = JSON.parse(d0); data.moments = m0;

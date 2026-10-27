@@ -446,9 +446,10 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
   abbreviations in `SHORT_FORMS` / `shortForm(kind, text)` (headings: `SHORT_FORMS.head`, applied at start), never
   ad hoc, and only in those tables (outside them both forms would show). Speech and notifications keep the full words.
 - **Spoken lines.** Every alert key must agree across `speech.json`, `outrider.speech.KEYS` (with its placeholders),
-  `outrider.speech.SAMPLES` (a value for every placeholder), a `line("key", ...)` call in `page.js` (or, for a key
+  `outrider.speech.SAMPLES` (a value for every placeholder, and an entry for every key: the page's voice lab, Audition
+  and ▶ get them from GET `/api/speech`'s `samples`, `page_samples()`; page.js keeps no copy), a `line("key", ...)` call in `page.js` (or, for a key
   the server names for a voice answer's line, the copilot's `line`: its name in page.js `SERVER_LINE_KEYS`, as
-  `bookmarked`; `tests/test_speech.py` counts both) and a `LINE_SAMPLES` entry in `page.js`. The shipped lists hold 50 lines each for business, sarcastic, sweet and
+  `bookmarked`; `tests/test_speech.py` counts both). The shipped lists hold 50 lines each for business, sarcastic, sweet and
   the two `_profane` lists for most keys (shorter ones: `mapped_before` 12, `bio_tag_near` 15, `autotarget_nothing` 15,
   12 in its `_profane` lists; `wrong_target` 15; the danger keys `fuel_short` and `fuel_last_scoop` 15 in all but
   business; `docking_granted` / `docking_denied` 15; `old_data` 16; `upload_held` 15; `bookmarked`, `upkeep_low` and `suit_low` 16; the chatter's own: `chatter_space` 60,
@@ -584,8 +585,7 @@ a box drawn by script: Find a setting walks a section's children; a box with a h
 that is not settings (a log) in `SF_CONTENT`; the smoke test finds every section by a word of its own rows.
 
 **A new spoken line.** `outrider.speech.KEYS["key"] = "when it is said: {placeholders}"`, `SAMPLES["key"]`, an entry
-in `speech.json` (`"when"` plus five lists), `line("key", vars, "plain fallback")` in page.js, and
-`LINE_SAMPLES.key`, and at least 10 lines in each shipped personality file (`resources/personalities/*.json`: its `<id>`
+in `speech.json` (`"when"` plus five lists), `line("key", vars, "plain fallback")` in page.js, and at least 10 lines in each shipped personality file (`resources/personalities/*.json`: its `<id>`
 list, and `<id>_profane` when it has one). Run the unit tests: they name what is missing.
 
 **A Spansh job (the Highway's plotters).** Spansh answers a plot with `{job}`; `Spansh.plot(url, params)` asks

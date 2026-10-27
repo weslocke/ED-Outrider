@@ -3276,50 +3276,9 @@ const spokenStar = c => !c ? "star" : /^D/.test(c) ? "white dwarf" : c === "N" ?
   // giants and supergiants: K_OrangeGiant is "K orange giant", A_BlueWhiteSuperGiant "A blue white supergiant"
   : /^[OBAFGKM]_\w+$/.test(c) ? `${c[0]} ${c.slice(2).replace(/SuperGiant/g, "Supergiant").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase()}`
   : `${c} star`;
-// sample values for the ▶ try button
-// a key's sample values: LINE_SAMPLES, else space chatter's, which come with the lines (speechLib.chatter.samples, #15)
-const lineSample = key => LINE_SAMPLES[key] || (speechLib.chatter && speechLib.chatter.samples && speechLib.chatter.samples[key]) || {};
-const LINE_SAMPLES = {
-  old_data: {year: "2019"},
-  docking_granted: {pad: 34, station: "Jameson Memorial"}, docking_denied: {reason: "no pad free for your ship: try again shortly", station: "Jameson Memorial"},
-  speech_on: {}, game_start: {}, game_exit: {}, heat: {},
-  arrival_undiscovered: {system: "Drojau LL-O b26-3"}, arrival_discovered: {system: "Drojau LL-O b26-3"},
-  leaving: {text: "A 2, a class two gas giant, plus 1.4M to map"},
-  find_body: {what: "Water world, terraformable, undiscovered", body: "A 3", value: "2.3M"}, mapped_before: {},
-  find_bio: {body: "B 7", value: "19.0M"}, sample_clear: {genus: "Stratum"},
-  codex: {entry: "Stratum Tectonicas", what: "new to your codex for this region"},
-  phenomena: {what: "three notable stellar phenomena, all in rings"}, ggg: {body: "B 3"}, rare_star: {what: "a black hole at B"},
-  ring_found: {body: "A 3", ring: "a pristine metallic ring"}, limpets_none: {}, limpets_low: {count: 5}, hold_nearly_full: {minutes: 5, free: 12}, hold_full: {}, prospect_hit: {what: "Platinum, 34 percent"}, motherlode: {mineral: "Void Opal"}, ring_found_many: {count: 3, bodies: "A 3, A 5 and B 1", types: "metallic and icy"},
-  firsts_seen: {system: "Drojau LL-O b26-3", value: "14.2M"},
-  upload_held: {service: "EDSM"},
-  suit_low: {what: "oxygen", value: "412M", distance: "640 metres"},
-  upkeep_low: {carrier: "Deep Wanderer", weeks: "3 weeks"},
-  bookmarked: {system: "Drojau LL-O b26-3"},
-  surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
-  fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
-  fuel_topup: {rate: "8 of the last 20 stars were scoopable", jumps: "about 6 jumps"}, hull: {pct: 42}, interdicted: {by: "someone"},
-  fuel_short: {system: "Smojooe AR-E b25-8", jumps: "4 jumps", need: "24 tonnes"},
-  fuel_last_scoop: {count: 3}, wrong_target: {system: "Smojooe AR-E b25-8", next: "Pru Aim XY-Z d1"},
-  docked_sell: {value: "114.1M", station: "Jaques Station"}, undocked_unsold: {value: "260.4M"},
-  sold: {sold: "12.6M cr cartographics and 4.1M cr exobiology", still: ""},
-  unsold_warn: {value: "52.0M"}, unsold_urgent: {value: "251.3M"},
-  carrier_departs: {minutes: 4, carrier: "Out Of The Blue"}, autotarget_nothing: {why: "no route is plotted"}, bio_tag_near: {genus: "Tussock", distance: 80}, carrier_arrived: {carrier: "Out Of The Blue", system: "Smojooe AR-E b25-8"},
-  fss_done: {count: 14, text: "B 1, Earth-like world, 3.1M to map, and biology on C 2, up to 19.0M"},
-  fss_nothing: {count: 14}, fss_unfinished: {left: "3 bodies"}, jumponium: {body: "B 4", material: "polonium", pct: "1.3 percent"},
-  left_body: {body: "A 3", text: "Stratum 2 of 3, and Tussock untouched, up to 4.1M"},
-  bio_done_more: {species: "Stratum Tectonicas", value: "19.2M", left: "Bacterium and Fungoida"},
-  bio_done_last: {species: "Stratum Tectonicas", value: "19.2M"},
-  tank_full: {jumps: 8}, scoop_stopped: {pct: 64}, supercharged: {mult: "4 times"}, fsd_charge: {system: "Drojau LL-O b26-3"},
-  body_brief: {body: "B 7", text: "3 biological signals, one of Stratum, Bacterium or Fungoida, 1.0M to 19.0M"},
-  high_g: {gravity: "2.6", value: "480.2M", rebuys: "3.2"},
-  arrival_brief: {text: "Undiscovered. 14 bodies. Scoopable K star."},
-  region: {region: "the Norma Arm", count: "31 species you have logged elsewhere are new to your codex here"},
-  session_recap: {text: "142 jumps, 3,100 light-years, 12 systems nobody had seen, 9 species sampled"},
-  streak_known: {count: 10}, streak_new: {count: 5},
-  welcome_back: {text: "Away 3 days. 412.0M aboard, unsold for 5 days. Fuel 64 percent. Docked at Jaques Station."},
-  ship_lost: {text: "Lost 212.4M: 148.1M cartographics and 64.3M exobiology, 31 systems and 9 first discoveries. The nearest lost system is Drojau LL-O b26-3, 42 light-years."},
-  sale_left: {text: "Sold 50 systems for 14.8M. 43 systems are still unsold, 2.0M, 270 first discoveries: sell the next page."},
-};
+// a key's sample values, from the server with the lines (speechLib.samples: outrider.speech.SAMPLES), the chatter's in
+// its own (speechLib.chatter.samples, #15)
+const lineSample = key => (speechLib.samples || {})[key] || (speechLib.chatter && speechLib.chatter.samples && speechLib.chatter.samples[key]) || {};
 // ---- the words of the composed call-outs: the server sends the facts, these apply your thresholds ----
 // The login greeting after a long break: how long, what is at stake, the tank, where you are. The amount aboard
 // only past the amber level, and not when the dock alert on the same payload says it (one line carries it).
@@ -10953,10 +10912,10 @@ document.getElementById("trySpeak").onclick = () => {
   lineNoRecord = true;   // a sample: not counted as heard
   let key, text;
   try {
-    const keys = Object.keys(LINE_SAMPLES).filter(k => line(k, LINE_SAMPLES[k]));
+    const keys = Object.keys(speechLib.samples || {}).filter(k => line(k, lineSample(k)));
     key = keys[Math.floor(Math.random() * keys.length)] || "leaving";
     lineStyle = lineKey = lineTemplate = null;
-    text = line(key, LINE_SAMPLES[key], "Leaving with unfinished work: A 2, a class two gas giant, plus 1.4M to map.");
+    text = line(key, lineSample(key), "Leaving with unfinished work: A 2, a class two gas giant, plus 1.4M to map.");
   } finally { lineNoRecord = false; }
   const sv = styleVoice(lineStyle);
   document.getElementById("speechTried").textContent = `${key}: “${spokenText(text)}”${sv.voice || sv.speaker != null ? ` (${voiceWords(sv)})` : ""}`;

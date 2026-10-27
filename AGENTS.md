@@ -17,7 +17,7 @@ The rules that matter most:
   included) or open real input devices (co-pilot button); use the fakes in `tests/support.py` (`FakeGame` plays
   the galaxy map for auto-target).
 - Keep the paired lists in step: `SETTINGS_KEYS` (page.js) with `BROWSER_SETTINGS` (ed_outrider.py); speech keys
-  across `resources/speech.json`, `outrider.speech.KEYS`/`SAMPLES`, page.js `LINE_SAMPLES` and every
+  across `resources/speech.json`, `outrider.speech.KEYS`/`SAMPLES` (served to the page) and every
   `resources/personalities/*.json` (at least 10 lines each); an alert row's `ROW_KEYS` (page.js and `outrider.speech`),
   page.js `ROW_WORDS`, `ALERT_NAMES` (and its place under an `ALERT_GROUPS` heading) and `outrider.speech.CREW_ROLES`;
   a new auto-target control's `outrider.target.KEY_HELP` line (the Macro cheatsheet); a new config key either in a

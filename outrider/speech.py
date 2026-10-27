@@ -584,7 +584,8 @@ class SpeechLines:
                 # the personality files merged in: {id, file, source (shipped or yours), covers, of} each
                 "personalities": list(self.info_list),
                 "crew_roles": crew_roles_info(),   # the crew's roles and their alert rows, for the page
-                "chatter": _chatter.page_info()}   # space chatter's topics, timings and sample values (#15)
+                "chatter": _chatter.page_info(),   # space chatter's topics, timings and sample values (#15)
+                "samples": page_samples()}   # every other key's sample values (the voice lab, Audition, ▶)
 
     def set_ban(self, alert, template, ban=True):
         """Ban (or unban) one line of an alert: (HTTP status, answer). Only a line that is in the speech file is
@@ -636,8 +637,10 @@ def ban_line(speech_path, alert, template, ban=True):
 
 # ---- filling and tidying lines outside the page (a Python mirror of page.js's, kept in step by the tests) ----
 
-# made-up values for trying lines out, already phrased the way the page phrases them
+# made-up values for trying lines out, already phrased the way the page phrases them: the voice lab, Audition and the
+# ▶ try button take them from GET /api/speech (lines()["samples"], the chatter's in its "chatter"); every key has one
 SAMPLES = {
+    "game_start": {}, "game_exit": {}, "heat": {}, "speech_on": {},
     "arrival_undiscovered": {"system": "Drojau LL-O b26-3"}, "arrival_discovered": {"system": "Drojau LL-O b26-3"},
     "leaving": {"text": "A 2, a class two gas giant, plus 1.4M to map"},
     "find_body": {"what": "Water world, terraformable, undiscovered", "body": "A 3", "value": "2.3M"}, "mapped_before": {},
@@ -692,6 +695,13 @@ SAMPLES = {
                           "sell the next page."},
     **_chatter.SAMPLES,
 }
+
+
+def page_samples():
+    """SAMPLES for the page, less the chatter's (those come with its own info, chatter.page_info)."""
+    return {k: v for k, v in SAMPLES.items() if k not in CHATTER_KEYS}
+
+
 # The crew (the author's plan of 2026-10-13): the spoken alerts split among crew members, each with its own personality
 # and voice, so you know who is talking (and so what about) before the sentence ends. Each alert row of Settings ->
 # Alerts (page.js ALERTS) belongs to one role by default: (id, title in Settings, short name in the server log, rows).

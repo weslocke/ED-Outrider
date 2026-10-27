@@ -336,10 +336,12 @@ class Speech(unittest.TestCase):
         self.assertIn("`chat_${topic}_answer`", js)
         self.assertEqual(used - chatter, set(outrider.speech.KEYS) - chatter - set(outrider.speech.RESERVED))
         self.assertLessEqual(set(outrider.speech.RESERVED), set(outrider.speech.KEYS))
-        samples = js[js.index("const LINE_SAMPLES = {"):]
-        samples = samples[:samples.index("\n};")]
-        for key in set(outrider.speech.KEYS) - chatter:   # the ▶ try button has sample values for every alert
-            self.assertRegex(samples, r"\b%s: \{" % key, key)   # (the chatter's come with the lines: speechLib.chatter)
+        # the ▶ try button, the voice lab and Audition have sample values for every alert, from the server with the
+        # lines (the review's suggestion #14: page.js kept its own copy, LINE_SAMPLES, and the two had drifted)
+        self.assertLessEqual(set(outrider.speech.KEYS) - chatter, set(outrider.speech.SAMPLES))
+        served = outrider.speech.page_samples()
+        self.assertEqual(set(served), set(outrider.speech.SAMPLES) - chatter)
+        self.assertNotIn("LINE_SAMPLES", js)
 
 
 class PersonalityFiles(unittest.TestCase):

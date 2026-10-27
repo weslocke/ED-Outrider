@@ -22668,7 +22668,8 @@ def make_app(state, hosts=None):
         when the payload's version changes. Gzipped when the browser takes it, as the payload is (1 MB and more with
         the personality files; about a fifth of that gzipped)."""
         resp = web.json_response(state.speech.lines() if state.speech else
-                                 {"styles": {}, "lines": {}, "version": None, "crew_roles": outrider.speech.crew_roles_info()})
+                                 {"styles": {}, "lines": {}, "version": None, "crew_roles": outrider.speech.crew_roles_info(),
+                                  "samples": outrider.speech.page_samples()})
         if "gzip" in request.headers.get("Accept-Encoding", "").lower():
             resp.enable_compression(web.ContentCoding.gzip)
         return resp

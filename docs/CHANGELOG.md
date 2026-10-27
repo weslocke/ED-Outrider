@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · The lines' sample values come from the server: one place fewer per new line
+- The review's suggestion #14: page.js kept its own copy of the sample values the voice lab, Audition and the ▶ try
+  button fill lines with (`LINE_SAMPLES`, 73 keys), and it had drifted from `outrider.speech.SAMPLES` (four keys only
+  in page.js, `ship_lost` worded differently). GET `/api/speech` now carries `samples` (`page_samples()`: every key's
+  but the chatter's, which come with its own info), `lineSample` and ▶ read them, `LINE_SAMPLES` is gone, `SAMPLES`
+  has the four (`game_start`, `game_exit`, `heat`, `speech_on`). A test fails on a key without a sample and on
+  `LINE_SAMPLES` coming back. A new spoken line: KEYS, SAMPLES, speech.json, `line()` and the personality files.
+
 ## 2026-10-27 · The slowest tests run on the fake clock: about 45 s off every verify
 - The review's suggestion #1, phase A (tests only). test_highway's `HighwayAutoTarget` runs every test's targeter and
   game on the fake clock (`use_fake_time`) but the five in its `REAL_TIME`, which need a run still under way while
