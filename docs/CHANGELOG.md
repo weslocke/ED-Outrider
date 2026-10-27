@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · "Sell all": stations ranked for the whole hold
+- The review's suggestion #15. **Sell all** on the Cargo section's ship line (two sellable lines or more) asks GET
+  `/api/cargo/hold` (`State.cargo_hold_lookup`): one Spansh station search per line for the `HOLD_LINES_MAX` (4)
+  largest, demand from 1 t so partial buyers are found, merged by market id and priced for the whole hold from the
+  market each result carries (`outrider.cargo.hold_rows`: min(your tons, its demand) at its price for every line it
+  buys). Rows: Takes "3/4 lines, 85 t of 98 t", Pays, the profit (bought lines only), the data's age; opened, each
+  line taken (a short demand said) and what it doesn't buy. Limpets, mission cargo and stolen tons left out (said);
+  your own carrier never, other carriers only ticked and a week fresh. In the lookup's box with its bar (Most for the
+  hold / Closest, within, data age, carriers); no new panel. Still a lookup, not a trading tool.
+
 ## 2026-10-27 · Sweep ticks on the checklists' 🔍 nearby lists
 - The review's suggestion #12: each row of a species', colour's or formation's 🔍 nearby list has the sweep's tick,
   and the list its own "🧹 Plot a sweep (N)" bar (`swbarHtml`, the markup the page's four static bars carry); the ticks

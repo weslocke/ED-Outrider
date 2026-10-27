@@ -93,6 +93,14 @@ players last reported, so the newer the data, the safer the trip.
   says where to sell it ([Voice and alerts](voice-and-alerts.md)). The same lookup prices a ring's hotspot minerals:
   a body panel with hotspots shows each one's best sell price within 100 ly, highest first (**Best nearby**, see
   [the views](views.md)).
+- **Sell all:** with two lines or more you can sell, **Sell all** on the ship's line ranks stations by what they pay
+  for the whole hold: each one prices every line it buys (your tons, or its demand when that is less), so one that
+  takes three of your four lines can come first. "Takes 3/4 lines, 85 t of 98 t", what it pays and the profit over
+  what you paid (bought lines only: mined ore cost you nothing). Opened, it lists each line ("Gold 1 t × 49,178 cr
+  (demand 1 of your 10 t)") and what it doesn't buy. The candidates are Spansh's best buyers of your four largest
+  lines, so a station that is good for all of them but best for none can be missed; limpets, mission cargo and
+  stolen tons are left out, and said. Your own carrier is never one (unload it there yourself); other carriers only
+  when ticked, and only with a market at most a week old.
 - **One shipload or all of it:** when a line is more than your ship's hold (its size, not what is free), the bar
   switches between "All 16,000 t" and "One shipload 720 t" ("≈ 23 shiploads for all of it"); a shipload asks for
   stations that take (or have) that much: "Sell 720 t of 16,000 t". Not shown before the game has written your ship's

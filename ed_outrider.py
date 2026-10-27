@@ -11566,6 +11566,62 @@ class State:
                 "carriers": q.get("carriers") in ("1", "true"), "pad": pad, "pad_known": bool(ship.get("pad")),
                 "count": d.get("count"), "rows": rows, "names_missing": not names}, 200
 
+    async def cargo_hold_lookup(self, q):
+        """GET /api/cargo/hold ("Sell all", the review's #15): stations ranked by what they pay for your ship's whole hold
+        (outrider.cargo.hold_rows), from Spansh's best buyers of your HOLD_LINES_MAX largest lines (one station search
+        each, demand from 1 t so a partial buyer is found). Limpets, mission cargo and stolen tons are left out (said),
+        so are lines Spansh has no market for. q: sort pays | near, within (ly), age (days), carriers (1: other fleet
+        carriers too, their markets at most a week old; your own never). Read only. ({...rows}, 200) or ({error}, status)."""
+        try:
+            within, age = int(q.get("within") or 500), int(q.get("age") or 14)
+        except ValueError:
+            return {"error": "within and age are whole numbers"}, 400
+        if within not in outrider.cargo.LOOKUP_WITHIN or not 1 <= age <= 365:
+            return {"error": f"within one of {outrider.cargo.LOOKUP_WITHIN} ly, 1 to 365 days"}, 400
+        ref = self.journals.pos
+        if not ref or ref.get("x") is None:
+            return {"error": "your position is not known yet"}, 409
+        sort, carriers = ("near" if q.get("sort") == "near" else "pays"), q.get("carriers") in ("1", "true")
+        ship = self.cargo_summary()["ship"]
+        names = await self.commodity_list()
+        lines, left = [], []
+        for x in ship["lines"]:
+            if x["id"] == "drones":
+                left.append({"name": x["name"], "tons": x["count"], "why": "limpets"})
+                continue
+            legal = max(0, x["count"] - (x.get("stolen") or 0) - (x.get("mission") or 0))
+            if x.get("stolen"):
+                left.append({"name": x["name"], "tons": x["stolen"], "why": "stolen: a black market's"})
+            if x.get("mission"):
+                left.append({"name": x["name"], "tons": x["mission"], "why": "for a mission"})
+            name = (names.get(outrider.cargo.norm(x["name"])) if names else x["name"])
+            if legal and not name:
+                left.append({"name": x["name"], "tons": legal, "why": "no market data on Spansh"})
+            elif legal:
+                lines.append((name, legal, x.get("avg")))
+        if not lines:
+            return {"error": "nothing in the hold to sell", "left_out": left}, 409
+        pad = ship.get("pad")
+        asked = sorted(lines, key=lambda x: -x[1])[:outrider.cargo.HOLD_LINES_MAX]
+        bodies = [outrider.cargo.market_query(n, "sell", 1, ref, within=within, age_days=age, pad=pad, carriers=carriers)
+                  for n, _, _ in asked]
+        got = await asyncio.gather(*(self.spansh.market_search(b) for b in bodies), return_exceptions=True)
+        failed = [x for x in got if isinstance(x, BaseException)]
+        for x in failed:
+            if not isinstance(x, (ClientError, asyncio.TimeoutError, ValueError)):
+                raise x
+        if len(failed) == len(got):
+            return {"error": f"Spansh's station search failed: {failed[0]}"}, 502
+        c = self.journals.carrier or {}
+        own = {v for v in (c.get("callsign"), c.get("name")) if v}
+        rows = outrider.cargo.hold_rows([x.get("results") for x in got if not isinstance(x, BaseException)], lines,
+                                        laden=self.range_now() or (self.journals.ship or {}).get("max_range"),
+                                        own_names=own, sort=sort)
+        return {"lines": [{"name": n, "tons": t, "avg": a} for n, t, a in lines], "asked": [n for n, _, _ in asked],
+                "left_out": left, "sort": sort, "within": within, "age": age, "carriers": carriers, "pad": pad,
+                "pad_known": bool(pad), "where": ref.get("name"), "rows": rows, "names_missing": not names,
+                "partial": len(failed)}, 200
+
     async def dssa_list(self, fetch=True):
         """The DSSA carrier list as outrider.dock rows, with {checked, modified, error}: asked for again (conditionally)
         only when `fetch` and the copy is over an hour old; the last copy is kept (meta dssa, live-only)."""
@@ -23271,6 +23327,12 @@ def make_app(state, hosts=None):
         out, status = await state.cargo_lookup(dict(request.query))
         return web.json_response(out, status=status)
 
+    async def cargo_hold_view(request):
+        """GET /api/cargo/hold?sort=&within=&age=&carriers=: "Sell all", stations ranked for the whole hold
+        (State.cargo_hold_lookup). Read only."""
+        out, status = await state.cargo_hold_lookup(dict(request.query))
+        return web.json_response(out, status=status)
+
     async def ggg_view(request):
         """GET /api/ggg?radius=: the potential green gas giants nearest you in what Outrider has cached (S27)."""
         try:
@@ -23373,6 +23435,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/commander/earnings", commander_earnings_view)   # its period in the query (not an AI tool yet)
     app.router.add_post("/api/cargo/recount", cargo_recount_view)
     app.router.add_get("/api/cargo/lookup", cargo_lookup_view)
+    app.router.add_get("/api/cargo/hold", cargo_hold_view)
     app.router.add_get("/api/nearest", nearest_view)
     app.router.add_get("/api/ggg", ggg_view)
     app.router.add_post("/api/radius", radius_view)

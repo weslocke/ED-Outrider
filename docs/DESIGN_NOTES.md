@@ -1410,6 +1410,8 @@ upstream project's choices, not rules of the game.
   nearer first) or closest, within a distance (best price needs one), fleet carriers out unless ticked (their orders
   are often years old and top every list), the pad from the ship's type (`SHIP_PAD`; an unknown ship gets no pad
   filter and says so). No commodity analytics or profit-per-hour: a lookup, not a trading tool.
+  "Sell all" (the review's #15, 2026-10-27) stays one: the whole hold priced at the stations Spansh lists as the best
+  buyers of its four largest lines (no market database of Outrider's own), a partial buyer priced for what it takes.
 - **A decommissioned carrier is shown in red, never hidden** (the author, 2026-10-07): if Outrider got it wrong, a
   vanished tile would hide the mistake. `CarrierDecommission` (requested, `ScrapTime` about a week on) shows
   "Decommissioning: scrapped <date>" with the refund; after ScrapTime (the scrapping itself writes nothing)

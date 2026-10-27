@@ -2175,6 +2175,52 @@ const releasePayloads = async () => {
     console.log(goodCG ? "OK" : "FAIL", "| cargo |", goodCG ? "the tile's tritium (and without), the ship's Avg, the carrier's marks, Recount's lines" :
       `failed ${bad.join(", ")}: ${JSON.stringify(got)}`, errors.slice(before));
   }
+  // "Sell all" (the review's #15): shown with two lines or more you can sell; the stations ranked for the whole hold in
+  // the lookup's box (Takes "3/4 lines", Pays, the profit), a row opened lists each line it takes and what it doesn't buy
+  {
+    const w = dom.window, d = w.document, before = errors.length, got = {}, asked = [];
+    w.eval(`window.__saKeep = {cg: cargoData, api: apiJson, lk: Object.assign({}, LK)}`);
+    w.__saAsked = asked;
+    try {
+      w.eval(`renderCargo({ship: {name: "Digger", capacity: 128, lines: [{id: "platinum", name: "Platinum", count: 64, avg: 45210, stolen: 0, mission: 0},
+        {id: "drones", name: "Limpet", count: 20, stolen: 0, mission: 0}]}, carrier: null})`);
+      got.one = !!d.getElementById("sellAllBtn");   // one line besides the limpets: no Sell all
+      w.eval(`apiJson = async url => { __saAsked.push(url); return {lines: [{name: "Platinum", tons: 64, avg: 45210}, {name: "Gold", tons: 10}, {name: "Painite", tons: 20}, {name: "Silver", tons: 4}],
+        asked: ["Platinum", "Painite", "Gold", "Silver"], left_out: [{name: "Limpet", tons: 20, why: "limpets"}], sort: "pays", within: 500, age: 14, carriers: false,
+        pad: "L", pad_known: true, where: "Sol", partial: 0, names_missing: false,
+        rows: [{station: "Jung Base", system: "HIP 11402", id64: "77", distance: 92.4, jumps: 3, ls: 7000, far: true, type: "Planetary Outpost", carrier: false,
+                pad: "L", pays: 23662934, profit: 16488576, takes: {lines: 3, of: 4, tons: 85, of_tons: 98},
+                buys: [{name: "Platinum", tons: 64, of: 64, price: 302844, demand: 17850, value: 19382016, short: false},
+                       {name: "Painite", tons: 20, of: 20, price: 211587, demand: 45600, value: 4231740, short: false},
+                       {name: "Gold", tons: 1, of: 10, price: 49178, demand: 1, value: 49178, short: true}],
+                misses: ["Silver"], age_s: 90000, services: ["Refuel"], uc: false, vista: false}]}; }`);
+      w.eval(`renderCargo({ship: {name: "Digger", capacity: 128, lines: [{id: "platinum", name: "Platinum", count: 64, avg: 45210, stolen: 0, mission: 0},
+        {id: "gold", name: "Gold", count: 10, stolen: 0, mission: 0}, {id: "drones", name: "Limpet", count: 20, stolen: 0, mission: 0}]}, carrier: null})`);
+      got.two = !!d.getElementById("sellAllBtn");
+      d.getElementById("sellAllBtn").click();
+      await sleep(50);
+      const look = d.getElementById("cargoLook");
+      got.asked = asked.map(u => u.replace(/\?.*$/, ""));
+      got.head = look.querySelector(".lookhead").textContent;
+      got.row = [...look.querySelectorAll("tr.lookrow td")].map(td => td.textContent.trim());
+      look.querySelector("tr.lookrow").click();
+      got.detail = [...look.querySelectorAll(".lookdetail .dline")].slice(0, 2).map(x => x.textContent);
+      got.hint = /best buyers of your 4 largest lines/.test(look.querySelector(".hint").textContent);
+      look.querySelector('[data-lk="close"]').click();
+      got.closed = look.hidden;
+    } finally {
+      w.eval(`apiJson = __saKeep.api; Object.assign(LK, __saKeep.lk); renderCargo(__saKeep.cg); renderLook(); delete window.__saKeep; delete window.__saAsked`);
+    }
+    const want = {one: false, two: true, asked: ["api/cargo/hold"], head: "Sell the hold: 4 lines, 98 t (20 t Limpet: limpets left out)✕",
+      row: ["▸ Jung BaseHIP 11402", "92.4 ly≈ 3 jumps", "7,000 ls⚠ far from the star", "3/4 lines85 t of 98 t", "23.7M crprofit +16.5M", "25 h old"],
+      detail: ["TakesPlatinum 64 t × 302,844 cr · Painite 20 t × 211,587 cr · Gold 1 t × 49,178 cr (demand 1 of your 10 t)", "Doesn't buySilver"],
+      hint: true, closed: true};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const goodSA = !bad.length && errors.length === before;
+    allOk = allOk && goodSA;
+    console.log(goodSA ? "OK" : "FAIL", "| sell all |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
+      : "shown with two sellable lines, the hold ranked (takes, pays, profit), a row's lines, closed", errors.slice(before));
+  }
   // The Carrier tile's trip to you (S13 A: red short, amber when the hold covers it), a booked jump's burn, a suspended
   // service in red (S55 B), the balance and weeks of upkeep (S61: amber under 4, "as of" when old); your carrier among
   // the nearest places to sell with its carrier jumps (S55 A)

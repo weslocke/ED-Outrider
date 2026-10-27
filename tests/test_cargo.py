@@ -915,6 +915,52 @@ class Lookup(unittest.TestCase):
         self.assertNotIn("Dock", rows[4]["services"])
         self.assertGreater(jung["age_s"], 0)
 
+    def test_hold_rows_from_a_real_answer(self):
+        """The review's #15 ("Sell all"): each station once (the same answer twice: two lines' searches), priced for the
+        whole hold, a partial buyer kept (Gold: demand 1 of 10), your own carrier left out, most paid first."""
+        with open(os.path.join(os.path.dirname(__file__), "fixtures", "spansh_market.json"), encoding="utf-8") as f:
+            answer = json.load(f)
+        lines = [("Platinum", 64, 45210), ("Gold", 10, None), ("Painite", 20, None)]
+        rows = cargo.hold_rows([answer["results"], answer["results"]], lines, laden=50, now=1791400000, own_names={"CAZU"})
+        self.assertEqual([r["station"] for r in rows], ["Zahn City", "Jung Base", "Canis Stella Domum", "Q1M-90Q"])
+        zahn, jung, q1m = rows[0], rows[1], rows[3]
+        self.assertEqual(zahn["pays"], 64 * 302844 + 10 * 56526 + 20 * 211587)
+        self.assertEqual(zahn["profit"], (302844 - 45210) * 64)          # only the line you paid for
+        self.assertEqual(jung["takes"], {"lines": 3, "of": 3, "tons": 85, "of_tons": 94})
+        gold = next(b for b in jung["buys"] if b["name"] == "Gold")
+        self.assertEqual((gold["tons"], gold["short"], gold["demand"]), (1, True, 1))
+        self.assertEqual((q1m["carrier"], q1m["misses"], q1m["takes"]["lines"]), (True, ["Gold", "Painite"], 1))
+        near = cargo.hold_rows([answer["results"]], lines, now=1791400000, sort="near")
+        self.assertEqual([r["distance"] for r in near], sorted(r["distance"] for r in near))
+        # another carrier's market over a week old: left out
+        old = cargo.hold_rows([answer["results"]], lines, now=1791400000 + 8 * 86400)
+        self.assertFalse(any(r["carrier"] for r in old))
+
+    def test_state_hold_lookup(self):
+        """GET /api/cargo/hold: limpets, stolen and mission tons left out (said), one search per line (demand from 1 t),
+        the ship's pad, refusals in words."""
+        import asyncio
+        hold = lambda **q: asyncio.run(self.state.cargo_hold_lookup({k: str(v) for k, v in q.items()}))   # noqa: E731
+        self.assertEqual(hold(within=123)[1], 400)
+        self.assertEqual(hold()[1], 409)                                   # no position yet
+        self.j.pos = {"id64": 10477373803, "name": "Sol", "x": 0, "y": 0, "z": 0}
+        self.j.ship = {"name": "Sample", "type": "explorer_nx", "cargo_capacity": 128}
+        self.j.ship_cargo = cargo.new_ship()
+        self.assertEqual(hold()[1], 409)                                   # nothing in the hold
+        cargo.ship_snapshot(self.j.ship_cargo, [{"Name": "platinum", "Count": 64}, {"Name": "gold", "Count": 10},
+                                                {"Name": "drones", "Count": 5}, {"Name": "silver", "Count": 3, "Stolen": 3}],
+                            82, "2026-10-07T09:00:00Z")
+        out, status = hold()
+        self.assertEqual(status, 200)
+        self.assertEqual((out["asked"], out["pad"]), (["Platinum", "Gold"], "L"))
+        self.assertEqual([(x["name"], x["why"]) for x in out["left_out"]], [("Drones", "limpets"), ("Silver", "stolen: a black market's")])
+        self.assertEqual([b["filters"]["market"] for b in self.bodies[-2:]],
+                         [[{"name": n, "demand": {"value": [1, 999999999], "comparison": "<=>"}}] for n in ("Platinum", "Gold")])
+        self.assertEqual(self.bodies[-1]["filters"]["has_large_pad"], {"value": True})
+        self.assertEqual(out["rows"][0]["station"], "Zahn City")
+        out, _ = hold(sort="near")
+        self.assertEqual(out["sort"], "near")
+
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")
         self.addCleanup(self.db.close)
