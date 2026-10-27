@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-26 · The schematic gives the orbit's distance too
+- Hiner399 (discussion #3, his screenshot from EDDiscovery's map): under a moon or another star's planet in Here's
+  schematic, its distance from arrival and then from what it orbits, "2,026 ls / 2.6 ls" (`sdistHtml`, the same figure
+  as the LS column's ↳, km for a tight moonlet); the parent is not named, being the body drawn above or beside it. Its
+  hover says which is which. A pair too long for the body's width breaks at the slash, never inside a figure.
+
 ## 2026-10-26 · Version 2026.10.29, Build Your Own Codex
 - Screenshots converted as you take them, your own codex folders and pictures on the Bio/Geo checklists, the possible
   new codex entries spoken, Your records, orbits, the trail and compass, sights, the explorer ideas, the mining ideas,

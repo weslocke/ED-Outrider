@@ -5254,8 +5254,12 @@ function discHtml(b, depth) {
     `<div class="discwrap" style="width:${size + 14}px;height:${size + 14}px">${ring}<span class="${cls}" style="width:${size}px;height:${size}px;--c:${col}"></span>${stopsHtml(b)}</div>` +
     `<div class="sname" title="${esc(b.name)}">${esc(b.name)}${pinMark(b.name)}${belts}</div><div class="badges">${badges}</div>` +
     `<div class="sval${maxOf(b) ? "" : " unk"}">${maxOf(b) ? credits(maxOf(b)) : "—"}</div>` +
-    (b.type === "Planet" && b.dist_ls != null ? `<div class="sdist">${Math.round(b.dist_ls).toLocaleString()} ls</div>` : "") + `</div>`;
+    (b.type === "Planet" && b.dist_ls != null ? sdistHtml(b) : "") + `</div>`;
 }
+// a planet's distance from arrival, then from what it orbits ("2,026 ls / 2.6 ls", Hiner399, discussion #3): the parent
+// is the body drawn above or beside it, so it is not named; a long pair breaks at the slash, never inside a figure
+const sdistHtml = b => `<div class="sdist"${b.orbit ? ` title="${esc(Math.round(b.dist_ls).toLocaleString())} ls from arrival; ${esc(orbitTitle(b.orbit))}"` : ""}>` +
+  `<span class="nw">${Math.round(b.dist_ls).toLocaleString()} ls</span>${b.orbit ? ` / <span class="nw">${esc(orbitLs(b.orbit.ls))}</span>` : ""}</div>`;
 // S30: the suggested order on Here's schematic, for the system you are in: each stop's number on its body (two on a
 // body with both mapping and bio to do), a stop under your credits per minute of supercruise tinted (Here's "skip?").
 // A tap on a number makes that body the first stop, for every window, Now, the voice and the overlay (POST

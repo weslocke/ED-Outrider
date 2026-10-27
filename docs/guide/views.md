@@ -53,8 +53,9 @@ body's hover card and the top of its panel name each one with its figure ("Bigge
 in the last day.
 Under a moon's or another star's planet's distance from arrival, **↳** gives how far it is from what it orbits
 ("↳ 15 ls · B", "↳ 6,595 km · A 3 + A 4" for a pair round their barycentre); its hover card and panel say "orbits B at
-15 ls", with the closest and farthest points of an eccentric orbit. It is the orbit's size (its semi-major axis), not
-today's distance; the arrival star's own planets have none (their distance from arrival says it).
+15 ls", with the closest and farthest points of an eccentric orbit. The schematic puts both under the body,
+"2,026 ls / 2.6 ls" (from arrival / from what it orbits, the body drawn above or beside it). It is the orbit's size (its
+semi-major axis), not today's distance; the arrival star's own planets have none (their distance from arrival says it).
 A footer under the list says what each icon means, for the icons that system's list shows (none, no footer); it
 stays in view while the list scrolls.
 "🧬? check in the FSS" marks a landable body you have only from an AutoScan or a nav beacon, whose signals nobody

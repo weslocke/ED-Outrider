@@ -5273,6 +5273,14 @@ const releasePayloads = async () => {
       return JSON.stringify([/class="disc art/.test(html), /class="bodyimg" src="data:image\\/png;base64,QQ1"/.test(html), made, html === again,
         /bodyimg/.test(hollow), /disc hollow/.test(hollow), box(ringed) > box(html), /ringmark/.test(ringed)]);
     })()`));
+    // under a planet: its distance from arrival, then from what it orbits (Hiner399, discussion #3: "2,026 ls / 2.6 ls"),
+    // each figure kept whole when the pair wraps; the arrival star's own planets have only the first
+    got.schemOrbit = JSON.parse(tw.eval(`(() => {
+      const b = {name: "B 4 a", type: "Planet", subtype: "Icy body", scanned: false, genera: [], dist_ls: 2026.4, orbit: {of: "B 4", short: "B 4", ls: 2.61}};
+      const el = document.createElement("div"), sd = h => { el.innerHTML = h; const d = el.querySelector(".sdist"); return d && [d.textContent, d.title, d.querySelectorAll(".nw").length]; };
+      return JSON.stringify([sd(discHtml(b, 2)), sd(discHtml(Object.assign({}, b, {orbit: undefined}), 1)),
+        sd(discHtml(Object.assign({}, b, {orbit: {of: "B 4", short: "B 4", ls: 0.05}}), 2))[0]]);
+    })()`));
     // the themes: each one picked sets data-theme and tells the app (its own screens follow); an unknown one is LCARS
     got.themes = JSON.parse(tw.eval(`(() => { const told = []; window.OutriderApp = {setTheme(n) { told.push(n); }};
       const seen = ["elite", "babylon5", "nope", "lcars"].map(t => { tabTheme(t); return document.documentElement.dataset.theme; });
@@ -5439,6 +5447,8 @@ const releasePayloads = async () => {
       themes: [["elite", "babylon5", "lcars", "lcars"], ["elite", "babylon5", "lcars", "lcars"], ["lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "shadow", "sith", "alliance", "dark"]],
       bodies: [true, true, ["gas", "elw", "water", "ammonia", "ice", "ice", "metal", "metal", "rock", "gas"], true, null, null, "star", true, true, true, 2, true, true, true],
       schemArt: [true, true, 2, true, false, true, true, false],
+      schemOrbit: [["2,026 ls / 2.6 ls", "2,026 ls from arrival; orbits B 4 at 2.6 ls: the orbit's size (its semi-major axis), not today's distance", 2],
+                   ["2,026 ls", "", 1], "2,026 ls / 14,990 km"],
       ask: [true, "Fuel at 41 percent.", 0, "Nearest unvisited: Smojooe ZC-D c12-2, 10.8 light years.", false, 1, true],
       rail: [3, "tb-rb off", true, true, "Ship controls", "tb-rb pending", '[{"context":"ship","id":"gear"}]', "tb-rb on", "tb-rb notconf",
              "tb-rb nolink|no rail: docked|0", "tb-rb na|true|in supercruise|N/A", "tb-rb press|false|shot|tb-rb unknown|true|false", "tb-rb press|false|0"],
