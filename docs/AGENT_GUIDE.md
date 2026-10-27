@@ -387,8 +387,11 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
   `Journals.dirty`, `sales_changed` or `bio_sales_changed`, or Left behind stays stale.
 - **Failed ticks.** A tick that raises is rolled back and `Journals.reload()` restores memory from the
   database; `checkpoint()`/`restore()` cover what lives only in memory (moments, sets of bodies touched,
-  the collection under way...). New in-memory state changed by handling lines must be added to both, or a
-  retry announces things twice. "Overwritten by the retry" is safe only when nothing reads it before the line that
+  the collection under way...). Both are driven by tables at the top of `class Journals` (the review's #4): new
+  state kept in meta is a row of `SAVED` (attribute, meta key, default; `reload()` reads it, the `meta_set` stays beside
+  the change), new in-memory state changed by handling lines a name in `MEMORY` (deep-copied by `checkpoint()` and
+  `restore()`), or a retry announces things twice. `tests/test_state.py` `JournalsRegistry` finds every attribute the
+  class stores and fails on one in neither, nor in its safe-on-a-retry or not-reader-state lists (with the reason). "Overwritten by the retry" is safe only when nothing reads it before the line that
   sets it comes round again: a latest value another line's handler reads as a guard (`last_all_found`, read by
   `note_jumponium`) goes in the checkpoint. A journal line that lacks a field is skipped with a log line
   (`KeyError`/`TypeError` are caught per line); database errors must propagate so the tick is retried. The

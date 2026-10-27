@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-27 · The reader's saved state in two tables; every attribute placed
+- The review's suggestion #4. `Journals.SAVED` (30 rows: attribute, meta key, default) drives `reload()`, and
+  `Journals.MEMORY` drives `checkpoint()` / `restore()` (deep copies, a dict instead of the 20-slot positional tuple
+  that had to be kept in the same order twice). Adding state is one line. `last_honk` and `jump_class` join
+  `last_all_found` in MEMORY (read as guards by a later line's handler). `JournalsRegistry` now finds every attribute
+  the class stores (97) and fails on one not placed in MEMORY, SAVED / reload(), its safe-on-a-retry list or the new
+  not-reader-state list, each with its reason; new tests round-trip every MEMORY attribute through a failed tick
+  (twice from one checkpoint) and every SAVED key through reload() (a stored null gives the default: five keys gave
+  None before). The meta writes stay beside each change.
+
 ## 2026-10-27 · Named smoke blocks: a partial run in about ten seconds
 - The review's suggestion #2. Every check in `tests/page_smoke.js` is a labelled block guarded by `skip(label)` (184:
   the 181 blocks, the views loop, the schematic, the origin guard; labels from the check names); `SMOKE_ONLY=here,bio`

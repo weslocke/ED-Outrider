@@ -3106,6 +3106,66 @@ def rig_full(rig, now):
 
 
 class Journals:
+    # The reader's state, in three kinds (the review's #4, 2026-10-27; tests/test_state.py JournalsRegistry places every
+    # attribute in one, or lists it as safe on a retry with the reason):
+    # SAVED: kept in meta, read back by reload() (attribute, meta key, default: None keeps what is stored, a callable
+    # makes the value for a key missing, null or empty). The writes stay beside each change (meta_set).
+    SAVED = (
+        ("state_ts", "state_ts", dict),           # key -> newest event applied to that piece of state (see fresh())
+        ("pos", "pos", None),
+        ("prev", "prev", None),                   # the system you were in before this one
+        ("ship", "ship", None),                   # {name, type, fuel_main, fuel_reserve, max_range, ts}
+        ("fuel_hist", "fuel_hist", list),         # recent [jump ly, fuel t, fuel left t, cargo t] (older: pairs)
+        ("cargo", "cargo", None),                 # {count, ts}: tonnes in the ship's hold, from Cargo
+        ("last_scoop", "last_scoop", None),       # ts of the last FuelScoop
+        ("carrier", "carrier", None),             # your fleet carrier, see handle_ship
+        ("last_event_ts", "last_event_ts", None),   # newest journal line handled (freshness)
+        # {start: the newest game launch (Fileheader) or LoadGame, ready: the newest Location}: the game is still
+        # loading while start is the newer (see loading())
+        ("game_load", "game_load", dict),
+        ("docked", "docked", None),               # {station, type, services, market_id, ts} while docked
+        ("jump_range", "jump_range", None),
+        ("commander", "commander", None),         # {name, fid, credits (at the last LoadGame), login_ts, earned (exploration sales since)}
+        ("materials", "materials", outrider.materials.new_state),
+        ("hull", "hull", None),                   # {pct, ts}: your ship's hull, from Loadout / HullDamage
+        # core module health per ShipID (S5): {ship id: {"ts": the Loadout, "mods": {slot: {label, item, health, ts,
+        # boosts: jet-cone boosts since that reading}}}}, from Loadout, AfmuRepairs and repairs
+        ("modules", "modules", dict),
+        ("boost", "boost", None),                 # {value, ts}: a jet-cone charge, until the next FSDJump
+        ("last_sale", "last_sale", None),         # {ts, carto, bio, systems, species} of the latest sale
+        # per game session (see session_key): {"at": the body you are at, "srv": the body your SRV is out on}
+        ("srv_state", "srv_state", dict),
+        # the SRV you are in ({srv_type, ts}: mev_rhino is the Rhino; srv_type None after a login in an SRV whose
+        # launch the journals never showed), the body you are at ({system, body_id, name, ts}), and your ship's
+        # landing spot ({system, body_id, lat, lon, ts}): the surface map and the co-pilot's rig marking
+        ("vehicle", "vehicle", None),
+        ("body_here", "body_here", None),
+        ("ship_marker", "ship_marker", None),
+        # cargo (outrider/cargo.py): the ship's hold folded as it is read; the market you are docked at, for a
+        # CargoTransfer (it names no carrier). Kept here, not taken from self.docked: a re-read replays the docks in
+        # order, where docked keeps its newest
+        ("ship_cargo", "ship_cargo", outrider.cargo.new_ship),
+        ("cargo_dock", "cargo_dock", None),
+        # Earnings: where you are docked for each sale's station ({station, market_id, type, ts}; station None once you
+        # leave), followed line by line like cargo_dock (see note_sale_dock), and the tons you mined still aboard
+        # ({commodity: t}, see note_mined)
+        ("sale_dock", "sale_dock", None),
+        ("mined_stock", "mined_stock", dict),
+        ("mined_carrier", "mined_carrier", dict),   # the mined ore moved to your carrier (note_mined)
+        ("mined_died", "mined_died", None),       # a death waiting for its Resurrect (note_mined): ts or None
+        # the journal's commodity display names, learned (a cache, never cleared: a re-read only learns them again)
+        ("commodity_names", "commodity_names", dict),
+        ("cmdrs_seen", "commanders_seen", dict),   # S9-S4: the commanders the journals have shown, as the database has it
+    )
+    # MEMORY: changed by handling lines, kept in memory only: checkpoint() / restore() copy each (a failed tick's retry
+    # must not announce its moments twice). A latest value another line's handler reads as a guard belongs here too
+    # ("overwritten by the retry" is not enough when it is read before the line that sets it comes round again).
+    MEMORY = ("moment_seq", "moments", "last_heat", "body_touched", "approached", "brief_key", "regions_said", "rings_said",
+              "codex_said", "fss_signals_pending", "region_entered", "jumponium", "sale_run", "burst", "nsp_burst",
+              "docking_hold", "chat_seq", "chat", "shots_new",
+              "last_all_found",   # read by note_jumponium as "the FSS is done here"
+              "last_honk",        # read by the FSSAllBodiesFound line ("all found by the honk")
+              "jump_class")       # the StartJump's star class, taken by the FSDJump that follows
     """Incremental reader: each file is read from where the last pass stopped."""
 
     def __init__(self, db):
@@ -3691,27 +3751,16 @@ class Journals:
         return True
 
     def checkpoint(self):
-        """What handling lines changes in memory only. A failed tick restores it along with the database
-        rollback and reload(), or the retry would announce its moments twice."""
-        return (self.moment_seq, list(self.moments), self.last_heat,
-                set(self.body_touched), set(self.approached), self.brief_key,
-                set(self.regions_said), set(self.rings_said), set(self.codex_said), dict(self.fss_signals_pending), self.region_entered, self.jumponium, dict(self.sale_run or {}) or None,
-                json.loads(json.dumps(self.burst)), self.uploads.snapshot() if self.uploads else None,
-                json.loads(json.dumps(self.nsp_burst)), json.loads(json.dumps(self.docking_hold)), self.chat_seq, list(self.chat),
-                list(self.shots_new), dict(self.last_all_found or {}) or None)
+        """What handling lines changes in memory only (MEMORY, deep copies, and the uploads hub's own). A failed tick
+        restores it along with the database rollback and reload(), or the retry would announce its moments twice."""
+        return {"memory": {a: copy.deepcopy(getattr(self, a)) for a in self.MEMORY},
+                "uploads": self.uploads.snapshot() if self.uploads else None}
 
     def restore(self, cp):
-        (self.moment_seq, moments, self.last_heat, touched, approached, self.brief_key,
-         regions, rings, codex_said, fss_pending, self.region_entered, self.jumponium, self.sale_run, self.burst, uploads, self.nsp_burst, self.docking_hold,
-         self.chat_seq, chat, shots_new, self.last_all_found) = cp
-        self.shots_new = list(shots_new)   # a rolled-back tick's retry notes its Screenshot lines again
-        self.chat = collections.deque(chat, maxlen=CHAT_KEEP)
-        if self.uploads and uploads:
-            self.uploads.restore(uploads)
-        self.body_touched, self.approached, self.regions_said = set(touched), set(approached), set(regions)
-        self.rings_said = set(rings)
-        self.codex_said, self.fss_signals_pending = set(codex_said), dict(fss_pending)
-        self.moments = collections.deque(moments, maxlen=self.moments.maxlen)
+        for a, v in cp["memory"].items():
+            setattr(self, a, copy.deepcopy(v))   # a copy again: a second retry from the same checkpoint starts clean
+        if self.uploads and cp["uploads"]:
+            self.uploads.restore(cp["uploads"])
 
     def reload(self):
         """(Re)load everything the reader keeps in the database: file offsets and the meta state.
@@ -3722,7 +3771,6 @@ class Journals:
         """
         db = self.db
         self.new_sales = []   # a rolled-back tick reads its sales again
-        self.cmdrs_seen = meta_get(db, "commanders_seen") or {}   # S9-S4: as the database has it
         self.offsets = {r["path"]: r["offset"] for r in db.execute("SELECT * FROM journal_files")}
         # the same journal in two folders (a legacy copy of the live folder, two Proton prefixes) is one
         # file: basename -> the path read furthest, so a copy continues where the other stopped
@@ -3731,58 +3779,16 @@ class Journals:
             b = os.path.basename(path)
             if off > self.offsets.get(self.twins.get(b), -1):
                 self.twins[b] = path
-        # key -> newest event applied to that piece of state (see fresh())
-        self.state_ts = meta_get(db, "state_ts", {})
-        self.pos = meta_get(db, "pos")
-        self.prev = meta_get(db, "prev")  # the system you were in before this one
-        self.ship = meta_get(db, "ship")            # {name, type, fuel_main, fuel_reserve, max_range, ts}
-        self.fuel_hist = meta_get(db, "fuel_hist", [])   # recent [jump ly, fuel t, fuel left t, cargo t] (older: pairs)
-        self.cargo = meta_get(db, "cargo")               # {count, ts}: tonnes in the ship's hold, from Cargo
-        self.last_scoop = meta_get(db, "last_scoop")     # ts of the last FuelScoop
-        self.carrier = meta_get(db, "carrier")      # your fleet carrier, see handle_ship
-        self.last_event_ts = meta_get(db, "last_event_ts")  # newest journal line handled (freshness)
+        # the reader's state kept in meta (SAVED): a stored null or empty value gives the default
+        for attr, key, make in self.SAVED:
+            v = meta_get(db, key)
+            setattr(self, attr, v if make is None else (v or make()))
         # newest event that is not part of loading into the game (the menu's Commander, Materials, Rank...):
         # where the last session ended, crash or not, for the login's "away 3 days"
         self.last_play_ts = self._play_saved = meta_get(db, "last_play_ts")
-        # {start: the newest game launch (Fileheader) or LoadGame, ready: the newest Location}: the game is still
-        # loading while start is the newer (see loading())
-        self.game_load = meta_get(db, "game_load") or {}
-        self.docked = meta_get(db, "docked")    # {station, type, services, market_id, ts} while docked
-        self.jump_range = meta_get(db, "jump_range")
-        # {name, fid, credits (at the last LoadGame), login_ts, earned (exploration sales since)}
-        self.commander = meta_get(db, "commander")
-        self.materials = meta_get(db, "materials") or outrider.materials.new_state()
-        self.hull = meta_get(db, "hull")            # {pct, ts}: your ship's hull, from Loadout / HullDamage
-        # core module health per ShipID (S5): {ship id: {"ts": the Loadout, "mods": {slot: {label, item, health, ts,
-        # boosts: jet-cone boosts since that reading}}}}, from Loadout, AfmuRepairs and repairs
-        self.modules = meta_get(db, "modules", {})
-        self.boost = meta_get(db, "boost")          # {value, ts}: a jet-cone charge, until the next FSDJump
-        self.last_sale = meta_get(db, "last_sale")  # {ts, carto, bio, systems, species} of the latest sale
-        # per game session (see session_key): {"at": the body you are at, "srv": the body your SRV is out on}
-        self.srv_state = meta_get(db, "srv_state", {})
-        # the SRV you are in ({srv_type, ts}: mev_rhino is the Rhino; srv_type None after a login in an SRV whose
-        # launch the journals never showed), the body you are at ({system, body_id, name, ts}), and your ship's
-        # landing spot ({system, body_id, lat, lon, ts}): the surface map and the co-pilot's rig marking
-        self.vehicle = meta_get(db, "vehicle")
-        self.body_here = meta_get(db, "body_here")
-        self.ship_marker = meta_get(db, "ship_marker")
         # the last hop of the route the game plotted (NavRoute.json): a plain attribute, so auto-target's worker thread
         # can read it (it counts a multi-hop plot to the next Highway system as targeted, review F2)
         self.navroute_end = route_end(meta_get(db, "route"))
-        # cargo (outrider/cargo.py): the ship's hold folded as it is read; the market you are docked at, for a
-        # CargoTransfer (it names no carrier). Kept here, not taken from self.docked: a re-read replays the docks in
-        # order, where docked keeps its newest. commodity_names: the journal's display names, learned (a cache, never
-        # cleared: a re-read only learns them again).
-        self.ship_cargo = meta_get(db, "ship_cargo") or outrider.cargo.new_ship()
-        self.cargo_dock = meta_get(db, "cargo_dock")
-        # Earnings: where you are docked for each sale's station ({station, market_id, type, ts}; station None once you
-        # leave), followed line by line like cargo_dock (see note_sale_dock), and the tons you mined still aboard
-        # ({commodity: t}, see note_mined)
-        self.sale_dock = meta_get(db, "sale_dock")
-        self.mined_stock = meta_get(db, "mined_stock") or {}
-        self.mined_carrier = meta_get(db, "mined_carrier") or {}   # the mined ore moved to your carrier (note_mined)
-        self.mined_died = meta_get(db, "mined_died")   # a death waiting for its Resurrect (note_mined): ts or None
-        self.commodity_names = meta_get(db, "commodity_names", {})
         # the Commander view's folds (outrider/commander.py, handle_commander): meta key -> its state
         self.cmdr_view = {k: meta_get(db, k) for k in outrider.commander.COMMANDER_META}
         self.cargo_version += 1

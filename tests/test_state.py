@@ -3286,9 +3286,11 @@ class RereadNote(unittest.TestCase):
 
 class JournalsRegistry(unittest.TestCase):
     """AGENT_GUIDE's hand-kept rules as checks. (1) Journals state that reading journals changes must survive a failed
-    tick: it is in checkpoint()/restore(), reloaded from the database by reload(), or listed below as safe on a retry,
-    with the reason. (2) Every meta key Journals writes is cleared by RESET_JOURNAL_DATA (journal-derived) or listed
-    below as kept through a re-read, with the reason. A new attribute or meta key fails here until it is placed."""
+    tick: it is in Journals.MEMORY (checkpoint()/restore()), Journals.SAVED or otherwise reloaded from the database by
+    reload(), or listed below as safe on a retry, with the reason. (1b) Every attribute the class stores is placed so
+    (the review's #4, 2026-10-27), or listed in NOT_READER_STATE. (2) Every meta key Journals writes is cleared by
+    RESET_JOURNAL_DATA (journal-derived) or listed below as kept through a re-read, with the reason. A new attribute or
+    meta key fails here until it is placed."""
 
     # attribute -> why re-handling the same lines after a rolled-back tick leaves it right
     SAFE_ON_RETRY = {
@@ -3298,7 +3300,6 @@ class JournalsRegistry(unittest.TestCase):
         "bad_json_said": "which files a not-JSON line was said of: a retry says nothing again, which is the point",
         "jump_arrival": "the latest hyperspace arrival: overwritten",
         "supercruise_entry": "the latest SupercruiseEntry (auto-target's danger wait): overwritten, newest wins",
-        "last_honk": "the latest discovery scan: overwritten",
         "last_shutdown": "the latest Shutdown read: overwritten",
         "last_start_jump": "the latest hyperspace StartJump: overwritten",
         "target": "the latest FSDTarget (cleared on arrival): overwritten",
@@ -3313,6 +3314,22 @@ class JournalsRegistry(unittest.TestCase):
         "_newest_live": "each live folder's newest journal, set at the top of each scan: the retry's sets it again",
         "dir_journals": "how many journals a folder listed at its last scan: the retry's scan counts them again",
         "dir_had_journals": "folders that have listed journals: only ever added to, the retry adds the same",
+        "mining_version": "a counter the mining lines bump (the page's cue to read the hotspots again): a retry only bumps it more",
+        "other_playing": "who else is playing: worked out again at each folder scan",
+        "line_source": "the journal line being handled: set before each line",
+        "bad_files": "journals that could not be read, said once each: a retry says nothing again, which is the point",
+        "file_cmdrs": "each file's commander, by path: the retry finds the same",
+        "full_check_at": "when each folder is listed whole again: a timer, not what was read",
+        "_hw_rows": "a cache of the Highway route's rows (read once per plot, from the database)",
+        "_rc_rows": "a cache of the Road to Riches rows (read once per plot, from the database)",
+    }
+    # attribute -> why it is not the reader's state at all (set from outside, or a tool)
+    NOT_READER_STATE = {
+        "db": "the database connection",
+        "clock": "the time source (tests pass a fake one)",
+        "commander_filter": "a setting: [journals] commander",
+        "upload_mode": "what the scan lets the uploads hub do with what it reads: set by each scan_dir call",
+        "pad_delay": "a setting: [speech] pad_delay",
     }
     # meta key -> why it is NOT cleared by RESET_JOURNAL_DATA
     KEPT_THROUGH_REREAD = {
@@ -3360,10 +3377,75 @@ class JournalsRegistry(unittest.TestCase):
         after = snap()
         changed = {k for k in after if k not in before or before[k] != after[k]}
         self.assertGreater(len(changed), 20)   # the fixtures exercise the reader
-        covered = self._attrs(ed_outrider.Journals.checkpoint) | self._attrs(ed_outrider.Journals.reload) | set(self.SAFE_ON_RETRY)
+        covered = self.placed() | set(self.SAFE_ON_RETRY)
         self.assertFalse(changed - covered,
                          "add these to checkpoint()/restore(), reload(), or SAFE_ON_RETRY with the reason")
         self.assertFalse(set(self.SAFE_ON_RETRY) - set(vars(j)), "SAFE_ON_RETRY names attributes that no longer exist")
+
+    def placed(self):
+        """The attributes a failed tick restores: MEMORY and the uploads hub (checkpoint), SAVED and the rest reload()
+        reads, clears or bumps."""
+        J = ed_outrider.Journals
+        return (set(J.MEMORY) | {"uploads"} | {a for a, _, _ in J.SAVED} | self._attrs(J.reload)) - {"db", "SAVED"}
+
+    def test_every_attribute_is_placed(self):
+        """The review's #4: every attribute the class stores, anywhere, is in MEMORY, SAVED (or reload()), the safe on
+        a retry list or NOT_READER_STATE, and in one of the first three at most."""
+        import ast
+        import inspect
+        import textwrap
+        tree = ast.parse(textwrap.dedent(inspect.getsource(ed_outrider.Journals)))
+        stores = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute) and isinstance(n.ctx, ast.Store)
+                  and isinstance(n.value, ast.Name) and n.value.id == "self"}
+        self.assertGreater(len(stores), 80)
+        J = ed_outrider.Journals
+        memory, saved, safe = set(J.MEMORY), {a for a, _, _ in J.SAVED}, set(self.SAFE_ON_RETRY)
+        self.assertFalse(stores - self.placed() - safe - set(self.NOT_READER_STATE),
+                         "place these: Journals.MEMORY, Journals.SAVED, SAFE_ON_RETRY or NOT_READER_STATE, with the reason")
+        self.assertFalse(memory & saved or memory & safe or saved & safe, "an attribute in two of MEMORY, SAVED, SAFE_ON_RETRY")
+        self.assertEqual(len(J.MEMORY), len(memory))
+        self.assertEqual(len({k for _, k, _ in J.SAVED}), len(J.SAVED))
+
+    def test_memory_round_trips_a_failed_tick(self):
+        """checkpoint() / restore(): each MEMORY attribute comes back as it was, however it was changed in place, and a
+        second restore from the same checkpoint does too."""
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        j.handle({"event": "FSDJump", "timestamp": "2026-01-01T00:00:00Z", "StarSystem": "A", "SystemAddress": 1, "StarPos": [0, 0, 0]})
+        j.moments.append({"seq": 1, "kind": "x", "nested": {"n": 1}})
+        j.body_touched.add((1, 2))
+        j.burst = {"target": (1, 2), "n": 1}
+        j.last_all_found = {"id64": 1, "ts": "t"}
+        before = {a: repr(getattr(j, a)) for a in j.MEMORY}
+        cp = j.checkpoint()
+        j.moments[0]["nested"]["n"] = 99
+        j.moments.append({"seq": 2})
+        j.body_touched.add((3, 4))
+        j.burst["n"] = 2
+        j.last_all_found["ts"] = "later"
+        j.moment_seq += 5
+        for _ in range(2):
+            j.restore(cp)
+            self.assertEqual({a: repr(getattr(j, a)) for a in j.MEMORY}, before)
+            j.moments[0]["nested"]["n"] = 7   # changed after the first restore: the second starts clean again
+        self.assertEqual(j.moments.maxlen, 16)
+
+    def test_saved_comes_back_on_reload(self):
+        """reload() reads each SAVED key; a missing or null one gives its default."""
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        for attr, key, make in j.SAVED:
+            ed_outrider.meta_set(db, key, {"sentinel": key})
+        j.reload()
+        for attr, key, make in j.SAVED:
+            self.assertEqual(getattr(j, attr), {"sentinel": key}, attr)
+        for attr, key, make in j.SAVED:
+            ed_outrider.meta_set(db, key, None)
+        j.reload()
+        for attr, key, make in j.SAVED:
+            self.assertEqual(getattr(j, attr), make() if make else None, attr)
 
     def test_meta_keys_are_reset_or_kept_on_purpose(self):
         import inspect
@@ -3375,5 +3457,6 @@ class JournalsRegistry(unittest.TestCase):
         self.assertFalse(written - reset - set(self.KEPT_THROUGH_REREAD),
                          "add these to RESET_JOURNAL_DATA (journal-derived) or KEPT_THROUGH_REREAD with the reason")
         self.assertFalse(set(self.KEPT_THROUGH_REREAD) & reset, "a key cannot be both reset and kept")
-        loaded = set(re.findall(r'meta_get\(db,\s*"([^"]+)"', inspect.getsource(ed_outrider.Journals.reload)))
+        loaded = set(re.findall(r'meta_get\(db,\s*"([^"]+)"', inspect.getsource(ed_outrider.Journals.reload))) | \
+            {k for _, k, _ in ed_outrider.Journals.SAVED}
         self.assertFalse(loaded - reset - set(self.KEPT_THROUGH_REREAD), "reload() reads a key neither reset nor kept")
