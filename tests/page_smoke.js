@@ -2130,6 +2130,73 @@ const releasePayloads = async () => {
     allOk = allOk && goodGH;
     console.log(goodGH ? "OK" : "FAIL", "| settings github |", goodGH ? "the GitHub link and the version, desktop and tablet" : JSON.stringify(got), errors.slice(before));
   }
+  // Your squadron's carrier (plan 2026-10-30): the Carrier tile's FC | SC switch only while both are known; docking at
+  // one shows it until a pick; the pick kept per device; a squadron's alone: the tile shows it with no switch; the folded
+  // line, the Nearest finder's row and the sell line say whose
+  squadron_carrier: { if (skip("squadron_carrier")) break squadron_carrier;
+    const w = dom.window, d = w.document, before = errors.length;
+    holdPayloads();
+    const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
+    const got = w.eval(`(() => {
+      const saved = {c: data.carrier, s: data.squadron_carrier, side: store.get("carrierSide", null)}, o = {};
+      const fc = {name: "Out Of The Blue", callsign: "G0X-85Z", system: "Smojooe AR-E b25-8", aboard: false, here: false,
+                  distance: 12.5, has_uc: true, has_vista: true};
+      const sc = {name: "THE WINCHESTER", callsign: "7738", squadron: "THE FATHERHOOD", system: "Hajangai", id64: "7780366815938",
+                  source: "journal", distance: 100, here: false, aboard: false, services: ["UC", "Vista", "Repair"],
+                  has_uc: true, has_vista: true, planned: null, fuel: null};
+      const btns = () => [...document.querySelectorAll("#tCarrier .lbl [data-cside]")]
+        .map(b => b.dataset.cside + (b.getAttribute("aria-pressed") === "true" ? "*" : "")).join(" ");
+      const val = () => markText(document.querySelector("#carrierLine .val"));
+      // the dates as this machine's locale and time zone write them: DATE
+      const text = () => markText(document.getElementById("carrierLine")).replace(/\\b([A-Z][a-z]{2} \\d{1,2}|\\d{1,2} [A-Z][a-z]{2})\\b/g, "DATE");
+      store.set("carrierSide", "fc"); CS.docked = null;
+      data.carrier = fc; data.squadron_carrier = null; renderCarrier();
+      o.fcOnly = [btns(), val()];
+      data.squadron_carrier = sc; renderCarrier();
+      o.both = [btns(), val()];
+      document.querySelector('#tCarrier [data-cside="sc"]').click();
+      o.picked = [btns(), text(), store.get("carrierSide")];
+      o.line = markText(Object.assign(document.createElement("div"), {innerHTML: tilesLineHtml()})).includes("[squadron-carrier]carrier 100 ly");
+      // its 🎯 aims at its system by id64 (listed_system knows it), never at your own carrier's
+      renderCarrier();
+      const ab = document.querySelector("#carrierLine button[data-aim]");
+      o.aim = ab ? [ab.dataset.route, ab.dataset.aimid] : null;
+      document.querySelector('#tCarrier [data-cside="fc"]').click();
+      data.squadron_carrier = Object.assign({}, sc, {aboard: true, here: true, distance: 0}); renderCarrier();
+      o.docked = [btns(), val()];
+      document.querySelector('#tCarrier [data-cside="fc"]').click();
+      o.after = btns();   // a pick after docking stands
+      data.carrier = null;
+      data.squadron_carrier = Object.assign({}, sc, {source: "Spansh", spansh_ts: "2026-08-01T00:00:00Z", services: [],
+                                                     fuel: 812, fuel_ts: "2026-07-19T21:00:00Z"});
+      renderCarrier();
+      o.scOnly = [btns(), !document.getElementById("tCarrier").hidden, text()];
+      const row = r => markText(Object.assign(document.createElement("tbody"), {innerHTML: nearRowHtml(Object.assign(
+        {kind: "carrier", name: "THE WINCHESTER", callsign: "7738", system: "Hajangai", id64: 1, ly: 100, ls: 337, services: ["UC"],
+         pads: "L M", warn: [], source: "journal", age_s: null}, r))}).querySelector("td"));
+      o.rows = [row({own: true, squadron: true}), row({own: false, squadron: true, name: "", callsign: "ABCD", warn: ["squadron only"]}),
+                row({own: true, squadron: false, name: "Out Of The Blue", callsign: "G0X-85Z"})];
+      o.sell = sellerTxt({name: "7738", carrier_name: "THE WINCHESTER", squadron: true, carrier: true, system: "Hajangai",
+                          distance: 100, age_days: 3}).replace(/ ≈ \\d+ jumps?/, "");
+      data.carrier = saved.c; data.squadron_carrier = saved.s; store.set("carrierSide", saved.side); CS.docked = null; renderCarrier();
+      return JSON.stringify(o);
+    })()`);
+    aimBack();
+    await releasePayloads();
+    const want = {fcOnly: ["", "[fleet-carrier]Out Of The Blue"], both: ["fc* sc", "[fleet-carrier]Out Of The Blue"],
+                  picked: ["fc sc*", "[squadron-carrier]THE WINCHESTERHajangai · 100 ly [destination]To it 2 jumpsUC ✓ · Vista ✓", "sc"],
+                  line: true, aim: ["system", "7780366815938"], docked: ["fc sc*", "[squadron-carrier]THE WINCHESTER"], after: "fc* sc",
+                  scOnly: ["", true, "[squadron-carrier]THE WINCHESTERHajangai · 100 ly [destination] (Spansh, DATE)To it 2 jumpsTritium: 812t (DATE)"],
+                  rows: ["[squadron-carrier]THE WINCHESTER 7738Squadron carrier · your squadron's · Hajangai",
+                         "[squadron-carrier]ABCDSquadron carrier · Hajangai",
+                         "[fleet-carrier]Out Of The Blue G0X-85ZFleet carrier · yours · Hajangai"],
+                  sell: "THE WINCHESTER (your squadron's carrier) · Hajangai · 100 ly"};
+    const o = JSON.parse(got);
+    const goodSq = JSON.stringify(o) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && goodSq;
+    console.log(goodSq ? "OK" : "FAIL", "| squadron carrier |", goodSq ? "the FC | SC switch, docking picks, a squadron's alone, whose in the finder and the sell line"
+      : JSON.stringify(o), errors.slice(before));
+  }
   // Cargo: the Carrier tile's tritium only with a tritium sell order (else as before, one line); the Materials tab's
   // Cargo (the ship with what you paid, the carrier's marks and its sync line); Recount lists only what is not confirmed
   cargo: { if (skip("cargo")) break cargo;

@@ -90,11 +90,11 @@ def _int(args, key, default, lo, hi):
 
 @tool("current_status", "Where the commander is now: system, region, fuel and jumps left, jump range, the target, "
       "unsold data value, the body they are on (or flying near, or have targeted in this system) and any exobiology "
-      "sample under way, and their carrier.")
+      "sample under way, their carrier and their squadron's.")
 async def current_status(get, args, rows):
     s = await get("/api/status")
     return {k: s.get(k) for k in ("system", "region", "fuel_pct", "fuel_jumps", "jump_range", "boost", "target", "unsold",
-                                  "on_body", "near_body", "target_body", "sampling", "carrier")}
+                                  "on_body", "near_body", "target_body", "sampling", "carrier", "squadron_carrier")}
 
 
 def _body_brief(b):
@@ -205,8 +205,8 @@ async def nearest_scoopable(get, args, rows):
 
 
 @tool("nearest_dock", "The nearest stations and fleet carriers the commander can dock at (pad size, docking access, "
-      "recent reports), from Spansh, the Deep Space Support Array's list and their own carrier; optionally only those "
-      "with given services, a material trader among them.",
+      "recent reports), from Spansh, the Deep Space Support Array's list, their own carrier and their squadron's; "
+      "optionally only those with given services, a material trader among them.",
       {"need": {"type": "array", "items": {"type": "string", "enum": list(dock.SERVICES)},
                 "description": "services every place must have (UC: Universal Cartographics, Vista: Vista Genomics; "
                                "Trader: a material trader of any kind, Raw / Manufactured / Encoded: a material trader of "
@@ -228,7 +228,9 @@ async def nearest_dock(get, args, rows):
         return {"name": r.get("name") or r.get("callsign"), "callsign": r.get("callsign") or None, "kind": r.get("kind"),
                 "station_type": r.get("station_type"),
                 "system": r.get("system"), "distance_ly": r.get("ly"), "from_star_ls": rnd(r.get("ls"), 0),
-                "services": r.get("services"), "pads": r.get("pads"), "dssa": bool(r.get("dssa")), "yours": bool(r.get("own")),
+                "services": r.get("services"), "pads": r.get("pads"), "dssa": bool(r.get("dssa")),
+                "yours": bool(r.get("own")) and not r.get("squadron"), "your_squadrons": bool(r.get("own") and r.get("squadron")),
+                "squadron_carrier": bool(r.get("squadron")),
                 "warnings": r.get("warn") or [], "report_age_days": rnd((r.get("age_s") or 0) / 86400) if r.get("age_s") is not None else None}
     # errors: Spansh could not be reached, say (the places are then only the DSSA list and your carrier): passed on,
     # so the answer can say so rather than call a far carrier the nearest place

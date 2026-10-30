@@ -272,6 +272,10 @@ SPANSH_SEARCH = "https://spansh.co.uk/api/systems/search"
 SPANSH_DUMP = "https://spansh.co.uk/api/dump/{id64}"
 SPANSH_BODY_SEARCH = "https://spansh.co.uk/api/bodies/search"
 SPANSH_STATION_SEARCH = "https://spansh.co.uk/api/stations/search"
+# one station by its MarketID: your squadron's carrier (its name, services, distance from the star: a member's journal has
+# none of them), asked for daily and when the journal says it moved (meta squadron_carrier_spansh)
+SPANSH_STATION = "https://spansh.co.uk/api/station/{}"
+SC_SPANSH_REFRESH_S = 86400
 DOCK_CACHE_S = 120   # s: the Nearest finder reuses its last search this long (a filter change re-filters it)
 AROUND_BAD = "around: here, destination, carrier, next_stop or a system's id64"   # S49: State.search_origin's refusal
 NEAREST_FOUND_KEEP = 500   # S31: the Nearest finder's systems kept for 🎯 on its rows (locate)
@@ -1668,6 +1672,12 @@ CARGO_ONLY = ("MarketBuy", "MarketSell", "CargoTransfer", "CarrierTradeOrder", "
 CARRIER_MOVE_EVENTS = ("CarrierJumpRequest", "CarrierJumpCancelled", "CarrierLocation", "CarrierJump")
 CARGO_EVENTS = frozenset(CARGO_ONLY) | {"Cargo", "Docked", "Undocked", "CarrierStats", "MiningRefined"} \
     | frozenset(CARRIER_MOVE_EVENTS)
+# Your squadron's carrier (Journals.handle_squadron_carrier; Hiner399 in discussion #3, plan 2026-10-30): every one is
+# read for something else too. A member's journal has its CarrierLocation at each login; the officers' lines (stats, a
+# booked jump, tritium) are taken from their documented shape, unconfirmed. Leaving the squadron drops it
+SQUADRON_CARRIER_EVENTS = frozenset({"SquadronStartup", "LoadGame", "Shutdown", "Location", "Docked", "CarrierJump",
+                                     "CarrierLocation", "CarrierStats", "CarrierJumpRequest", "CarrierJumpCancelled",
+                                     "CarrierDepositFuel", "LeftSquadron", "KickedFromSquadron", "DisbandedSquadron"})
 # your carrier's history (cargo_events); CarrierCrewServices (a service switched on, off, paused or resumed) for the
 # services the tile and the nearest places to sell use between two CarrierStats (S55); its movements and the tritium
 # you deposit for the jumps it measured (outrider.cargo.carrier_burns, S13 B)
@@ -1765,7 +1775,8 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 # 58: each mining session keeps where it mined (play_activity's mining places: the ring, the SRV's body): Sessions' Where
 # 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
 # 65: codex entries keep their own code (codex.code: "$Codex_Ent_Stratum_02_F_Name;"), Here's 📷 in any language
-PARSER_VERSION = 65
+# 66: your squadron's carrier is kept (meta squadron_carrier), no longer thrown away: where it was at your last login
+PARSER_VERSION = 66
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1791,6 +1802,7 @@ PARSER_VERSION = 65
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    66: "your squadron's carrier is kept beside your own, so the Carrier tile, the places to sell and the nearest places to dock know where it is",
     65: "each codex entry keeps the game's own code for it, so Here's 📷 knows a plant you photographed in any game language",
     64: "a green gas giant scanned three times (on arrival, in the FSS, when mapped) is still told apart by its codex entry",
     63: "a body first read off a nav beacon is dated by your own scan of it in Your records, and green gas giants are told apart by the scan written with their codex entry",
@@ -2236,8 +2248,8 @@ DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_c
 DELETE FROM play_activity; DELETE FROM mining_stints;
 DELETE FROM meta WHERE key IN ('reputation', 'powerplay', 'squadron', 'stored_ships', 'stored_modules', 'ship_locker',
                                'suit_loadouts', 'engineers', 'missions');
-DELETE FROM meta WHERE key IN ('ship', 'carrier', 'fuel_hist', 'last_scoop', 'commander', 'materials', 'last_session', 'cargo',
-                               'game_load', 'commanders_seen');
+DELETE FROM meta WHERE key IN ('ship', 'carrier', 'squadron_carrier', 'fuel_hist', 'last_scoop', 'commander', 'materials',
+                               'last_session', 'cargo', 'game_load', 'commanders_seen');
 DELETE FROM meta WHERE key LIKE 'legacy:%' OR key IN ('pos', 'prev', 'jump_range', 'state_ts');
 """
 
@@ -3119,6 +3131,7 @@ class Journals:
         ("cargo", "cargo", None),                 # {count, ts}: tonnes in the ship's hold, from Cargo
         ("last_scoop", "last_scoop", None),       # ts of the last FuelScoop
         ("carrier", "carrier", None),             # your fleet carrier, see handle_ship
+        ("squadron_carrier", "squadron_carrier", None),   # your squadron's carrier, see handle_squadron_carrier
         ("last_event_ts", "last_event_ts", None),   # newest journal line handled (freshness)
         # {start: the newest game launch (Fileheader) or LoadGame, ready: the newest Location}: the game is still
         # loading while start is the newer (see loading())
@@ -3165,12 +3178,14 @@ class Journals:
               "docking_hold", "chat_seq", "chat", "shots_new",
               "last_all_found",   # read by note_jumponium as "the FSS is done here"
               "last_honk",        # read by the FSSAllBodiesFound line ("all found by the honk")
-              "jump_class")       # the StartJump's star class, taken by the FSDJump that follows
+              "jump_class",       # the StartJump's star class, taken by the FSDJump that follows
+              "sc_login")         # a SquadronStartup not yet followed by its carrier's line (handle_squadron_carrier)
     """Incremental reader: each file is read from where the last pass stopped."""
 
     def __init__(self, db):
         self.db = db
         self.jump_class = {}       # id64 -> StarClass from the StartJump heading there
+        self.sc_login = None       # a SquadronStartup's ts until its squadron carrier's CarrierLocation
         self.arrival_scan = None   # the latest arrival-star Scan: {id64, was_discovered, ts}
         self.status_json = None    # live Status.json: {fuel_main, fuel_reservoir, ts}
         self.shots_new = []        # live Screenshot events not yet taken by the State's conversion (note_screenshot)
@@ -4042,6 +4057,8 @@ class Journals:
                 return
         if name in SALE_DOCK_EVENTS:
             self.note_sale_dock(name, ev, ts)
+        if name in SQUADRON_CARRIER_EVENTS:
+            self.handle_squadron_carrier(name, ev, ts)
         # before the Commander view's fold: its Sessions count a sale's mined part as this works it out (one rule)
         mined = self.note_mined(name, ev, ts) if name in MINED_EVENTS else None
         if name in MINING_EVENTS:
@@ -5659,6 +5676,72 @@ class Journals:
         """The newest journal time the carrier state carries (a database from before the watermark)."""
         c = self.carrier or {}
         return max(c.get("ts") or "", c.get("stats_ts") or "", (c.get("planned") or {}).get("ts") or "")
+
+    def handle_squadron_carrier(self, name, ev, ts):
+        """Your squadron's carrier (plan 2026-10-30): a record of its own beside your fleet carrier, never its cargo or
+        money (other members move both). A line is its by `CarrierType` SquadronCarrier, or, for the lines that have
+        none (Docked, CarrierJump aboard), by the carrier's ID as MarketID. At each login a member's journal has
+        SquadronStartup, then the squadron carrier's CarrierLocation: within 17 s in all 93 of the author's (2025-11 to
+        2026-07), sometimes after Location, never one without the other. Some logins have neither (2026-07-01 and -04,
+        the carrier where it was): no word either way. So a session that wrote SquadronStartup but no carrier line by
+        its Shutdown or the next LoadGame means the squadron has no carrier (any more); leaving the squadron drops it
+        at once."""
+        sc = self.squadron_carrier or {}
+        fresh = lambda: self.fresh("squadron_carrier", ts, max(sc.get("ts") or "", sc.get("stats_ts") or "",
+                                                               (sc.get("planned") or {}).get("ts") or ""))
+        if name in ("LeftSquadron", "KickedFromSquadron", "DisbandedSquadron") \
+                or name in ("LoadGame", "Shutdown", "SquadronStartup") and self.sc_login:
+            self.sc_login = None
+            if sc and fresh():
+                self.squadron_carrier = None
+                meta_set(self.db, "squadron_carrier", None)
+        if name == "SquadronStartup":
+            self.sc_login = ts
+        if name in ("SquadronStartup", "LoadGame", "Shutdown", "LeftSquadron", "KickedFromSquadron", "DisbandedSquadron"):
+            return
+        typed = ev.get("CarrierType") == "SquadronCarrier"
+        mine = sc.get("id") is not None and ev.get("CarrierID") == sc.get("id")
+        if name == "CarrierLocation":
+            if not typed:
+                return
+            self.sc_login = None   # an old line read late still closes its login's check
+            if ev.get("CarrierID") is None or not fresh():
+                return
+            if not mine:   # another carrier (a new one, or a new squadron's): nothing of the old one's
+                sc = {"id": ev["CarrierID"]}
+            carrier_seen(sc, ev.get("StarSystem"), ev.get("SystemAddress"), ts)
+        elif name in ("Docked", "Location", "CarrierJump"):
+            # docked at it (a login docked there is a Location), or aboard as it jumps: the station is the carrier
+            if not sc or ev.get("MarketID") != sc.get("id") or ev.get("StationType", "FleetCarrier") != "FleetCarrier" \
+                    or name == "Location" and not ev.get("Docked") or not fresh():
+                return
+            carrier_seen(sc, ev.get("StarSystem"), ev.get("SystemAddress"), ts, jumped=name == "CarrierJump")
+            pos = ev.get("StarPos")
+            if name == "CarrierJump" and isinstance(pos, list) and len(pos) == 3:
+                sc.update(x=pos[0], y=pos[1], z=pos[2])
+            if ev.get("StationServices"):
+                sc.update(services=ev["StationServices"], services_ts=ts)
+        elif name == "CarrierStats":   # an officer's: the carrier's management screen (unconfirmed for a squadron's)
+            if not typed or ev.get("CarrierID") is None or not fresh():
+                return
+            if not mine:
+                sc = {"id": ev["CarrierID"]}
+            sc.update(name=ev.get("Name"), callsign=ev.get("Callsign"), fuel=ev.get("FuelLevel"), stats_ts=ts)
+        elif name in ("CarrierJumpRequest", "CarrierJumpCancelled", "CarrierDepositFuel"):
+            if not mine or not fresh():   # by its ID: a booking for a carrier not known yet has no place to show
+                return
+            if name == "CarrierJumpRequest":
+                sc["planned"] = {"system": ev.get("SystemName"), "id64": ev.get("SystemAddress"),
+                                 "departure": ev.get("DepartureTime"), "ts": ts}
+            elif name == "CarrierJumpCancelled":
+                sc["planned"] = None
+            elif isinstance(ev.get("Total"), int):
+                sc.update(fuel=ev["Total"], stats_ts=ts)
+        else:
+            return
+        sc.pop("moves", None)   # carrier_seen's jumps for the tritium estimate: none for a carrier others fuel
+        self.squadron_carrier = sc
+        meta_set(self.db, "squadron_carrier", sc)
 
     def handle_scan(self, name, ev, ts):
         system = ev.get("SystemAddress")
@@ -7738,6 +7821,18 @@ class Spansh:
                 return {"name": x["name"], "id64": x["id64"], "x": x.get("x"), "y": x.get("y"), "z": x.get("z")}
         return None
 
+    async def station(self, market_id):
+        """Spansh's record of one station by its MarketID (a carrier's is its CarrierID), or None when it has none."""
+        if self.session is None:
+            raise ClientError("no network session")
+        async with self.sem_fast:
+            async with self.session.get(SPANSH_STATION.format(int(market_id))) as r:
+                if r.status == 404:
+                    return None
+                r.raise_for_status()
+                d = await r.json(content_type=None)
+        return d.get("record") if isinstance(d, dict) and isinstance(d.get("record"), dict) else None
+
     def cached(self, id64):
         return cached_base(self.db, id64)
 
@@ -8419,6 +8514,8 @@ class State:
         self.nearest_found = {}    # S31: the same for the Nearest finder's rows (their 🎯), at most NEAREST_FOUND_KEEP
         self.carrier_task = None
         self.carrier_retry = {}    # carrier system id64 -> time.time() before which Spansh is not asked again
+        self.sc_task = None        # Spansh's report of your squadron's carrier (maybe_squadron_spansh)
+        self.sc_retry_at = 0
         self.value_dirty = set()   # systems whose unsold value changed: rows rebuilt, scan_version left alone
         self.row_failed = set()    # systems whose row failed to build (traceback printed once, retried each tick)
         self.retry_at = None       # when to ask Spansh again after a failed refresh
@@ -8756,6 +8853,7 @@ class State:
             "fuel": self.fuel_summary(),
             "ship": self.journals.ship,
             "carrier": self.carrier_summary(),
+            "squadron_carrier": self.squadron_carrier_summary(),   # your squadron's (plan 2026-10-30)
             "carrier_trip": self.carrier_trip_summary(),   # #19: a carrier trip planned in Plot Route
             "pins": self.pins_summary(),   # #16: surface pins (body bookmarks) and the active one's guidance
             "here_star": self.here_star(),
@@ -11350,6 +11448,82 @@ class State:
                 # only while tritium is on a sell order at your carrier (confirmed): else the tile is as before
                 "tritium": None if (self.carrier_decommission() or {}).get("done") else self.carrier_tritium()}
 
+    def squadron_carrier_summary(self):
+        """Your squadron's carrier (plan 2026-10-30): the Carrier tile's SC side, the sell lists and the dock finder.
+        Its place is the journal's (CarrierLocation at each login), unless Spansh has a newer report of it elsewhere: a
+        member hears of a move only at the next login. Its name and services are Spansh's (meta squadron_carrier_spansh)
+        unless a Docked there is newer. No cargo, money or tritium estimate (other members move and donate them): fuel
+        only as an officer's lines read it. None until a CarrierLocation names it."""
+        sc = self.journals.squadron_carrier
+        if not sc or sc.get("id") is None or not sc.get("id64"):
+            return None
+        sp = meta_get(self.db, "squadron_carrier_spansh") or {}
+        row = (sp.get("row") or {}) if sp.get("id") == sc["id"] else {}
+        seen = row.get("seen") or 0
+        docked = self.journals.docked
+        aboard = bool(docked and docked.get("market_id") == sc["id"])
+        system, id64, xyz, source = sc.get("system"), sc["id64"], (sc.get("x"), sc.get("y"), sc.get("z")), "journal"
+        if row.get("id64") and row["id64"] != id64 and row.get("x") is not None and not aboard and sc.get("ts") \
+                and seen > ts_seconds(sc["ts"]):
+            system, id64, xyz, source = row.get("system"), row["id64"], (row["x"], row["y"], row["z"]), "Spansh"
+        elif xyz[0] is None:
+            where = self.locate(int(id64))
+            xyz = where[1:4] if where else (row["x"], row["y"], row["z"]) if row.get("id64") == id64 and row.get("x") is not None \
+                else xyz
+        pos = self.journals.pos
+        d = dist(pos, dict(zip("xyz", xyz))) if pos and xyz[0] is not None else None
+        # the newer of a Docked there (the game's ids) and Spansh's report
+        if sc.get("services_ts") and ts_seconds(sc["services_ts"]) >= seen:
+            services = outrider.dock.game_services(sc.get("services"))
+        else:
+            services = set(row.get("services") or [])
+        planned = dict(sc["planned"]) if sc.get("planned") else None
+        if planned and planned.get("departure"):
+            try:   # long gone: no settle_carrier for it, and its next CarrierLocation may be a login away
+                if ts_seconds(planned["departure"]) + 3600 < time.time():
+                    planned = None
+            except (TypeError, ValueError):
+                planned = None
+        if planned and planned.get("id64") and pos and str(planned["id64"]).isdigit():
+            where = self.locate(int(planned["id64"]))
+            if where:
+                planned["distance_from_you"] = round(dist(pos, {"x": where[1], "y": where[2], "z": where[3]}), 1)
+        return {"name": row.get("name") or sc.get("name") or "", "callsign": sc.get("callsign") or row.get("callsign") or "",
+                "squadron": (meta_get(self.db, "squadron") or {}).get("name"),
+                "carrier_id": str(sc["id"]), "id": sc["id"], "system": system, "id64": str(id64), "source": source,
+                "spansh_ts": iso_ts(seen) if seen else None,
+                "x": xyz[0], "y": xyz[1], "z": xyz[2], "distance": round(d, 1) if d is not None else None,
+                "here": bool(pos and str(pos.get("id64")) == str(id64)), "aboard": aboard,
+                "ls": row.get("ls"), "services": sorted(services, key=outrider.dock.SERVICES.index),
+                "has_uc": "UC" in services, "has_vista": "Vista" in services, "planned": planned,
+                "fuel": sc.get("fuel"), "fuel_ts": sc.get("stats_ts"), "ts": sc.get("ts"), "moved_ts": sc.get("moved_ts")}
+
+    def maybe_squadron_spansh(self):
+        """Spansh's report of your squadron's carrier, by its ID (SPANSH_STATION): its name, services and distance from
+        the star, which a member's journal never has. Asked for once a day, when the ID changes and when the journal
+        says it moved; a failed lookup keeps the last copy and is tried again after CARRIER_RETRY_S."""
+        sc = self.journals.squadron_carrier
+        if not sc or sc.get("id") is None or (self.sc_task and not self.sc_task.done()) or time.time() < self.sc_retry_at:
+            return
+        cur = meta_get(self.db, "squadron_carrier_spansh") or {}
+        if cur.get("id") == sc["id"] and cur.get("moved_ts") == sc.get("moved_ts") \
+                and time.time() - (cur.get("fetched") or 0) < SC_SPANSH_REFRESH_S:
+            return
+        cid, moved = sc["id"], sc.get("moved_ts")
+
+        async def go():
+            try:
+                rec = await self.spansh.station(cid)
+            except Exception:   # noqa: BLE001 -- Spansh down or odd: the last copy stays, asked again later
+                self.sc_retry_at = time.time() + CARRIER_RETRY_S
+                return
+            rows = outrider.dock.spansh_rows([rec]) if rec else []
+            row = dict(rows[0], services=sorted(rows[0]["services"])) if rows and rows[0]["kind"] == "carrier" else None
+            meta_set(self.db, "squadron_carrier_spansh", {"id": cid, "moved_ts": moved, "fetched": time.time(), "row": row})
+            self.db.commit()
+            self.bump()
+        self.sc_task = asyncio.create_task(go())
+
     def carrier_services(self, c, st):
         """Your carrier's services (S55 B): (has_uc, has_vista, suspended: the tile's names of those paused). From the
         newer of two words: its last Docked's StationServices (a suspended service is not listed there) and its crew
@@ -11708,7 +11882,7 @@ class State:
         c = self.carrier_summary() or {}
         own = outrider.dock.own_row(dict(self.journals.carrier or {}, **{k: c.get(k) for k in ("x", "y", "z", "has_uc", "has_vista")},
                                          decommission=self.carrier_decommission()))
-        rows = outrider.dock.merge(spansh, dssa, own)
+        rows = outrider.dock.merge(spansh, dssa, own, outrider.dock.squadron_row(self.squadron_carrier_summary()))
         permits = set()
         if q.get("permit") != "1":
             ids = sorted({r["id64"] for r in rows if r.get("id64") is not None})
@@ -19653,7 +19827,8 @@ class State:
 
     def listed_system(self, id64):
         """(name, x, y, z) of a system the page lists that locate() does not know (S31, S72): a point of the Map (Spansh's
-        systems around you and the boost stars, as last fetched), your chosen next stop, your carrier's system; None."""
+        systems around you and the boost stars, as last fetched), your chosen next stop, your carrier's system, your
+        squadron's carrier's; None."""
         for v in list(self.map_cache.values()):
             pt = (v.get("points") and next((p for p in v["points"] if p.get("id") == str(id64)), None)) \
                 if isinstance(v, dict) else v[0].get(id64)   # the boost stars' answer, or a sphere's {id64: point}
@@ -19665,6 +19840,9 @@ class State:
         c = self.journals.carrier or {}
         if c.get("id64") == id64 and c.get("system"):
             return c["system"], c.get("x"), c.get("y"), c.get("z")
+        sc = self.squadron_carrier_summary() or {}   # your squadron's (its 🎯 on the tile), Spansh's place included
+        if sc.get("id64") == str(id64) and sc.get("system"):
+            return sc["system"], sc.get("x"), sc.get("y"), sc.get("z")
         return None
 
     def search_origin(self, around=None):
@@ -20196,7 +20374,7 @@ class State:
         """The State's own background tasks, all cancelled at shutdown before the database closes (a survey or trade
         plot can run up to TRADE_PLOT_TIMEOUT: review 2026-10-08 #7, it was left running into the closed session)."""
         return [t for t in (self.refresh_task, self.target_task, self.unsold_task, self.seller_task, self.carrier_task,
-                            self.searcher.task, self.honk_test_task, self.honk_run_task, self.highway_task, self.riches_task,
+                            self.sc_task, self.searcher.task, self.honk_test_task, self.honk_run_task, self.highway_task, self.riches_task,
                             self.autotarget_task, self.autotarget_test_task, self.lease_task, self.edsm_discard_task,
                             self.edsm_bf_task, self.edsm_import_task, self.reported_task, self.route_task,
                             *self.upload_tasks.values()) if t]
@@ -20440,7 +20618,8 @@ class State:
         list while UC is on (not suspended), in Vista's while Vista is, never once decommissioned; with how many
         carrier jumps would bring it to you. `sell` (the review's #11, Now's at-risk line): the nearest you would fly to,
         a permanent station or your own carrier (another player's may have moved or be closed), with a large pad when
-        your ship needs one."""
+        your ship needs one. Your squadron's carrier (plan 2026-10-30) is in them the same way: the journal's place, its
+        services the newer of a Docked there and Spansh's (`squadron`, never `yours`: it cannot come to you)."""
         cur, pos = meta_get(self.db, "sellers"), self.journals.pos
         if not pos:
             return None
@@ -20451,14 +20630,21 @@ class State:
             own = {"name": cs["callsign"], "system": cs.get("system"), "id64": cs.get("id64"),
                    "type": outrider.cargo.CARRIER_TYPE, "updated_at": None, "x": cs["x"], "y": cs["y"], "z": cs["z"],
                    "distance": 0, "carrier_jumps": math.ceil((cs.get("distance") or 0) / outrider.cargo.CARRIER_JUMP_LY - 1e-9)}
-        if not cur and not own:
+        sq = self.squadron_carrier_summary() or {}
+        squad = None
+        if sq.get("x") is not None and sq.get("callsign"):
+            squad = {"name": sq["callsign"], "carrier_name": sq.get("name") or None, "system": sq.get("system"),
+                     "id64": sq.get("id64"), "type": outrider.cargo.CARRIER_TYPE, "updated_at": None,
+                     "x": sq["x"], "y": sq["y"], "z": sq["z"], "distance": 0}
+        if not cur and not own and not squad:
             return None
         cur = cur or {"pos": dict(pos), "uc": [], "vista": []}
         large = outrider.cargo.SHIP_PAD.get(((self.journals.ship or {}).get("type") or "").lower()) == outrider.cargo.LARGE
 
-        def mine(lst, on):
-            lst = [x for x in lst if not (c.get("callsign") and x.get("name") == c.get("callsign"))]
-            return lst + [own] if own and on else lst
+        def mine(lst, on, sq_on):
+            lst = [x for x in lst if not (c.get("callsign") and x.get("name") == c.get("callsign"))
+                   and not (squad and x.get("name") == squad["name"])]
+            return lst + ([own] if own and on else []) + ([squad] if squad and sq_on else [])
 
         def pick(lst):
             now = time.time()
@@ -20470,16 +20656,19 @@ class State:
                 x["age_days"] = round(age, 1) if age is not None else None
                 x["carrier"] = "Carrier" in (x.get("type") or "")
                 x["yours"] = bool(c.get("callsign") and x.get("name") == c.get("callsign"))
+                x["squadron"] = bool(squad and x.get("name") == squad["name"])
                 out.append(x)
             out.sort(key=lambda x: x["distance"])
             # a carrier reported under ~an hour ago has age_days 0.0: only None (no date) means unknown
-            fresh = next((x for x in out if x["yours"] or not x["carrier"]
+            fresh = next((x for x in out if x["yours"] or x["squadron"] or not x["carrier"]
                           or (x["age_days"] if x["age_days"] is not None else 99) <= 14), None)
             station = next((x for x in out if not x["carrier"]), None)
-            sell = next((x for x in out if (x["yours"] or not x["carrier"]) and (not large or x["carrier"] or x.get("large_pad"))), None)
+            sell = next((x for x in out if (x["yours"] or x["squadron"] or not x["carrier"])
+                         and (not large or x["carrier"] or x.get("large_pad"))), None)
             return {"nearest": out[0] if out else None, "fresh": fresh, "station": station, "sell": sell}
         return {"from": cur["pos"].get("name"), "moved": round(dist(pos, cur["pos"]), 1),
-                "uc": pick(mine(cur["uc"], cs.get("has_uc"))), "vista": pick(mine(cur["vista"], cs.get("has_vista")))}
+                "uc": pick(mine(cur["uc"], cs.get("has_uc"), sq.get("has_uc"))),
+                "vista": pick(mine(cur["vista"], cs.get("has_vista"), sq.get("has_vista")))}
 
     def maybe_unsold(self):
         """Re-estimate unsold data in a worker thread once the journal has settled a little."""
@@ -20755,7 +20944,8 @@ class State:
                                ("maybe_unsold", self.maybe_unsold), ("maybe_sale_left", self.maybe_sale_left),
                                ("maybe_curious", self.maybe_curious), ("maybe_reported", self.maybe_reported),
                                ("maybe_route_lookup", self.maybe_route_lookup),
-                               ("maybe_locate_carrier", self.maybe_locate_carrier), ("maybe_find_sellers", self.maybe_find_sellers),
+                               ("maybe_locate_carrier", self.maybe_locate_carrier), ("maybe_squadron_spansh", self.maybe_squadron_spansh),
+                               ("maybe_find_sellers", self.maybe_find_sellers),
                                ("maybe_backup_on_quit", self.maybe_backup_on_quit), ("highway_copy_next", self.highway_copy_next), ("riches_copy_next", self.riches_copy_next),
                                ("highway_heavy_check", self.highway_heavy_check), ("last_scoop_check", self.last_scoop_check),
                                ("wrong_target_watch", self.wrong_target_watch), ("codex_release", self.codex_release),
@@ -22346,7 +22536,7 @@ def make_app(state, hosts=None):
     def status_small():
         """A compact status for overlays and other tools (the page itself uses /api/nearby)."""
         p = state.payload()
-        pos, f, t, u, c = p["position"], p["fuel"] or {}, p["target"], p["unsold"] or {}, p["carrier"]
+        pos, f, t, u, c, sc = p["position"], p["fuel"] or {}, p["target"], p["unsold"] or {}, p["carrier"], p["squadron_carrier"]
         ob, sm = p["on_body"], p["sampling"]
         return {"system": pos and pos["name"], "id64": pos and str(pos["id64"]),
                 "coords": pos and [pos["x"], pos["y"], pos["z"]], "region": (p["region"] or {}).get("name"),
@@ -22357,6 +22547,8 @@ def make_app(state, hosts=None):
                 "near_body": None if ob else state.zone_body(), "target_body": (p["destination"] or {}).get("name") or None,
                 "sampling": sm and "elsewhere" not in sm and {k: sm.get(k) for k in ("genus", "samples", "to_go", "clear")} or None,
                 "carrier": c and {"name": c.get("name"), "system": c.get("system"), "distance": c.get("distance")},
+                "squadron_carrier": sc and {"name": sc.get("name") or sc.get("callsign"), "system": sc.get("system"),
+                                            "distance": sc.get("distance")},
                 "commander": (p["commander"] or {}).get("name")}
 
     STATUS_FIELDS = {

@@ -263,8 +263,8 @@ up it says "checking…", never the previous target's verdict.
   has one, and Nearby's row has 📜. The catalogue is asked for once a day (stored again only when it changed) and never shipped.
 - An **at-risk line** shows what is aboard against your rebuy ("🗺 380M · 🧬 412M aboard · 3.2× rebuy · 4 d
   unsold · sell (UC + Vista): Far Sys 412 ly"), only once that is over your amber level or rebuy multiple. The place
-  to sell is the nearest station (or your own carrier) for whichever of the two holds most, with a large pad when your
-  ship needs one (another player's carrier is never named: it may have moved or be closed); 🎯 targets it, and from
+  to sell is the nearest station (or your own carrier, or your squadron's) for whichever of the two holds most, with a
+  large pad when your ship needs one (another player's carrier is never named: it may have moved or be closed); 🎯 targets it, and from
   250 ly 🛣 plots an exact route there at once (asking first when you follow a route); a ship bought with Arx (its hull has no credit
   value) gets no rebuy multiple. Docked where your data sells it says what
   selling here pays ("💰 sell here: 380M"); on a high-g approach it shows that approach's stakes instead.
@@ -287,7 +287,16 @@ The **header** shows the galactic region, ranks, fuel, hull, any core module und
 its trip to you; "UC ✓ · Vista ✓ · Tritium: 668t/14,199t" (the depot, then all of it with the hold; a suspended UC or
 Vista a red ✗; "Tritium: ≈534t" for the depot between readings, its burn since taken off); and its balance and weeks
 of upkeep, counted down to today: "Balance 1.33B · ~83 wks upkeep now"), the nearest places to sell (your carrier
-among them while its UC or Vista is on), and the last backup.
+and your squadron's among them while its UC or Vista is on), and the last backup.
+
+**Your squadron's carrier** shows on the Carrier tile too. With your own carrier as well, an **FC | SC** switch in
+the tile's heading picks which one it shows; docking at either shows that one, and your pick is kept on this device.
+Its side has the galaxy map's squadron carrier marker and its name, where it is (your journal's word at your last
+login, or Spansh's newer report of it elsewhere, marked "Spansh"), how far, 🎯 and 🛣, your jumps to it, and UC and
+Vista (Spansh's, or what it listed when you last docked). A member's journal holds nothing more: no balance, cargo or
+tritium estimate (other members move and donate them). An officer who opens its management, or books a jump, gets
+the tritium reading and the countdown too. Nearest place to dock lists it as **your squadron's**, with no "squadron
+only" warning, and any carrier with a four-letter callsign as a squadron carrier.
 
 The **In-Game Route:** line under the tiles is the route the game plotted in the galaxy map (a route of more than one
 jump: a system targeted next door has no line, the target says it; a longer route keeps its line to its last jump): its jumps and light years,

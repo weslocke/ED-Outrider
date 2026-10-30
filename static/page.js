@@ -432,6 +432,19 @@ document.getElementById("radiusSel").onchange = async e => {
 setInterval(() => { if (data) renderStrip(); }, 30000);
 // ---- carrier tile: where it is, the rendezvous maths, and a live countdown to a booked jump ----
 let carrierWarned = null;
+// your fleet carrier's booked jump in its last five minutes while you are not aboard: once per booking
+function carrierDepartWarn(c) {
+  const pl = c && c.planned;
+  if (!pl || !pl.departure || c.aboard || (c.decommission && c.decommission.done) || carrierWarned === pl.departure) return;
+  const left = (Date.parse(pl.departure) - Date.now()) / 1000;
+  if (!(left > 0 && left < 300)) return;
+  carrierWarned = pl.departure;
+  // the last minute: one plain line (speech.json's lines say "{minutes} minutes", which cannot be singular: F37)
+  const mins = Math.ceil(left / 60), last = mins <= 1;
+  alertOut("carrier", `${c.name} departs in ${last ? "under a minute" : `${mins} minutes`}`, `for ${pl.system}; you are not aboard`,
+           {sound: "alert", tag: "carrier_departs", say: () => last ? `Your carrier departs in under a minute, and you are not aboard.`
+             : line("carrier_departs", {minutes: mins, carrier: c.name}, `Your carrier departs in ${mins} minutes, and you are not aboard.`)});
+}
 // 🎯 beside your carrier when it is in another system (the author, 2026-10-11): auto-target puts its system in the
 // galaxy map, as 🎯 on a route's row does; where auto-target can work (hwyAimBtn: canAim)
 const carrierAim = c => c && !c.aboard && !c.here && c.system && !(c.decommission && c.decommission.done)
@@ -455,7 +468,7 @@ function carrierPlot(c) {
   return ` <button type="button" class="mini cpbtn" data-carrierplot="go" title="plot an exact route to your carrier's system now (Plot Route's exact options)">🛣</button>`;
 }
 async function plotToCarrier() {
-  const c = data && data.carrier;
+  const c = shownCarrier();
   if (!c || !c.system) return;
   if (await plotExactTo(c.system)) CP.to = c.system;
   renderCarrier();
@@ -531,14 +544,78 @@ function carrierFinanceHtml(fi) {
   return `<span id="carrierFin" class="${fi.warn ? "warnc" : ""}" title="${esc(title)}">Balance <b>${crSign(fi.balance)}</b>` +
     (w != null ? ` · ~<b>${w < 10 ? w.toFixed(1) : Math.floor(w).toLocaleString()}</b> wks upkeep${fi.weeks_since ? " now" : ""}` : "") + `</span>`;
 }
-function renderCarrier() {
-  const c = data && data.carrier, cl = document.getElementById("carrierLine");
+// Your fleet carrier and your squadron's (plan 2026-10-30): with both known, the tile's FC | SC switch picks which it
+// shows, kept per device (like the view, in neither settings list); docking at one shows that one, until a pick
+const CS = {docked: null};
+function carrierSide() {
+  const fc = data && data.carrier, sc = data && data.squadron_carrier;
+  if (!sc) return "fc";
+  if (!fc) return "sc";
+  const at = sc.aboard ? "sc" : fc.aboard ? "fc" : null;
+  if (at !== CS.docked) { CS.docked = at; if (at) store.set("carrierSide", at); }
+  return store.get("carrierSide", "fc") === "sc" ? "sc" : "fc";
+}
+const shownCarrier = () => data && (carrierSide() === "sc" ? data.squadron_carrier : data.carrier);
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-cside]");
+  if (!b) return;
+  e.preventDefault();
+  store.set("carrierSide", b.dataset.cside === "sc" ? "sc" : "fc");
+  renderCarrier();
+  if (tilesFolded) renderTilesLine();
+});
+// the label: "Carrier", with the switch only while both are known
+function drawCarrierLabel(both, side) {
+  const lbl = document.querySelector("#tCarrier .lbl"), key = both ? side : "";
+  if (lbl.dataset.side === key) return;
+  lbl.dataset.side = key;
+  const b = (k, t, title) => `<button type="button" data-cside="${k}" aria-pressed="${side === k}" title="${title}">${t}</button>`;
+  lbl.innerHTML = "Carrier" + (both ? ` <span class="cside" role="group" aria-label="which carrier">${b("fc", "FC", "your fleet carrier")}${b("sc", "SC", "your squadron's carrier")}</span>` : "");
+}
+// your squadron's carrier: where it is (the journal's word at your last login, or Spansh's newer report of it elsewhere),
+// how far, your jumps to it, UC and Vista (Spansh's, or a Docked there); a booked jump and a tritium reading only from an
+// officer's lines. No money, cargo, trip or estimate: other members move and donate them, and it never comes to you
+function squadronCarrierHtml(c) {
   const val = (v, title) => `<div class="val"${title ? ` title="${title}"` : ""}>${v}</div>`, ln = v => v ? `<div class="ln">${v}</div>` : "";
-  // no carrier in your journals: no tile (the other five share the row); it comes back with the first CarrierStats
-  const none = !!data && !c;
+  const fmtLy = d => d.toLocaleString("en-US", {maximumFractionDigits: 1});
+  let where = c.aboard ? "<b>aboard</b>" : c.here ? "<b>in this system</b>"
+    : `<span class="copy" data-name="${esc(c.system)}" title="click to copy">${esc(c.system)}</span>` + (c.distance != null ? ` · <b>${fmtLy(c.distance)} ly</b>` : "")
+      + sysAimBtn(c.system, c.id64) + carrierPlot(c);
+  if (c.source === "Spansh") where += ` <span class="unk" title="Spansh's report of it, newer than your journal's word at your last login: it moved since">(Spansh, ${esc(shortDay(c.spansh_ts || ""))})</span>`;
+  let move = "";
+  const pl = c.planned, left = pl && pl.departure ? (Date.parse(pl.departure) - Date.now()) / 1000 : null;
+  if (left != null) {
+    const mmss = t => t >= 3600 ? `${Math.floor(t / 3600)} h ${Math.floor(t % 3600 / 60)} min` : `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+    move = left > 0 ? `departs for <b>${esc(pl.system)}</b> in <b class="cd">${mmss(left)}</b>` : `jumping to <b>${esc(pl.system)}</b>`;
+  } else if (!c.here && !c.aboard && c.distance && effRange()) {
+    const mine = jumpsFor(c.distance);
+    move = `<span title="about ${mine} jump${mine === 1 ? "" : "s"} for you to reach it (a straight line: the real route is never shorter)">To it <b>${mine}</b> jump${mine === 1 ? "" : "s"}</span>`;
+  }
+  const trit = c.fuel == null ? "" : `<span title="the depot when the carrier's management was last opened (an officer's journal): members donate tritium, so it is not estimated">Tritium: <b>${c.fuel.toLocaleString()}t</b> <span class="unk">(${esc(shortDay(c.fuel_ts || ""))})</span></span>`;
+  const svc = c.services && c.services.length ? carrierServicesHtml(c) : "";
+  return val(mk("squadron-carrier") + esc(c.name || c.callsign || "your squadron's carrier"),
+             esc([c.callsign, c.squadron].filter(Boolean).join(" · ") || "your squadron's carrier")) +
+    ln(where) + ln(move) + ln([svc, trit].filter(Boolean).join(" · "));
+}
+function renderCarrier() {
+  const fc = data && data.carrier, sc = data && data.squadron_carrier, cl = document.getElementById("carrierLine");
+  const val = (v, title) => `<div class="val"${title ? ` title="${title}"` : ""}>${v}</div>`, ln = v => v ? `<div class="ln">${v}</div>` : "";
+  // no carrier in your journals: no tile (the other five share the row); it comes back with the first CarrierStats, or
+  // your squadron's first CarrierLocation
+  const none = !!data && !fc && !sc;
   document.getElementById("tCarrier").hidden = none;
   document.getElementById("tiles").classList.toggle("nocarrier", none);
   tileCols();
+  const side = carrierSide();
+  drawCarrierLabel(!!fc && !!sc, side);
+  carrierDepartWarn(fc);   // whichever the tile shows
+  if (side === "sc") {
+    drawFcTrip();
+    if (typeof hForm !== "undefined" && hwyPlotter() === "carrier") { fillFcForm(); drawHwyStatus(); }
+    setLive(cl, squadronCarrierHtml(sc));
+    return;
+  }
+  const c = fc;
   if (!c) { cl.innerHTML = val(`<span class="unk">none seen</span>`); cl._liveKey = null; return; }
   // decommissioned (or being): in red with the date, rather than the tile vanishing (a mistake would go unseen)
   const dc = c.decommission;
@@ -573,14 +650,6 @@ function renderCarrier() {
     const urgent = left > 0 && left < 300 && !c.aboard;
     plan = `<span class="${urgent ? "noscoop" : ""}">${left > 0 ? `departs for <b>${esc(pl.system)}</b> in <b class="cd">${mmss(left)}</b>` : `jumping to <b>${esc(pl.system)}</b>`}</span>` +
       (pl.jump_ly ? ` <span class="unk">(${fmtLy(pl.jump_ly)} ly jump${carrierPlanBurn(pl, c.burn_factor)}${pl.distance_from_you != null ? `${pl.burn != null ? ";" : ","} then ${fmtLy(pl.distance_from_you)} ly from you` : ""})</span>` : "");
-    if (urgent && carrierWarned !== pl.departure) {   // once per booking, only if you are not aboard
-      carrierWarned = pl.departure;
-      // the last minute: one plain line (speech.json's lines say "{minutes} minutes", which cannot be singular: F37)
-      const mins = Math.ceil(left / 60), last = mins <= 1;
-      alertOut("carrier", `${c.name} departs in ${last ? "under a minute" : `${mins} minutes`}`, `for ${pl.system}; you are not aboard`,
-               {sound: "alert", tag: "carrier_departs", say: () => last ? `Your carrier departs in under a minute, and you are not aboard.`
-                 : line("carrier_departs", {minutes: mins, carrier: c.name}, `Your carrier departs in ${mins} minutes, and you are not aboard.`)});
-    }
   }
   // the tritium: only while it is on a sell order at your carrier (its count confirmed) the depot gets its name and the
   // total and the 500 ly jumps it gives take one line; otherwise the depot as before
@@ -708,7 +777,9 @@ document.getElementById("carrierLine").addEventListener("click", e => {
 });
 // the countdown ticks without new data
 setInterval(() => {
-  if (data && data.carrier && (data.carrier.planned || carrierTripNow())) { renderCarrier(); if (tilesFolded) renderTilesLine(); }
+  if (data && (data.carrier && (data.carrier.planned || carrierTripNow()) || data.squadron_carrier && data.squadron_carrier.planned)) {
+    renderCarrier(); if (tilesFolded) renderTilesLine();
+  }
   try { carrierTripTick(); } catch (err) { console.warn("carrier trip:", err); }
 }, 1000);
 document.addEventListener("click", async e => {
@@ -1030,7 +1101,7 @@ window.addEventListener("resize", () => {   // "auto" follows the window
 drawTilesFold(); drawTilesMode();
 function tileLevel(id) { const c = document.getElementById(id).classList; return c.contains("urgent") ? "urgent" : c.contains("warn") ? "warn" : ""; }
 function tilesLineHtml() {
-  const p = data.position, f = data.fuel, cm = data.commander, u = data.unsold, c = data.carrier;
+  const p = data.position, f = data.fuel, cm = data.commander, u = data.unsold, c = shownCarrier(), sq = carrierSide() === "sc";
   const bit = (html, lvl, title) => `<span class="tl${lvl ? " tl-" + lvl : ""}"${title ? ` title="${esc(title)}"` : ""}>${html}</span>`;
   const ly = d => `${d.toLocaleString("en-US", {maximumFractionDigits: d < 10 ? 1 : 0})} ly`;
   // each tile's bit only where this device shows the tile (Settings → Display); the system's name if nothing else is left
@@ -1044,7 +1115,8 @@ function tilesLineHtml() {
     const where = c.aboard ? "aboard" : c.here ? "here" : c.distance != null ? ly(c.distance) : esc(c.system || "");
     // the countdown in a "cd" span: setLive updates it in place, the line is not rebuilt every second (S5-B3)
     const dep = left != null && left > 0 ? ` · departs in <span class="cd">${left >= 3600 ? `${Math.floor(left / 3600)} h ${Math.floor(left % 3600 / 60)} min` : `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`}</span>` : "";
-    out.push(bit(`${mk("fleet-carrier")}carrier ${where}${dep}`, dep && left < 300 && !c.aboard ? "urgent" : "", c.name || "your fleet carrier") + carrierAim(c));
+    out.push(sq ? bit(`${mk("squadron-carrier")}carrier ${where}${dep}`, "", c.name || c.callsign || "your squadron's carrier") + sysAimBtn(c.system, c.id64)
+      : bit(`${mk("fleet-carrier")}carrier ${where}${dep}`, dep && left < 300 && !c.aboard ? "urgent" : "", c.name || "your fleet carrier") + carrierAim(c));
   }
   const dl = tileLevel("tData");
   if (on("data") && dl) out.push(bit(dataBit, dl, "the Data tile: unfold the tiles for the detail"));
@@ -1541,7 +1613,8 @@ function nowSellPart(u) {
   if (!x) return "";
   const hw = data && data.highway, far = x.distance >= SELL_PLOT_MIN_LY, here = x.id64 != null && String(x.id64) === posId();
   if (here) return "";
-  const title = `${x.yours ? "your carrier" : x.name} (${x.what})${x.age_days != null && !x.yours ? `, reported ${x.age_days} days ago` : ""}`;
+  const title = `${x.yours ? "your carrier" : x.squadron ? `your squadron's carrier ${x.carrier_name || x.name}` : x.name} (${x.what})` +
+    `${x.age_days != null && !x.yours && !x.squadron ? `, reported ${x.age_days} days ago` : ""}`;
   const plot = !far ? "" : NS.ask && hw && !hw.complete
     ? ` <span class="cpask">replace your route to ${esc(hw.destination || "its end")}? <button type="button" class="mini" data-nowsellplot="yes">Replace</button> <button type="button" class="mini" data-nowsellplot="no">Keep</button></span>`
     : ` <button type="button" class="mini" data-nowsellplot="go" data-system="${esc(x.system)}" title="plot an exact route there now (Plot Route's exact options)">🛣</button>`;
@@ -4114,15 +4187,15 @@ function firstsSeenLine(w) {
 }
 // The nearest places to sell (Spansh station search): the nearest trustworthy one of each kind.
 // Your own carrier is the journal's (where it is now, S55): with how many carrier jumps would bring it to you
-const sellerTxt = x => !x ? "" : `${esc(x.name)}${x.yours ? " (your carrier)" : x.carrier ? " (carrier)" : ""} · ${esc(x.system)} · ${x.distance.toLocaleString("en-US", {maximumFractionDigits: 0})} ly` +
+const sellerTxt = x => !x ? "" : `${esc(x.carrier_name || x.name)}${x.yours ? " (your carrier)" : x.squadron ? " (your squadron's carrier)" : x.carrier ? " (carrier)" : ""} · ${esc(x.system)} · ${x.distance.toLocaleString("en-US", {maximumFractionDigits: 0})} ly` +
   (effRange() && x.distance ? ` ≈ ${jumpsFor(x.distance)} jump${jumpsFor(x.distance) > 1 ? "s" : ""}` : "") +
   (x.yours && x.carrier_jumps ? ` · ≈ ${x.carrier_jumps} carrier jump${x.carrier_jumps === 1 ? "" : "s"} to you` : "") +
-  (x.carrier && !x.yours && x.age_days != null ? ` <span class="unk">(seen ${x.age_days < 1 ? "today" : Math.round(x.age_days) + " d ago"})</span>` : "");
+  (x.carrier && !x.yours && !x.squadron && x.age_days != null ? ` <span class="unk">(seen ${x.age_days < 1 ? "today" : Math.round(x.age_days) + " d ago"})</span>` : "");
 function sellersLine() {
   const s = data.sellers; if (!s || !s.uc) return "";
   const uc = s.uc.fresh || s.uc.nearest, vi = s.vista.fresh || s.vista.nearest;
   const d = x => x ? `${x.distance.toLocaleString("en-US", {maximumFractionDigits: 0})} ly` : "?";
-  return `<div class="ln" title="nearest Universal Cartographics: ${uc ? sellerTxt(uc).replace(/<[^>]+>/g, "") : "none known"}\nnearest Vista Genomics: ${vi ? sellerTxt(vi).replace(/<[^>]+>/g, "") : "none known"}">sell: UC <b>${d(uc)}</b> · Vista <b>${d(vi)}</b>${uc && uc.yours ? " <span class=\"unk\">(your carrier)</span>" : ""}</div>`;
+  return `<div class="ln" title="nearest Universal Cartographics: ${uc ? sellerTxt(uc).replace(/<[^>]+>/g, "") : "none known"}\nnearest Vista Genomics: ${vi ? sellerTxt(vi).replace(/<[^>]+>/g, "") : "none known"}">sell: UC <b>${d(uc)}</b> · Vista <b>${d(vi)}</b>${uc && uc.yours ? " <span class=\"unk\">(your carrier)</span>" : uc && uc.squadron ? " <span class=\"unk\">(your squadron's carrier)</span>" : ""}</div>`;
 }
 // how the exobiology aboard is priced: x5 per run where nobody had set foot on the body when you scanned it, and
 // the runs whose body's scan is not in your journals at the share of your past sales that earned the x5
@@ -6338,13 +6411,15 @@ async function loadNearest() {
   renderNearest();
 }
 function nearRowHtml(r) {
-  const who = r.kind === "carrier" ? `${mk("fleet-carrier")}<b>${esc(r.name || r.callsign)}</b>${r.name ? ` <span class="unk">${esc(r.callsign)}</span>` : ""}` : `<b>${esc(r.name)}</b>`;
+  // a four-letter callsign is a squadron's carrier (outrider.dock.is_squadron); yours or your squadron's: `own`
+  const sqd = r.kind === "carrier" && r.squadron, mine = !r.own ? "" : sqd ? "your squadron's" : "yours";
+  const who = r.kind === "carrier" ? `${mk(sqd ? "squadron-carrier" : "fleet-carrier")}<b>${esc(r.name || r.callsign)}</b>${r.name ? ` <span class="unk">${esc(r.callsign)}</span>` : ""}` : `<b>${esc(r.name)}</b>`;
   const badge = r.dssa ? ` <span class="dssabadge" title="Deep Space Support Array carrier: stationed for explorers, open to all${r.until ? `, until ${esc(r.until)}` : ""}">🛰 DSSA</span>` : "";
-  const kind = r.kind === "carrier" ? `Fleet carrier${r.own ? " · yours" : r.dssa && r.until ? ` · stationed until ${esc(r.until)}` : ""}` : esc(r.station_type || "Station");
+  const kind = r.kind === "carrier" ? `${sqd ? "Squadron" : "Fleet"} carrier${mine ? ` · ${mine}` : r.dssa && r.until ? ` · stationed until ${esc(r.until)}` : ""}` : esc(r.station_type || "Station");
   const sv = r.services || [], tk = TRADER_KINDS.find(k => sv.includes(k));
   const has = NEAR_NEEDS.map(([k]) => `<span class="tagx${sv.includes(k) ? " on" : ""}">${k}</span>`).join(" ") +
     (sv.includes("Trader") ? ` <span class="tagx on" title="${tk ? `a ${traderWords(tk)}` : "a material trader: Spansh does not say which kind"}">⇄ ${tk ? tk.toLowerCase() : "trader"}</span>` : "");
-  const dock = r.own ? `<span class="good">yours</span>` : r.warn && r.warn.length ? `<span class="warnc">⚠ ${esc(r.warn.join(", "))}</span>` : "open to all";
+  const dock = r.own ? `<span class="good">${mine}</span>` : r.warn && r.warn.length ? `<span class="warnc">⚠ ${esc(r.warn.join(", "))}</span>` : "open to all";
   const src = r.own ? "your journal" : r.dssa ? `<span class="dssa">DSSA</span><br>docked there ${nearAgo(r.age_s)}` : `${esc(r.source)}<br>reported ${nearAgo(r.age_s)}`;
   return `<tr><td>${who}${badge}<div class="unk">${kind} · ${esc(r.system || "")}</div></td>` +
     `<td class="num"${r.from_you != null ? ` title="${Math.round(r.from_you).toLocaleString()} ly from you"` : ""}>${r.here ? "here" : `${Math.round(r.ly).toLocaleString()} ly`}${r.jumps ? `<div class="unk">≈ ${r.jumps} jump${r.jumps === 1 ? "" : "s"}</div>` : ""}</td>` +

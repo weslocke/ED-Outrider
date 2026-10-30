@@ -262,7 +262,8 @@ async def nearest_dock(get, text, rows=10):
     if d.get("error"):
         return d["error"], None
     rows_ = [dict(p, ly=p["distance_ly"], here=not p["distance_ly"], warn=p["warnings"],
-                  station_type=p.get("station_type"), own=bool(p.get("yours"))) for p in d.get("places") or []]
+                  station_type=p.get("station_type"), own=bool(p.get("yours") or p.get("your_squadrons")),
+                  squadron=bool(p.get("squadron_carrier"))) for p in d.get("places") or []]
     said = dock.spoken({"rows": rows_}, need, kind)
     # the row dock.spoken names: your own carrier where you are is no answer
     place = next((p for p in rows_ if not (p["here"] and p["own"])), None)

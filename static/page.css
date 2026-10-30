@@ -459,6 +459,10 @@ button.icon.hushbtn.on { border-color: var(--warn); }
 @media (min-width: 640px) and (max-width: 1199px) { #tWhere { grid-column: span 2; } }
 .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px 7px; min-width: 0; }
 .tile .lbl { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; }
+/* the Carrier tile's FC | SC switch (your fleet carrier, your squadron's), only while both are known */
+.tile .lbl .cside { display: inline-flex; margin-left: 6px; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; vertical-align: 1px; }
+.tile .lbl .cside button { font: inherit; letter-spacing: inherit; padding: 0 6px; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.tile .lbl .cside button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
 .tile .val { font-size: 15px; font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile .val b { font-weight: 600; }
 .tile .ln { color: var(--muted); font-size: 12px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

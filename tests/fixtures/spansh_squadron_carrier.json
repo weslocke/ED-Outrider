@@ -1,0 +1,91 @@
+{
+ "record": {
+  "name": "7738",
+  "carrier_name": "THE WINCHESTER",
+  "type": "Drake-Class Carrier",
+  "carrier_docking_access": "Squadron",
+  "distance_to_arrival": 337.110597,
+  "has_large_pad": true,
+  "large_pads": 16,
+  "medium_pads": 8,
+  "small_pads": 8,
+  "market_id": 3713298944,
+  "system_name": "Hajangai",
+  "system_id64": 7780366815938,
+  "system_x": -28.125,
+  "system_y": 4.90625,
+  "system_z": -68.28125,
+  "updated_at": "2026-10-30T17:51:29Z",
+  "services": [
+   {
+    "name": "Dock"
+   },
+   {
+    "name": "Autodock"
+   },
+   {
+    "name": "Market"
+   },
+   {
+    "name": "Contacts"
+   },
+   {
+    "name": "Universal Cartographics"
+   },
+   {
+    "name": "Outfitting"
+   },
+   {
+    "name": "Crew Lounge"
+   },
+   {
+    "name": "Restock"
+   },
+   {
+    "name": "Refuel"
+   },
+   {
+    "name": "Repair"
+   },
+   {
+    "name": "Shipyard"
+   },
+   {
+    "name": "Workshop"
+   },
+   {
+    "name": "Flight Controller"
+   },
+   {
+    "name": "Station Operations"
+   },
+   {
+    "name": "Station Menu"
+   },
+   {
+    "name": "Fleet Carrier Management"
+   },
+   {
+    "name": "Fleet Carrier Fuel"
+   },
+   {
+    "name": "Livery"
+   },
+   {
+    "name": "Social Space"
+   },
+   {
+    "name": "Bartender"
+   },
+   {
+    "name": "Vista Genomics"
+   },
+   {
+    "name": "Pioneer Supplies"
+   },
+   {
+    "name": "Squadron Bank"
+   }
+  ]
+ }
+}

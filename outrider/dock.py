@@ -6,7 +6,8 @@ Three sources, read only, never anything uploaded:
   how old it is and the finder hides what is older than the player's limit (30 days by default).
 - The Deep Space Support Array's carrier list, as EDAstro publishes it (`DSSA_URL`, rebuilt from the DSSA tracker and
   EDDN dockings): carriers stationed for years in the black for explorers, open to all by the network's rules.
-- Your own carrier, from your journal.
+- Your own carrier, and your squadron's, from your journal (your squadron's with Spansh's report of its name and
+  services: a member's journal has neither).
 
 A carrier in Spansh and the DSSA list (by callsign) is one row: the DSSA badge, the fresher of the two places, and the
 services of both. Docking access other than "All" is shown with a warning, not hidden (the author, 2026-10-08):
@@ -29,6 +30,9 @@ FAR_LS = 5000
 SERVICES = ("UC", "Vista", "Repair", "Refuel", "Shipyard", "Outfitting", "Trader", "Raw", "Manufactured", "Encoded")
 SPANSH_SERVICES = {"Universal Cartographics": "UC", "Vista Genomics": "Vista", "Repair": "Repair", "Refuel": "Refuel",
                    "Shipyard": "Shipyard", "Outfitting": "Outfitting", "Material Trader": "Trader"}
+# a Docked line's StationServices (the game's ids) -> the finder's names; repair and refuel are optional on a carrier too
+GAME_SERVICES = {"exploration": "UC", "vistagenomics": "Vista", "repair": "Repair", "refuel": "Refuel",
+                 "shipyard": "Shipyard", "outfitting": "Outfitting"}
 # A material trader's kind is Spansh's `material_trader` field, spelled as here, and its station search filters on it
 # (scripts/trader_probe.py, 2026-10-12: tests/fixtures/spansh_traders.json). 7 of the galaxy's 1,639 traders (Colonia's
 # outposts, a megaship) list the service with no kind: they are a "Trader" of no kind, never one guessed from the
@@ -57,6 +61,12 @@ def _num(v):
     except (TypeError, ValueError):
         return None
     return f if math.isfinite(f) else None
+
+
+def is_squadron(callsign):
+    """A squadron carrier's callsign is its squadron's four-character tag, a fleet carrier's XXX-XXX (Spansh calls both
+    a Drake-Class Carrier; outrider.pads.layout tells their decks apart the same way)."""
+    return len(str(callsign or "").strip()) == 4
 
 
 def dssa_services(words):
@@ -90,6 +100,7 @@ def dssa_rows(data):
                      "id64": None, "x": xyz[0], "y": xyz[1], "z": xyz[2], "ls": None,
                      "services": dssa_services(x.get("services")), "pads": "L M", "large": True, "medium": True,
                      "access": "All", "seen": _secs(x.get("lastSeenDate")), "source": "DSSA", "dssa": True,
+                     "squadron": is_squadron(x["callsign"]),
                      "until": str(x.get("until") or ""),
                      # stationed elsewhere just now (a restock run): its home is kept, with a warning
                      "away": seen if seen and home and seen.lower() != home.lower() else None})
@@ -124,8 +135,14 @@ def spansh_rows(results):
                      "pads": "L M" if carrier else " ".join(p for p, on in (("L", large), ("M", medium), ("S", True)) if on),
                      "large": large, "medium": medium,
                      "access": r.get("carrier_docking_access") if carrier else "All",
+                     "squadron": carrier and is_squadron(r["name"]),
                      "seen": _secs(r.get("updated_at")), "source": "Spansh", "dssa": False, "until": "", "away": None})
     return rows
+
+
+def game_services(ids):
+    """A Docked line's StationServices as the finder's names (GAME_SERVICES)."""
+    return {GAME_SERVICES[x] for x in (str(i).lower() for i in ids or []) if x in GAME_SERVICES}
 
 
 def own_row(carrier):
@@ -133,23 +150,36 @@ def own_row(carrier):
     c = carrier or {}
     if c.get("id") is None or c.get("x") is None or (c.get("decommission") or {}).get("done"):
         return None
-    # the services its last Docked listed (the game's ids); repair and refuel are optional on a carrier too
-    ids = {str(x).lower() for x in c.get("services") or []}
-    services = {name for sid, name in (("exploration", "UC"), ("vistagenomics", "Vista"), ("repair", "Repair"),
-                                        ("refuel", "Refuel"), ("shipyard", "Shipyard"), ("outfitting", "Outfitting"))
-                if sid in ids}
+    services = game_services(c.get("services"))   # those its last Docked listed
     for key, name in (("has_uc", "UC"), ("has_vista", "Vista")):
         if key in c:   # the carrier summary's word: the newer of its last Docked and its crew (a paused service is off)
             (services.add if c[key] else services.discard)(name)
     return {"kind": "carrier", "callsign": str(c.get("callsign") or "").upper(), "name": c.get("name") or "",
             "system": c.get("system"), "id64": c.get("id64"), "x": c["x"], "y": c["y"], "z": c["z"], "ls": 0,
             "services": services, "pads": "L M", "large": True, "medium": True, "access": "yours",
-            "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True}
+            "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True, "squadron": False}
 
 
-def merge(spansh, dssa, own=None):
+def squadron_row(sc):
+    """Your squadron's carrier (State.squadron_carrier_summary: the journal's place, Spansh's name and services), always
+    usable by you: a member may dock there. `own` like your carrier (never hidden as old, no access warning); `squadron`
+    says whose."""
+    c = sc or {}
+    if c.get("id") is None or c.get("x") is None:
+        return None
+    services = {s for s in c.get("services") or [] if s in SERVICES}
+    for key, name in (("has_uc", "UC"), ("has_vista", "Vista")):
+        if key in c:
+            (services.add if c[key] else services.discard)(name)
+    return {"kind": "carrier", "callsign": str(c.get("callsign") or "").upper(), "name": c.get("name") or "",
+            "system": c.get("system"), "id64": c.get("id64"), "x": c["x"], "y": c["y"], "z": c["z"], "ls": c.get("ls"),
+            "services": services, "pads": "L M", "large": True, "medium": True, "access": "your squadron's",
+            "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True, "squadron": True}
+
+
+def merge(spansh, dssa, own=None, squadron=None):
     """One row per place: a carrier known to both Spansh and the DSSA list (same callsign) keeps the DSSA badge, the
-    fresher place and the services of both; your own carrier replaces any report of it."""
+    fresher place and the services of both; your own carrier, and your squadron's, replace any report of them."""
     by_call = {}
     out = []
     for r in spansh:
@@ -171,8 +201,9 @@ def merge(spansh, dssa, own=None):
                  **{k: fresher[k] for k in ("system", "x", "y", "z")})
         if moved:   # Spansh's id64 and arrival distance were the old system's: unknown here (no permit check on it)
             s.update(id64=None, ls=None)
-    if own:
-        out = [r for r in out if not (r["kind"] == "carrier" and r["callsign"] == own["callsign"])] + [own]
+    for mine in (own, squadron):
+        if mine:
+            out = [r for r in out if not (r["kind"] == "carrier" and r["callsign"] == mine["callsign"])] + [mine]
     return out
 
 
@@ -206,7 +237,7 @@ def nearest(rows, pos, need=(), stations=True, carriers=True, pad=None, age_days
             continue
         ly = math.dist((pos["x"], pos["y"], pos["z"]), (r["x"], r["y"], r["z"]))
         warn = []
-        if r["access"] not in ("All", "yours"):
+        if r["access"] not in ("All", "yours") and not r.get("own"):
             warn.append(ACCESS.get(r["access"], f"docking: {r['access']}"))
         if r.get("away"):
             warn.append(f"last seen at {r['away']}")
@@ -243,14 +274,16 @@ def spoken(result, need=(), kind=None):
     if not rows:
         return f"No {place} {'with ' + what + ' ' if what else ''}is known nearby with recent enough reports."
     r = rows[0]
-    sort = "fleet carrier" if r["kind"] == "carrier" else (r.get("station_type") or "station").lower()
+    sort = ("squadron carrier" if r.get("squadron") else "fleet carrier") if r["kind"] == "carrier" else \
+        (r.get("station_type") or "station").lower()
     name = r["name"] or r["callsign"]
     where = (f", here in {r['system']}" if r["system"] else ", in this system") if r.get("here") else \
         f", {round(r['ly']):,} light years away{', in ' + r['system'] if r['system'] else ''}"
     if trader == "Trader":   # any kind asked for: which one this is
         kinds = [k for k in TRADER_KINDS if k in r["services"]]
         sort += f" trading {kinds[0].lower()} materials" if kinds else " whose trader's kind is not reported"
-    out = (f"Nearest {place}{' with ' + what if what else ''}: {name}, {'an' if sort[:1] in 'aeiou' else 'a'} {sort}"
+    sort = "your squadron's carrier" if r.get("own") and r.get("squadron") else f"{'an' if sort[:1] in 'aeiou' else 'a'} {sort}"
+    out = (f"Nearest {place}{' with ' + what if what else ''}: {name}, {sort}"
            f"{' of the Deep Space Support Array' if r.get('dssa') else ''}{where}.")
     if r["warn"]:
         out += " Careful: " + ", ".join(r["warn"]) + "."

@@ -1344,6 +1344,16 @@ upstream project's choices, not rules of the game.
   means signing in to Frontier (as EDMC and Inara do). Outrider never does: it reads the player's own journal files
   and talks only to the public services listed under "Nothing is uploaded unless the player switches it on" above,
   so the player's Frontier account is never involved. The sell-order method is the price of that, and the README says so.
+- **Your squadron's carrier is a member's view** (plan 2026-10-30, Hiner399 in discussion #3): where it is, from the
+  `CarrierLocation` each login writes, with Spansh's name, services and distance from the star (asked for by its ID
+  once a day and when it moves); never its cargo, money or a tritium estimate, which other members change without a
+  line in your journal. It counts as a place you may sell and dock (your squadron's, no "squadron only" warning), never
+  as one that can come to you (no "to you" jumps, no trip). Its place is the journal's unless Spansh has a newer report
+  of it elsewhere (a member hears of a move only at the next login), shown as Spansh's. It is dropped when a session
+  wrote `SquadronStartup` but no carrier line by its end, or you leave the squadron: never on a missing line alone,
+  since some logins write neither (JOURNAL_REFERENCE). No alerts for its moves: they are learned late. The
+  officers' lines (stats, a booking, a deposit) are read by their documented shape, unconfirmed. Frontier's API
+  (`/squadron`, read-only) would fill the rest, but needs the sign-in above: kept for later, optional if ever.
 - **Old carrier history is trusted only while it adds up.** Unjournaled trades (other players buying from an old
   sell order) leave old lines wrong: the author's 2025 colonisation hauling left 34,000 t tracked that was long gone.
   At a market read that finds the carrier holding less than is tracked, tracked lines with no news for 30 days go

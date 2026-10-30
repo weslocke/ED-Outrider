@@ -135,6 +135,15 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   aboard, a `CarrierJump` a minute later. `CarrierJump` has **no CarrierID** (its `MarketID` is the carrier's, with
   `StationType` FleetCarrier) and carries `StarPos`; `CarrierLocation` has none. Of the author's 248 requests, 172 have
   a CarrierJump. A squadron's carrier writes `CarrierLocation` too (`CarrierType` SquadronCarrier, at every login).
+  At a login (the author's journals, 2025-11 to 2026-10, checked 2026-10-30): `SquadronStartup`, then the squadron
+  carrier's `CarrierLocation`, 0-17 s later (all 93 such logins), before or after `Location`: the order varies. Some
+  logins have neither line though you are still a member (2026-07-01 and -04). So only a session with
+  `SquadronStartup` and no carrier line by its `Shutdown` or the next `LoadGame` means the squadron has none
+  (Journals.handle_squadron_carrier drops it then).
+  Every `Carrier*` line names its `CarrierType` but `CarrierJump` (by `MarketID`, like `Docked` there: `StationType`
+  FleetCarrier, the four-letter callsign as `StationName`). A member's journal has only the CarrierLocation lines; the
+  officers' (`CarrierStats`, `CarrierJumpRequest`...) are read by their documented shape, unconfirmed. Spansh calls a
+  squadron carrier a "Drake-Class Carrier" too: its four-character callsign (`name`) tells it apart.
   The depot changes only by a jump and a `CarrierDepositFuel` (`Amount`, `Total` the depot after) or tritium donated by
   other players (not in your journal).
 

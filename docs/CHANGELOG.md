@@ -2,6 +2,27 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-30 · Your squadron's carrier on the Carrier tile, the sell lists and the dock finder
+- Hiner399's idea (GitHub discussion #3), a member's view (plan 2026-10-30). The reader keeps your squadron's carrier
+  beside your own (`Journals.handle_squadron_carrier`, meta `squadron_carrier`) instead of throwing its lines away: its
+  `CarrierLocation` at each login, a dock there and a jump aboard by `MarketID`, and the officers' lines (`CarrierStats`,
+  a booking, a deposit) by their documented shape, unconfirmed. A session with `SquadronStartup` but no carrier line
+  by its `Shutdown` or the next `LoadGame` (the line follows within 17 s in all 93 of the author's logins, before or
+  after `Location`; some logins have neither, still a member), or leaving the squadron, drops it. Checked on the
+  author's journals (Windows and Linux, read into a scratch database): first seen 2025-11-24, never dropped. Its lines
+  still never reach your carrier's cargo. `PARSER_VERSION` 66 re-reads the journals.
+- Spansh by its ID (`SPANSH_STATION`, meta `squadron_carrier_spansh`, once a day and when it moves): its name,
+  services and distance from the star; a newer Spansh report of it elsewhere is shown, marked as Spansh's.
+- The Carrier tile: an FC | SC switch while both are known (docking at one shows it; the pick kept per device as
+  `carrierSide`); the SC side has the squadron carrier marker, where, how far, 🎯 by system and 🛣, your jumps to it,
+  UC and Vista; a booked jump and a tritium reading only from an officer's lines. Only a squadron's carrier: the tile
+  shows it. The fleet carrier's departure warning moved out of the drawing (`carrierDepartWarn`), so it fires whichever
+  side shows.
+- Sell lists and Now's sell line offer it as your squadron's (Spansh's report of it dropped); Nearest place to dock
+  lists it as "your squadron's" with no access warning, and every four-letter callsign as a squadron carrier
+  (`outrider.dock.is_squadron`); the voice says "your squadron's carrier"; `/api/status` and the AI's
+  `current_status` carry it.
+
 ## 2026-10-27 · The docking pad on Now at once, only its voice delayed
 - Kurbo26 (GitHub discussion #3, 2026-10-26): with `[speech] pad_delay` at 9 s the overlay showed the pad at once (it
   asks every second) but Now's pad and the tablet's switch to Now waited for the voice. A held grant writes the pad
