@@ -84,6 +84,18 @@ class Inventory(unittest.TestCase):
         self.assertTrue(rows[6]["in_transit"])
         self.assertEqual(C.ships(None), {"ts": None, "ships": [], "here": None})
 
+    def test_a_stored_ship_keeps_its_name_and_ident(self):
+        """Complete review 2026-10-30: a ship stored by a swap or a purchase has no name in the event, and StoredShips no
+        ident: its latest Loadout gives them."""
+        fleet = {"listed": None, "ships": {"2": {"id": 2, "type": "anaconda", "name": None, "ident": None},
+                                            "4": {"id": 4, "type": "adder", "name": "Listed", "ident": None}}}
+        loadouts = [{"ship_id": 1, "ship_type": "krait_light", "name": "Rover", "ident": "RV-01", "ts": "b", "value": 1, "loadout": None},
+                    {"ship_id": 2, "ship_type": "anaconda", "name": "Big Mama", "ident": "BM-01", "ts": "a", "value": 2, "loadout": None},
+                    {"ship_id": 4, "ship_type": "adder", "name": "Old name", "ident": "AD-01", "ts": "a", "value": 3, "loadout": None}]
+        rows = {r["id"]: r for r in C.ships(fleet, loadouts)["ships"]}
+        self.assertEqual((rows[2]["name"], rows[2]["ident"]), ("Big Mama", "BM-01"))
+        self.assertEqual((rows[4]["name"], rows[4]["ident"]), ("Listed", "AD-01"))   # the list's name wins
+
     def test_the_fleet_after_the_list(self):
         """Should 1: a ship sold, swapped, sent for or renamed after the last StoredShips (as inara._fleet reads them);
         a Loadout newer than the list gives the value."""

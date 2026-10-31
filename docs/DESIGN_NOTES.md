@@ -1708,6 +1708,13 @@ upstream project's choices, not rules of the game.
   venv; `PYTHON=` still wins. With none that suits Outrider still runs, with the browser's voice, and a block before
   the setup says how to get Piper (install 3.14, delete `.venv`). An existing `.venv` is kept, except one made by a
   Python older than 3.11.
+- **A genus your codex entry on a body names is there before the DSS** (complete review 2026-10-30,
+  `bio_left_groups` / `bio_guess_seen` / `bio_options` with the body's `codex_species_seen`): a composition scan from
+  the ship logs the species, so it takes one of the body's signals whatever the rules rank it, priced at that
+  species (not the genus' best); the other signals are still guessed from the most valuable genera, and the options'
+  range is that species plus the rest's cheapest / dearest. Every place that prices a body's bio does it (Here, the
+  leaving line, Nearby, the approach briefing, the unsold list, the value alert). A genus the codex names that the
+  rules rule out there is not added.
 
 ## Known limits
 

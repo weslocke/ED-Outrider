@@ -2459,6 +2459,46 @@ class BatchBState(unittest.TestCase):
             pot = next(p for p in self.state.leaving_summary(1)["bio_pending"] if p["body"] == "A 4")["potential"]
             self.assertEqual(pot, v + next(c["value"] for c in self.CANDS if c["genus"] == "Stratum"))
 
+    def test_a_codex_seen_genus_below_the_top_n_is_priced(self):
+        """Complete review 2026-10-30: before the DSS the top N genera were priced, then the codex's species put in
+        place of its genus only when that genus made the cut; below it, a guess was priced instead (value, bio left,
+        the leaving line, Nearby), and the options' range counted it as one option among the rest."""
+        if not outrider.bio or not outrider.bio.species_by_name("Bacterium Vesicula"):
+            self.skipTest("no bio_rules.json")
+        self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, SurfaceGravity=2.6 * 9.80665, WasFootfalled=False,
+                    AtmosphereType="CarbonDioxide", SurfaceTemperature=180, PlanetClass="Rocky body", MassEM=0.2)
+        self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:01:30Z", "SystemAddress": 1, "BodyID": 4,
+                       "BodyName": "S1 A 4", "Signals": [{"Type": ed_outrider.BIO, "Count": 2}]})
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, category, subcategory, system, body_id) VALUES "
+                        "('2026-01-01T00:03:00Z', 2310901, 'Bacterium Vesicula - Red', '$Codex_Category_Biology;', "
+                        "'$Codex_SubCategory_Organic_Structures;', 1, 4)")
+        self.db.commit()
+        v, top = outrider.bio.species_value("Bacterium Vesicula"), 19_010_800   # Bacterium is last of the four guesses
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=self.CANDS):
+            b = next(b for b in self.state.system_detail(1)["bodies"] if b["name"] == "A 4")
+            self.assertEqual(sorted(g["genus"] for g in b["bio_guess"]), ["Bacterium", "Stratum"])
+            self.assertEqual(b["bio_potential"], top + v)
+            self.assertEqual(b["value_parts"]["bio_left"], (top + v) * b["value_parts"]["bio_factor"])
+            self.assertEqual((b["bio_options"]["low"], b["bio_options"]["high"]), (v + 3_703_200, top + v))
+            pot = next(p for p in self.state.leaving_summary(1)["bio_pending"] if p["body"] == "A 4")["potential"]
+            self.assertEqual(pot, top + v)
+            recs = ed_outrider.merge_records([], *ed_outrider.own_data(self.db, 1, "S1")[:2])
+            self.assertEqual(self.state.system_value(1, "S1", recs, None)["value_parts"]["bio_left"],
+                             (top + v) * b["value_parts"]["bio_factor"])
+            self.assertEqual(self.state.approach_facts(1, 4, "S1 A 4")["bio_value"], top + v)
+
+    def test_a_run_under_way_with_no_signal_count_is_pending(self):
+        """Complete review 2026-10-30: the leaving summary looked only at bodies with your own signal count or DSS, so a
+        run under way on a body picked from Spansh's counts (no FSS, no DSS) was left out and the summary said clean."""
+        self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, PlanetClass="Rocky body")
+        for i, kind in enumerate(("Log", "Sample")):
+            voice_organic(self, f"2026-01-01T00:0{2 + i}:00Z", kind, "Bacterium Aurasus", "Bacterium")
+        self.db.commit()
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=self.CANDS):
+            ls = self.state.leaving_summary(1)
+        self.assertEqual([p["partial"] for p in ls["bio_pending"] if p["body"] == "A 4"], [{"Bacterium": 2}])
+        self.assertFalse(ls["clean"])
+
     def test_codex_new_per_variant_in_the_summaries(self):   # P11
         region = outrider.bio.region_name(0, 0, 0)
         if not region:
@@ -2664,7 +2704,9 @@ class BatchBState(unittest.TestCase):
         cands = [dict(self.CANDS[0], variants=["Stratum Tectonicas - Teal", "Stratum Tectonicas - Green"]), dict(self.CANDS[1], variants=[])]
         with unittest.mock.patch.object(outrider.bio, "predict", return_value=cands):
             body = next(b for b in self.state.system_detail(1)["bodies"] if b["name"] == "A 4")
-            opts = {g["genus"]: g for g in body["bio_options"]["genera"]}
+            # the one signal is the Stratum the codex names: no options left (complete review 2026-10-30), the guess
+            self.assertIsNone(body["bio_options"])
+            opts = {g["genus"]: g for g in body["bio_guess"]}
             [pend] = self.state.leaving_summary(1)["bio_pending"]
             self.assertEqual((opts["Stratum"]["codex_new"], pend["codex_new"]), (False, False))   # the table as the line
         # two colour candidates, the first logged: the line names the other one

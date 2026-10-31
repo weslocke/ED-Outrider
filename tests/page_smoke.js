@@ -8972,8 +8972,9 @@ const releasePayloads = async () => {
     const w = dom.window, before = errors.length;
     const served = await (await fetch(base + "api/speech")).json();
     w.eval(`window.__c3 = {crew: data.crew, lib: speechLib, play: labPlayLine, styles: localStorage.getItem("speechStyles"), noRec: lineNoRecord,
-        heard: JSON.stringify(recentLines)};
-      lineNoRecord = true; for (const k of Object.keys(recentLines)) delete recentLines[k];   // every line fresh: the picks are at random
+        heard: JSON.stringify(recentLines), stored: store.get("speechHeard", null)};
+      // every line fresh: the picks are at random (line() reads the stored copy too: emptied as well)
+      lineNoRecord = true; for (const k of Object.keys(recentLines)) delete recentLines[k]; store.set("speechHeard", {});
       speechLib = {version: "crew3", banned: {}, crew_roles: ${JSON.stringify(served.crew_roles)}, styles: {business: "Down to business"},
         lines: {tank_full: {business: ["Tank full.", "{navigator} can plot."]},
                 fsd_charge: {business: ["Jumping. Ask {engineer} about the drive."]},
@@ -9009,7 +9010,7 @@ const releasePayloads = async () => {
     got.audition = JSON.parse(w.eval(`JSON.stringify([window.__aud, window.__audSaid.slice(-1)])`));
     got.buttons = [!!w.document.getElementById("labCrewLines"), !!w.document.getElementById("crewLinesAudition")];
     w.eval(`const k = window.__c3; data.crew = k.crew; speechLib = k.lib; labPlayLine = k.play; lineNoRecord = k.noRec;
-      Object.assign(recentLines, JSON.parse(k.heard));
+      Object.assign(recentLines, JSON.parse(k.heard)); store.set("speechHeard", k.stored);
       if (k.styles === null) localStorage.removeItem("speechStyles"); else localStorage.setItem("speechStyles", k.styles);
       delete window.__c3; delete window.__pick; delete window.__aud; delete window.__audSaid;`);
     const want = {
@@ -10555,7 +10556,7 @@ const releasePayloads = async () => {
         await ringPricesAsk(b, "81");
         renderBodyInto(panel, b, "X 1", "closeSearchBody()", "81");
         const before = (panel.querySelector(".ringprices") || {}).textContent;
-        RING_PRICES.set("81|Painite", Object.assign(RING_PRICES.get("81|Painite"), {at: -1e9}));
+        RING_PRICES.set(ringKey("81", "Painite"), Object.assign(RING_PRICES.get(ringKey("81", "Painite")), {at: -1e9}));
         await fire();
         const after = (panel.querySelector(".ringprices") || {}).textContent;
         [selectedSystem, bodyData, selectedBody] = keepSel; renderBody = realRB;
@@ -11271,6 +11272,138 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| review fixes (6) |", bad.length || got.error ? `failed ${bad.join(", ")} ${got.error || ""}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "countdowns update in place, mapped by others, from you, the lone star's ring, the line on the followed route, a mention read, the newest Boxel answer, an unsaved edit kept", errors.slice(before));
+  }
+  // complete review 2026-10-30, the last batch: the page's lows, each checked on its own
+  review_lows_batch8: { if (skip("review_lows_batch8")) break review_lows_batch8;
+    const w = dom.window, d = w.document, before = errors.length, got = {}, said = [];
+    const step = async (k, f) => { try { got[k] = await f(); } catch (e) { got[k] = "threw: " + ((e && e.message) || e); } };
+    // the compact pre-Odyssey badge's hover: line breaks, not "&#10;" as text
+    await step("badge", () => w.eval(`(() => { const div = document.createElement("div");
+      div.innerHTML = statusBadge("s-old", "🪦 pre-Odyssey", "Worth a rescan.&#10;&#10;A 1", "🪦");
+      const t = div.querySelector(".sf").title; return [t.includes("\\n"), t.includes("&#10;")]; })()`));
+    // the carrier trip's head: "1 leg", the hours said as to go, none once done
+    await step("trip", () => w.eval(`(() => { const saved = data.carrier_trip, head = () => document.getElementById("fcTripHead").textContent;
+      const trip = o => Object.assign({id: 1, at: 0, n: 1, hours: 0.5, legs: [{system: "Far"}], totals: {}}, o);
+      data.carrier_trip = {trip: trip({})}; fcTripDrawn = ""; drawFcTrip(); const one = head();
+      data.carrier_trip = {trip: trip({id: 2, at: 6, n: 6, hours: 0, done: true})}; fcTripDrawn = ""; drawFcTrip(); const done = head();
+      data.carrier_trip = saved; fcTripDrawn = ""; drawFcTrip();
+      return [/· 1 leg, about 0.5 h to go/.test(one), /6 legs/.test(done), /about/.test(done)]; })()`));
+    // a carrier bought, no CarrierStats yet: its callsign on the tile
+    await step("carrierName", () => w.eval(`(() => { const saved = [data.carrier, data.squadron_carrier, store.get("carrierSide", null)];
+      store.set("carrierSide", "fc"); data.carrier = {name: null, callsign: "ABC-123", system: "New Place", distance: 5}; data.squadron_carrier = null;
+      renderCarrier(); const v = markText(document.querySelector("#carrierLine .val"));
+      [data.carrier, data.squadron_carrier] = saved; store.set("carrierSide", saved[2]); renderCarrier(); return v.includes("ABC-123"); })()`));
+    // a window that does not speak but posted the alert to the overlay: it reached you (leftWarned, the jumponium fold)
+    await step("reached", () => w.eval(`(() => { const real = overlayAlert, mode = store.get("speakMode", null);
+      overlayAlert = () => true; store.set("speakMode", "never");
+      try { return alertOut("sampling", "Left B 2 unfinished", "Bacterium 1 of 3"); }
+      finally { overlayAlert = real; store.set("speakMode", mode); } })()`));
+    // the heard lines another window recorded since this one loaded are kept, not written over
+    await step("heard", () => w.eval(`(() => { const k = "carrier_arrived", saved = store.get("speechHeard", null), mem = recentLines[k];
+      store.set("speechHeard", {[k]: ["a line the other window said"]});
+      line(k, {carrier: "C", system: "S"});
+      const kept = (store.get("speechHeard", {})[k] || []).includes("a line the other window said");
+      store.set("speechHeard", saved); if (mem) recentLines[k] = mem; else delete recentLines[k]; return kept; })()`));
+    // a ring's best prices are asked again from a new position
+    await step("ringMoved", () => w.eval(`(async () => { RING_PRICES.clear(); const saved = data.position; let n = 0;
+      const ask = async () => { n++; return [{station: "Hub", system: "S", distance: 5, price: 100}]; };
+      const b = {rings: [{name: "A Ring", hotspots: {Painite: 1}}]};
+      await ringPricesAsk(b, "88", ask, 1000); await ringPricesAsk(b, "88", ask, 1000);
+      data.position = Object.assign({}, saved, {id: "elsewhere", id64: 424242}); await ringPricesAsk(b, "88", ask, 1000);
+      data.position = saved; RING_PRICES.clear(); return n; })()`));
+    // Nearest with a small ship: known, any pad fits it
+    await step("pad", () => w.eval(`(() => { const saved = NR.answer;
+      NR.answer = {pad: "S", pad_known: true, ship: "diamondbackxl", rows: []}; renderNearest();
+      const t = document.getElementById("nearPad").textContent; NR.answer = saved; renderNearest(); return [/fits every pad/.test(t), /not known/.test(t)]; })()`));
+    // a star you never scanned, no Spansh answer: drawn as a star (no Physical "Landable", no pins)
+    await step("star", () => w.eval(`(() => { const div = document.createElement("div");
+      renderBodyInto(div, {full_name: "Sys", own: null, spansh: null, spansh_error: "down", row: {type: "Star", subtype: "K (Yellow-Orange) Star"}}, "Sys B", "", null);
+      return [/Landable/.test(div.textContent), /Add pin/.test(div.textContent)]; })()`));
+    // Boxels nearby folded stays folded over a redraw
+    await step("bxnear", () => w.eval(`(() => { const saved = [boxelData, boxelNear, store.get("bxNearOpen", null)], pane = document.getElementById("boxelPane"), hid = pane.hidden;
+      boxelData = null; boxelNear = {boxels: [{mc: "d", label: "Bx AB-C d1", prefix: "Bx AB-C d1-", distance: 5, visited: 0}], codes: {d: {}}};
+      pane.hidden = false; drawBoxel();
+      const det = pane.querySelector(".bxnear"); det.open = false; det.dispatchEvent(new Event("toggle"));
+      drawBoxel(); const open = pane.querySelector(".bxnear").open;
+      [boxelData, boxelNear] = saved; store.set("bxNearOpen", saved[2]); drawBoxel(); pane.hidden = hid; return open; })()`));
+    // the jumponium notification on a Materials tab already drawn: drawn again (and scrolled) at once
+    await step("matScroll", () => w.eval(`(() => { const real = renderMat, savedData = matData, was = view; let n = 0;
+      renderMat = () => { n++; }; matData = {};
+      try { openMatSources(); return n > 0; }
+      finally { renderMat = real; matData = savedData; matScroll = false; const v = document.querySelector('[data-view="' + was + '"]'); if (v) v.click(); } })()`));
+    // the Sell/Buy lookup's Plot route here goes through plotRouteTo (the exact plotter, the form open, plotted)
+    await step("lookPlot", () => w.eval(`(() => { const real = plotRouteTo; let to = null; plotRouteTo = n => { to = n; };
+      const box = document.getElementById("cargoLook");
+      box.insertAdjacentHTML("beforeend", '<button type="button" id="b8plot" data-lk="plot" data-name="Sol">Plot route here</button>');
+      document.getElementById("b8plot").click(); document.getElementById("b8plot").remove(); plotRouteTo = real; return to; })()`));
+    // a run started before Outrider restarted ends when the new process (another run_id) runs its own seq 1
+    await step("restart", () => w.eval(`(() => { const saved = [hwyRun, data.run_id, data.autotarget];
+      hwyRun = {seq: 7, run: "first", kind: "next", done: false, n: 5, at: Date.now(), msg: ""};
+      data.run_id = "second"; data.autotarget = Object.assign({}, data.autotarget, {test: {seq: 1, state: "counting"}});
+      hwyRunTrack(); const done = hwyRun.done; [hwyRun, data.run_id, data.autotarget] = saved; return done; })()`));
+    // with no lines file: the carrier's arrival named (not only the trip's words), and "1 jump left"
+    {
+      const realSpeak = w.speak, realPlay = w.play;
+      w.speak = t => said.push(t); w.play = () => {};
+      await step("plain", () => w.eval(`(() => {
+        const saved = {lib: speechLib, c: data.carrier, trip: data.carrier_trip, f: data.fuel, flags: [speechOn, isSpeaker, alertSpeak.carrier, alertSpeak.fuel],
+                       last: [lastCarrierMoved, lastCarrierId, lastUnderJumps, lastLowFlag], fj: store.get("fuelJumps", null)};
+        speechLib = {lines: {}}; speechOn = true; isSpeaker = true; alertSpeak.carrier = true; alertSpeak.fuel = true;
+        data.carrier = Object.assign({}, saved.c, {carrier_id: 77, name: "Sample Carrier", system: "New Sys", moved_ts: "t2", assumed: false});
+        lastCarrierId = 77; lastCarrierMoved = "t1";
+        data.carrier_trip = {trip: {id: 9, at: 2, n: 5, hours: 1, legs: [{system: "Far"}], totals: {}}};
+        store.set("fuelJumps", 2); lastUnderJumps = false; lastLowFlag = false;
+        data.fuel = Object.assign({}, saved.f, {live: true, pct: 50, jumps_recent: 1, in_ship: true, low_flag: false});
+        onData();
+        speechLib = saved.lib; data.carrier = saved.c; data.carrier_trip = saved.trip; data.fuel = saved.f;
+        [speechOn, isSpeaker, alertSpeak.carrier, alertSpeak.fuel] = saved.flags;
+        [lastCarrierMoved, lastCarrierId, lastUnderJumps, lastLowFlag] = saved.last; store.set("fuelJumps", saved.fj); return true; })()`));
+      await sleep(300);
+      w.speak = realSpeak; w.play = realPlay;
+      got.said = [said.some(t => /Sample Carrier is at New Sys\. Leg 2 of 5, 3 to go\./.test(t)), said.some(t => /Fuel low: 1 jump left\./.test(t))];
+    }
+    // Keep loaded set by hand above the pick-list's 20: shown as set
+    await step("keep", () => w.eval(`(() => { const saved = data.voice_memory;
+      data.voice_memory = {voices: [{voice: "a", mb: 80}], count: 6, mb: 480, loaded: 25, default: 4, kept: 6, kept_mb: 480, set_aside: 0, preload: false, on_server: false};
+      drawVoiceMemory(); const v = document.getElementById("vmKeep").value; data.voice_memory = saved; if (saved) drawVoiceMemory(); return v; })()`));
+    // a speaker list that failed to load is asked again, not left empty for good
+    {
+      const realFetch = w.fetch; let fail = true;
+      w.fetch = (u, o) => /api\/voices\/speakers\?voice=b8voice/.test(String(u))
+        ? Promise.resolve(fail ? {ok: false, status: 503} : {ok: true, status: 200, json: async () => ({speakers: [{id: 0, name: "p1"}, {id: 1, name: "p2"}]})})
+        : realFetch(u, o);
+      await step("speakers", async () => { const sel = d.createElement("select");
+        await w.eval(`(sel => fillSpeakers(sel, "b8voice", 0))`)(sel); const first = sel.options.length;
+        fail = false; await w.eval(`(sel => fillSpeakers(sel, "b8voice", 0))`)(sel);
+        w.eval(`delete speakerLists["b8voice"]`); return [first, sel.options.length]; });
+      w.fetch = realFetch;
+    }
+    // the voice lab: a slow list for the voice picked before is not put on the voice picked now
+    await step("lab", () => w.eval(`(async () => { const real = speakersOf, sel = labEl("labVoice"), keep = [sel.innerHTML, sel.value];
+      let release; const slow = new Promise(r => { release = r; });
+      speakersOf = async v => { if (v === "b8A") await slow; return v === "b8A" ? [{id: 0, name: "a0"}, {id: 1, name: "a1"}] : [{id: 0, name: "b0"}]; };
+      sel.innerHTML = '<option value="b8A">A</option><option value="b8B">B</option>';
+      sel.value = "b8A"; const a = labDrawSpeakers();
+      sel.value = "b8B"; await labDrawSpeakers(); release(); await a;
+      const out = [labEl("labSpk").dataset.voice, labEl("labSpkWrap").hidden];
+      speakersOf = real; sel.innerHTML = keep[0]; sel.value = keep[1]; delete labEl("labSpk").dataset.voice; return out; })()`));
+    // a page switch asked by voice: never "no window speaks"
+    await step("asked", () => w.eval(`askLogFacts({source: "tablet", ms: 5, matched: "fixed", command: "show_page", spoken: false}).join(" · ")`));
+    // a Surface map value typed out of range is stored and shown as the map uses it
+    await step("surf", () => w.eval(`(() => { const saved = store.get("surfaceCfg", null), el = document.getElementById("surfWarn");
+      el.value = "8000"; el.dispatchEvent(new Event("change"));
+      const out = [store.get("surfaceCfg", {}).warn, el.value]; store.set("surfaceCfg", saved); showSurfCfg(); return out; })()`));
+    // the lost-contact lines are made again for a new speaker of the same voice
+    await step("lost", () => w.eval(`lostLineKey({voice: "v", speaker: 3}, 1) !== lostLineKey({voice: "v", speaker: 40}, 1)`));
+    const want = {badge: [true, false], trip: [true, true, false], carrierName: true, reached: true, heard: true, ringMoved: 2,
+      pad: [true, false], star: [false, false], bxnear: false, matScroll: true, lookPlot: "Sol", restart: true, plain: true,
+      said: [true, true], keep: "25", speakers: [0, 2], lab: ["b8B", true], asked: "tablet · 5 ms · a page switch, not said",
+      surf: [4900, "4900"], lost: true};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const good = !bad.length && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| review_lows_batch8 |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
+      : "badge hover, trip head, carrier name, reached, heard lines, ring prices moved, pad, star, folds, scroll, plot, restart, plain words, Keep loaded, speakers, lab, page switch, surface, lost line", errors.slice(before));
   }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
   origin_guard: { if (skip("origin_guard")) break origin_guard;

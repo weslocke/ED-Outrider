@@ -136,6 +136,23 @@ class Checklist(unittest.TestCase):
         self.assertEqual(cl.table(SPECIES, 1, region_ok, runs, codex, 3)["summary"]["aboard"], 0)   # Emerald is region 2's
         self.assertEqual(s["colours_found"], 4)   # Teal, Emerald, Gold, the tubers' own one (Araneamus's run has no colour)
 
+    def test_colours_found_only_where_it_can_grow(self):
+        """Complete review 2026-10-30: a colour found of a species the rules rule out in the region counted in
+        colours_found but not in colours ("colours 2 of 1")."""
+        runs = [{"species_id": "$A1;", "species": "Aleoida Arcus", "variant": f"Aleoida Arcus - {c}", "region": 3, "state": "sold"}
+                for c in ("Teal", "Emerald")]
+        t = cl.table(SPECIES, 3, region_ok, runs, [], 3)
+        self.assertEqual(rows(t)["Aleoida Arcus"]["state"], "sold")          # still shown as found there
+        s = t["summary"]
+        self.assertEqual(s["colours_found"], 0)
+        self.assertLessEqual(s["colours_found"], s["colours"])
+
+    def test_a_retrograde_orbit_is_no_short_one(self):
+        """Complete review 2026-10-30: the tubers' max_orbital_period compared the signed period, and a retrograde
+        orbit's is negative: every one passed."""
+        check = lambda op: outrider.bio._check("max_orbital_period", 86400, {"orbital_period_s": op}, None)
+        self.assertEqual((check(3600), check(-3600), check(864000), check(-864000)), (True, True, False, False))
+
     def test_the_server_has_it(self):
         self.assertIs(ed_outrider.outrider.checklist, cl)
 

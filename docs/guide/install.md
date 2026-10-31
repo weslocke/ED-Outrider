@@ -50,7 +50,9 @@ update Outrider.
 > Settings → Server at `[journals] live`. A browser needs one click on the
 > page before it plays sound: the red **Click Here To Allow Audio** pill asks for it.
 
-`requirements.txt` also installs three optional parts; leave any of those lines out if you don't want it:
+`requirements.txt` also installs three optional parts. Leave the file as it is: one that will not install is
+skipped by itself (below), and an edited `requirements.txt` stops a later `git pull` (`git checkout --
+requirements.txt` puts it back):
 
 - **Piper** (`piper-tts`, about 100 MB) for a natural speaking voice. It needs a **64-bit Python 3.11 to 3.14**: its
   onnxruntime has no build for Python 3.15 yet. The launchers pick such a Python by themselves when you have one

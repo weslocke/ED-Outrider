@@ -254,7 +254,7 @@ def table(species_list, region, region_ok, runs, codex, region_count, value_of=N
         if poss or state:
             totals["possible"] += 1 if poss else 0
             totals["colours"] += len(vlist) if poss else 0
-            totals["colours_found"] += found
+            totals["colours_found"] += found if poss else 0   # as colours: a species the rules rule out counts in neither
             if state:
                 totals["found"] += 1
                 totals[state] += 1 if state != "aboard" else 0

@@ -208,6 +208,11 @@ def ships(fleet, loadouts=(), now=None):
     fleet = fleet or {"listed": None, "ships": {}}
     hot = fleet.get("hot") or {}   # fleet_apply's: the latest the game said of each ship, the one you fly too
     worth = {r["ship_id"]: r for r in loadouts if r.get("value")}
+    # a stored ship's name and ident from its latest Loadout when the list has none: a swap or a purchase stores the
+    # ship you leave with neither, and StoredShips has no ident (complete review 2026-10-30); loadouts are newest first
+    named = {}
+    for r in loadouts:
+        named.setdefault(r["ship_id"], r)
     builds = {r["ship_id"]: r["loadout"] for r in loadouts if r.get("loadout")}
 
     def links(sid):
@@ -228,8 +233,9 @@ def ships(fleet, loadouts=(), now=None):
         lo = worth.get(s["id"])
         value = lo["value"] if lo and lo["ts"] >= (s.get("value_ts") or "") else s.get("value")
         arriving = s.get("in_transit") and (not s.get("arrive_ts") or ts_seconds(s["arrive_ts"]) > now)
-        rows.append({"id": s["id"], "type": s.get("type"), "type_name": s.get("type_name"), "name": s.get("name"),
-                     "ident": s.get("ident"), "current": False, "system": s.get("system"), "station": s.get("station"),
+        lo_n = named.get(s["id"]) or {}
+        rows.append({"id": s["id"], "type": s.get("type"), "type_name": s.get("type_name"), "name": s.get("name") or lo_n.get("name") or None,
+                     "ident": s.get("ident") or lo_n.get("ident") or None, "current": False, "system": s.get("system"), "station": s.get("station"),
                      "value": value, "hot": bool(hot.get(str(s["id"]), s.get("hot"))), "transfer_cost": s.get("transfer_cost"),
                      "transfer_s": s.get("transfer_s"), "in_transit": bool(arriving), "links": links(s["id"])})
     listed = fleet.get("listed")

@@ -618,6 +618,9 @@ def analyse(events, args):
     def next_sale(system, t):
         return next((x for x in sales_by_system.get(system, ()) if x > t), None)
 
+    # the "you died after the last sale" check compares with the sales, not the cuts: a rebuy moves both cuts to the
+    # death itself, and the warning was lost exactly when the most was (complete review 2026-10-30)
+    sale_cut = hard_cut if args.since else min([c for c in (last_explo_sell, last_bio_sell) if c], default=None)
     if args.since:
         explo_cut = bio_cut = hard_cut
     else:
@@ -722,8 +725,7 @@ def analyse(events, args):
         elif name in RESET_EVENTS:
             if not args.ignore_deaths:
                 organics = []   # exobiology data dies with you, whether or not the ship survives
-            earliest_cut = min([c for c in (explo_cut, bio_cut) if c], default=None)
-            if earliest_cut and ts > earliest_cut:
+            if sale_cut and ts > sale_cut:
                 death_in_window = ts
 
     for key, ts, efficient in saa:

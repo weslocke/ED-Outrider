@@ -2,6 +2,29 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Complete review, batch 8: the last lows
+- The last findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each
+  with a test that fails without it. The review is done.
+- **Exobiology values**: a genus your codex entry on a body names (a composition scan from the ship) is counted as
+  there before the DSS, whatever the rules rank it: Here's value and bio left, the options' range ("X to Y"), the
+  leaving line, Nearby and the approach briefing price it at its species; a run under way on a body with no signal
+  count of yours is in the leaving summary; Nearby counts samples aboard from such a body; the checklist's "colours N
+  of M" no longer counts a species the rules rule out there; the tubers' orbit limit holds for a retrograde orbit.
+- **The page**: the compact pre-Odyssey badge's hover has line breaks, not "&#10;"; the carrier trip says "1 leg" and
+  "about N h to go" (none once done); a new carrier shows its callsign until its name is read; a tablet or second
+  window that posted a leaving alert does not post it again; a window taking over the voice keeps the lines heard in
+  the others; a ring's best prices are asked again from a new position; Nearest says a small ship fits every pad; a
+  star you never scanned is drawn as a star when Spansh cannot answer; Boxels nearby stays folded; the jumponium
+  notification scrolls a Materials tab already open; the Sell/Buy lookup's Plot route here plots a route (it filled
+  To of whichever plotter was last used); a Target next run is finished by a restart; the carrier's arrival and "1
+  jump left" are worded right with no lines file; Keep loaded shows a number above 20; a speaker list that failed to
+  load is asked again; the voice lab never puts one voice's speakers on another; Questions asked calls a page switch
+  one; Surface map settings keep what the map uses; "Lost contact" follows a new speaker.
+- **The rest**: a stored ship keeps its name and ident from its last Loadout; the surface trail keeps its breaks when
+  thinned (no line between two sites); a config value refused says "ignored (the default is used)", never "using
+  None"; the CLI warns of a death after the last sale when it was a rebuy; the Search hint follows the Nearby radius;
+  the guide no longer says to delete lines from requirements.txt (an edited one stops `git pull`).
+
 ## 2026-10-31 · Complete review, batch 7: the in-game overlay and the voice's answers
 - Findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
   test that fails without it.

@@ -671,7 +671,8 @@ function renderCarrier() {
   const trit = depot == null ? "" : ` · <span id="carrierTrit" title="${esc(tritTitle)}">Tritium: <b>${est ? "≈" : ""}${depot.toLocaleString()}t</b>${tr ? `/${tr.total.toLocaleString()}t` : ""}${low ? ` <span class="warnc">⚠</span>` : ""}</span>`;
   drawFcTrip();
   if (typeof hForm !== "undefined" && hwyPlotter() === "carrier") { fillFcForm(); drawHwyStatus(); }
-  setLive(cl, val(mk("fleet-carrier") + esc(c.name), esc(c.callsign || "")) + ln(dcLine) + ln(where) + ln(move) +
+  // no name until its first CarrierStats (a CarrierBuy has none): the callsign, as the decommissioned line
+  setLive(cl, val(mk("fleet-carrier") + esc(c.name || c.callsign || "your carrier"), esc(c.callsign || "")) + ln(dcLine) + ln(where) + ln(move) +
     ln(carrierServicesHtml(c) + trit) + ln(carrierFinanceHtml(c.finance)));
 }
 // a tile the 1 s interval redraws (the carrier's, the folded tiles line): written whole only when anything but its
@@ -723,7 +724,9 @@ function drawFcTrip() {
   const tot = t.totals || {}, dest = t.legs[t.legs.length - 1].system;
   document.getElementById("fcTripHead").innerHTML = `🚢 Carrier trip to <b>${esc(dest)}</b>: ` +
     (t.done ? "<span class=\"ok\">complete</span>" : t.off ? `<span class="warnc">off the trip at ${esc(t.off.system || "?")}</span>` : `leg ${t.at + 1} of ${t.n}`) +
-    ` · ${t.n} legs, about ${t.hours} h <span class="unk">(longer in busy systems)</span> · ${(tot.need || 0).toLocaleString()} t tritium of ${(tot.have || 0).toLocaleString()} t` +
+    // the hours are the legs still to go (the server's): said so, and none once done (complete review 2026-10-30)
+    ` · ${t.n} leg${t.n === 1 ? "" : "s"}` + (t.done ? "" : `, about ${t.hours} h to go <span class="unk">(longer in busy systems)</span>`) +
+    ` · ${(tot.need || 0).toLocaleString()} t tritium of ${(tot.have || 0).toLocaleString()} t` +
     (t.request && t.request.estimated ? ` <span class="unk" title="planned from the depot as last read, less the jumps since: open the carrier's management to read it again, then re-plot">(≈ estimated depot)</span>` : "") +
     (() => { const a = depotAge(t.request && t.request.fuel_read_ts);   // S4-S4
       return a ? ` <span class="${a.stale ? "noscoop" : "unk"}" title="the depot as read ${esc(a.date)}${a.stale ? ": open the carrier's management panel to read it again, then re-plot" : ""}">· depot read ${esc(a.text)}</span>` : ""; })() +
@@ -1647,12 +1650,15 @@ function nowStakesTick() {
 // Markers carry tags only (rig numbers, U1 unmarked sites, S1 saved rig sites, L3 mining locations, a ship glyph,
 // species by colour); the legend says what each is.
 const SURF_NEAR = 3000;   // m: markers within this are fitted into the map; farther ones only if they matter (rigs, ship, the run)
+// each Surface map setting's range: the map clamps to it, and Settings stores the clamped value (complete review
+// 2026-10-30: a typed 8000 showed while 4900 was used)
+const SURF_RANGES = {alt: [10, 100000], spacing: [0, 1000], min: [50, 6000], warn: [100, 4900]};
 const surfaceCfg = () => {
   const c = store.get("surfaceCfg", {}) || {}, d = (data && data.defaults) || {};
-  const num = (k, dk, def, lo, hi) => { const raw = c[k] ?? d[dk] ?? def, v = Number(raw);
+  const num = (k, dk, def) => { const raw = c[k] ?? d[dk] ?? def, v = Number(raw), [lo, hi] = SURF_RANGES[k];
     return raw !== null && raw !== "" && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def; };
-  return {alt: num("alt", "surface_alt", 1000, 10, 100000), spacing: num("spacing", "rig_spacing", 50, 0, 1000),
-          min: num("min", "surface_map_min", 500, 50, 6000), warn: num("warn", "rig_warn", 3500, 100, 4900),
+  return {alt: num("alt", "surface_alt", 1000), spacing: num("spacing", "rig_spacing", 50),
+          min: num("min", "surface_map_min", 500), warn: num("warn", "rig_warn", 3500),
           strip: typeof c.strip === "boolean" ? c.strip : !!d.surface_map_strip};
 };
 // shown below your surface altitude, hidden 100 m above it, unchanged between (no flicker); always on the ground,
@@ -2388,7 +2394,9 @@ function statusPill(s) {
   return `<span class="badge s-${s.status.replace(" ", "")}" title="${title}">${dual(label, short ?? shortForm("status", label), {title: full})}</span>`;
 }
 // the other Nearby badges, each with its compact mark: "3 mapped" -> "🗺3", "yours only" -> "own"
-const statusBadge = (cls, label, title, short) => `<span class="badge ${cls}" title="${title}">${dual(label, short ?? shortForm("status", label), {title: `${label}: ${title}`})}</span>`;
+// title: already escaped (it goes in the attribute as it is): the short form's too, never escaped twice (complete review
+// 2026-10-30: the compact pre-Odyssey badge showed "&#10;" as text)
+const statusBadge = (cls, label, title, short) => `<span class="badge ${cls}" title="${title}">${dual(label, short ?? shortForm("status", label), {titleHtml: `${esc(label)}: ${title}`})}</span>`;
 function bodies(s) {
   if (s.source === "route" || (!s.bodies_known)) return `<span class="unk">—</span>`;
   const plain = s.ringed === null ? null : s.planets - s.ringed;
@@ -2894,7 +2902,7 @@ function overlayAlert(kind, title, body, tag) {
 // not reset the quiet chatter waits for
 function alertOut(kind, title, body, {sound, say, delay = 0, tag = null, still = null, quiet = false, caption = null, priv = false, chatFrom = null} = {}) {
   if (kind !== "chat") lastAlert = {kind, title, body, at: Date.now()};
-  overlayAlert(kind, title, body, tag);
+  const posted = overlayAlert(kind, title, body, tag);
   if (TABLET) tabBanner(kind, title, body, tag);   // the tablet shows it; the PC says it (and the tablet too with Play alerts here)
   const entry = logSpeech({kind, tag, words: title, chatFrom});
   const snd = sound === undefined ? (ALERTS.find(a => a[0] === kind) || [])[2] : sound;
@@ -2923,7 +2931,9 @@ function alertOut(kind, title, body, {sound, say, delay = 0, tag = null, still =
   setFate(entry, !loud ? `silent: ${hushReason()}` : !speechOn ? "silent: speech off" : UNSPOKEN.has(kind) ? `not spoken (${UNSPOKEN_WHY[kind]})`
     : quiet ? (typeof quiet === "string" ? quiet : "merged into another line (quiet)")
     : hush && alertSpeak[kind] ? "silent: hushed" : "silent: not ticked to speak");
-  return notified;
+  // whether it reached you from this window: notified, posted to the overlay or the tablet's banner too (complete review
+  // 2026-10-30: the tablet posted the leaving alert and a lone jumponium one the speaking window had held back)
+  return notified || posted || TABLET;
 }
 // ---- the speech queue: the most urgent line first, stale ones dropped ----
 // Danger (hull, heat, interdiction, fuel, the carrier leaving without you) goes first, then a line you asked
@@ -3308,6 +3318,10 @@ function line(key, vars = {}, plain = "") {
   // Drawn from the lines not heard yet. With none left in this pool (the pool changes with the profanity roll, the
   // shift, danger-business, ticks and bans, so it is what is left of it that counts), only this pool's lines start
   // again, and the newest few of them stay held back so the reset cannot repeat the line just said.
+  // read again first: another window that spoke since (the speaker handed over) recorded its lines there, and this
+  // window's copy from its load would be written over them (complete review 2026-10-30)
+  const stored = store.get("speechHeard", {});
+  if (stored && typeof stored === "object" && !Array.isArray(stored)) Object.assign(recentLines, stored);
   let heard = Array.isArray(recentLines[key]) ? recentLines[key].filter(x => typeof x === "string") : [];
   let fresh = pool.filter(x => !heard.includes(x[1]));
   if (!fresh.length) {
@@ -3731,22 +3745,25 @@ async function holdFullSell(m, ask = null) {
 // minutes, a failure kept 2 so a redraw never asks again at once; the Rings hover shows what is known and never asks.
 // The Sell lookup's own rows (stations, from where you are: "from you" for a system you are not in)
 const RING_PRICE_TTL_MS = 30 * 60 * 1000, RING_PRICE_RETRY_MS = 2 * 60 * 1000;
-const RING_PRICES = new Map();   // "id64|mineral" -> {at, best (the lookup's first row) or null, failed, busy}
+const RING_PRICES = new Map();   // "id64|mineral|where you asked from" -> {at, best (the lookup's first row) or null, failed, busy}
+// the lookup measures from the ship: an answer asked from elsewhere is not this one (complete review 2026-10-30: after
+// a jump the old distances and "no buyer within 100 ly" were shown as from where you are now)
+const ringKey = (sys, m) => `${sys}|${m}|${posId()}`;
 // a body's hotspot minerals: the details' rings (d.rings), else a Here row's ring_details (its rings is a count)
 const bodyHotMinerals = b => [...new Set((Array.isArray(b.rings) ? b.rings : b.ring_details || []).flatMap(r => Object.keys(r.hotspots || {})))];
 // ask what is not known (or is out of date) for body `b` of system `sys`: true when an answer came; ask(mineral):
 // the lookup's rows, or null on an error (a test passes its own)
 async function ringPricesAsk(b, sys, ask = m => holdSellAsk(m, 1, 100, "price", false), now = Date.now()) {
   const due = bodyHotMinerals(b).filter(m => {
-    const c = RING_PRICES.get(`${sys}|${m}`);
+    const c = RING_PRICES.get(ringKey(sys, m));
     return !c || (!c.busy && now - c.at > (c.failed ? RING_PRICE_RETRY_MS : RING_PRICE_TTL_MS));
   });
   // a lookup another panel started is waited for too (review 2026-10-25: a second body of the system opened meanwhile
   // said "asking…" and was never drawn again)
-  const waiting = bodyHotMinerals(b).map(m => RING_PRICES.get(`${sys}|${m}`)).filter(c => c && c.busy && c.wait).map(c => c.wait);
+  const waiting = bodyHotMinerals(b).map(m => RING_PRICES.get(ringKey(sys, m))).filter(c => c && c.busy && c.wait).map(c => c.wait);
   if (!due.length && !waiting.length) return false;
   await Promise.all([...waiting, ...due.map(m => {
-    const key = `${sys}|${m}`;
+    const key = ringKey(sys, m);
     const wait = (async () => {
       const rows = await ask(m);
       RING_PRICES.set(key, {at: now, best: rows ? rows[0] || null : null, failed: !rows, busy: false});
@@ -3778,14 +3795,14 @@ function ringPricesRetry(sys) {
 // the line's stand-in while it has no price: asking (a lookup is under way or not yet made), or the lookup failed and
 // is asked again in a few minutes (review 2026-10-25: "asking…" stayed after a failure, with nothing asking)
 function ringPricesWait(b, sys) {
-  const cs = bodyHotMinerals(b).map(m => RING_PRICES.get(`${sys}|${m}`));
+  const cs = bodyHotMinerals(b).map(m => RING_PRICES.get(ringKey(sys, m)));
   return cs.length && cs.every(c => c && c.failed && !c.busy) ? "Best nearby: not known (the price lookup failed; asked again in a few minutes)"
     : "Best nearby: asking…";
 }
 // "Best nearby: Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum 210k cr/t (…)": the minerals priced, highest first,
 // then those with no buyer within 100 ly; "" while none is known. html: the panel's (escaped, the places muted)
 function ringPricesLine(b, sys, html = false) {
-  const known = bodyHotMinerals(b).map(m => [m, RING_PRICES.get(`${sys}|${m}`)]).filter(([, c]) => c && !c.busy && !c.failed);
+  const known = bodyHotMinerals(b).map(m => [m, RING_PRICES.get(ringKey(sys, m))]).filter(([, c]) => c && !c.busy && !c.failed);
   if (!known.length) return "";
   const e = html ? esc : x => x;
   const priced = known.filter(([, c]) => c.best && c.best.price).sort((x, y) => y[1].best.price - x[1].best.price);
@@ -3795,7 +3812,7 @@ function ringPricesLine(b, sys, html = false) {
     (html ? ` <span class="unk">(${e(where(c.best))})</span>` : ` (${where(c.best)})`));
   if (none.length) parts.push(`${e(andList(none))}: no buyer within 100 ly`);
   // a mineral whose lookup failed while others answered is named, not left out (in-depth review 2026-10-25)
-  const failed = bodyHotMinerals(b).filter(m => { const c = RING_PRICES.get(`${sys}|${m}`); return c && c.failed && !c.busy; });
+  const failed = bodyHotMinerals(b).filter(m => { const c = RING_PRICES.get(ringKey(sys, m)); return c && c.failed && !c.busy; });
   if (failed.length) parts.push(`${e(andList(failed))}: lookup failed (asked again in a few minutes)`);
   return `Best nearby${String(sys) !== String(posId()) ? " from you" : ""}: ${parts.join(" · ")}`;
 }
@@ -4722,7 +4739,8 @@ function drawBoxel() {
   const nb = boxelNear;
   if (nb && nb.boxels && nb.boxels.length) {
     const codes = [...new Set(nb.boxels.map(x => x.mc))];
-    html += `<details class="bxnear setsec" open><summary>Boxels nearby <span class="sum-note">the nearest of each kind, in sectors you have been to; what each tends to hold is what explorers have seen, not a promise</span></summary>` +
+    // folded stays folded across the redraws (complete review 2026-10-30), as the sector map
+    html += `<details class="bxnear setsec"${store.get("bxNearOpen", true) ? " open" : ""}><summary>Boxels nearby <span class="sum-note">the nearest of each kind, in sectors you have been to; what each tends to hold is what explorers have seen, not a promise</span></summary>` +
       codes.map(mc => `<h4>${boxelCodeLine(mc, nb.codes[mc])}</h4>` + `<div class="bxcode">` + nb.boxels.filter(x => x.mc === mc).map(x =>
         `<div>${esc(x.label)} · ${x.distance.toFixed(0)} ly${x.visited ? ` · you visited ${x.visited}` : ""}` +
         `${x.top != null ? ` · highest known <b>-${x.top}</b>` : x.spansh_asked ? " · none known yet" : ""} ` +
@@ -4763,6 +4781,7 @@ document.getElementById("boxelPane").addEventListener("mouseover", e => {
 });
 document.getElementById("boxelPane").addEventListener("toggle", e => {
   if (e.target.classList && e.target.classList.contains("bxgrid")) store.set("bxGridOpen", e.target.open);
+  if (e.target.classList && e.target.classList.contains("bxnear")) store.set("bxNearOpen", e.target.open);
 }, true);
 document.getElementById("boxelPane").addEventListener("change", e => {
   if (e.target.id === "bxAuto") boxelPost({auto: e.target.checked});
@@ -5698,7 +5717,9 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
   const pick = (a, b) => has(a) ? a : has(b) ? b : null;
   const n = (v, dp = 2) => v == null ? null : Number(v).toLocaleString("en-US", {maximumFractionDigits: dp});
   const days = sec => sec == null ? null : `${n(Math.abs(sec) / 86400, 2)} d`;
-  const isStar = !!own.StarType || sp.type === "Star";
+  // Here's row too, as the picture: a star you never scanned with no Spansh answer was drawn as a planet (complete
+  // review 2026-10-30)
+  const isStar = !!own.StarType || sp.type === "Star" || row.type === "Star";
   const kv = pairs => `<dl>${pairs.filter(([, v]) => has(v)).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
   const sec = (key, title, body) => body ? `<div class="sec${bodySecs[key] ? " closed" : ""}" data-sec="${key}"><div class="lbl">${title}</div><div class="secbody">${body}</div></div>` : "";
   // materials in a three-column table, most abundant first
@@ -6255,6 +6276,9 @@ let matScroll = false;
 function openMatSources() {
   matScroll = true;
   const b = document.querySelector('[data-view="mat"]'); if (b) b.click();
+  // the tab drawn already (loadMat draws nothing new): drawn again now to scroll, as cmdrGo does (complete review
+  // 2026-10-30: it scrolled later, at the next filter keystroke)
+  if (matData && !matData.error) renderMat();
 }
 function renderMat() {
   const m = matData, st = document.getElementById("matStatus");
@@ -6460,7 +6484,9 @@ function renderNearest() {
   const a = NR.answer, rows = document.getElementById("nearRows"), foot = document.getElementById("nearFoot");
   document.getElementById("nearWhere").textContent = a && a.where ? `· from ${a.where}` : "";
   document.getElementById("nearPad").textContent = !a || a.error ? "" : a.pad === "L" ? `large (your ${shipName(a.ship || "")})` :
-    a.pad === "M" ? `medium (your ${shipName(a.ship || "")})` : "any (your ship's size is not known)";
+    a.pad === "M" ? `medium (your ${shipName(a.ship || "")})` :
+    // a small ship is known too: any pad fits it (complete review 2026-10-30: it said its size was not known)
+    a.pad_known ? `any (your ${shipName(a.ship || "")} fits every pad)` : "any (your ship's size is not known)";
   if (NR.busy && !a) { rows.innerHTML = `<tr><td colspan="8" class="unk">asking Spansh…</td></tr>`; foot.textContent = ""; return; }
   if (!a || a.error) { rows.innerHTML = `<tr><td colspan="8" class="noscoop">${esc(a ? a.error : "")}</td></tr>`; foot.textContent = ""; return; }
   rows.innerHTML = a.rows.length ? a.rows.map(nearRowHtml).join("") :
@@ -6855,11 +6881,9 @@ document.getElementById("cargoLook").addEventListener("click", e => {
     if (k === "all" || k === "ship") { if (LK.load !== k) { LK.load = k; LK.open = null; loadLook(); } return; }
     if (k === "copy") return copyText(b.dataset.name);
     if (k === "bm") return openBookmark(b.dataset.id, b.dataset.name);
-    if (k === "plot") {
-      document.getElementById("hwyTo").value = b.dataset.name;
-      const v = document.querySelector('[data-view="hwy"]'); if (v) v.click();
-      return toast(`Plot Route: to ${b.dataset.name}`);
-    }
+    // the exact plotter, the form opened, plotted (S31's): with Trade or Carrier remembered it plotted a trade route
+    // or sent the carrier (complete review 2026-10-30)
+    if (k === "plot") return plotRouteTo(b.dataset.name);
     return;
   }
   const tr = e.target.closest("tr.lookrow");
@@ -8818,7 +8842,9 @@ function hwyRunTrack() {
   if (!r || r.done) return;
   const w0 = r.kind === "test" ? "test" : "target next";
   // superseded: a newer run (another device's), or no run at all long after this one's countdown (Outrider restarted)
-  if ((t && typeof r.seq === "number" && t.seq > r.seq) || (!t && r.at && Date.now() - r.at > ((r.n || 0) + 120) * 1000)) {
+  // a restart (another run_id) too: its seq starts at 1 again (complete review 2026-10-30)
+  if ((t && typeof r.seq === "number" && t.seq > r.seq) || (r.run && data && data.run_id && data.run_id !== r.run) ||
+      (!t && r.at && Date.now() - r.at > ((r.n || 0) + 120) * 1000)) {
     r.done = true; r.msg = `${w0}: no result (Outrider restarted, or another device started a run)`; return;
   }
   // the game did not come to the front (S74): the server counts down after all, saying why; the page follows it
@@ -8843,7 +8869,7 @@ async function hwyAutoStart(kind, aim = null) {
   try { r = await fetch(url, opts); j = await r.json(); }
   catch { show("could not reach Outrider"); return; }
   if (!r.ok) { show(`cannot ${w}: ${j.error || "?"}`); return; }
-  const mine = hwyRun = {seq: j.seq, kind, key: aim ? `${aim.route}:${aim.index ?? aim.id ?? ""}` : "next", system: j.system, n: j.in, dry: j.dry_run, done: false, msg: "",
+  const mine = hwyRun = {seq: j.seq, run: data && data.run_id, kind, key: aim ? `${aim.route}:${aim.index ?? aim.id ?? ""}` : "next", system: j.system, n: j.in, dry: j.dry_run, done: false, msg: "",
                          at: Date.now(), front: !!j.front, note: null, timer: null};
   const tick = mine.tick = () => {
     if (mine.done || mine !== hwyRun) return;
@@ -10528,7 +10554,7 @@ function onData() {
     const under = !!(f0 && f0.live && fuelUnderJumps(f0));
     if (under && !lastUnderJumps && !(low && !lastLowFlag)) {
       const jn = fuelJumps(f0);
-      alertOut("fuel", `Fuel: ${jn} jump${jn === 1 ? "" : "s"} left`, scoopHint(), {tag: "fuel_low", say: () => line("fuel_low", {pct: f0.pct}, `Fuel low: ${jn} jumps left.`)});
+      alertOut("fuel", `Fuel: ${jn} jump${jn === 1 ? "" : "s"} left`, scoopHint(), {tag: "fuel_low", say: () => line("fuel_low", {pct: f0.pct}, `Fuel low: ${jn} ${jumpsWord(jn)} left.`)});
     }
     lastLowFlag = low; lastUnderJumps = under;
   }
@@ -10960,7 +10986,10 @@ function onData() {
   if (c && c.moved_ts !== lastCarrierMoved) {
     if (lastCarrierMoved) { alertOut("carrier", `${c.name} ${c.assumed ? "should now be" : "is"} at ${c.system}`,
                                      (c.distance != null ? `${c.distance} ly from you` : "") + (c.assumed ? (c.distance != null ? " · " : "") + "the booked jump (not yet confirmed)" : ""),
-                                     {say: () => line("carrier_arrived", {carrier: c.name, system: c.system}) + carrierTripArrivalWords()}); toast(`🚢 ${c.name} arrived at ${c.system}`); }
+                                     // a plain fallback: the trip's words alone said nothing of the arrival (a window not
+                                     // speaking, no lines file; complete review 2026-10-30)
+                                     {say: () => line("carrier_arrived", {carrier: c.name, system: c.system},
+                                                      `${c.name} ${c.assumed ? "should now be" : "is"} at ${c.system}.`) + carrierTripArrivalWords()}); toast(`🚢 ${c.name} arrived at ${c.system}`); }
     lastCarrierMoved = c.moved_ts;
   }
   const k = (data.codex_recent || [])[0];
@@ -11085,7 +11114,8 @@ function askMatchText(q) {
   return `<b>refused</b>: ${esc(q.error)}`;
 }
 const askLogFacts = q => [q.source, q.ms != null ? `${q.ms} ms` : "", q.matched === "fixed" || q.matched === "ai" || q.matched === "none"
-  ? (q.spoken ? "said on the PC" : "shown, not said: no window speaks") : ""].filter(Boolean);
+  // a page switch is never said (complete review 2026-10-30: it read "no window speaks" while one did)
+  ? (q.command === "show_page" ? "a page switch, not said" : q.spoken ? "said on the PC" : "shown, not said: no window speaks") : ""].filter(Boolean);
 function drawAskLog() {
   const el = document.getElementById("askLog"), qs = AL.data && AL.data.questions;
   if (!el) return;
@@ -11517,7 +11547,9 @@ async function fillSpeakers(sel, voice, current) {
   const list = await speakersOf(voice);
   if (sel.dataset.voice !== voice) {
     sel.innerHTML = list.map(p => `<option value="${p.id}">${esc(speakerLabel(p))}</option>`).join("");
-    sel.dataset.voice = voice;
+    // filled only with a list: a failed fetch (an empty one, not kept) is asked again next time (complete review
+    // 2026-10-30: the select stayed empty until the voice changed)
+    if (list.length) sel.dataset.voice = voice; else delete sel.dataset.voice;
   }
   if (document.activeElement !== sel) sel.value = String(current ?? 0);
   return list;
@@ -11623,7 +11655,9 @@ function drawVoiceMemory() {
     `about 100 MB for a medium voice, 170 MB for a high one; the people of one many-speaker voice share a single load).` +
     (level ? `<br><span class="vmwhy">More than ${level === "bad" ? "1 GB" : "500 MB"} · Several people of one voice (e.g. vctk's 109) cost no more than one voice.</span>` : "");
   const sel = document.getElementById("vmKeep"), cur = vmChoice(vm);
-  const top = Math.min(20, Math.max(vm.count, Number(cur) || 0));   // up to the voices in use (20: the config's pick-list)
+  // up to the voices in use (20: the config's pick-list), and always up to the number set (complete review 2026-10-30: a
+  // hand-set 25 matched no option, the box went blank and the figures were the default's)
+  const top = Math.max(Math.min(20, vm.count), Number(cur) || 0);
   const opts = [...(cur === "" ? [["", `${vmKept(vm, "")} (the default)`]] : []),
     ...Array.from({length: top}, (_, i) => [String(i + 1), String(i + 1)]), ["all", "all"]];
   const okey = JSON.stringify(opts);
@@ -12322,8 +12356,11 @@ async function labDrawSpeakers() {
   const voice = labEl("labVoice").value, t = data && data.tts;
   // the voice in use: its speaker; another voice: the speaker kept for it, never #0 by default (review 2026-10-12)
   const list = await speakersOf(voice);
+  // another voice picked while this one's list was fetched: its own draw fills the box (complete review 2026-10-30)
+  if (labEl("labVoice").value !== voice) return;
   const cur = voice === (t && t.voice) ? t.speaker : speakerPicked[voice] ?? null;
   await fillSpeakers(labEl("labSpk"), voice, cur);
+  if (labEl("labVoice").value !== voice) return;
   labEl("labSpkWrap").hidden = list.length < 2;
   labEl("labSpkCount").textContent = list.length > 1 ? `${list.length} people` : "";
   labDrawInUse();
@@ -13959,7 +13996,8 @@ for (const [k, el] of Object.entries(surfEls)) {
   el.onfocus = showSurfCfg;
   el.onchange = () => {
     const c = {...(store.get("surfaceCfg", {}) || {})}, v = Number(el.value);
-    if (el.value.trim() === "" || !isFinite(v) || v < 0) delete c[k]; else c[k] = Math.round(v);
+    if (el.value.trim() === "" || !isFinite(v) || v < 0) delete c[k];
+    else c[k] = Math.min(SURF_RANGES[k][1], Math.max(SURF_RANGES[k][0], Math.round(v)));
     store.set("surfaceCfg", c); showSurfCfg(); if (data) render();
   };
 }
@@ -15090,13 +15128,16 @@ setInterval(drawLinkPill, 1000);
 const LOST_SAY_MS = 30000, LOST_PARTS = ["Lost contact with Outrider.", "No alerts until it is back."], LOST_GAP_S = 0.7;
 const LOST_TEXT = LOST_PARTS.join(" ");
 const lostLine = {key: null, buf: null};   // buf: [AudioBuffer, ...], one per sentence
+// what the lines were made with: the speaker too, so a new one picked for the same voice remakes them (complete review
+// 2026-10-30: they kept the old speaker's voice)
+const lostLineKey = (t, speed) => `${t.voice || ""}|${t.speaker ?? ""}|${speed}`;
 async function prepareLostLine() {
   if (TABLET && !tabletSpeaks()) return;   // never said here
   const t = data && data.tts;
   if (!t || t.engine !== "piper") return;
   const ctx = actx || audio();   // decoding needs no click: the context may stay paused until the line is played
   if (!ctx) return;
-  const speed = speechSpeed(), key = `${t.voice || ""}|${speed}`;
+  const speed = speechSpeed(), key = lostLineKey(t, speed);
   if (lostLine.key === key) return;
   lostLine.key = key;
   try {

@@ -766,7 +766,7 @@ def _check(key, want, b, s):
         return SKIP if not b["p"] else b["p"] < want
     if key == "max_orbital_period":
         op = b.get("orbital_period_s")
-        return SKIP if op is None else op < want
+        return SKIP if op is None else abs(op) < want   # a retrograde orbit's period is negative (records.py)
     if key == "volcanism":
         v = b["volc"]
         if v is None:   # not known (a Spansh body search leaves it out): neither none nor some

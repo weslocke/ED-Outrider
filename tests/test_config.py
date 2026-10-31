@@ -177,6 +177,14 @@ class ConfigValidation(unittest.TestCase):
         self.assertEqual(self.settings({"server": {"radius": 30}})[0]["radius"], 30.0)
         self.assertEqual(self.settings({}, radius=0.0)[0]["radius"], 1.0)   # the --radius flag is clamped
 
+    def test_a_key_with_a_later_default_does_not_say_none(self):
+        """Complete review 2026-10-30: keys whose default is applied after the check (port, radius, host...) said
+        "using None" while 8025 / 25 ly / 127.0.0.1 were used."""
+        st, err = self.settings({"server": {"port": 70000, "radius": 0}})
+        self.assertEqual((st["port"], st["radius"]), (8025, 25.0))
+        self.assertNotIn("using None", err)
+        self.assertIn("[server] port = 70000 is not valid here, ignored (the default is used)", err)
+
     def test_host_must_be_a_string(self):   # F2
         st, err = self.settings({"server": {"host": 0}})
         self.assertEqual(st["host"], "127.0.0.1")

@@ -168,6 +168,19 @@ class Trail(unittest.TestCase):
         sent = t.points((9, 5))
         self.assertEqual(len([p for p in sent if p is not None]), t.TRAIL_SENT)
 
+    def test_a_break_survives_the_thinning(self):
+        """Complete review 2026-10-30: the thinning kept every other entry, breaks included, so a break at an odd index
+        went and the surface map drew a line from one site to the next across ground never flown low."""
+        t = ed_outrider.SurfaceTrail()
+        for i in range(3):                                         # site A: 0, 1, 2
+            t.note(self.here(0.0, i * 0.002))
+        t.note(self.here(0.0, 0.01, alt=5000.0))                   # the hop: a break at index 3
+        for i in range(t.TRAIL_MAX):                               # site B, until the trail is thinned
+            t.note(self.here(0.0, 10 + i * 0.002))
+        self.assertLessEqual(len(t.pts), t.TRAIL_MAX)
+        last_a = max(i for i, p in enumerate(t.pts) if p is not None and p[1] < 1)
+        self.assertIsNone(t.pts[last_a + 1])                       # A and B are not joined
+
     def test_capped_and_thinned(self):
         t = ed_outrider.SurfaceTrail()
         for i in range(t.TRAIL_MAX + 1):

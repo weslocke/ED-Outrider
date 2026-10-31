@@ -189,5 +189,25 @@ class RoutesInTheGuide(unittest.TestCase):
                          "Commander parts the /api/commander/<part> line does not list")
 
 
+class Wording(unittest.TestCase):
+    def read(self, *parts):
+        with open(os.path.join(ROOT, *parts), encoding="utf-8") as f:
+            return f.read()
+
+    def test_requirements_is_never_edited(self):
+        """Complete review 2026-10-30: the guide said to leave optional lines out of requirements.txt, a tracked file,
+        and an edited one stops the guide's own `git pull` update (the launcher skips one that will not install)."""
+        for path in (("docs", "guide", "install.md"), ("docs", "AGENT_GUIDE.md")):
+            text = self.read(*path)
+            self.assertNotIn("leave any of those lines out", text)
+            self.assertNotIn("delete their lines", text)
+        self.assertIn("git checkout --\nrequirements.txt", self.read("docs", "guide", "install.md"))
+
+    def test_search_hint_follows_the_radius(self):
+        """Complete review 2026-10-30: the Search hint said "passed within 25 ly" whatever the Nearby radius."""
+        self.assertNotIn("passed within 25 ly", self.read("static", "page.html"))
+
+
+
 if __name__ == "__main__":
     unittest.main()

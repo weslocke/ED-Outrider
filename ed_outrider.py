@@ -589,9 +589,15 @@ class SurfaceTrail:
         if last is not None and surface_m(last[0], last[1], h["lat"], h["lon"], h["radius"]) < self.TRAIL_STEP_M:
             return
         self.pts.append((round(h["lat"], 5), round(h["lon"], 5)))
-        if len(self.pts) > self.TRAIL_MAX:   # the older half thinned by half, breaks counted and thinned alike
-            half = len(self.pts) // 2
-            self.pts = self._tidy(self.pts[:half:2] + self.pts[half:])
+        if len(self.pts) > self.TRAIL_MAX:   # the older half thinned by half: every other point, every break kept
+            # (complete review 2026-10-30: breaks thinned alike lost the gap between two sites, joined by a line);
+            # the breaks left side by side by a dropped point are one, so the trail still shrinks
+            half, older, k = len(self.pts) // 2, [], 0
+            for p in self.pts[:half]:
+                if p is None or k % 2 == 0:
+                    older.append(p)
+                k += p is not None
+            self.pts = self._tidy(older + self.pts[half:])
 
     @staticmethod
     def _tidy(pts):
@@ -934,7 +940,10 @@ def _config_value(section, key, value, conv, default):
             raise ValueError("not a finite number")
         return out
     except (TypeError, ValueError, OverflowError):   # OverflowError: int(inf)
-        print(f"config: [{section}] {key} = {value!r} is not valid here, using {default!r}", file=sys.stderr)
+        # a None default: the key's own default is applied later (pick, `or`): "using None" said nothing true
+        # (complete review 2026-10-30)
+        using = f"using {default!r}" if default is not None else "ignored (the default is used)"
+        print(f"config: [{section}] {key} = {value!r} is not valid here, {using}", file=sys.stderr)
         return default
 
 
@@ -6315,6 +6324,18 @@ def with_codex_species(groups, seen):
     return out
 
 
+def codex_species_seen(db, id64):
+    """{body_id: {genus: (species, codex entry name)}}: the species your organic codex entries in system id64 name,
+    per body (with_codex_species); the latest entry of a genus on a body wins."""
+    out = {}
+    for r in db.execute("SELECT body_id, name FROM codex WHERE system=? AND body_id IS NOT NULL AND "
+                        "lower(subcategory) LIKE '%organic%' ORDER BY ts", (id64,)):
+        sp = outrider.bio.species_by_name((r["name"] or "").split(" - ")[0]) if outrider.bio else None
+        if sp and sp.get("genus"):
+            out.setdefault(r["body_id"], {})[sp["genus"]] = (sp["name"], r["name"])
+    return out
+
+
 SALE_SESSION_S = 300   # s: Vista Genomics sales this close together are one visit (you sold in several goes)
 
 
@@ -7358,18 +7379,38 @@ def bio_pick(group, history, shape, region):
     return group.get("best")
 
 
-def bio_left_groups(r, star, known, ctx, done):
+def bio_left_groups(r, star, known, ctx, done, seen=None):
     """The genus groups still to sample on a body. With the DSS's genera: those not analysed yet. Before
     the DSS: every genus the rules allow less the ones analysed, and the most valuable of the rest, one
-    per signal still left (a finished genus outside the rules' top N must not leave N priced)."""
+    per signal still left (a finished genus outside the rules' top N must not leave N priced).
+    `seen`: the body's codex_species_seen ({genus: (species, entry)}): a genus your codex entry there names is
+    there, so it is among those priced, at its species' value (with_codex_species), whatever the rules rank it
+    (complete review 2026-10-30: below the top N it was left out and a guess priced in its place)."""
     if known:
         _, groups = bio_guess(r, star, known, ctx)
-        return [g for g in groups if g["genus"] not in done]
+        return with_codex_species([g for g in groups if g["genus"] not in done], seen)
     left_n = (r.get("bio") or 0) - len(done)
     if left_n <= 0:
         return []
     _, groups = bio_guess(dict(r, bio=None), star, None, ctx)
-    return [g for g in groups if g["genus"] not in done][:left_n]
+    groups = [g for g in groups if g["genus"] not in done]
+    if seen:
+        groups.sort(key=lambda g: g["genus"] not in seen)   # stable: the rest stay most valuable first
+    return with_codex_species(groups[:left_n], seen)
+
+
+def bio_guess_seen(r, star, genera, ctx, seen):
+    """bio_guess, with the genera your codex entry on the body names (`seen`, as bio_left_groups) among the guesses
+    and priced at their species: (upper-bound credits, groups)."""
+    if not seen:
+        return bio_guess(r, star, genera, ctx)
+    if genera or not r.get("bio"):
+        _, groups = bio_guess(r, star, genera, ctx)
+    else:
+        _, groups = bio_guess(dict(r, bio=None), star, None, ctx)
+        groups = sorted(groups, key=lambda g: g["genus"] not in seen)[:r["bio"]]
+    groups = with_codex_species(groups, seen)
+    return (sum(g.get("value") or 0 for g in groups) or None), groups
 
 
 def bio_options(r, star=None, ctx=None, known=(), mark=None, fix=None):
@@ -7389,8 +7430,18 @@ def bio_options(r, star=None, ctx=None, known=(), mark=None, fix=None):
         return None
     if fix:
         groups = fix(groups)
-    lows = sorted(g.get("min_value") or 0 for g in groups)
-    return {"low": sum(lows[:n]), "high": sum(g.get("value") or 0 for g in groups[:n]),
+    # a genus your codex entry on the body names (fix marks it seen) is there: one signal each, at its species'
+    # value in both ends; the rest of the signals are the options (complete review 2026-10-30: it was priced as one
+    # option among the others, the high end too high)
+    sure = [g for g in groups if g.get("seen")]
+    rest = [g for g in groups if not g.get("seen")]
+    m = n - len(sure)
+    if m <= 0 or len(rest) <= m:
+        return None
+    lows = sorted(g.get("min_value") or 0 for g in rest)
+    highs = sorted((g.get("value") or 0 for g in rest), reverse=True)
+    sure_low = sum(g.get("min_value") or g.get("value") or 0 for g in sure)
+    return {"low": sure_low + sum(lows[:m]), "high": sum(g.get("value") or 0 for g in sure) + sum(highs[:m]),
             "genera": [{"genus": g["genus"], "best": g["best"], "value": g["value"],
                         "species": [outrider.bio.short_species(x["name"], g["genus"]) for x in g["species"]],
                         **(mark(g) if mark else {})} for g in groups]}
@@ -10977,15 +11028,7 @@ class State:
                 "base": base is not None, "base_known": base_known(base, source), "ctx": bio_context(name, records, where[1], where[2], where[3], star, count)}
 
     def codex_species_seen(self, id64):
-        """{body_id: {genus: (species, codex entry name)}}: the species your organic codex entries in system id64 name,
-        per body (with_codex_species); the latest entry of a genus on a body wins."""
-        out = {}
-        for r in self.db.execute("SELECT body_id, name FROM codex WHERE system=? AND body_id IS NOT NULL AND "
-                                 "lower(subcategory) LIKE '%organic%' ORDER BY ts", (id64,)):
-            sp = outrider.bio.species_by_name((r["name"] or "").split(" - ")[0]) if outrider.bio else None
-            if sp and sp.get("genus"):
-                out.setdefault(r["body_id"], {})[sp["genus"]] = (sp["name"], r["name"])
-        return out
+        return codex_species_seen(self.db, id64)
 
     def body_bio(self, id64, body_id):
         """One body's exobiology, for the sampling lines: runs under way ({genus: samples}), the DSS's genera
@@ -11043,9 +11086,10 @@ class State:
         out.update(body=rec["name"], gravity=rec.get("gravity"), landable=rec.get("landable"), signals=sig_left, genera=left,
                    factor=5 if f and f["was_footfalled"] == 0 else 1)
         if sig_left or left:
-            groups = bio_left_groups(rec, mr["star"], genera, mr["ctx"], done)
+            seen = {g: x for g, x in codex_species_seen(self.db, id64).get(bid, {}).items() if g not in sampled}
+            groups = bio_left_groups(rec, mr["star"], genera, mr["ctx"], done, seen)
             out["bio_value"] = sum((g.get("value") or 0) for g in groups) or None
-            opts = None if genera else bio_options(rec, mr["star"], mr["ctx"], sampled)
+            opts = None if genera else bio_options(rec, mr["star"], mr["ctx"], sampled, fix=lambda gs: with_codex_species(gs, seen))
             if opts:
                 out["bio_options"] = {"low": opts["low"], "high": opts["high"], "genera": [g["genus"] for g in opts["genera"]]}
         return out
@@ -11071,12 +11115,13 @@ class State:
                                  (id64,)):
             if organic_state(self.db, r["done_ts"], (id64, r["body_id"], r["species"])) != "lost":
                 got.setdefault(short_name(mr["name"], r["name"]), set()).add(r["genus_name"])
-        worth, bio = [], None
+        worth, bio, seen = [], None, codex_species_seen(self.db, id64)
         for r in mr["records"]:
             if r.get("type") != "Planet":
                 continue
             if r.get("bio") or r.get("genera"):   # mapped or not: mapping says nothing about the sampling
-                groups = bio_left_groups(r, mr["star"], r.get("genera") or None, mr["ctx"], got.get(r["name"], set()))
+                groups = bio_left_groups(r, mr["star"], r.get("genera") or None, mr["ctx"], got.get(r["name"], set()),
+                                         seen.get(r.get("body_id")))
                 val = sum((g.get("value") or 0) for g in groups)
                 if val and (not bio or val > bio["value"]):
                     bio = {"body": r["name"], "value": val}
@@ -12274,7 +12319,8 @@ class State:
                 if ctx is None:   # only for a system with such a body: the common case stays free
                     ctx = bio_context(c["name"], list(recs.values()), c["x"], c["y"], c["z"], stars.get(id64),
                                       h and h["body_count"])
-                groups = bio_left_groups(dict(rec, bio=n_sig), stars.get(id64), None, ctx, done_set)
+                groups = bio_left_groups(dict(rec, bio=n_sig), stars.get(id64), None, ctx, done_set,
+                                         codex_species_seen(self.db, id64).get(bid))
                 bio.append({"body": short_name(c["name"], bs[bid]["name"]), "genera": None, "signals": n_left,
                             "value": sum((g.get("value") or 0) for g in groups)})
             judge = None
@@ -13210,10 +13256,12 @@ class State:
         bio_pending, seen_codex = [], self.codex_species_seen(id64)
         for bid, rec in bodies.items():
             n_sig = bio_signals.get(rec["name"], 0)
-            if not n_sig and bid not in genera:
+            partial = done.get(bid, {}).get("partial", {})
+            # a run under way counts with no signal count of yours too (complete review 2026-10-30: a body picked from
+            # Spansh's counts, sampled without the FSS or DSS, was left out and the summary said clean)
+            if not n_sig and bid not in genera and not partial:
                 continue
             left = genera.get(bid, set()) - done.get(bid, {}).get("done", set())
-            partial = done.get(bid, {}).get("partial", {})
             if bid not in genera:
                 # no DSS: the runs under way plus the signals nobody has identified (less the species finished
                 # and the runs started there), priced as system_detail does. genera stays None with a run under
@@ -13222,7 +13270,7 @@ class State:
                 n_left = max(0, n_sig - len(done_set) - len(partial))
                 if n_left <= 0 and not partial:
                     continue
-                groups = bio_left_groups(dict(rec, bio=n_sig), star, None, ctx, done_set | set(partial))
+                groups = bio_left_groups(dict(rec, bio=n_sig), star, None, ctx, done_set | set(partial), seen_codex.get(bid))
                 # every genus the rules still allow it (the codex line's "sure"), the runs under way with them
                 possible = [g for g in bio_guess(dict(rec, bio=None), star, None, ctx)[1]
                             if g["genus"] not in done_set | set(partial)]
@@ -13388,14 +13436,14 @@ class State:
         for r in records:
             bid = own_ids.get(r["name"])
             known_genera = genera.get(bid) or r.get("genera") or []
-            bio_val, bio_groups = bio_guess(r, star, known_genera or None, ctx) if (r.get("bio") or known_genera) else (None, [])
+            # a genus you have not sampled but your codex entry here names (a composition scan, from the ship too): that
+            # species, among the guesses whatever the rules rank it
+            sampled = {o["genus"] for o in organics.get(bid, [])}
+            seen = {g: s for g, s in seen_codex.get(bid, {}).items() if g not in sampled}
+            bio_val, bio_groups = bio_guess_seen(r, star, known_genera or None, ctx, seen) if (r.get("bio") or known_genera) else (None, [])
             # a genus you have sampled here shows the colour the journal logged, not the guess
             logged_here = {o["genus"]: o["variant"] for o in organics.get(bid, []) if o["variant"]}
             bio_groups = with_logged_variants(bio_groups, logged_here)
-            # a genus you have not sampled but your codex entry here names (a composition scan, from the ship too): that species
-            sampled = {o["genus"] for o in organics.get(bid, [])}
-            seen = {g: s for g, s in seen_codex.get(bid, {}).items() if g not in sampled}
-            bio_groups = with_codex_species(bio_groups, seen)
             shape = outrider.bio.history_shape(r.get("subtype"), r.get("atmosphere"), r.get("temperature")) if history and bio_groups else None
             f = firsts.get(bid) if bid is not None else None
             first_disc = bool(f and f["was_discovered"] == 0)
@@ -13410,7 +13458,7 @@ class State:
             # on board: samples not yet sold (sold ones are banked, like sold cartographics)
             bio_now = sum((o.get("value") or 0) for o in held if o["state"] == "aboard") * bio_factor
             got = {o["genus"] for o in held if o["done"] and not o["lost"]}   # sold ones are done too
-            left_groups = with_codex_species(bio_left_groups(r, star, known_genera, ctx, got) if (r.get("bio") or known_genera) else [], seen)
+            left_groups = bio_left_groups(r, star, known_genera, ctx, got, seen) if (r.get("bio") or known_genera) else []
             bio_left = sum((g.get("value") or 0) for g in left_groups) * bio_factor
             carto_now, carto_left = cv["now"], cv["left"]
             # Max without any bonus: no first-discovery / first-mapped multipliers, bio at x1
@@ -14728,6 +14776,7 @@ class State:
                     aboard.setdefault(r["body_id"], {})[r["genus_name"]] = v
         now_c = self.system_values.get(name, 0)   # on board: the unsold estimate's own figure for this system
         rem_c = now_b = rem_b = 0
+        seen = codex_species_seen(self.db, id64)
         judge = pickup_judge(self.db, name)
         latest = {r["body_id"]: r["ts"] for r in self.db.execute("SELECT body_id, ts FROM own_bodies WHERE system=?", (id64,))}
         for r in records:
@@ -14736,12 +14785,14 @@ class State:
             scan_state = judge(latest[bid], f and f["first_ts"])[0] if bid in latest else None
             map_state = judge(f["mapped_ts"], f["map_first_ts"])[0] if f and f["mapped_ts"] else None
             rem_c += carto_values(r, bid is not None, f, scan_state, map_state)["left"]   # same rules as Here
+            factor = 5 if f and f["bio_x5"] == 1 else 1
+            # the samples aboard, whatever the signals say (complete review 2026-10-30: a body sampled with no signal
+            # count of yours or Spansh's was left out, while Here counted it)
+            now_b += sum((aboard.get(bid) or {}).values()) * factor
             if r.get("bio") or r.get("genera"):
-                factor = 5 if f and f["bio_x5"] == 1 else 1
                 got = done.get(bid, {}) if bid is not None else {}
-                now_b += sum((aboard.get(bid) or {}).values()) * factor
                 known = (genera.get(bid) if bid is not None else None) or r.get("genera") or None
-                rem_b += sum((g.get("value") or 0) for g in bio_left_groups(r, star, known, ctx, got)) * factor
+                rem_b += sum((g.get("value") or 0) for g in bio_left_groups(r, star, known, ctx, got, seen.get(bid))) * factor
         return {"value_now": int(now_c + now_b), "value_max": int(now_c + now_b + rem_c + rem_b),
                 "value_parts": {"carto_now": int(now_c), "bio_now": int(now_b), "carto_left": int(rem_c), "bio_left": int(rem_b)}}
 
@@ -21603,6 +21654,7 @@ def bio_hits(db, id64, system, x, y, z, records, threshold):
             got.setdefault(r["body_id"], set()).add(r["genus_name"])
     for r in db.execute("SELECT body_id, genus_name FROM own_genera WHERE system=?", (id64,)):
         genera.setdefault(r["body_id"], []).append(r["genus_name"])
+    seen = codex_species_seen(db, id64)
     row = db.execute("SELECT star_class FROM star_classes WHERE id64=?", (id64,)).fetchone()
     star = row["star_class"] if row else None
     cnt = db.execute("SELECT body_count FROM own_systems WHERE id64=?", (id64,)).fetchone()
@@ -21618,7 +21670,7 @@ def bio_hits(db, id64, system, x, y, z, records, threshold):
         left_n = signals - len(done)
         if left_n <= 0:
             continue                      # every species here analysed
-        rest = bio_left_groups(r, star, known, ctx, done)
+        rest = bio_left_groups(r, star, known, ctx, done, seen.get(bid))
         priced = [g for g in rest if g.get("value")]
         left = sum(g["value"] for g in priced) if priced else None
         if (left or 0) < threshold or (left is None and threshold):

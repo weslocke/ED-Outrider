@@ -293,7 +293,8 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
 ## Setup, run, test
 
 - `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt`
-  (piper-tts, pillow and evdev are optional: delete their lines if you don't want them).
+  (piper-tts, pillow and evdev are optional: the launchers skip one that will not install; never tell a player to
+  edit requirements.txt, a tracked file: a local change stops their `git pull` update).
 - `npm install` in the repo root (Node.js 22.22.2+ or 24.15+ for jsdom 30; jsdom runs the smoke test,
   playwright is only for optional screenshots and downloads no browser by itself).
 - **One command:** `scripts/verify.sh`. It runs the unit tests (a ResourceWarning, such as a database a test never

@@ -31,6 +31,17 @@ class UnsoldEstimate(unittest.TestCase):
                 open(os.path.join(d, name), "w").close()
             self.assertEqual([os.path.basename(f) for f in outrider.unsold.journal_files([d])], ["Journal.2026-10-01T100000.01.log"])
 
+    def test_a_rebuy_after_the_last_sale_is_warned(self):
+        """Complete review 2026-10-30: the CLI's "you died after the last sale" compared the death with the cuts, which a
+        rebuy had already moved to the death itself: no warning exactly when the most was lost."""
+        for option in ("rebuy", "recover"):
+            ev = [scan("2026-01-01T00:00:00Z", "A", 1, 0, "A", star=True), sale("2026-01-02T00:00:00Z", ["A"]),
+                  scan("2026-01-03T00:00:00Z", "B", 2, 0, "B", star=True)] + death("2026-01-04T00:00:00Z", option)
+            self.assertEqual((outrider.unsold.analyse(ev, ARGS)["death_in_window"] or "")[:10], "2026-01-04", option)
+        ev = [scan("2026-01-01T00:00:00Z", "A", 1, 0, "A", star=True)] + death("2026-01-02T00:00:00Z") + \
+             [sale("2026-01-03T00:00:00Z", ["A"])]
+        self.assertIsNone(outrider.unsold.analyse(ev, ARGS)["death_in_window"])   # died before the sale
+
     def test_partial_sale_keeps_unsold_systems(self):
         ev = [scan("2026-01-01T00:00:00Z", "A", 1, 0, "A", star=True), scan("2026-01-01T00:00:00Z", "B", 2, 0, "B", star=True),
               sale("2026-01-02T00:00:00Z", ["A"])]
@@ -790,6 +801,20 @@ class Batch2Values(unittest.TestCase):
         b = self.body("5")
         self.assertEqual(b["value_parts"]["bio_now"], 0)                            # banked at Vista Genomics
         self.assertEqual(self.state.system_value(1, "Sys", recs(), None)["value_parts"]["bio_now"], 0)
+
+    def test_bio_aboard_with_no_signal_count(self):
+        """Complete review 2026-10-30: Nearby's value_now added the samples aboard only for a body with a signal count,
+        so a body sampled with no FSS, DSS or Spansh count was left out while Here counted it."""
+        if not outrider.bio:
+            self.skipTest("no rules")
+        s = scan("2026-01-01T00:01:00Z", "Sys", 1, 5, "Sys 5")[2]; s["WasFootfalled"] = False; s["ScanType"] = "AutoScan"
+        self.j.handle(s)
+        for i, k in enumerate(("Log", "Sample", "Analyse")):
+            self.j.handle(org(f"2026-01-01T00:0{2 + i}:00Z", 1, 5, "Bacterial_01", k))
+        value = outrider.bio.species_value("Bacterium Aurasus")
+        self.assertEqual(self.body("5")["value_parts"]["bio_now"], value * 5)
+        recs = ed_outrider.merge_records([], *ed_outrider.own_data(self.db, 1, "Sys")[:2])
+        self.assertEqual(self.state.system_value(1, "Sys", recs, None)["value_parts"]["bio_now"], value * 5)
 
     CANDS = CANDS
 
