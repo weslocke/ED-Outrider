@@ -2,6 +2,28 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Complete review, batch 3: journal reading and uploads
+- Findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
+  test that fails without it. PARSER_VERSION 67: the journals are read again once.
+- **Your carrier's bank**: a deposit (CarrierBankTransfer) is read at last; the fold took it since PARSER 60, but the
+  reader never let the line in, so the balance, the weeks of upkeep and the upkeep card waited for the next
+  CarrierStats.
+- **Loop routes** (a sweep, Road to Riches with "loop"): back at the start partway round (to refuel, to sell) is the
+  start again, not "Sweep complete." and a cleared route.
+- **Old lines are not said**: the page gets only moments whose line is live, so a journal share back after a drop no
+  longer says "Jumping to X" or "Game closed" for things hours old.
+- **Two commanders**: at start, the other commander's NavRoute.json is not read as yours; the uploads' no-key hold
+  follows the commander really playing under `[journals] commander`; a refused-key hold names its commander and only
+  their Check or Save ends it.
+- **Carriers and sessions**: a squadron carrier's CarrierBuy leaves your own carrier and its mined ore alone; a carrier
+  jump made docked aboard keeps the dock (the trade form's start station); a login on foot or in a shuttle names your
+  ship in CMDR > Sessions.
+- **Uploads' words**: an outage from before a hold is not announced afterwards with its old downtime; Backfill Check
+  with EDSM off says Outrider is not sending and runs the gap to now; an import stopped by a restart says so, not a
+  retry that never comes; an HTTP 503 or 429 under a retried read says so ("it is failing (HTTP 5xx)", "it asked
+  Outrider to slow down"); EDSM's 208 on a key Check is a key accepted with no credits yet; the sights check has its
+  name on a stopped-task card.
+
 ## 2026-10-31 · Complete review, batch 2: key presses only into the game, auto-target on a stale map
 - The key-press findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand,
   each with a test that fails without it.

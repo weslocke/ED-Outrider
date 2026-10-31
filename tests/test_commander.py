@@ -553,6 +553,18 @@ class Sessions(unittest.TestCase):
                           {"sessions": 1, "tons": 6, "srv_tons": 0, "prospected": 2, "sold": 1500000}, C.SESSIONS_MAX))
         self.assertEqual(got["days"], 30)
 
+    def test_a_login_on_foot_names_your_ship(self):
+        """Complete review 2026-10-30: a login on foot (or in a shuttle) put the suit in the Ship column."""
+        events = [ev(T("08:00:00"), "LoadGame", Commander="Tester", Ship="ExplorationSuit_Class1", Ship_Localised="Artemis Suit"),
+                  ev(T("08:10:00"), "Bounty", Target="anaconda", TotalReward=5),
+                  ev(T("09:00:00"), "LoadGame", Commander="Tester", Ship="adder_taxi"),
+                  ev(T("09:10:00"), "Bounty", Target="anaconda", TotalReward=5)]
+        j, state = setup(self)
+        j.ship = {"name": "Wanderer", "type": "krait_mkii"}   # the last Loadout's
+        for e in events:
+            j.handle(e)
+        self.assertEqual([r["ship"] for r in state.commander_sessions(now=NOW)["sessions"]], ["Wanderer", "Wanderer"])
+
     def test_the_last_30_days(self):
         """Batch 4: Sessions by days, as History: the logins of the last 30 days, 40 at most."""
         old = [ev(T("10:00:00", "2026-09-11"), "LoadGame", Commander="Tester", Ship="python"),     # 31 days before NOW

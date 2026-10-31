@@ -1667,7 +1667,8 @@ MATERIAL_EVENTS = ("Materials", "MaterialCollected", "MaterialDiscarded", "Synth
 # Cargo (outrider/cargo.py): the ship's hold and your carrier's. Cargo, Docked, Undocked, CarrierStats (SHIP_EVENTS)
 # and MiningRefined (SRV_EVENTS) are read here too; these are only for cargo.
 CARGO_ONLY = ("MarketBuy", "MarketSell", "CargoTransfer", "CarrierTradeOrder", "CarrierDepositFuel", "CollectCargo",
-              "EjectCargo", "CarrierCrewServices", "BuyDrones", "SellDrones", "LaunchDrone")
+              "EjectCargo", "CarrierCrewServices", "BuyDrones", "SellDrones", "LaunchDrone",
+              "CarrierBankTransfer")   # complete review 2026-10-30: folded since PARSER 60, but the reader never let it in
 # the carrier's movements (SHIP_EVENTS, and CarrierJump a position event too) are stored here as well: S13 B
 CARRIER_MOVE_EVENTS = ("CarrierJumpRequest", "CarrierJumpCancelled", "CarrierLocation", "CarrierJump")
 CARGO_EVENTS = frozenset(CARGO_ONLY) | {"Cargo", "Docked", "Undocked", "CarrierStats", "MiningRefined", "Synthesis"} \
@@ -1776,7 +1777,7 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 # 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
 # 65: codex entries keep their own code (codex.code: "$Codex_Ent_Stratum_02_F_Name;"), Here's 📷 in any language
 # 66: your squadron's carrier is kept (meta squadron_carrier), no longer thrown away: where it was at your last login
-PARSER_VERSION = 66
+PARSER_VERSION = 67
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1802,6 +1803,7 @@ PARSER_VERSION = 66
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    67: "deposits into your carrier's bank count for its upkeep, a squadron carrier's purchase is not taken for your own, a session started on foot names your ship, and a carrier jump made docked aboard keeps the dock",
     66: "your squadron's carrier is kept beside your own, so the Carrier tile, the places to sell and the nearest places to dock know where it is",
     65: "each codex entry keeps the game's own code for it, so Here's 📷 knows a plant you photographed in any game language",
     64: "a green gas giant scanned three times (on arrival, in the FSS, when mapped) is still told apart by its codex entry",
@@ -3530,6 +3532,14 @@ class Journals:
         trade = survey_kind(kind).work == "trade"
         at, furthest, done = rc.get("at"), rc.get("furthest"), bool(rc.get("done_ts"))
         i = riches_match(rows, id64, name, at if at is not None else furthest or 0)
+        # a loop ends at its start: back there before its stops are done (to refuel, to sell) is the start again, not
+        # the end (complete review 2026-10-30: "Sweep complete." and the next jump cleared the route); `home`: the next
+        # stop then, from the furthest one reached
+        home = None
+        if i is not None and i == len(rows) - 1 and i > 1 and riches_match(rows[:1], rows[-1]["id64"], rows[-1]["system"]) == 0:
+            nx0 = self.riches_open(rc, rows, (furthest or 0) + 1)[0]
+            if nx0 is not None and nx0 < i:
+                i, home = 0, nx0
         rc["arrival_ts"] = ts
         say = None
         if i is None:
@@ -3542,6 +3552,8 @@ class Journals:
             rc.update(at=i, furthest=max(i, furthest if furthest is not None else i), off_route=None)
             left = self.riches_left(rc, rows, i)
             nx, skipped = self.riches_open(rc, rows, i + 1)   # S12: the next stop past the systems you finished
+            if home is not None:
+                nx, skipped = home, list(range(1, home))
             if done:
                 pass   # finished: kept, quietly, until you jump out of its last system (forget_finished_route)
             elif not left and i == len(rows) - 1:
@@ -4317,6 +4329,12 @@ class Journals:
             carrier_seen(self.carrier, ev.get("StarSystem"), id64, ts, jumped=True)
             self.carrier.update(x=x, y=y, z=z, services=ev.get("StationServices") or self.carrier.get("services"))
             meta_set(self.db, "carrier", self.carrier)
+        if name == "CarrierJump" and ev.get("Docked") and self.docked and ev.get("MarketID") == self.docked.get("market_id") \
+                and self.fresh("docked", ts, self.docked.get("ts")):
+            # aboard a carrier that jumped: the same dock, in its new system (as sale_dock, review 2026-10-20 L1; complete
+            # review 2026-10-30: meta docked kept the old one, and the trade form lost its start station)
+            self.docked = dict(self.docked, system=ev.get("StarSystem"))
+            meta_set(self.db, "docked", self.docked)
         self.db.execute(
             """INSERT INTO visits (id64, name, x, y, z, first_ts, last_ts, count)
                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
@@ -5027,6 +5045,8 @@ class Journals:
             meta_set(self.db, key, self.cmdr_view[key])
         elif name == "LoadGame":
             ship = ev.get("ShipName") or ev.get("Ship_Localised") or ev.get("Ship")
+            if not_a_ship(ev.get("Ship")):   # on foot or in a shuttle: your ship, as handle_cmdr (complete review 2026-10-30)
+                ship = (self.ship or {}).get("name") or ""
             self.db.execute("INSERT OR IGNORE INTO play_activity (login_ts, commander, ship) VALUES (?, ?, ?)",
                             (ts, ev.get("Commander"), ship))
         elif name in outrider.commander.ACTIVITY_EVENTS:
@@ -5246,7 +5266,8 @@ class Journals:
             self.mined_died = None
             meta_set(self.db, "mined_died", None)
         elif name == "CarrierBuy":
-            kept = {}   # a new carrier: what the old one held is gone with it
+            if ev.get("CarrierType", "FleetCarrier") == "FleetCarrier":   # a squadron's leaves your own one's ore
+                kept = {}   # a new carrier: what the old one held is gone with it
         elif name == "CargoTransfer":
             for t in ev.get("Transfers") or []:
                 if not isinstance(t, dict) or not cid(t.get("Type")):
@@ -5626,8 +5647,9 @@ class Journals:
             c.update(id=ev.get("CarrierID"), name=ev.get("Name"), callsign=ev.get("Callsign"),
                      fuel=ev.get("FuelLevel"), jump_range=ev.get("JumpRangeCurr"), stats_ts=ts, moves=[])
         elif name == "CarrierBuy":
-            # a new carrier: its state starts here (its name comes with its first CarrierStats)
-            if stale() or ev.get("CarrierID") is None:
+            # a new carrier: its state starts here (its name comes with its first CarrierStats). Not a squadron's: a
+            # leader buying one replaced their own carrier (complete review 2026-10-30)
+            if ev.get("CarrierType", "FleetCarrier") != "FleetCarrier" or stale() or ev.get("CarrierID") is None:
                 return
             c = {"id": ev.get("CarrierID"), "callsign": ev.get("Callsign"), "system": ev.get("Location"),
                  "id64": ev.get("SystemAddress"), "x": None, "y": None, "z": None, "ts": ts, "bought_ts": ts}
@@ -6113,6 +6135,8 @@ class Journals:
         return out
 
     def read_navroute(self, d):
+        if self.other_playing:   # S9-S4's stand-down, at start too (complete review 2026-10-30: the alt's route became yours)
+            return None
         path = os.path.join(d, "NavRoute.json")
         try:
             with open(path, encoding="utf-8") as f:
@@ -10711,6 +10735,11 @@ class State:
                 if facts:
                     self.journals.moment("codex_held", iso_ts(time.time() if now is None else now), system=str(sid), codex=facts)
 
+    @staticmethod
+    def moment_live(ts):
+        """Whether a moment's line is one to say now (live_event): the page's alerts take no other."""
+        return live_event(ts)
+
     def moments_summary(self):
         """The latest journal moments for the page's alerts, with scans and bio signals priced: the page
         compares them with your (per-browser) highlight levels and announces only what crosses them."""
@@ -10718,6 +10747,11 @@ class State:
         # all of them (the deque holds 16): the page announces those past the last seq it saw, so a burst
         # between two polls (a throttled tab, a reconnect) must not drop the oldest
         for m in list(self.journals.moments):
+            # only what happened just now is said: lines read late (a journal share back after a drop, a sync tool
+            # behind) said "Jumping to X" and "Game closed" for things hours old (complete review 2026-10-30; one gate
+            # for every moment, the author's choice)
+            if not self.moment_live(m["ts"]):
+                continue
             m = dict(m)
             if m["kind"] == "signals":
                 where = self.locate(m["system"])
@@ -15437,13 +15471,19 @@ class State:
         skipped)."""
         return self.upload_wanted(service) and self.upload_conflict(service) is None
 
+    def commander_playing(self):
+        """The commander playing now, for the uploads' holds: under [journals] commander another one's lines never reach
+        handle_cmdr, so journals.commander stays the filter's while other_playing names who plays (complete review
+        2026-10-30: the hold followed the filter's commander)."""
+        return self.journals.other_playing or (self.journals.commander or {}).get("name")
+
     def upload_on(self, service):
         """Whether `service` uploads now: wanted (the page's switch, else the config), never in --simulate, not while
         another uploader has it (upload_conflict), not while it waits on the player (a key EDSM refused)."""
         if not self.upload_wanted(service):
             return False
         waiting = self.upload_no_key.get(service)
-        if waiting and waiting != (self.journals.commander or {}).get("name"):
+        if waiting and waiting != self.commander_playing():
             self.upload_no_key.pop(service, None)
             self.clear_key_hold(service)   # held for a commander who no longer plays: the queue goes on (theirs dropped)
         if (self.upload_status.get(service) or {}).get("held"):
@@ -15616,6 +15656,7 @@ class State:
             print(f"uploads: {note}", file=sys.stderr)
         self.upload_status.pop(service, None)
         self.upload_hold_gone(service)
+        self.upload_down_clear(service)   # an outage from before the hold is over
         self.upload_recent.end(service)   # a failure after this starts a new outage
         self.upload_down_clear(service)
         if was and not on and self.uploads_hub.marks.pop(service, None) is not None:
@@ -15640,10 +15681,16 @@ class State:
         acts: a refused key) when one of its rows says so; Recent's list, and the end of an outage that was said (S3)."""
         held = next((status for _, state, status, _ in outcome["results"] if state == "held"), None)
         dropped = next((status for _, state, status, _ in outcome["results"] if state == "dropped"), None)
-        self.upload_status[service] = {"error": outcome["error"] or held or dropped, "at": outcome["at"], "held": held}
+        # whose rows are held: only that commander's Check or Save ends the hold (complete review 2026-10-30: another
+        # commander's ended it, the next round was refused again and a second card came)
+        rid = next((r for r, state, _, _ in outcome["results"] if state == "held"), None)
+        row = self.db.execute("SELECT cmdr FROM upload_queue WHERE id = ?", (rid,)).fetchone() if rid is not None else None
+        held_cmdr = row[0] if row else None
+        self.upload_status[service] = {"error": outcome["error"] or held or dropped, "at": outcome["at"], "held": held,
+                                       "held_cmdr": held_cmdr if held else None}
         if held:
-            self.upload_hold_said(service, service, f"{outrider.uploads.NAMES.get(service, service)} uploads on hold: {held}",
-                                  outcome["at"])
+            self.upload_hold_said(service, service, f"{outrider.uploads.NAMES.get(service, service)} uploads on hold"
+                                  + (f" (CMDR {held_cmdr})" if held_cmdr else "") + f": {held}", outcome["at"])
         ended = self.upload_recent.add(service, outcome)
         if ended and self.upload_down_said.get(service) == ended["since"]:
             self.upload_back(service, ended)
@@ -15653,7 +15700,7 @@ class State:
         """S3-S1: the rows of the commander playing now, who has no key saved, held (they wait in the outbox; saving the
         key releases them, set_*_account -> clear_key_hold), or None for another commander (dropped as before: an old
         alt's lines are not kept forever)."""
-        playing = (self.journals.commander or {}).get("name")
+        playing = self.commander_playing()
         if not cmdr or cmdr != playing:
             return None
         self.upload_no_key[service] = cmdr
@@ -15677,15 +15724,19 @@ class State:
         if self.upload_held_said.pop(key, None) is not None:
             self.notices.clear(f"upload_held:{key}")
 
-    def clear_key_hold(self, service):
+    def clear_key_hold(self, service, commander=None):
         """A key EDSM or Inara refused: send again now (a new key, Settings' Try again; S16, S45 later). The hold stops
         the sending only (what is played meanwhile waits in the outbox), and it lasts until this. True when it held.
         Nothing else is touched: a Save or Check with no hold keeps a backoff's or Inara's slow-down wait and its words
         (review 2026-10-20 M0)."""
-        if not (self.upload_status.get(service) or {}).get("held"):
+        st = self.upload_status.get(service) or {}
+        if not st.get("held"):
+            return False
+        if commander and st.get("held_cmdr") and commander != st["held_cmdr"]:   # another commander's key: theirs waits
             return False
         self.upload_status.pop(service, None)
         self.upload_hold_gone(service)
+        self.upload_down_clear(service)   # an outage from before the hold is over
         if service in self.upload_wake:
             self.upload_wake[service].set()   # the sender's wait ends at once
         return True
@@ -15802,9 +15853,12 @@ class State:
         print(f"uploads: {text}")
 
     def upload_down_clear(self, service):
-        """The outage card goes without a word (the upload switched off, held, or given to another uploader)."""
+        """The outage card goes without a word (the upload switched off, held, or given to another uploader), and the
+        outage with it: a failure after the hold or the hand-over is a new one (complete review 2026-10-30: it was said
+        at once, with hours of downtime from before the hold)."""
         self.upload_down_said.pop(service, None)
         self.notices.clear(f"upload_down:{service}")
+        self.upload_recent.end(service)
 
     BLOCKED_WORDS = {"beta": "the game's beta: nothing is uploaded from it", "legacy": "the Legacy game (3.8): nobody takes its data",
                      "crew": "crew in another commander's ship", "version": "the game version is not known yet",
@@ -15969,7 +16023,7 @@ class State:
             accounts[commander] = {"name": name, "key": key}
             outrider.serverlog.hide(key)
         meta_set(self.db, "edsm_accounts", accounts)
-        self.clear_key_hold("edsm")   # a new key: try again
+        self.clear_key_hold("edsm", commander)   # a new key: try again
         self.db.commit()
         self.bump()
         return {"ok": True, "accounts": self.edsm_account_list()}, 200
@@ -16059,7 +16113,7 @@ class State:
         if remove or key != had:   # maybe another Inara profile: it has none of what the old one was sent
             self.inara_sent.forget(commander)
         meta_set(self.db, "inara_accounts", accounts)
-        self.clear_key_hold("inara")   # a new key: try again
+        self.clear_key_hold("inara", commander)   # a new key: try again
         self.db.commit()
         self.bump()
         return {"ok": True, "accounts": self.inara_account_list()}, 200
@@ -16098,7 +16152,8 @@ class State:
                 edsm_name = str(name or "").strip()[:64] or stored.get("name") or commander
                 got = rc.edsm_credits_answer(await rc.fetch(self.upload_session, rc.EDSM_CREDITS_URL, self.edsm_gate,
                                                             data=rc.edsm_form(edsm_name, key)))
-                out.update(ok=got["ok"], text=f"EDSM accepts CMDR {edsm_name} with this key" if got["ok"]
+                out.update(ok=got["ok"], text=f"EDSM accepts CMDR {edsm_name} with this key"
+                           + (" (no credits stored yet)" if got["code"] == 208 else "") if got["ok"]
                            else f"EDSM: {got['code']} {got['text']}")
             else:
                 body = rc.inara_profile_request(key, commander, outrider.__version__, outrider.inara.SOFTWARE,
@@ -16122,7 +16177,7 @@ class State:
         if service == "edsm" and out["ok"] and edsm_name != (stored.get("name") or commander):
             same = False
             out["text"] += ": save this name first"
-        if out["ok"] and same and self.clear_key_hold(service):
+        if out["ok"] and same and self.clear_key_hold(service, commander):
             out["cleared"] = True
             self.bump()
         print(f"uploads: {label} key check for CMDR {commander}: {'ok' if out['ok'] else out['text']}")
@@ -16285,7 +16340,9 @@ class State:
         """S47a: where EDSM's flight log ends before Outrider took over (meta edsm_since, else now): get-position, and
         when that is later, get-logs a week at a time going back (BF_CHECK_WEEKS at most). Reads only."""
         rc = outrider.readclient
-        since = meta_get(self.db, "edsm_since")
+        # EDSM switched off: Outrider sends nothing now, so the gap runs to now (complete review 2026-10-30: the switch-on
+        # date was still used and said as "Outrider has sent since", the stretch played with it off missed)
+        since = meta_get(self.db, "edsm_since") if self.upload_wanted("edsm") else None
         try:
             b = ts_seconds(since) if isinstance(since, str) else time.time()
         except (TypeError, ValueError):
@@ -16501,7 +16558,9 @@ class State:
         visits from EDSM that count now ({visits, systems, first, last}) and the entries kept."""
         p = self.edsm_import()
         if p and p.get("state") == "running" and not self.edsm_import_running():
-            p = dict(p, state="stopped", why=p.get("why") or "Outrider stopped before it finished")
+            # whatever it was waiting on went with the task (complete review 2026-10-30: "trying again at 21:30" after
+            # a restart, a retry that never comes); Stop and a failure set their own state before this
+            p = dict(p, state="stopped", why="Outrider stopped before it finished")
         counted, stored = self.edsm_counted()
         return {"progress": p, "counted": counted, "stored": stored, "gap_s": IMPORT_GAP_S}
 
@@ -16755,7 +16814,8 @@ class State:
                   "watch_codex_images": "The checklists' picture links", "watch_overlay_window": "The overlay window",
                   "button": "The co-pilot button", "bio_rules": "The exobiology rules check", "leases": "The upload leases",
                   "edsm_discard": "EDSM's discard list", "upload:eddn": "EDDN sending", "upload:edsm": "EDSM sending",
-                  "upload:inara": "Inara sending", "upload:edsm_bf": "The EDSM backfill"}
+                  "upload:inara": "Inara sending", "upload:edsm_bf": "The EDSM backfill",
+                  "watch_sights": "The catalogued sights check"}   # every name watch_task is given (a test checks)
 
     def watch_task(self, task, name):
         """A long-lived task that must never end on its own: if it does, with an error, the traceback is printed and a

@@ -116,6 +116,28 @@ class CarrierWarnings(unittest.TestCase):
         self.assertEqual(st["finance"], {"balance": 6000, "reserve": 100, "available": 5900, "ts": "2026-10-02T00:00:00Z"})
         self.assertIn("CarrierBankTransfer", ed_outrider.CARRIER_CARGO_EVENTS)
 
+    def test_a_bank_deposit_is_read_from_the_journal(self):
+        """Complete review 2026-10-30: the fold took the deposit, but the reader never let the line in (not in the
+        prefilter's lists), so through a real journal the balance stayed the stats'."""
+        import os
+        import tempfile
+        d = tempfile.mkdtemp()
+        self.addCleanup(__import__("shutil").rmtree, d)
+        lines = ['{"timestamp":"2026-10-01T00:00:00Z","event":"Fileheader","part":1,"gameversion":"4.1","build":"r1"}',
+                 '{"timestamp":"2026-10-01T00:00:01Z","event":"Commander","FID":"F1","Name":"Me"}',
+                 '{"timestamp":"2026-10-01T00:00:02Z","event":"CarrierStats","CarrierID":7,"CarrierType":"FleetCarrier",'
+                 '"Callsign":"ABC-123","Name":"DEEP","FuelLevel":500,"Finance":{"CarrierBalance":1000,"ReserveBalance":100,'
+                 '"AvailableBalance":900}}',
+                 '{"timestamp":"2026-10-01T00:00:03Z","event":"CarrierBankTransfer","CarrierID":7,"Deposit":5000,'
+                 '"PlayerBalance":1,"CarrierBalance":6000}']
+        with open(os.path.join(d, "Journal.2026-10-01T000000.01.log"), "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        self.j.carrier = None
+        self.j.scan_dir(d)
+        self.assertEqual([r[0] for r in self.db.execute("SELECT event FROM cargo_events ORDER BY ts")],
+                         ["CarrierStats", "CarrierBankTransfer"])
+        self.assertEqual(self.state.carrier_cargo()["finance"]["balance"], 6000)
+
     def test_the_request_names_the_reading(self):
         """S4-S4: a trip planned from the depot reading carries the reading's time (a typed depot: none)."""
         d = {"from": "Home", "fuel": 800, "hold": 0, "fuel_estimated": False, "fuel_read_ts": "2026-10-01T10:00:00Z",

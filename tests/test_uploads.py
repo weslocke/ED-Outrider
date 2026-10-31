@@ -1411,6 +1411,21 @@ class UploadOutageAlert(unittest.TestCase):
         st.check_upload_outages(self.t0 + 30 * 60)                               # a new outage, 9 minutes old
         self.assertEqual(len(self.moments("upload_down")), 1)
 
+    def test_an_outage_ends_with_a_hold(self):
+        """Complete review 2026-10-30: a held round did not end the outage, so the first failure after the key was fixed
+        (hours later) was said at once as "failing for 300 min"."""
+        st = self.state
+        st.set_edsm_account("Tester", "Tester", "a" * 40)
+        self.queue("edsm", 3)
+        self.down("edsm", self.t0)
+        st.upload_report("edsm", rnd(self.t0 + 60, ("held", "203 Commander name/API Key not found")))
+        st.check_upload_outages(self.t0 + 120)                                  # held: the card and the outage go
+        st.clear_key_hold("edsm")                                               # the key fixed, hours later
+        self.down("edsm", self.t0 + 5 * 3600)
+        with unittest.mock.patch("sys.stderr"):
+            st.check_upload_outages(self.t0 + 5 * 3600 + 60)
+        self.assertEqual(self.moments("upload_down"), [])
+
     def test_inara_asked_to_slow_down(self):
         st = self.state
         st.set_upload("inara", True)

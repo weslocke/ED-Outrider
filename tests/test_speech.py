@@ -24,6 +24,10 @@ class Speech(unittest.TestCase):
     """Spoken alerts: the lines file, and the game / arrival triggers."""
 
     def setUp(self):
+        # these tests build moments from fixed, old journal times: the live gate of moments_summary is not theirs
+        live = unittest.mock.patch.object(ed_outrider.State, "moment_live", staticmethod(lambda ts: True))
+        live.start()
+        self.addCleanup(live.stop)
         import types
         self.db = ed_outrider.open_db(":memory:")
         self.addCleanup(self.db.close)
@@ -490,6 +494,10 @@ class Batch6Voice(unittest.TestCase):
     arrival briefings, and the session recap (server-side triggers and the facts they carry)."""
 
     def setUp(self):
+        # these tests build moments from fixed, old journal times: the live gate of moments_summary is not theirs
+        live = unittest.mock.patch.object(ed_outrider.State, "moment_live", staticmethod(lambda ts: True))
+        live.start()
+        self.addCleanup(live.stop)
         import types
         self.db = ed_outrider.open_db(":memory:")
         self.addCleanup(self.db.close)
@@ -1275,6 +1283,10 @@ class MappedCallout(unittest.TestCase):
     ticked), and its config key."""
 
     def setUp(self):
+        # these tests build moments from fixed, old journal times: the live gate of moments_summary is not theirs
+        live = unittest.mock.patch.object(ed_outrider.State, "moment_live", staticmethod(lambda ts: True))
+        live.start()
+        self.addCleanup(live.stop)
         import types
         self.db = ed_outrider.open_db(":memory:")
         self.addCleanup(self.db.close)

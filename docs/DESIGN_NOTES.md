@@ -1101,7 +1101,9 @@ upstream project's choices, not rules of the game.
 - **The key Check only reads, and one Inara gate paces everything** (S45, G3): EDSM's get-credits (100: the name and key
   go together; 203: they do not) and Inara's getCommanderProfile (the header's 400: the key refused; the event's 204: no
   such commander). The typed key, else the stored one; a success with the stored key ends its hold
-  (`clear_key_hold`, the one helper). Keys go in a POST body, and no error's text reaches the answer or the log
+  (`clear_key_hold`, the one helper), but only a hold of that commander's rows (`held_cmdr`, named on its card; complete
+  review 2026-10-30: another commander's Check ended it and the next round was refused again). Under `[journals]
+  commander`, the commander playing is `other_playing` when set (`State.commander_playing`). Keys go in a POST body, and no error's text reaches the answer or the log
   (aiohttp's carries the URL): only its kind ("Couldn't reach Inara: timeout"). One check per 10 s per service; EDSM's
   account reads at least 2 s apart; Inara's check waits on the same `uploads.Gate` as its sender (35 s), because
   Inara's two-a-minute rule counts every request with the key and whether a read counts is not documented.

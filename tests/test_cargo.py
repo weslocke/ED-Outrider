@@ -225,6 +225,28 @@ class CarrierLife(unittest.TestCase):
                          ("999", "ABC-123", "New Place", None, None))
         self.assertEqual(self.state.cargo_summary()["carrier"]["lines"], [])   # the old one's cargo is not its
 
+    def test_a_squadron_carriers_purchase_leaves_yours(self):
+        """Complete review 2026-10-30: a squadron leader's CarrierBuy (CarrierType SquadronCarrier) replaced your own
+        carrier's record and emptied the ore you had moved to it."""
+        self.j.mined_carrier = {"platinum": 5}
+        self.j.handle(ev("2026-10-20T10:00:00Z", "CarrierBuy", CarrierType="SquadronCarrier", CarrierID=999,
+                         Callsign="Q7XZ", Location="Sol", SystemAddress=10477373803, BoughtAtMarket=1, Price=1, Variant="x"))
+        c = self.state.carrier_summary()
+        self.assertEqual((c["carrier_id"], c["system"]), (str(CARRIER), "Old Place"))
+        self.assertEqual(self.j.mined_carrier, {"platinum": 5})
+
+    def test_docked_aboard_when_it_jumps(self):
+        """Complete review 2026-10-30: docked at your carrier when it jumped, meta docked kept the old system, so the
+        trade plot form lost its start station until you undocked or relogged."""
+        self.j.handle(ev("2026-10-05T10:00:00Z", "FSDJump", StarSystem="Alpha", SystemAddress=1, StarPos=[0, 0, 0]))
+        self.j.handle(ev("2026-10-05T10:01:00Z", "Docked", StationName="XYZ-123", StationType="FleetCarrier",
+                         MarketID=CARRIER, StarSystem="Alpha", SystemAddress=1, StationServices=[]))
+        self.assertEqual(self.state.trade_defaults()["station"], "XYZ-123")
+        self.j.handle(ev("2026-10-05T10:30:00Z", "CarrierJump", Docked=True, StationName="XYZ-123", StationType="FleetCarrier",
+                         MarketID=CARRIER, StarSystem="Beta", SystemAddress=2, StarPos=[10, 0, 0]))
+        self.assertEqual((self.j.docked["system"], self.j.docked["ts"]), ("Beta", "2026-10-05T10:01:00Z"))
+        self.assertEqual(self.state.trade_defaults()["station"], "XYZ-123")
+
     def test_new_carrier_from_its_stats(self):
         """No CarrierBuy read (an older journal gone): the first CarrierStats of another id starts afresh."""
         self.j.handle(dict(stats("2026-10-20T10:00:00Z", 0), CarrierID=999, Name="NEW ONE"))

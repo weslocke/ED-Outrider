@@ -329,8 +329,10 @@ class Server(unittest.TestCase):
         self.start([HttpError(429, "HTTP 429"), *self.weeks()])
         self.assertEqual(self.state.edsm_import()["state"], "done")       # asked again after the wait
         self.assertEqual(len(self.state.upload_session.calls), 4)
-        self.state.edsm_import_set(state="running")                      # as a restart finds it
-        self.assertEqual(self.state.edsm_import_summary()["progress"]["state"], "stopped")
+        self.state.edsm_import_set(state="running", why="EDSM not answering: trying week 6 again at 21:30")   # as a restart finds it
+        p = self.state.edsm_import_summary()["progress"]
+        # complete review 2026-10-30: the wait's words promised a retry that never comes
+        self.assertEqual((p["state"], p["why"]), ("stopped", "Outrider stopped before it finished"))
 
     def test_bad_requests(self):
         cases = [{"action": "fly"}, {"action": "start", "commander": ""}, {"action": "start", "commander": "Nobody"}]

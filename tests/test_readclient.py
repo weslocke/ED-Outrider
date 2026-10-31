@@ -33,6 +33,9 @@ class Parsers(unittest.TestCase):
         for bad in ([], {"msg": "OK"}, "x"):
             with self.assertRaises(ValueError):
                 RC.edsm_credits_answer(bad)
+        # complete review 2026-10-30: a known commander with no credits yet (a new account) is not a refused key
+        self.assertEqual(RC.edsm_credits_answer({"msgnum": 208, "msg": "No credits stored"}),
+                         {"ok": True, "code": 208, "text": "no credits stored yet", "balance": None})
 
     def test_edsm_position_and_logs(self):
         p = RC.edsm_position_answer(EX["edsm_position_ok"])
@@ -178,6 +181,13 @@ class KeyChecks(unittest.TestCase):
         self.state.key_checked.clear()   # one per KEY_CHECK_S: each call here is a new check
         return asyncio.run(go())
 
+    def test_edsm_no_credits_yet(self):
+        """Complete review 2026-10-30: EDSM's 208 (a known commander, no credits stored yet: a new account before its
+        first upload) read as a refused key."""
+        self.state.set_edsm_account("Sample Pilot", "Sample EDSM", EDSM_KEY)
+        status, j = self.check("edsm", [(200, {"msgnum": 208, "msg": "No credits stored"})], {"commander": "Sample Pilot"})
+        self.assertEqual((status, j["ok"], j["text"]), (200, True, "EDSM accepts CMDR Sample EDSM with this key (no credits stored yet)"))
+
     def test_edsm(self):
         st, out = self.state, []
         st.set_edsm_account("Sample Pilot", "Sample EDSM", EDSM_KEY)
@@ -291,6 +301,25 @@ class OfflineInVerify(unittest.TestCase):
         lookups = [c for _, consts in ed_outrider.LOOKUP_URLS for c in consts]
         for c in lookups:
             self.assertTrue(re.search(rf'"{c}"|ed_outrider\.{c}\b', block), c)
+
+
+
+class WrappedStatus(unittest.TestCase):
+    def test_a_status_under_unreachable(self):
+        """Complete review 2026-10-30: Unreachable is raised from the failure so its kind is read through __cause__, but
+        an HTTP status there was not: a 503 was "failed" (no "tried 6 times"), a 429 too, an HttpError "refused"."""
+        import aiohttp
+        from outrider.health import HttpError
+
+        def wrapped(cause):
+            try:
+                raise RC.Unreachable("Spansh") from cause
+            except RC.Unreachable as e:
+                return e
+        e503 = wrapped(HttpError(503, "HTTP 503"))
+        e429 = wrapped(aiohttp.ClientResponseError(None, (), status=429, message="Too Many Requests"))
+        self.assertEqual((RC.transient(e503), RC.reach_words(e503)), ("http5xx", "it is failing (HTTP 5xx)"))
+        self.assertEqual((RC.transient(e429), RC.reach_words(e429)), ("rate", "it asked Outrider to slow down"))
 
 
 if __name__ == "__main__":

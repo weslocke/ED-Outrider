@@ -198,6 +198,7 @@ class Server(unittest.TestCase):
         return {"msgnum": 100, "msg": "OK", "logs": [{"system": s, "systemId64": 1, "date": d} for s, d in entries]}
 
     def test_check_from_edsm_since(self):
+        self.state.upload_cfg["edsm"]["enabled"] = True
         ed_outrider.meta_set(self.db, "edsm_since", at(45))
         self.db.execute("INSERT INTO jumps (ts, id64, name) VALUES (?, 2, 'Alpha'), (?, 3, 'Beta')", (at(30), at(40)))
         pos = dict(EX["edsm_position_ok"], date="2026-10-01 12:10:00")
@@ -214,6 +215,7 @@ class Server(unittest.TestCase):
         self.assertNotIn(KEY, json.dumps(self.state.uploads_summary()))
 
     def test_check_walks_back_when_edsm_has_later_entries(self):
+        self.state.upload_cfg["edsm"]["enabled"] = True
         ed_outrider.meta_set(self.db, "edsm_since", "2026-09-10T00:00:00Z")
         pos = dict(EX["edsm_position_ok"], date="2026-10-01 12:00:00")   # Outrider's own sends since
         script = [(200, pos), (200, self.logs()), (200, self.logs(("Old Place", "2026-09-01 08:00:00"), ("Late", "2026-09-11 08:00:00")))]
@@ -224,6 +226,19 @@ class Server(unittest.TestCase):
         calls = self.state.upload_session.calls
         self.assertEqual(len(calls), 3)                          # get-position, then two weeks of get-logs going back
         self.assertEqual((calls[1][2]["startDateTime"], calls[1][2]["endDateTime"]), ("2026-09-03 00:00:00", "2026-09-10 00:00:00"))
+
+    def test_check_with_edsm_switched_off(self):
+        """Complete review 2026-10-30: switched on once (edsm_since kept), then off: Check said "Outrider has sent since"
+        that date and missed the stretch played with EDSM off. Off, the gap runs to now."""
+        self.state.upload_cfg["edsm"]["enabled"] = False
+        ed_outrider.meta_set(self.db, "edsm_since", at(45))
+        pos = dict(EX["edsm_position_ok"], date="2026-10-01 12:10:00")
+        self.post([(200, pos)], {"action": "check", "commander": "Sample Pilot"})
+        job = self.state.edsm_bf_job
+        self.assertIn("Outrider is not sending to EDSM", job["text"])
+        self.assertNotIn("has sent since", job["text"])
+        self.assertIsNone(job["result"]["since"])
+        self.assertGreater(job["result"]["end"], at(45))   # to now
 
     def test_check_says_unknown_without_edsm_since(self):
         self.state.upload_cfg["edsm"]["enabled"] = True        # on from before edsm_since was kept

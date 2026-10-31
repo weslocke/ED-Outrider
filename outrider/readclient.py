@@ -58,9 +58,13 @@ def edsm_form(name, key, **extra):
 
 
 def edsm_credits_answer(reply):
-    """get-credits' reply -> {ok, code, text, balance}: 100 the name and key go together (S45), 203 they do not."""
+    """get-credits' reply -> {ok, code, text, balance}: 100 the name and key go together (S45), 203 they do not; 208
+    they do, with no credits stored yet (a new account before its first upload: complete review 2026-10-30, it read as
+    refused)."""
     code = _code(reply)
     text = str(reply.get("msg") or "")
+    if code == 208:
+        return {"ok": True, "code": code, "text": EDSM_CODES[208], "balance": None}
     if code == 100:
         rows = reply.get("credits") if isinstance(reply.get("credits"), list) else []
         bal = rows[0].get("balance") if rows and isinstance(rows[0], dict) else None

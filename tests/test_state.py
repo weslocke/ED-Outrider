@@ -335,6 +335,10 @@ class Batch1Server(unittest.TestCase):
     """Batch 1: hull, danger moments, sales, finds and the priced leaving summary."""
 
     def setUp(self):
+        # these tests build moments from fixed, old journal times: the live gate of moments_summary is not theirs
+        live = unittest.mock.patch.object(ed_outrider.State, "moment_live", staticmethod(lambda ts: True))
+        live.start()
+        self.addCleanup(live.stop)
         import types
         self.db = ed_outrider.open_db(":memory:")
         self.addCleanup(self.db.close)
@@ -2152,6 +2156,10 @@ class BatchBState(unittest.TestCase):
     CANDS = CANDS
 
     def setUp(self):
+        # these tests build moments from fixed, old journal times: the live gate of moments_summary is not theirs
+        live = unittest.mock.patch.object(ed_outrider.State, "moment_live", staticmethod(lambda ts: True))
+        live.start()
+        self.addCleanup(live.stop)
         import types
         self.db = ed_outrider.open_db(":memory:")
         self.addCleanup(self.db.close)
@@ -2755,6 +2763,10 @@ class FableServer(unittest.TestCase):
     CANDS = CANDS
 
     def setUp(self):
+        # these tests build moments from fixed, old journal times: the live gate of moments_summary is not theirs
+        self.live = unittest.mock.patch.object(ed_outrider.State, "moment_live", staticmethod(lambda ts: True))
+        self.live.start()
+        self.addCleanup(self.live.stop)
         import types
         self.db = ed_outrider.open_db(":memory:")
         self.addCleanup(self.db.close)
@@ -2981,6 +2993,17 @@ class FableServer(unittest.TestCase):
         for i in range(14):
             self.j.handle({"event": "Interdicted", "timestamp": f"2026-01-01T00:{i + 10:02d}:00Z", "Interdictor": "x"})
         self.assertEqual(len(self.moments("interdicted")), 14)
+
+    def test_only_live_lines_are_said(self):
+        """Complete review 2026-10-30: lines read late (a journal share back after a drop, a sync tool behind) are not
+        said: "Jumping to X" and "Game closed" came for things hours old. One gate, in moments_summary."""
+        import time
+        self.live.stop()   # this class turns the gate off for its old journal times: on here
+        old = ed_outrider.iso_ts(time.time() - 3 * 3600)
+        now = ed_outrider.iso_ts(time.time() - 5)
+        for ts in (old, now):
+            self.j.handle({"event": "Interdicted", "timestamp": ts, "Interdictor": "x"})
+        self.assertEqual([m["ts"] for m in self.state.moments_summary() if m["kind"] == "interdicted"], [now])
 
     # ---- F27: /api/say from another site ----
     def test_say_refused_cross_site(self):   # F27
@@ -3464,3 +3487,16 @@ class JournalsRegistry(unittest.TestCase):
         loaded = set(re.findall(r'meta_get\(db,\s*"([^"]+)"', inspect.getsource(ed_outrider.Journals.reload))) | \
             {k for _, k, _ in ed_outrider.Journals.SAVED}
         self.assertFalse(loaded - reset - set(self.KEPT_THROUGH_REREAD), "reload() reads a key neither reset nor kept")
+
+
+class TaskNames(unittest.TestCase):
+    def test_every_watched_task_has_a_name(self):
+        """Complete review 2026-10-30: watch_sights had none, so its "stopped after an error" card would show the
+        internal name. Every name given to watch_task in the code is in TASK_NAMES."""
+        import os
+        import re
+        with open(os.path.join(os.path.dirname(ed_outrider.STATIC_DIR), "ed_outrider.py"), encoding="utf-8") as f:
+            code = f.read()
+        names = set(re.findall(r'watch_task\([^\n]*?, "([\w:]+)"\)', code)) | {f"upload:{s}" for s in ("eddn", "edsm", "inara", "edsm_bf")}
+        self.assertGreater(len(names), 10)
+        self.assertEqual(sorted(names - set(ed_outrider.State.TASK_NAMES)), [])

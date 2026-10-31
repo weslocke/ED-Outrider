@@ -182,6 +182,21 @@ class CommanderFilter(unittest.TestCase):
             self.state.tick(mtimes)
         self.assertEqual(sorted(set(read)), ["read_cargo_file", "read_locker_file", "read_navroute"])
 
+    def test_at_start_the_other_commanders_route_is_not_read(self):
+        """Complete review 2026-10-30: run() reads NavRoute.json after the start-up import; with the other commander
+        playing, their plotted route became yours (the tick already stood down)."""
+        self.two_commanders()
+        self.j.commander_filter = "F1"
+        self.write("Journal.2026-10-05T100000.01.log", header("2026-10-05T10:00:00Z"), commander("2026-10-05T10:00:01Z", "F2", "Beta"))
+        with open(os.path.join(self.dir, "NavRoute.json"), "w", encoding="utf-8") as f:
+            json.dump({"timestamp": "2026-10-05T10:05:00Z", "event": "NavRoute", "Route": [
+                {"StarSystem": "BetaHome", "SystemAddress": 100, "StarPos": [0, 0, 0], "StarClass": "K"},
+                {"StarSystem": "BetaGoal", "SystemAddress": 101, "StarPos": [5, 0, 0], "StarClass": "G"}]}, f)
+        self.j.scan_dir(self.dir, upload="catchup")
+        self.assertEqual(self.j.other_playing, "Beta")
+        self.j.read_navroute(self.dir)
+        self.assertIsNone(ed_outrider.meta_get(self.db, "route"))
+
     def test_another_commanders_lines_touch_the_estimate_not_the_journal_time(self):
         """#14: an alt's sale re-runs the unsold estimate (it reads every commander); #15: their lines do not move
         last_event_ts."""

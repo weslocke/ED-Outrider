@@ -272,6 +272,18 @@ class Sender(unittest.TestCase):
         out = asyncio.run(self.state.edsm_send(self.rows()))
         self.assertEqual({st for _, st, _, _ in out}, {"dropped"})
 
+    def test_a_no_key_hold_follows_who_plays_under_the_filter(self):
+        """Complete review 2026-10-30: under [journals] commander, journals.commander stays the filter's while another
+        plays (other_playing): the hold was never released, and the alt's rows waited behind it."""
+        self.state.upload_cfg["edsm"]["enabled"] = True
+        self.j.commander = {"name": "Briadin"}
+        self.state.upload_session = _Http([])
+        out = asyncio.run(self.state.edsm_send(self.rows()))
+        self.state.upload_report("edsm", {"error": None, "at": 1, "results": out})
+        self.assertFalse(self.state.upload_on("edsm"))
+        self.j.other_playing = "Alt"                      # the alt plays; journals.commander is still Briadin
+        self.assertTrue(self.state.upload_on("edsm"))
+
     def test_refused_key_holds(self):
         self.state.set_edsm_account("Briadin", "Briadin", KEY)
         self.state.upload_cfg["edsm"]["enabled"] = True
@@ -280,6 +292,22 @@ class Sender(unittest.TestCase):
             out = asyncio.run(self.state.edsm_send(self.rows()))
         self.state.upload_report("edsm", {"error": None, "at": 1, "results": out})
         self.assertFalse(self.state.upload_on("edsm"))                  # until the key changes
+        self.state.set_edsm_account("Briadin", "Briadin", KEY)
+        self.assertTrue(self.state.upload_on("edsm"))
+
+    def test_another_commanders_key_leaves_the_hold(self):
+        """Complete review 2026-10-30: the hold was the service's, so saving (or checking) another commander's key ended
+        it; the next round was refused again and a second card came. Now only the held commander's key ends it, and the
+        card names them."""
+        self.state.set_edsm_account("Briadin", "Briadin", KEY)
+        self.state.upload_cfg["edsm"]["enabled"] = True
+        self.state.upload_session = _Http([(200, {"msgnum": 203, "msg": "Commander name/API Key not found"})])
+        with unittest.mock.patch.dict(os.environ, {S.DRY_ENV: ""}), unittest.mock.patch("sys.stderr"):
+            out = asyncio.run(self.state.edsm_send(self.rows()))
+            self.state.upload_report("edsm", {"error": None, "at": 1, "results": out})
+        self.assertIn("(CMDR Briadin)", self.state.upload_held_said["edsm"])
+        self.state.set_edsm_account("Alt", "Alt", KEY)
+        self.assertFalse(self.state.upload_on("edsm"))                  # still Briadin's hold
         self.state.set_edsm_account("Briadin", "Briadin", KEY)
         self.assertTrue(self.state.upload_on("edsm"))
 

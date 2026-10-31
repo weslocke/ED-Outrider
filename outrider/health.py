@@ -71,6 +71,11 @@ def classify(exc=None, status=None, text=None):
     if exc is not None:
         if isinstance(exc, HttpError) or (status is None and isinstance(getattr(exc, "status", None), int)):
             kind = _by_status(status or exc.status, str(exc))   # aiohttp's ClientResponseError carries one too
+        elif status is None:   # a status further down the chain (readclient.Unreachable raised from an HTTP 503 or 429:
+            # complete review 2026-10-30, it was "failed" / "refused")
+            e = next((e for e in _chain(exc)[1:] if isinstance(e, HttpError) or isinstance(getattr(e, "status", None), int)), None)
+            if e is not None:   # aiohttp's own text needs its request; its message is the reason
+                kind = _by_status(e.status, str(e) if isinstance(e, HttpError) else str(getattr(e, "message", "") or ""))
         for e in () if kind else _chain(exc):
             name = type(e).__name__
             if isinstance(e, socket.gaierror) or name == "ClientConnectorDNSError":

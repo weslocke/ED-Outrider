@@ -778,6 +778,30 @@ class SurveyKinds(unittest.TestCase):
                                 ("complete", "Sweep complete.", "sweep")])
         self.assertTrue(ed_outrider.meta_get(self.db, "riches")["done_ts"])
 
+    def test_a_loop_is_not_over_back_at_its_start(self):
+        """Complete review 2026-10-30: a loop's last row is its start again, so a hop back home after the first stop
+        (to refuel, to sell) said "Sweep complete." and the next jump cleared the route. It is the start again until
+        the stops are done; the next stop is the first not reached."""
+        fx = _fixture("spansh_tourist.json")
+        self.jump(-100, 10477373803, "Sol", 0)
+        _sp, out = self.sweep([(200, {"job": "t1", "status": "queued"}), (200, fx["loop"])],
+                              {"systems": ["Wolf 359", "Alpha Centauri", "Barnard's Star"], "loop": True})
+        meta, rows = self.state.riches_state()
+        self.assertEqual([r["system"] for r in rows], ["Sol", "Alpha Centauri", "Barnard's Star", "Wolf 359", "Sol"])
+        self.jump(-90, 1178708478315, "Alpha Centauri", 3)
+        self.jump(-85, 10477373803, "Sol", 0)              # home to refuel
+        rc = ed_outrider.meta_get(self.db, "riches")
+        self.assertEqual((rc["done_ts"], rc["at"], rc["furthest"]), (None, 0, 1))
+        self.jump(-80, 18263140541865, "Barnard's Star", -3)
+        self.assertIsNotNone(ed_outrider.meta_get(self.db, "riches"))   # the route kept
+        self.jump(-70, 24860210308521, "Wolf 359", 4)
+        self.jump(-60, 10477373803, "Sol", 0)              # the true end
+        said = [(m["what"], m["text"]) for m in self.j.moments if m["kind"] == "riches"]
+        self.assertEqual(said, [("next", "Next stop: Barnard's Star."),
+                                ("next", "Next stop: Barnard's Star, skipping 1 system you've finished."),
+                                ("next", "Next stop: Wolf 359."), ("next", "Next stop: Sol."), ("complete", "Sweep complete.")])
+        self.assertTrue(ed_outrider.meta_get(self.db, "riches")["done_ts"])
+
     def test_sweep_leaves_out_systems_spansh_does_not_know(self):
         """A lost first may be a system Spansh has never heard of: Spansh refuses the whole sweep naming it, so it is
         plotted again without it and the note says so; with none it knows, the plot fails in words."""

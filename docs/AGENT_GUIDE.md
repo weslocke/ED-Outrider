@@ -576,7 +576,8 @@ limpet, hold, `prospect_hit` and `motherlode` keys about 16, `ring_found_many` 3
 
 **A new alert (moment).**
 1. In the handler, `self.moment("my_kind", ts, ...)` with plain JSON fields (ids as ints; `live_event(ts)` if
-   it must not fire on a re-read).
+   it must not fire on a re-read; `moments_summary` leaves out any moment whose line is not live anyway, and tests
+   with fixed old times patch `State.moment_live`).
 2. If it needs pricing or names, add them in `State.moments_summary()` / `moment_extra()`.
 3. In `onData()` (page.js), a branch for `m.kind === "my_kind"` calling `alertOut(...)`; reuse an `ALERTS` row
    or add one (its id is the per-alert sound/notify/speak switch): in its group's place in `ALERTS` (`ALERT_GROUPS`
