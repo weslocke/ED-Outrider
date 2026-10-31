@@ -1859,15 +1859,17 @@ confirmed while playing. Treat reports about them as likely real.
   Windows, and the 3,840 px cap on a HighRes shot's full size.
 - The 2026.10.29 work the author has used in game (2026-10-26): Your records and 🏆, the 📋 summary, Search's "at least
   N", the trail and compass grid, seconds to a full tank, the codex line (quiet during the FSS where it once spoke wrongly, and a held line said
-  correctly after "all found"), the first start's journal re-read. Not yet:
-  catalogued sights (none within reach yet), a green gas giant confirmed, the record on a body's card and panel and
-  Boxel view's click (both fixed after the author's reports), the EDSM first reporter, a complete boxel marked done by
-  itself, what a body orbits and how far, and the codex line's strict "sure" (one signal, bodies left to scan).
+  correctly after "all found"), the first start's journal re-read, and (2026-10-31) a complete boxel marked done by
+  itself. Not yet: catalogued sights (none within reach yet), a green gas giant confirmed, the record on a body's card
+  and panel and Boxel view's click (both fixed after the author's reports), the EDSM first reporter, what a body orbits
+  and how far, and the codex line's strict "sure" (one signal, bodies left to scan).
 - The work since 2026.10.29 the author has used in game (2026-10-31): the PARSER 69 re-read (no false "journals gone"
   warning, issue #16), CMDR → Inventory naming stations (#17), the voice with Piper's threads held in, the tablet
   Map's card staying open on a tap, auto-target to the next boxel system (the galaxy map's controls from the General
   preset), and the overlay on Linux hiding over the galaxy map, following a game-window resize and placed right in
-  windowed mode. Not yet: the overlay on Windows placed in the game's client rectangle (`client_bounds`), your squadron's carrier's officer lines (CarrierStats, a booking, a
+  windowed mode; your squadron's carrier as a member (the Carrier tile's FC | SC switch, the author and players). Not
+  yet: Sell all and Now's at-risk line naming where to sell (no sale docked yet), the overlay on Windows placed in the
+  game's client rectangle (`client_bounds`), your squadron's carrier's officer lines (CarrierStats, a booking, a
   deposit: read by their documented shape), a non-English game's names (the Sell / Buy lookups and Sell all by the
   commodity's id, the Exo-Biology checklist's colours by the variant's code and its regions by the system's place,
   Bark Mounds by name), the password behind nginx with the guide's `proxy_set_header` line, and Canonn's known sites in

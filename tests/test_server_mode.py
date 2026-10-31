@@ -134,6 +134,9 @@ class Packaging(unittest.TestCase):
         self.assertIn("OUTRIDER_CONTAINER=1", df)
         self.assertIn('ENTRYPOINT ["docker/entrypoint.sh"]', df)
         self.assertIn("/api/version", df)   # the health check uses the open route
+        # nothing is written into the shipped resources in a container (refreshed rules and colours go beside the
+        # database since the complete review's batch 6): the image no longer makes them writable by anyone
+        self.assertNotIn("/app/resources", "\n".join(x for x in df.split("COPY . .", 1)[1].splitlines() if not x.lstrip().startswith("#")))
         self.assertTrue(os.access(os.path.join(self.ROOT, "docker", "entrypoint.sh"), os.X_OK))
         for kept_out in ("data/x", "ed_outrider.toml", "project/x", ".venv/x", "docker/config/x", "docker/data/x"):
             self.assertTrue(docker_excluded(kept_out), kept_out)

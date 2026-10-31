@@ -27,9 +27,10 @@ ARG CERTIFI_CHECKED=
 RUN echo "certifi: the newest as of ${CERTIFI_CHECKED:-the first build}" && pip install --no-cache-dir --upgrade certifi
 
 COPY . .
-# runs as your user (compose's user:), so the shipped data it refreshes (the bio rules) and the defaults it needs must
-# be writable by anyone; your own files live in the volumes
-RUN chmod -R a+rwX /app/resources && mkdir -p /app/data /config && chmod a+rwx /app/data /config \
+# runs as your user (compose's user:): /app/data and /config must be writable by anyone (the volumes mount over them).
+# Nothing is written into /app/resources: refreshed exobiology rules and colours, the Canonn picture list and your own
+# pronunciations go beside the database, in /app/data
+RUN mkdir -p /app/data /config && chmod a+rwx /app/data /config \
  && chmod a+rx docker/entrypoint.sh
 
 EXPOSE 8025

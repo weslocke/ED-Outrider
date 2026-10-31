@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Screenshots retaken; the Docker image no longer opens up its resources
+- Retaken for the release: overview (and the 27-inch one), Here, the schematic, the surface map, the tablet, the ship
+  card and the overlay's docking pads. They now show the Carrier tile's FC | SC switch, the moons' distance from what
+  they orbit, Now's "sell (UC + Vista)" place, Inventory's "(carrier)" and the carrier deck as the overlay draws it.
+- The Docker image no longer makes `/app/resources` writable by anyone: nothing is written there (refreshed
+  exobiology rules and colours, the Canonn picture list and your pronunciations go beside the database). Checked with
+  a local build run as a normal user: the rules and colours downloaded into `/app/data`, the page served, healthy.
+
 ## 2026-10-31 · Docs brought up to date for the release; Settings' Choose… drawn
 - A sweep of every doc against the code and the changes since 2026.10.29: the guide pages (the squadron carrier, the
   commander chooser, stored items' stations, Sell all, loop routes, the Map's boosted ring, the rail and auto-target

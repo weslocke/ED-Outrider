@@ -12,8 +12,8 @@
 !ed_outrider.toml.example
 !LICENSE
 !README.md
-# inside those, still out: ExploData's colour tables (the container downloads them on its first start), half-written
-# files, caches and virtual environments
+# inside those, still out: ExploData's colour tables a command-line run in this checkout may have written (never
+# shipped; the container downloads its own into /app/data), half-written files, caches and virtual environments
 resources/bio_colours.json
 resources/bio_colours.json.tmp
 resources/bio_rules.json.tmp
