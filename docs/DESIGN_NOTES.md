@@ -1243,6 +1243,13 @@ upstream project's choices, not rules of the game.
   when it says a member's line (the page sends `role` with its voice: `synth`). Each fill-in is written to the server
   log once per voice (or personality) and reason ("crew: Engineer's voice en_GB-x not installed: the XO speaks for
   it"), only while the crew is on. The voice lab's lines and the pronunciation tests keep the lab's voice.
+- **Piper's sessions held in: a quarter of the CPU threads (2 to 8), no spinning** (2026-10-31, `tts.load_voice`,
+  `PIPER_THREADS`): by default onnxruntime gave each loaded voice a thread per CPU thread and kept them spinning after
+  each line; watched for 15 minutes with the game running on the author's 32-thread PC, Outrider sat near 1 % and
+  jumped to 1.5-6 cores for each spoken line, about 8 CPU-seconds of it spun away after the line. Held in, a line is
+  as fast for a medium voice and faster for a high one, with 4-5x less CPU. Piper takes no session options, so ours
+  are lent to onnxruntime while it loads (a lock; given back after); a Piper that ignores them gets the session made
+  again with them, and a voice whose session cannot be remade speaks with Piper's own. Not a setting: nothing to tune.
 - **Voices kept loaded: a number the player picks, not a fixed cap** (crew batch 1; the author: a 64 GB PC could keep
   20, a small machine fewer). `[speech] voices_loaded` is a number (exactly that many beside the main voice, whatever is
   in use), "all", or unset: the voices in use (`State.voices_in_use`: the personalities' and, with the crew on, its

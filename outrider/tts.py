@@ -55,6 +55,13 @@ VOICES_LOADED_DEFAULT = 4   # also what a [speech] voices_loaded the config cann
 VOICE_MEMORY_FACTOR = 1.6
 # A Piper voice name (language_REGION-name-quality). Piper's own pattern also lets '/' and '..' through,
 # which would write the download outside piper-voices/.
+# Piper's onnxruntime, held in: by default a session takes a thread per CPU thread and keeps them spinning after
+# each line (measured 2026-10-31 on the author's 32-thread PC, the game running: 24 cores busy for a line, then about
+# 8 CPU-seconds more spun away in the 2 s after it). A quarter of the CPU threads (2 to 8) and no spinning made a
+# line as fast for a medium voice (0.18 s) and faster for a high one (0.88 s against 0.95 s), with 4-5x less CPU.
+PIPER_THREADS = min(8, max(2, (os.cpu_count() or 8) // 4))
+_LOAD_LOCK = threading.Lock()   # load_voice lends onnxruntime its SessionOptions while Piper loads one voice
+
 VOICE_NAME = re.compile(r"^[a-z]{2,3}_[A-Z]{2}-[A-Za-z0-9_]+-(x_low|low|medium|high)$")
 FILE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/{path}?download=true"
 # Piper's list of every voice (the voice lab's More voices), kept beside the voices for a week
@@ -303,6 +310,42 @@ def download_voice_files(files, voices_dir, progress=None, timeout=60):
         raise
     for part, dest in sorted(parts, key=lambda x: x[1].endswith(".onnx")):   # config first, model last
         os.replace(part, dest)
+
+
+def lean_options(make):
+    """onnxruntime SessionOptions (`make`: its SessionOptions class) held to PIPER_THREADS, with no spinning."""
+    o = make()
+    o.intra_op_num_threads = PIPER_THREADS
+    o.inter_op_num_threads = 1
+    o.add_session_config_entry("session.intra_op.allow_spinning", "0")
+    o.add_session_config_entry("session.inter_op.allow_spinning", "0")
+    return o
+
+
+def load_voice(piper_voice, path):
+    """PiperVoice.load(path) with its onnxruntime session held in (PIPER_THREADS, no spinning). Piper builds the session
+    with a plain onnxruntime.SessionOptions() and takes no options, so ours are lent to onnxruntime while it loads;
+    should a Piper build ignore them (the session reports other settings), the session is made again with them, and
+    if even that fails the voice is kept as Piper made it: it speaks either way."""
+    ort = sys.modules.get("onnxruntime")   # Piper imported it (_import_piper)
+    if ort is None or not hasattr(ort, "SessionOptions"):
+        return piper_voice.load(path)
+    with _LOAD_LOCK:
+        plain = ort.SessionOptions
+        ort.SessionOptions = lambda: lean_options(plain)
+        try:
+            voice = piper_voice.load(path)
+        finally:
+            ort.SessionOptions = plain
+    try:
+        session = voice.session
+        if session.get_session_options().intra_op_num_threads == PIPER_THREADS:
+            return voice
+        import dataclasses
+        lean = ort.InferenceSession(path, sess_options=lean_options(plain), providers=session.get_providers())
+        return dataclasses.replace(voice, session=lean)
+    except Exception:  # noqa: BLE001 -- not a session as we know it: Piper's own settings, never no voice
+        return voice
 
 
 def _import_piper():
@@ -568,7 +611,7 @@ class Speaker:
                 continue
             self._set_status(f"loading {pick}")
             try:
-                voice = self.PiperVoice.load(os.path.join(self.dir, pick + ".onnx"))
+                voice = load_voice(self.PiperVoice, os.path.join(self.dir, pick + ".onnx"))
                 break
             except Exception as e:   # a damaged file, an onnxruntime problem: try the next voice
                 failed = f"could not load {pick}: {type(e).__name__}: {e}"
@@ -664,7 +707,7 @@ class Speaker:
                 self._extra.move_to_end(name)
                 return self._extra[name]
         try:
-            voice = self.PiperVoice.load(os.path.join(self.dir, name + ".onnx"))
+            voice = load_voice(self.PiperVoice, os.path.join(self.dir, name + ".onnx"))
         except Exception as e:  # noqa: BLE001 -- a damaged file: the main voice speaks those lines instead
             self._extra_bad.add(name)
             print(f"spoken alerts: could not load {name}: {type(e).__name__}: {e}", file=sys.stderr)

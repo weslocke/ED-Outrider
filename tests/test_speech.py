@@ -1997,3 +1997,73 @@ class LabDownload(unittest.TestCase):
                 async with TestClient(TestServer(ed_outrider.make_app(state))) as c:
                     return [(await c.post("/api/voices/download", json=b)).status for b in ({"voice": "en_GB-alan-low"}, {"voice": "x"}, {})]
             self.assertEqual(asyncio.run(go()), [200, 400, 400])
+
+
+class PiperThreads(unittest.TestCase):
+    """2026-10-31: Piper's onnxruntime took a thread per CPU thread and kept them spinning after each line (24 cores
+    busy for a line, then about 8 CPU-seconds spun away, the game running). load_voice holds each session to
+    PIPER_THREADS with no spinning. Fakes stand in for onnxruntime and Piper: no model is loaded."""
+
+    def fakes(self, honours=True):
+        import types
+        made = []
+
+        class Options:
+            def __init__(self):
+                self.intra_op_num_threads, self.inter_op_num_threads, self.entries = 0, 0, {}
+
+            def add_session_config_entry(self, k, v):
+                self.entries[k] = v
+
+        class Session:
+            def __init__(self, path, sess_options=None, providers=None):
+                self.opts = sess_options or Options()
+                made.append(self)
+
+            def get_session_options(self):
+                return self.opts
+
+            def get_providers(self):
+                return ["CPUExecutionProvider"]
+
+        ort = types.SimpleNamespace(SessionOptions=Options, InferenceSession=Session)
+        import dataclasses
+
+        @dataclasses.dataclass
+        class Voice:
+            session: object
+
+            @staticmethod
+            def load(path):   # as Piper's: a plain SessionOptions() from the onnxruntime module (or none at all)
+                return Voice(session=ort.InferenceSession(path, sess_options=ort.SessionOptions() if honours else None))
+        return ort, Voice, Options, made
+
+    def test_a_voice_is_held_in(self):
+        import outrider.tts as T
+        ort, Voice, Options, made = self.fakes()
+        with unittest.mock.patch.dict(sys.modules, {"onnxruntime": ort}):
+            v = T.load_voice(Voice, "x.onnx")
+        o = v.session.get_session_options()
+        self.assertEqual((o.intra_op_num_threads, o.inter_op_num_threads), (T.PIPER_THREADS, 1))
+        self.assertEqual(o.entries, {"session.intra_op.allow_spinning": "0", "session.inter_op.allow_spinning": "0"})
+        self.assertIs(ort.SessionOptions, Options)                  # lent while it loads, given back
+        self.assertEqual(len(made), 1)                             # Piper's own session: never loaded twice
+        self.assertTrue(2 <= T.PIPER_THREADS <= 8)
+
+    def test_a_piper_that_ignores_the_options_gets_a_new_session(self):
+        import outrider.tts as T
+        ort, Voice, Options, made = self.fakes(honours=False)
+        with unittest.mock.patch.dict(sys.modules, {"onnxruntime": ort}):
+            v = T.load_voice(Voice, "x.onnx")
+        self.assertEqual(v.session.get_session_options().intra_op_num_threads, T.PIPER_THREADS)
+        self.assertEqual(len(made), 2)
+
+    def test_a_session_it_does_not_know_keeps_the_voice(self):
+        import types
+        import outrider.tts as T
+        ort, Voice, Options, made = self.fakes(honours=False)
+        ort.InferenceSession = types.SimpleNamespace   # a remake that fails: Piper's own session is kept
+        Voice.load = staticmethod(lambda path: types.SimpleNamespace(session=None, name="as Piper made it"))
+        with unittest.mock.patch.dict(sys.modules, {"onnxruntime": ort}):
+            self.assertEqual(T.load_voice(Voice, "x.onnx").name, "as Piper made it")
+        self.assertIs(ort.SessionOptions, Options)

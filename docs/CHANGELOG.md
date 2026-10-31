@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Piper speaks with a few threads, not every one
+- Watched for 15 minutes with the game running: Outrider idled near 1 % of a CPU thread but jumped to 1.5-6 cores for
+  each spoken line, because onnxruntime gave every loaded Piper voice a thread per CPU thread (24 on a 32-thread PC)
+  and kept them spinning after each line. Each voice is now held to a quarter of the CPU threads (2 to 8) with no
+  spinning (`tts.load_voice`, `PIPER_THREADS`): measured on that PC, a line is as fast for a medium voice (0.16 s) and
+  faster for a high one (0.78 s against 0.95 s), with 4-5x less CPU and nothing spun away after it.
+
 ## 2026-10-31 · Auto-target reads the galaxy map's controls from the General preset
 - The complete review's last open item (batch 2's D3, checked in the game's Options > Controls): the galaxy map's
   camera controls (yaw, zoom, translate) and the panel tabs sit under General Controls, so auto-target now reads them
