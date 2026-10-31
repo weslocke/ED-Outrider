@@ -187,16 +187,22 @@ async def nearest_unvisited(get, args, rows):
 
 
 @tool("nearest_scoopable", "The nearest known system whose main star can be scooped for fuel (KGBFOAM), from the "
-      "commander, and whether it is within one jump; any unreported star nearer could be scoopable too (most are).")
+      "commander, and whether it is within one jump at the range they have now (fuel and cargo aboard); `here` when the "
+      "star they are at scoops; any unreported star nearer could be scoopable too (most are).")
 async def nearest_scoopable(get, args, rows):
     p = await get("/api/nearby")
     here = (p.get("position") or {}).get("id")
     xs, around = _from_you(p)
+    # the star you are at, when it scoops (review 8: it was skipped, and a low-fuel player sent on elsewhere)
+    at = next((x for x in xs if x.get("id") == here and x.get("main_scoopable")), None)
     xs = sorted((x for x in xs if x.get("id") != here and x.get("main_scoopable") and x.get("distance") is not None),
                 key=lambda x: x["distance"])
-    jr = (await get("/api/status")).get("jump_range")
+    s = await get("/api/status")
+    jr = s.get("jump_range_now") or s.get("jump_range")   # with the fuel and cargo aboard (review 8: not the best case)
     # the page's Nearby set around another system: its stars, measured from the commander; nearer ones may be missing
     where = {"note": f"Nearby is set around {around}, not around you: a nearer scoopable star may be missing"} if around else {}
+    if at:
+        where["here"] = {"name": at.get("name"), "main_star": at.get("main_class") or at.get("main_star")}
     if not xs:
         return {"nearest": None, "radius_ly": p.get("radius"), "jump_range_ly": jr, **where}
     one = lambda x: None if not jr else x["distance"] <= jr

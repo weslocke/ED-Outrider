@@ -301,7 +301,7 @@ class Summary(unittest.TestCase):
     def test_in_the_dock_finder(self):
         self.spansh(spansh_record())
         spansh = dock.spansh_rows([spansh_record(updated_at="2025-01-01T00:00:00Z"),
-                                   dict(spansh_record(), name="ABC-12Z", carrier_name="A STRANGER")])
+                                   dict(spansh_record(), name="ABC-12Z", carrier_name="A STRANGER", market_id=1)])
         self.assertEqual([r["squadron"] for r in spansh], [True, False])   # a four-letter callsign: a squadron's
         rows = dock.merge(spansh, [], None, dock.squadron_row(self.state.squadron_carrier_summary()))
         mine = [r for r in rows if r["callsign"] == "7738"]
@@ -314,6 +314,87 @@ class Summary(unittest.TestCase):
         self.assertEqual(got["ABC-12Z"]["warn"], ["squadron only"])
         said = dock.spoken(out, ["UC"], None)
         self.assertIn("THE WINCHESTER, your squadron's carrier", said)
+
+
+class ReviewEight(unittest.TestCase):
+    """The Opus review of 2026-10-30 (round 8): each through the State's real path."""
+
+    def setUp(self):
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        for e in login("2026-07-19T20:44"):
+            self.j.handle(e)
+
+    def finder(self, q=None):
+        """State.nearest_dock with test_dock's fake Spansh (its stations and carriers) and the DSSA list."""
+        import test_dock
+        self.state.spansh = test_dock.FakeSpansh([(200, test_dock.fixture("dssa_carriers.json")["carriers"], '"e1"', "Thu")])
+        return asyncio.run(self.state.nearest_dock({"age": "3650", **(q or {})}))
+
+    def test_the_finder_with_it_located(self):
+        """[0] Its id64 was a string among ints: the default (permit) path sorted them and raised TypeError."""
+        out, status = self.finder()
+        self.assertEqual(status, 200)
+        mine = [r for r in out["rows"] if r.get("squadron") and r.get("own")]
+        self.assertEqual([(r["system"], r["id64"]) for r in mine], [("Hajangai", str(HAJANGAI))])   # the page's string
+        self.assertEqual(self.state.locate(HAJANGAI)[0], "Hajangai")   # its 🎯 resolves (nearest_found by int)
+
+    def test_no_name_yet(self):
+        """[1] Before Spansh names it: no blank spoken name, Spansh's row of it dropped by market id, a name in the
+        status; a dock there names its callsign."""
+        rows = dock.spansh_rows([spansh_record()])
+        row = dock.squadron_row(self.state.squadron_carrier_summary())
+        self.assertEqual((row["name"], row["callsign"]), ("", ""))
+        merged = dock.merge(rows, [], None, row)
+        self.assertEqual([(r["callsign"], r.get("own")) for r in merged if r["kind"] == "carrier"], [("", True)])
+        said = dock.spoken(dock.nearest(merged, {"x": 0.0, "y": 0.0, "z": 0.0}), ["UC"])
+        self.assertTrue(said.startswith("Nearest place to dock with Universal Cartographics: your squadron's carrier, "), said)
+        self.j.handle(ev("2026-07-19T21:00:00Z", "Docked", StationName="7738", StationType="FleetCarrier", StarSystem="Hajangai",
+                         SystemAddress=HAJANGAI, MarketID=SC_ID, StationServices=["dock"]))
+        self.assertEqual(self.state.squadron_carrier_summary()["callsign"], "7738")
+
+    def test_moved_somewhere_never_visited(self):
+        """[2] A member's CarrierLocation has no coordinates: the system is placed from Spansh, as your own carrier's."""
+        self.j.handle(ev("2026-07-21T10:00:52Z", "CarrierLocation", CarrierType="SquadronCarrier", CarrierID=SC_ID,
+                         StarSystem="Far Away", SystemAddress=999))
+        asked = []
+
+        async def lookup(id64, interactive=True):
+            asked.append(id64)
+            return {"system": {"coords": {"x": 10.0, "y": 0.0, "z": 0.0}}}
+        self.state.spansh = types.SimpleNamespace(lookup=lookup)
+
+        async def go():
+            self.state.maybe_locate_squadron_carrier()
+            await self.state.sc_locate_task
+        asyncio.run(go())
+        s = self.state.squadron_carrier_summary()
+        self.assertEqual((asked, s["system"], s["x"]), ([999], "Far Away", 10.0))
+        self.assertEqual(ed_outrider.meta_get(self.db, "squadron_carrier")["x"], 10.0)
+
+    def test_distance_from_the_star_only_for_the_place_shown(self):
+        """[3] After a move the journal's place wins over Spansh's older report: its ls was the old system's."""
+        ed_outrider.meta_set(self.db, "squadron_carrier_spansh", {"id": SC_ID, "moved_ts": None, "fetched": time.time(),
+                             "row": dict(dock.spansh_rows([spansh_record(updated_at="2026-01-01T00:00:00Z")])[0], services=[])})
+        self.assertEqual(self.state.squadron_carrier_summary()["ls"], 337.110597)
+        self.j.handle(ev("2026-07-21T10:00:52Z", "CarrierLocation", CarrierType="SquadronCarrier", CarrierID=SC_ID,
+                         StarSystem="Far Away", SystemAddress=999))
+        s = self.state.squadron_carrier_summary()
+        self.assertEqual((s["system"], s["ls"]), ("Far Away", None))
+
+    def test_an_old_open_login_drops_nothing(self):
+        """[4] An older folder read after the live one ends mid-login (SquadronStartup, no carrier line): the next live
+        LoadGame must not drop the carrier seen since, nor what a dock there kept."""
+        self.j.handle(ev("2026-10-26T12:00:00Z", "Docked", StationName="7738", StationType="FleetCarrier",
+                         StarSystem="Hajangai", SystemAddress=HAJANGAI, MarketID=SC_ID, StationServices=["dock", "exploration"]))
+        for e in login("2026-07-01T10:00", squadron_carrier=False)[:3]:   # LoadGame, CarrierLocation, SquadronStartup
+            self.j.handle(e)
+        self.j.handle(ev("2026-10-31T08:00:40Z", "LoadGame", Commander="Wes Locke"))
+        sc = self.j.squadron_carrier
+        self.assertIsNotNone(sc)
+        self.assertEqual((sc["services"], sc["moved_ts"]), (["dock", "exploration"], "2026-07-19T20:44:52Z"))
 
 
 if __name__ == "__main__":

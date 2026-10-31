@@ -98,7 +98,8 @@ players last reported, so the newer the data, the safer the trip.
   takes three of your four lines can come first. "Takes 3/4 lines, 85 t of 98 t", what it pays and the profit over
   what you paid (bought lines only: mined ore cost you nothing). Opened, it lists each line ("Gold 1 t × 49,178 cr
   (demand 1 of your 10 t)") and what it doesn't buy. The candidates are Spansh's best buyers of your four largest
-  lines, so a station that is good for all of them but best for none can be missed; limpets, mission cargo and
+  lines (the nearest ones with **Closest**; with carriers ticked, the stations as without and carriers whose market is
+  under a week old), so a station that is good for all of them but best for none can be missed; limpets, mission cargo and
   stolen tons are left out, and said. Your own carrier is never one (unload it there yourself); other carriers only
   when ticked, and only with a market at most a week old.
 - **One shipload or all of it:** when a line is more than your ship's hold (its size, not what is free), the bar

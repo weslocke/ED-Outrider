@@ -6,7 +6,8 @@
 #   scripts/verify.sh
 #   scripts/verify.sh --smoke here,bio   a partial pass while working: only those smoke blocks (labels or their starts;
 #                                        node tests/page_smoke.js --list names them), no unit tests or lint. Never a
-#                                        verify PASS: a commit still needs the full run.
+#                                        verify PASS: a commit still needs the full run. It exits 3 when its blocks
+#                                        pass (0 is a full PASS only), 1 when they fail.
 #
 # Needs: pip install -r requirements.txt -r requirements-dev.txt, and npm install (jsdom) in the repo root.
 # Environment: PYTHON (default .venv/bin/python if present, else python3), NODE_MODULES (default ./node_modules),
@@ -208,5 +209,7 @@ fi
 step "result"
 if [ -n "$PARTIAL" ]; then
   if [ "$FAIL" = 0 ]; then echo "SMOKE PASS (partial: $SMOKE_ONLY; not a verify PASS)"; else echo "FAILED (partial: $SMOKE_ONLY)"; fi
+  # never 0 (review 8): "commit on exit 0" must not take a run that skipped the unit tests, lint and most of the smoke
+  if [ "$FAIL" = 0 ]; then exit 3; fi
 elif [ "$FAIL" = 0 ]; then echo "PASS"; else echo "FAILED"; fi
 exit "$FAIL"

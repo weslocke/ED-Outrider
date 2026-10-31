@@ -545,14 +545,14 @@ function carrierFinanceHtml(fi) {
     (w != null ? ` · ~<b>${w < 10 ? w.toFixed(1) : Math.floor(w).toLocaleString()}</b> wks upkeep${fi.weeks_since ? " now" : ""}` : "") + `</span>`;
 }
 // Your fleet carrier and your squadron's (plan 2026-10-30): with both known, the tile's FC | SC switch picks which it
-// shows, kept per device (like the view, in neither settings list); docking at one shows that one, until a pick
-const CS = {docked: null};
+// shows, kept per device (like the view, in neither settings list); docking at one shows that one, until a pick. Where
+// you are docked is kept per device too (carrierDocked), so a reload while docked keeps a pick (review 8)
 function carrierSide() {
   const fc = data && data.carrier, sc = data && data.squadron_carrier;
   if (!sc) return "fc";
   if (!fc) return "sc";
   const at = sc.aboard ? "sc" : fc.aboard ? "fc" : null;
-  if (at !== CS.docked) { CS.docked = at; if (at) store.set("carrierSide", at); }
+  if (at !== store.get("carrierDocked", null)) { store.set("carrierDocked", at); if (at) store.set("carrierSide", at); }
   return store.get("carrierSide", "fc") === "sc" ? "sc" : "fc";
 }
 const shownCarrier = () => data && (carrierSide() === "sc" ? data.squadron_carrier : data.carrier);
@@ -2024,10 +2024,13 @@ function knownSpot(s, body) {
   const c = Math.cos(sf.lat * Math.PI / 180), d = p => (p[0] - sf.lat) ** 2 + ((((p[1] - sf.lon + 540) % 360) - 180) * c) ** 2;
   return s.points.reduce((a, p) => d(p) < d(a) ? p : a);
 }
-const knownPinned = (s, at, mine) => mine.some(p => p.name === s.name || (Math.abs(p.lat - at[0]) < 1e-4 && Math.abs(p.lon - at[1]) < 1e-4));
+// pinned: a pin at its place, or one of its name when no other known site there shares the name (review 8: unnumbered
+// Guardian ruins all showed "✓ pinned" once one of them was)
+const knownPinned = (s, at, mine, sites) => mine.some(p => (p.name === s.name && (sites || [s]).filter(x => x.name === s.name).length === 1) ||
+  (Math.abs(p.lat - at[0]) < 1e-4 && Math.abs(p.lon - at[1]) < 1e-4));
 function knownLeft(sys, body) {
   const k = KNOWN.get(`${sys}|${body}`), mine = bodyPins(sys, body);
-  return k && k.sites ? k.sites.filter(s => !knownPinned(s, knownSpot(s, body), mine)).length : 0;
+  return k && k.sites ? k.sites.filter(s => !knownPinned(s, knownSpot(s, body), mine, k.sites)).length : 0;
 }
 function knownSitesHtml(sys, body, mine) {
   const k = KNOWN.get(`${sys}|${body}`); if (!k) return "";
@@ -2038,7 +2041,7 @@ function knownSitesHtml(sys, body, mine) {
     const at = knownSpot(s, body);
     return `<div class="pinrow">${s.kind === "guardian" ? SITE_LOOK.guardian[0] : "🪨"} <b>${esc(s.name)}</b> ` +
       `<span class="unk">${s.kind === "geology" ? `${s.n} reported · ` : ""}${esc(pinCoordText({lat: at[0], lon: at[1]}))}</span> ` +
-      (knownPinned(s, at, mine) ? `<span class="ok">✓ pinned</span>`
+      (knownPinned(s, at, mine, k.sites) ? `<span class="ok">✓ pinned</span>`
         : `<button type="button" class="mini" data-pinknown="${i}" title="add it to this body's pins (${s.kind === "geology" ? "the reported spot nearest you when you are on this body" : "its reported position"})">📍 pin it</button>`) + `</div>`;
   }).join("") + (k.error ? `<div class="warnc">${esc(k.error)}</div>` : "") + `</div>`;
 }
@@ -3553,10 +3556,14 @@ function hotspotStats(g, cfg = miningCfg(), d = MINING.d) {
 const hotspotName = (g, d = MINING.d) => g.hotspot ? ((d && d.names && d.names[g.hotspot]) || PROSPECT_NAMES[g.hotspot] || g.hotspot)
   : g.hotspot === "" ? "no hotspot" : "hotspot not known";
 // a hotspot group as it was before its stint under way began at `start` (the review's #9: the record said as you drop in
-// leaves out the stint just opened, whether or not MINING.d has caught up with it yet)
+// leaves out the stint just opened, whether or not MINING.d has caught up with it yet). An older open stint in it is
+// closed by now (review 8: MINING.d not reloaded since): kept when it held anything, taken off when empty (the server
+// drops an empty stint at its close: mining_close)
 function hotspotBefore(g, start) {
   const os = g.open_stint;
-  if (!os || os.start !== start) return g;
+  if (!os) return g;
+  if (os.start !== start && (os.tons || os.prospects || os.cracked || Object.keys(os.refined || {}).length))
+    return {...g, open: false, open_stint: null};
   const refined = {...(g.refined || {})};
   for (const [k, t] of Object.entries(os.refined || {})) refined[k] = (refined[k] || 0) - t;
   const tph = s => s.seconds ? s.tons / s.seconds : 0;
@@ -3570,8 +3577,10 @@ function hotspotBefore(g, start) {
 const hotspotAgo = ts => {
   const s = (Date.now() - Date.parse(ts)) / 1000;
   if (!isFinite(s)) return "";
-  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min ago`;
-  if (s < 172800) { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return `${h} h${m ? ` ${m} min` : ""} ago`; }
+  // whole minutes first, then hours (review 8: "1 h 60 min ago" at the rounding edge)
+  const mins = Math.max(1, Math.round(s / 60));
+  if (mins < 60) return `${mins} min ago`;
+  if (s < 172800) { const h = Math.floor(mins / 60), m = mins % 60; return `${h} h${m ? ` ${m} min` : ""} ago`; }
   return `on ${String(ts).slice(0, 10)}`;
 };
 // the moment hotspot_drop: "⛏ Alexandrite hotspot · you, 3 stints · 38 t/h · 41 % hits · last here 1 h 20 min ago",
@@ -4187,7 +4196,7 @@ function firstsSeenLine(w) {
 }
 // The nearest places to sell (Spansh station search): the nearest trustworthy one of each kind.
 // Your own carrier is the journal's (where it is now, S55): with how many carrier jumps would bring it to you
-const sellerTxt = x => !x ? "" : `${esc(x.carrier_name || x.name)}${x.yours ? " (your carrier)" : x.squadron ? " (your squadron's carrier)" : x.carrier ? " (carrier)" : ""} · ${esc(x.system)} · ${x.distance.toLocaleString("en-US", {maximumFractionDigits: 0})} ly` +
+const sellerTxt = x => !x ? "" : `${x.squadron && !(x.carrier_name || x.name) ? "your squadron's carrier" : `${esc(x.carrier_name || x.name)}${x.yours ? " (your carrier)" : x.squadron ? " (your squadron's carrier)" : x.carrier ? " (carrier)" : ""}`} · ${esc(x.system)} · ${x.distance.toLocaleString("en-US", {maximumFractionDigits: 0})} ly` +
   (effRange() && x.distance ? ` ≈ ${jumpsFor(x.distance)} jump${jumpsFor(x.distance) > 1 ? "s" : ""}` : "") +
   (x.yours && x.carrier_jumps ? ` · ≈ ${x.carrier_jumps} carrier jump${x.carrier_jumps === 1 ? "" : "s"} to you` : "") +
   (x.carrier && !x.yours && !x.squadron && x.age_days != null ? ` <span class="unk">(seen ${x.age_days < 1 ? "today" : Math.round(x.age_days) + " d ago"})</span>` : "");
@@ -6413,7 +6422,7 @@ async function loadNearest() {
 function nearRowHtml(r) {
   // a four-letter callsign is a squadron's carrier (outrider.dock.is_squadron); yours or your squadron's: `own`
   const sqd = r.kind === "carrier" && r.squadron, mine = !r.own ? "" : sqd ? "your squadron's" : "yours";
-  const who = r.kind === "carrier" ? `${mk(sqd ? "squadron-carrier" : "fleet-carrier")}<b>${esc(r.name || r.callsign)}</b>${r.name ? ` <span class="unk">${esc(r.callsign)}</span>` : ""}` : `<b>${esc(r.name)}</b>`;
+  const who = r.kind === "carrier" ? `${mk(sqd ? "squadron-carrier" : "fleet-carrier")}<b>${esc(r.name || r.callsign || (sqd && r.own ? "your squadron's carrier" : ""))}</b>${r.name ? ` <span class="unk">${esc(r.callsign)}</span>` : ""}` : `<b>${esc(r.name)}</b>`;
   const badge = r.dssa ? ` <span class="dssabadge" title="Deep Space Support Array carrier: stationed for explorers, open to all${r.until ? `, until ${esc(r.until)}` : ""}">🛰 DSSA</span>` : "";
   const kind = r.kind === "carrier" ? `${sqd ? "Squadron" : "Fleet"} carrier${mine ? ` · ${mine}` : r.dssa && r.until ? ` · stationed until ${esc(r.until)}` : ""}` : esc(r.station_type || "Station");
   const sv = r.services || [], tk = TRADER_KINDS.find(k => sv.includes(k));

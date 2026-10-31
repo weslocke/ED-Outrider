@@ -31,6 +31,8 @@ class SmokeBlocks(unittest.TestCase):
             sh = f.read()
         self.assertRegex(sh, r"else\n  unset SMOKE_ONLY\nfi")
         self.assertIn("not a verify PASS", sh)
+        # a partial pass never exits 0, the full PASS's code (review 8)
+        self.assertRegex(sh, r'if \[ -n "\$PARTIAL" \]; then\n(.*\n){1,3}  if \[ "\$FAIL" = 0 \]; then exit 3; fi\n')
 
 
 if __name__ == "__main__":

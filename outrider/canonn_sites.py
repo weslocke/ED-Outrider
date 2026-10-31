@@ -85,8 +85,8 @@ def geology_sites(poi, short):
     with its reported positions (GEO_POINTS_MAX, the first ones reported), most reported first. Reports with no
     position are left out. Raises ValueError for an answer of another shape (every answer names its system: an error
     object does not)."""
-    if not isinstance(poi, dict) or "system" not in poi:
-        raise ValueError("Canonn answered in an unexpected shape")
+    if not isinstance(poi, dict) or "system" not in poi or not isinstance(poi.get("codex") or [], list):
+        raise ValueError("Canonn answered in an unexpected shape")   # a codex not a list too (review 8: it raised a 500)
     out = {}
     for c in poi.get("codex") or []:
         if not isinstance(c, dict) or c.get("hud_category") != "Geology" or c.get("body") != short:

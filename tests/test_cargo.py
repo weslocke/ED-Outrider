@@ -961,6 +961,31 @@ class Lookup(unittest.TestCase):
         out, _ = hold(sort="near")
         self.assertEqual(out["sort"], "near")
 
+    def test_state_hold_lookup_review8(self):
+        """Review 8: Closest asks Spansh for the nearest buyers (not the best-paying ones re-sorted); with carriers ticked
+        the stations' searches stay as unticked and carriers-only ones at most a week old are added; a non-English
+        client's localised names are matched by the commodity's id, as the per-line lookup does."""
+        import asyncio
+        hold = lambda **q: asyncio.run(self.state.cargo_hold_lookup({k: str(v) for k, v in q.items()}))   # noqa: E731
+        self.j.pos = {"id64": 10477373803, "name": "Sol", "x": 0, "y": 0, "z": 0}
+        self.j.ship = {"name": "Sample", "type": "explorer_nx", "cargo_capacity": 128}
+        self.j.ship_cargo = cargo.new_ship()
+        self.j.commodity_names = {"platinum": "Platin"}   # a German client's Name_Localised
+        cargo.ship_snapshot(self.j.ship_cargo, [{"Name": "platinum", "Count": 64}, {"Name": "gold", "Count": 10}],
+                            74, "2026-10-07T09:00:00Z")
+        out, status = hold()
+        self.assertEqual((status, out["asked"], out["left_out"]), (200, ["Platinum", "Gold"], []))
+        self.bodies.clear()
+        hold(sort="near")
+        self.assertEqual([b["sort"] for b in self.bodies], [[{"distance": {"direction": "asc"}}]] * 2)
+        self.bodies.clear()
+        hold(carriers=1, age=30)
+        types_ = [b["filters"]["type"]["value"] for b in self.bodies]
+        self.assertEqual(types_, [list(cargo.STATION_TYPES)] * 2 + [[cargo.CARRIER_TYPE]] * 2)
+        ages = [b["filters"]["market_updated_at"]["value"] for b in self.bodies]
+        days = [round((cargo._secs(hi) - cargo._secs(lo)) / 86400) - 1 for lo, hi in ages]
+        self.assertEqual(days, [30, 30, 7, 7])
+
     def setUp(self):
         self.db = ed_outrider.open_db(":memory:")
         self.addCleanup(self.db.close)

@@ -231,6 +231,9 @@ def ship_snapshot(st, inventory, count, ts):
     st["snap_ts"] = st["ts"] = max(st["ts"] or "", ts or "")
 
 
+SYNTH_LIMPETS = 4   # one Limpet Basic synthesis (outrider.materials.LIMPETS_PER_SYNTH, the same: a test checks)
+
+
 def ship_apply(st, ev):
     """Fold one journal event into the ship's hold. True if it changed anything.
 
@@ -278,6 +281,10 @@ def ship_apply(st, ev):
         _ship_remove(st, "drones", _n(ev.get("Count")))
     elif name == "LaunchDrone":   # a prospector or collector (any limpet) leaves the hold
         _ship_remove(st, "drones", 1)
+    elif name == "Synthesis":   # Limpet Basic: limpets into the hold, and only a Cargo count after it (review 8; the
+        if str(ev.get("Name") or "").lower() != "limpet basic":   # author's journals, 2024-10-13: Count 4, then 8)
+            return False
+        _ship_add(st, "drones", SYNTH_LIMPETS)
     else:
         return False
     st["ts"] = max(st["ts"] or "", ts)
@@ -764,7 +771,7 @@ SERVICES_SHOWN = ("Refuel", "Repair", "Restock", "Universal Cartographics", "Vis
 def market_query(name, mode, tons, ref, within=500, age_days=14, now=None, pad=None, carriers=False, sort="price"):
     """Spansh's /api/stations/search body: stations that take all `tons` of `name` (mode "sell": demand) or have that
     much (mode "buy": supply), within `within` ly of ref {x, y, z}, data newer than age_days, best price or nearest
-    first. pad "L" or "M" keeps the stations your ship can land at."""
+    first. pad "L" or "M" keeps the stations your ship can land at. carriers: True, fleet carriers too; "only", them alone."""
     now = time.time() if now is None else now
     qty = "demand" if mode == "sell" else "supply"
     filters = {"market": [{"name": name, qty: {"value": [int(tons), 999999999], "comparison": "<=>"}}],
@@ -772,6 +779,8 @@ def market_query(name, mode, tons, ref, within=500, age_days=14, now=None, pad=N
                "distance": {"min": "0", "max": str(within)}}
     if not carriers:
         filters["type"] = {"value": list(STATION_TYPES)}
+    elif carriers == "only":
+        filters["type"] = {"value": [CARRIER_TYPE]}
     if pad == LARGE:
         filters["has_large_pad"] = {"value": True}
     elif pad == MEDIUM:

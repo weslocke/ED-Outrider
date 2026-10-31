@@ -4,6 +4,7 @@ addresses are real ones from the author's journals (in-game data).
 Run all: python3 -m unittest discover tests (or scripts/verify.sh).
 """
 import time
+import types
 import unittest
 
 from support import ed_outrider  # noqa: F401  (puts the repository root on sys.path)
@@ -378,3 +379,60 @@ class Server(unittest.TestCase):
 
     async def _call(self):
         return self.state.maybe_boxel_autotarget(self.now - 590)
+
+
+class AutoDoneReview8(unittest.TestCase):
+    """The Opus review of 2026-10-30 (round 8) on b11627f's automatic done mark: it lasts only while the boxel is
+    complete, Retry (or a name found above the end) gives back the kept boxel it let go, and picking a complete boxel
+    keeps it."""
+    X = "Drojau TF-H c13-"
+
+    def setUp(self):
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        self.now = time.time()
+
+    def jump(self, s, n, name=None):
+        self.j.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(self.now - 600 + s),
+                       "StarSystem": name or f"{self.X}{n}", "SystemAddress": 1000 + n, "StarPos": [-4180.0, -60.0, 3339.0]})
+
+    def test_a_wrong_end_takes_the_mark_back(self):
+        """A hiccup set end 6 and the boxel marked itself done; you then fly to -8: it is not complete, so not done."""
+        for n in range(6):
+            self.jump(n, n)
+        self.state.boxel_not_found(self.state.boxel_target(6)[0], {"ok": False, "code": "wrong"})
+        self.assertTrue(self.state.boxel_view()["done"])
+        self.jump(20, 8)
+        v = self.state.boxel_view()
+        self.assertEqual((v["complete"], v["done"], v["next"]), (False, False, 6))
+        self.assertIsNone(self.state.boxel_finished(self.X))
+        self.assertEqual(self.state.boxel_target()[0]["name"], f"{self.X}6")
+
+    def test_retry_keeps_the_boxel_again(self):
+        """A kept boxel with auto-target on, let go when it marked itself done: Retry takes the mark back and keeps it."""
+        for n in range(5):
+            self.jump(n, n)
+        self.state.boxel_set(self.X, self.state.boxel_active()["sector_index"])
+        self.state.set_boxel_auto(True)
+        self.state.boxel_not_found(self.state.boxel_target(5)[0], {"ok": False, "code": "wrong"})
+        self.state.boxel_payload()
+        self.assertFalse(self.state.boxel_active()["picked"])   # let go, as Done does
+        self.state.boxel_clear_end()
+        v = self.state.boxel_view()
+        self.assertEqual((v["boxel"]["prefix"], v["boxel"]["picked"], v["done"], v["next"]), (self.X, True, False, 5))
+
+    def test_picking_a_complete_boxel_keeps_it(self):
+        """Complete from before b11627f (end known, never marked): picked from the sector map, it is marked done and
+        stays the pick, so its "undo done" acts on it, not on the boxel you are in."""
+        for n in range(5):
+            self.jump(n, n)
+        si = self.state.boxel_active()["sector_index"]
+        ed_outrider.meta_set(self.db, "boxel_ends", {self.X: 5})
+        self.jump(20, 5555 - 1000, name="Drojau AB-C d1-7")
+        self.state.boxel_set(self.X, si)
+        v = self.state.boxel_view()
+        self.assertEqual((v["boxel"]["prefix"], v["boxel"]["picked"], v["done"]), (self.X, True, True))
+        self.state.boxel_mark_done(False)
+        self.assertEqual(list(ed_outrider.meta_get(self.db, "boxel_reopened")), [self.X])

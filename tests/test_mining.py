@@ -194,7 +194,8 @@ class Stints(unittest.TestCase):
         self.assertEqual(drops(), [("4 B Ring", "alexandrite", "Alexandrite", self.at(100)), ("4 B Ring", "alexandrite", "Alexandrite", self.at(1000))])
         g = self.groups()[("4 B Ring", "alexandrite")]
         self.assertEqual((g["stints"], g["last_end"], g["open"]), (2, self.at(120), True))   # its last activity
-        self.assertEqual(g["open_stint"], {"start": self.at(1000), "ship_id": 7, "tons": 1, "seconds": 30, "refined": {"platinum": 1}, "prospects": 2})
+        self.assertEqual(g["open_stint"], {"start": self.at(1000), "ship_id": 7, "tons": 1, "seconds": 30, "refined": {"platinum": 1}, "prospects": 2,
+                                           "cracked": 0})
         self.j.status_json = {"live": True, "flags": 0}
         self.assertEqual(self.state.mining_live()["system"], "9")
         self.leave(1100)
@@ -309,6 +310,32 @@ class Stints(unittest.TestCase):
             info = {"name": "Sys", "mining": m["text"]}
             texts = [r[0] for it in O.strip_panel(info, pal)["items"] for r in it.get("runs", [])]
             self.assertIn(m["text"], texts)
+
+    def test_synthesised_limpets_reach_the_hold(self):
+        """Review 8: the strip says "(+N by synthesis)"; following it, the game writes Synthesis and a Cargo count only
+        (the author's journals, 2024-10-13), so the new limpets never showed. Now 4 per Limpet Basic."""
+        import outrider.cargo as cargo
+        import outrider.materials as materials
+        self.assertEqual(cargo.SYNTH_LIMPETS, materials.LIMPETS_PER_SYNTH)
+        self.j.handle({"event": "Loadout", "timestamp": self.at(1), "Ship": "python", "ShipID": 7, "ShipName": "Digger",
+                       "ShipIdent": "DG", "CargoCapacity": 64, "MaxJumpRange": 20.0, "Modules": [{"Slot": "Slot01", "Item": "int_refinery_size4_class5"}]})
+        self.j.handle({"event": "LoadGame", "timestamp": self.at(2), "Commander": "X"})
+        self.j.handle({"event": "Materials", "timestamp": self.at(3), "Raw": [{"Name": "iron", "Count": 40}, {"Name": "nickel", "Count": 40}]})
+        self.j.handle({"event": "Cargo", "timestamp": self.at(4), "Vessel": "Ship", "Count": 3,
+                       "Inventory": [{"Name": "drones", "Count": 2, "Stolen": 0}, {"Name": "platinum", "Count": 1, "Stolen": 0}]})
+        self.drop(10, dest={"System": 9, "Body": 18, "Name": "$SAA_RingHotspot:#type=$Platinum_name;;"})
+        self.j.status_json = {"live": True, "flags": 0}
+        self.assertEqual((self.state.mining_live()["limpets"], self.state.mining_live()["limpets_synth"]), (2, 16))
+        self.j.handle({"event": "Synthesis", "timestamp": self.at(30), "Name": "Limpet Basic",
+                       "Materials": [{"Name": "iron", "Count": 10}, {"Name": "nickel", "Count": 10}]})
+        self.j.handle({"event": "Cargo", "timestamp": self.at(33), "Vessel": "Ship", "Count": 7})
+        m = self.state.mining_live()
+        self.assertEqual((m["limpets"], m["limpets_synth"]), (6, 12))
+        self.assertIn("hold 7/64 t", m["text"])
+        # any other synthesis puts nothing in the hold
+        self.j.handle({"event": "Synthesis", "timestamp": self.at(40), "Name": "FSD Basic",
+                       "Materials": [{"Name": "carbon", "Count": 1}]})
+        self.assertEqual(self.state.mining_live()["limpets"], 6)
 
     def test_the_strip_says_the_limpets_you_could_synthesise(self):
         """The review's #10: under LIMPETS_SYNTH_SHOW limpets the strip adds what your materials make, whole syntheses

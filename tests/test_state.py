@@ -3322,6 +3322,10 @@ class JournalsRegistry(unittest.TestCase):
         "full_check_at": "when each folder is listed whole again: a timer, not what was read",
         "_hw_rows": "a cache of the Highway route's rows (read once per plot, from the database)",
         "_rc_rows": "a cache of the Road to Riches rows (read once per plot, from the database)",
+        "honk_seen": "auto honk's confirmation (a task outside the tick): a scan really read stays seen through a "
+                     "failed tick (review 8); the retry sets the same",
+        "all_found_seen": "auto honk's FSSAllBodiesFound wait, as honk_seen",
+        "docking_seq": "a counter the docking grants bump (the page's cue): a retry only bumps it more",
     }
     # attribute -> why it is not the reader's state at all (set from outside, or a tool)
     NOT_READER_STATE = {

@@ -136,6 +136,7 @@ def spansh_rows(results):
                      "large": large, "medium": medium,
                      "access": r.get("carrier_docking_access") if carrier else "All",
                      "squadron": carrier and is_squadron(r["name"]),
+                     "market_id": r.get("market_id"),   # a carrier's is its CarrierID (merge: your squadron's)
                      "seen": _secs(r.get("updated_at")), "source": "Spansh", "dssa": False, "until": "", "away": None})
     return rows
 
@@ -171,10 +172,14 @@ def squadron_row(sc):
     for key, name in (("has_uc", "UC"), ("has_vista", "Vista")):
         if key in c:
             (services.add if c[key] else services.discard)(name)
+    # the summary's id64 is the payload's string: an int here, as every other row's (review 8: State.nearest_dock sorts
+    # them, and a str among ints raised)
+    id64 = int(c["id64"]) if str(c.get("id64") or "").isdigit() else None
     return {"kind": "carrier", "callsign": str(c.get("callsign") or "").upper(), "name": c.get("name") or "",
-            "system": c.get("system"), "id64": c.get("id64"), "x": c["x"], "y": c["y"], "z": c["z"], "ls": c.get("ls"),
+            "system": c.get("system"), "id64": id64, "x": c["x"], "y": c["y"], "z": c["z"], "ls": c.get("ls"),
             "services": services, "pads": "L M", "large": True, "medium": True, "access": "your squadron's",
-            "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True, "squadron": True}
+            "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True, "squadron": True,
+            "market_id": c.get("id")}
 
 
 def merge(spansh, dssa, own=None, squadron=None):
@@ -202,8 +207,9 @@ def merge(spansh, dssa, own=None, squadron=None):
         if moved:   # Spansh's id64 and arrival distance were the old system's: unknown here (no permit check on it)
             s.update(id64=None, ls=None)
     for mine in (own, squadron):
-        if mine:
-            out = [r for r in out if not (r["kind"] == "carrier" and r["callsign"] == mine["callsign"])] + [mine]
+        if mine:   # by callsign, or by market id: your squadron's has no callsign until Spansh or a dock there names it
+            out = [r for r in out if not (r["kind"] == "carrier" and (mine["callsign"] and r["callsign"] == mine["callsign"]
+                   or mine.get("market_id") is not None and r.get("market_id") == mine.get("market_id")))] + [mine]
     return out
 
 
@@ -277,13 +283,16 @@ def spoken(result, need=(), kind=None):
     sort = ("squadron carrier" if r.get("squadron") else "fleet carrier") if r["kind"] == "carrier" else \
         (r.get("station_type") or "station").lower()
     name = r["name"] or r["callsign"]
+    if not name and r.get("own") and r.get("squadron"):   # not named yet (Spansh not asked, no dock there): no blank name
+        name, sort = "your squadron's carrier", None
     where = (f", here in {r['system']}" if r["system"] else ", in this system") if r.get("here") else \
         f", {round(r['ly']):,} light years away{', in ' + r['system'] if r['system'] else ''}"
     if trader == "Trader":   # any kind asked for: which one this is
         kinds = [k for k in TRADER_KINDS if k in r["services"]]
         sort += f" trading {kinds[0].lower()} materials" if kinds else " whose trader's kind is not reported"
-    sort = "your squadron's carrier" if r.get("own") and r.get("squadron") else f"{'an' if sort[:1] in 'aeiou' else 'a'} {sort}"
-    out = (f"Nearest {place}{' with ' + what if what else ''}: {name}, {sort}"
+    sort = None if sort is None else "your squadron's carrier" if r.get("own") and r.get("squadron") else \
+        f"{'an' if sort[:1] in 'aeiou' else 'a'} {sort}"
+    out = (f"Nearest {place}{' with ' + what if what else ''}: {name}{', ' + sort if sort else ''}"
            f"{' of the Deep Space Support Array' if r.get('dssa') else ''}{where}.")
     if r["warn"]:
         out += " Careful: " + ", ".join(r["warn"]) + "."

@@ -1670,7 +1670,7 @@ CARGO_ONLY = ("MarketBuy", "MarketSell", "CargoTransfer", "CarrierTradeOrder", "
               "EjectCargo", "CarrierCrewServices", "BuyDrones", "SellDrones", "LaunchDrone")
 # the carrier's movements (SHIP_EVENTS, and CarrierJump a position event too) are stored here as well: S13 B
 CARRIER_MOVE_EVENTS = ("CarrierJumpRequest", "CarrierJumpCancelled", "CarrierLocation", "CarrierJump")
-CARGO_EVENTS = frozenset(CARGO_ONLY) | {"Cargo", "Docked", "Undocked", "CarrierStats", "MiningRefined"} \
+CARGO_EVENTS = frozenset(CARGO_ONLY) | {"Cargo", "Docked", "Undocked", "CarrierStats", "MiningRefined", "Synthesis"} \
     | frozenset(CARRIER_MOVE_EVENTS)
 # Your squadron's carrier (Journals.handle_squadron_carrier; Hiner399 in discussion #3, plan 2026-10-30): every one is
 # read for something else too. A member's journal has its CarrierLocation at each login; the officers' lines (stats, a
@@ -3206,6 +3206,11 @@ class Journals:
         self.supercruise_entry = None   # the latest SupercruiseEntry {id64, ts} (auto-target's danger wait)
         self.last_honk = None      # the latest discovery scan {id64, ts, bodies, progress}
         self.last_all_found = None # the latest FSSAllBodiesFound {id64, ts}
+        # the same, for auto honk's confirmation (State._honk, a task outside the tick): never rolled back with a failed
+        # tick, which would hide a scan really read (review 8: the honk said it failed and marked the fire group)
+        self.honk_seen = None
+        self.all_found_seen = None
+        self.docking_seq = 0       # bumped by each docking grant written (meta docking): tick() wakes the page on it
         self.moment_seq = 0
         self.last_heat = None      # seconds of the latest heat moment (HeatDamage within HEAT_QUIET adds none)
         # in memory only (a restart forgets them, which errs on the quiet side):
@@ -4463,6 +4468,7 @@ class Journals:
                  "ts": ts, "layout": kind, "where": place and place["words"], "map": place and place["map"],
                  "test": bool(test)}
             meta_set(self.db, "docking", d)
+            self.docking_seq += 1   # the page shows the pad at once: tick() wakes it on this (review 8: not the hold)
             said = {"what": "granted", "pad": d["pad"], "station": station, "station_type": d["type"],
                     "where": place and place["words"], "say_where": outrider.pads.spoken(place, green)}
             if test:   # the chat command: said at once
@@ -5689,10 +5695,14 @@ class Journals:
         sc = self.squadron_carrier or {}
         fresh = lambda: self.fresh("squadron_carrier", ts, max(sc.get("ts") or "", sc.get("stats_ts") or "",
                                                                (sc.get("planned") or {}).get("ts") or ""))
-        if name in ("LeftSquadron", "KickedFromSquadron", "DisbandedSquadron") \
-                or name in ("LoadGame", "Shutdown", "SquadronStartup") and self.sc_login:
+        newest = max(sc.get("ts") or "", sc.get("stats_ts") or "", (sc.get("planned") or {}).get("ts") or "")
+        left = name in ("LeftSquadron", "KickedFromSquadron", "DisbandedSquadron")
+        if left or name in ("LoadGame", "Shutdown", "SquadronStartup") and self.sc_login:
+            # a login read out of order (an older folder after a newer one) left open says nothing about the carrier
+            # seen since: only one not older than the record drops it (review 8)
+            stale = not left and self.sc_login < newest
             self.sc_login = None
-            if sc and fresh():
+            if sc and not stale and fresh():
                 self.squadron_carrier = None
                 meta_set(self.db, "squadron_carrier", None)
         if name == "SquadronStartup":
@@ -5721,6 +5731,8 @@ class Journals:
                 sc.update(x=pos[0], y=pos[1], z=pos[2])
             if ev.get("StationServices"):
                 sc.update(services=ev["StationServices"], services_ts=ts)
+            if name != "CarrierJump" and isinstance(ev.get("StationName"), str) and ev["StationName"].strip():
+                sc["callsign"] = ev["StationName"].strip()   # its four-letter callsign, before Spansh names it (review 8)
         elif name == "CarrierStats":   # an officer's: the carrier's management screen (unconfirmed for a squadron's)
             if not typed or ev.get("CarrierID") is None or not fresh():
                 return
@@ -5951,6 +5963,7 @@ class Journals:
             self.body_touched.add((system, ev["BodyID"]))
         elif name == "FSSDiscoveryScan":
             self.last_honk = {"id64": system, "ts": ts, "bodies": ev.get("BodyCount"), "progress": ev.get("Progress")}
+            self.honk_seen = self.last_honk
             self.db.execute(
                 """INSERT INTO own_systems (id64, name, body_count, all_found) VALUES (?, ?, ?, 0)
                    ON CONFLICT(id64) DO UPDATE SET body_count = excluded.body_count""",
@@ -5970,6 +5983,7 @@ class Journals:
             self.moment("fss_done", ts, system=system, count=ev.get("Count"), by_honk=by_honk,
                         jumponium=self.take_jumponium(system))
             self.last_all_found = {"id64": system, "ts": ts}
+            self.all_found_seen = self.last_all_found
             self.db.execute(
                 """INSERT INTO own_systems (id64, name, body_count, all_found) VALUES (?, ?, ?, 1)
                    ON CONFLICT(id64) DO UPDATE SET all_found = 1,
@@ -7630,19 +7644,22 @@ class Spansh:
         row = self.db.execute("SELECT fetched_ts FROM spansh_systems WHERE id64=?", (id64,)).fetchone()
         return time.time() - row["fetched_ts"] if row and row["fetched_ts"] else None
 
-    async def stations(self, service, pos, size=20):
+    async def stations(self, service, pos, size=20, permanent=False):
         """The stations nearest `pos` offering `service` (e.g. "Universal Cartographics"), nearest first. Spansh's
         services filter is a list of {name} (each one required); the {"value": [...]} shape was ignored without a
         word, so these were simply the nearest stations, offering the service or not (found 2026-10-08 with the
-        review's #6). The answer is checked as well."""
-        body = {"filters": {"services": [{"name": service}], "distance": {"min": "0", "max": "20000"}},
+        review's #6). The answer is checked as well. permanent: no fleet carriers (outrider.cargo.STATION_TYPES)."""
+        filters = {"services": [{"name": service}], "distance": {"min": "0", "max": "20000"}}
+        if permanent:
+            filters["type"] = {"value": list(outrider.cargo.STATION_TYPES)}
+        body = {"filters": filters,
                 "reference_coords": {"x": pos["x"], "y": pos["y"], "z": pos["z"]},
                 "sort": [{"distance": {"direction": "asc"}}], "size": size, "page": 0}
         async with self.sem_fast:
             async with self.session.post(SPANSH_STATION_SEARCH, json=body) as r:
                 r.raise_for_status()
                 d = await r.json()
-        return [{"name": x.get("name"), "system": x.get("system_name"), "id64": str(x.get("system_id64")),
+        return [{"name": x.get("name"), "market_id": x.get("market_id"), "system": x.get("system_name"), "id64": str(x.get("system_id64")),
                  "distance": round(x.get("distance") or 0, 1), "type": x.get("type"), "updated_at": x.get("updated_at"),
                  "ls": round(x.get("distance_to_arrival") or 0), "large_pad": bool(x.get("has_large_pad")),
                  "x": x.get("system_x"), "y": x.get("system_y"), "z": x.get("system_z")}
@@ -8515,6 +8532,7 @@ class State:
         self.carrier_task = None
         self.carrier_retry = {}    # carrier system id64 -> time.time() before which Spansh is not asked again
         self.sc_task = None        # Spansh's report of your squadron's carrier (maybe_squadron_spansh)
+        self.sc_locate_task = None   # its system placed (maybe_locate_squadron_carrier)
         self.sc_retry_at = 0
         self.value_dirty = set()   # systems whose unsold value changed: rows rebuilt, scan_version left alone
         self.row_failed = set()    # systems whose row failed to build (traceback printed once, retried each tick)
@@ -11119,7 +11137,7 @@ class State:
             g["open"] = bool(r["open"])
             if r["open"]:
                 g["open_stint"] = {"start": r["start_ts"], "ship_id": r["ship_id"], "tons": tons, "seconds": secs,
-                                   "refined": refined, "prospects": len(prospects)}
+                                   "refined": refined, "prospects": len(prospects), "cracked": r["cracked"] or 0}
             else:
                 g["last_end"], g["open_stint"] = end, None
         per_ton = {r[0]: round(r[1] / r[2]) for r in db.execute(
@@ -11494,7 +11512,9 @@ class State:
                 "spansh_ts": iso_ts(seen) if seen else None,
                 "x": xyz[0], "y": xyz[1], "z": xyz[2], "distance": round(d, 1) if d is not None else None,
                 "here": bool(pos and str(pos.get("id64")) == str(id64)), "aboard": aboard,
-                "ls": row.get("ls"), "services": sorted(services, key=outrider.dock.SERVICES.index),
+                # Spansh's distance from the star only for the place shown (review 8: after a move it was the old one's)
+                "ls": row.get("ls") if row.get("id64") == int(id64) else None,
+                "services": sorted(services, key=outrider.dock.SERVICES.index),
                 "has_uc": "UC" in services, "has_vista": "Vista" in services, "planned": planned,
                 "fuel": sc.get("fuel"), "fuel_ts": sc.get("stats_ts"), "ts": sc.get("ts"), "moved_ts": sc.get("moved_ts")}
 
@@ -11774,7 +11794,8 @@ class State:
                 left.append({"name": x["name"], "tons": x["stolen"], "why": "stolen: a black market's"})
             if x.get("mission"):
                 left.append({"name": x["name"], "tons": x["mission"], "why": "for a mission"})
-            name = (names.get(outrider.cargo.norm(x["name"])) if names else x["name"])
+            # by its name, else its id (a non-English client's name is localised: review 8), as the per-line lookup
+            name = (names.get(outrider.cargo.norm(x["name"])) or names.get(outrider.cargo.norm(x["id"]))) if names else x["name"]
             if legal and not name:
                 left.append({"name": x["name"], "tons": legal, "why": "no market data on Spansh"})
             elif legal:
@@ -11783,8 +11804,16 @@ class State:
             return {"error": "nothing in the hold to sell", "left_out": left}, 409
         pad = ship.get("pad")
         asked = sorted(lines, key=lambda x: -x[1])[:outrider.cargo.HOLD_LINES_MAX]
-        bodies = [outrider.cargo.market_query(n, "sell", 1, ref, within=within, age_days=age, pad=pad, carriers=carriers)
+        # Closest asks Spansh for the nearest buyers, not the best-paying ones re-sorted (review 8). With carriers ticked:
+        # the stations' searches as unticked, plus carriers-only ones at most HOLD_CARRIER_FRESH_S old (week-old carriers
+        # filled the 20 results, then were dropped, and pushed the stations out: review 8)
+        order = "near" if sort == "near" else "price"
+        bodies = [outrider.cargo.market_query(n, "sell", 1, ref, within=within, age_days=age, pad=pad, sort=order)
                   for n, _, _ in asked]
+        if carriers:
+            fresh = max(1, min(age, outrider.cargo.HOLD_CARRIER_FRESH_S // 86400))
+            bodies += [outrider.cargo.market_query(n, "sell", 1, ref, within=within, age_days=fresh, pad=pad,
+                                                   carriers="only", sort=order) for n, _, _ in asked]
         got = await asyncio.gather(*(self.spansh.market_search(b) for b in bodies), return_exceptions=True)
         failed = [x for x in got if isinstance(x, BaseException)]
         for x in failed:
@@ -13492,6 +13521,14 @@ class State:
         self.canonn_cache.setdefault(id64, {})[part] = (now, answer, err)
         return answer, err
 
+    def _canonn_bad(self, id64, part, e):
+        """An answer of the wrong shape (an error object, a busy page) is a failure: kept CANONN_SITES_RETRY like one, not
+        a day as an answer (review 8). -> its words."""
+        got = self.canonn_cache.get(id64, {}).get(part)
+        if got and got[2] is None:
+            self.canonn_cache[id64][part] = (got[0], None, str(e))
+        return str(e)
+
     async def canonn_sites(self, id64, body_name):
         """GET /api/body/sites: the Guardian sites and the geology Canonn has positions for on one landable body (the body
         panel's Pins: "📍 pin it"). Canonn is asked only for what the body has signals of (Guardian sites: its
@@ -13509,7 +13546,7 @@ class State:
                 try:
                     sites += outrider.canonn_sites.guardian_sites(answer, row["body_id"], row.get("radius_km")) if not err else []
                 except ValueError as e:
-                    err = str(e)
+                    err = self._canonn_bad(id64, "settlement", e)
                 errors += [err] if err else []
             if row.get("geo"):
                 answer, err = await self._canonn_ask(id64, "poi", outrider.canonn_sites.POI_URL,
@@ -13517,7 +13554,7 @@ class State:
                 try:
                     sites += outrider.canonn_sites.geology_sites(answer, body_name) if not err else []
                 except ValueError as e:
-                    err = str(e)
+                    err = self._canonn_bad(id64, "poi", e)
                 errors += [err] if err else []
         out = {"sites": sites}
         if errors:
@@ -16841,8 +16878,9 @@ class State:
                 self._honk_cancel = None
 
     async def _honk(self, a, cancel=None):
-        honked = lambda: (self.journals.last_honk or {}).get("id64") == a["id64"] \
-            and self.journals.last_honk["ts"] >= a["ts"]
+        # last_honk is the reader's (rolled back with a failed tick), honk_seen what was read whatever became of the tick
+        seen = lambda h: bool(h and h.get("id64") == a["id64"] and h["ts"] >= a["ts"])
+        honked = lambda: seen(self.journals.last_honk) or seen(self.journals.honk_seen)
         # switched off meanwhile (the toggle closed the device and set the status, or set this honk's token while
         # auto-target keeps the device open): drop it quietly
         switched_off = lambda: (cancel is not None and cancel.is_set()) or \
@@ -16924,10 +16962,10 @@ class State:
                 focus_seen = why
             await asyncio.sleep(0.1)
         cut = cut or bool(jumped())
-        info, all_found = self.journals.last_honk or {}, False
+        info, all_found = (self.journals.last_honk if seen(self.journals.last_honk) else self.journals.honk_seen) or {}, False
         if honked():   # a honk that finds everything is followed by FSSAllBodiesFound (a lone star, say)
-            found = lambda: (self.journals.last_all_found or {}).get("id64") == a["id64"] \
-                and self.journals.last_all_found["ts"] >= a["ts"] or (info.get("progress") or 0) >= 0.999
+            found = lambda: seen(self.journals.last_all_found) or seen(self.journals.all_found_seen) \
+                or (info.get("progress") or 0) >= 0.999
             end = time.time() + min(1.5, self.honk_confirm)
             while not (all_found := found()) and time.time() < end:
                 await asyncio.sleep(0.1)
@@ -17091,10 +17129,20 @@ class State:
                 "carrier": self.carrier_summary()}
 
     def maybe_locate_carrier(self):
-        c = self.journals.carrier
+        self._locate_carrier("carrier")
+
+    def maybe_locate_squadron_carrier(self):
+        self._locate_carrier("squadron_carrier")
+
+    def _locate_carrier(self, which):
+        """A carrier's system that nothing here places (Spansh's system dump by its id64): "carrier" (yours) or
+        "squadron_carrier" (your squadron's: a member's CarrierLocation has no coordinates, so a move somewhere you have
+        never been left it without a distance, out of the finder and the sell lists: review 8)."""
+        c = getattr(self.journals, which)
         if not c or not c.get("id64") or c.get("x") is not None or self.locate(c["id64"]):
             return
-        if self.carrier_task and not self.carrier_task.done():
+        task = self.carrier_task if which == "carrier" else self.sc_locate_task
+        if task and not task.done():
             return
         id64 = c["id64"]
         if time.time() < self.carrier_retry.get(id64, 0):
@@ -17106,19 +17154,23 @@ class State:
             except Exception:
                 dump = None
             co = ((dump or {}).get("system") or {}).get("coords") or {}
-            cur = self.journals.carrier
+            cur = getattr(self.journals, which)
             if cur is not c or cur.get("id64") != id64 or cur.get("x") is not None:
                 # the carrier moved (carrier_seen changes this same dict in place) or was reloaded while Spansh
                 # answered: these are another system's coordinates. The next tick looks the new place up.
                 return
             if "x" in co:
                 c.update(x=co["x"], y=co["y"], z=co["z"])
-                meta_set(self.db, "carrier", c)
+                meta_set(self.db, which, c)
                 self.db.commit()
                 self.bump()
             else:   # Spansh does not know the system (yet) or is down: not again for 10 minutes, not every tick
                 self.carrier_retry[id64] = time.time() + CARRIER_RETRY_S
-        self.carrier_task = asyncio.create_task(go())
+        task = asyncio.create_task(go())
+        if which == "carrier":
+            self.carrier_task = task
+        else:
+            self.sc_locate_task = task
 
     def maybe_find_sellers(self):
         """Keep the nearest Universal Cartographics / Vista Genomics stations known (Spansh), refreshed after
@@ -17136,6 +17188,14 @@ class State:
             try:
                 uc = await self.spansh.stations("Universal Cartographics", pos)
                 vista = await self.spansh.stations("Vista Genomics", pos)
+                # the nearest 20 can all be other players' carriers, never a place to send you (review 8: Now's sell
+                # line named nowhere): the nearest permanent stations then too
+                for lst, service in ((uc, "Universal Cartographics"), (vista, "Vista Genomics")):
+                    if not any(x.get("type") != outrider.cargo.CARRIER_TYPE for x in lst):
+                        have = {(x.get("name"), x.get("system")) for x in lst}
+                        lst += [x for x in await self.spansh.stations(service, pos, permanent=True)
+                                if (x.get("name"), x.get("system")) not in have]
+                        lst.sort(key=lambda x: x.get("distance") or 0)
             except Exception as e:
                 self.seller_retry_at = time.time() + 600
                 print(f"nearest sellers lookup failed ({type(e).__name__}: {e}); trying again in 10 min", file=sys.stderr)
@@ -17681,6 +17741,8 @@ class State:
             if not p or p["prefix"] != prefix:
                 return False
             ok = isinstance(sector_index, list) and len(sector_index) == 3 and all(isinstance(v, int) and not isinstance(v, bool) for v in sector_index)
+            if self.boxel_complete(prefix):   # picked already complete: marked done now, and kept (review 8)
+                self.boxel_complete_done(prefix, let_go=False)
             meta_set(self.db, "boxel_active", {"prefix": prefix, "mc": p["mc"], "sector_index": sector_index if ok else None})
         self.db.commit()
         self.bump()
@@ -17780,7 +17842,7 @@ class State:
         # ✓ complete: the end is known and every number below it visited (no button needed); done: you said so (meta
         # boxel_done). Either way Next offers nothing more (the rows' own 🎯 still work)
         complete = end is not None and all(n in visited for n in range(end))   # end 0: an empty boxel, complete too
-        done = (complete and self.boxel_complete_done(prefix)) or prefix in (meta_get(self.db, "boxel_done") or {})
+        done = self.boxel_is_done(prefix, complete)
         # skip (opt-in): Next passes over the systems someone has fully scanned (every body reported); one only passed
         # through or partly scanned still has its first discoveries open (review suggestion, 2026-10-12)
         skip = bool(meta_get(self.db, "boxel_skip_known"))
@@ -18011,7 +18073,7 @@ class State:
                   if str(k).isdigit() and isinstance(v, dict)}
         end = self.boxel_end(prefix, set(visited) | set(spansh))
         complete = end is not None and all(n in visited for n in range(end))
-        done = (complete and self.boxel_complete_done(prefix)) or prefix in (meta_get(self.db, "boxel_done") or {})
+        done = self.boxel_is_done(prefix, complete)
         n = None if complete or done else boxel_next_number(visited, spansh, end, bool(meta_get(self.db, "boxel_skip_known")))
         sp = spansh.get(n) or {}
         return {"prefix": prefix, "label": b["label"], "picked": b["picked"], "standard": bool(b.get("standard")), "n": n,
@@ -18064,21 +18126,46 @@ class State:
         self.db.commit()
         return True
 
-    def boxel_complete_done(self, prefix):
+    def boxel_complete_done(self, prefix, let_go=True):
         """A complete boxel (out of numbers to try: its end known, every number below it visited) is marked done by itself
         (the author, 2026-10-26: it stayed bright on the sector map, and kept, until Done was pressed): meta boxel_done
-        with `auto`, a kept one let go, as Done does. Not one reopened with "undo done" (meta boxel_reopened). -> done."""
+        with `auto`, a kept one let go, as Done does, its pick kept in the mark (`kept`) to take back if it turns out not
+        complete after all (boxel_undo_auto). let_go False: a boxel being picked now stays kept (review 8: its undo and
+        retry buttons acted on the boxel you are in). Not one reopened with "undo done" (meta boxel_reopened). -> done."""
         marks = meta_get(self.db, "boxel_done") or {}
         if prefix in marks:
             return True
         if prefix in (meta_get(self.db, "boxel_reopened") or {}):
             return False
-        marks[prefix] = {"ts": iso_ts(time.time()), "visited": len(self.boxel_visited(prefix)), "auto": True}
-        meta_set(self.db, "boxel_done", marks)
-        if ((meta_get(self.db, "boxel_active") or {}).get("prefix")) == prefix:
+        mark = {"ts": iso_ts(time.time()), "visited": len(self.boxel_visited(prefix)), "auto": True}
+        active = meta_get(self.db, "boxel_active")
+        if let_go and (active or {}).get("prefix") == prefix:
+            mark["kept"] = active
             meta_set(self.db, "boxel_active", None)   # the boxel you are in is followed again
+        marks[prefix] = mark
+        meta_set(self.db, "boxel_done", marks)
         self.db.commit()
         return True
+
+    def boxel_is_done(self, prefix, complete):
+        """Done: marked by hand, or by itself while it is complete (boxel_complete_done). A mark it got by itself goes once
+        it is no longer complete: its end proved wrong (a name found above it, yours or Spansh's), or Retry (review 8:
+        Next stayed empty and Retry hidden, the boxel off the recommendations)."""
+        mark = (meta_get(self.db, "boxel_done") or {}).get(prefix)
+        if mark and mark.get("auto") and not complete:
+            self.boxel_undo_auto(prefix)
+            return False
+        return bool(mark) or complete and self.boxel_complete_done(prefix)
+
+    def boxel_undo_auto(self, prefix):
+        """Take back a done mark a boxel got by itself; the pick it let go is kept again, unless another was kept since
+        (review 8: Retry left the auto-target opt-in with no kept boxel to follow)."""
+        marks = meta_get(self.db, "boxel_done") or {}
+        mark = marks.pop(prefix, None) or {}
+        meta_set(self.db, "boxel_done", marks)
+        if mark.get("kept") and not meta_get(self.db, "boxel_active"):
+            meta_set(self.db, "boxel_active", mark["kept"])
+        self.db.commit()
 
     def boxel_mark_done(self, done=True):
         """Mark the boxel being explored done with (or not): kept in meta boxel_done {prefix: {ts, visited}}; a kept boxel
@@ -18105,15 +18192,19 @@ class State:
     def boxel_finished(self, prefix, visited=None):
         """"done" (marked so), "complete" (its end known and every number below it visited) or None. visited: its
         boxel_visited when the caller has it already (boxel_visited_many)."""
-        if prefix in (meta_get(self.db, "boxel_done") or {}):
+        mark = (meta_get(self.db, "boxel_done") or {}).get(prefix)
+        if mark and not mark.get("auto"):   # Done pressed by hand: no need to look further
             return "done"
+        complete = self.boxel_complete(prefix, visited)
+        return "done" if self.boxel_is_done(prefix, complete) else "complete" if complete else None
+
+    def boxel_complete(self, prefix, visited=None):
+        """Its end known and every number below it visited (end 0: an empty boxel, complete too)."""
         visited = self.boxel_visited(prefix) if visited is None else visited
         cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
         known = set(visited) | {int(k) for k in (cache.get("systems") or {}) if str(k).isdigit()}
         end = self.boxel_end(prefix, known)
-        if end is not None and set(range(end)) <= set(visited):   # end 0: empty, complete too
-            return "done" if self.boxel_complete_done(prefix) else "complete"
-        return None
+        return end is not None and set(range(end)) <= set(visited)
 
     def boxel_clear_end(self):
         """The active boxel's end mark taken back (Retry: a failed run is not always a missing name)."""
@@ -18121,11 +18212,9 @@ class State:
         ends = meta_get(self.db, "boxel_ends") or {}
         if b and ends.pop(b["prefix"], None) is not None:
             meta_set(self.db, "boxel_ends", ends)
-            # not complete after all: a done mark it got by itself goes too (a Done pressed by hand stays)
-            marks = meta_get(self.db, "boxel_done") or {}
-            if (marks.get(b["prefix"]) or {}).get("auto"):
-                marks.pop(b["prefix"])
-                meta_set(self.db, "boxel_done", marks)
+            # not complete after all: a done mark it got by itself goes too, its kept pick back (a Done pressed by hand stays)
+            if ((meta_get(self.db, "boxel_done") or {}).get(b["prefix"]) or {}).get("auto"):
+                self.boxel_undo_auto(b["prefix"])
             self.db.commit()
         self.bump()
 
@@ -20374,7 +20463,8 @@ class State:
         """The State's own background tasks, all cancelled at shutdown before the database closes (a survey or trade
         plot can run up to TRADE_PLOT_TIMEOUT: review 2026-10-08 #7, it was left running into the closed session)."""
         return [t for t in (self.refresh_task, self.target_task, self.unsold_task, self.seller_task, self.carrier_task,
-                            self.sc_task, self.searcher.task, self.honk_test_task, self.honk_run_task, self.highway_task, self.riches_task,
+                            self.sc_task, self.sc_locate_task, self.searcher.task, self.honk_test_task, self.honk_run_task,
+                            self.highway_task, self.riches_task,
                             self.autotarget_task, self.autotarget_test_task, self.lease_task, self.edsm_discard_task,
                             self.edsm_bf_task, self.edsm_import_task, self.reported_task, self.route_task,
                             *self.upload_tasks.values()) if t]
@@ -20632,18 +20722,19 @@ class State:
                    "distance": 0, "carrier_jumps": math.ceil((cs.get("distance") or 0) / outrider.cargo.CARRIER_JUMP_LY - 1e-9)}
         sq = self.squadron_carrier_summary() or {}
         squad = None
-        if sq.get("x") is not None and sq.get("callsign"):
-            squad = {"name": sq["callsign"], "carrier_name": sq.get("name") or None, "system": sq.get("system"),
-                     "id64": sq.get("id64"), "type": outrider.cargo.CARRIER_TYPE, "updated_at": None,
+        if sq.get("x") is not None:   # with no callsign yet too (review 8): Spansh's report of it goes by market id
+            squad = {"name": sq.get("callsign") or "", "carrier_name": sq.get("name") or None, "system": sq.get("system"),
+                     "id64": sq.get("id64"), "type": outrider.cargo.CARRIER_TYPE, "updated_at": None, "market_id": sq["id"],
                      "x": sq["x"], "y": sq["y"], "z": sq["z"], "distance": 0}
+        is_squad = lambda x: bool(squad and (squad["name"] and x.get("name") == squad["name"]
+                                             or x.get("market_id") is not None and x.get("market_id") == squad["market_id"]))
         if not cur and not own and not squad:
             return None
         cur = cur or {"pos": dict(pos), "uc": [], "vista": []}
         large = outrider.cargo.SHIP_PAD.get(((self.journals.ship or {}).get("type") or "").lower()) == outrider.cargo.LARGE
 
         def mine(lst, on, sq_on):
-            lst = [x for x in lst if not (c.get("callsign") and x.get("name") == c.get("callsign"))
-                   and not (squad and x.get("name") == squad["name"])]
+            lst = [x for x in lst if not (c.get("callsign") and x.get("name") == c.get("callsign")) and not is_squad(x)]
             return lst + ([own] if own and on else []) + ([squad] if squad and sq_on else [])
 
         def pick(lst):
@@ -20656,7 +20747,7 @@ class State:
                 x["age_days"] = round(age, 1) if age is not None else None
                 x["carrier"] = "Carrier" in (x.get("type") or "")
                 x["yours"] = bool(c.get("callsign") and x.get("name") == c.get("callsign"))
-                x["squadron"] = bool(squad and x.get("name") == squad["name"])
+                x["squadron"] = is_squad(x)
                 out.append(x)
             out.sort(key=lambda x: x["distance"])
             # a carrier reported under ~an hour ago has age_days 0.0: only None (no date) means unknown
@@ -20854,6 +20945,7 @@ class State:
         last_error, self.tail_error = self.tail_error, None
         seq_before, chat_before = self.journals.moment_seq, self.journals.chat_seq
         hold_before = self.journals.docking_hold   # a grant held for the voice is shown at once (Kurbo26, 2026-10-26)
+        dock_seq = self.journals.docking_seq       # ...even one set and released in the same read (review 8)
         pins_before = (self._pin_seen, self._pin_key)   # #16: rolled back with the moments it raised (sweep 2026-10-17)
         try:
             late = None
@@ -20945,6 +21037,7 @@ class State:
                                ("maybe_curious", self.maybe_curious), ("maybe_reported", self.maybe_reported),
                                ("maybe_route_lookup", self.maybe_route_lookup),
                                ("maybe_locate_carrier", self.maybe_locate_carrier), ("maybe_squadron_spansh", self.maybe_squadron_spansh),
+                               ("maybe_locate_squadron_carrier", self.maybe_locate_squadron_carrier),
                                ("maybe_find_sellers", self.maybe_find_sellers),
                                ("maybe_backup_on_quit", self.maybe_backup_on_quit), ("highway_copy_next", self.highway_copy_next), ("riches_copy_next", self.riches_copy_next),
                                ("highway_heavy_check", self.highway_heavy_check), ("last_scoop_check", self.last_scoop_check),
@@ -20964,7 +21057,7 @@ class State:
             # #17: so is another player's message (sweep 2026-10-17: a chat-only tick waited for an unrelated bump), and a
             # docking grant: its moment is held for [speech] pad_delay, but Now's pad (and the tablet's switch to Now) is not
             if self.tail_error != last_error or self.journals.moment_seq != seq_before or self.journals.chat_seq != chat_before \
-                    or self.journals.docking_hold is not hold_before:
+                    or self.journals.docking_hold is not hold_before or self.journals.docking_seq != dock_seq:
                 self.bump()
         except Exception as e:
             # Never let one bad line, a locked database or a malformed NavRoute stop the
@@ -22541,13 +22634,15 @@ def make_app(state, hosts=None):
         return {"system": pos and pos["name"], "id64": pos and str(pos["id64"]),
                 "coords": pos and [pos["x"], pos["y"], pos["z"]], "region": (p["region"] or {}).get("name"),
                 "fuel_pct": f.get("pct"), "fuel_jumps": f.get("jumps_max"), "jump_range": p["jump_range"], "boost": p["boost"],
+                # with the cargo and the fuel aboard (State.range_now): what one jump reaches now (review 8)
+                "jump_range_now": p.get("jump_range_now"),
                 "target": t and {"name": t.get("name"), "status": t.get("status"), "star_class": t.get("star_class")},
                 "unsold": u.get("total"), "on_body": ob and ob["body"],
                 # S14 (the voice's "this body"): game facts like on_body, on this open route knowingly (review)
                 "near_body": None if ob else state.zone_body(), "target_body": (p["destination"] or {}).get("name") or None,
                 "sampling": sm and "elsewhere" not in sm and {k: sm.get(k) for k in ("genus", "samples", "to_go", "clear")} or None,
                 "carrier": c and {"name": c.get("name"), "system": c.get("system"), "distance": c.get("distance")},
-                "squadron_carrier": sc and {"name": sc.get("name") or sc.get("callsign"), "system": sc.get("system"),
+                "squadron_carrier": sc and {"name": sc.get("name") or sc.get("callsign") or "your squadron's carrier", "system": sc.get("system"),
                                             "distance": sc.get("distance")},
                 "commander": (p["commander"] or {}).get("name")}
 

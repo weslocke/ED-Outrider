@@ -386,6 +386,29 @@ class BatchGHonkBackups(unittest.TestCase):
         self.assertFalse(m["ok"])
         self.assertEqual(self.state.honk_groups(), {"good": [], "bad": [], "miss": {"C": 1}})
 
+    def test_a_failed_tick_hides_no_honk(self):
+        """Review 8: last_honk is the reader's, rolled back with a failed tick; the honk task watching it saw no scan,
+        said the honk failed and marked the fire group. The scan really read stays seen (honk_seen). The tick runs on
+        the event loop, as the real one (the fake press is on a worker thread)."""
+        import asyncio
+        loop = {}
+
+        def failed_tick():
+            cp = self.j.checkpoint()
+            self.j.handle({"event": "FSSDiscoveryScan", "timestamp": self.now_ts(), "Progress": 0.3, "BodyCount": 5,
+                           "NonBodyCount": 0, "SystemName": "S131", "SystemAddress": 131})
+            self.j.restore(cp)
+        start = self.state.maybe_honk
+
+        def maybe_honk():
+            loop["it"] = asyncio.get_running_loop()
+            return start()
+        self.state.maybe_honk = maybe_honk
+        presses, m = self.honk(131, False, self.live(fire_group=2), during=lambda: loop["it"].call_soon_threadsafe(failed_tick))
+        self.assertIsNone(self.j.last_honk)   # rolled back, as the reader's state should be
+        self.assertEqual((presses, m["ok"]), ([131], True))
+        self.assertEqual(self.state.honk_groups(), {"good": ["C"], "bad": []})
+
     def test_honk_checks_again_under_the_lock(self):   # CX-F3: what changed while auto-target held the keyboard
         import asyncio
         import outrider.honk

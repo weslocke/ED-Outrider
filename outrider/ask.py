@@ -355,6 +355,11 @@ def a_or_an(word):
     return "an" if word[:1].lower() in "aeiou" else "a"
 
 
+def a_or_an_letter(code):
+    """The article for a star class said as its letters: "an M", "an F", "a K" (review 8: "a M star")."""
+    return "an" if code[:1].upper() in "AEFHILMNORSX" else "a"
+
+
 async def this_body(get, rows):
     """The body you are on, else the one whose near-body zone you are in, else the one targeted in this system
     (/api/status: on_body, near_body, target_body), from body_detail: its type, landable and gravity, terraformable,
@@ -499,13 +504,17 @@ async def fixed_answer(command, get, rows=10, text="", limits=None):
         if n.get("error"):
             return n["error"]
         x, note = n.get("nearest"), (f" {n['note']}." if n.get("note") else "")
+        h = n.get("here") or {}
+        # the star you are at scoops: said first (review 8: it was left out, and you were sent on elsewhere)
+        cls = h.get("main_star") if h.get("main_star") and len(h["main_star"]) <= 2 else None
+        here = f"The star here scoops{f', {a_or_an_letter(cls)} {cls} star' if cls else ''}. " if h else ""
         if not x:
             r = n.get("radius_ly")
             within = f"within {round(r):,} light years" if isinstance(r, (int, float)) else "nearby"
-            return f"No known scoopable star {within}. Most unreported stars are scoopable: check the galaxy map.{note}"
-        star = f", {a_or_an(x['main_star'])} {x['main_star']} star" if x.get("main_star") and len(x["main_star"]) <= 2 else ""
+            return f"{here}No known scoopable star {within}. Most unreported stars are scoopable: check the galaxy map.{note}"
+        star = f", {a_or_an_letter(x['main_star'])} {x['main_star']} star" if x.get("main_star") and len(x["main_star"]) <= 2 else ""
         reach = {True: ", within one jump", False: ", beyond one jump at your range"}.get(x.get("one_jump"), "")
-        return f"Nearest known scoopable star: {x['name']}{star}, {ly(x.get('distance_ly'))} light years{reach}.{note}"
+        return f"{here}Nearest known scoopable star: {x['name']}{star}, {ly(x.get('distance_ly'))} light years{reach}.{note}"
     if command == "whats_left":
         s = await tools.call("this_system", {}, get, rows)
         if s.get("error"):

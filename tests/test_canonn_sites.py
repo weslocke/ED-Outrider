@@ -127,6 +127,27 @@ class Asking(unittest.TestCase):
         out, _ = asyncio.run(st.canonn_sites(self.ID, "1 b"))
         self.assertEqual((out["sites"], out["error"]), ([], "Canonn answered in an unexpected shape"))
 
+    def test_a_wrong_shape_is_a_failure_kept_briefly(self):
+        """Review 8: a 200 answer of another shape (an error object, a codex that is not a list) was cached a day as an
+        answer, the panel showing the error until then; a non-list codex raised a 500. Now both are failures, asked
+        again after CANONN_SITES_RETRY."""
+        with self.assertRaises(ValueError):
+            CS.geology_sites({"system": "X", "codex": 5}, "A")
+        with self.assertRaises(ValueError):
+            CS.geology_sites({"system": "X", "codex": True}, "A")
+        st = self.state([("$SAA_SignalType_Geological;", 2)])
+        st.spansh.session = _HwSession([(200, {"error": "busy"})])
+        out, status = asyncio.run(st.canonn_sites(self.ID, "1 b"))
+        self.assertEqual((status, out["error"]), (200, "Canonn answered in an unexpected shape"))
+        st.canonn_cache[self.ID]["poi"] = (time.time() - ed_outrider.CANONN_SITES_RETRY - 1,) + st.canonn_cache[self.ID]["poi"][1:]
+        st.spansh.session = _HwSession([(200, POI)])
+        out, _ = asyncio.run(st.canonn_sites(self.ID, "1 b"))
+        self.assertEqual(([s["name"] for s in out["sites"]], "error" in out), (["Silicate Vapour Fumarole", "Iron Magma Lava Spout"], False))
+        st.canonn_cache.clear()
+        st.spansh.session = _HwSession([(200, {"system": "Synuefe XR-H d11-102", "codex": 7})])
+        out, status = asyncio.run(st.canonn_sites(self.ID, "1 b"))
+        self.assertEqual((status, out["sites"], out["error"]), (200, [], "Canonn answered in an unexpected shape"))
+
     def test_the_cache_keeps_at_most_its_systems(self):
         st = self.state([("$SAA_SignalType_Geological;", 1)])
         st.spansh.session = _HwSession([(200, {"system": "X", "codex": []})])

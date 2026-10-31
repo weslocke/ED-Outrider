@@ -2138,7 +2138,7 @@ const releasePayloads = async () => {
     holdPayloads();
     const aimBack = aimReady();   // its 🎯 need auto-target to work (canAim)
     const got = w.eval(`(() => {
-      const saved = {c: data.carrier, s: data.squadron_carrier, side: store.get("carrierSide", null)}, o = {};
+      const saved = {c: data.carrier, s: data.squadron_carrier, side: store.get("carrierSide", null), at: store.get("carrierDocked", null)}, o = {};
       const fc = {name: "Out Of The Blue", callsign: "G0X-85Z", system: "Smojooe AR-E b25-8", aboard: false, here: false,
                   distance: 12.5, has_uc: true, has_vista: true};
       const sc = {name: "THE WINCHESTER", callsign: "7738", squadron: "THE FATHERHOOD", system: "Hajangai", id64: "7780366815938",
@@ -2149,7 +2149,7 @@ const releasePayloads = async () => {
       const val = () => markText(document.querySelector("#carrierLine .val"));
       // the dates as this machine's locale and time zone write them: DATE
       const text = () => markText(document.getElementById("carrierLine")).replace(/\\b([A-Z][a-z]{2} \\d{1,2}|\\d{1,2} [A-Z][a-z]{2})\\b/g, "DATE");
-      store.set("carrierSide", "fc"); CS.docked = null;
+      store.set("carrierSide", "fc"); store.set("carrierDocked", null);
       data.carrier = fc; data.squadron_carrier = null; renderCarrier();
       o.fcOnly = [btns(), val()];
       data.squadron_carrier = sc; renderCarrier();
@@ -2166,6 +2166,10 @@ const releasePayloads = async () => {
       o.docked = [btns(), val()];
       document.querySelector('#tCarrier [data-cside="fc"]').click();
       o.after = btns();   // a pick after docking stands
+      // ...through a reload while still docked too (review 8: the page's own memory of the dock was lost, the dock won again)
+      if (typeof CS !== "undefined") CS.docked = null;
+      renderCarrier();
+      o.reload = btns();
       data.carrier = null;
       data.squadron_carrier = Object.assign({}, sc, {source: "Spansh", spansh_ts: "2026-08-01T00:00:00Z", services: [],
                                                      fuel: 812, fuel_ts: "2026-07-19T21:00:00Z"});
@@ -2178,14 +2182,14 @@ const releasePayloads = async () => {
                 row({own: true, squadron: false, name: "Out Of The Blue", callsign: "G0X-85Z"})];
       o.sell = sellerTxt({name: "7738", carrier_name: "THE WINCHESTER", squadron: true, carrier: true, system: "Hajangai",
                           distance: 100, age_days: 3}).replace(/ ≈ \\d+ jumps?/, "");
-      data.carrier = saved.c; data.squadron_carrier = saved.s; store.set("carrierSide", saved.side); CS.docked = null; renderCarrier();
+      data.carrier = saved.c; data.squadron_carrier = saved.s; store.set("carrierSide", saved.side); store.set("carrierDocked", saved.at); renderCarrier();
       return JSON.stringify(o);
     })()`);
     aimBack();
     await releasePayloads();
     const want = {fcOnly: ["", "[fleet-carrier]Out Of The Blue"], both: ["fc* sc", "[fleet-carrier]Out Of The Blue"],
                   picked: ["fc sc*", "[squadron-carrier]THE WINCHESTERHajangai · 100 ly [destination]To it 2 jumpsUC ✓ · Vista ✓", "sc"],
-                  line: true, aim: ["system", "7780366815938"], docked: ["fc sc*", "[squadron-carrier]THE WINCHESTER"], after: "fc* sc",
+                  line: true, aim: ["system", "7780366815938"], docked: ["fc sc*", "[squadron-carrier]THE WINCHESTER"], after: "fc* sc", reload: "fc* sc",
                   scOnly: ["", true, "[squadron-carrier]THE WINCHESTERHajangai · 100 ly [destination] (Spansh, DATE)To it 2 jumpsTritium: 812t (DATE)"],
                   rows: ["[squadron-carrier]THE WINCHESTER 7738Squadron carrier · your squadron's · Hajangai",
                          "[squadron-carrier]ABCDSquadron carrier · Hajangai",

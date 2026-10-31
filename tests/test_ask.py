@@ -104,6 +104,34 @@ class Phrases(unittest.TestCase):
         self.assertEqual(ans(around), "Nearest known scoopable star: Far Rich, a K star, 20.5 light years, within one jump. "
                                       "Nearby is set around Colonia, not around you: a nearer scoopable star may be missing.")
 
+    def test_nearest_scoopable_review8(self):
+        """Review 8: "within one jump" from the range with the fuel and cargo aboard (jump_range_now), not the Loadout's
+        best case; the star you are at said when it scoops; "an M star" (the article by how the letter sounds)."""
+        def get_with(change):
+            base = fake_get()
+
+            async def get(path, params):
+                d = await base(path, params)
+                change(path, d)
+                return d
+            return get
+        ans = lambda change: asyncio.run(ask.fixed_answer("nearest_scoop", get_with(change)))   # noqa: E731
+
+        def low_fuel(path, d):
+            if path == "/api/status":
+                d.update(jump_range=72.5, jump_range_now=15.0)
+            for x in d.get("systems") or []:
+                if x["name"] == "Far Rich":
+                    x["main_class"] = "M"
+        self.assertEqual(ans(low_fuel), "Nearest known scoopable star: Far Rich, an M star, 20.5 light years, beyond one jump at your range.")
+
+        def here_scoops(path, d):
+            for x in d.get("systems") or []:
+                if x["name"] == "Start":
+                    x.update(main_scoopable=True, main_class="F")
+        self.assertEqual(ans(here_scoops), "The star here scoops, an F star. Nearest known scoopable star: Far Rich, a K star, "
+                                           "20.5 light years, within one jump.")
+
     def test_broken_phrase_file(self):
         with tempfile.TemporaryDirectory() as d:
             p = os.path.join(d, "ask.json")

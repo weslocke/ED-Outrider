@@ -227,8 +227,9 @@ upstream project's choices, not rules of the game.
   Hand-authored sectors use other origins: their names parse, their geometry is not claimed. The auto-target opt-in
   needs a kept boxel (following whichever boxel you jump into would take over every target). A boxel is complete by
   itself once its end is known and every number below it visited, and is then marked done by itself (2026-10-26,
-  the author: it stayed bright and kept until Done was pressed; a Retry takes that mark back, and one undone by hand
-  is never marked again: meta `boxel_reopened`); Done marks one finished either way (meta `boxel_done`, undone any
+  the author: it stayed bright and kept until Done was pressed; the mark lasts only while it is complete: a Retry, or
+  a name found above the end, takes it back and keeps again the boxel it let go (its `kept`), review 8; one picked
+  already complete is marked and stays kept; one undone by hand is never marked again: meta `boxel_reopened`); Done marks one finished either way (meta `boxel_done`, undone any
   time): no Next, out of the recommendations, a kept one let go. Skipping systems already fully scanned is
   opt-in (meta `boxel_skip_known`): a system Spansh knows was often only honked in passing and keeps its bodies'
   first discoveries, so only one with every body reported is passed over. The head shows the highest known number,

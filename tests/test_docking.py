@@ -221,14 +221,16 @@ class Docking(unittest.TestCase):
         self.ev("DockingGranted", -1, LandingPad=8, StationName="G0X-85Z", StationType="FleetCarrier")
         self.assertTrue(self.state.docking_release(time.time()))              # 0: at once
 
-    def test_a_held_grant_wakes_the_page(self):
+    def test_a_held_grant_wakes_the_page(self, computer=False):
         """Kurbo26, 2026-10-26: with pad_delay at 9 s the overlay showed the pad at once (it asks every second) but Now and
-        the tablet's switch to it waited for the voice: a tick that reads only a held grant bumps the long poll."""
+        the tablet's switch to it waited for the voice: a tick that reads only a held grant bumps the long poll.
+        computer: a docking computer fitted, its Music line read in the same tick (review 8): the hold set and gone
+        again, the pad still shown."""
         import json
         import os
         import tempfile
         import unittest.mock
-        self.fit("int_fuelscoop_size5_class5")
+        self.fit("int_dockingcomputer_advanced" if computer else "int_fuelscoop_size5_class5")
         self.j.pad_delay = 9
         d = tempfile.mkdtemp()
         self.addCleanup(lambda: __import__("shutil").rmtree(d, ignore_errors=True))
@@ -245,14 +247,23 @@ class Docking(unittest.TestCase):
                     f.write(json.dumps({"timestamp": ts(-1), "event": "DockingGranted", "LandingPad": 34,
                                         "StationName": "Jameson Memorial", "StationType": "Orbis"},
                                        separators=(",", ":")) + "\n")   # as the game writes it
+                    if computer:
+                        f.write(json.dumps({"timestamp": ts(-1), "event": "Music", "MusicTrack": "DockingComputer"},
+                                           separators=(",", ":")) + "\n")
                 self.state.tick({})
             finally:
                 for p in patches:
                     p.stop()
-        self.assertIsNotNone(self.j.docking_hold)
+        if computer:
+            self.assertIsNone(self.j.docking_hold)   # the docking computer took over: never said
+        else:
+            self.assertIsNotNone(self.j.docking_hold)
         self.assertEqual(self.granted(), [])                       # not said yet
         self.assertEqual(self.state.payload()["docking"]["pad"], 34)
         self.assertGreater(self.state.version, v)                  # but the page is told now
+
+    def test_a_grant_and_the_docking_computer_in_one_read(self):
+        self.test_a_held_grant_wakes_the_page(computer=True)
 
     def test_a_dock_or_leaving_drops_the_hold(self):
         self.fit("int_dockingcomputer_advanced")

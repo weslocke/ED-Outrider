@@ -409,7 +409,8 @@ boxel).
   "probably the end" (**retry** if it was only a hiccup).
 - **✓ complete** shows by itself once the end is known and you have visited every system below it (**✓ empty** when
   the galaxy map found none of its names), and the boxel is then marked done by itself (a **retry** above the end
-  takes that back). **✓ Done with this boxel** is your call, complete or not; **undo done** reopens it, and a reopened
+  takes that back and keeps the boxel again if it was kept, and so does a name found above the end: it was not
+  complete after all; picking a complete boxel keeps it, marked done). **✓ Done with this boxel** is your call, complete or not; **undo done** reopens it, and a reopened
   boxel is never marked done by itself again until you press Done. Either way Next offers nothing more, the boxel
   leaves the recommendations (the next nearest of its kind takes its place; "done or complete nearby" lists them),
   it is dimmed on the sector map, and a kept boxel is let go.

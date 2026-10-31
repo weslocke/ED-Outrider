@@ -89,5 +89,27 @@ t("scSeconds: the supercruise estimate's ends", () => {
   eq(`[scSeconds(null), scSeconds(-1), scSeconds(1), Math.round(scSeconds(2000)), Math.round(scSeconds(100000))]`, [null, null, 15, 37, 360]);
   assert.ok(ev(`scSeconds(500) < scSeconds(5000) && scSeconds(5000) < scSeconds(50000)`));
 });
+t("hotspotAgo: whole minutes, then hours, never 60 min (review 8)", () => {
+  const ago = sec => ev(`hotspotAgo(new Date(Date.now() - ${sec} * 1000).toISOString())`);
+  eq(`[${[30, 3590, 3600, 7150, 7190, 10795].map(x => `hotspotAgo(new Date(Date.now() - ${x * 1000}).toISOString())`).join(", ")}]`,
+     ["1 min ago", "1 h ago", "1 h ago", "1 h 59 min ago", "2 h ago", "3 h ago"]);
+  assert.match(ago(3 * 86400), /^on \d{4}-\d\d-\d\d$/);
+});
+t("hotspotBefore: the stint just opened, an older empty one deleted at its close, an older one kept (review 8)", () => {
+  const g = os => JSON.stringify({stints: 3, tons: 50, seconds: 3000, refined: {painite: 50}, ships: [{id: 7, tons: 50, seconds: 3000}],
+                                  prospects: [[{}, 1], [{}, 0]], open: true, open_stint: os});
+  const before = (os, start) => ev(`(() => { const b = hotspotBefore(${g(os)}, ${JSON.stringify(start)}); return [b.stints, b.tons, b.open_stint]; })()`);
+  const fresh = {start: "N", ship_id: 7, tons: 0, seconds: 0, refined: {}, prospects: 0, cracked: 0};
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(before(fresh, "N"))), [2, 50, null]);            // the new one left out
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(before({...fresh, start: "P"}, "N"))), [2, 50, null]);   // empty P: deleted
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(before({...fresh, start: "P", tons: 5, seconds: 60, refined: {painite: 5}}, "N"))),
+                         [3, 50, null]);                                                             // P held something: a stint
+});
+t("knownPinned: a name counts only when no other known site shares it (review 8)", () => {
+  const sites = `[{kind: "guardian", name: "Guardian ruins", lat: 10, lon: 10}, {kind: "guardian", name: "Guardian ruins", lat: -5, lon: 40},
+                  {kind: "guardian", name: "Guardian ruins 1", lat: 1, lon: 1}]`;
+  const pins = `[{name: "Guardian ruins", lat: 10, lon: 10}, {name: "Guardian ruins 1", lat: 2, lon: 2}]`;
+  eq(`(() => { const s = ${sites}, mine = ${pins}; return s.map(x => knownPinned(x, [x.lat, x.lon], mine, s)); })()`, [true, false, true]);
+});
 console.log(`page unit: ${ok} OK, ${failed} FAIL`);
 process.exit(failed ? 1 : 0);

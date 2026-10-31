@@ -2,6 +2,37 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-30 · Opus review 8 fixes: the squadron carrier in the finder, honk confirmation, Sell all, boxels
+- The Opus review of d31d9cd..7609edf (round 8, 88 agents, project/done/reviews/review-2026-10-30): 37 real findings,
+  about 22 distinct, all fixed here, each with a test that fails without it.
+- **Squadron carrier** (7609edf): its row's id64 was a string among ints, so Nearest place to dock, the voice's
+  "nearest ..." and the AI tool raised for any member (now an int; the payload keeps its string). Before Spansh names
+  it: no blank spoken name ("your squadron's carrier"), Spansh's row of it dropped by market id (it was listed twice),
+  in the sell lists without a callsign; a dock there keeps its callsign (StationName). Moved somewhere never visited:
+  placed from Spansh as your own carrier is (`maybe_locate_squadron_carrier`, `_locate_carrier`). Its distance from the
+  star only when Spansh's row is the place shown. A stale login check from an older folder read late drops nothing
+  (the check must be no older than the record). The FC | SC pick survives a reload while docked (`carrierDocked`).
+- **Auto honk**: `honk_seen` / `all_found_seen` (outside the checkpoint) beside last_honk / last_all_found, so a
+  failed tick no longer hides a real honk from the honk task (it said the honk failed and marked the fire group).
+- **Docking**: a grant and the docking computer's Music read in one tick still wake the page (`docking_seq`).
+- **Nearest scoopable star**: "within one jump" from the range now (`jump_range_now` in /api/status), the star you are
+  at said first when it scoops, "an M star" / "an F star" (`a_or_an_letter`).
+- **Sell all**: lines matched by id too (a non-English client's names); Closest asks Spansh for the nearest buyers;
+  with carriers ticked the stations' searches stay as unticked, plus carriers-only ones at most a week old
+  (`market_query(carriers="only")`).
+- **Now's sell line**: when the 20 nearest UC / Vista places are all other players' carriers, the nearest permanent
+  stations are asked for too (`Spansh.stations(permanent=True)`).
+- **Mining**: a Limpet Basic synthesis puts 4 limpets in the hold (`cargo.ship_apply`; the game writes only a Cargo
+  count after it); the hotspot card's "last here" never says "60 min"; an older open stint in a stale MINING.d that was
+  empty (deleted at its close) is taken off the record, one that held anything kept (`open_stint.cracked`).
+- **Boxels**: an automatic done mark lasts only while the boxel is complete (`boxel_is_done`, one rule for the view,
+  Next and the recommendations); Retry, or a name found above the end, takes it back and keeps again the boxel it let
+  go; picking a complete boxel marks it done and keeps it (its undo / retry acted on the boxel you were in).
+- **Canonn**: a known site's name counts as pinned only when no other site there shares it; a codex that is not a list
+  is a wrong shape (it raised a 500), and a wrong-shaped answer is kept as a failure (5 minutes), not a day.
+- **verify.sh --smoke** exits 3 on a partial pass: 0 is a full PASS only.
+- Refuted (both skeptics): the codex line held and lost (#9).
+
 ## 2026-10-30 · Your squadron's carrier on the Carrier tile, the sell lists and the dock finder
 - Hiner399's idea (GitHub discussion #3), a member's view (plan 2026-10-30). The reader keeps your squadron's carrier
   beside your own (`Journals.handle_squadron_carrier`, meta `squadron_carrier`) instead of throwing its lines away: its
