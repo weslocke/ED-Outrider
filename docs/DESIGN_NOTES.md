@@ -463,8 +463,11 @@ upstream project's choices, not rules of the game.
   `speakerQueued`) and queues again; "Speak from this window" there keeps it. Now keeps its own ↗ and `?mode=now` (`?view=now` is not a
   view window); the tablet has its own shell and no view windows.
 - **Outrider presses keys for three things now:** auto honk, auto-target and the tablet's rail. The rail is one key
-  per tap, only for signed-in devices (or this PC), only while the game is live, never while one of the other two is
-  pressing, and only the binding the game itself has for that control; there are no macros or sequences on it (Board
+  per tap, only for signed-in devices (or this PC), only while the game is live and Elite's window is the one in front
+  (S74's rule, as auto-target; never brought forward, and refused when the window cannot be found though it could be
+  looked for: a crash leaves Status.json live; pressed as before only where nothing can look, such as no wmctrl or
+  native Wayland), never while another commander plays (S9-S4) or one of the other two is pressing (complete review
+  2026-10-30), and only the binding the game itself has for that control; there are no macros or sequences on it (Board
   ship and Disembark were dropped for that reason). Status.json is the only confirmation; a press that is not
   confirmed says so rather than guessing. Hide UI, Screenshot and HighRes (2026-10-25, at the end of every set) press
   the game's own fixed keys, Ctrl+Alt+G, F10 and Alt+F10, which no .binds file holds (`outrider.rail.FIXED_KEYS`):

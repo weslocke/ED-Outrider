@@ -152,7 +152,8 @@ def cheatsheet_html(binds=None):
                "<li><b>▶ test now</b> in Settings → Auto-target runs the whole sequence once, against the system typed "
                "beside it (a short name such as <code>Sol</code> lists several systems: a good test of the submit steps) "
                "or the nearest one a jump away. A far system gets a route plotted: clear it in game afterwards.</li>"
-               "<li>Each step's line in Outrider's log (Settings → Server → Show log) names the keys it pressed.</li>"
+               "<li>A test's steps are each a line in Outrider's log (Settings → Server → Show log), naming the keys they "
+               "pressed; any run that fails logs them too.</li>"
                "<li><code>[highway] autotarget_dry_run = true</code> goes through the steps without pressing anything.</li>"
                "</ul></body></html>")
     return "".join(out)

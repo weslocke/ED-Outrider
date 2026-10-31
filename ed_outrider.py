@@ -20300,12 +20300,16 @@ class State:
         self.bump()
         return self.rail_info(full=True), 200
 
+    RAIL_NO_WINDOW = "Elite's window was not found: is the game running?"
+
     def rail_why_not(self):
         """Why no button can be pressed now (None: they can), whatever the context: the keyboard's side."""
         if not self.game_pc:
             return NOT_GAME_PC
         if self.simulate:
             return "not with --simulate (nothing is pressed)"
+        if self.journals.other_playing:   # S9-S4, as auto-target (complete review 2026-10-30: the rail pressed on)
+            return f"CMDR {self.journals.other_playing} is playing: not tracked here"
         h = self.honker
         if not h or not h.available:
             return (h.status if h else "the virtual keyboard is not available") + " (the rail presses keys through it)"
@@ -20361,7 +20365,7 @@ class State:
         h = self.honker
         if not h or not h.available or self.simulate:
             return
-        live = bool((self.journals.status_json or {}).get("live"))
+        live = bool((self.journals.status_json or {}).get("live")) and not self.journals.other_playing
         if live and "rail" not in h.owners:
             h.open("rail")
         elif not live and "rail" in h.owners:
@@ -20388,12 +20392,23 @@ class State:
         fixed = outrider.rail.catalogue_entry(ctx, id_)["fixed"]
         keys = fixed or outrider.honk.keyboard_bindings(self.honker.journal_dirs, [b["action"]], hint=None,
                                                         category=outrider.rail.CATEGORY[ctx])[b["action"]][0]
+        # no key into another window (S74's rule, as auto-target; complete review 2026-10-30: alt-tabbed, or after a
+        # crash that left Status.json live, a tap typed into whatever was in front). Never brought forward: a tap on
+        # the tablet does not take the focus. Nothing to check with (no wmctrl, Wayland): pressed as before
+        front, gw = None, self.game_window
+        if gw is not None and gw.why_not() is None:
+            if await asyncio.get_running_loop().run_in_executor(None, gw.locate):
+                front = gw.front_why
+            elif gw.why_not() is None:
+                return {"error": self.RAIL_NO_WINDOW}, 409
         if not self.honker.ready and not self.honker.open("rail"):
             return {"error": self.honker.device_error or "the virtual keyboard could not be opened"}, 409
 
-        def still():   # under the keyboard's lock, just before the key: still in that context, game still live
+        def still():   # under the keyboard's lock, just before the key: still in that context, game live and in front
             c, w = outrider.rail.context_of(self.journals.status_json, (self.journals.vehicle or {}).get("srv_type"))
-            return None if c == context else f"no longer in the {context}" + (f" ({w})" if w else "")
+            if c != context:
+                return f"no longer in the {context}" + (f" ({w})" if w else "")
+            return front() if front else None
         try:
             await asyncio.get_running_loop().run_in_executor(None, lambda: self.honker.tap(keys, check=still))
         except outrider.honk.NotNow as e:
@@ -20627,7 +20642,8 @@ class State:
                 self.targeter.run, tgt["name"], tgt["id64"], self.status_now,
                 lambda: (self.journals.pos or {}).get("id64"), cancel=cancel, origin=tgt["here"],
                 route_end=lambda: self.journals.navroute_end, front=front, ly=self.autotarget_ly(tgt),
-                one_jump=bool(tgt.get("one_jump")), music=self.music_now, fsd_target=self.fsd_target_now))
+                one_jump=bool(tgt.get("one_jump")), music=self.music_now, fsd_target=self.fsd_target_now,
+                log_steps=bool(test and test.get("kind") == "test")))
         except Exception as e:  # noqa: BLE001 -- say so on the page rather than lose it in a task
             res = {"ok": False, "phase": 0, "label": "run", "why": f"{type(e).__name__}: {e}"}
         finally:

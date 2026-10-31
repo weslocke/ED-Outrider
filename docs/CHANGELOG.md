@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Complete review, batch 2: key presses only into the game, auto-target on a stale map
+- The key-press findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand,
+  each with a test that fails without it.
+- **The tablet's rail** presses only into Elite's window, as auto-target does (S74): alt-tabbed to another program, or
+  after a crash that left Status.json saying live, a tap typed its key into whatever was in front. It is refused
+  ("Elite is not the active window: click into the game"; "Elite's window was not found: is the game running?"),
+  never brought forward; where nothing can look (no wmctrl, native Wayland) it presses as before. While another
+  commander plays (`[journals] commander`), the rail is greyed with "CMDR X is playing" and lets the keyboard go.
+- **Auto-target in the seconds after the galaxy map closed** (Status.json still saying the map, the journal's Music
+  not): Target next was let start and then failed at its first step ("the galaxy map is open (unexpected)",
+  "Failed to target"); before its first key a run now takes the journal's word, as the start check does.
+- **▶ test now** logs each step with the keys it pressed, as the cheatsheet says (other runs keep one line, a failed
+  one all of them); a control bound to a mouse button only is "a mouse button", not "a joystick button".
+
 ## 2026-10-31 · Complete review, batch 1: the password behind a proxy and in Docker, the image's contents, verify.sh
 - The complete Opus review of the whole codebase (HEAD 5140753, 360 agents, a Fable check of every finding:
   project/done/reviews/review-2026-10-30-full) found about 127 real defects; this first batch fixes the security,

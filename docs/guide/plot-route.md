@@ -211,8 +211,8 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   - Where it cannot see the game's window (no `wmctrl`; the game as a native Wayland window, Proton's Wayland driver;
     Sway, Hyprland and window managers that refuse focus stealing ignore it): the 5 s countdown as before, and then
     **the keys go to whichever window has focus**: stay in the game until it is done.
-- The log gets one line per run ("highway auto-target: targeted Hwy Stop 38"); every step is printed only when it
-  fails, each with the key it pressed ("5 plot the route: hold Space … for 1 s: done").
+- The log gets one line per run ("highway auto-target: targeted Hwy Stop 38"); every step is printed when a run
+  fails, and for every ▶ test now, each with the key it pressed ("5 plot the route: hold Space … for 1 s: done").
 - **🎯 Target next** (in the box, and beside "Next:" in the route line under the tiles, on every tab, and on Now) does the same
   on demand, whether or not auto-target is on: the next route system, or off the route the closest one, at once when
   it brings the game to the front, else after a 5-second countdown to click back into the game. A failed run puts

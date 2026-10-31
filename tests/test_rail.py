@@ -134,6 +134,20 @@ class Bindings(unittest.TestCase):
             self.assertEqual(kb([journals], ["UI_Select"])["UI_Select"][0], ["KEY_G"])
 
 
+    def test_a_mouse_button_is_no_joystick(self):
+        """Complete review 2026-10-30: Primary Fire on the left mouse button only (the keyboard-and-mouse default) was
+        called "a joystick button"."""
+        with tempfile.TemporaryDirectory() as root:
+            journals, binds = make_controls(self, root, start="P\nP\nP\nP")
+            with open(os.path.join(binds, "P.4.2.binds"), "w") as f:
+                f.write('<?xml version="1.0" encoding="UTF-8" ?><Root PresetName="P">'
+                        '<PrimaryFire><Primary Device="Mouse" Key="Mouse_1" /><Secondary Device="{NoDevice}" Key="" /></PrimaryFire>'
+                        '<NightVisionToggle><Primary Device="SaitekX56Throttle" Key="Joy_5" /><Secondary Device="{NoDevice}" Key="" /></NightVisionToggle></Root>')
+            got = outrider.honk.keyboard_bindings([journals], ["PrimaryFire", "NightVisionToggle"], hint=None)
+            self.assertIn("now only Mouse 1 on Mouse: a mouse button cannot be pressed from here", got["PrimaryFire"][1])
+            self.assertIn("now only Joy 5 on SaitekX56Throttle: a joystick button cannot be", got["NightVisionToggle"][1])
+
+
 class Tap(unittest.TestCase):
     def honker(self):
         ev = _fake_evdev()
@@ -317,6 +331,39 @@ class Server(unittest.TestCase):
         self.assertEqual(len(self.state.rail_sets()["ship"]), 2)
         self.state.rail_save("ship", reset=True)
         self.assertEqual(len(self.state.rail_sets()["ship"]), 11)
+
+    def test_only_into_the_game_window(self):
+        """Complete review 2026-10-30: a tap went into whatever window was in front (alt-tabbed, or after a crash that
+        left Status.json live); now, as auto-target (S74), only into Elite's window, which is never brought forward. Not
+        found while it could be: refused (the author's choice); nothing to look with: pressed as before."""
+        import types
+        gw = types.SimpleNamespace(why_not=lambda: None, locate=lambda: True, front_why=lambda: "Elite is not the active window: click into the game")
+        self.state.game_window = gw
+        out, status = self.press("ship", "gear")
+        self.assertEqual((status, out["error"], self.h.ui.events), (409, "Elite is not the active window: click into the game", []))
+        gw.front_why = lambda: None
+        self.assertEqual(self.press("ship", "gear")[1], 200)
+        self.assertEqual(len(self.h.ui.events), 4)
+        self.h.ui.events.clear()
+        gw.locate = lambda: False   # the game crashed: no window, though one could be found
+        out, status = self.press("ship", "gear")
+        self.assertEqual((status, out["error"], self.h.ui.events), (409, ed_outrider.State.RAIL_NO_WINDOW, []))
+        gw.why_not = lambda: "wmctrl is not installed"   # nothing to look with
+        self.assertEqual(self.press("ship", "gear")[1], 200)
+        self.state.game_window = None
+        self.assertEqual(self.press("ship", "gear")[1], 200)
+
+    def test_not_while_another_commander_plays(self):
+        """Complete review 2026-10-30: during the stand-down (S9-S4) Status.json is frozen at your last reading, live
+        after a crash, and a tap went into the other commander's game; now refused as auto-target is."""
+        self.state.rail_device()
+        self.state.journals.other_playing = "Beta"
+        r = self.state.rail_info()
+        self.assertEqual((r["can_press"], r["why_not"]), (False, "CMDR Beta is playing: not tracked here"))
+        out, status = self.press("ship", "gear")
+        self.assertEqual((status, out["error"], self.h.ui.events), (409, "CMDR Beta is playing: not tracked here", []))
+        self.state.rail_device()
+        self.assertNotIn("rail", self.h.owners)
 
     def test_device_follows_the_game(self):
         self.state.rail_device()

@@ -360,6 +360,7 @@ class Targeter:
     run_cancel, run_front, run_music, run_fsd = _PerRun(), _PerRun(), _PerRun(), _PerRun()
     _music0, _music_t, _fsd0, _closing, _started, _overrode, _say = (_PerRun(), _PerRun(), _PerRun(), _PerRun(),
                                                                      _PerRun(), _PerRun(), _PerRun())
+    _keyed = _PerRun()   # a key of this run has gone down
 
     def cancelled(self):
         """Shutdown, or the current run's own token."""
@@ -444,7 +445,7 @@ class Targeter:
 
     # ---- running ----
     def run(self, name, id64, status, system, dry_run=None, cancel=None, origin=None, route_end=None, front=None, ly=None,
-            one_jump=False, music=None, fsd_target=None):
+            one_jump=False, music=None, fsd_target=None, log_steps=False):
         """Target `name` (id64) now: status() gives Status.json's reading ({gui_focus, flags, flags2, destination,
         live}), system() the current system's id64. cancel: this run's own token (a threading.Event its owner sets:
         auto-target switched off, the route cleared or replaced); origin: the system the run was decided in (default:
@@ -461,7 +462,8 @@ class Targeter:
         GuiFocus can lag behind by many seconds or never give (focus()); fsd_target: likewise the journal's latest
         FSDTarget (file, position, id64), the moment Target System takes. -> {"ok", "phase", "label", "why", "code", "log",
         "dry_run"}; code "already" (nothing to do) or "wrong" (a different system was targeted: `wrong` names it).
-        The step log is printed only when the run fails, or throughout a dry run: a success is the caller's one line."""
+        The step log is printed when the run fails, or with log_steps (▶ test now), or throughout a dry run: a success is
+        otherwise the caller's one line."""
         dry = self.cfg.get("dry_run") if dry_run is None else dry_run
         result = {"ok": False, "phase": None, "label": None, "why": None, "code": None, "log": [], "dry_run": bool(dry)}
         tag = f"auto-target{' (dry run)' if dry else ''}: "
@@ -475,7 +477,7 @@ class Targeter:
         try:
             while True:
                 self._music0 = self._music_t = self._fsd0 = None
-                self._closing = self._started = self._overrode = False
+                self._closing = self._started = self._overrode = self._keyed = False
                 self._run(result, say, name, id64, status, system, dry, origin, route_end, ly, one_jump, entry)
                 # a pasted name that found nothing (the author, 2026-10-23: the first paste of a run came out empty, the
                 # second worked): once more, typing it, when it can be typed (review C1)
@@ -491,7 +493,9 @@ class Targeter:
             raise
         finally:
             self.run_cancel = self.run_front = self.run_music = self.run_fsd = self._say = None
-        if not result["ok"] and not dry:
+        # the step lines go to the log when the run failed, or when asked (▶ test now, made to tune the steps: the
+        # cheatsheet says its lines name the keys; complete review 2026-10-30); a success is otherwise one line
+        if (not result["ok"] or log_steps) and not dry:
             for line in result["log"]:
                 self.log(tag + line)
         return result
@@ -663,6 +667,10 @@ class Targeter:
             out = GUI_GALAXY_MAP
         elif m[2] != "GalaxyMap" and g == GUI_GALAXY_MAP and self._closing and self._newer(m, base):
             out = GUI_COCKPIT
+        elif m[2] != "GalaxyMap" and g == GUI_GALAXY_MAP and not self._keyed:
+            # before the first key, guard()'s rule (review B2): Status.json's 6 lags the map Target System closed, the
+            # last Music says otherwise; it let the run start, and step 1 failed on the same 6 (complete review 2026-10-30)
+            out = GUI_COCKPIT
         else:
             return g
         if not self._overrode and self._say:   # the first in a run, in its log (review C2)
@@ -749,6 +757,7 @@ class Targeter:
         if not_front:
             raise Abort(st, not_front, code="window")
         down = []
+        self._keyed = True
         try:
             for n in names:
                 ui.write(e.EV_KEY, honk.key_code(ev, n), 1)

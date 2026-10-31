@@ -2218,6 +2218,21 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(self.T.guard(st, 102, None, ("j", 3, "GalaxyMap"))[0], "focus")
         self.assertEqual(self.T.guard(st, 102)[0], "focus")                # Status.json alone, as before
 
+    def test_a_run_starts_in_the_stale_map_window(self):
+        """Complete review 2026-10-30: the guard let a run start on B2's stale GuiFocus 6 (the last Music another
+        track), but the run's own check before its first key still took the 6 as the map and failed at step 1 ("the
+        galaxy map is open (unexpected)", "Failed to target"). Before the first key the run takes the guard's word."""
+        self.fake_time()
+        g = self.game
+        g.status_lag, g.screen, g.target_closes = True, 0, True
+        self.status["gui_focus"] = 6                                     # left by the map Target System closed
+        g.music[:] = [("GalaxyMap", g.clock() - 20), ("Supercruise", g.clock() - 2)]
+        self.assertIsNone(self.T.guard(self.status, 102, None, g.music_now()))
+        r = self.run_target(one_jump=True, music=g.music_now, fsd_target=g.fsd_now)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(self.status["destination"]["System"], 102)
+        self.assertEqual(len([n for n, v in g.writes if n == "KEY_T" and v]), 1)
+
     def test_music_now_reads_the_journals_end(self):
         """State.music_now: the newest live journal's last Music event, its position growing with each new one."""
         import tempfile
@@ -2422,7 +2437,7 @@ class HighwayAutoTarget(unittest.TestCase):
         t, said = self.targeter, []
         music = [("j", 5, "GalaxyMap")]
         t.run_music, t._say = lambda: music[0], said.append
-        t._music0, t._closing = ("j", 5, "GalaxyMap"), False
+        t._music0, t._closing, t._keyed = ("j", 5, "GalaxyMap"), False, True   # the run's first key has gone
         self.assertEqual(t.focus({"gui_focus": 0}), 0)                     # the map opened before the run: not now
         music[0] = ("j", 9, "GalaxyMap")
         self.assertEqual(t.focus({"gui_focus": 0}), 6)                     # opened by this run, Status.json lagging
@@ -2434,7 +2449,7 @@ class HighwayAutoTarget(unittest.TestCase):
         music[0] = ("Journal.2.log", 1, "Supercruise")
         self.assertEqual(t.focus({"gui_focus": 6}), 0)                     # after it (a new journal counts as newer)
         self.assertEqual(len(said), 1)                                      # the first override only
-        t.run_music = t._say = t._music0 = t._music_t = t._closing = None
+        t.run_music = t._say = t._music0 = t._music_t = t._closing = t._keyed = None
 
     def test_the_runs_journal_marks_are_per_thread(self):
         """Review 2026-10-23 C4: a run's journal readers and marks are its thread's, like run_cancel."""
@@ -2542,6 +2557,11 @@ class HighwayAutoTarget(unittest.TestCase):
         r = self.run_target()
         self.assertTrue(r["ok"], r)
         self.assertIn("5 plot the route: hold Space (secondary binding of UI Select in HCS X56 Attempt 1) for 0.55 s: done", r["log"])
+        self.assertEqual(log, [])   # a success's steps are not printed...
+        self.status["destination"] = None
+        r = self.run_target(log_steps=True)   # ...but a ▶ test now's are (complete review 2026-10-30: the cheatsheet said so)
+        self.assertTrue(r["ok"], r)
+        self.assertTrue(any("5 plot the route: hold Space" in x for x in log), log)
 
     def test_the_sequence_applies_without_a_restart(self):
         """[highway] autotarget_* saved from Settings → Server reach the running targeter (tuned by trial and error: a
@@ -3177,6 +3197,29 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(self.honker.owners, {"target"})   # the run's hold on the keyboard was let go
         self.assertEqual(out["near"][1]["system"], "Neu A")
         self.assertEqual((out["near_last"]["done"], out["near_last"]["index"]), (True, 1))
+
+    def test_a_test_runs_steps_are_logged(self):
+        """Complete review 2026-10-30: ▶ test now's run logs its steps (the cheatsheet says its lines name the keys);
+        Target next keeps its one line."""
+        import asyncio
+        self.state.honker, self.state.targeter = self.honker, self.targeter
+        self.j.status_json = self.status
+        hwy_plot_exact(self)
+        self.now = time.time()
+        hwy_jump(self, -60, 101, "Neu A", 50)
+        self.here = 101
+        seen, real = [], self.targeter.run
+        self.targeter.run = lambda *a, **k: (seen.append(k.get("log_steps")), real(*a, **k))[1]
+        self.addCleanup(setattr, self.targeter, "run", real)
+
+        async def go(kind):
+            self.status["destination"] = None
+            body, status = self.state.start_autotarget_run(kind, countdown=0, aim=("highway", 2))
+            self.assertEqual(status, 200, body)
+            await self.state.autotarget_test_task
+        asyncio.run(go("next"))
+        asyncio.run(go("test"))
+        self.assertEqual(seen, [False, True])
 
     def test_target_next_waits_out_the_arrivals_danger_flag(self):
         """The game sets in-danger on every jump until some 16-26 s after the arrival (logged in game 2026-10-09):

@@ -190,11 +190,13 @@ def _action_binding(root, action, preset, hint):
             return mods + [key], f"{' + '.join(key_label(k) for k in mods + [key])} ({slot.lower()} binding of {name} in {preset or 'your preset'})"
     # what it IS bound to (a HOTAS button): a virtual keyboard cannot press it, since the game takes a joystick
     # button only from that joystick, so the words say where it is now and what to add
-    other = next((f"{b.get('Key').replace('_', ' ')} on {b.get('Device')}" for slot in ("Primary", "Secondary")
+    other = next(((f"{b.get('Key').replace('_', ' ')} on {b.get('Device')}", b.get("Device")) for slot in ("Primary", "Secondary")
                   for b in [node.find(slot) if node is not None else None]
                   if b is not None and b.get("Device") not in (None, "", "Keyboard", "{NoDevice}") and b.get("Key")), None)
+    # a mouse is no joystick: Primary Fire on Mouse 1 is the keyboard-and-mouse default (complete review 2026-10-30)
+    button = "a mouse button" if other and other[1] == "Mouse" else "a joystick button"
     return None, (f"{name} has no keyboard binding in {preset or 'your preset'}"
-                  + (f" (now only {other}: a joystick button cannot be pressed from here)" if other else "")
+                  + (f" (now only {other[0]}: {button} cannot be pressed from here)" if other else "")
                   + (" (a key with a joystick modifier cannot be pressed from here)" if mixed else "")
                   + ": give it a keyboard key as its second binding in Elite's controls" + (f", or set {hint}" if hint else ""))
 
