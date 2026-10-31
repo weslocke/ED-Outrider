@@ -4024,6 +4024,14 @@ class Journals:
             self.file_cmdrs[b] = who
         return who
 
+    def files_not_mine(self):
+        """The journal file names of another commander than [journals] commander's (as the reader found them, so no file
+        is opened here): what the unsold estimate and the Log leave out (Discussion #18: they read every commander's
+        lines, a sale of one emptying another's estimate). Empty with no filter."""
+        if not self.commander_filter:
+            return frozenset()
+        return frozenset(b for b, who in list(self.file_cmdrs.items()) if not commander_matches(self.commander_filter, who))
+
     def file_is_mine(self, path):
         """S9-S4: whether this file's lines are handled under the commander filter: True with no filter, for the
         filter's commander and for a file with no commander line that is not the newest (cut short by a crash at
@@ -8913,8 +8921,8 @@ class State:
             "game_pc": self.game_pc,   # False: the page leaves out what needs the game PC
             "outrider": outrider.__version__,   # Settings' line beside the GitHub link
             "notices": self.notices.active(),   # the banner: start-up problems, until fixed or dismissed
-            # S9-S4: the commander the "also logs CMDR B" card's button keeps (only while that card can show)
-            "commander_keep": self.commander_choice()[0] if len(self.journals.cmdrs_seen) > 1 and not self.journals.commander_filter else None,
+            # S9-S4: the commanders the journals hold, for the chooser (Discussion #18); None for a single commander
+            "commanders": self.commanders_known(),
             "restart": self.restart_info(),     # Settings -> Server's Restart: whether it can, how, why not
             # a newer release ({version, current, url, kind}: kind says how to update this install), else None
             "update": dict(self.update_available, current=outrider.__version__, kind=install_kind())
@@ -14532,7 +14540,8 @@ class State:
     def _unsold_rows(self):
         args = argparse.Namespace(commander=None, since=None, ignore_deaths=False, bonus_rate=None,
                                   efficiency_bonus=False, no_odyssey=False, top=0)
-        return outrider.unsold.analyse(outrider.unsold.read_events(LIVE_DIRS + LEGACY_DIRS), args)["exploration"]["rows"]
+        events = outrider.unsold.read_events(LIVE_DIRS + LEGACY_DIRS, self.journals.files_not_mine())
+        return outrider.unsold.analyse(events, args)["exploration"]["rows"]
 
     def export_rows(self, what):
         """Rows for the export endpoint: (columns, rows)."""
@@ -21040,8 +21049,10 @@ class State:
         login = (self.journals.commander or {}).get("login_ts")
         want = login if login and self.unsold_login[0] != login else None
 
+        skip = self.journals.files_not_mine()   # on this thread: the worker never touches the reader
+
         def work():
-            return compute_unsold(), unsold_total_at(want) if want else None
+            return compute_unsold(skip), unsold_total_at(want, skip) if want else None
 
         async def run():
             try:
@@ -21382,21 +21393,20 @@ class State:
 
     def commander_notices(self):
         """S9-S4's cards: while another commander than the filter's plays, "CMDR B is playing: not tracked here"; with
-        no filter and a second FID in the journals, "This journal folder also logs CMDR B ... Keep only CMDR A here?"
-        with the button that sets the filter (POST /api/journals/commander). Nothing for a single-commander player."""
+        no filter and a second FID in the journals, "This journal folder also logs CMDR B ... Choose the one to follow?".
+        Both cards' button opens the page's commander chooser (Discussion #18: any commander, not only the one with the
+        most journals; POST /api/journals/commander). Nothing for a single-commander player."""
         j = self.journals
         if j.other_playing:
             self.notices.set("commander_other", f"CMDR {j.other_playing} is playing: not tracked here (the commander "
-                             f"filter keeps CMDR {j.commander_filter}; Settings -> Server -> [journals] commander).",
-                             "info", "open:server:commander")
+                             f"filter keeps CMDR {j.commander_filter}).", "info", "commander:choose")
         else:
             self.notices.clear("commander_other")
         main, others = self.commander_choice()
         if main and others and not j.commander_filter:
             also = ", ".join(f"CMDR {o['name'] or o['fid']} (since {str(o.get('first_ts'))[:10]})" for o in others[:3])
             self.notices.set("commander_more", f"This journal folder also logs {also}, beside CMDR {main['name'] or main['fid']}: "
-                             f"Outrider mixes them into one history. Keep only CMDR {main['name'] or main['fid']} here?",
-                             "info", "commander:keep")
+                             f"Outrider mixes them into one history. Choose the one to follow?", "info", "commander:choose")
         else:
             self.notices.clear("commander_more")
 
@@ -21407,6 +21417,33 @@ class State:
                        for f, e in self.journals.cmdrs_seen.items()),
                       key=lambda e: (-(e["files"] or 0), e["first_ts"] or ""))
         return (seen[0], seen[1:]) if seen else (None, [])
+
+    def commanders_known(self):
+        """The commander chooser's list (Discussion #18: the card kept only the commander with the most journals, another
+        needed Settings and a restart by hand): {filter, playing (another commander playing now, or None), list: [{fid,
+        name, files, last (YYYY-MM-DD of their newest journal)}] the most journals first}, or None while the journals
+        hold one commander and no filter is set. Under a filter, cmdrs_seen holds the filter's commander alone (the
+        re-read skipped the rest): the others come from the files the reader skipped (file_cmdrs)."""
+        j = self.journals
+        known = {f: {"fid": f, "name": e.get("name") or "", "files": e.get("files") or 0,
+                     "last": str(e.get("last_ts") or "")[:10] or None} for f, e in j.cmdrs_seen.items()}
+        files, newest = collections.Counter(), {}
+        for b, (fid, name) in list(j.file_cmdrs.items()):
+            if not fid:
+                continue
+            files[fid] += 1
+            known.setdefault(fid, {"fid": fid, "name": name, "files": 0, "last": None})
+            known[fid]["name"] = known[fid]["name"] or name
+            newest[fid] = max(newest.get(fid, ""), b)
+        for fid, e in known.items():
+            e["files"] = max(e["files"], files.get(fid, 0))
+            m = re.search(r"(\d{4}-\d{2}-\d{2})T", newest.get(fid, ""))
+            if m and (not e["last"] or m.group(1) > e["last"]):
+                e["last"] = m.group(1)
+        if len(known) < 2 and not j.commander_filter:
+            return None
+        return {"filter": j.commander_filter or "", "playing": j.other_playing,
+                "list": sorted(known.values(), key=lambda e: (-e["files"], e["name"].lower()))}
 
     def set_commander_filter(self, commander):
         """POST /api/journals/commander {commander}: [journals] commander written (an FID or name the journals named,
@@ -21487,24 +21524,26 @@ class State:
             return None
 
 
-def unsold_total_at(ts):
-    """outrider.unsold's total estimate over the journal events before ts (the unsold data aboard at a login), or None."""
+def unsold_total_at(ts, skip=frozenset()):
+    """outrider.unsold's total estimate over the journal events before ts (the unsold data aboard at a login), or None.
+    skip: the journal files left out (Journals.files_not_mine)."""
     try:
         cut = outrider.unsold.parse_ts(ts)
         args = argparse.Namespace(commander=None, since=None, ignore_deaths=False, bonus_rate=None,
                                   efficiency_bonus=False, no_odyssey=False, top=0)
-        result = outrider.unsold.analyse([e for e in outrider.unsold.read_events(LIVE_DIRS + LEGACY_DIRS) if e[0] < cut], args)
+        result = outrider.unsold.analyse([e for e in outrider.unsold.read_events(LIVE_DIRS + LEGACY_DIRS, skip) if e[0] < cut], args)
     except (Exception, SystemExit):
         return None
     return result["exploration"]["estimated_payout"] + result["exobiology"]["estimated_value"]
 
 
-def compute_unsold():
-    """outrider.unsold's estimate of the cartographic and exobiology data on board, trimmed for the page."""
+def compute_unsold(skip=frozenset()):
+    """outrider.unsold's estimate of the cartographic and exobiology data on board, trimmed for the page. skip: the
+    journal files left out, another commander's under [journals] commander (Journals.files_not_mine)."""
     args = argparse.Namespace(commander=None, since=None, ignore_deaths=False, bonus_rate=None,
                               efficiency_bonus=False, no_odyssey=False, top=0)
     started = iso_ts(time.time())   # before the journals are read: a sale stamped after it may not be counted
-    result = outrider.unsold.analyse(outrider.unsold.read_events(LIVE_DIRS + LEGACY_DIRS), args)
+    result = outrider.unsold.analyse(outrider.unsold.read_events(LIVE_DIRS + LEGACY_DIRS, skip), args)
     ex, bio = result["exploration"], result["exobiology"]
     total = ex["estimated_payout"] + bio["estimated_value"]
     system_values = {}
@@ -23956,6 +23995,7 @@ def make_app(state, hosts=None):
             kw["days"] = min(days, outrider.uploads.MARK_DAYS)
             kw["only"] = outrider.uploads.unsent_lines(state.db, iso_ts(time.time() - kw["days"] * 86400))
         dirs = LIVE_DIRS + LEGACY_DIRS
+        kw["skip"] = state.journals.files_not_mine()   # another commander's journals (Discussion #18)
         if not kw["after"]:
             kw["budget_s"] = LOG_BUDGET_S   # a long search comes back in parts the page asks for in turn (S6-S2)
         out = await asyncio.get_running_loop().run_in_executor(None, lambda: outrider.log.read_log(dirs, **kw))

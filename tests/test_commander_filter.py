@@ -115,12 +115,58 @@ class CommanderFilter(unittest.TestCase):
         self.assertEqual({f: e["files"] for f, e in self.j.cmdrs_seen.items()}, {"F1": 2, "F2": 1})
         self.state.commander_notices()
         [card] = [n for n in self.state.notices.active() if n["key"] == "commander_more"]
-        self.assertEqual(card["action"], "commander:keep")
+        self.assertEqual(card["action"], "commander:choose")
         self.assertIn("also logs CMDR Beta (since 2026-10-02), beside CMDR Alpha", card["text"])
         self.assertEqual(self.state.commander_choice()[0]["fid"], "F1")   # the most journals
         self.j.commander_filter = "F1"                                   # set: no card
         self.state.commander_notices()
         self.assertFalse([n for n in self.state.notices.active() if n["key"] == "commander_more"])
+
+    def test_the_chooser_lists_every_commander(self):
+        """Discussion #18: the card kept only the commander with the most journals; the chooser lists them all, with or
+        without a filter (under one, the others come from the files the reader skipped)."""
+        self.two_commanders()
+        self.j.scan_dir(self.dir, upload="catchup")
+        c = self.state.commanders_known()
+        self.assertEqual(c["filter"], "")
+        self.assertEqual([(e["fid"], e["name"], e["files"], e["last"]) for e in c["list"]],
+                         [("F1", "Alpha", 2, "2026-10-03"), ("F2", "Beta", 1, "2026-10-02")])
+        self.state.commander_notices()
+        [card] = [n for n in self.state.notices.active() if n["key"] == "commander_more"]
+        self.assertIn("Choose the one to follow?", card["text"])
+        # a filtered re-read: cmdrs_seen holds Alpha alone, Beta still listed (from the skipped file)
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        j.commander_filter = "Alpha"
+        j.scan_dir(self.dir, upload="catchup")
+        state = ed_outrider.State(db, j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        c = state.commanders_known()
+        self.assertEqual((c["filter"], [(e["fid"], e["name"], e["files"]) for e in c["list"]]), ("Alpha", [("F1", "Alpha", 2), ("F2", "Beta", 1)]))
+
+    def test_a_single_commander_has_no_chooser(self):
+        self.write("Journal.2026-10-01T100000.01.log", header("2026-10-01T10:00:00Z"), commander("2026-10-01T10:00:01Z", "F1", "Alpha"))
+        self.j.scan_dir(self.dir, upload="catchup")
+        self.assertIsNone(self.state.commanders_known())
+
+    def test_the_estimate_and_the_log_leave_the_others_out(self):
+        """Discussion #18: under the filter the unsold estimate (Now's value aboard, Nearby's value now) and the Log still
+        read every commander's journals: Beta's sale emptied Alpha's estimate. Both now leave out the files the reader
+        found another commander's."""
+        import outrider.log
+        import outrider.unsold
+        self.two_commanders()
+        self.assertEqual(self.j.files_not_mine(), frozenset())                       # no filter: nothing left out
+        self.j.commander_filter = "F1"
+        self.j.scan_dir(self.dir, upload="catchup")
+        skip = self.j.files_not_mine()
+        self.assertEqual(skip, frozenset({"Journal.2026-10-02T100000.01.log"}))
+        systems = lambda events: sorted(e[2].get("StarSystem") for e in events if e[2].get("event") == "FSDJump")
+        self.assertEqual(systems(outrider.unsold.read_events([self.dir])), ["Mine One", "Mine Two", "Theirs"])
+        self.assertEqual(systems(outrider.unsold.read_events([self.dir], skip)), ["Mine One", "Mine Two"])
+        logged = outrider.log.read_log([self.dir], days=3650, now=ed_outrider.ts_seconds("2026-10-04T00:00:00Z"), skip=skip)
+        self.assertNotIn("Theirs", json.dumps(logged["rows"]))
+        self.assertIn("Mine Two", json.dumps(logged["rows"]))
 
     def test_a_single_commander_gets_no_card(self):
         self.write("Journal.2026-10-01T100000.01.log", header("2026-10-01T10:00:00Z"), commander("2026-10-01T10:00:01Z", "F1", "Alpha"))

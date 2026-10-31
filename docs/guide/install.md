@@ -144,13 +144,15 @@ another device](#-other-devices-on-your-network), [running Outrider as a server 
 
 The journal folder belongs to the Windows (or Proton) user, so an alt, or someone else's account played on the same
 login, writes into the same folder, and Outrider would mix both into one history. When the journals name a second
-commander, a card says so ("This journal folder also logs CMDR B ... Keep only CMDR A here?"); its button keeps the
-commander with the most journals: Outrider sets `[journals] commander`, restarts and reads every journal again under it.
-To keep another one, or to change your mind, set ⚙ Settings → Server → Files and backups → `[journals] commander`
-yourself (the FID or the name as the game shows it, blank for every commander); every journal is read again at the next
-start. While the other commander plays, this Outrider stands down: the page says "CMDR B is playing: not tracked here",
-Status.json, NavRoute.json, Cargo.json and ShipLocker.json are not read, and auto-target presses nothing. Uploads
-still go per commander, each with its own key.
+commander, a card says so ("This journal folder also logs CMDR B ... Choose the one to follow?"). Its **Choose a
+commander** button lists every commander the journals hold (their journals, when each last played) and "every
+commander"; a pick sets `[journals] commander`, restarts Outrider and reads every journal again for that commander
+(about a minute for 1,400 journals). To change your mind later, the same list is behind **Choose…** beside ⚙ Settings →
+Server → Files and backups → `[journals] commander` (or type the FID or the name as the game shows it there, blank for
+every commander). While the other commander plays, this Outrider stands down: the page says "CMDR B is playing: not
+tracked here" (its button opens the same list), Status.json, NavRoute.json, Cargo.json and ShipLocker.json are not
+read, and auto-target presses nothing. The estimate of the data on board and the Log follow the commander you chose too;
+uploads still go per commander, each with its own key.
 
 To track the alt too, run a second Outrider with its own port, database and config file (`--port 8027 --db
 data/alt.sqlite --config alt.toml`) and `[journals] commander` set to that commander: each is live only while its

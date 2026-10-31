@@ -594,8 +594,8 @@ class ReviewBatchF(unittest.TestCase):
             self.state.unsold_dirty, self.state.unsold_at = True, 0
             self.state.maybe_unsold()
             await self.state.unsold_task
-        with unittest.mock.patch.object(ed_outrider, "compute_unsold", lambda: {"total": 5, "system_values": {}}), \
-                unittest.mock.patch.object(ed_outrider, "unsold_total_at", lambda t: calls.append(t) or 3):
+        with unittest.mock.patch.object(ed_outrider, "compute_unsold", lambda skip=frozenset(): {"total": 5, "system_values": {}}), \
+                unittest.mock.patch.object(ed_outrider, "unsold_total_at", lambda t, skip=frozenset(): calls.append(t) or 3):
             asyncio.run(once())
             asyncio.run(once())
         self.assertEqual((calls, self.state.unsold_login), (["2026-01-01T01:00:00Z"], ("2026-01-01T01:00:00Z", 3)))

@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Choosing the commander, and the estimate and Log follow it
+- Discussion #18: the "also logs CMDR B" card's button opens a list of every commander the journals hold (their
+  journals, when each last played, "playing now") and "every commander"; a pick sets `[journals] commander`, restarts
+  and reads the journals again for that commander (the card offered only the one with the most journals; another one
+  meant typing it in Settings and restarting). The same list opens from the "CMDR B is playing" card and from
+  **Choose…** beside Settings → Server → `[journals] commander`.
+- Under the commander filter, the estimate of the data on board (Now, Nearby's value now, the top finds) and the Log
+  no longer read the other commanders' journals: another commander's sale emptied the estimate.
+
 ## 2026-10-31 · CMDR: where stored modules and ships are, by station
 - CMDR → Inventory names the station a stored module is at, and a ship stored elsewhere too (Discussion #17): the
   game's lists give only the system and a market ID, so Outrider now keeps the stations you have docked at by their

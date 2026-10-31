@@ -488,12 +488,13 @@ def _row(ev, cursor, bodies):
 
 
 def read_log(dirs, days=7, before=None, after=None, limit=200, cats=None, q=None, noise=False, now=None, only=None,
-             budget_s=None, clock=time.monotonic):
+             budget_s=None, clock=time.monotonic, skip=frozenset()):
     """Journal events newest first. `before`/`after` are cursors; `cats` a set of categories; `only` {file name: set of
     byte offsets}: those lines alone, in any category (the search still applies). budget_s: past it, between two files,
     the rows found so far come back with `partial` and `next` at the file not read yet, so the page asks again (review
-    2026-10-23 S6-S2: a search matching little walked years of journals in one request)."""
-    files = journal_files(dirs)
+    2026-10-23 S6-S2: a search matching little walked years of journals in one request). `skip`: journal file names
+    left out (another commander's under the [journals] commander filter, Discussion #18)."""
+    files = [(k, p) for k, p in journal_files(dirs) if os.path.basename(p) not in skip]
     order = {os.path.basename(p): k for k, p in files}
     want = set(cats) if cats is not None else set(CATEGORIES) - {"noise"}
     if noise:

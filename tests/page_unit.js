@@ -232,6 +232,25 @@ t("CMDR: a stored module or ship names its station, a carrier marked (Discussion
   assert.ok(where.includes("Smojooe AR-E b25-8 · G0X-85Z (carrier)"), where);
   assert.ok(where.includes("Achenar"), where);
 });
+t("Commander chooser: every commander, the one followed now, the one playing (Discussion #18)", () => {
+  const c = {filter: "alpha", playing: "Beta", list: [{fid: "F1", name: "Alpha", files: 2, last: "2026-10-03"}, {fid: "F2", name: "Beta", files: 1, last: null}]};
+  const div = w.document.createElement("div"); div.innerHTML = ev(`cmdrChooserHtml(${JSON.stringify(c)})`);
+  const rows = [...div.querySelectorAll("[data-cmdr]")].map(b => [b.dataset.cmdr, b.disabled, b.textContent.replace(/\s+/g, " ").trim()]);
+  assert.deepStrictEqual(rows, [["F1", true, "CMDR Alpha 2 journals · last played 2026-10-03 followed now"],
+                                ["F2", false, "CMDR Beta 1 journal · playing now"], ["", false, "Every commander one history, mixed"]]);
+  assert.ok(ev(`"commander:choose" in NOTICE_ACTIONS`));
+});
+later.push(["Commander chooser: a pick posts it and closes (Discussion #18)", async () => {
+  ev(`window.__aj = apiJson; window.__posts = []; apiJson = async (u, o) => (__posts.push([u, JSON.parse(o.body)]), {ok: true});
+      window.__d = data; data = Object.assign({}, data || {}, {commanders: {filter: "", playing: null, list: [{fid: "F1", name: "Alpha", files: 2}, {fid: "F2", name: "Beta", files: 1}]}});
+      openCmdrChooser()`);
+  const open = ev(`document.getElementById("cmdrDlg").open`);
+  ev(`document.querySelector('#cmdrRows [data-cmdr="F2"]').click()`);
+  await new Promise(r => setTimeout(r, 20));
+  const out = [open, ev(`document.getElementById("cmdrDlg").open`), ev(`JSON.stringify(__posts)`)];
+  ev(`apiJson = __aj; data = __d`);
+  assert.deepStrictEqual(out, [true, false, JSON.stringify([["api/journals/commander", {commander: "F2"}]])]);
+}]);
 later.push(["Hold full: the price answer is not said once you have left the ring (batch 5)", async () => {
   ev(`window.__ao = alertOut; window.__said = []; alertOut = (...a) => __said.push(a[1]); window.__d = data; MW.start = "s1";
       window.__ask = async () => [{station: "Hub", system: "Sys", price: 100000, distance: 12, carrier: false}]`);

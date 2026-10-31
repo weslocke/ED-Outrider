@@ -1581,9 +1581,12 @@ upstream project's choices, not rules of the game.
   before; a second FID in the journals gets a card whose button sets the filter to the commander with the most
   journals. A change re-reads every journal at the next start (meta `commander_filter`). While another commander
   plays (the newest journal of all the live folders is theirs), the live layer stands down (Status.json, NavRoute.json,
-  Cargo.json and ShipLocker.json not read, auto-target refused, the journal's time not moved); the unsold estimate and the
-  uploads still see every line,
-  each commander's going with its own key. Two tracked commanders: two Outriders, each with its own database. Two live
+  Cargo.json and ShipLocker.json not read, auto-target refused, the journal's time not moved); the uploads still see
+  every line, each commander's going with its own key. The unsold estimate and the Log, which read the journal files
+  themselves, leave out the files the reader found another commander's (`Journals.files_not_mine`; Discussion #18: a
+  sale by one commander emptied another's estimate). Switching commander is a pick in the chooser (the cards' button,
+  Settings' Choose…), then a restart and a re-read: one database, so every switch reads every journal again; a database
+  per commander (instant switches, as EDDiscovery) waits to see whether players switch within a session. Two tracked commanders: two Outriders, each with its own database. Two live
   folders written at once (two games into one Outrider) each have their own upload session (`UploadHub.sessions`), so
   a line always goes with its own commander and place; the marks stay one per service, because they are also the
   hand-over between two Outriders, so one folder's later lines can then be skipped (complete review 2026-10-30, the

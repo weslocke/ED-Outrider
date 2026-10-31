@@ -1219,7 +1219,7 @@ class Batch3Server(unittest.TestCase):
             self.state.maybe_unsold()
             await self.state.unsold_task
             return set(self.state.value_dirty)
-        with unittest.mock.patch.object(ed_outrider, "compute_unsold", lambda: next(results)):
+        with unittest.mock.patch.object(ed_outrider, "compute_unsold", lambda skip=frozenset(): next(results)):
             self.assertEqual(asyncio.run(unsold_once()), {1})
             self.state.apply_own_changes()
             self.assertEqual(self.state.scan_version, 0)          # rows rebuilt, no "new scan data"

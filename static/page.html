@@ -1144,6 +1144,15 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <button type="button" id="labStop">■ Stop</button><button type="button" data-close>Close</button></div>
   </form>
 </dialog>
+<dialog id="cmdrDlg" class="cmdrdlg" aria-labelledby="cmdrDlgTitle">
+  <form method="dialog">
+    <h3 id="cmdrDlgTitle">Which commander does this Outrider follow?</h3>
+    <p class="hint">Outrider keeps one history. A pick restarts it and reads every journal again for that commander
+      (about a minute for 1,400 journals); the other commanders' journals are left out until you pick again.</p>
+    <div id="cmdrRows"></div>
+    <div class="btns"><span class="grow"></span><button type="button" data-close>Cancel</button></div>
+  </form>
+</dialog>
 <dialog id="recountDlg" class="recountdlg" aria-labelledby="recountTitle">
   <form method="dialog">
     <h3 id="recountTitle">Recount your carrier</h3>

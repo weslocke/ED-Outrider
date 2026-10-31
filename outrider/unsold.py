@@ -447,10 +447,11 @@ def _read_file(path):
     return events
 
 
-def read_events(dirs):
+def read_events(dirs, skip=frozenset()):
     """Yield (timestamp, commander, event_dict) for every event we care about,
-    sorted by timestamp, de-duplicated across directories."""
-    files = journal_files(dirs)
+    sorted by timestamp, de-duplicated across directories. `skip`: journal file names left out (the server's
+    [journals] commander filter: another commander's files, Journals.files_not_mine)."""
+    files = [p for p in journal_files(dirs) if os.path.basename(p) not in skip]
     if not files:
         raise FileNotFoundError("no Journal.*.log files found in: " + (", ".join(dirs) or "(no journal directory)"))
 

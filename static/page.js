@@ -14367,6 +14367,9 @@ async function loadServerSettings() {
     if (k.kind === "int" || k.kind === "float") return `<input type="number" step="${k.kind === "int" ? "1" : "any"}" ${data} value="${esc(v)}">`;
     if (k.kind === "lines") return `<textarea rows="${Math.min(6, Math.max(2, v.length + 1))}" ${data} placeholder="one per line">${esc(v.join("\n"))}</textarea>`;
     if (k.kind === "numbers") return `<input type="text" ${data} value="${esc(v.join(", "))}" placeholder="numbers, comma separated">`;
+    // [journals] commander: typed, or picked from the commanders the journals hold (saved and restarted at once)
+    if (sec === "journals" && k.key === "commander" && data && data.commanders)
+      return `<input type="text" ${data} value="${esc(v)}"> <button type="button" class="mini" data-cmdrpick>Choose…</button>`;
     if (k.kind === "table") return `<textarea rows="2" ${data} placeholder='{"Name": "KEY_..."}'>${esc(Object.keys(v).length ? JSON.stringify(v) : "")}</textarea>`;
     return `<input type="text" ${data} value="${esc(v)}">`;
   };
@@ -14993,22 +14996,38 @@ const NOTICE_ACTIONS = {
   "open:uploads": ["Uploads", () => openSettingsSection("uploads")],
   "retry:bio_colours": ["Retry", () => bioColoursRetry()],
   "open:server:commander": ["Commander filter", () => openServerSettings("journals", "commander")],
-  "commander:keep": ["Keep one commander", () => keepCommander()],
+  "commander:choose": ["Choose a commander", () => openCmdrChooser()],
   "open:screenshots": ["Screenshots", () => openSettingsSection("screenshots")],
 };
-// S9-S4: the "also logs CMDR B" card's button: [journals] commander set to the commander with the most journals, then
-// Outrider restarts and reads every journal again under it (another one: Settings → Server → [journals] commander)
-async function keepCommander() {
-  const k = data && data.commander_keep;
-  if (!k) return;
-  const who = k.name || k.fid;
-  if (!confirm(`Keep only CMDR ${who} in this Outrider? It restarts and reads every journal again (a few minutes); ` +
-               "the other commanders' journals are left out. To keep another one, set Settings → Server → [journals] commander.")) return;
-  let r;
-  try { r = await apiJson("api/journals/commander", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({commander: k.fid})}); }
-  catch { r = {error: "Outrider not reachable"}; }
-  toast(r.error ? `Could not set it: ${r.error}` : r.note || `Only CMDR ${who} now: Outrider is restarting to read the journals again`);
+// S9-S4, Discussion #18: the commander chooser (the commander cards' button, Settings → Server's Choose… beside
+// [journals] commander): every commander the journals hold (data.commanders), or every one mixed; a pick sets the filter,
+// then Outrider restarts and reads every journal again under it. Pure: its rows.
+function cmdrChooserHtml(c) {
+  const f = (c.filter || "").toLowerCase();
+  const isNow = e => !!f && [String(e.fid).toLowerCase(), String(e.name || "").toLowerCase()].includes(f);
+  const row = (val, label, facts, now) => `<button type="button" class="cmdrpick${now ? " now" : ""}" data-cmdr="${esc(val)}"${now ? " disabled" : ""}>` +
+    `<b>${esc(label)}</b> <span class="unk">${esc(facts)}</span>${now ? ` <span class="ok">followed now</span>` : ""}</button>`;
+  return c.list.map(e => row(e.fid, `CMDR ${e.name || e.fid}`, [`${e.files} journal${e.files === 1 ? "" : "s"}`,
+    e.last && `last played ${e.last}`, c.playing && [e.name, e.fid].includes(c.playing) && "playing now"].filter(Boolean).join(" · "), isNow(e))).join("") +
+    row("", "Every commander", "one history, mixed", !f);
 }
+function openCmdrChooser() {
+  const c = data && data.commanders;
+  if (!c) return toast("These journals hold one commander");
+  document.getElementById("cmdrRows").innerHTML = cmdrChooserHtml(c);
+  tabShow(document.getElementById("cmdrDlg"));
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-cmdrpick]")) openCmdrChooser(); });
+document.getElementById("cmdrRows").addEventListener("click", async e => {
+  const b = e.target.closest("[data-cmdr]");
+  if (!b || b.disabled) return;
+  const who = b.dataset.cmdr, name = b.querySelector("b").textContent;
+  tabClose(document.getElementById("cmdrDlg"));
+  let r;
+  try { r = await apiJson("api/journals/commander", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({commander: who})}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  toast(r.error ? `Could not set it: ${r.error}` : r.note || `${who ? `Only ${name}` : "Every commander"} now: Outrider is restarting to read the journals again`);
+});
 // S7: ExploData's colour tables missing (the first start's download failed): a note where colour variants would show
 // (the Exo-Biology checklist, the body pop's Bio section, Here's legend) beside the banner's card, each with Retry
 // (POST api/bio/colours: the tables only). "" while they are loaded, or with no spawn rules at all.
@@ -15037,7 +15056,7 @@ let noticeDrawn = null;
 function noticeAction(a) {
   if (!a || !Object.prototype.hasOwnProperty.call(NOTICE_ACTIONS, a)) return null;
   // the tablet has no Server settings, nor Uploads
-  return TABLET && (a.startsWith("open:server") || a === "open:uploads" || a === "commander:keep" || a === "open:screenshots") ? null : NOTICE_ACTIONS[a];
+  return TABLET && (a.startsWith("open:server") || a === "open:uploads" || a === "commander:choose" || a === "open:screenshots") ? null : NOTICE_ACTIONS[a];
 }
 function renderNotices() {
   const bar = document.getElementById("noticeBar");
