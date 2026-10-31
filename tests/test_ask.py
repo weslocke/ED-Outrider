@@ -426,6 +426,26 @@ class Endpoint(unittest.TestCase):
         self.assertEqual((said["command"], said["answer"]), ("this_body", "4: nothing known about it yet."))
         self.assertEqual((st2["near_body"], st2["target_body"]), (None, "7 a"))
 
+    def test_a_targeted_hotspot_is_said_by_its_name(self):
+        """Complete review 2026-10-30: with a ring hotspot targeted, Status.json's Destination Name is a symbol, and
+        "this body" said "Targeted: $SAA_RingHotspot:#type=$Alexandrite_name;;"."""
+        import types
+        self.state.spansh = types.SimpleNamespace(cached=lambda i: (None, None))
+        self.state.journals.handle({"event": "FSDJump", "timestamp": "2026-10-13T10:00:00Z", "StarSystem": "Sys",
+                                    "SystemAddress": 1, "StarPos": [0, 0, 0]})
+        self.state.journals.status_json = {"live": True, "ts": "2026-10-13T10:05:00Z", "flags": ed_outrider.FLAG_IN_MAIN_SHIP,
+                                           "flags2": 0, "body": "Sys 3 A Ring",
+                                           "destination": {"System": 1, "Body": 18, "Name": "$SAA_RingHotspot:#type=$Alexandrite_name;;",
+                                                           "Name_Localised": "Alexandrite Hotspot"}}
+
+        async def go(c):
+            st = await (await c.get("/api/status")).json()
+            r = await c.post("/api/ask", json={"text": "tell me about this planet"})
+            return st, await r.json()
+        st, said = self.client(go)
+        self.assertEqual(st["target_body"], "Alexandrite Hotspot")
+        self.assertNotIn("$", said["answer"])
+
     def test_speaker_seen_expires(self):
         self.state.speaker_seen = time.monotonic() - 61
         self.assertFalse(self.state.speaker_present())

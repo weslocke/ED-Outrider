@@ -975,6 +975,12 @@ def species_by_name(name):
     if _BY_NAME.get("_rules") is not R:
         _BY_NAME.clear()
         _BY_NAME.update({sp["name"].lower(): sp for sp in R["species"]})
+        # the game's name when it is the rules' in the plural ("Bark Mounds", the rules' "Bark Mound": their genus has
+        # the plural), as checklist.merge_species (complete review 2026-10-30: a tagged bark mound was never stored)
+        for sp in R["species"]:
+            genus, own = (sp.get("genus") or "").lower(), sp["name"].lower()
+            if genus and genus != own and genus.rstrip("s") == own:
+                _BY_NAME.setdefault(genus, sp)
         _BY_NAME["_rules"] = R
     return _BY_NAME.get(str(name).strip().lower())
 
@@ -1021,7 +1027,7 @@ def region_allows(name, region):
     R = load_rules()
     if not R or region is None or not name:
         return None
-    sp = next((s for s in R["species"] if s["name"].lower() == name.lower()), None)
+    sp = next((s for s in R["species"] if s["name"].lower() == name.lower()), None) or species_by_name(name)
     if sp is None:
         return None
     return any(ruleset_region_ok(r, region) for r in sp["rulesets"])

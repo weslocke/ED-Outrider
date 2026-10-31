@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Complete review, batch 4: names, and games in other languages
+- Findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
+  test that fails without it. PARSER_VERSION 68: the journals are read again once (each sample keeps its variant code).
+- **Sell lookups and Sell all** find Low Temperature Diamonds, Void Opal and the ~100 other commodities whose game id
+  is not Spansh's name in a non-English game (`outrider.cargo.spansh_name`: the id read back through SPANSH_IDS); a
+  trade route's stop counts those trades too (matched by the game's id).
+- **The Exo-Biology checklist** finds colours in any game language, from the variant's code (each run's, now stored,
+  and each codex entry's), and a codex entry's region from its system's place, not the localised words.
+- **Bark Mounds** (the game's name; the rules say Bark Mound) is known by name: a tagged bark mound reaches the surface
+  map. A colourless plant (Amphora Plant, the brain trees...) keeps its Bioforge link without codex picture folders.
+- **A targeted ring hotspot** is said and shown by the game's words ("Alexandrite Hotspot"), never its symbol.
+
 ## 2026-10-31 · No false "journal files are gone" before a re-read
 - Kurbo26 (issue #16): before the re-read of PARSER 66, "1294 of the 1395 journal files this database was read from
   are gone", though every journal was in his folder. The check looked only at each file's stored path; a journal

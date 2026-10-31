@@ -97,6 +97,10 @@ class Checklist(unittest.TestCase):
         merged, names = cl.merge_species(R["species"])
         self.assertEqual(names["bark mounds"], "$Codex_Ent_Cone_Name;")
         self.assertNotIn("bacterium", names)
+        # complete review 2026-10-30: the lookup the composition scanner's tag uses knows it too (it was never stored)
+        self.assertEqual(outrider.bio.species_by_name("Bark Mounds")["id"], "$Codex_Ent_Cone_Name;")
+        self.assertIsNone(outrider.bio.species_by_name("Bacterium"))
+        self.assertIsNotNone(outrider.bio.region_allows("Bark Mounds", 18))
 
     def test_states_by_region(self):
         runs = [{"species_id": "$A1;", "species": "Aleoida Arcus", "variant": "Aleoida Arcus - Teal", "region": 1, "state": "lost"},
@@ -174,6 +178,17 @@ class Checklist(unittest.TestCase):
                          [33.33, 33.33, 62.5])
         self.assertIsNone(cl.completion([], region_ok, [], [], 3)[1])   # nothing can grow: no figure
 
+    def test_colours_in_another_language(self):
+        """Complete review 2026-10-30: the colour was the word after " - ", compared with the English table, so a German
+        game's "Blaugrün" counted no colour. The variant's code says it in any language; the word stays the fallback."""
+        runs = [{"species_id": "$A1;", "species": "Aleoida Arcus", "variant": "Aleoida Arcus - Blaugrün",
+                 "code": "$Codex_Ent_Aleoids_01_F_Name;", "region": 1, "state": "sold"}]
+        codex = [{"name": "Bacterium Nebulus - Golden", "code": "$Codex_Ent_Bacterial_04_Polonium_Name;", "region": 1}]
+        done = cl.completion(SPECIES, region_ok, runs, codex, 3)
+        self.assertEqual(done[1], 33.33)   # Arcus 1/2 (Teal), Nebulus 1/2 (Gold), tubers 0
+        no_code = [dict(r, code=None) for r in runs]
+        self.assertEqual(cl.completion(SPECIES, region_ok, no_code, [], 3)[1], 0.0)   # the word alone: not found, as before
+
     def test_geology(self):
         """The geology checklist: an entry is logged in a region or not; "possible" is reported there (Canonn's sites)."""
         E = [{"id": 1, "name": "Water Ice Geyser", "kind": "Geology", "group": "Geyser", "regions": {"1": 50, "2": 3}},
@@ -233,6 +248,24 @@ class ChecklistServer(unittest.TestCase):
         self.db.execute("INSERT INTO own_organic (system, body_id, species, genus_name, species_name, variant_name, samples,"
                         " done_ts, ts) VALUES (?, 1, '$Codex_Ent_Stratum_07_Name;', 'Stratum', 'Stratum Tectonicas', ?, 3, ?, ?)",
                         (system, variant, done, done))
+
+    def test_a_game_in_another_language(self):
+        """Complete review 2026-10-30: a run keeps its variant's code (the checklist's colour in any language), and a
+        codex entry's region comes from its system's place, its localised region name ("Innerer Orion-Sporn") only as
+        the fallback (it matched none of the English names)."""
+        self.jump("2026-01-01T00:00:00Z", 1, "Near Sol", [0, 0, 0])                         # Inner Orion Spur (18)
+        self.j.handle({"event": "ScanOrganic", "timestamp": "2026-01-01T00:10:00Z", "ScanType": "Log",
+                       "Genus": "$Codex_Ent_Stratum_Genus_Name;", "Genus_Localised": "Stratum",
+                       "Species": "$Codex_Ent_Stratum_07_Name;", "Species_Localised": "Stratum Tectonicas",
+                       "Variant": "$Codex_Ent_Stratum_07_K_Name;", "Variant_Localised": "Stratum Tectonicas - Limonengrün",
+                       "SystemAddress": 1, "Body": 1})
+        self.assertEqual(self.db.execute("SELECT variant FROM own_organic").fetchone()[0], "$Codex_Ent_Stratum_07_K_Name;")
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, region, system) VALUES ('2026-01-01T00:05:00Z', 2310101,"
+                        " 'Bacterium Aurasus - Blaugrün', 'Innerer Orion-Sporn', 1)")
+        self.db.commit()
+        out, status = self.state.checklist("18")
+        row = next(r for g in out["genera"] for r in g["species"] if r["name"] == "Bacterium Aurasus")
+        self.assertEqual((status, row["state"]), (200, "logged"))
 
     def test_checklist(self):
         if not outrider.bio.colours_available():   # the colours' states below need ExploData's tables (downloaded)

@@ -143,6 +143,21 @@ def spansh_id(name):
     return _SPANSH_BY_NORM.get(k, k)
 
 
+_SPANSH_BY_ID = {v: k for k, v in SPANSH_IDS.items()}
+
+
+def spansh_name(names, name, ident=None):
+    """Spansh's name for a commodity ({norm(Spansh name): Spansh name}, Spansh's list) from the journal's name, else its
+    id's letters, else SPANSH_IDS read backwards: a non-English client's name is localised and ~100 ids are not
+    Spansh's letters ('lowtemperaturediamond' is 'Low Temperature Diamonds'; complete review 2026-10-30). None when
+    Spansh does not know it."""
+    i = cid(ident) if ident else None
+    for k in (name, ident, _SPANSH_BY_ID.get(i) if i else None):
+        if k and names.get(norm(k)):
+            return names[norm(k)]
+    return None
+
+
 def learn(names, ev):
     """Keep the display names an event gives (Type_Localised, Name_Localised, Commodity_Localised). True if new."""
     new = False

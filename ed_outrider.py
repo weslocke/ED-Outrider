@@ -1777,7 +1777,7 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 # 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
 # 65: codex entries keep their own code (codex.code: "$Codex_Ent_Stratum_02_F_Name;"), Here's 📷 in any language
 # 66: your squadron's carrier is kept (meta squadron_carrier), no longer thrown away: where it was at your last login
-PARSER_VERSION = 67
+PARSER_VERSION = 68
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1803,6 +1803,7 @@ PARSER_VERSION = 67
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    68: "each sample keeps its variant's code, so the Exo-Biology checklist finds its colour in any game language",
     67: "deposits into your carrier's bank count for its upkeep, a squadron carrier's purchase is not taken for your own, a session started on foot names your ship, and a carrier jump made docked aboard keeps the dock",
     66: "your squadron's carrier is kept beside your own, so the Carrier tile, the places to sell and the nearest places to dock know where it is",
     65: "each codex entry keeps the game's own code for it, so Here's 📷 knows a plant you photographed in any game language",
@@ -2035,6 +2036,7 @@ CREATE TABLE IF NOT EXISTS own_genera (
 CREATE TABLE IF NOT EXISTS own_organic (
     system INTEGER, body_id INTEGER, species TEXT, genus_name TEXT, species_name TEXT, variant_name TEXT,
     samples INTEGER NOT NULL DEFAULT 0, done_ts TEXT, ts TEXT, ship_id INTEGER,
+    variant TEXT,
     PRIMARY KEY (system, body_id, species));
 -- Codex entries: is_new = new to your codex for that region; voucher = codex credits paid (not a galactic first).
 CREATE TABLE IF NOT EXISTS codex (
@@ -3612,9 +3614,13 @@ class Journals:
             rc.update(at=j, furthest=max(j, rc.get("furthest") if rc.get("furthest") is not None else j))
             i = j
         sold = ev.get("event") == "MarketSell"
-        wanted = {outrider.cargo.norm(c["name"]): c["name"] for c in rows[i].get("sell" if sold else "buy") or []}
+        goods = rows[i].get("sell" if sold else "buy") or []
+        wanted = {outrider.cargo.norm(c["name"]): c["name"] for c in goods}
+        # by the journal id too, the one name in every language (complete review 2026-10-30: a German "Agrarmedizin"
+        # missed the stop's Agri-Medicines, whose id is not its letters)
+        wanted.update({outrider.cargo.spansh_id(c["name"]): c["name"] for c in goods})
         names = {outrider.cargo.norm(n) for n in (ev.get("Type_Localised"), ev.get("Type"), self.commodity_names.get(
-            outrider.cargo.cid(ev.get("Type")))) if n}
+            outrider.cargo.cid(ev.get("Type")))) if n} | {outrider.cargo.cid(ev.get("Type"))}
         hit = next((wanted[n] for n in names if n in wanted), None)
         if not hit:
             return
@@ -5819,9 +5825,11 @@ class Journals:
             # Analyse that completes it, is the run's ship
             self.db.execute(
                 """INSERT OR REPLACE INTO own_organic (system, body_id, species, genus_name, species_name, variant_name,
-                                                     samples, done_ts, ts, ship_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                                     samples, done_ts, ts, ship_id, variant)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (system, body, species, ev.get("Genus_Localised"), ev.get("Species_Localised"),
-                 ev.get("Variant_Localised"), samples, done, ts, self.ship_at(ts)))
+                 ev.get("Variant_Localised"), samples, done, ts, self.ship_at(ts),
+                 ev.get("Variant")))   # the variant's code: its colour in any game language (complete review 2026-10-30)
             self.note_sample_point(system, body, species, ev.get("Genus"), kind, samples, ts,
                                    ev.get("Variant_Localised") or ev.get("Species_Localised"), ev.get("Variant"))
             self.body_touched.add((system, body))
@@ -10188,7 +10196,10 @@ class State:
             return None
         # near: the body you are flying near (Status.json BodyName), for Now's heading-to line: its supercruise time
         # is from the arrival star, so it is shown only while you are near nothing or near that star
-        return {"body_id": d["Body"], "name": short_name(pos["name"], d.get("Name") or ""),
+        name = d.get("Name") or ""
+        if name.startswith("$"):   # a signal (a ring hotspot: "$SAA_RingHotspot:#type=..."): the game's words for it, never
+            name = d.get("Name_Localised") or ""   # the symbol (complete review 2026-10-30: the voice said it)
+        return {"body_id": d["Body"], "name": short_name(pos["name"], name) if name else None,
                 "near": short_name(pos["name"], st["body"]) if st.get("body") else None}
 
     # ---- the in-game overlay (outrider/overlay.py; the window: outrider/overlay_window.py) ----
@@ -11772,7 +11783,7 @@ class State:
         names = await self.commodity_list()
         i = outrider.cargo.cid(text)
         if names:
-            name = names.get(outrider.cargo.norm(self.commodity_name(i))) or names.get(outrider.cargo.norm(text))
+            name = outrider.cargo.spansh_name(names, self.commodity_name(i), text)
             if not name:
                 return {"error": f"Spansh has no market data for {text!r}"}, 404
         else:   # S2-S3: the list could not be read: the journal's own name (Spansh's spelling for nearly every one)
@@ -11799,7 +11810,7 @@ class State:
         except (ClientError, asyncio.TimeoutError, ValueError) as e:
             return {"error": f"Spansh's station search failed: {e}"}, 502
         lines = (cg["carrier"] or {}).get("lines", []) if src == "carrier" else ship["lines"]
-        holding = [(names.get(outrider.cargo.norm(x["name"])) or x["name"], x["count"]) for x in lines]
+        holding = [(outrider.cargo.spansh_name(names, x["name"], x.get("id")) or x["name"], x["count"]) for x in lines]
         own = next((x for x in ship["lines"] if x["id"] == i), None) if src == "ship" else None
         avg = own["avg"] if own and own.get("avg") else None
         rows = outrider.cargo.market_rows(d.get("results"), name, mode, tons, holding=holding, avg=avg,
@@ -11838,7 +11849,7 @@ class State:
             if x.get("mission"):
                 left.append({"name": x["name"], "tons": x["mission"], "why": "for a mission"})
             # by its name, else its id (a non-English client's name is localised: review 8), as the per-line lookup
-            name = (names.get(outrider.cargo.norm(x["name"])) or names.get(outrider.cargo.norm(x["id"]))) if names else x["name"]
+            name = outrider.cargo.spansh_name(names, x["name"], x["id"]) if names else x["name"]
             if legal and not name:
                 left.append({"name": x["name"], "tons": legal, "why": "no market data on Spansh"})
             elif legal:
@@ -12922,9 +12933,15 @@ class State:
         filed (checklist.variant_colour)."""
         S, root = outrider.screenshots, self.shots_folders()[1]
         have = self.codex_folders()
-        R = (outrider.bio.load_rules() or {}) if outrider.bio and have else {}
+        R = (outrider.bio.load_rules() or {}) if outrider.bio else {}
+        plants = {sp.get("id") or sp["name"] for sp in R.get("species") or []}
+        knows = lambda code: bool(code) and (code in plants or bool(BIO_CODEX_RE.match(code)))   # noqa: E731 -- a plant's code
         if not have or not R.get("species"):
-            return lambda *a: False
+            # no folders: no picture, but a plant is still known by its code (complete review 2026-10-30: a colourless
+            # plant lost its entry id, so its Bioforge link, in a non-English game)
+            none = lambda *a: False   # noqa: E731
+            none.knows = knows
+            return none
         merged, names = outrider.checklist.merge_species(R["species"])
         by_id = {sp.get("id") or sp["name"]: sp for sp in merged}
         tables = bool(R.get("colours"))
@@ -12939,7 +12956,7 @@ class State:
             folder = S.codex_dir(root, {"kind": "bio", "group": sp.get("genus"), "entry": sp["name"],
                                         "colour": outrider.checklist.variant_colour(sp, variant, name, tables)})
             return bool(folder) and os.path.normcase(folder) in have
-        check.knows = lambda code: bool(code) and (code in by_id or bool(BIO_CODEX_RE.match(code)))   # a plant's code
+        check.knows = knows
         return check
 
     def codex_marks(self, out, kind):
@@ -14210,13 +14227,16 @@ class State:
             return placed[system]
         fates = organic_fates(self.db)
         runs = []
-        for r in self.db.execute("SELECT system, body_id, species, species_name, variant_name, done_ts FROM own_organic"):
+        for r in self.db.execute("SELECT system, body_id, species, species_name, variant_name, variant, done_ts FROM own_organic"):
             fate = fates.get((r["system"], r["body_id"], r["species"])) if r["done_ts"] else None
             state = fate[0] if fate else (organic_state(self.db, r["done_ts"]) if r["done_ts"] else None) or "in progress"
             runs.append({"species_id": r["species"], "species": r["species_name"], "variant": r["variant_name"],
-                         "region": region_of(r["system"]), "state": state})
-        codex = [{"name": c["name"], "region": number.get((c["region"] or "").lower())}
-                 for c in self.db.execute("SELECT name, region FROM codex")]
+                         "code": r["variant"], "region": region_of(r["system"]), "state": state})
+        # colours by the variant's code and regions by the system's place, the localised words only as a fallback: a
+        # non-English game's "Blaugrün" and region names matched nothing (complete review 2026-10-30)
+        codex = [{"name": c["name"], "code": c["code"],
+                  "region": (region_of(c["system"]) if c["system"] is not None else None) or number.get((c["region"] or "").lower())}
+                 for c in self.db.execute("SELECT name, code, region, system FROM codex")]
         out = self.codex_marks(outrider.checklist.table(R["species"], region, outrider.bio.ruleset_region_ok, runs, codex, count,
                                                         value_of=outrider.bio.species_value), "bio")
         done = outrider.checklist.completion(R["species"], outrider.bio.ruleset_region_ok, runs, codex, count)

@@ -131,18 +131,25 @@ def _records(species_list, names, runs, codex):
     """(species key, colour or None, region, state, is a run) for each of your runs and codex entries the rules know;
     a run under way counts as logged."""
     ids = {s.get("id") for s in species_list}
+    by_key = {s.get("id") or s["name"]: s for s in species_list}
+
+    def colour(key, code, full, name):
+        # the variant's code first: the colour in English whatever the game's language (a German "Blaugrün" matched
+        # nothing: complete review 2026-10-30); the word after " - " as before when there is no code
+        c = variant_colour(by_key[key], code, full) if code and key in by_key else None
+        return c.lower() if c else colour_of(full, name)
     for run in runs:
         name = run.get("species") or ""
         key = run.get("species_id") if run.get("species_id") in ids else names.get(name.lower())
         state = {"in progress": "logged"}.get(run.get("state"), run.get("state"))
         if state in RANK and key is not None:
-            yield key, colour_of(run.get("variant"), name), run.get("region"), state, True
+            yield key, colour(key, run.get("code"), run.get("variant"), name), run.get("region"), state, True
     for entry in codex:
         full = (entry.get("name") or "").strip()
         name = full.rsplit(" - ", 1)[0] if " - " in full else full
         key = names.get(name.lower())
         if key is not None:
-            yield key, colour_of(full, name), entry.get("region"), "logged", False
+            yield key, colour(key, entry.get("code"), full, name), entry.get("region"), "logged", False
 
 
 def _share(found, total):

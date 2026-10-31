@@ -983,6 +983,26 @@ class Lookup(unittest.TestCase):
         out, _ = hold(sort="near")
         self.assertEqual(out["sort"], "near")
 
+    def test_ltds_and_void_opals_in_another_language(self):
+        """Complete review 2026-10-30: for the ~100 commodities whose id is not Spansh's letters, a non-English client's
+        localised name and the id both missed Spansh's list: "no market data" for LTDs, Sell all leaving them out."""
+        import asyncio
+
+        async def commodity_names():
+            return ["Gold", "Low Temperature Diamonds", "Void Opal"]
+        self.sp.commodity_names = commodity_names
+        self.j.pos = {"id64": 10477373803, "name": "Sol", "x": 0, "y": 0, "z": 0}
+        self.j.ship = {"name": "Sample", "type": "explorer_nx", "cargo_capacity": 128}
+        self.j.ship_cargo = cargo.new_ship()
+        self.j.commodity_names = {"lowtemperaturediamond": "Tieftemperaturdiamanten", "opal": "Leerenopal"}
+        cargo.ship_snapshot(self.j.ship_cargo, [{"Name": "lowtemperaturediamond", "Count": 20}, {"Name": "opal", "Count": 10}],
+                            30, "2026-10-07T09:00:00Z")
+        out, status = asyncio.run(self.state.cargo_hold_lookup({}))
+        self.assertEqual((status, out["asked"], out["left_out"]), (200, ["Low Temperature Diamonds", "Void Opal"], []))
+        out, status = asyncio.run(self.state.cargo_lookup({"commodity": "lowtemperaturediamond", "mode": "sell", "from": "ship"}))
+        self.assertEqual(status, 200, out)
+        self.assertEqual(cargo.spansh_name({"voidopal": "Void Opal"}, "Leerenopal", "$opal_name;"), "Void Opal")
+
     def test_state_hold_lookup_review8(self):
         """Review 8: Closest asks Spansh for the nearest buyers (not the best-paying ones re-sorted); with carriers ticked
         the stations' searches stay as unticked and carriers-only ones at most a week old are added; a non-English
@@ -1140,6 +1160,19 @@ class TradeRoute(unittest.TestCase):
         self.j.handle({"event": name, "timestamp": self.ts(s), "MarketID": stop["market_id"],
                        "Type": cargo.norm(commodity), "Type_Localised": commodity, "Count": count,
                        "BuyPrice" if name == "MarketBuy" else "SellPrice": 100})
+
+    def test_a_trade_in_another_language(self):
+        """Complete review 2026-10-30: a stop's commodity whose id is not Spansh's letters (Agri-Medicines is
+        agriculturalmedicines) was never counted in a non-English client: its localised name matched nothing."""
+        r = self.rows
+        r[0]["buy"][0]["name"] = "Agri-Medicines"
+        self.jump(-100, r[0]["id64"], r[0]["system"], 0)
+        self.state.riches_store(r, {"options": {}, "kind": "trade"})
+        self.j.line_source = "Journal.test.log:-95"
+        self.j.handle({"event": "MarketBuy", "timestamp": self.ts(-95), "MarketID": r[0]["market_id"],
+                       "Type": "agriculturalmedicines", "Type_Localised": "Agrarmedizin", "Count": 7, "BuyPrice": 100})
+        view = self.state.riches_view()["route"]["systems"][0]["buy"][0]
+        self.assertEqual((view["name"], view["traded"]), ("Agri-Medicines", 7))
 
     def test_partial_trades(self):
         """Codex F4: one tonne of a planned 400 ticked the commodity off, said the hop's profit and could end the route.

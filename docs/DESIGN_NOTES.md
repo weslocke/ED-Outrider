@@ -1623,6 +1623,9 @@ upstream project's choices, not rules of the game.
   (no colour folder for a species with none) or `Geology/<group>/<formation>/` inside the export folder, whichever
   commander took it: a copy beside the shot's own, never instead of it. The names are the shipped lists' English ones
   (the exobiology rules and their colour tables, `geo_codex.json`) in any game language, so the checklists find them.
+  The Exo-Biology checklist itself reads colours the same way (each run's variant code, `own_organic.variant`, PARSER
+  68; each codex entry's `code`) and a codex entry's region from its system's place, the localised words only as the
+  fallback (complete review 2026-10-30: a German "Blaugrün" counted no colour).
   The colour is the species table's, from the variant's codex code kept with each sample spot and tagged plant
   (`bio_spots.variant`, `bio_tags.variant`: the star class or material), else the colour at the end of its name, else
   a species' only colour (`checklist.variant_colour`). A shot whose subject is not named, or whose colour cannot be

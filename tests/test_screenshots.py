@@ -804,6 +804,17 @@ class Server(unittest.TestCase):
         self.assertEqual([(c["name"], c["entry_id"], c.get("own_pic")) for c in b["codex"] if c["name"] == "Rosa Hirnbaum"],
                          [("Rosa Hirnbaum", 2100401, True)])
 
+    def test_a_colourless_plant_keeps_its_entry_without_picture_folders(self):
+        """Complete review 2026-10-30: with no codex picture folders the check had no `knows`, so in a non-English game
+        (no "organic" in the subcategory) an Amphora Plant's row lost its entry id, and with it the Bioforge link."""
+        self.j.handle({"event": "CodexEntry", "timestamp": self.at(5), "EntryID": 2100201, "Name": "$Codex_Ent_Vents_Name;",
+                       "Name_Localised": "Amphorapflanze", "Category": "$Codex_Category_Biology;",
+                       "SubCategory": "$Codex_SubCategory_Organic_Structures;", "SubCategory_Localised": "Organische Strukturen",
+                       "System": "Sys", "SystemAddress": 9, "BodyID": 6, "Latitude": 0.0, "Longitude": 0.003})
+        b = next(b for b in self.st.system_detail(9)["bodies"] if b["name"] == "2 a")
+        self.assertEqual([(c["name"], c["entry_id"]) for c in b["codex"] if c["name"] == "Amphorapflanze"],
+                         [("Amphorapflanze", 2100201)])
+
     def test_a_reread_fills_a_tags_variant(self):
         """Review 2026-10-26: a plant tagged before bio_tags.variant existed kept NULL through a journal re-read (its
         INSERT OR IGNORE), so its shot was never filed by colour."""
