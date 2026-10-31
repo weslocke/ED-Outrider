@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · No false "journal files are gone" before a re-read
+- Kurbo26 (issue #16): before the re-read of PARSER 66, "1294 of the 1395 journal files this database was read from
+  are gone", though every journal was in his folder. The check looked only at each file's stored path; a journal
+  folder reached by another path now (a moved Steam library, another spelling of it) counted as gone. A file is now
+  gone only when it is neither at its path nor under its name (a journal's name is its time) in the folders the
+  re-read reads (`journals_gone(db, dirs)`).
+
 ## 2026-10-31 · Complete review, batch 3 item 8: two journal folders' uploads keep their own commander
 - Two games writing into one Outrider at once (two live folders): each folder now has its own upload session, so a
   line is never queued with the other folder's commander and system (it went to their EDSM or Inara account). The

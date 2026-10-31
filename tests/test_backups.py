@@ -179,6 +179,21 @@ class BackupBeforeReread(Scratch):
         self.assertIn("2 of the 3 journal files", got["reread_journals_gone"])
         self.assertIn("--legacy " + os.path.join(self.out, "journals"), got["reread_journals_gone"])
 
+    def test_journals_in_their_folder_under_another_path_are_not_gone(self):
+        """Kurbo26 (issue #16): the database's paths from an older spelling of the journal folder (a moved Steam
+        library) all counted as gone, though every journal was in the folder the re-read reads: a false alarm."""
+        now = os.path.join(self.tmp, "now")
+        os.makedirs(now)
+        for i in (1, 2, 3):
+            open(os.path.join(now, f"Journal.2026-10-0{i}T100000.01.log"), "w").close()
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        old = [os.path.join(self.tmp, "old library", f"Journal.2026-10-0{i}T100000.01.log") for i in (1, 2, 3)]
+        lost = os.path.join(self.tmp, "old library", "Journal.2026-09-01T100000.01.log")
+        db.executemany("INSERT INTO journal_files (path, offset) VALUES (?, 10)", [(p,) for p in old + [lost]])
+        self.assertEqual(ed_outrider.journals_gone(db), (4, 4))            # by path alone, as before
+        self.assertEqual(ed_outrider.journals_gone(db, [now]), (1, 4))     # found by name in the folder read now
+
 
 class DatabaseLock(Scratch):
     """S44's lock: <db>.lock held by a running Outrider; --restore refuses WHILE it is held, whatever the port."""

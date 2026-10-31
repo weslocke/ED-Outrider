@@ -8355,10 +8355,19 @@ def write_backup(db_path, folder, keep, extras=(), live_dirs=(), tag=""):
     return dict(out, warning=warning) if warning else out
 
 
-def journals_gone(db):
-    """(gone, known): of the journal files the database has read (journal_files), how many are no longer there."""
+def journals_gone(db, dirs=()):
+    """(gone, known): of the journal files the database has read (journal_files), how many are no longer there: not at
+    their path, nor under their name in any of `dirs` (the folders the re-read reads). A journal's name is its time, so
+    a folder reached by another path now (a moved Steam library, another spelling of it) is no loss (Kurbo26, issue
+    #16: 1,294 of 1,395 "gone" with every journal in his folder)."""
     paths = [r[0] for r in db.execute("SELECT path FROM journal_files")]
-    return sum(1 for p in paths if not os.path.exists(p)), len(paths)
+    names = set()
+    for d in dirs:
+        try:
+            names.update(os.listdir(d))
+        except OSError:
+            pass
+    return sum(1 for p in paths if not os.path.exists(p) and os.path.basename(p) not in names), len(paths)
 
 
 def backup_before_reread(db, db_path, folder, keep, extras=(), live_dirs=(), board=None, gone=None):
@@ -8372,7 +8381,7 @@ def backup_before_reread(db, db_path, folder, keep, extras=(), live_dirs=(), boa
     they held: said too, with the archive to read them from. Synchronous: run() calls it on a worker thread (the
     starting page answers meanwhile, S9) with `gone` (journals_gone's answer) worked out first on the loop's thread, so
     the database connection is never used from the worker. Returns write_backup's answer, or None when it failed."""
-    gone, known = journals_gone(db) if gone is None else gone
+    gone, known = journals_gone(db, live_dirs) if gone is None else gone
     if known and gone * 2 > known:
         outrider.notices.warn("reread_journals_gone", f"warning: {gone} of the {known} journal files this database was "
                               "read from are gone, so the journal re-read cannot bring back what they held. The backup "
@@ -24664,7 +24673,7 @@ async def run(args, st):
             starting.phase = "backup"
             db.commit()   # the backup reads the file through its own connection: nothing of this one's left pending
             extras = backup_extras(st["speech_file"], args.config, outrider.tts.PRONOUNCE.own)
-            gone = journals_gone(db)   # on this thread: the worker never touches this connection
+            gone = journals_gone(db, LIVE_DIRS + LEGACY_DIRS)   # on this thread: the worker never touches this connection
             await loop.run_in_executor(None, lambda: backup_before_reread(
                 None, args.db, BACKUP_DIR, BACKUP_KEEP, extras, LIVE_DIRS, notices, gone=gone))
             if stop.is_set():   # waited for the backup (a thread cannot be stopped part way); nothing cleared yet
