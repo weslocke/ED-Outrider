@@ -438,10 +438,25 @@ class UploadHub:
         self.clock, self.max_age = clock, max_age
         self.max_ages = dict(max_ages or {})   # {service: seconds}: a service's own limit, under max_age (EDDN's hour)
         self.save = save                 # save(marks): stores the marks (State: meta upload_marks)
-        self.session = Session()
-        self.primed = set()              # files whose top this session has read
+        # one Session per live folder, `session` the one of the folder whose line came last: two games writing at once
+        # (two folders) each keep their own commander and place (complete review 2026-10-30: a line was queued with the
+        # other folder's commander and system, to their EDSM / Inara account). The marks stay one per service (they
+        # are also the hand-over between two Outriders): with two folders growing at once one can still be skipped
+        self.sessions, self.dir = {}, None
+        self.primed = set()              # files (paths) whose top their folder's session has read
         self.queued = 0                  # messages queued since start (the status view)
         self.marks, self.marks_dirty = {}, False
+
+    @property
+    def session(self):
+        s = self.sessions.get(self.dir)
+        if s is None:
+            s = self.sessions[self.dir] = Session()
+        return s
+
+    @session.setter
+    def session(self, value):
+        self.sessions[self.dir] = value
 
     def active(self):
         """Whether any service wants the lines (queueing, or following another uploader's)."""
@@ -452,16 +467,17 @@ class UploadHub:
         so it is dropped, and the next line wanted primes its file from the top again (status_body is the live
         Status.json's, kept)."""
         if self.primed:
-            body, pos = self.session.status_body, self.session.status_pos
-            self.session, self.primed = Session(), set()
-            self.session.status_body, self.session.status_pos = body, pos
+            for d, old in list(self.sessions.items()):
+                self.sessions[d] = new = Session()
+                new.status_body, new.status_pos = old.status_body, old.status_pos
+            self.primed = set()
 
     def prime(self, path, upto, session=None, depth=0):
         """Feed a session the lines of `path` before byte `upto` (state only): a file met part way through. A
         continuation file is primed from the file it goes on from first (who and where you are were said there)."""
-        session = session or self.session
-        if session is self.session:
-            self.primed.add(os.path.basename(path))
+        if session is None:   # the folder's own session (a catch-up brings its own)
+            session = self.sessions.setdefault(os.path.dirname(path), Session())
+            self.primed.add(path)
         prev = continued_from(path) if depth < 20 else None
         if prev:
             try:
@@ -531,9 +547,10 @@ class UploadHub:
         """One journal line (bytes) at `offset` of `path`. mode: "catchup" (the start-up scan: state only) or "live"
         (the running tail: may queue). Returns the number of messages queued. Database errors propagate."""
         b = os.path.basename(path)
-        if b not in self.primed:
+        self.dir = os.path.dirname(path)
+        if path not in self.primed:
             self.prime(path, offset)
-        self.session.dir = os.path.dirname(path)
+        self.session.dir = self.dir
         try:
             ev = json.loads(raw)
         except ValueError:
@@ -619,13 +636,14 @@ class UploadHub:
                 session.pending.update(waiting)
                 n += self._idle_queue(service, session)
         left = session.pending.get("signals")
-        if left and self.session.file == session.file and "signals" not in self.session.pending:
-            self.session.pending["signals"] = list(left)
-            self.session.pending["signals_since"] = dict(session.pending.get("signals_since") or {}, at=self.clock())
+        live = self.sessions.get(session.dir)   # the live session of the catch-up's last folder
+        if left and live is not None and live.file == session.file and "signals" not in live.pending:
+            live.pending["signals"] = list(left)
+            live.pending["signals_since"] = dict(session.pending.get("signals_since") or {}, at=self.clock())
         for k in files:   # still waiting: the live session's tick sends it when the file comes, inside its wait
             w = session.pending.get(k)
-            if isinstance(w, dict) and w.get("origin") and self.session.file == session.file and k not in self.session.pending:
-                self.session.pending[k] = dict(w, since=self.clock())
+            if isinstance(w, dict) and w.get("origin") and live is not None and live.file == session.file and k not in live.pending:
+                live.pending[k] = dict(w, since=self.clock())
         self.queued += n
         return n
 
@@ -645,22 +663,25 @@ class UploadHub:
     def idle(self):
         """The server's tick with no new line: what the services can send now anyway (EDDN: a companion file written
         late, signals after a quiet spell), each under the line it comes from. Returns the number queued."""
-        s = self.session
-        if not self.idlers or s.blocked():
+        if not self.idlers:
             return 0
-        s.now, n = self.clock(), 0
-        for service, fn in self.idlers.items():
-            if not self.enabled(service):
+        n = 0
+        for s in list(self.sessions.values()) or [self.session]:   # each folder's own waits
+            if s.blocked():
                 continue
-            try:
-                messages = fn(s) or []
-            except (KeyError, TypeError, ValueError, AttributeError, IndexError) as e:
-                print(f"{service}: waiting data could not be prepared ({type(e).__name__}: {e})")
-                continue
-            for schema, message, origin in messages:
-                ts = (message.get("message") or message).get("timestamp") if isinstance(message, dict) else None
-                if origin and enqueue(self.db, service, schema, f"{origin}#{schema}", ts, s, message):
-                    n += 1
+            s.now = self.clock()
+            for service, fn in self.idlers.items():
+                if not self.enabled(service):
+                    continue
+                try:
+                    messages = fn(s) or []
+                except (KeyError, TypeError, ValueError, AttributeError, IndexError) as e:
+                    print(f"{service}: waiting data could not be prepared ({type(e).__name__}: {e})")
+                    continue
+                for schema, message, origin in messages:
+                    ts = (message.get("message") or message).get("timestamp") if isinstance(message, dict) else None
+                    if origin and enqueue(self.db, service, schema, f"{origin}#{schema}", ts, s, message):
+                        n += 1
         self.queued += n
         return n
 
@@ -674,12 +695,16 @@ class UploadHub:
             if live and st.get("lat") is not None and st.get("lon") is not None and st.get("body") else None
 
     def snapshot(self):
-        return (self.session.snapshot(), set(self.primed), self.queued, copy.deepcopy(self.marks), self.marks_dirty,
-                {k: o.snapshot() for k, o in self.keep.items()})
+        return ({d: x.snapshot() for d, x in self.sessions.items()}, self.dir, set(self.primed), self.queued,
+                copy.deepcopy(self.marks), self.marks_dirty, {k: o.snapshot() for k, o in self.keep.items()})
 
     def restore(self, snap):
-        s, primed, self.queued, marks, self.marks_dirty, keep = snap
-        self.session.restore(s)
+        sessions, self.dir, primed, self.queued, marks, self.marks_dirty, keep = snap
+        for d in list(self.sessions):
+            if d not in sessions:   # a folder first met in the failed tick: met again on its retry
+                del self.sessions[d]
+        for d, x in sessions.items():
+            self.sessions.setdefault(d, Session()).restore(x)
         self.primed = set(primed)
         self.marks = copy.deepcopy(marks)
         for k, o in self.keep.items():

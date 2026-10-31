@@ -1582,7 +1582,11 @@ upstream project's choices, not rules of the game.
   plays (the newest journal of all the live folders is theirs), the live layer stands down (Status.json, NavRoute.json,
   Cargo.json and ShipLocker.json not read, auto-target refused, the journal's time not moved); the unsold estimate and the
   uploads still see every line,
-  each commander's going with its own key. Two tracked commanders: two Outriders, each with its own database.
+  each commander's going with its own key. Two tracked commanders: two Outriders, each with its own database. Two live
+  folders written at once (two games into one Outrider) each have their own upload session (`UploadHub.sessions`), so
+  a line always goes with its own commander and place; the marks stay one per service, because they are also the
+  hand-over between two Outriders, so one folder's later lines can then be skipped (complete review 2026-10-30, the
+  author's choice: re-evaluated if it is ever met).
 - **The rescan trip outranks "nothing worth staying for"** (S9-S1): a first discovery whose scan died
   with a ship (`firsts_recovery`'s `todo_scan`) puts "rescan N lost scans in the FSS" first on Now's Next line, the
   leaving warning, the status report and the briefing; only bodies you were first to discover are known (a lost scan of

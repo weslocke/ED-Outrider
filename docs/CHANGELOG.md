@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Complete review, batch 3 item 8: two journal folders' uploads keep their own commander
+- Two games writing into one Outrider at once (two live folders): each folder now has its own upload session, so a
+  line is never queued with the other folder's commander and system (it went to their EDSM or Inara account). The
+  upload marks stay one per service, as they are also the hand-over between two Outriders: in that set-up one folder's
+  later lines can still be skipped (left for now; to be looked at again if it is ever met).
+
 ## 2026-10-31 · Complete review, batch 3: journal reading and uploads
 - Findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
   test that fails without it. PARSER_VERSION 67: the journals are read again once.

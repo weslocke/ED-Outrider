@@ -119,6 +119,38 @@ class HubThroughTheReader(unittest.TestCase):
         self.assertEqual(tuple(r)[:3], ("Briadin", "4.2.0.100", "r312345/r0 "))
         self.assertTrue(r["source"].startswith("Journal.2026-10-08T100000.01.log:"))
 
+    def test_two_folders_at_once_keep_their_own_commander(self):
+        """Complete review 2026-10-30: one Session for every live folder, so with two games writing at once a line was
+        queued with the other folder's commander and system (their EDSM / Inara account). Each folder has its own now.
+        (The marks are still one per service: one folder's later lines can be skipped; left for now, the author's
+        choice.)"""
+        other = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, other)
+        a = os.path.join(self.dir, "Journal.2026-10-30T100900.01.log")
+        b = os.path.join(other, "Journal.2026-10-30T100500.01.log")
+
+        def add(path, *events):
+            with open(path, "a", encoding="utf-8") as f:
+                for e in events:
+                    f.write(json.dumps(e) + "\n")
+        add(a, header(now_ts(60)), loadgame(now_ts(59), cmdr="Alpha"),
+            location(now_ts(58), name="Sys A", addr=1))
+        add(b, header(now_ts(57)), loadgame(now_ts(56), cmdr="Bravo"),
+            location(now_ts(55), name="Sys B", addr=2))
+        for d in (self.dir, other):
+            self.j.scan_dir(d, upload="live")
+        add(a, {"timestamp": now_ts(5), "event": "FSDJump", "StarSystem": "Sys A2", "SystemAddress": 3, "StarPos": [1, 2, 3]})
+        add(b, {"timestamp": now_ts(4), "event": "FSDJump", "StarSystem": "Sys B2", "SystemAddress": 4, "StarPos": [4, 5, 6]})
+        for d in (self.dir, other):
+            self.j.scan_dir(d, upload="live")
+        rows = [(r["source"].split(".")[1][:17], r["cmdr"], json.loads(r["message"])["system"])
+                for r in self.db.execute("SELECT * FROM upload_queue ORDER BY id")]
+        self.assertTrue(rows)
+        owner = {"2026-10-30T100900": ("Alpha", {None, "Sys A", "Sys A2"}), "2026-10-30T100500": ("Bravo", {None, "Sys B", "Sys B2"})}
+        for f, c, place in rows:   # its own commander and place (Alpha's FSDJump went as Bravo's)
+            self.assertEqual(c, owner[f][0], rows)
+            self.assertIn(place, owner[f][1], rows)
+
     def test_old_lines_legacy_folders_and_off(self):
         week = 8 * 86400
         self.write(header(now_ts(week)), loadgame(now_ts(week - 1)), location(now_ts(week - 2)))
