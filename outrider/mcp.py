@@ -64,13 +64,14 @@ def http_get(base, timeout=HTTP_TIMEOUT, password=""):
     elsewhere (Docker) asks for its [server] password: given here ([mcp] password), the bridge signs in once and sends
     the session as a Bearer token, signing in again if the session ends."""
     import aiohttp
-    session = {"token": None}
+    session = {"token": None, "signin": None}   # signin: the status of the last sign-in tried
 
     async def signin(s):
         async with s.post(base + "/api/auth/signin", json={"password": password},
                           headers={"User-Agent": "outrider-mcp"}) as r:
             d = await r.json(content_type=None)
             session["token"] = d.get("token") if r.status == 200 and isinstance(d, dict) else None
+            session["signin"] = r.status
 
     async def get(path, params):
         try:
@@ -83,6 +84,10 @@ def http_get(base, timeout=HTTP_TIMEOUT, password=""):
                             continue
                         if r.status >= 500:
                             raise tools.Unavailable(f"HTTP {r.status}")
+                        if r.status == 401 and password and session["signin"] == 429:
+                            raise tools.Refused("too many wrong passwords: the sign-in waits a minute ([mcp] password)")
+                        if r.status == 401 and password and session["signin"] == 401:   # a wrong one is not a missing one
+                            raise tools.Refused("[mcp] password was refused: it must be this Outrider's [server] password")
                         if r.status == 401:
                             raise tools.Refused("this Outrider asks for a password: set [mcp] password (its [server] password)")
                         return await r.json(content_type=None)

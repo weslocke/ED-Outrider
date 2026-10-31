@@ -40,6 +40,23 @@ MODS=${NODE_MODULES:-node_modules}
 FAIL=0
 step() { printf '\n=== %s\n' "$*"; }
 
+# checked before anything runs (complete review 2026-10-30): a full run without the dev tools ended in PASS with lint and
+# the EDDN schema tests not run, and an exported PORT another Outrider listens on had the smoke test click on it
+if [ -z "$PARTIAL" ]; then
+  if ! "$PY" -m pyflakes --version >/dev/null 2>&1 && ! command -v pyflakes >/dev/null 2>&1; then
+    echo "FAIL: pyflakes is missing for $PY: pip install -r requirements-dev.txt"; exit 1
+  fi
+  if ! "$PY" -c 'import jsonschema' >/dev/null 2>&1; then
+    echo "FAIL: jsonschema is missing for $PY (the EDDN schema tests need it): pip install -r requirements-dev.txt"; exit 1
+  fi
+fi
+if [ -n "${PORT:-}" ]; then
+  if [ "$PORT" = 8025 ]; then echo "refusing port 8025 (the default port of a real Outrider)"; exit 1; fi
+  if ! "$PY" -c 'import socket, sys; socket.socket().bind(("127.0.0.1", int(sys.argv[1])))' "$PORT" >/dev/null 2>&1; then
+    echo "refusing PORT=$PORT: something already listens on it (another Outrider?); unset PORT and a free one is picked"; exit 1
+  fi
+fi
+
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/outrider-verify.XXXXXX") || exit 1
 PID=""
 cleanup() {
@@ -66,7 +83,7 @@ if "$PY" -m pyflakes --version >/dev/null 2>&1; then
 elif command -v pyflakes >/dev/null 2>&1; then
   if pyflakes ed_outrider.py outrider/*.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
 else
-  echo "pyflakes not installed: skipped (pip install -r requirements-dev.txt)"
+  echo "pyflakes not installed (pip install -r requirements-dev.txt)"; FAIL=1
 fi
 fi
 

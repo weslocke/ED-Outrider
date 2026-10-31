@@ -354,7 +354,12 @@ upstream project's choices, not rules of the game.
   setting: nothing on the PC itself sends those headers (review 2026-10-08 #3: the password was bypassed). **Inside a
   container loopback is never this PC** (`LOOPBACK_TRUSTED`, `this_pc(request)`; review 2026-10-23 S4-B2): rootless
   Docker's and Podman's port forwarding deliver every outside connection from 127.0.0.1 with no header. A TCP-level
-  forwarder on a PC (stunnel, ssh, socat) does the same; the guide warns (the author chose a warning over a setting).
+  forwarder on a PC (stunnel, ssh, socat) does the same; the guide warns (the author chose a warning over a setting),
+  and gives nginx the `proxy_set_header` line it needs (Caddy adds the header by itself; a stock nginx does not).
+  There wrong passwords count against the peer, never a forwarding header (`client_key(..., trust_headers=
+  LOOPBACK_TRUSTED)`; complete review 2026-10-30: a new X-Forwarded-For per try was a new count). Not done: treating a
+  loopback request whose Host is not localhost as proxied (Debian and Ubuntu map the PC's own name to 127.0.1.1, so
+  the PC itself would be asked for the password).
   HTML answers carry `frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN` (S4-B16); every value inlined into the
   page goes through `inline_json` ("<" escaped, S4-B17).
   A token is `<id>.<HMAC>` under a key made from the password and a per-install secret (DB meta `session_secret`),

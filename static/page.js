@@ -186,8 +186,9 @@ function refocus(id, key) {
   markKeyable();   // the new copy gets its tabindex now, not at the next animation frame
   el.focus({preventScroll: true});
 }
+// the title is escaped: the Here row's ring icon carries ring prices, with Spansh's station and system names in them
 const icon = (cls, id, n, title) =>
-  `<span class="ic ${cls}" title="${title}"><svg><use href="#${id}"/></svg>${n}</span>`;
+  `<span class="ic ${cls}" title="${esc(title)}"><svg><use href="#${id}"/></svg>${n}</span>`;
 const q = v => v === null || v === undefined ? "?" : v;
 
 function valueCell(s) {
@@ -14330,6 +14331,11 @@ async function saveServerConfig() {
   try { r = await apiJson("api/config", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(changes)}); }
   catch { r = {error: "Outrider not reachable"}; }
   if (r.error) { msg.textContent = `Not saved: ${r.error}`; msg.className = "hint warnc"; return; }
+  // saved: nothing is "typed" any more, so the redraw shows the file's values and the next Save sends only new
+  // changes (complete review 2026-10-30: the password went back into its box and was sent with every later Save)
+  const box = document.getElementById("serverSettingsBody");
+  box.querySelectorAll("[data-key]").forEach(el => { if (el.dataset.secret) el.value = ""; else el.dataset.orig = String(srvValue(el)); });
+  box.querySelectorAll("[data-clear]").forEach(el => { el.checked = false; });
   await loadServerSettings();
   const m = document.getElementById("srvMsg");
   m.innerHTML = savedNote(r); m.className = "hint ok";

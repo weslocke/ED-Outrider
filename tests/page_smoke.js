@@ -5687,6 +5687,30 @@ const releasePayloads = async () => {
     allOk = allOk && goodS;
     console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "15 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
   }
+  // Server settings saved twice (complete review 2026-10-30): after a Save the password went back into its box and every
+  // later Save sent it again; now the second Save has nothing to send
+  server_settings_save_twice: { if (skip("server_settings_save_twice")) break server_settings_save_twice;
+    const w = dom.window, d = w.document, before = errors.length, real = w.fetch, posts = [];
+    w.fetch = (u, o) => String(u) === "api/config" && o && o.method === "POST"
+      ? (posts.push(JSON.parse(o.body)), Promise.resolve(new Response(JSON.stringify({ok: true, changed: 1, restart: true, live: []}),
+          {status: 200, headers: {"Content-Type": "application/json"}})))
+      : real(u, o);
+    w.eval(`loadServerSettings()`);
+    await settle(2500);
+    const pw = () => d.querySelector('#serverSettingsBody [data-sec="server"][data-key="password"]');
+    pw().value = "hunter2";
+    await w.eval(`saveServerConfig()`);
+    await settle(1500);
+    const got = [posts.length, pw().value];
+    await w.eval(`saveServerConfig()`);
+    await settle(500);
+    got.push(posts.length, d.getElementById("srvMsg").textContent);
+    w.fetch = real;
+    const want = [1, "", 1, "nothing changed"];
+    const goodV = JSON.stringify(got) === JSON.stringify(want) && JSON.stringify(posts[0]) === '{"server":{"password":"hunter2"}}' && errors.length === before;
+    allOk = allOk && goodV;
+    console.log(goodV ? "OK" : "FAIL", "| server_settings_save_twice |", goodV ? "a saved password is not put back nor sent again" : JSON.stringify([got, posts]), errors.slice(before));
+  }
   // Plot Route: Clear route while a survey or trade plot runs into an empty slot stops that plot (it cleared the Highway)
   plot_route_clear_during_a_survey_plot: { if (skip("plot_route_clear_during_a_survey_plot")) break plot_route_clear_during_a_survey_plot;
     const w = dom.window, d = w.document, before = errors.length, real = w.fetch, posted = [];

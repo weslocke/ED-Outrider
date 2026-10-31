@@ -283,7 +283,7 @@ class Bridge(unittest.TestCase):
 
     def test_a_server_elsewhere_with_a_password(self):
         """An Outrider on another computer (Docker): nothing is loopback, so the bridge signs in with [mcp] password
-        and sends the session as a Bearer token; without one it says what to set."""
+        and sends the session as a Bearer token; without one it says what to set, with a wrong one that it was refused."""
         from aiohttp.test_utils import TestServer
         db = ed_outrider.open_db(":memory:")
         self.addCleanup(db.close)
@@ -302,8 +302,9 @@ class Bridge(unittest.TestCase):
         good, again, none, wrong = asyncio.run(go())
         self.assertIn("nearest", good)
         self.assertIn("nearest", again)
-        self.assertIn("[mcp] password", none["error"])
-        self.assertIn("[mcp] password", wrong["error"])
+        self.assertIn("set [mcp] password", none["error"])
+        # complete review 2026-10-30: a wrong password was reported as none set
+        self.assertIn("[mcp] password was refused", wrong["error"])
 
 
 if __name__ == "__main__":

@@ -197,6 +197,30 @@ class Auth(Base):
             self.assertEqual(self.client(go), (401, False, 200))         # signs in like any device; /api/version open
         self.assertEqual(self.client(go), (200, True, 200))              # on a PC: this PC, as before
 
+    def test_inside_a_container_wrong_passwords_count_against_the_peer(self):
+        """Complete review 2026-10-30: inside a container a loopback peer's forwarding header is the client's own
+        (rootless port forwarding), so a new X-Forwarded-For on each try was a new count and the limit never applied."""
+        A = outrider.auth
+        for h in ({"X-Forwarded-For": "10.0.0.9"}, {"X-Real-IP": "10.0.0.9"}, {"Forwarded": "for=10.0.0.9"}):
+            self.assertEqual(A.client_key("127.0.0.1", h, trust_headers=False), "127.0.0.1")
+            self.assertEqual(A.client_key("127.0.0.1", h), "10.0.0.9")   # a PC: the proxy on it names the client
+
+        async def go(c):
+            return [(await c.post("/api/auth/signin", json={"password": "no"},
+                                  headers={"X-Forwarded-For": f"10.0.0.{n}"})).status for n in range(7)]
+        with unittest.mock.patch.object(ed_outrider, "LOOPBACK_TRUSTED", False):
+            self.assertEqual(self.client(go), [401] * 5 + [429] * 2)
+
+    def test_the_guide_gives_nginx_its_forwarding_header(self):
+        """Complete review 2026-10-30: the guide said nginx adds a forwarding header; a stock proxy_pass adds none,
+        so every device behind it looked like this PC and skipped the password."""
+        import os
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "guide",
+                               "install.md"), encoding="utf-8") as f:
+            guide = f.read()
+        self.assertTrue("proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;" in guide)
+        self.assertFalse("which Caddy and nginx add" in guide)
+
     def test_pages_cannot_be_framed_and_inlined_values_cannot_end_the_script(self):
         """Review 2026-10-23 S4-B16: no frame-ancestors / X-Frame-Options, so another site could frame the loopback page
         (signed in by being this PC) and steer clicks; S4-B17: the search options were inlined unescaped, so a refined

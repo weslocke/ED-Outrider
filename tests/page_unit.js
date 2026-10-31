@@ -37,6 +37,13 @@ const eq = (src, want) => assert.deepStrictEqual(JSON.parse(JSON.stringify(ev(sr
 t("page.js loads with no server and no payload", () => assert.deepStrictEqual(errors, []));
 t("esc: what HTML needs, double-quoted attributes", () =>
   eq(`esc(${JSON.stringify(`<a href="x">&'</a>`)})`, "&lt;a href=&quot;x&quot;&gt;&amp;'&lt;/a&gt;"));
+t("icon: the title is escaped (complete review 2026-10-30: a station name with a quote in the ring icon)", () => {
+  const box = w.document.createElement("div");
+  box.innerHTML = ev(`icon("ring", "i-ring", 2, ${JSON.stringify(`Best nearby: Painite at Bob's "Port" x onmouseover="alert(1)`)})`);
+  const span = box.firstElementChild;
+  assert.deepStrictEqual([...span.attributes].map(a => a.name), ["class", "title"]);
+  assert.strictEqual(span.title, `Best nearby: Painite at Bob's "Port" x onmouseover="alert(1)`);
+});
 t("credits: k, M, B at their rounding edges", () =>
   eq(`[credits(950), credits(999.4), credits(999.5), credits(12345), credits(1234567), credits(999.94e6), credits(999.95e6), credits(2.5e9)]`,
      ["950", "999", "1k", "12k", "1.2M", "999.9M", "1.00B", "2.50B"]));

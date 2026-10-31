@@ -2,6 +2,29 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Complete review, batch 1: the password behind a proxy and in Docker, the image's contents, verify.sh
+- The complete Opus review of the whole codebase (HEAD 5140753, 360 agents, a Fable check of every finding:
+  project/done/reviews/review-2026-10-30-full) found about 127 real defects; this first batch fixes the security,
+  Docker and verify ones, each checked by hand and each with a test that fails without it.
+- **A proxy on the Outrider PC**: the install guide said nginx adds a forwarding header; a stock `proxy_pass` adds
+  none, so every device behind it skipped the password. The guide now gives nginx's `proxy_set_header` line and says
+  to check from a phone.
+- **Sign-in in Docker**: inside a container wrong passwords count against the connection, never a forwarding header
+  (under rootless Docker or Podman a new X-Forwarded-For on each try escaped the limit of 5 a minute).
+- **The password's help** in Settings and the example config no longer says "this PC never needs it" without "except
+  in Docker"; the MCP bridge says a wrong `[mcp] password` was refused instead of asking for one.
+- **The page**: the ring icon's tooltip is escaped (it carries Spansh's station names, so a quote in one could add
+  attributes to the page); Server settings no longer puts a saved password back in its box and sends it with every
+  later Save.
+- **The Docker image**: `.dockerignore` is an allow list (the code, resources, static files, the entrypoint, the
+  requirements, the example config, LICENSE, README), so a second config, restore leftovers or a local tool's folder
+  in the checkout can never reach the public image (2026.10.29 held only an empty `.claude/`). The image no longer
+  carries docs/, tests/ or scripts/. Shell scripts keep Unix line endings in every checkout (`.gitattributes`), so a
+  Windows clone builds an image that starts.
+- **verify.sh** refuses at once a `PORT` something already listens on (the smoke test could click on another
+  Outrider) and, in a full run, a Python without pyflakes or jsonschema (it ended in PASS with lint and the EDDN schema
+  tests not run).
+
 ## 2026-10-30 · Opus review 8 fixes: the squadron carrier in the finder, honk confirmation, Sell all, boxels
 - The Opus review of d31d9cd..7609edf (round 8, 88 agents, project/done/reviews/review-2026-10-30): 37 real findings,
   about 22 distinct, all fixed here, each with a test that fails without it.

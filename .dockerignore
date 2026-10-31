@@ -1,25 +1,22 @@
-# what never goes into the image: your own files, local tools, the plans, caches
-.git
-.venv
-**/.venv
-# local tools and scripts that git ignores too: never in the image (eddn_listener holds a large capture database)
-eddn_listener
-run.sh
-scripts/install.sh
-resources/bio_rules.json.tmp
-# ExploData's colour tables: the container downloads them on its first start, never baked into the image
+# An allow list (complete review 2026-10-30): the image gets only what the container runs, so nothing else in this
+# folder (a second config such as alt.toml with its passwords and AI key, restore leftovers, a local tool's folder,
+# your data) can reach a published image. A new file or folder the image needs is added here, with a ! line.
+*
+!ed_outrider.py
+!outrider
+!resources
+!static
+!docker/entrypoint.sh
+!requirements.txt
+!requirements-overlay.txt
+!ed_outrider.toml.example
+!LICENSE
+!README.md
+# inside those, still out: ExploData's colour tables (the container downloads them on its first start), half-written
+# files, caches and virtual environments
 resources/bio_colours.json
 resources/bio_colours.json.tmp
-data
-docker/data
-docker/config
-docker/journals
-dist
-.env
-node_modules
-project
-ed_outrider.toml
-ed_outrider.toml.bak
-ed_outrider.toml.new
+resources/bio_rules.json.tmp
+**/.venv
 **/__pycache__
 **/*.pyc

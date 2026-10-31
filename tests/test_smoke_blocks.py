@@ -35,5 +35,52 @@ class SmokeBlocks(unittest.TestCase):
         self.assertRegex(sh, r'if \[ -n "\$PARTIAL" \]; then\n(.*\n){1,3}  if \[ "\$FAIL" = 0 \]; then exit 3; fi\n')
 
 
+@unittest.skipIf(os.environ.get("OUTRIDER_VERIFY_NESTED"), "inside the verify these tests start")
+class VerifyRefuses(unittest.TestCase):
+    """Complete review 2026-10-30: scripts/verify.sh refuses at once, before the unit tests, a PORT something listens on
+    (the smoke test clicked and posted on another Outrider) and a Python without the dev tools (it ended in PASS with
+    lint and the EDDN schema tests not run). Each run is cut off after 30 s: without the refusal it would go on to
+    the unit tests (these tests skip themselves there)."""
+
+    def verify(self, env):
+        import subprocess
+        import signal
+        p = subprocess.Popen(["scripts/verify.sh"], cwd=ROOT, env=dict(os.environ, OUTRIDER_VERIFY_NESTED="1", **env),
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
+        try:
+            out, _ = p.communicate(timeout=30)
+        except subprocess.TimeoutExpired:
+            os.killpg(p.pid, signal.SIGTERM)
+            out, _ = p.communicate()
+            return None, out
+        return p.returncode, out
+
+    def test_a_busy_port(self):
+        import socket
+        s = socket.socket()
+        self.addCleanup(s.close)
+        s.bind(("127.0.0.1", 0))
+        s.listen()
+        rc, out = self.verify({"PORT": str(s.getsockname()[1])})
+        self.assertEqual(rc, 1, out[-500:])
+        self.assertIn("something already listens on it", out)
+        self.assertNotIn("=== unit tests", out)
+
+    def test_no_dev_tools(self):
+        import shutil
+        import sys
+        import tempfile
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        py = os.path.join(d, "python")   # a Python with no site-packages: no pyflakes, no jsonschema
+        with open(py, "w") as f:
+            f.write(f'#!/bin/sh\nexec "{sys.executable}" -S -I "$@"\n')
+        os.chmod(py, 0o755)
+        rc, out = self.verify({"PYTHON": py, "PATH": "/usr/bin:/bin"})
+        self.assertEqual(rc, 1, out[-500:])
+        self.assertRegex(out, r"FAIL: (pyflakes|jsonschema) is missing")
+        self.assertNotIn("=== unit tests", out)
+
+
 if __name__ == "__main__":
     unittest.main()

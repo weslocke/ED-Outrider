@@ -92,6 +92,33 @@ class ServerMode(unittest.TestCase):
         self.assertEqual((h.available, h.status, h.open("rail")), (False, "off (server mode)", False))
 
 
+def docker_excluded(path, root=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
+    """Whether .dockerignore keeps a path (relative, with /) out of the build context, as Docker reads it: every line a
+    pattern (* within a name, ** across folders, ! to take a path back), a pattern matching the path or a folder
+    above it, the last matching line deciding."""
+    with open(os.path.join(root, ".dockerignore"), encoding="utf-8") as f:
+        rules = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+
+    def rx(pat):
+        out, i = "", 0
+        while i < len(pat):
+            if pat.startswith("**/", i):
+                out, i = out + "(?:.*/)?", i + 3
+            elif pat.startswith("**", i):
+                out, i = out + ".*", i + 2
+            else:
+                out, i = out + {"*": "[^/]*", "?": "[^/]"}.get(pat[i], re.escape(pat[i])), i + 1
+        return re.compile(out + r"\Z")
+    parts = path.split("/")
+    prefixes = ["/".join(parts[:n]) for n in range(1, len(parts) + 1)]
+    out = False
+    for rule in rules:
+        neg, pat = rule.startswith("!"), rule.lstrip("!").strip("/")
+        if any(rx(pat).match(p) for p in prefixes):
+            out = not neg
+    return out
+
+
 class Packaging(unittest.TestCase):
     """The Docker files (the plan's D4), checked without Docker: the image marks itself a container (so game_pc auto is
     off), keeps your files out, starts through the entrypoint; compose mounts the journals read-only and keeps the
@@ -108,8 +135,8 @@ class Packaging(unittest.TestCase):
         self.assertIn('ENTRYPOINT ["docker/entrypoint.sh"]', df)
         self.assertIn("/api/version", df)   # the health check uses the open route
         self.assertTrue(os.access(os.path.join(self.ROOT, "docker", "entrypoint.sh"), os.X_OK))
-        for kept_out in ("data", "ed_outrider.toml", "project", ".venv", "docker/config", "docker/data"):
-            self.assertIn(kept_out, ignore.split())
+        for kept_out in ("data/x", "ed_outrider.toml", "project/x", ".venv/x", "docker/config/x", "docker/data/x"):
+            self.assertTrue(docker_excluded(kept_out), kept_out)
         self.assertIn(":/journals:ro", compose)
         self.assertIn("./docker/config:/config", compose)
         self.assertIn("./docker/data:/app/data", compose)
@@ -246,8 +273,7 @@ class Packaging(unittest.TestCase):
         self.assertIn("    image: ed-outrider:local", compose)
         self.assertLess(compose.index("name: ed-outrider"), compose.index("services:"))   # one project, whichever folder
         self.assertIn("sed -n '/^name:/,$p' docker-compose.yml", self.read("scripts/docker_bundle.sh"))
-        ignored = self.read(".dockerignore").splitlines()
-        self.assertTrue({"dist", ".env", "data", "docker/data", "docker/config"} <= set(ignored))
+        self.assertTrue(all(docker_excluded(p) for p in ("dist/x", ".env", "data/x", "docker/data/x", "docker/config/x")))
         script = self.read("scripts/docker_bundle.sh")
         self.assertIn("pull_policy: never", script)
         self.assertIn('image: $REG:latest', script)   # the release's compose file runs the published image
@@ -271,9 +297,38 @@ class PackagingFixes(unittest.TestCase):
     def test_local_tools_stay_out_of_the_image(self):
         """eddn_listener/ (a large capture database and its own .venv) and the other git-ignored local tools are kept
         out of the Docker build context, so they never reach a published image."""
-        ignored = self.read(".dockerignore").split()
-        for path in ("eddn_listener", "**/.venv", "run.sh", "scripts/install.sh"):
-            self.assertIn(path, ignored)
+        for path in ("eddn_listener/x.sqlite", "outrider/.venv/x", "run.sh", "scripts/install.sh"):
+            self.assertTrue(docker_excluded(path), path)
+
+    def test_shell_scripts_keep_unix_line_endings(self):
+        """Complete review 2026-10-30: only *.bat was pinned, so a Windows clone (Git's autocrlf) built an image whose
+        entrypoint was "#!/bin/sh\\r" and could not start."""
+        import subprocess
+        try:
+            out = subprocess.run(["git", "check-attr", "eol", "docker/entrypoint.sh", "launch_outrider.sh", "scripts/verify.sh"],
+                                 cwd=self.ROOT, capture_output=True, text=True, timeout=10).stdout
+        except (OSError, subprocess.SubprocessError):
+            self.skipTest("no git")
+        if not out.strip():
+            self.skipTest("not a git checkout")
+        self.assertEqual([line.rsplit(": ", 1)[-1] for line in out.splitlines()], ["lf"] * 3)
+
+    def test_the_image_takes_only_what_it_runs(self):
+        """Complete review 2026-10-30: .dockerignore was a list of known names, so any other file in the folder (a
+        second config such as alt.toml with its passwords and AI key, restore leftovers, a local tool's folder) went
+        into the public image. It is an allow list now."""
+        for path in ("ed_outrider.py", "outrider/auth.py", "resources/speech.json", "resources/personalities/sweet.json",
+                     "static/page.js", "static/themes/lcars.css", "docker/entrypoint.sh", "requirements.txt",
+                     "ed_outrider.toml.example", "LICENSE"):
+            self.assertFalse(docker_excluded(path), path)
+        for path in ("alt.toml", "cfg.toml", "ed_outrider.toml.new", ".claude/settings.local.json", ".git/HEAD",
+                     "ed_outrider.sqlite.pre-restore-20261030", "data/ed_outrider.sqlite.restore-1.part",
+                     "resources/bio_colours.json", "outrider/__pycache__/auth.cpython-312.pyc", "tests/test_auth.py",
+                     "node_modules/jsdom/package.json", "docker-compose.yml", "docker/journals/Journal.log", "x.env"):
+            self.assertTrue(docker_excluded(path), path)
+        for name in ("Dockerfile", "docker/entrypoint.sh"):   # every path the build and the container read is in
+            for ref in re.findall(r"(?:COPY|exec python) (\S+\.(?:txt|py))", self.read(name)):
+                self.assertFalse(docker_excluded(ref), ref)
 
     def test_docker_pins_host_and_port(self):
         """In Docker the listening address belongs to the container: a host or port changed in Settings cannot make

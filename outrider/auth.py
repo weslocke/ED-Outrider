@@ -78,14 +78,18 @@ FORWARD_HEADERS = ("X-Forwarded-For", "Forwarded", "X-Real-IP")
 def from_this_pc(remote, headers):
     """Whether a request comes from this machine itself: a loopback peer that no proxy forwarded. A reverse proxy on
     this PC (Caddy, nginx: docs/guide/install.md) connects from loopback for every device it serves, and says so in a
-    forwarding header; such a request is another device's (review 2026-10-08 #3: the password was bypassed)."""
+    forwarding header; such a request is another device's (review 2026-10-08 #3: the password was bypassed). Caddy
+    adds the header by itself, nginx only with a proxy_set_header line (the guide gives it)."""
     return is_loopback(remote) and not any(headers.get(h) for h in FORWARD_HEADERS)
 
 
-def client_key(remote, headers):
+def client_key(remote, headers, trust_headers=True):
     """Who to count wrong passwords against: the peer, or, behind a reverse proxy on this PC, the client it names (the
-    last hop it added). Headers from any other peer are not trusted: anyone can send them."""
-    if is_loopback(remote):
+    last hop it added). Headers from any other peer are not trusted: anyone can send them. Nor inside a container
+    (trust_headers False, the caller's LOOPBACK_TRUSTED): rootless port forwarding delivers every outside connection
+    from loopback with the client's own headers, so a new X-Forwarded-For on each try was a new count (complete
+    review 2026-10-30)."""
+    if trust_headers and is_loopback(remote):
         fwd = (headers.get("X-Forwarded-For") or "").split(",")[-1].strip() or (headers.get("X-Real-IP") or "").strip()
         if fwd:
             return fwd

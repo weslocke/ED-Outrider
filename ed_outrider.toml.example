@@ -45,8 +45,8 @@
                        # the page does: change these settings, restart Outrider, use your EDSM and Inara keys, and
                        # on the game PC press keys in the game)
 # port = 8025
-# password = ""        # devices on your network (a tablet, the Android app) sign in with it once; this PC itself
-#                      # never needs it. "" = no sign-in. It crosses your network unencrypted (plain http), so use
+# password = ""        # devices on your network (a tablet, the Android app) sign in with it once; this PC never
+#                      # needs it, except in Docker, where every browser signs in. "" = no sign-in. It crosses your network unencrypted (plain http), so use
 #                      # one you use nowhere else. Changing it signs every device out.
 # game_pc = "auto"     # is this the PC the game runs on? "auto" (off inside a container such as Docker), "true" or "false".
 #                      # Off (a server): no auto honk, auto-target, tablet rail, co-pilot button, clipboard or sound

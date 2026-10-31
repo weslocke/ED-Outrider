@@ -304,7 +304,8 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
   `tests/fixtures/journals`, a temporary config and no network, waits until GET `/api/starting` says "ready" (the
   starting page answers before that, S9), runs `tests/page_smoke.js`, and stops the server by its PID. Its service
   folder (S70) is a scratch one and systemctl is never run. All of it happens in a `mktemp` folder that is deleted afterwards. `VERBOSE=1` prints
-  every smoke line and the server log.
+  every smoke line and the server log. Before anything runs it refuses a `PORT` something already listens on and, for
+  a full run, a Python without pyflakes or jsonschema (requirements-dev.txt): neither can end in PASS.
 - **A partial smoke run while working:** `scripts/verify.sh --smoke here,bio` (labels, or their starts) runs only
   those blocks of `tests/page_smoke.js` against its scratch server (about 10 s), with no unit tests or lint, and ends
   "SMOKE PASS (partial …; not a verify PASS)" and exits 3 (0 is a full PASS only): a commit still needs the full run (a full run clears an exported
@@ -497,7 +498,9 @@ limpet, hold, `prospect_hit` and `motherlode` keys about 16, `ring_found_many` 3
   SAMEORIGIN` (no other site may frame the page, S4-B16); a value inlined into the page's `<script>` goes through
   `inline_json` ("<" escaped, S4-B17), never a bare `json.dumps`.
 - **Docker** (`Dockerfile`, `docker-compose.yml`, `docker/entrypoint.sh`, `.dockerignore`): the image sets
-  `OUTRIDER_CONTAINER=1` (so `game_pc` auto is off), writes a first-run config into `/config`, and is checked by
+  `OUTRIDER_CONTAINER=1` (so `game_pc` auto is off), writes a first-run config into `/config`, takes only what
+  `.dockerignore`'s allow list names (a new file or folder the container needs gets a `!` line there; everything else
+  in the folder, strays included, stays out of the public image), and is checked by
   `test_server_mode.Packaging` without Docker; build and run it by hand (`docker build`, `docker run` with scratch
   folders) after changing it. verify.sh never needs Docker. The entrypoint is PID 1: anything it waits on must trap
   SIGTERM, or `docker stop` hangs for the whole grace period. The compose project is named `ed-outrider` (one

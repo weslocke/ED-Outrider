@@ -1403,7 +1403,7 @@ def config_text(st):
 host = {q(st["host"])}   # "0.0.0.0" to reach the page from another device on your network
 port = {st["port"]}   # the page's port: http://<this PC>:<port>/
 allowed_hosts = {lst(st["allowed_hosts"])}   # extra names the page may be opened by (a LAN setup; see docs/guide/install.md)
-password = {q(st["password"])}   # devices on your network sign in with it ("" = none); this PC itself never needs it
+password = {q(st["password"])}   # devices on your network sign in with it ("" = none); this PC never needs it, except in Docker, where every browser signs in
 game_pc = {q(st["game_pc"] if st["game_pc"] == "auto" else ("true" if st["game_pc"] else "false"))}   # is this the PC the game runs on? "auto" (off inside a container, e.g. Docker), "true" or "false". Off: no auto honk, auto-target, tablet rail, co-pilot button, clipboard or playing on this PC
 update_check = {"true" if st["update_check"] else "false"}   # once a day, ask GitHub whether a newer Outrider release is out, and say so on the page (only the request: nothing about you is sent)
 radius = {n(st["radius"])}      # ly: the sphere of nearby systems the page lists
@@ -22289,7 +22289,7 @@ def make_app(state, hosts=None):
             return web.json_response({"error": "expected {\"password\": \"...\"}", "code": "bad_request"}, status=400)
         if not state.password:   # nothing to sign in to: every device may use it
             return web.json_response({"ok": True, "token": ""})
-        who = outrider.auth.client_key(request.remote, request.headers)
+        who = outrider.auth.client_key(request.remote, request.headers, LOOPBACK_TRUSTED)
         wait = state.signin_limit.wait(who)
         if wait:
             return web.json_response({"error": f"too many wrong passwords: try again in {wait} s", "code": "rate_limited"},

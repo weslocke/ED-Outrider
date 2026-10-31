@@ -1,2 +1,5 @@
 # the Windows launcher keeps Windows line endings in every checkout (cmd can misread labels with Unix ones)
 *.bat text eol=crlf
+# shell scripts keep Unix line endings in every checkout: a Windows clone's CRLF made the image's entrypoint
+# "#!/bin/sh\r", which cannot run (complete review 2026-10-30)
+*.sh text eol=lf

@@ -208,6 +208,12 @@ class WritingFixes(unittest.TestCase):
         with open(os.path.join(os.path.dirname(ed_outrider.STATIC_DIR), "static", "page.js"), encoding="utf-8") as f:
             self.assertIn('step="${k.kind === "int" ? "1" : "any"}"', f.read())   # the page's int inputs step by 1
 
+    def test_the_password_help_is_true_in_docker(self):
+        """Complete review 2026-10-30: the password's help said "this PC itself never needs it", but inside a container
+        every browser signs in, the host's own too (DESIGN_NOTES: in a container loopback is never this PC)."""
+        k = {(s["section"], k["key"]): k for s in ce.entries(ed_outrider.config_text(settings({}))) for k in s["keys"]}
+        self.assertIn("except in Docker, where every browser signs in", k["server", "password"]["help"])
+
     def test_autotarget_keys_sub_table(self):
         """R10: [highway.autotarget_keys] written as its own table is replaced by the inline form, not declared twice."""
         text = '[highway]\nautotarget = true\n\n[highway.autotarget_keys]\nEnter = "KEY_ENTER"   # mine\n\n[mcp]\nmax_rows = 9\n'
@@ -259,10 +265,11 @@ class ReviewConfigFixes(unittest.TestCase):
     def test_the_temp_config_is_ignored(self):
         """Server settings write through ed_outrider.toml.new, which holds the password while it exists: git ignores it as
         .dockerignore does (a whole line: .gitignore has no comments after a pattern)."""
+        from test_server_mode import docker_excluded
         root = os.path.dirname(ed_outrider.STATIC_DIR)
-        for name in (".gitignore", ".dockerignore"):
-            with open(os.path.join(root, name), encoding="utf-8") as f:
-                self.assertIn("ed_outrider.toml.new", [line.strip() for line in f], name)
+        with open(os.path.join(root, ".gitignore"), encoding="utf-8") as f:
+            self.assertIn("ed_outrider.toml.new", [line.strip() for line in f])
+        self.assertTrue(docker_excluded("ed_outrider.toml.new"))
 
     def test_backup_dir_written_relative(self):
         text = ed_outrider.config_text(settings({}))
