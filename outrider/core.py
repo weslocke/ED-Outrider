@@ -11,3 +11,14 @@ def ts_seconds(ts):
 def iso_ts(t):
     """time.time() -> a journal-style UTC timestamp."""
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t))
+
+
+def region_spoken(name):
+    """A region's name as said in a sentence: "the Norma Arm", "the Veils", but "Ryker's Hope", "Izanami"."""
+    if not name:
+        return name
+    if name.startswith("The "):
+        return "the " + name[4:]
+    if "'" in name or " " not in name or name == "Mare Somnia":
+        return name
+    return "the " + name

@@ -83,6 +83,9 @@ def http_get(base, timeout=HTTP_TIMEOUT, password=""):
                             continue
                         if r.status >= 500:
                             raise tools.Unavailable(f"HTTP {r.status}")
+                        if r.status == 403:   # the server refused this name for it (allowed_hosts): its own words say
+                            text = (await r.text())[:300].strip()   # which (complete review 2026-10-30: "isn't running")
+                            raise tools.Refused(f"Outrider refused the bridge (HTTP 403): {text or 'forbidden'}")
                         if r.status == 401 and password and session["signin"] == 429:
                             raise tools.Refused("too many wrong passwords: the sign-in waits a minute ([mcp] password)")
                         if r.status == 401 and password and session["signin"] == 401:   # a wrong one is not a missing one

@@ -5,6 +5,7 @@ when PyQt6 is installed (into a picture, never on screen).
 
 Run all: python3 -m unittest discover tests (or scripts/verify.sh).
 """
+import contextlib
 import io
 import http.client
 import json
@@ -14,7 +15,9 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 import urllib.error
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # the repository root
 import outrider.overlay as O  # noqa: E402
@@ -180,7 +183,16 @@ class Arranging(unittest.TestCase):
         self.assertEqual([W.wheel_key(False, False), W.wheel_key(True, False), W.wheel_key(False, True),
                           W.wheel_key(True, True)], ["bg", "alpha", "all", "all"])
         self.assertEqual(W.wheeled_all(100, -2), 90)
-        self.assertEqual(W.wheeled_all(100, 1.5), 108)                               # a smooth wheel: whole percents
+        self.assertEqual(W.wheeled_all(100, 1.5), 107.5)                             # unrounded while it turns
+        # complete review 2026-10-30: a high-resolution wheel's tenths add up (it stuck at 100, or overshot)
+        pct = 100
+        for _ in range(20):
+            pct = W.wheeled_all(pct, 12 / 120)
+        self.assertEqual(round(pct), 110)
+        pct = 100
+        for _ in range(8):
+            pct = W.wheeled_all(pct, 15 / 120)
+        self.assertEqual(round(pct), 105)
         self.assertEqual((W.wheeled_all(30, -9), W.wheeled_all(240, 9)), O.PANEL_SCALE_LIMITS)
         self.assertEqual((W.panel_scale_of({"panel_scale": 50}), W.panel_scale_of({"panel_scale": 50}, 80),
                           W.panel_scale_of({}), W.panel_scale_of(None), W.panel_scale_of({"panel_scale": "big"})),
@@ -206,6 +218,13 @@ class GameMouseLock(unittest.TestCase):
 
     def test_linux_only(self):
         self.assertEqual(W.FIT_WINDOW, sys.platform.startswith("linux"))
+
+    def test_a_resized_game_redraws_its_panel_windows(self):
+        """Complete review 2026-10-30: Linux's panel windows kept the old game size and place until the next payload."""
+        self.assertTrue(W.game_resized((0, 0, 1920, 1080), (1280, 720)))
+        self.assertFalse(W.game_resized((0, 0, 1920, 1080), (1920, 1080)))
+        self.assertFalse(W.game_resized((0, 0, 1920, 1080), None))   # never drawn yet
+        self.assertFalse(W.game_resized(None, (1280, 720)))
 
     def test_window_rect(self):
         """The panels' bounding box, each grown by PANEL_PAD, inside the game window, whole pixels; one corner pixel
@@ -264,6 +283,18 @@ class Tracking(unittest.TestCase):
         t = T.X11Tracker(LOG, run=self.fake_run(missing=True))
         self.assertIsNone(t.poll())
         self.assertTrue(t.missing)
+
+    def test_a_window_title_not_in_utf8(self):
+        """Complete review 2026-10-30: one window's title in Latin-1 (a byte 0xE9) raised UnicodeDecodeError out of
+        poll(): the overlay window crashed on each look, and auto-target's lookup too. Decoded with replacement now."""
+        raw = (self.WMCTRL + "0x01 0 0 0 800 600 d\xe9mineur.exe.D\xe9mineur host Some app\n").encode("latin-1")
+
+        def run(cmd, **kw):
+            out = {"wmctrl": raw, "xprop": b"_NET_ACTIVE_WINDOW(WINDOW): window id # 0x04400003\n",
+                   "xwininfo": b"  Absolute upper-left X:  0\n  Absolute upper-left Y:  0\n  Width: 2560\n  Height: 1440\n"}[cmd[0]]
+            return subprocess.CompletedProcess(cmd, 0, stdout=out.decode("utf-8", kw.get("errors", "strict")), stderr="")
+        st = T.X11Tracker(LOG, run=run).poll()
+        self.assertEqual(st.identifier, "0x04400003")
 
     def test_monitors_give_global_coordinates(self):
         t = T.X11Tracker(LOG, monitor_provider=lambda: [("DP-1", 0, 0, 2560, 1440)], run=self.fake_run())
@@ -407,6 +438,26 @@ class OutOfSight(unittest.TestCase):
         t.poll()
         self.assertEqual(len(d.calls) - n, 2)   # wmctrl and the active window only
 
+    def test_windows_game_picture_without_its_title_bar(self):
+        """Complete review 2026-10-30: a windowed game's rectangle included its title bar (~31 px) and frame, so every
+        top panel sat over the title bar and all were scaled from the taller window. The client rectangle now."""
+        class U32:
+            def __init__(self, ok=True):
+                self.ok = ok
+
+            def GetClientRect(self, h, ref):
+                r = ref._obj
+                r.left, r.top, r.right, r.bottom = 0, 0, 1280, 720
+                return self.ok
+
+            def ClientToScreen(self, h, ref):
+                p = ref._obj
+                p.x, p.y = p.x + 108, p.y + 139   # the window at (100, 100): an 8 px frame, a 31 px title bar
+                return True
+        r = T.client_bounds(U32(), 7)
+        self.assertEqual((r.left, r.top, r.right, r.bottom), (108, 139, 1388, 859))
+        self.assertIsNone(T.client_bounds(U32(ok=False), 7))   # Windows cannot say: the caller keeps the window's
+
     def test_windows_z_order(self):
         """S25b on Windows: the windows above the game that can hide it (a fake user32: never Windows itself)."""
         class R:
@@ -461,6 +512,29 @@ class FakeOpener:
 
 
 class ClientAndFeed(unittest.TestCase):
+    def test_no_proxy_for_this_pc(self):
+        """Complete review 2026-10-30: with http_proxy in the environment the window's requests to this PC's Outrider
+        went to the proxy: nothing drawn."""
+        with unittest.mock.patch.dict(os.environ, {"http_proxy": "http://proxy.invalid:3128", "HTTP_PROXY": "http://proxy.invalid:3128"}):
+            c = W.Client("http://127.0.0.1:8025")
+        self.assertEqual([h.proxies for h in c.opener.handlers if isinstance(h, urllib.request.ProxyHandler) and h.proxies], [])
+
+    def test_a_pyqt6_that_cannot_load_says_why(self):
+        """Complete review 2026-10-30: PyQt6 installed but missing a system library was reported as "needs PyQt6: pip
+        install", and the library was never named."""
+        import builtins
+        real = builtins.__import__
+
+        def fake(name, *a, **kw):
+            if name == "PyQt6.QtWidgets":
+                raise ImportError("libEGL.so.1: cannot open shared object file")
+            return real(name, *a, **kw)
+        err = io.StringIO()
+        with unittest.mock.patch("builtins.__import__", fake), contextlib.redirect_stderr(err):
+            self.assertEqual(W.main(["--url", "http://127.0.0.1:9"]), 2)
+        self.assertIn("libEGL.so.1", err.getvalue())
+        self.assertNotIn("pip install", err.getvalue())
+
     def test_client(self):
         op = FakeOpener()
         c = W.Client("http://127.0.0.1:8025/", opener=op)

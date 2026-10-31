@@ -198,6 +198,11 @@ t("Plot Route: 'another ship: type its range' sends no ship, said so (batch 6)",
        s.value = ""; const a = hwyBody(); s.value = "7"; const b = hwyBody(); s.innerHTML = was;
        return [Object.prototype.hasOwnProperty.call(a, "ship_id") && a.ship_id === null, b.ship_id]; })()`, [true, 7]);
 });
+t("Overlay pill: on the tablet 'behind' is never 'behind this page' (batch 7)", () => {
+  const o = `{pill: {state: "wait", code: "behind", why: "Elite is not the active window"}}`;
+  eq(`[ovPillState(${o}, ovPillFocus(true, true)).level, ovPillState(${o}, ovPillFocus(false, true)).why, ovPillState(${o}, ovPillFocus(false, false)).level]`,
+     ["bad", "Elite is behind this page", "bad"]);
+});
 const later = [];   // asynchronous checks, awaited before the summary
 later.push(["Log: rows not yet final are asked again; with 'not sent', rows that went drop off (batch 5)", async () => {
   ev(`window.__aj = apiJson; window.__rl = renderLog; renderLog = () => {}; view = "log"; lUnsent.checked = true;

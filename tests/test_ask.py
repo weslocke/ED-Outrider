@@ -248,6 +248,17 @@ class Phrases(unittest.TestCase):
             return dict(await fake_get()(path, params), target_body="Jameson Memorial")
         self.assertEqual(asyncio.run(ask.fixed_answer("this_body", unknown)), "Targeted: Jameson Memorial: nothing known about it yet.")
 
+        # complete review 2026-10-30: a star said by its class letter: "an M", "an F", "a K" (it said "a M")
+        def star(kind):
+            async def get(path, params):
+                d = await fake_get()(path, params)
+                if path == "/api/body":
+                    d["row"].update(subtype=kind, landable=False, terraformable=False)
+                return dict(d, on_body="A 1") if path == "/api/status" else d
+            return asyncio.run(ask.fixed_answer("this_body", get)).split(".")[0]
+        self.assertEqual([star(k) for k in ("M (Red dwarf) Star", "F (White) Star", "K (Yellow-Orange) Star", "Neutron Star")],
+                         ["A 1, an M (Red dwarf) Star", "A 1, an F (White) Star", "A 1, a K (Yellow-Orange) Star", "A 1, a neutron star"])
+
     def test_left_behind(self):
         """S14: the nearest one or two systems with work over the server's thresholds (body, bio), worth "up to"."""
         left = {"systems": [
@@ -577,7 +588,10 @@ class VoiceBatchH(unittest.TestCase):
                  "bookmark this system quiet ringed water world": "bookmark_here", "remove the bookmark": "bookmark_remove",
                  "show nearby": "show_page", "Vespa, open my firsts": "show_page", "back to now": "show_page",
                  "show me the nearest station": "nearest_dock", "show me something nice": None,
-                 "jump range": "fuel", "how far can i jump": "fuel"}
+                 "jump range": "fuel", "how far can i jump": "fuel",
+                 # complete review 2026-10-30: a page whose words are also next_jump's
+                 "show the highway": "show_page", "open plot route": "show_page", "go to the highway": "show_page",
+                 "how many jumps left on the highway": "next_jump", "next stop on the route": "next_jump"}
         for text, want in cases.items():
             self.assertEqual(ask.match(text, ph), want, text)
         self.assertEqual((ask.page_named("open my firsts"), ask.page_named("show the galaxy map"), ask.page_named("open sesame")),
@@ -604,6 +618,17 @@ class VoiceBatchH(unittest.TestCase):
         self.assertEqual(ask.route_words(r), "Next on the route plotted in the game: Hop A, 20.0 light years, 2 jumps to Far End.")
         self.assertEqual(ask.route_words(call()), "No route plotted.")
         self.assertEqual(ask.route_words(call(highway=dict(hw, complete=True))), "The route is complete, and no other is plotted.")
+        # complete review 2026-10-30: a survey route at its last stop (no next) hid the active Highway; alone, it is said
+        # as its last stop
+        last = dict(sv, next=None, index=8, left_here=3)
+        r = call(highway=hw, survey=last)
+        self.assertEqual((r["kind"], r["next"]["system"]), ("highway", "Neu"))
+        self.assertEqual(ask.route_words(call(survey=last)), "You are at the last stop of your Road to Riches route; 3 bodies left here.")
+        # the game's route while NavRoute.json is not written (route_minimal): what the journal said
+        r = call(route={"minimal": True, "hops": [], "jumps_left": 7, "destination": "Colonia", "next": "Hop 1"})
+        self.assertEqual(ask.route_words(r), "Next on the route plotted in the game: Hop 1, 7 jumps to Colonia.")
+        r = call(route={"minimal": True, "hops": [], "jumps_left": 7, "destination": "Colonia"})
+        self.assertEqual(ask.route_words(r), "7 jumps left to Colonia on the route plotted in the game.")
 
     def test_where_am_i_and_the_range(self):
         async def status(name, args, get, rows):
@@ -613,6 +638,12 @@ class VoiceBatchH(unittest.TestCase):
             self.assertEqual(asyncio.run(ask.fixed_answer("where_am_i", None)), "Drojau LL-O b26-3, in the Inner Orion Spur, on B 3.")
             self.assertEqual(asyncio.run(ask.fixed_answer("fuel", None)),
                              "Fuel at 50 percent, about 4 jumps at max range, range 58.0 light years, 232 supercharged.")
+
+        # complete review 2026-10-30: "in the Ryker's Hope", "in the Izanami"
+        async def rykers(name, args, get, rows):
+            return {"system": "Sol", "region": "Ryker's Hope"}
+        with unittest.mock.patch.object(ask.tools, "call", rykers):
+            self.assertEqual(asyncio.run(ask.fixed_answer("where_am_i", None)), "Sol, in Ryker's Hope.")
 
     def test_bookmark_by_voice(self):
         self.j.pos = {"id64": 7, "name": "Sys", "x": 1.0, "y": 2.0, "z": 3.0}

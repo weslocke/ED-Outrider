@@ -105,8 +105,11 @@ class RichesRows(unittest.TestCase):
     def test_text(self):
         rows = riches.riches_rows(RESULT)
         left = riches.todo(rows[0]["bodies"], set(), set(), True)
+        # complete review 2026-10-30: "an earth-like world" (it said "a"); with the map counted, scan and map are said
         self.assertEqual(riches.riches_text(rows, 0, left),
-                         "Two bodies here: the best is a earth-like world, about 1.2 million credits, 500 light seconds out.")
+                         "Two bodies here: the best is an earth-like world, about 1.2 million credits, 500 light seconds out.")
+        self.assertEqual(riches.riches_text(rows, 0, left, mapping=True),
+                         "Two bodies here: the best is an earth-like world, about 4.2 million credits, 500 light seconds out.")
         self.assertEqual(riches.riches_text(rows, 1, riches.todo(rows[1]["bodies"], set(), set(), True)),
                          "One body here: the best is a high metal content world, about 450 thousand credits, 300 light seconds out.")
         self.assertEqual(riches.riches_text(rows, 0, []), "Nothing left to do in Alpha Rich. Next stop: Beta Rich.")

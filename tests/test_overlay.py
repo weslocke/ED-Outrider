@@ -853,6 +853,10 @@ class NowPanel(unittest.TestCase):
         self.assertIn("➜ A 3 · ~30 s · worth it · 1.9M/min", heading)
         self.assertIn("➜ A 2 · nothing to do here", texts(O.now_panel(dict(self.INFO, destination="A 2"), pal)))
         self.assertIn("Next: ➜ bio on B 2: Fonticulua", texts(O.now_panel(dict(self.INFO, destination="B 2"), pal)))   # it is Next
+        # complete review 2026-10-30: under a rescan the Next row is the rescan, so the target keeps its own line
+        under = texts(O.now_panel(dict(self.INFO, destination="B 2", leaving=dict(self.INFO["leaving"], rescan=lost["rescan"])), pal))
+        self.assertTrue(any(t.startswith("Next: rescan") for t in under), under)
+        self.assertTrue(any(t.startswith("➜ B 2") for t in under), under)
 
     def test_on_a_body(self):
         pal = O.palette()
@@ -1430,6 +1434,19 @@ class Server(unittest.TestCase):
         self.assertEqual(self.state.overlay_detail(77), {"n": 1})   # cached
         self.state.bases[77] = {"records": [{"name": "A 1"}]}       # replaced, same status
         self.assertEqual(self.state.overlay_detail(77), {"n": 2})
+        # complete review 2026-10-30: a system outside Nearby's sphere (not in bases): Here's on-demand fetch fills the
+        # Spansh cache only; the overlay kept the bodyless detail built at the arrival
+        import asyncio
+        import types
+
+        async def full_records(*a, **kw):
+            return None
+        self.state.spansh = types.SimpleNamespace(cached=lambda i: (None, None), full_records=full_records, fetched_age=lambda i: None)
+        self.state.locate = lambda i: ("Far", 1.0, 2.0, 3.0)
+        self.assertEqual(self.state.overlay_detail(88), {"n": 3})
+        self.assertEqual(self.state.overlay_detail(88), {"n": 3})   # cached
+        asyncio.run(self.state.ensure_records(88))
+        self.assertEqual(self.state.overlay_detail(88), {"n": 4})
 
     def test_analysis_only_panels(self):
         """D2a: a panel marked analysis only shows in your ship only with the HUD in analysis mode; in the SRV, on foot,
@@ -1507,6 +1524,14 @@ class Server(unittest.TestCase):
         self.state.overlay_cfg["hide_docked"] = list(O.HIDE_DOCKED_DEFAULT)
         st["gui_focus"] = ed_outrider.OVERLAY_GALAXY_MAP                             # the galaxy map: the Target panel shows
         self.assertEqual(shown(), ["body", "alerts"])
+        # complete review 2026-10-30: over the map the boxes hold too: Alerts ticked docked or on foot hides there
+        self.state.overlay_cfg["hide_docked"] = list(O.HIDE_DOCKED_DEFAULT) + ["alerts"]
+        self.assertEqual(shown(), ["body"])
+        self.state.overlay_cfg.update(hide_docked=[], hide_on_foot=["alerts", "body"])
+        st.update(flags=0, flags2=ed_outrider.FLAG2_ON_FOOT)                        # on foot, the galaxy map open
+        self.assertEqual(shown(), [])
+        self.state.overlay_cfg.update(hide_docked=list(O.HIDE_DOCKED_DEFAULT), hide_on_foot=[])
+        st.update(flags=ship | ed_outrider.FLAG_DOCKED, flags2=0)
         st.update(gui_focus=0, flags=ship | ed_outrider.FLAG_SUPERCRUISE)            # the system panel: hidden docked only
         self.state.overlay_cfg.update(system_panel=True)
         self.assertEqual(shown()[0], "system")

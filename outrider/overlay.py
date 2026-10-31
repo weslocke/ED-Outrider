@@ -1477,9 +1477,11 @@ def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, h
         l = info.get("leaving")
         plan = plan_items(l, highlight, bio_min, codex, info.get("plan_first")) if info.get("detail_ready") else []
         dest = info.get("destination")
-        dest_next = bool(dest and plan and plan[0]["body"] == dest)
         right = (f"{credits(info['value_now'])} here", "muted") if info.get("value_now") else None
         rescan = ((l or {}).get("rescan") or {}).get("bodies") if info.get("detail_ready") else None
+        # the target is "next" only when the Next row shows plan[0]: under a rescan it does not, and the target's own
+        # line is needed (complete review 2026-10-30: it vanished)
+        dest_next = bool(dest and plan and not rescan and plan[0]["body"] == dest)
         if rescan:   # S9-S1: the rescan trip's reason first (the page's Next line)
             n, value = len(rescan), l["rescan"].get("value")
             row = [("Next: ", "warn"), (f"rescan {n} lost scan{'' if n == 1 else 's'} in the FSS", "warn")]

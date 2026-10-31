@@ -363,7 +363,18 @@ def _newer(a, b):
 async def route_next(get, args, rows):
     p = await get("/api/nearby")
     hw, sv = p.get("highway"), p.get("survey")
-    pick = _newer(hw, sv)
+    # a route at its last stop has no next: the other one is followed then (complete review 2026-10-30: a survey route
+    # at its end answered "No route plotted." over an active Highway); with none, said as at its last stop
+    live = [x for x in (hw, sv) if x and not x.get("complete")]
+    pick = _newer(*[x if x and x.get("next") else None for x in (hw, sv)])
+    end = None if pick is not None else max(live, key=lambda x: x.get("created_ts") or "") if live else None
+    if end is not None and not end.get("off_route"):
+        kind = "highway" if end is hw else "survey"
+        what = "Neutron Highway" if kind == "highway" else riches.survey_kind(end.get("kind")).what
+        return {"kind": kind, "route": what, "at_end": True, "destination": end.get("destination"), "next": None,
+                "left_here": end.get("left_here")}
+    if pick is None:
+        pick = _newer(hw, sv)
     if pick is not None:
         nx = pick.get("next") or {}
         kind = "highway" if pick is hw else "survey"
@@ -386,6 +397,10 @@ async def route_next(get, args, rows):
                 "complete_route": bool(done)}
     gr = p.get("route") or {}
     hops = gr.get("hops") or []
+    if not hops and gr.get("minimal"):   # plotted in the game, NavRoute.json not written: what the journal says
+        return {"kind": "game_route", "route": "the route plotted in the game", "destination": gr.get("destination"),
+                "next": {"system": gr.get("next")} if gr.get("next") else None, "jumps_left": gr.get("jumps_left"),
+                "minimal": True, "complete_route": bool(done)}
     if hops:
         return {"kind": "game_route", "route": "the route plotted in the game", "destination": hops[-1].get("name"),
                 "next": {"system": hops[0].get("name"), "distance_ly": hops[0].get("ly"), "scoopable": hops[0].get("scoopable")},

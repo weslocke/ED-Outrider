@@ -149,9 +149,11 @@ def wheeled(entry, key, notches):
 
 
 def wheeled_all(pct, notches):
-    """All panels' size (%) after `notches` Ctrl + wheel steps, a whole number within PANEL_SCALE_LIMITS."""
+    """All panels' size (%) after `notches` Ctrl + wheel steps, within PANEL_SCALE_LIMITS, kept unrounded while the
+    wheel turns (a high-resolution wheel's tenth of a notch was rounded away each time: stuck, or overshooting; complete
+    review 2026-10-30); rounded only when sent (round())."""
     lo, hi = O.PANEL_SCALE_LIMITS
-    return int(min(hi, max(lo, round(pct + ALL_STEP * notches))))
+    return min(hi, max(lo, pct + ALL_STEP * notches))
 
 
 WS_EX_LAYERED, WS_EX_TRANSPARENT = 0x80000, 0x20   # Windows' extended window styles (click-through: both)
@@ -172,6 +174,13 @@ def win_exstyle(style, through):
 # working with one window over the whole game, and this was not tried there (with nothing to draw it hides there too).
 FIT_WINDOW = sys.platform.startswith("linux")
 PANEL_PAD = 6   # px around the panels in the window's own rectangle, so a panel's edge is drawn whole
+
+
+def game_resized(game, painted):
+    """Whether a panel window was last drawn for another size of the game window (a windowed game made larger, moved
+    to a bigger screen): its panel is laid out again for the new one (Linux's panel windows stayed the old size and
+    place until the next payload: complete review 2026-10-30). Never drawn yet: no."""
+    return bool(game) and painted is not None and tuple(painted) != tuple(game[2:])
 
 
 def window_rect(geoms, win_w, win_h, pad=PANEL_PAD):
@@ -289,7 +298,9 @@ class Client:
 
     def __init__(self, url, opener=None):
         self.url = url.rstrip("/")
-        self.opener = opener or urllib.request.build_opener()
+        # this PC's own Outrider: never through an http_proxy from the environment (complete review 2026-10-30: every
+        # request went to the proxy, and nothing was ever drawn)
+        self.opener = opener or urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
     def _request(self, method, path, body=None):
         data = json.dumps(body).encode() if body is not None else None
@@ -649,6 +660,9 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
             if not self.game:
                 return
             x, y, w, h = self.game
+            if game_resized(self.game, getattr(self, "painted", None)):
+                self.update()   # laid out for the old size: drawn again, then placed again (complete review 2026-10-30)
+                return
             ox, oy, ww, wh = window_rect(self.geoms, w, h)
             if self.off != (ox, oy):
                 self.off = (ox, oy)
@@ -661,6 +675,7 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
             p = QPainter(self)
             try:
                 gw, gh = self.game[2:] if self.game else (self.width(), self.height())
+                self.painted = (gw, gh)
                 p.translate(-self.off[0], -self.off[1])   # the panel laid out in the game window, this window a part of it
                 self.geoms = paint(p, dict(feed.data or {}, panels=[panel] if panel else []), gw, gh)
             finally:
@@ -708,7 +723,7 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
             if change:
                 self.post(client.set_layout, change)
             if self.all_pct is not None:
-                self.post(client.set, {"panel_scale": self.all_pct})
+                self.post(client.set, {"panel_scale": round(self.all_pct)})
 
         def entry(self, pid):
             lay = (feed.data or {}).get("layout") or O.clean_layout(None)
@@ -811,7 +826,7 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
                 self.seq = feed.seq
                 if self.saved_at is not None and self.seq > self.saved_at and not self.drag and not self.dirty:
                     self.override, self.saved_at = {}, None   # Outrider has the edits now
-                    if (feed.data or {}).get("panel_scale") == self.all_pct:
+                    if (feed.data or {}).get("panel_scale") == round(self.all_pct):
                         self.all_pct = None
                 if not self.arranging():
                     self.override, self.drag, self.all_pct = {}, None, None
@@ -864,8 +879,15 @@ def main(argv=None):
         os.environ["GDK_BACKEND"] = "x11"
     try:
         from PyQt6.QtWidgets import QApplication
-    except ImportError:
-        print("The overlay needs PyQt6: pip install -r requirements-overlay.txt (in Outrider's .venv)", file=sys.stderr)
+    except ModuleNotFoundError as e:
+        if e.name and e.name.startswith("PyQt6"):
+            print("The overlay needs PyQt6: pip install -r requirements-overlay.txt (in Outrider's .venv)", file=sys.stderr)
+            return 2
+        print(f"The overlay's PyQt6 could not load ({e}): a library it needs is missing", file=sys.stderr)
+        return 2
+    except ImportError as e:   # PyQt6 is there but cannot load (a system library: libEGL, a DLL): its own words
+        print(f"The overlay's PyQt6 is installed but could not load ({e}): a system library it needs is missing "
+              "(Linux: libEGL1 / libxkbcommon from your distribution; Windows: reinstall PyQt6)", file=sys.stderr)
         return 2
     if a.render:
         try:

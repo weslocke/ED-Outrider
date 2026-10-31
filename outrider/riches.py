@@ -273,22 +273,24 @@ def next_stop(rows, i, skip=0):
     return f"Next stop: {nxt}" + (f", skipping {skip} system{'' if skip == 1 else 's'} you've finished." if skip else ".")
 
 
-def riches_text(rows, i, left, skip=0, complete="Road to Riches complete."):
+def riches_text(rows, i, left, skip=0, complete="Road to Riches complete.", mapping=False):
     """The line said on arriving at route row i: how many bodies are worth the stop and what they are, then where
     next. `left` is the system's bodies still to do (todo() output, not done); `skip` the finished rows after i the
     next stop passes over (S12); `complete` the kind's end. Plain words (the page's personality lines can replace them
-    later). A sweep's stops have no bodies: only where next."""
+    later). A sweep's stops have no bodies: only where next. `mapping`: the route counts the map (survey_mapping), so
+    the body's worth is scan and map, as the tab shows (complete review 2026-10-30: the scan alone was said)."""
     here = rows[i]
     last = i + skip >= len(rows) - 1
     if not left:
         return (f"Nothing left to do in {here['system']}. " if here["bodies"] else "") + (
             complete if last else next_stop(rows, i, skip))
     n = len(left)
-    best = max(left, key=lambda b: b.get("scan") or 0)
-    what = best.get("subtype") or best.get("type") or "body"
-    val = money(best.get("scan"))
+    best = max(left, key=lambda b: body_value(b, mapping) or 0)
+    what = (best.get("subtype") or best.get("type") or "body").lower()
+    val = money(body_value(best, mapping))
     text = f"{number_words(n).capitalize()} {'body' if n == 1 else 'bodies'} here" if n < 11 else f"{n} bodies here"
-    text += f": the best is a {what.lower()}" + (f", about {val} credits" if val else "")
+    # "an earth-like world", "an icy body" (complete review 2026-10-30: "a earth-like world")
+    text += f": the best is {'an' if what[:1] in 'aeiou' else 'a'} {what}" + (f", about {val} credits" if val else "")
     if best.get("ls") is not None:
         text += f", {round(best['ls']):d} light seconds out"
     return text + "."
@@ -335,12 +337,15 @@ def exo_text(rows, i, left, skip=0, complete="Exomastery complete."):
     return text + (f", about {val} credits." if val else ".")
 
 
-def arrival_text(kind, rows, i, left, skip=0):
-    """The line said on arriving at route row i of a route of this kind (riches_text, exo_text, cargo.trade_text)."""
+def arrival_text(kind, rows, i, left, skip=0, mapping=False):
+    """The line said on arriving at route row i of a route of this kind (riches_text, exo_text, cargo.trade_text);
+    `mapping` as the route counts it (survey_mapping)."""
     k = survey_kind(kind)
     if k.work == "trade":
         return trade_text(rows, i, left)
-    return (exo_text if k.work == "species" else riches_text)(rows, i, left, skip, k.complete)
+    if k.work == "species":
+        return exo_text(rows, i, left, skip, k.complete)
+    return riches_text(rows, i, left, skip, k.complete, mapping=mapping)
 
 
 def done_text(kind, rows, i, skip=0):

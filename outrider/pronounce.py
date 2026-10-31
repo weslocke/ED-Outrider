@@ -290,11 +290,16 @@ def english_words():
     English says it, its second word by rule)."""
     global _english
     if _english is None:
-        try:
-            with open(SPEECH, encoding="utf-8") as f:
-                _english = {w.lower() for w in re.findall(r"[A-Za-z]{2,}", f.read())}
-        except OSError:
-            _english = set()
+        _english = set()
+        # the shipped personality files too (complete review 2026-10-30: Vulcan's "Selecting {system}" read "Selecting"
+        # as a sector's first word, said seh-LEK-ting)
+        import glob
+        for path in [SPEECH] + sorted(glob.glob(os.path.join(os.path.dirname(SPEECH), "personalities", "*.json"))):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    _english |= {w.lower() for w in re.findall(r"[A-Za-z]{2,}", f.read())}
+            except OSError:
+                pass
     return _english
 
 

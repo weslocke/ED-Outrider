@@ -281,6 +281,22 @@ class Bridge(unittest.TestCase):
         self.assertIn("nearest", ok)
         self.assertEqual(away.get("code"), "signin_required")
 
+    def test_a_name_the_server_refuses(self):
+        """Complete review 2026-10-30: [mcp] url by a name not in [server] allowed_hosts: the server answers 403 with
+        what to add, and the bridge said "Outrider isn't running"."""
+        from aiohttp.test_utils import TestServer
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        state = ed_outrider.State(db, ed_outrider.Journals(db), None, 25)
+
+        async def go():
+            async with TestServer(ed_outrider.make_app(state, {"nas.local:9999"})) as srv:
+                url = str(srv.make_url("")).rstrip("/").replace("127.0.0.1", "localhost")   # a name it does not answer
+                return await tools.call("nearest_unvisited", {}, mcp.http_get(url))
+        out = asyncio.run(go())
+        self.assertIn("HTTP 403", out["error"])
+        self.assertNotIn("isn't running", out["error"])
+
     def test_a_server_elsewhere_with_a_password(self):
         """An Outrider on another computer (Docker): nothing is loopback, so the bridge signs in with [mcp] password
         and sends the session as a Bearer token; without one it says what to set, with a wrong one that it was refused."""

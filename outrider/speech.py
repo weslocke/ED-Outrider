@@ -899,9 +899,15 @@ def write_skeleton(label, profane=False, names=None, folder=None):
     (path, None) or (None, why not)."""
     sid, doc = skeleton(label, profane, names)
     taken = shipped_style_ids()
-    if sid in taken:   # bug check #10: merge_personalities leaves out a file taking a base or shipped personality's id
-        return None, (f"{label!r} is the id of {taken[sid]}: Outrider would leave your file out. Pick another name "
-                      "(or copy that personality's own file into data/personalities/ to change it)")
+    # bug check #10: a file taking a base personality's id is left out; one taking a shipped personality's replaces it,
+    # so an empty skeleton there would silence it (complete review 2026-10-30: it said "left out" for both)
+    if sid in taken and taken[sid] == "a base personality":
+        return None, (f"{label!r} is the id of {taken[sid]}: Outrider would leave your file out. Pick another name")
+    if sid in taken:
+        shipped = taken[sid].rsplit(" ", 1)[-1]
+        return None, (f"{label!r} is the id of {taken[sid]}: an empty skeleton under it would replace that personality and "
+                      f"silence its lines. Pick another name, or copy resources/personalities/{shipped} into "
+                      "data/personalities/ to change it")
     folder = folder or os.path.join(DATA_DIR, "personalities")
     path = os.path.join(folder, f"{sid}.json")
     if os.path.exists(path):

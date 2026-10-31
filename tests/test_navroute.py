@@ -51,7 +51,8 @@ class LateNavRoute(unittest.TestCase):
         self.assertEqual(self.j.navroute_waiting(), PLOT)
         self.assertIsNone(ed_outrider.meta_get(self.db, "route"))
         self.assertEqual(self.state.route_summary(), {"minimal": True, "hops": [], "jumps_left": 2,
-                                                      "destination": "Smojooe SJ-I b23-0", "ts": PLOT})
+                                                      "destination": "Smojooe SJ-I b23-0", "ts": PLOT,
+                                                      "next": "Smojooe BB-B h2"})   # the system targeted: the voice's next
         # the look-ahead (S1, S2), the Map's route and S11's game target see no hops: no fuel window, no last-scoop claim
         self.assertEqual((self.state.navroute_ahead(), self.state.route_ahead()), ([], []))
         self.assertEqual(self.state.game_target()["via"], "destination")

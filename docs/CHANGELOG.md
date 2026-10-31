@@ -2,6 +2,23 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Complete review, batch 7: the in-game overlay and the voice's answers
+- Findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
+  test that fails without it.
+- **The overlay**: a window title not in UTF-8 no longer crashes the overlay window (or auto-target's look for the
+  game); Linux's panel windows follow the game window's new size; on Windows the panels are placed in the game's
+  picture, not over its title bar (untried in game); Ctrl+wheel sizing adds up a high-resolution wheel's tenths; Now
+  keeps the targeted body's line under a rescan; over the galaxy map the Docked and On foot boxes hold; the window's
+  requests to this PC never go through an http_proxy; a PyQt6 that cannot load names the library it misses; the
+  tablet's pill never says "Elite is behind this page"; the overlay's detail follows Here's Spansh lookup; a codex
+  line is not said again on coming back to a system; "bodies still hidden" is not said while the FSS is open again.
+- **The voice**: "show the highway" / "open plot route" switch the tablet's page; "next stop" follows the other route
+  when one is at its last stop (and says so), and the game's route while NavRoute.json is not written; "where am I"
+  says "in Ryker's Hope"; "this body" says "an M star", "a neutron star"; a route's arrival line says "an earth-like
+  world" and, on routes that count mapping, the value with the map; five shipped lines reworded so no article follows
+  a body's name (it was read as a moon letter); Vulcan's "Selecting" is English; `--skeleton` gives a shipped
+  personality's name its true reason; the MCP bridge says a 403 is a refusal (allowed_hosts), not "isn't running".
+
 ## 2026-10-31 · Complete review, batch 6: the server's last mediums and correctness lows
 - Findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
   test that fails without it.

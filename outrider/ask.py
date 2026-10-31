@@ -20,7 +20,7 @@ import time
 
 import outrider
 import outrider.dock as dock
-from outrider.core import iso_ts, ts_seconds
+from outrider.core import iso_ts, region_spoken, ts_seconds
 import outrider.materials as materials
 import outrider.tools as tools
 
@@ -145,6 +145,13 @@ def match_phrase(text, phrases):
     """(command, the ask.json phrase that matched it), or (None, None): S35's "Questions asked" says which phrase."""
     t = WAKE.sub("", norm(text)).strip()
     padded = f" {t} "
+    # "show the highway", "open plot route": a question that starts with a page command and names a page is that page,
+    # whatever command its page's words also are ("highway", "route": next_jump, matched first by the order below;
+    # complete review 2026-10-30, the tablet never switched)
+    if page_named(t) is not None:
+        for p in phrases.get("show_page") or ():
+            if t.startswith(p + " "):
+                return "show_page", p
     for name, ps in phrases.items():
         if name == "show_page" and page_named(t) is None:
             continue   # "show me ..." with no page's name after it is no page switch (S9-S16)
@@ -375,9 +382,11 @@ async def this_body(get, rows):
     if b.get("error"):
         return f"{lead}{name}: nothing known about it yet."
     kind = b.get("type") or "body"
-    if kind[1:2].islower():   # "Rocky body" -> "rocky body"; "K (Yellow-Orange) Star", "Class I gas giant" kept
-        kind = kind[0].lower() + kind[1:]
-    first = f"{lead}{name}, {a_or_an(kind)} {kind}"
+    if kind[1:2].islower():   # "Rocky body" -> "rocky body", "Neutron Star" -> "neutron star"; "Class I gas giant"'s I,
+        kind = " ".join(w.lower() if w[1:].islower() else w for w in kind.split())   # "K (Yellow-Orange) Star" kept
+    # a star said by its class letter: "an M (Red dwarf) Star", "an F" (complete review 2026-10-30: "a M")
+    art = a_or_an_letter(kind) if re.match(r"[A-Z][A-Z0-9]{0,3}\b(?! \w*[a-z])", kind) else a_or_an(kind)
+    first = f"{lead}{name}, {art} {kind}"
     if b.get("landable"):
         first += f", landable at {b['gravity_g']:.2f} g" if b.get("gravity_g") is not None else ", landable"
     if b.get("terraformable"):
@@ -460,7 +469,7 @@ async def fixed_answer(command, get, rows=10, text="", limits=None):
             return "I don't know where you are yet."
         where = [s["system"]]
         if s.get("region"):
-            where.append(f"in the {s['region']}" if not s["region"].lower().startswith("the ") else f"in {s['region']}")
+            where.append(f"in {region_spoken(s['region'])}")   # "in Ryker's Hope", "in the Norma Arm" (complete review 2026-10-30)
         if s.get("on_body"):
             where.append(f"on {s['on_body']}")
         elif s.get("near_body"):
@@ -556,6 +565,12 @@ def route_words(r):
     """S9-S2's answer to "next stop" from route_next: "Next stop on your Road to Riches route: X, 38 light years, 6
     stops left." / the Highway's with its neutron star and refuel / the header's next stop / the game's own route."""
     nx = r.get("next")
+    if r.get("at_end"):   # its last stop, work still there
+        n = r.get("left_here")
+        return f"You are at the last stop of your {r['route']}" + (f"; {n} bod{'y' if n == 1 else 'ies'} left here." if n else ".")
+    if (not nx or not nx.get("system")) and r.get("minimal") and r.get("jumps_left"):   # the game's route, no stars
+        return f"{jumps(r['jumps_left'])} left to {r['destination']} on the route plotted in the game." if r.get("destination") \
+            else f"{jumps(r['jumps_left'])} left on the route plotted in the game."
     if not nx or not nx.get("system"):
         return "The route is complete, and no other is plotted." if r.get("complete_route") else "No route plotted."
     dist = f", {ly(nx['distance_ly'])} light years" if nx.get("distance_ly") is not None else ""

@@ -268,6 +268,18 @@ class Speech(unittest.TestCase):
             self.assertLessEqual(outrider.speech.fills(key) - set(outrider.speech.ALWAYS),
                                  set(outrider.speech.SAMPLES.get(key, {})) | set(outrider.speech.CREW_SAMPLES), key)
 
+    def test_no_shipped_line_puts_an_article_after_a_body(self):
+        """Complete review 2026-10-30: "you left {body} a little early" with B 3: the voice reads "B 3 a" as a moon
+        ("B three ay little early"); a moon letter cannot be told from the article there, so no shipped line has one."""
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        bad = []
+        for path in [os.path.join(root, "resources", "speech.json")] + glob.glob(os.path.join(root, "resources", "personalities", "*.json")):
+            with open(path, encoding="utf-8") as f:
+                bad += [f"{os.path.basename(path)}: {m.group(0)}" for m in re.finditer(r"\{body\} an? [^\"]*", f.read())]
+        self.assertEqual(bad, [])
+
     def test_a_personality_skeleton(self):
         """S9-S17: `python3 -m outrider.speech --skeleton "Sea Dog" --profane` writes every alert to fill in, reads clean,
         is shown 0 % covered, and is never written over an existing file."""
@@ -292,6 +304,12 @@ class Speech(unittest.TestCase):
                 self.assertEqual(outrider.speech.main(["--skeleton", "Vulcan", "--folder", d]), 1)
                 self.assertEqual(outrider.speech.main(["--skeleton", "Business", "--folder", d]), 1)
             self.assertFalse(os.path.exists(os.path.join(d, "vulcan.json")))
+            # complete review 2026-10-30: each with its true reason: a shipped id's file would replace it (silenced)
+            _, why = outrider.speech.write_skeleton("Vulcan", folder=d)
+            self.assertIn("would replace that personality and silence its lines", why)
+            self.assertIn("resources/personalities/vulcan.json", why)
+            _, why = outrider.speech.write_skeleton("Business", folder=d)
+            self.assertIn("would leave your file out", why)
 
     def test_shipped_lines(self):
         # speech.json covers every alert in every personality, and the page asks for exactly those alerts
@@ -539,6 +557,12 @@ class Batch6Voice(unittest.TestCase):
         self.honk("2026-01-01T00:00:10Z", 1, 5)
         self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4")
         self.db.commit()
+        # complete review 2026-10-30: closed and opened again within the 2 s: no close (it was said while scanning,
+        # and the visit's one warning was gone before the real close)
+        for t, focus in ((-10, 9), (-9, 0), (-8.5, 9), (-6, 9)):
+            self.j.status_json = live(focus)
+            self.state.watch_fss(1000 + t)
+        self.assertEqual(self.moments("fss_unfinished"), [])
         for t, focus in ((0, 9), (1, 0), (2, 0)):
             self.j.status_json = live(focus)
             self.state.watch_fss(1000 + t)

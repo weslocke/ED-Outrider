@@ -231,7 +231,7 @@ import outrider.service    # Install as a service (S70): a systemd user unit on 
 import outrider.health     # what kind of failure a call to an outside service met (dns, offline, timeout, http5xx...)
 import outrider.tls        # the one TLS context of every outgoing HTTPS connection: the system store plus certifi's
 import outrider.target_help   # the auto-target steps' cheatsheet page (GET /help/autotarget)
-from outrider.core import iso_ts, ts_seconds   # journal timestamps
+from outrider.core import iso_ts, region_spoken, ts_seconds   # journal timestamps; a region in a sentence
 from outrider.fsd import (   # the frame shift drive's maths: range, fuel per jump, the fuel model, fleet figures
     FSD_RANGE_MODS, GUARDIAN_BOOST, conservative_optimal_mass, conservative_range, fleet_figures, fleet_range, fsd_range,
     FUEL_RUN_MAX_HOPS, fsd_supercharge, fuel_model, fuel_run, fuel_window, hop_fuel, jumps_left, max_fuel_for_jump,
@@ -3581,11 +3581,11 @@ class Journals:
             elif not left and i == len(rows) - 1:
                 rc.update(done_ts=ts, said_done=i, done_id64=id64)
                 say = ("complete", trade_done_text(rows, i, (rc.get("trade") or {}).get(str(i))) if trade
-                       else arrival_text(kind, rows, i, left), 0)
+                       else arrival_text(kind, rows, i, left, mapping=survey_mapping(kind, rc.get("options"))), 0)
             else:
                 if not left:
                     rc["said_done"] = i   # nothing to do here: no "all done" to say later
-                words = arrival_text(kind, rows, i, left, len(skipped))
+                words = arrival_text(kind, rows, i, left, len(skipped), mapping=survey_mapping(kind, rc.get("options")))
                 say = ("back" if back else "next", ("Back on the route. " if back else "") + words, len(left))
         meta_set(self.db, "riches", rc)
         if say and live_event(ts):
@@ -6231,17 +6231,6 @@ def materials_stale(materials, commander):
     return bool(login and snap and ts_seconds(login) - ts_seconds(snap) > 120)
 
 
-def region_spoken(name):
-    """A region's name as said in a sentence: "the Norma Arm", "the Veils", but "Ryker's Hope", "Izanami"."""
-    if not name:
-        return name
-    if name.startswith("The "):
-        return "the " + name[4:]
-    if "'" in name or " " not in name or name == "Mare Somnia":
-        return name
-    return "the " + name
-
-
 def region_codex_count(db, region, number):
     """Species logged in your codex in other regions, not yet in this one, that the bio rules let grow here (a
     species the rules do not know is left out): what a crossing into `region` could add. 0 when none or unknown."""
@@ -8527,6 +8516,7 @@ class State:
         self.shots_last = None     # the last conversion: {ok, ts, full, subject, error} (Settings and the card)
         self._sights = (None, [], {})      # (meta sights' checked, entries, by id64): read again when a check stored new ones
         self.reported_seen = None  # the overlay_detail key of the last look that found no life
+        self.records_version = 0   # bumped by each on-demand Spansh records fetch (ensure_records): in the detail keys
         self.route_spansh = {}     # id64 -> (when, has a record): Spansh asked about the game's route hops (in memory only)
         self.route_task = None     # that ask (one at a time)
         self.route_retry_at = 0.0  # time.time() before which a failed ask is not repeated
@@ -10268,7 +10258,7 @@ class State:
         """system_detail for the overlay's panels, kept until your scans or what is known of the system change (the
         window asks once a second). The Spansh record itself is part of the key (by identity: a refresh or the full dump
         after the search's brief one replaces it, often with the same status; review 2026-10-20 L11)."""
-        key = (id64, self.scan_version, (self.systems.get(id64) or {}).get("status"))
+        key = (id64, self.scan_version, (self.systems.get(id64) or {}).get("status"), self.records_version)
         base = self.bases.get(id64)
         cached = getattr(self, "_overlay_detail", None)
         if cached and cached[0] == key and cached[2] is base:
@@ -10436,7 +10426,14 @@ class State:
             # (S26); never analysis-only
             p = self.overlay_target_panel(st, pos, now, pal, size["body"], galaxy=True) if cfg.get("body_panel") and pos else None
             a = outrider.overlay.alerts_panel(self.overlay_alerts, pal, size["alerts"], now) if cfg.get("alerts_panel") else None
-            return [x for x in (p, a) if x]
+            out = [x for x in (p, a) if x]
+            # the Docked and On foot boxes hold here too (complete review 2026-10-30: the alerts showed over the map
+            # docked or on foot though ticked hidden); the Target panel keeps its docked exception (D1)
+            if flags & FLAG_DOCKED or flags2 & ON_FOOT_DOCKED:
+                out = [x for x in out if x["id"] == "body" or x["id"] not in set(cfg.get("hide_docked") or ())]
+            if flags2 & FLAG2_ON_FOOT:
+                out = [x for x in out if x["id"] not in set(cfg.get("hide_on_foot") or ())]
+            return out
         # the system panel: in supercruise in the system you are in (for system_seconds after arriving, when set)
         if cfg.get("system_panel") and pos and flags & FLAG_SUPERCRUISE:
             try:
@@ -10790,7 +10787,11 @@ class State:
         one `codex_held` moment, judged again then (none when nothing is new any more); a system you left forgets its
         held lines and its decisions."""
         here = (self.journals.pos or {}).get("id64")
-        for key in [k for k in self.codex_decided if k[0] != here]:
+        # a decision is kept while its codex_signals moment is still among the moments: that moment is worked out
+        # again at each scan_version (every arrival), and with no decision it was held and said a second time on coming
+        # back (complete review 2026-10-30)
+        shown = {(m.get("system"), m.get("body_id")) for m in self.journals.moments if m.get("kind") == "codex_signals"}
+        for key in [k for k in self.codex_decided if k[0] != here and k not in shown]:
             del self.codex_decided[key]
         for sid in list(self.codex_deferred):
             if sid != here:
@@ -11387,7 +11388,8 @@ class State:
         if not pos or not hs or class_scoopable(hs):
             return None
         id64 = pos["id64"]
-        key = (id64, self.scan_version, id64 in self.bases, (self.systems.get(id64) or {}).get("status"))
+        key = (id64, self.scan_version, id64 in self.bases, (self.systems.get(id64) or {}).get("status"),
+               self.records_version)
         if getattr(self, "_here_scoop", (None,))[0] == key:
             return self._here_scoop[1]
         mr = self.merged_records(id64)
@@ -13554,6 +13556,9 @@ class State:
                                                         "body_count": (base or {}).get("body_count"),
                                                         "records": (base or {}).get("records") or []},
                                            interactive=True)
+            # what was worked out from the cache before it is stale (the overlay's detail, Now's nearest scoopable star,
+            # the reported-life check: complete review 2026-10-30, they kept the bodyless detail of the arrival)
+            self.records_version = self.records_version + 1
         except Exception as e:
             # counted: after DUMP_MAX_TRIES the system is no longer "partial", and the page stops asking every 4 s
             self.dump_tries[id64] = self.dump_tries.get(id64, 0) + 1
@@ -15465,6 +15470,8 @@ class State:
         prev, self._fss_focus = self._fss_focus, focus
         if prev == 9 and focus is not None and focus != 9 and pos:
             self._fss_closed = (pos["id64"], pos["ts"], now)
+        elif focus == 9:   # open again before the close was judged: not a close (complete review 2026-10-30: said while
+            self._fss_closed = None   # scanning, and the visit's one warning used up before the real close)
         c = self._fss_closed
         if not c or now - c[2] < FSS_SETTLE:
             return
@@ -17500,7 +17507,8 @@ class State:
         dest = (self.journals.status_json or {}).get("destination")
         end = dest.get("Name") if isinstance(dest, dict) and dest.get("System") and dest["System"] != pos["id64"] \
             and isinstance(dest.get("Name"), str) and not dest["Name"].startswith("$") else None
-        return {"minimal": True, "hops": [], "jumps_left": left, "destination": end or t.get("name"), "ts": wait}
+        return {"minimal": True, "hops": [], "jumps_left": left, "destination": end or t.get("name"), "ts": wait,
+                "next": t.get("name")}   # the system targeted now: the route's next (the voice's "next stop")
 
     def next_stop_summary(self):
         ns, pos = meta_get(self.db, "next_stop"), self.journals.pos
@@ -20989,7 +20997,8 @@ class State:
         if now - self.reported_tried.get(id64, -REPORTED_RETRY_S) < REPORTED_RETRY_S:
             return
         # what overlay_detail is cached on: nothing new to look at since the last "no life here" (every tick otherwise)
-        key = (id64, self.scan_version, id64 in self.bases, (self.systems.get(id64) or {}).get("status"))
+        key = (id64, self.scan_version, id64 in self.bases, (self.systems.get(id64) or {}).get("status"),
+               self.records_version)
         if key == self.reported_seen:
             return
         row = self.db.execute("SELECT fetched_ts FROM spansh_reported WHERE id64=?", (id64,)).fetchone()

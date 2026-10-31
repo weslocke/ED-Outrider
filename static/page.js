@@ -1504,7 +1504,7 @@ function renderNow() {
     const w = l ? worthLeavingFor(l) : null;
     const plan = w && !w.clean ? planItems(l) : [];
     const dest = hd && data.destination ? hd.bodies.find(b => b.body_id === data.destination.body_id) : null;
-    const destIsNext = !!(dest && plan.length && plan[0].body === dest.name);
+    const destIsNext = !!(dest && !(w && w.rescan) && plan.length && plan[0].body === dest.name);   // under a rescan: its own line
     lines.push(`<div class="now-line">${w && w.rescan ? `<span class="warnc">Next: ${rescanHtml(w.rescan)}${plan.length ? ` <span class="unk">· ${plan.length} more</span>` : ""}</span>`
       : plan.length ? `<span class="warnc">Next: ${destIsNext ? `<span title="the body you have targeted">➜</span> ` : ""}${planText(plan[0], true)}${plan[0].sec != null ? ` <span class="unk">${scText(plan[0].sec)}</span>` : ""}` +
       `${plan.length > 1 ? ` <span class="unk">· ${plan.length - 1} more</span>` : ""}</span>`
@@ -13687,7 +13687,7 @@ let overlayDrawn = "", overlayNote = "";
 function overlayStatusHtml(o) {
   const r = o.runner;
   // the window runs: what the header's pill says (S8), in words
-  const p = r && ["running", "off"].includes(r.state) ? ovPillState(o, true) : null;
+  const p = r && ["running", "off"].includes(r.state) ? ovPillState(o, ovPillFocus(TABLET, true)) : null;
   if (p) return `<span class="${{ok: "ok", wait: "unk", bad: "bad"}[p.level]}">${p.text}: ${esc(p.why)}</span>`;
   if (o.window) return `<span class="ok">the overlay window is drawing</span>`;
   if (!r) return `<span class="unk">the overlay needs Outrider on the game PC</span>`;
@@ -15066,10 +15066,14 @@ function ovPillState(o, focused) {
   const [mark, cls] = OV_PILL[level];
   return {text: `overlay ${mark}`, cls, why, level};
 }
+// whether "behind" means behind this page: only a page on the game PC can be what covers the game. A tablet is another
+// device: its own focus says nothing of the PC's windows (complete review 2026-10-30: it said "Elite is behind this page"
+// in amber while another PC window covered the game)
+const ovPillFocus = (tablet, focused) => !tablet && !!focused;
 let ovPillNow = null;   // what the pill says now (the tablet's line adds it)
 function drawOvPill() {
   const el = document.getElementById("ovPill"); if (!el) return;
-  const p = ovPillNow = data && data.game_pc !== false ? ovPillState(data.overlay, document.hasFocus()) : null;
+  const p = ovPillNow = data && data.game_pc !== false ? ovPillState(data.overlay, ovPillFocus(TABLET, document.hasFocus())) : null;
   el.hidden = !p;
   if (!p) return;
   if (el.textContent !== p.text) el.textContent = p.text;

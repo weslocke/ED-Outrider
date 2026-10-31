@@ -199,13 +199,13 @@ class X11Tracker:
         if self._last_state and now - self._last_refresh < self._min_interval:
             return self._last_state
         try:
-            result = self._run(["wmctrl", "-lGx"], check=False, capture_output=True, text=True, timeout=1.0)
+            result = self._run(["wmctrl", "-lGx"], check=False, capture_output=True, text=True, errors="replace", timeout=1.0)
         except FileNotFoundError:
             self._wmctrl_missing = True
             self._logger.warning("wmctrl is not installed: the overlay cannot find Elite's window (install wmctrl)")
             self._last_state = None
             return None
-        except subprocess.SubprocessError as exc:
+        except (subprocess.SubprocessError, ValueError, OSError) as exc:   # a byte not UTF-8 is replaced, never a crash
             self._logger.debug("wmctrl invocation failed: %s", exc)
             self._last_state = None
             self._last_refresh = now
@@ -290,11 +290,11 @@ class X11Tracker:
 
     def _xprop(self, args) -> Optional[str]:
         try:
-            result = self._run(["xprop"] + list(args), check=False, capture_output=True, text=True, timeout=0.5)
+            result = self._run(["xprop"] + list(args), check=False, capture_output=True, text=True, errors="replace", timeout=0.5)
         except FileNotFoundError:
             self._xprop_missing = True
             return None
-        except subprocess.SubprocessError:
+        except (subprocess.SubprocessError, ValueError, OSError):
             return None
         return result.stdout if result.returncode == 0 and result.stdout else None
 
@@ -305,8 +305,8 @@ class X11Tracker:
     def _viewable(self, win_id_hex: str) -> Optional[bool]:
         """Whether the window is mapped and on screen (xwininfo's Map State IsViewable); None when xwininfo cannot say."""
         try:
-            result = self._run(["xwininfo", "-id", win_id_hex], check=False, capture_output=True, text=True, timeout=0.5)
-        except (FileNotFoundError, subprocess.SubprocessError):
+            result = self._run(["xwininfo", "-id", win_id_hex], check=False, capture_output=True, text=True, errors="replace", timeout=0.5)
+        except (subprocess.SubprocessError, ValueError, OSError):   # FileNotFoundError is an OSError
             return None
         match = re.search(r"Map State:\s*(\w+)", result.stdout or "") if result.returncode == 0 else None
         return match.group(1) == "IsViewable" if match else None
@@ -329,8 +329,8 @@ class X11Tracker:
 
     def _absolute_geometry(self, win_id_hex: str) -> Optional[Tuple[int, int, int, int]]:
         try:
-            result = self._run(["xwininfo", "-id", win_id_hex], check=False, capture_output=True, text=True, timeout=0.5)
-        except (FileNotFoundError, subprocess.SubprocessError):
+            result = self._run(["xwininfo", "-id", win_id_hex], check=False, capture_output=True, text=True, errors="replace", timeout=0.5)
+        except (subprocess.SubprocessError, ValueError, OSError):   # FileNotFoundError is an OSError
             return None
         if result.returncode != 0:
             return None
@@ -371,6 +371,28 @@ class X11Tracker:
 
 class _RECT(ctypes.Structure):
     _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long), ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+
+
+class _POINT(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+
+def client_bounds(user32, hwnd):
+    """The game's picture on screen: its client rectangle (GetClientRect, its top-left through ClientToScreen), without
+    a windowed game's title bar and frame (complete review 2026-10-30: the panels were placed and scaled against the
+    whole window, the title bar's ~31 px too high). None when Windows cannot say (the caller keeps the window's)."""
+    rect, origin = _RECT(), _POINT(0, 0)
+    try:
+        if not user32.GetClientRect(hwnd, ctypes.byref(rect)) or not user32.ClientToScreen(hwnd, ctypes.byref(origin)):
+            return None
+    except Exception:  # noqa: BLE001 -- a user32 without them: the window's rectangle as before
+        return None
+    w, h = rect.right - rect.left, rect.bottom - rect.top
+    if w <= 0 or h <= 0:
+        return None
+    out = _RECT()
+    out.left, out.top, out.right, out.bottom = origin.x, origin.y, origin.x + w, origin.y + h
+    return out
 
 
 GW_HWNDPREV = 3                                 # GetWindow: the window above in the z-order
@@ -430,7 +452,7 @@ class WindowsTracker:
         hwnd = self._resolve_window()
         if hwnd is None:
             return None
-        rect = self._window_bounds(hwnd)
+        rect = client_bounds(self._user32, hwnd) or self._window_bounds(hwnd)
         if rect is None:
             return None
         width, height = max(0, rect.right - rect.left), max(0, rect.bottom - rect.top)

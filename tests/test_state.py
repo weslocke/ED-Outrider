@@ -2585,6 +2585,15 @@ class BatchBState(unittest.TestCase):
             self.state.codex_deferred, self.state.codex_decided = {99: {1}}, {(99, 1): "held", (1, 4): "said"}
             self.state.codex_release()
             self.assertEqual((self.state.codex_deferred, self.state.codex_decided), ({}, {(1, 4): "said"}))
+            # complete review 2026-10-30: left, the decision stays while its codex_signals moment is still shown (it is
+            # worked out again at every arrival; with no decision it was held and said again on coming back)
+            self.j.moment("codex_signals", "2026-01-01T00:02:00Z", system=1, body_id=4)   # (live lines raise it; these are old)
+            self.j.pos = dict(self.j.pos, id64=2)
+            self.state.codex_release()
+            self.assertEqual(self.state.codex_decided, {(1, 4): "said"})
+            self.j.moments.clear()                                      # the moment gone: forgotten
+            self.state.codex_release()
+            self.assertEqual(self.state.codex_decided, {})
 
     def test_codex_sure_is_strict(self):
         """Review 2026-10-26 (7): "sure" took "could be new" (one unlogged colour candidate, the likeliest species alone)

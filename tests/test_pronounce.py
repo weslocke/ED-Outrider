@@ -160,6 +160,9 @@ class Sectors(unittest.TestCase):
             self.assertEqual(say("Nearest: Flyeia Hypa ZC-D c12-2"), "Nearest: [[flaɪˈeɪə]] [[hˈaɪpə]] ZC-D c12-2")
             self.assertEqual(say("Leaving Smojooe A R E, b 25 8 A 3"), "Leaving [[smˈəʊdʒuː]] A R E, b 25 8 A 3")
             self.assertEqual(say("Pro Eurl AB-C d1"), "Pro [[jˈʊəl]] AB-C d1")   # "Pro": English as it is
+            # complete review 2026-10-30: a shipped personality's word is English too (Vulcan's "Selecting {system}")
+            P._english = None
+            self.assertTrue(say("Selecting Smojooe AR-E b25-8 skips the plan.").startswith("Selecting [[smˈəʊdʒuː]]"))
             self.assertEqual(say("Col 285 Sector AB-C d1, Hyades Sector AB-C d1, Musca Dark Region PJ-P b6-1"),
                              "Col 285 Sector AB-C d1, Hyades Sector AB-C d1, Musca Dark Region PJ-P b6-1")
             self.assertEqual(say("Smojooe is far, Hypa too"), "Smojooe is far, Hypa too")      # no code after it: as it was
