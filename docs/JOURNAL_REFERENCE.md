@@ -100,8 +100,10 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   carrier's is kept (`carrier_markets`): the game overwrites the file at the next market.
 - **Controls bindings** (`outrider/honk.py`): the active preset's `.binds` file in the game's Options/Bindings folder,
   for Primary Fire's keyboard binding and auto-target's (`GalaxyMapOpen`, `UI_Right`/`Left`/`Up`/`Down`, `UI_Select`,
-  `UI_Back`, `CycleNextPanel`, and the galaxy map camera's `CamYaw*`, `CamZoom*`, `CamTranslate*`). `StartPreset.4.start` names a preset per line (General, Ship, SRV, On foot): the `UI_*`
-  controls are read from the General one, the rest from Ship. Each control has `Primary` and `Secondary` slots; only a
+  `UI_Back`, `CycleNextPanel`, and the galaxy map camera's `CamYaw*`, `CamZoom*`, `CamTranslate*`). `StartPreset.4.start` names a preset per line (General, Ship, SRV, On foot): the controls the
+  game lists under General Controls (Interface Mode: the `UI_*`, `CycleNextPanel`, `CycleNextPage`; Galaxy Map: the
+  `Cam*` camera; seen in Options > Controls, 2026-10-31) are read from the General one, the rest (`GalaxyMapOpen`, a
+  ship mode switch) from Ship. Each control has `Primary` and `Secondary` slots; only a
   `Device="Keyboard"` slot whose `Modifier`s are all keyboard keys can be pressed.
 
 ## Traps and facts learned

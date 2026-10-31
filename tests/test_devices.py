@@ -52,6 +52,23 @@ class HonkBinding(unittest.TestCase):
             self.assertIn("no keyboard binding", what)
         self.assertEqual(outrider.honk.parse_combo("alt+k"), ["KEY_LEFTALT", "KEY_K"])
 
+    def test_general_controls_from_the_general_preset(self):
+        """Complete review 2026-10-30 (batch 2's D3): the galaxy map's camera and the panel tabs sit under General
+        Controls in the game's Options (the author's look, 2026-10-31), so they come from StartPreset.4.start's General
+        line; they were read from Ship's, wrong when the two presets differ. Opening the map stays a Ship control."""
+        import tempfile
+        import outrider.honk
+        with tempfile.TemporaryDirectory() as binds:
+            with open(os.path.join(binds, "StartPreset.4.start"), "w") as f:
+                f.write("Gen\nShip\nSrv\nFoot")
+            for name in ("Gen", "Ship"):
+                open(os.path.join(binds, f"{name}.4.2.binds"), "w").close()
+            line = lambda action: outrider.honk._preset_file(binds, action, None)[0]
+            self.assertEqual({a: line(a) for a in ("CamYawLeft", "CamZoomIn", "CamTranslateForward", "CycleNextPanel",
+                                                   "UI_Select", "GalaxyMapOpen", "PrimaryFire")},
+                             {"CamYawLeft": "Gen", "CamZoomIn": "Gen", "CamTranslateForward": "Gen", "CycleNextPanel": "Gen",
+                              "UI_Select": "Gen", "GalaxyMapOpen": "Ship", "PrimaryFire": "Ship"})
+
 
 class HonkReadiness(unittest.TestCase):
     """S69: Settings says up front whether auto honk can work here and how to fix what stops it, only by looking: no

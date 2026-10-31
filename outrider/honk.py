@@ -136,8 +136,15 @@ def primary_fire_binding(journal_dirs=()):
 
 # StartPreset.4.start (Odyssey) names one preset per line: General, Ship, SRV, On foot. The interface keys (UI_*) are
 # General controls, Primary Fire and the galaxy map Ship ones; an older file has a single line for everything
+# the controls the game lists under General Controls (Interface Mode, Galaxy Map: the author's Options > Controls,
+# 2026-10-31), read from StartPreset.4.start's General line; the rest from the Ship line (GalaxyMapOpen is a Ship mode
+# switch). The galaxy map's camera was read from the Ship line, wrong for a player whose two presets differ (complete
+# review 2026-10-30, batch 2's D3)
 GENERAL_ACTIONS = frozenset({"UI_Up", "UI_Down", "UI_Left", "UI_Right", "UI_Select", "UI_Back", "UI_Toggle",
-                             "CycleNextPage", "CyclePreviousPage"})
+                             "CycleNextPage", "CyclePreviousPage", "CycleNextPanel", "CyclePreviousPanel",
+                             "CamPitchUp", "CamPitchDown", "CamYawLeft", "CamYawRight", "CamZoomIn", "CamZoomOut",
+                             "CamTranslateForward", "CamTranslateBackward", "CamTranslateLeft", "CamTranslateRight",
+                             "CamTranslateUp", "CamTranslateDown"})
 
 
 # the preset category an action is bound in: StartPreset.4.start's line for it (the rail's SRV and on-foot buttons)

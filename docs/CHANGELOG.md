@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Auto-target reads the galaxy map's controls from the General preset
+- The complete review's last open item (batch 2's D3, checked in the game's Options > Controls): the galaxy map's
+  camera controls (yaw, zoom, translate) and the panel tabs sit under General Controls, so auto-target now reads them
+  from `StartPreset.4.start`'s General line, as the `UI_*` keys already were. They came from the Ship line: a player
+  whose General and Ship presets differ got the wrong key or "no keyboard binding". Opening the map stays a Ship
+  control.
+
 ## 2026-10-31 · Choosing the commander, and the estimate and Log follow it
 - Discussion #18: the "also logs CMDR B" card's button opens a list of every commander the journals hold (their
   journals, when each last played, "playing now") and "every commander"; a pick sets `[journals] commander`, restarts
