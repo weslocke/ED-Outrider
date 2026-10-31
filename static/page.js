@@ -14357,6 +14357,9 @@ async function loadServerSettings() {
   if (gen !== SRV_LOAD.gen) return;
   if (!c || c.error) { box.innerHTML = `<div class="hint warnc">Cannot read the server's settings: ${esc((c && c.error) || "?")}</div>`; return; }
   const human = k => k.replace(/_/g, " ").replace(/^./, x => x.toUpperCase());
+  // the payload's commanders, read here: inside field() `data` is the field's own attributes (the agents' docs sweep,
+  // 2026-10-31: Choose… was never drawn)
+  const cmdrsKnown = !!(data && data.commanders);
   const field = (sec, k) => {
     const id = `srv-${sec}-${k.key}`, data = `id="${id}" data-sec="${esc(sec)}" data-key="${esc(k.key)}" data-kind="${k.kind}"`;
     const v = k.value;
@@ -14368,7 +14371,7 @@ async function loadServerSettings() {
     if (k.kind === "lines") return `<textarea rows="${Math.min(6, Math.max(2, v.length + 1))}" ${data} placeholder="one per line">${esc(v.join("\n"))}</textarea>`;
     if (k.kind === "numbers") return `<input type="text" ${data} value="${esc(v.join(", "))}" placeholder="numbers, comma separated">`;
     // [journals] commander: typed, or picked from the commanders the journals hold (saved and restarted at once)
-    if (sec === "journals" && k.key === "commander" && data && data.commanders)
+    if (sec === "journals" && k.key === "commander" && cmdrsKnown)
       return `<input type="text" ${data} value="${esc(v)}"> <button type="button" class="mini" data-cmdrpick>Choose…</button>`;
     if (k.kind === "table") return `<textarea rows="2" ${data} placeholder='{"Name": "KEY_..."}'>${esc(Object.keys(v).length ? JSON.stringify(v) : "")}</textarea>`;
     return `<input type="text" ${data} value="${esc(v)}">`;

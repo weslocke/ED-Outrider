@@ -7,7 +7,7 @@
 The **Materials** tab starts with your **Cargo**.
 
 - **Your ship's hold** is exact (the game writes it whole), and Outrider follows the changes in between, limpets
-  bought, sold and launched included (the game counts those without writing the list again). Each commodity shows
+  bought, sold, synthesised and launched included (the game counts those without writing the list again). Each commodity shows
   what you paid: the game's own average over your purchases ("Avg 45,210 cr/t (2 lots)"; mined or transferred tons
   have no price).
 - **Your fleet carrier's hold** is not written anywhere whole, so Outrider tracks it:
@@ -32,9 +32,10 @@ The **Materials** tab starts with your **Cargo**.
 - **The Carrier tile** shows the tritium in its depot ("Tritium: 1,000t"), and while tritium is on a sell order the
   total with the hold beside it ("Tritium: 1,000t/14,199t"); hover it for how many 500 ly jumps that gives (worked
   out jump by jump with the game's fuel formula, the depot topped up from the hold as it runs low: the carrier's cargo
-  weighs, the space a buy order only reserves does not). No carrier, no tile; a carrier being decommissioned says so
+  weighs, the space a buy order only reserves does not). No carrier of yours or your squadron's, no tile; a carrier being decommissioned says so
   in red with the scrap date, and once it is gone, "Decommissioned" and the date (a carrier bought since takes its
-  place).
+  place). Your squadron's carrier shows on the tile too, with an **FC | SC** switch when you have both (see
+  [the views](views.md)); a member's journal holds no cargo or balance of it, so what follows is your own carrier's.
 - **The trip to you:** while your carrier is elsewhere (and no jump or carrier trip is under way), the tile says what
   meeting takes, short: "To it 5 jumps · to you 3, ≈340 t" (your jumps to it, amber when your tank covers fewer; its
   carrier jumps to you and their tritium), and when the depot holds less, "140 t short" in red (amber when tritium on a
@@ -61,7 +62,9 @@ The **Materials** tab starts with your **Cargo**.
   refreshes the balance.
 - **Your carrier among the nearest places to sell** (the Unsold tile's "sell:" line and its details): while it has
   Universal Cartographics (or Vista Genomics) on, where it is now from your journal, never an old report of it, with
-  "≈ 3 carrier jumps to you"; not while the service is suspended, nor once it is decommissioned.
+  "≈ 3 carrier jumps to you"; not while the service is suspended, nor once it is decommissioned. Your squadron's
+  carrier is among them the same way, as "your squadron's carrier", where the Carrier tile places it (your journal's word at
+  your last login, or Spansh's newer report), with no carrier jumps (it cannot come to you).
 - **🎯 beside your carrier's system** on the Carrier tile, when it is elsewhere: auto-target puts that system in the
   galaxy map, as 🎯 on a route's row does (see [the Neutron Highway](plot-route.md#-the-neutron-highway)). On the
   game PC only; none while you are aboard or in its system.
@@ -87,8 +90,10 @@ players last reported, so the newer the data, the safer the trip.
   within a distance, data under an age, your ship's pad size, fleet carriers left out unless ticked (their orders
   are often years old). Each station shows how far it is (and how far from its star), the price, demand or supply,
   what your load earns and the profit over what you paid. Opened, it lists what else it buys from your hold and its
-  services (and whether it buys exploration data and samples too), with Copy, Bookmark and **Plot route here**.
-  **Buy something else** looks up any commodity. When Spansh's commodity list cannot be read, the lookup goes on
+  services (and whether it buys exploration data and samples too), with Copy, Bookmark and **Plot route here** (a
+  route there, as **Plot route** beside a bookmark plots one: see [Plot Route](plot-route.md)).
+  **Buy something else** looks up any commodity. A game in another language is fine: each line is matched to Spansh's
+  name by the game's own id. When Spansh's commodity list cannot be read, the lookup goes on
   with the journal's own name for it and says so. While mining, a full hold runs this lookup for the most you carry and
   says where to sell it ([Voice and alerts](voice-and-alerts.md)). The same lookup prices a ring's hotspot minerals:
   a body panel with hotspots shows each one's best sell price within 100 ly, highest first (**Best nearby**, see
@@ -118,7 +123,7 @@ players last reported, so the newer the data, the safer the trip.
 
 - **Following it:** each stop lists what to sell and buy there, the hop's profit and the total so far. On arrival
   the voice says where to dock and what to trade; your sales and purchases there count towards each commodity's
-  tonnes (your journal: "60 of 100 t" until it is all traded), then it says the hop's profit and the next stop (its
+  tonnes (your journal, matched by the game's id in any language: "60 of 100 t" until it is all traded), then it says the hop's profit and the next stop (its
   own alert, Trade route). Undocking with only part traded (the station had less than Spansh said) moves on: the
   voice says what fell short instead of the profit. 💱 in the line under the tiles, with
   🎯 on the next system.

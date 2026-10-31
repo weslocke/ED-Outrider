@@ -21,7 +21,8 @@ system where it finished; a carrier trip is kept apart from both.
   from a range, the supercharge (×4, or ×6 with the SCO Mk II) and an efficiency: for a ship you haven't flown, or
   a quick plot.
 - **Ship.** Any ship you have flown, as of its latest Loadout. The neutron plotter's **Range** starts at that
-  ship's laden range; type another to override it. A ship with no fuel scoop on the exact plotter is warned (its
+  ship's laden range; type another to override it. For a ship you have never flown, the neutron plotter's **another
+  ship: type its range** plots from the range and supercharge you give, with no ship behind them. A ship with no fuel scoop on the exact plotter is warned (its
   refuel stops are scoopable stars it cannot use), with **plot anyway**; the route's head says so after.
 - **← destination** beside To fills it with the system targeted in the game (the galaxy map has no copy); nothing is
   plotted until you press Plot.
@@ -63,7 +64,8 @@ arrive there: "The next 3
   own galaxy image under it (`background_image`, an EDAstro chart say).
 - **Following.** Arriving at any route system moves you along, forwards or back; anywhere else (a respawn
   included) is **Off Route: Detour** until you are back on it, with the closest route system marked, and **↻ Re-plot
-  from here** plots the same route again from where you are (the same plotter and options, the ship you fly now).
+  from here** plots the same route again from where you are (the same plotter and options, the ship you fly now and
+  its own neutron boost; a neutron route plotted from a typed range keeps that range).
   The same button shows when the route was plotted for another ship than the one you fly ("plotted for your Krait;
   you fly the Anaconda: its fuel stops and warnings don't apply"). A line under
   the tiles (and on Now) shows the next stop ("🛣 Next: Hwy Stop 38 · ⚡ neutron · 4.2 ly · 38 of 399 · refuel in 3 jumps").
@@ -94,7 +96,8 @@ first one with work left, "Next: Pru Aim XY-Z d1 · 3 jumps · 6 of 22 · skippi
 over), and
 the voice says "Next stop: Pru Aim XY-Z d1, skipping 2 systems you've finished." The route's last system is never
 passed over (arriving there ends it). Exomastery and the world routes do the same; a sweep or a trade route never
-skips a stop.
+skips a stop. A route plotted with **loop back to the start** ends where it began: back at the start partway round (to
+refuel, to sell) is the start again, not the end, and Next is the first stop left after the furthest you reached.
 With a Highway route as well, a switch above the heading picks which one the tab shows; only the one plotted last
 copies its next system to the clipboard (once it is finished, the other one copies again). (Road to Riches is thshurka's contribution.)
 
@@ -137,8 +140,8 @@ when you open the carrier's management panel), with a red edge once the reading 
 says it too ("· depot read 3 d ago"). With no depot read yet and none typed, the plot is refused: "open the carrier's
 management panel once". The plan, folded under the form: each leg with its light years and
 tritium, and what to do first ("move 300 t from the hold into the depot first", "buy 400 t here"); at the top, the
-legs, about how long (20 minutes a leg: the countdown and the cooldown; longer in busy systems) and the tritium
-needed against what you have. It never replaces your ship's route, and 🎯 never targets it.
+legs, about how long the ones still to go take ("about 2 h to go": 20 minutes a leg, the countdown and the cooldown;
+longer in busy systems; none once the trip is done) and the tritium needed against what you have. It never replaces your ship's route, and 🎯 never targets it.
 
 Following it, on the **Carrier tile**: "Leg 2/6 → the next system 📋 · departs 12:30 ✕". 📋 copies the system to
 paste in the carrier map (only when you click it); after a jump the line counts the cooldown down, then says
@@ -188,12 +191,15 @@ map, searches for the system, plots the route, closes the map and checks the tar
 targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own alerts row.
 
 - **Keyboard bindings:** Galaxy Map Open, UI Up, UI Select and the galaxy map's Camera Yaw Right and Camera Zoom
-  Out need one (the box and Settings → Auto-target list any missing; a built-in preset can't be read). It shares auto honk's virtual keyboard;
+  Out need one (the box and Settings → Auto-target list any missing; a built-in preset can't be read). Galaxy Map
+  Open is read from the preset your Ship controls use, the UI and galaxy map camera controls from your General
+  Controls' preset (the game lets the two differ). It shares auto honk's virtual keyboard;
   honk goes first.
 - Switching it off, clearing the route or plotting a new one stops a run at once, even mid-way. If the game targets
   a different system it says so by name ("Targeted the wrong system: …. Check before you jump."). A waypoint the
   game reaches by a plotted route of several jumps counts as targeted.
-- It never runs docked, landed, in a vehicle or on foot, in danger, with the FSD charging or a panel open. The game
+- It never runs docked, landed, in a vehicle or on foot, in danger, with the FSD charging or a panel open, nor while
+  another commander plays ([Two commanders on one PC](install.md#two-commanders-on-one-pc)). The game
   flags you "in danger" for every jump, and on entering supercruise, until some 16-26 s after: pressed in those
   seconds, it says so ("Not targeting due to danger. I will keep trying until you are out of danger, for up to 55
   seconds"), waits for that to clear and then runs (up to a minute after the jump or the supercruise entry; being
@@ -280,7 +286,7 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   - what it must have (Universal Cartographics, Vista Genomics, repair, refuel, shipyard);
   - a **material trader**: any, raw, manufactured or encoded (stations only: fleet carriers never have one). Spansh says
     each trader's kind; the few it lists with no kind (some Colonia outposts) count only for "any", shown as "⇄ trader";
-  - your ship's pad size (from its type);
+  - your ship's pad size (from its type; a small ship fits every pad);
   - **Data under** N days (30 by default);
   - permit systems, left out unless ticked;
   - **Around**: you, your destination in game, your carrier, your next stop or a system you name. The distances are
@@ -290,12 +296,14 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
 - **Each row shows** how far it is (and a rough jump count), how far from its star (far ones marked), what it has, its
   pads, its docking, and where the report came from and how old it is.
 - **Plot here** puts the system in To and plots it with the plotter chosen above (Exact when Trade or Carrier is chosen). Following the route works as usual.
+  A place in your own system says "here" instead ("aboard" for the carrier you are docked at).
   Where auto-target can work, a **🎯** beside it targets the system in the galaxy map.
 - **By voice** ("nearest station", "nearest Vista"...), a place further than 500 ly also gets a neutron route plotted
   there, unless you are following a route ("You're following a route, so I didn't plot one"). `[highway] voice_plot`
   switches it off, `voice_plot_ly` sets the distance (Settings → Server).
 - **Docking:**
-  - "yours" for your own carrier, "open to all";
+  - "yours" for your own carrier, "your squadron's" for your squadron's carrier (no warning: you may dock there),
+    "open to all"; a carrier whose callsign is four characters (a squadron's tag) is listed as a squadron carrier;
   - a **⚠ warning** for carriers set to friends, squadron, or squadron and friends only (Outrider cannot see the
     owner's list), for those closed to visitors, and for those with no docking setting reported at all; a DSSA carrier
     last seen away from its post gets "last seen at" the system it was seen in.
@@ -309,7 +317,7 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
     [EDAstro](https://edastro.com) publishes it. These are carriers stationed for years in the black for explorers,
     open to all, each marked **🛰 DSSA** with how long it stays. The list is fetched only when you open the finder, at
     most once an hour, and only downloaded when it has changed. The last copy is kept, so the finder works offline.
-  - Your own carrier, from your journal.
+  - Your own carrier, and your squadron's, from your journal (your squadron's name and services from Spansh too).
 - **From the Materials tab:** a material you are short of offers **⇄ nearest raw trader** (or manufactured, encoded):
   it opens the finder with that trader asked for, and leaves your own saved filters as they were.
 - **By voice** (the Android app): "nearest station", "nearest carrier", "nearest Vista", "nearest cartographics",

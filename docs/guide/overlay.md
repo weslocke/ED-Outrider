@@ -77,7 +77,8 @@ before.
   Spansh knows the system ("Spansh ✗ (new to it)" when it does not; "Spansh ✓ (pre-Odyssey)" when its data predates
   Odyssey's surface data: worth a rescan).
   While you mine in a ring in a mining ship, a third line: "⛏ 4 B Ring · Platinum · 38 t/h · hold 112/256 t (Platinum
-  80, Painite 32) · limpets 14 · full in ~41 min" (the same line as on Now; Settings → Mining).
+  80, Painite 32) · limpets 14 · full in ~41 min" (the same line as on Now, without Now's "hits 3/8"; under 10 limpets,
+  "(+12 by synthesis)" when your materials make more; Settings → Mining).
 - **Now (To-Do & Info)** (optional): the page's Now view in a few lines, anywhere in the system (by default not while
   docked: see [Settings](#settings)). The system (and for 20 s after the jump whether it was
   undiscovered), the system you have targeted next ("checking…" while Outrider asks, then never reported, no scan
@@ -225,7 +226,8 @@ knowing, so it draws over that window too; an XWayland window (most games, Steam
   cannot find or follow: leave it off. Fractional display scaling on Wayland (125%, 150%) may put the panels a little
   off or blur them: not tried yet.
 - **Windows**: the same window (finding Elite's with the Windows API, letting clicks through, always on top), seen
-  working over the game by players on Windows (October 2026). Play borderless or windowed.
+  working over the game by players on Windows (October 2026). Play borderless or windowed. In a window, the panels
+  are placed in the game's picture, below its title bar and inside its frame (not yet tried in the game).
 - Exclusive fullscreen and gamescope (the Steam Deck's game mode) are not supported: nothing can draw over them. The
   overlay pill turns red when the game's DisplaySettings.xml says exclusive fullscreen.
 - The window's code for finding and following the game's window, and drawing over it, is adapted from

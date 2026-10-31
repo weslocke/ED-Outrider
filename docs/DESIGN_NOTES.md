@@ -50,7 +50,11 @@ upstream project's choices, not rules of the game.
   ModuleRetrieve (its `SwapOutItem` stored), FetchRemoteModule (in transit until its `TransferTime` has passed, then
   where you sent for it; a list written meanwhile keeps that) and ModuleSellRemote, until the next list replaces the
   fold (`fresh()`-guarded like the rest); ModuleSell and ModuleBuy's `SellItem` sell from the ship and leave storage
-  alone. A module stored since the list has no value until outfitting lists it. Checked on the author's journals
+  alone. A module stored since the list has no value until outfitting lists it. The game's lists say where a stored
+  module or ship is by its system and market ID only, so its station is named from the stations you docked at or
+  opened a shipyard or outfitting list at (table `stations`, by market, the newest line winning: a carrier keeps its
+  callsign but moves; journal-derived, PARSER_VERSION 69; Discussion #17), a carrier marked "(carrier)"; a place you
+  never docked at shows its system only. Checked on the author's journals
   (2026-10-14): replayed, the fold equalled the next list 341 times in 345; of the four, two were modules (probably free with the ship) the game
   threw away when swapped out (the line does not say so) and two lists held a module no line had moved there (a gap in
   the journals). ModuleSellRemote and MassModuleStore had no real line: Frontier's manual. A ship's hot flag (wanted)
@@ -574,6 +578,9 @@ upstream project's choices, not rules of the game.
   naming any system it does not know (a fresh discovery among lost firsts is likely): it is plotted again without them
   and the note and the heading name them, rather than a stand-in, since the system is the point of the trip. Known limit:
   as for every survey route, arriving at the last row with nothing left ends it, even with stops skipped on the way.
+  A loop is the exception: its last row is its start (a sweep, Road to Riches with "loop"), so back there with stops
+  still open (to refuel, to sell) is the start again, its next stop the first open one past the furthest reached, never
+  "Sweep complete." (complete review 2026-10-30).
 - **A survey route's next stop skips the systems you finished** (S12): "next" is still the row after where you are,
   walked past the rows that came with work (Road to Riches: bodies; Exomastery: a body with species, `had_work`) and
   have none left by your journal. Every "next" uses it (`riches_next_open` / `Journals.riches_open`): the line ("skipping
@@ -686,7 +693,9 @@ upstream project's choices, not rules of the game.
   most, the newest journal's last 64 KiB read only when it grew) and lets it override GuiFocus (`Targeter.focus`): a
   GalaxyMap since the run's first key makes a 0 the map; another track makes a 6 the cockpit only when written after the
   key that closes the map (Target System's or the close key), so neither the opening's GalaxyMap nor an ambient track
-  while the map is open misleads it; other screens stay Status.json's. A Status.json caught half written keeps that
+  while the map is open misleads it; before the run's first key a 6 with another track last is the cockpit, as the start
+  check (`guard`) takes it (complete review 2026-10-30: the map just closed let a run start and fail at its first step);
+  other screens stay Status.json's. A Status.json caught half written keeps that
   file's last good reading. A failed run's log ends with a "seen:" line (Status.json's GuiFocus, Destination and time;
   the journal's last Music and FSDTarget, before or since the first key), and the first override in a run is logged,
   so the next odd failure is read from the log (review C2). (A first guess, the
@@ -731,7 +740,9 @@ upstream project's choices, not rules of the game.
   it, copying the database does. A panel's place is kept from the window corner nearest it, or from the middle of the
   top or bottom edge, as a share of the window, so a resolution change keeps the arrangement. Linux is where it is
   tried (X11, and XWayland on a Wayland session, as Modern Overlay runs on GNOME); Windows works too, seen over the game
-  by two players (Kurbo26 and weidercs, reported 2026-10-15);
+  by two players (Kurbo26 and weidercs, reported 2026-10-15), where the panels are placed in the game's picture, its
+  client rectangle (`overlay_tracking.client_bounds`: GetClientRect, without a windowed game's title bar and frame; complete review
+  2026-10-30: they were placed and scaled against the whole window);
   native Wayland compositors, gamescope and exclusive fullscreen are out of scope.
 - **The overlay's sizes have a floor in pixels, not a percentage** (a GitHub report, 2026-10-14: too large on a 4K TV,
   and a size under 50 % was put back to 50 %). Panels scale with the game window's height, so a panel takes the same
@@ -802,7 +813,8 @@ upstream project's choices, not rules of the game.
   `overlay.health`. The plan's game-process check in the window was left out: the journals already say whether the game
   runs and loads (the link pill's "no game" comes from the same place), and the window's own "no window" covers the
   rest. "Not the active window" is amber only while the page itself has the focus (the player looking at Outrider on
-  purpose), red otherwise. Exclusive fullscreen is out of scope; the pill only warns, from the game's DisplaySettings.xml
+  purpose), red otherwise; the tablet's focus never counts (another device says nothing of the PC's windows:
+  `ovPillFocus`). Exclusive fullscreen is out of scope; the pill only warns, from the game's DisplaySettings.xml
   (`<FullScreen>` 1; 0 windowed and 2 borderless are the published values, not yet checked against a real file),
   found from each live journal folder's user folder (Windows and a Proton prefix alike).
 - **Keep showing when Elite is not the active window** (S25 with S25b, the author, 2026-10-12): `[overlay]
@@ -822,7 +834,8 @@ upstream project's choices, not rules of the game.
   the DSS (the window counts with its whole rectangle); not raising it did not; taking it away when empty did, and a window
   only as big as the panels did, on foot too (3 of 3 with it, 0 of 3 without). One window around all the panels would
   still cover the middle with panels at opposite edges, so `overlay_window.window_plan`: a window per panel
-  (`window_rect`: its panel plus 6 px, painted at the game window's layout through an offset), none with nothing to draw,
+  (`window_rect`: its panel plus 6 px, painted at the game window's layout through an offset; laid out again when the
+  game window changes size, `game_resized`), none with nothing to draw,
   the one window over the whole game only in Arrange mode (it takes the mouse there). The lock is asked for as the mode
   changes, so a window in the way at that moment loses it until the next change; a panel dragged to the middle would be
   in the way again, so `[overlay] hide_mouse_lock` (Settings: "Hide the overlay on foot and in the DSS") takes the
@@ -848,7 +861,8 @@ upstream project's choices, not rules of the game.
   that moment; every window posts, the tablet too, and the same title and text within `ALERT_SAME_S` counts once. Each
   stays `ALERT_SECONDS` (8 s), danger `ALERT_DANGER_SECONDS` (15 s, in red: the speech queue's danger rank or the
   danger sound), newest first, three at most. It shows over the galaxy map too (beside the Target panel: an alert is
-  brief and the galaxy map is where a plotting player sits), never over the system map, the FSS, the SAA, the codex or
+  brief and the galaxy map is where a plotting player sits; its Docked and On foot boxes hold there, where only the
+  Target panel's Docked box does not), never over the system map, the FSS, the SAA, the codex or
   in the tunnel, like every panel; Analysis only applies to it as to the others.
 - **No rebuy multiple for a ship whose hull has no credit value** (the author, 2026-10-10). An Arx-bought ship's
   Loadout carries ModulesValue but no HullValue, and its rebuy is 5% of the modules alone, so "N× rebuy" said ~110
@@ -1441,6 +1455,17 @@ upstream project's choices, not rules of the game.
   filter and says so). No commodity analytics or profit-per-hour: a lookup, not a trading tool.
   "Sell all" (the review's #15, 2026-10-27) stays one: the whole hold priced at the stations Spansh lists as the best
   buyers of its four largest lines (no market database of Outrider's own), a partial buyer priced for what it takes.
+  A commodity is asked for by Spansh's name, from the journal's name, else its id (`outrider.cargo.spansh_name`,
+  `SPANSH_IDS` read backwards: a non-English game's names are localised; complete review 2026-10-30).
+- **Now's at-risk line names a place you would fly to** (the review's #11, 2026-10-27; `sellers_summary`'s `sell`): the
+  nearest permanent station, your own carrier or your squadron's, never another player's carrier (it may have moved or
+  be closed), with a large pad when your ship needs one. When the nearest places Spansh lists for UC or Vista are all
+  other players' carriers, the nearest permanent stations are asked for too (review 8).
+- **"Nearest scoopable star?" answers, nothing more** (the review's #7, 2026-10-27; the read-only tool
+  `nearest_scoopable`, so the MCP bridge and the AI layer have it too): the nearest known star in Nearby that scoops,
+  "within one jump" by the range with the fuel and cargo aboard now (`jump_range_now`), the star you are at said first
+  when it scoops, and that Nearby is set around another system when it is. "Known": most unreported stars scoop, and
+  the answer says so when none is known. Nothing is targeted or plotted, unlike "nearest station" (D4).
 - **A decommissioned carrier is shown in red, never hidden** (the author, 2026-10-07): if Outrider got it wrong, a
   vanished tile would hide the mistake. `CarrierDecommission` (requested, `ScrapTime` about a week on) shows
   "Decommissioning: scrapped <date>" with the refund; after ScrapTime (the scrapping itself writes nothing)
@@ -1476,7 +1501,9 @@ upstream project's choices, not rules of the game.
   sort after every dated zip, never rotate out and stay `--restore`'s default. It does not touch `last_backup` (the
   Data tile's line is about the regular backups). A failed one does not stop the re-read (it was asked for): stderr
   and a banner. More than half the journal files the database was read from gone: a banner too, pointing at
-  `--legacy <backups>/journals`.
+  `--legacy <backups>/journals`. A file is gone only when it is neither at its stored path nor under its name in the
+  folders the re-read reads (`journals_gone(db, dirs)`: a journal's name is its time, so a folder reached by another
+  path now, a moved Steam library, is no loss; issue #16).
 - **Backups are listed, never restored, from the page** (S44): a restore replaces the database Outrider has open, so it
   needs Outrider stopped; the page gives the command for this install (the launcher, the .bat, or Docker's stop, a
   one-off `run --rm`, `up -d`) with Copy. Under the systemd service (S70) the launcher's command is wrapped in
@@ -1573,6 +1600,8 @@ upstream project's choices, not rules of the game.
   by the system and the body's full name (the panel, the map and Status.json all have it; a body id is not always
   known). Only the active pin is guided or spoken: the others are drawn, never said. The tick refreshes the page as the
   guidance changes (State.pin_watch: a distance step and a 10° turn), so it moves from orbit, above the map's 1,000 m.
+  In the ship arrival is counted through the air (the ground distance with Status.json's altitude): flying over a pin
+  high up never reaches it (complete review 2026-10-30: "arrived" at 30 km, and the next pin took over).
 - **Known sites from Canonn, in the Pins section** (the pins follow-up, the author 2026-10-26; project
   PLAN-canonn-sites-2026-10-26): Guardian sites and geology, Canonn only (the author: not your own ApproachSettlement
   lines, which would need a re-read). Canonn's CAPIv2 sites API (api.canonn.tech, with Guardian, Thargoid and crash-site
@@ -1585,8 +1614,10 @@ upstream project's choices, not rules of the game.
 - **One commander per Outrider, by choice** (the full review's S9-S4, 2026-10-24): `[journals] commander` reads one
   commander's journal files (a file's commander is its first Commander or LoadGame line, a continuation part's its
   first part's; another's is skipped whole, a new live file waits for that line, one cut before it is read as before). Blank (the default) reads everyone, as
-  before; a second FID in the journals gets a card whose button sets the filter to the commander with the most
-  journals. A change re-reads every journal at the next start (meta `commander_filter`). While another commander
+  before; a second FID in the journals gets a card whose button opens the commander chooser (every commander the
+  journals hold, their journals and when each last played, and "every commander"; Discussion #18: the button set the
+  one with the most journals, another meant typing it in Settings). A change re-reads every journal at the next start
+  (meta `commander_filter`). While another commander
   plays (the newest journal of all the live folders is theirs), the live layer stands down (Status.json, NavRoute.json,
   Cargo.json and ShipLocker.json not read, auto-target refused, the journal's time not moved); the uploads still see
   every line, each commander's going with its own key. The unsold estimate and the Log, which read the journal files
@@ -1679,9 +1710,9 @@ upstream project's choices, not rules of the game.
   A body holding one has 🏆 in Here, and its hover card and details panel name the record ("new" when set in the last
   day). Visual only: the discovery streak's "no records or milestones" (above) stands.
 - **What a body orbits is its orbit's size, not today's distance** (2026-10-26, Hiner399's ask): Here's "↳ 15 ls · B",
-  the card's and panel's "orbits B at 15 ls" are the semi-major axis from the Scan (or Spansh), with the closest and
-  farthest points from the eccentricity of your own scans. Bodies' current positions are not in the journals (the
-  real body-to-body distances were found infeasible on 2026-10-25), and for "how tight is this moonlet's orbit" the
+  the card's and panel's "orbits B at 15 ls" and the schematic's "2,026 ls / 2.6 ls" (`sdistHtml`) are the semi-major
+  axis from the Scan (or Spansh), with the closest and farthest points from the eccentricity of your own scans. Bodies'
+  current positions are not in the journals (the real body-to-body distances were found infeasible on 2026-10-25), and for "how tight is this moonlet's orbit" the
   orbit's size is the right number. Shown only where it adds something: not for the arrival star's planets or the
   barycentre the arrival star is in, whose distance from arrival says it.
 - **Five more curiosities, each counted first** (2026-10-25): a shepherd moon (it orbits inside its planet's rings), a
@@ -1811,12 +1842,12 @@ confirmed while playing. Treat reports about them as likely real.
 - Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the
   prospector call-out, the ⛏ line and its warnings' timing (limpets low, hold nearly full, hold full with where to
   sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone); each
-  mineral's own threshold, a ring's best prices nearby, Search's 2+ and a mining mission's 🔍 (2026-10-24).
+  mineral's own threshold, a ring's best prices nearby, Search's 2+ and a mining mission's 🔍 (2026-10-24); your record
+  said at a hotspot's drop, Now's "hits 3/8" and the limpets you could synthesise (2026-10-27).
 - The sample spacing while flying the ship low over the body (discussion #3, 2026-10-23): from the point under the
   ship, with Status.json's live Latitude/Longitude in flight; tested on made-up Status.json only.
-
-
-- The rail's HighRes button (2026-10-25): Hide UI and Screenshot pressed from the tablet work (the author, 2026-10-25);
+- The rail's HighRes button (2026-10-25): Hide UI and Screenshot pressed from the tablet work (the author, 2026-10-25),
+  and so does the rail's refusal while Elite is not the window in front ("click into the game", 2026-10-31);
   HighRes (Alt+F10) through the rail's virtual keyboard was not tried.
 - A screenshot on the Windows clipboard (`winkeys.set_clipboard_image`: CF_DIB and the registered PNG format, 2026-10-25):
   written to the Win32 API, run only on Linux (xclip) by the author.
@@ -1830,7 +1861,17 @@ confirmed while playing. Treat reports about them as likely real.
   N", the trail and compass grid, seconds to a full tank, the codex line (quiet during the FSS where it once spoke wrongly, and a held line said
   correctly after "all found"), the first start's journal re-read. Not yet:
   catalogued sights (none within reach yet), a green gas giant confirmed, the record on a body's card and panel and
-  Boxel view's click (both fixed after the author's reports), the EDSM first reporter.
+  Boxel view's click (both fixed after the author's reports), the EDSM first reporter, a complete boxel marked done by
+  itself, what a body orbits and how far, and the codex line's strict "sure" (one signal, bodies left to scan).
+- The work since 2026.10.29 the author has used in game (2026-10-31): the PARSER 69 re-read (no false "journals gone"
+  warning, issue #16), CMDR → Inventory naming stations (#17), the voice with Piper's threads held in, the tablet
+  Map's card staying open on a tap, auto-target to the next boxel system (the galaxy map's controls from the General
+  preset), and the overlay on Linux hiding over the galaxy map, following a game-window resize and placed right in
+  windowed mode. Not yet: the overlay on Windows placed in the game's client rectangle (`client_bounds`), your squadron's carrier's officer lines (CarrierStats, a booking, a
+  deposit: read by their documented shape), a non-English game's names (the Sell / Buy lookups and Sell all by the
+  commodity's id, the Exo-Biology checklist's colours by the variant's code and its regions by the system's place,
+  Bark Mounds by name), the password behind nginx with the guide's `proxy_set_header` line, and Canonn's known sites in
+  a body panel's 📍 Pins (📍 pin it).
 - A green gas giant confirmed by your own codex entry (`outrider.ggg.match_green`, 2026-10-25): built on the four green
   entries in a capture of every player's EDDN traffic and on synthetic journals; the author has logged none.
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen
@@ -1839,7 +1880,8 @@ confirmed while playing. Treat reports about them as likely real.
 - The suit warning (S9-S7): Status.json Flags2's LowOxygen and LowHealth bits (6, 7) on foot on a planet (bit 4), from
   Frontier's journal manual only.
 - The commander filter (S9-S4) with a real second commander's journals in the folder: written to Frontier's journal
-  format (Commander and LoadGame carry the FID), tested on synthetic files only.
+  format (Commander and LoadGame carry the FID), tested on synthetic files only; the commander chooser (Discussion
+  #18: a pick's restart and re-read), and two live folders written at once (each its own upload session).
 - Surface pins' guidance from orbital cruise down and their arrival distances; carrier trips' following (the leg on
   the booked jump's departure, the cooldown estimate); chat read aloud from real squadron traffic (the pace, mentions).
 - Space chatter's places and blockers (`outrider.chatter.where`): the on-foot-on-planet and SRV bits, GuiFocus
@@ -1882,8 +1924,10 @@ confirmed while playing. Treat reports about them as likely real.
 - Auto-target in game: the first default sequence targeted a system end to end with "test now" (2026-10-02); a camera
   yaw before the search and a zoom in the plot step worked on 2026-10-03, and the current submit (the down arrow and
   UI_Select) on 2026-10-23, against Sol (several results) and a neighbour (one), with ▶ test now (the author's bindings,
-  Linux/Proton). Not yet tried: a run triggered by a real supercharge on a route (Kurbo26 saw the game's plot add a
-  stop on the way; his Route Settings: Fastest Routes, Jet-Cone Boost), Target next and Retry from the page, other keyboard layouts and presets, and both entry modes side by side; 🎯 on a
+  Linux/Proton), and a boxel's next system on 2026-10-31. Not yet tried: a run triggered by a real supercharge on a
+  route (Kurbo26 saw the game's plot add a stop on the way; his Route Settings: Fastest Routes, Jet-Cone Boost), Target
+  next and Retry from the page, other keyboard layouts and presets (General and Ship presets that differ: the map's
+  controls are read from General), and both entry modes side by side; 🎯 on a
   bookmark, the next stop, a Nearest row, a checklist find and a Map click (S31, S72), and the co-pilot button falling
   back to the next stop.
 - The voice plotting a far "nearest ..." (D4): a neutron route to the place's system, tested with the plot faked.
@@ -1911,6 +1955,8 @@ confirmed while playing. Treat reports about them as likely real.
   matches wmctrl's: a mismatch would show as "not the active window" while playing), DisplaySettings.xml's
   `<FullScreen>` values, and "keep showing" with a window over the game (X11 stacking, and Windows' z-order walk).
   The Alerts panel over a real game (its timing beside the voice, and how much a busy arrival puts on it).
+  On Linux the panels hiding over the galaxy map, following a resize of the game window and placed right in windowed
+  mode are confirmed (the author, 2026-10-31); on Windows the panels' place in the game's client rectangle is not.
   The overlay's sizes on real screens: the Size % cells' "≈ 11 px text" / "held at 9 px" figures and the 9 px floor
   against a real 1080p and 4K game window (tested on rendered frames and a faked window height), and Ctrl + wheel in
   Arrange mode over the game.

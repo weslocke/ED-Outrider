@@ -66,7 +66,8 @@ for this: see [Other devices on your network](install.md#-other-devices-on-your-
   key" (give it a second, keyboard binding in Elite's controls). Edit chooses, renames and orders each set (stored on
   the PC). The rail presses keys only while the game runs and its window is the one in front ("click into the game"
   otherwise: a tap never goes into another window), through auto honk's keyboard (Linux; Windows experimental), and
-  never while auto honk or auto-target is pressing or another commander is playing; one tap per button, never a sequence.
+  never while auto honk or auto-target is pressing or another commander is playing (its buttons are greyed
+  then, under "presses off: CMDR B is playing"); one tap per button, never a sequence.
 
 **The Android app.** [ED Outrider for Android](https://github.com/weslocke/ED-Outrider-Android) shows the tablet layout
 full screen with the screen kept on, signs in once, listens for a wake word ("Hey Vespa", "OK Vespa"; the word and

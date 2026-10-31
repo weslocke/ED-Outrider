@@ -15,13 +15,15 @@ variant for this body's star or materials has never been seen in such a place an
 Stratum, for instance, has no variant for a G star. When the stars or materials are not known nothing
 is ruled out on that account. The colour tables come from EDMC-ExploData
 (https://github.com/Silarn/EDMC-ExploData, GPL-2.0: its repository carries the version 2 text): they are downloaded
-into resources/bio_colours.json on the first start and refreshed with the rules, never shipped. The colony distances
+on the first start and refreshed with the rules, never shipped: beside your database under the server (OWN_RULES),
+into resources/bio_colours.json for the command line. The colony distances
 (COLONY_DISTANCE) are the game's own: the Genetic Sampler shows them.
 
 The spawn conditions are the community's work, maintained in the BioScan plugin for EDMC
 (https://github.com/Silarn/EDMC-BioScan, GPL-2.0-or-later), with the galactic region map from
-https://github.com/klightspeed/EliteDangerousRegionMap (MIT): both ship in resources/bio_rules.json, which ED Outrider
-refreshes on each start when upstream has changed (`--update-rules` does it by hand).
+https://github.com/klightspeed/EliteDangerousRegionMap (MIT): both ship in resources/bio_rules.json. ED Outrider
+checks upstream on each start and writes a newer copy beside your database (OWN_RULES, read before the shipped one),
+never over the shipped file (`--update-rules` refreshes the shipped copy by hand).
 
     python3 -m outrider.bio --update-rules     fetch the latest spawn rules
     python3 -m outrider.bio --backtest         check the rules against your own journals

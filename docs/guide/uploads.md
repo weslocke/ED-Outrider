@@ -24,11 +24,13 @@ switch them (they are not among the Server settings).
   - The commander you are playing, with no key saved yet, is held, not dropped: what you play waits in the outbox
     and goes once you save the key (switching EDSM on before adding the key loses nothing); once another commander
     plays, what was held is dropped. Another commander with no key sends nothing, and Settings says so.
-  - A key EDSM refuses stops the sending (not the recording) until you change the key, press **Try again** in
-    Settings → Uploads, or switch EDSM off and on: what you played meanwhile then goes.
+  - A key EDSM refuses stops the sending (not the recording) until you change that commander's key, press **Try
+    again** in Settings → Uploads, or switch EDSM off and on: what you played meanwhile then goes. The hold names the
+    commander whose key was refused: another commander's new key does not end it.
   - **Check** beside the key asks EDSM whether it takes that name and key (the one typed, else the one saved), without
-    sending anything: "✓ EDSM accepts CMDR … with this key", or "✗ EDSM: 203 commander name or API key not found". A
-    check that works with the saved key ends a hold at once. One check every 10 seconds.
+    sending anything: "✓ EDSM accepts CMDR … with this key" ("(no credits stored yet)" after it for an account EDSM
+    has no credits for yet), or "✗ EDSM: 203 commander name or API key not found". A check that works with the saved
+    key ends that commander's hold at once. One check every 10 seconds.
   - If EDSM keeps refusing a key you know is right, make a new key on edsm.net and paste that one.
 - **Inara**: keeps your commander profile there current, as EDMC's Inara upload does, so a player who uses Outrider
   alone loses nothing on it:
@@ -137,8 +139,8 @@ longer takes), Outrider stops sending that kind until it restarts or you press T
 does not take yet. The other kinds still go. The refused ones are gone; Try again lets new ones go.
 
 **When an upload goes on hold** (a key refused or not saved, a kind of EDDN message refused), a card says so at the top
-of the page ("EDSM uploads on hold: …"), once per hold; it goes when the hold ends (Try again, a new key, the upload
-switched off and on). The **Upload on hold** row in Settings → Alerts adds a desktop notification and a spoken line
+of the page ("EDSM uploads on hold (CMDR …): …"), once per hold; it goes when the hold ends (Try again, a new key,
+the upload switched off and on). The **Upload on hold** row in Settings → Alerts adds a desktop notification and a spoken line
 (said by Comms); it is off until you tick it.
 
 **When a service is down.** If an upload that is on has failed for 15 minutes with messages waiting, a card says so at
@@ -173,7 +175,8 @@ that stretch is missing there. Settings → Uploads → **Fill gaps in EDSM's fl
 - **Check EDSM's log** asks EDSM (reading only) where its flight log ends before Outrider took over: "EDSM's flight log
   ends 2026-10-09 21:14 UTC at …; Outrider has sent since 2026-10-11 08:00 UTC; your journals have 412 jumps between".
   It fills **From** and **To** with that stretch. If EDSM was switched on in Outrider before this version, when it
-  started sending is not known ("unknown"): then the range runs to now, and you set the end yourself.
+  started sending is not known ("unknown"): then the range runs to now, and you set the end yourself. With EDSM
+  switched off in Outrider, it says "Outrider is not sending to EDSM" and the range runs to now too.
 - **Preview** rebuilds, from your journals (the live folders, the legacy ones and the backups' journal archive), what
   Outrider would send EDSM for that range, sending nothing: "312 events (41 jumps) in 2 requests, about 1 min". Times
   are UTC. A range that comes out empty says why when its lines were read but left out, as the live upload leaves

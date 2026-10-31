@@ -11405,6 +11405,28 @@ const releasePayloads = async () => {
     console.log(good ? "OK" : "FAIL", "| review_lows_batch8 |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]])))}`
       : "badge hover, trip head, carrier name, reached, heard lines, ring prices moved, pad, star, folds, scroll, plot, restart, plain words, Keep loaded, speakers, lab, page switch, surface, lost line", errors.slice(before));
   }
+  // Settings → Server's Choose… beside [journals] commander (Discussion #18): drawn when the journals hold several
+  // commanders, and it opens the chooser (the docs sweep, 2026-10-31: the field's own `data` hid the payload's)
+  server_settings_commander_choose: { if (skip("server_settings_commander_choose")) break server_settings_commander_choose;
+    const w = dom.window, before = errors.length;
+    const got = await w.eval(`(async () => { const real = apiJson, saved = data.commanders;
+      apiJson = async () => ({path: "x.toml", exists: true, problems: [], groups: [{group: "files", title: "Files and backups",
+        keys: [{section: "journals", key: "commander", value: "", kind: "str", set: false}]}]});
+      try {
+        data.commanders = {filter: "", playing: null, list: [{fid: "F1", name: "Alpha", files: 2}, {fid: "F2", name: "Beta", files: 1}]};
+        await loadServerSettings();
+        const btn = document.querySelector("#serverSettingsBody [data-cmdrpick]");
+        if (btn) btn.click();
+        const opened = document.getElementById("cmdrDlg").open, rows = document.querySelectorAll("#cmdrRows [data-cmdr]").length;
+        tabClose(document.getElementById("cmdrDlg"));
+        data.commanders = null; await loadServerSettings();
+        const none = !document.querySelector("#serverSettingsBody [data-cmdrpick]");
+        return JSON.stringify([!!btn, opened, rows, none]);
+      } finally { apiJson = real; data.commanders = saved; await loadServerSettings(); } })()`);
+    const goodC = got === "[true,true,3,true]" && errors.length === before;
+    allOk = allOk && goodC;
+    console.log(goodC ? "OK" : "FAIL", "| server_settings_commander_choose |", goodC ? "Choose… drawn with several commanders, opens the list; none with one" : got, errors.slice(before));
+  }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
   origin_guard: { if (skip("origin_guard")) break origin_guard;
   const post = origin => fetch(base + "api/radius", {method: "POST", body: "{}",

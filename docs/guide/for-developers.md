@@ -18,9 +18,9 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/unsold.py` | The unsold-data estimate; also works on its own (`python3 -m outrider.unsold --help`) |
 | `outrider/log.py` | One-line summaries of journal events for the Log view |
 | `outrider/materials.py` | Material names, grades and caps, synthesis recipes, and the running inventory |
-| `outrider/dock.py` | The nearest place to dock: Spansh's stations and carriers, the DSSA list, your carrier, merged and filtered |
+| `outrider/dock.py` | The nearest place to dock: Spansh's stations and carriers, the DSSA list, your carrier and your squadron's, merged and filtered |
 | `outrider/pads.py` | Where your landing pad is: the pad layouts of starports and carriers (after bgol's LandingPad plugin, GPL-2+), the pad's place in words, the pad diagrams |
-| `outrider/cargo.py` | Cargo: the ship's hold and your carrier's (folded from the journal), the carrier's tritium, the Sell / Buy lookup and trade routes |
+| `outrider/cargo.py` | Cargo: the ship's hold and your carrier's (folded from the journal), the carrier's tritium, the Sell / Buy lookup, Sell all's stations for the whole hold and trade routes |
 | `outrider/tts.py` | Spoken alerts with Piper (optional), and playing lines and sounds on the PC |
 | `resources/speech.json` | The spoken lines, yours to edit (bans go in `data/speech_banned.json`) |
 | `resources/personalities/` | The shipped personality files (naval, Vulcan, Klingon...), one each in `speech.json`'s format; yours go in `data/personalities/` |
@@ -44,7 +44,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/winkeys.py` | Key presses and the clipboard on Windows (`SendInput`), standing in for evdev |
 | `outrider/target.py` | Auto-target: the galaxy-map steps every 🎯 and the Highway press (Linux; Windows experimental; optional); `--show` |
 | `outrider/target_help.py` | The steps' Macro cheatsheet (Settings → Auto-target links it): every command, control, key name and alias, from the code |
-| `outrider/game_window.py` | Elite's window for auto-target: brought to the front before a run, checked to be in front before every key |
+| `outrider/game_window.py` | Elite's window for auto-target and the tablet's control rail: brought to the front before an auto-target run, checked to be in front before every key |
 | `outrider/screenshots.py` | Screenshots (game PC; converting needs Pillow): the game's BMPs converted to PNG, JPG or WebP with their copies, crop and metadata, what a surface shot shows, your codex folders and their pictures on the Bio/Geo checklists, the folder picker |
 | `outrider/bio.py` | The exobiology predictor; `--backtest` scores it against your journals, `--update-rules` fetches the rules by hand |
 | `resources/bio_rules.json` | Spawn rules, nebulae and regions from BioScan and klightspeed's region map; the server never writes it: its refreshed copy and ExploData's colour variants (`bio_colours.json`, never shipped) are downloaded beside your database, in `data/`, on the first start (`outrider/bio.py`) |
@@ -82,7 +82,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `launch_outrider.sh`, `launch_outrider.bat` | Start Outrider (Linux and macOS; Windows), making `.venv` and installing `requirements.txt` first when needed (`OUTRIDER_REINSTALL=1` installs again), checking for a newer certifi once a week, and PyQt6 when the in-game overlay is on; they pick a Python that Piper's voices can be installed into |
 | `scripts/install_requirements.py` | The launchers' install step: all of `requirements.txt` at once, else one line at a time, so an optional package that will not build (evdev, piper-tts, pillow) or no network does not stop Outrider starting. Exit 0 all installed, 2 only optional ones missing, 3 a required one failed but the installed packages still run Outrider (offline), 1 Outrider cannot run |
 | `scripts/python_check.py` | Whether a Python can install Piper's voices (64-bit 3.11 to 3.14; onnxruntime has no other builds): the launchers use it to pick a Python and to say so before the setup; `--ok` exits 0 when this Python suits, silently |
-| `scripts/verify.sh` | Every check in one go: unit tests, lint, `node --check static/page.js` (the page's JavaScript syntax), the page smoke test on a throwaway server (and a clean stop) |
+| `scripts/verify.sh` | Every check in one go: unit tests, lint, `node --check static/page.js` (the page's JavaScript syntax), `tests/page_unit.js`, the page smoke test on a throwaway server (and a clean stop); `--smoke here,bio` runs only those smoke blocks (`node tests/page_smoke.js --list` names them), never a full PASS |
 | `scripts/docker_bundle.sh` | A Docker release bundle in `dist/` (git-ignored): the built image saved with a compose file that runs it (no checkout or build on the server) |
 | `scripts/build_codex_images.py`, `scripts/build_geo_codex.py` | Rebuild `resources/codex_images.json` and `resources/geo_codex.json` from Canonn's codex reference (read only) |
 | `scripts/build_ship_images.py` | Builds `static/ships/` from Elite Dangerous Almanac's ship illustrations at a pinned commit (needs PyQt6) |

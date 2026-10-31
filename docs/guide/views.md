@@ -41,7 +41,8 @@ Rings shows the count and, once one is mapped, "1🗺/5": rings mapped and the h
 every ring is mapped); hover it for each ring's type and hotspots under it, the body's reserves (pristine, major...) and
 your record there; the body's own hover card adds each ring's width and density. Click a body with hotspots and its
 details (here or in Search) add **Best nearby**: each hotspot mineral's best sell price within 100 ly (stations, from Spansh's markets),
-highest first, so you know which hotspot to drop into; asked once in half an hour, then shown in the Rings hover too
+highest first, so you know which hotspot to drop into; asked once in half an hour (and again after a jump: the
+distances are from where you are), then shown in the Rings hover too
 ("from you" for a system you are not in). When the lookup fails it says so, and asks again a few minutes later.
 The to-do line ticks itself off as you honk, map and sample, in a suggested order with supercruise time and
 credits per minute ("~2 min · 450k/min"; "skip?" when not worth the trip). Bio nobody has set foot on is
@@ -84,7 +85,9 @@ what it is worth).
 <b>Map</b> — a 3D view: left-drag to rotate, right-drag to move, scroll to zoom. Your path in orange,
 your first discoveries in gold, visited systems in blue (or colour them by star class, or by **work left**: Left behind's
 systems ringed amber (at its own radius), lost firsts to rescan red, unsold firsts gold, the hover naming what is left; by touch: one finger rotates, two move,
-pinch zooms); tick <i>boost stars</i> for neutron stars and white dwarfs. The route ahead is dashed: the one plotted in
+pinch zooms); tick <i>boost stars</i> for neutron stars and white dwarfs. A dashed ring round you is your jump range,
+and at a neutron star or white dwarf a second one its boosted reach (×4, ×6 with the SCO Mk II drive; ×1.5 at a white
+dwarf). The route ahead is dashed: the one plotted in
 game, and the route Outrider follows (Plot Route's) from where you are, with ◎ on its next stop (else your next stop);
 hover a stop for which it is. A click on a system targets it in the galaxy
 map when auto-target can work on this PC, else copies its name (the card says which; a tap shows the card with
@@ -113,7 +116,9 @@ checklists</a>.
 <b>Log</b> — every journal event, newest first, one readable line each. Filter by category and time,
 search any text, click a row for the raw event. A search answers in parts ("searching… 12 so far") and keeps looking
 by itself, so a search that matches little shows what it has found while it goes on. With uploads on, each line
-shows what they made of it (✓ EDDN · ⏳ EDSM, <a href="uploads.md#upload-marks-in-the-log">upload marks</a>), and <b>not sent</b> lists what is waiting or was refused.
+shows what they made of it (✓ EDDN · ⏳ EDSM, <a href="uploads.md#upload-marks-in-the-log">upload marks</a>; a ⏳ turns ✓ by itself once it goes), and <b>not sent</b> lists what is waiting or was refused.
+With <code>[journals] commander</code> set (<a href="install.md#two-commanders-on-one-pc">Two commanders on one PC</a>),
+it shows only that commander's journals.
 <br><br><img src="../images/log.png" alt="The log">
 </td>
 </tr>
@@ -269,7 +274,9 @@ up it says "checking…", never the previous target's verdict.
   value) gets no rebuy multiple. Docked where your data sells it says what
   selling here pays ("💰 sell here: 380M"); on a high-g approach it shows that approach's stakes instead.
 - **While mining in a ring** (a mining ship, in normal space): a ⛏ line with the ring and hotspot, tons an hour, the
-  hold and what it holds most, limpets and minutes to full ([Voice and alerts](voice-and-alerts.md) has its warnings).
+  hold and what it holds most, limpets (under 10, how many more your materials could make: "limpets 4 (+12 by
+  synthesis)"), minutes to full and, with minerals ticked for the call-out, this stint's hits ("hits 3/8")
+  ([Voice and alerts](voice-and-alerts.md) has its warnings).
 - **This session** since your login: "2 h 14 · 74 jumps · 612 ly · 6 new systems · 11 mapped · 4 samples ·
   ~38.0M found" (the unsold estimate's change plus what you sold). After you quit, the last session.
 - **Captions** show the last three lines said; tap one to hear it again. A corner bar has 🗣, hush 30 min,
@@ -295,8 +302,8 @@ Its side has the galaxy map's squadron carrier marker and its name, where it is 
 login, or Spansh's newer report of it elsewhere, marked "Spansh"), how far, 🎯 and 🛣, your jumps to it, and UC and
 Vista (Spansh's, or what it listed when you last docked). A member's journal holds nothing more: no balance, cargo or
 tritium estimate (other members move and donate them). An officer who opens its management, or books a jump, gets
-the tritium reading and the countdown too. Nearest place to dock lists it as **your squadron's**, with no "squadron
-only" warning, and any carrier with a four-letter callsign as a squadron carrier.
+the tritium reading and the countdown too (read as Frontier documents those lines: not yet tried in a live game). Nearest place to dock lists it as **your squadron's**, with no "squadron
+only" warning, and any carrier with a four-character callsign as a squadron carrier.
 
 The **In-Game Route:** line under the tiles is the route the game plotted in the galaxy map (a route of more than one
 jump: a system targeted next door has no line, the target says it; a longer route keeps its line to its last jump): its jumps and light years,
@@ -606,6 +613,9 @@ above the list:
 - **Inventory**: your ships (where each is, its value, what bringing it here costs), your stored modules with their
   engineering, the ship locker, and your suit loadouts. The game writes the list of stored ships when you open a
   shipyard: ships bought, sold, swapped, sent for or renamed since are followed, and each ship's value is its latest.
+  Where a stored ship or module is names its system and station (a fleet carrier marked "(carrier)"); a place you never
+  docked at shows its system only (the game's lists name only the system and the market, so Outrider keeps the
+  stations you dock at).
   Each ship has the same EDSY ↗ and Coriolis ↗ links as on the CMDR tab (in the Android app they open in your browser).
   Rest the mouse on a ship for 2 seconds to see a picture of its type, with its name; it goes when you move away (or
   press Escape). On the tablet, tap the ship's name (underlined with dots) to open the picture and tap anywhere to close
@@ -645,7 +655,8 @@ above the list:
   sort by t/h, hit rate or last visit, 🎯 targets the system. The hotspot is the one you dropped on (Outrider reads it
   live; the game's journal never says which, so older mining shows "hotspot not known", and a drop on the ring itself
   "no hotspot"); a ring with several hotspots of one mineral counts them as one. Here's ring hover and body card add
-  your record under each ring ("you, Alexandrite: 3 stints · 38 t/h · 41 % hits").
+  your record under each ring ("you, Alexandrite: 3 stints · 38 t/h · 41 % hits"), and dropping out of supercruise at
+  a hotspot you have mined before says it ([Voice and alerts](voice-and-alerts.md)).
 - **Earnings**: what exploration, exobiology and mining paid you, from every sale in your journals.
   - The figures: the total, cartography and exobiology (each its base and bonus, less your NPC crew's share while you
     had crew hired: the total is what you were paid), mining (the tons you mined and sold), and the data you lost to

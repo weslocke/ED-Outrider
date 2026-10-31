@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Docs brought up to date for the release; Settings' Choose… drawn
+- A sweep of every doc against the code and the changes since 2026.10.29: the guide pages (the squadron carrier, the
+  commander chooser, stored items' stations, Sell all, loop routes, the Map's boosted ring, the rail and auto-target
+  with another commander playing, upload holds per commander), README's At a glance, AGENT_GUIDE's code map,
+  JOURNAL_REFERENCE, DESIGN_NOTES' decisions and its "Not yet tried" list, and the example config (its missing
+  `[screenshots]` section and `speak_codex_signals`).
+- Settings → Server's **Choose…** beside `[journals] commander` was never drawn (the field's own `data` hid the
+  payload's); now it is, with a smoke test. The galaxy map's preset comment in `outrider/honk.py` and the bio module's
+  note on where refreshed rules and colours go are corrected; Server settings' summary names Nearby.
+
 ## 2026-10-31 · Piper speaks with a few threads, not every one
 - Watched for 15 minutes with the game running: Outrider idled near 1 % of a CPU thread but jumped to 1.5-6 cores for
   each spoken line, because onnxruntime gave every loaded Piper voice a thread per CPU thread (24 on a 32-thread PC)

@@ -359,9 +359,9 @@ the sentence ends:
   you've left, are dropped. Charging the frame shift drive clears the queue.
 - **No repeats too soon.** Each alert goes through every line in your personalities before any comes round
   again. The browser remembers what you have heard across reloads.
-- **Hush.** The **▾** beside 🗣 hushes for 10 minutes, 30 minutes or until the next jump. Danger and anything
-  you ask for still speak. The hush is kept by Outrider, so a hush from a tablet, the co-pilot button or a
-  [question by voice](#-ask-outrider-by-voice) ("hush for ten minutes") quiets the PC too.
+- **Hush.** The **▾** beside 🗣 hushes for 10 minutes, 30 minutes or until the next jump, the alerts' sounds too (the
+  targeting sound among them). Danger and anything you ask for still speak. The hush is kept by Outrider, so a hush
+  from a tablet, the co-pilot button or a [question by voice](#-ask-outrider-by-voice) ("hush for ten minutes") quiets the PC too.
 - **One window speaks.** With the page open in several windows, only one speaks and plays sounds, so nothing
   is said twice. **Speak from this window** takes over; **This screen speaks: auto / always / never** sets it
   per browser. A tablet with **Play alerts here** speaks as well, whatever the PC does (see On a tablet).
@@ -448,9 +448,10 @@ Piper voice by the window that speaks (a PC browser, or the tablet with Play ale
 every open page. Outrider knows these without any AI: **where am I** (the system, its region and the body you are on
 or near), **status report, fuel** (with your jump range: "how far can I jump"), **unsold, next stop** (of whichever
 route you follow: the Highway, Road to Riches, Exomastery, a world, sweep or trade route, the one plotted last; else
-your next stop, else the route plotted in the game), **what's left here,
-nearest unvisited, nearest scoopable star** (the nearest known one from you, and whether it is within one jump; most
-unreported stars can be scooped too), **nearest station** (or carrier, Vista, cartographics, repair, refuel, shipyard, material trader,
+your next stop, else the route plotted in the game; a route at its last stop says so, or gives way to the other one
+you follow), **what's left here,
+nearest unvisited, nearest scoopable star** (the nearest known one from you, and whether it is within one jump; the
+star you are at first, when it scoops; most unreported stars can be scooped too), **nearest station** (or carrier, Vista, cartographics, repair, refuel, shipyard, material trader,
 raw material trader, "where can I sell": see
 [Nearest place to dock](plot-route.md#-nearest-place-to-dock); a place further than 500 ly also gets a neutron route
 plotted there while you follow none), **nearest green gas giant** (a guess from what
@@ -461,7 +462,7 @@ for the latest session), **this body** (the body you are on, fly near or have ta
 biology and geology), **left behind** (the nearest one or two systems within 100 ly with work over your
 `body_highlight_level` and `bio_min`), **bookmark this system** (any words after it are its note: "bookmark this
 system ringed water world") and **remove the bookmark**, **say that again** (the last line, again, in the window that
-speaks), **show** a page on the tablet ("show Nearby", "open Bio", "back to Now"), **hush** and **unhush**. A hush can take a time: "hush for ten minutes",
+speaks), **show** a page on the tablet ("show Nearby", "open Bio", "open Plot Route", "back to Now"), **hush** and **unhush**. A hush can take a time: "hush for ten minutes",
 "quiet until the next jump" (30 minutes when you say none; another time gets the nearest of 10, 30 minutes or the
 next jump). Their phrases are in `resources/ask.json`; edit them freely (Outrider reads them at start).
 
@@ -503,8 +504,9 @@ anything. Nothing extra to install.
 - **An Outrider elsewhere** (a Docker server): the bridge runs on the computer with your AI client, from a checkout
   of this repository; set `[mcp] url` (`"http://server:8025"`) and `[mcp] password` (its `[server] password`; or
   `--url` and `--password`), and it signs in.
-- If Outrider isn't running, the tools say so. `[mcp] max_rows` caps how many rows a list answers with (25).
-  `python3 -m outrider.mcp --list` shows the tools.
+- If Outrider isn't running, the tools say so; if it refuses the host name in `[mcp] url` (one not in its
+  `[server] allowed_hosts`), they say that, in Outrider's own words. `[mcp] max_rows` caps how many rows a list
+  answers with (25). `python3 -m outrider.mcp --list` shows the tools.
 - **Privacy:** Outrider uploads nothing, but what the tools answer goes to your AI client's provider like anything
   else you type into it. A client running a local model keeps everything on your PC.
 

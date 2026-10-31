@@ -82,7 +82,8 @@ leave a pasted name empty in the game. Without either, nothing is copied and eve
 every start and, while the one it needs is missing, prints a block with the command for your package manager (apt,
 dnf, pacman or zypper) and the one that installs both. Windows needs nothing. On Linux the [in-game overlay](overlay.md) finds
 Elite's window with **`wmctrl`** and **`xprop`** / **`xwininfo`** (the `x11-utils` package):
-`sudo apt install wmctrl x11-utils`. Auto-target uses the same two to bring the game window to the front before pressing keys.
+`sudo apt install wmctrl x11-utils`. Auto-target uses the same two to bring the game window to the front before pressing keys,
+and the tablet's control rail to press only while the game is the window in front.
 
 Start Outrider with the `.venv`'s Python (`.venv/bin/python ed_outrider.py`, as above): plain `python3 ed_outrider.py` finds Piper and evdev in a `.venv` in the Outrider folder, but aiohttp must then be installed for that `python3` too.
 Your own files (the database, backups, downloaded voices, banned lines, your own pronunciations) all go in `data/`.
@@ -151,7 +152,8 @@ commander"; a pick sets `[journals] commander`, restarts Outrider and reads ever
 Server → Files and backups → `[journals] commander` (or type the FID or the name as the game shows it there, blank for
 every commander). While the other commander plays, this Outrider stands down: the page says "CMDR B is playing: not
 tracked here" (its button opens the same list), Status.json, NavRoute.json, Cargo.json and ShipLocker.json are not
-read, and auto-target presses nothing. The estimate of the data on board and the Log follow the commander you chose too;
+read, and auto-target and the tablet's control rail press nothing (the rail is greyed). The estimate of the data on
+board and the Log follow the commander you chose too;
 uploads still go per commander, each with its own key.
 
 To track the alt too, run a second Outrider with its own port, database and config file (`--port 8027 --db
@@ -282,7 +284,7 @@ sent by other web sites, stops a malicious page from reading your journals or pr
 
 It does not stop people on your network, so set **`[server] password`** as well: a tablet or phone then shows a
 sign-in page once (the Android app its own) and stays signed in, also across Outrider restarts, until you change the
-password. The PC Outrider runs on never asks. The page is plain http, so the password crosses your network
+password. The PC Outrider runs on never asks (except in Docker, where every browser signs in). The page is plain http, so the password crosses your network
 unencrypted: pick one you use nowhere else. Without one, anything on your network can do whatever the page does: read
 it, change bookmarks and the settings (the password and journal folders included), restart Outrider, use your stored
 EDSM and Inara keys and, on the game PC, press keys in the game (the control rail, the tests of auto honk and
@@ -323,8 +325,8 @@ the game. **Back up now** in the Data tile, or in ⚙ Settings → Server → **
 - `backup_every_days = 0` turns automatic backups off.
 - Before a journal re-read (after an update that changes how journals are read, or `--rescan`) the database is always
   backed up first, even with `backup_every_days = 0`: the zip's name ends in `-pre-reread`, and it rotates out with
-  the others. If more than half the journals the database was read from are gone, Outrider says so at the top of the
-  page.
+  the others. If more than half the journals the database was read from are gone (neither where they were read nor
+  in your journal folders now), Outrider says so at the top of the page.
 - ⚙ Settings → Server → **Backups** lists the zips, newest first (marked "automatic", "by hand" or "before a re-read"
   where that is known), with the command that restores the one you click and a **Copy** button. Under the list it
   says what they take on the disk (the zips, the journal archive, any pre-restore copies) and the space left free.

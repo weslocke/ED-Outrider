@@ -79,7 +79,7 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   (26), HUD analysis mode (27, `FLAG_HUD_ANALYSIS`: the overlay's analysis-only panels show only then), altitude from average radius (29), in the hyperspace tunnel (30, FsdJump: the jump line is said once it
   comes on after a hyperspace StartJump; auto honk waits while it is set; the overlay hides every panel); `GuiFocus`
   7-11 (system map, orrery, FSS, SAA, codex) hide the overlay too (`OVERLAY_HIDE_FOCUS`), 6 (the galaxy map) all but
-  its Target panel; `BodyName` with `Altitude` is the Target panel's near-body zone (the point ApproachBody is written); Flags2
+  its Target panel and the alerts; `BodyName` with `Altitude` is the Target panel's near-body zone (the point ApproachBody is written); Flags2
   bit 0 on foot, bits 3/13/14 on foot in a station, hangar or social space (counted as docked), bit 4 on foot on a
   planet (`FLAG2_ON_FOOT_PLANET`) and bits 6/7 the suit's LowOxygen and LowHealth (`SUIT_LOW`: the suit warning,
   `suit_watch`, S9-S7, on their rise while bit 4 is set and none of the docked ones; bits 4, 6 and 7 are from Frontier's
@@ -94,7 +94,9 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 - **Cargo.json** (`read_cargo_file`): the ship's whole hold (`Inventory[]` of `Name`, `Name_Localised`, `Count`,
   `Stolen`, `MissionID`), rewritten with every `Cargo` event (whose own line then has only the count). **Not
   always:** after `BuyDrones` the game wrote a count-only `Cargo` and left the file as it was (2026-10-19, 200 limpets
-  bought, the file still empty), so limpets are moved by `BuyDrones` / `SellDrones` / `LaunchDrone` themselves.
+  bought, the file still empty), so limpets are moved by `BuyDrones` / `SellDrones` / `LaunchDrone` themselves, and a
+  Limpet Basic `Synthesis` adds 4 (`SYNTH_LIMPETS`, `outrider/cargo.py`): after one the game writes only a count-only
+  `Cargo` too (the author's journals, 2024-10-13: 4, then 8 after the next).
 - **Market.json** (`read_market`): the market you last opened, with `MarketID`, `StationType` and `Items[]`
   (`Name` as `$platinum_name;`, `Name_Localised`, `BuyPrice`, `SellPrice`, `Stock`, `Demand`). Only your own
   carrier's is kept (`carrier_markets`): the game overwrites the file at the next market.

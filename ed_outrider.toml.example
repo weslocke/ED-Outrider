@@ -1,9 +1,10 @@
 # ED Outrider configuration — copy to ed_outrider.toml next to ed_outrider.py and edit.
 #
 # You do not have to edit this file by hand: every setting in it can be changed in Outrider's web page, under
-# ⚙ Settings (Server settings for most of them, Uploads for [eddn], [edsm] and [inara], In-game overlay for [overlay]). The
-# page writes your changes into ed_outrider.toml itself, keeping its comments and the previous copy as a .bak; most
-# take effect the next time Outrider starts (the overlay's switches at once).
+# ⚙ Settings (Server settings for most of them, Uploads for [eddn], [edsm] and [inara], In-game overlay for [overlay],
+# Screenshots for [screenshots]). The page writes your changes into ed_outrider.toml itself, keeping its comments and
+# the previous copy as a .bak; most take effect the next time Outrider starts (the overlay's switches and the
+# screenshots' keys at once).
 #
 # Every key is optional. Precedence, highest first:
 #   command-line flags (--journals, --host, --port, --radius, --db)
@@ -36,7 +37,8 @@
 
 # Only this commander's journals (the FID, or the name as the game shows it), when another commander (an alt, someone
 # else's account on the same login) writes into the same folder; "" = every commander. Changing it reads every journal
-# again at the next start. Settings -> Server -> Files and backups has it too.
+# again at the next start. Settings -> Server -> Files and backups has it too, with Choose... to pick from the
+# commanders the journals hold.
 # commander = ""
 
 [server]
@@ -49,8 +51,8 @@
 #                      # needs it, except in Docker, where every browser signs in. "" = no sign-in. It crosses your network unencrypted (plain http), so use
 #                      # one you use nowhere else. Changing it signs every device out.
 # game_pc = "auto"     # is this the PC the game runs on? "auto" (off inside a container such as Docker), "true" or "false".
-#                      # Off (a server): no auto honk, auto-target, tablet rail, co-pilot button, clipboard or sound
-#                      # played on this PC; the pages leave them out.
+#                      # Off (a server): no auto honk, auto-target, tablet rail, co-pilot button, clipboard, sound
+#                      # played on this PC, in-game overlay or screenshot converting; the pages leave them out.
 # update_check = true  # once a day, ask GitHub whether a newer Outrider release is out; the page shows a small
 #                      # "Update" pill when one is (only the request is made: nothing about you is sent)
 # allowed_hosts = ["mypc.lan"]   # extra names the page may be opened by. Outrider answers to any IP address,
@@ -122,6 +124,8 @@
 #                                # carrier leaving without you, the ship-loss debrief) come only from the business lists, never swearing
 # speak_bio_signals = true        # say "2 Biological Signals on body A 3" as the FSS finds them
 # speak_geo_signals = true        # and the geological ones
+# speak_codex_signals = true      # and the possible new codex entries among them (the species or geology new to your
+#                                 # codex, ✦ / ✪)
 # speak_mapped = false            # after mapping a planet: "A 2 mapped efficiently, 3.4M. Next: biology on
 #                                 # C 2, up to 19M." (a card and a spoken line; also a tick in ⚙ Settings → What is said)
 # codex_interesting = true        # a body whose likeliest species is new to your codex in this region (✦) is worth
@@ -279,6 +283,44 @@
 #                           # break that lock on some systems
 # pad_diagram = true        # while docking at a starport or carrier: a diagram of where your pad is under PAD 34, in the
 #                           # Surface radar's place and on Now (false: the number and its words only)
+
+[screenshots]
+# Screenshots (outrider/screenshots.py; a game-PC feature, converting needs the optional Pillow package): each new F10
+# and Alt+F10 shot turned from the game's BMP into a PNG, JPG or WebP named after where it was taken, with smaller
+# copies and a crop if you like (see docs/guide/automation.md). The page's Settings -> Screenshots sets them and writes
+# this; every key takes effect at once (the next shot). "~/" in a folder is your home folder.
+# enabled = false           # convert each new screenshot
+# pictures = ""             # the game's Pictures folder ("" = found beside its journals)
+# folder = ""               # where the converted images go ("" = the Pictures folder's Converted)
+# by_cmdr = true            # a folder per commander
+# by_system = false         # ... and one per system in it
+# subfolder = ""            # your own folders instead ("" = the two above): {cmdr} {system} {date}, "/" nests, e.g.
+#                           # "{cmdr}/{date}"
+# filename = "{system} {body} {date} {time}{highres}"   # tokens: {system} {body} {date} {time} {cmdr} {highres} {subject}
+# format = "png"            # the full size: "png" (lossless), "jpg" or "webp" (smaller than JPG at the same quality)
+# quality = 90              # a full-size JPG's or WebP's quality (50 to 100)
+# full = true               # keep the full-size picture (false: only the copies and the crop; the full size anyway
+#                           # when there are none)
+# medium = 0                # a medium copy's long edge in px, in medium/ (0 = none, up to 7680; 1920 when ticked)
+# small = 0                 # a small copy's long edge in px, in small/ (0 = none, up to 3840; 1080 when ticked)
+# crop = ""                 # a cut-out in crop/: "left, top, width, height" in % of the picture ("" = none), e.g.
+#                           # "10, 10, 80, 75"
+# crop_px = 0               # the crop's long edge in px (0 = as cut, up to 7680)
+# copies_format = "jpg"     # the copies and the crop: "jpg" or "webp"
+# copies_quality = 85       # their quality (50 to 100)
+# original = "keep"         # the game's BMP after converting: "keep", "delete" or "move"
+# move_to = ""              # where "move" puts it
+# subject_m = 50            # m: a surface shot names the plant or formation this close (0 = never, up to 500)
+# clipboard = ""            # after each shot, put this picture on the clipboard: "full", "medium", "small", "crop"
+#                           # ("" = none)
+# codex = false             # also save a tagged shot (a named plant or formation) to Biology/<genus>/<species>/<colour>
+#                           # (no colour folder for a species with none) or Geology/<group>/<name> in the export
+#                           # folder: your own codex
+# codex_format = ""         # "" = a copy of the picture exported; "png", "jpg" or "webp" = the shot converted again at
+#                           # full size
+# codex_quality = 90        # a codex JPG's or WebP's quality (50 to 100)
+# codex_show = false        # the Bio/Geo checklists show a random picture from those folders (Canonn's when there is
+#                           # none)
 
 [mcp]
 # The MCP bridge, for asking an AI client (Claude Code, the Claude desktop app) about your game: the client starts
