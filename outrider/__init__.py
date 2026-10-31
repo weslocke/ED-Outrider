@@ -18,3 +18,12 @@ __version__ = "2026.10.29"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESOURCES_DIR = os.path.join(ROOT, "resources")
 DATA_DIR = os.path.join(ROOT, "data")
+
+
+def read_toml(path):
+    """A TOML file read as Outrider reads its config: a BOM dropped (PowerShell's utf8 writes one; complete review
+    2026-10-30: the launchers' overlay step and the MCP bridge could not read such a file). Raises OSError, or
+    ValueError for a file that is not UTF-8 or not TOML (tomllib.TOMLDecodeError is a ValueError)."""
+    import tomllib
+    with open(path, encoding="utf-8-sig") as f:
+        return tomllib.loads(f.read())

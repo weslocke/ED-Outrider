@@ -489,6 +489,14 @@ class HighwayH1(unittest.TestCase):
         self.assertEqual((p["at"], p["next"]["name"]), (1, "Bridge B"))
         self.assertEqual(self.hw_moments()[-1][0], "next")
 
+    def test_heavy_fuel_words(self):
+        """Complete review 2026-10-30: "It needs about 1 tons aboard; you have 3." and "needs about 2 tons; you have 2"."""
+        w = ed_outrider.heavy_fuel_words
+        self.assertEqual([w(1.9, 2.6), w(2.0, 2.5), w(1.0, 3.0), w(0.5, 2.04), w(36.4, 140.2)],
+                         ["It needs about 2 tons aboard; you have 3.", "It needs about 2 tons aboard; you have 2.5.",
+                          "It needs about 1 ton aboard; you have 3.", "It needs under a ton aboard; you have 2.",
+                          "It needs about 36 tons aboard; you have 140."])
+
     def test_replot_from_here_asks_as_the_route_was_plotted(self):
         """S9-S8: POST /api/highway/replot: to the route's destination, from here (no `from`: where you are), the
         ship you fly now, the route's plotter and options."""
@@ -505,7 +513,15 @@ class HighwayH1(unittest.TestCase):
         with unittest.mock.patch.object(self.state, "highway_start_plot", return_value=({"ok": True}, 202)) as plot:
             self.state.highway_replot()
         self.assertEqual(plot.call_args[0][0], {"plotter": "neutron", "to": rows[-1]["system"], "conservative": False,
-                                                "efficiency": 70, "supercharge_multiplier": 6, "range": 42.0})
+                                                "efficiency": 70, "supercharge_multiplier": 6, "range": 42.0, "ship_id": None})
+        # complete review 2026-10-30: plotted for a ship, re-plotted with the one flown now: its own multiplier (an SCO
+        # ship's ×6 was kept for a ×4 ship), the route's efficiency kept
+        self.state.highway_store(rows, {"plotter": "neutron", "ship": {"ship_id": 39, "name": "Caspian", "type": "explorer_nx"},
+                                        "options": {"range": 80.0, "efficiency": 60, "supercharge_multiplier": 6}})
+        with unittest.mock.patch.object(self.state, "highway_start_plot", return_value=({"ok": True}, 202)) as plot:
+            self.state.highway_replot()
+        self.assertEqual(plot.call_args[0][0], {"plotter": "neutron", "to": rows[-1]["system"], "conservative": False,
+                                                "efficiency": 60})
         # bug check #29: a route already confirmed without a fuel scoop re-plots without asking again
         self.state.highway_store(rows, {"plotter": "exact", "ship": None, "options": {"no_scoop": True}})
         with unittest.mock.patch.object(self.state, "highway_start_plot", return_value=({"ok": True}, 202)) as plot:
@@ -1052,7 +1068,7 @@ class HighwayH1(unittest.TestCase):
         h = self.state.highway_summary()["heavy"]
         self.assertEqual((h["next"], h["hop"], h["boost"], h["distance"]), ("Far C", 3, 6, 487.9))
         self.assertEqual(self.heavy_moments(), ["Too much fuel for the jump to Far C. It needs about "
-                                                f"{int(h['need_t'])} tons aboard; you have 160."])
+                                                f"{round(h['need_t'])} tons aboard; you have 160."])
         # a jump no fuel level reaches (cargo since the plot): short with no amount to scoop
         self.state.highway_clear()
         self.heavy_route(rows)

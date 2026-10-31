@@ -67,6 +67,7 @@ class Trip(unittest.TestCase):
 
     def test_refused(self):
         for body, why in (({}, "destination"), ({"to": "Colonia", "type": "yacht"}, "fleet or squadron"),
+                          ({"to": "Colonia", "type": ["fleet"]}, "fleet or squadron"),   # complete review 2026-10-30: a 500
                           ({"to": "Colonia", "fuel": 1200}, "fuel"), ({"to": "Colonia", "hold": 500, "used": 100}, "includes the tritium"),
                           ({"to": "Colonia", "fuel": True}, "fuel"),
                           ({"to": "Colonia", "fuel": float("inf")}, "fuel")):   # JSON's Infinity: a 400, not a 500 (L19)

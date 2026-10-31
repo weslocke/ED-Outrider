@@ -193,6 +193,11 @@ t("Nearest: your carrier in your system is 'here', 'aboard' only docked at it (b
   const row = a => ev(`nearRowHtml({kind: "carrier", own: true, here: true, aboard: ${a}, name: "C", callsign: "ABC-123", system: "Here", distance: 0, services: [], pads: "L M"})`);
   assert.ok(row(false).includes('<span class="unk">here</span>') && !row(false).includes(">aboard<") && row(true).includes('<span class="unk">aboard</span>'));
 });
+t("Plot Route: 'another ship: type its range' sends no ship, said so (batch 6)", () => {
+  eq(`(() => { const s = hEl("hwyShip"), was = s.innerHTML; s.innerHTML = '<option value="">another ship: type its range</option><option value="7">Mine</option>';
+       s.value = ""; const a = hwyBody(); s.value = "7"; const b = hwyBody(); s.innerHTML = was;
+       return [Object.prototype.hasOwnProperty.call(a, "ship_id") && a.ship_id === null, b.ship_id]; })()`, [true, 7]);
+});
 const later = [];   // asynchronous checks, awaited before the summary
 later.push(["Log: rows not yet final are asked again; with 'not sent', rows that went drop off (batch 5)", async () => {
   ev(`window.__aj = apiJson; window.__rl = renderLog; renderLog = () => {}; view = "log"; lUnsent.checked = true;

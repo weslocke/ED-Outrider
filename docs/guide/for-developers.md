@@ -47,7 +47,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/game_window.py` | Elite's window for auto-target: brought to the front before a run, checked to be in front before every key |
 | `outrider/screenshots.py` | Screenshots (game PC; converting needs Pillow): the game's BMPs converted to PNG, JPG or WebP with their copies, crop and metadata, what a surface shot shows, your codex folders and their pictures on the Bio/Geo checklists, the folder picker |
 | `outrider/bio.py` | The exobiology predictor; `--backtest` scores it against your journals, `--update-rules` fetches the rules by hand |
-| `resources/bio_rules.json` | Spawn rules, nebulae and regions from BioScan and klightspeed's region map; ExploData's colour variants are downloaded beside it into `bio_colours.json` on the first start, never shipped (`outrider/bio.py`) |
+| `resources/bio_rules.json` | Spawn rules, nebulae and regions from BioScan and klightspeed's region map; the server never writes it: its refreshed copy and ExploData's colour variants (`bio_colours.json`, never shipped) are downloaded beside your database, in `data/`, on the first start (`outrider/bio.py`) |
 | `outrider/checklist.py` | The Exo-Biology and Geology checklists: every species and site by galactic region, with what you have done with it there |
 | `outrider/canonn_sites.py` | A body's known Guardian sites and geology from Canonn, read for the body panel's Pins (📍 pin it) |
 | `outrider/codex_images.py` | The checklists' pictures: links to Canonn's screenshots and their credits, refreshed from Canonn once a day |

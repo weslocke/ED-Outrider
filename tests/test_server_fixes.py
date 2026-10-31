@@ -116,6 +116,32 @@ class ServerFixes(unittest.TestCase):
             look()
             self.assertEqual(self.state.notices.active(), [])
 
+    def test_a_folder_gone_for_one_look_says_nothing(self):
+        """Complete review 2026-10-30: through the real reader, a folder gone for one look (a share's hiccup) was also
+        counted as emptied at the next look, back already: the red card flashed. One miss is one miss."""
+        import contextlib
+        import io
+        import os
+        import shutil
+        import tempfile
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, True)
+        d, away = os.path.join(root, "j"), os.path.join(root, "away")
+        os.makedirs(d)
+        with open(os.path.join(d, "Journal.2026-10-30T100000.01.log"), "w") as f:
+            f.write('{"timestamp":"2026-10-30T10:00:00Z","event":"Fileheader","part":1}\n')
+        with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", [d]), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            def tick():
+                self.state.journals_reachable()   # before the scan, as in the tick
+                self.j.scan_dir(d)
+            tick()
+            os.rename(d, away)
+            tick()
+            os.rename(away, d)
+            tick()
+            self.assertEqual(self.state.notices.active(), [])
+
     def test_a_plot_behind_another_says_it_is_waiting(self):
         """Review 2026-10-23 S1-S2: Spansh's plots go one at a time; the second sat on "Asking Spansh…" for the whole of
         the first. Its record says waiting while the other holds the turn."""
@@ -158,6 +184,29 @@ class ServerFixes(unittest.TestCase):
                 s.task.cancel()
                 return first.is_set(), s.stop.is_set()
         self.assertEqual(asyncio.run(go()), (True, False))
+
+        # complete review 2026-10-30: a task cancelled directly (shutdown, Restart) stops its worker too
+        async def cancelled():
+            with unittest.mock.patch.object(s, "_run", lambda seq, params, stop: asyncio.sleep(1)):
+                s.start({})
+                await asyncio.sleep(0)
+                s.task.cancel()
+                try:
+                    await s.task
+                except asyncio.CancelledError:
+                    pass
+                return s.stop.is_set()
+        self.assertTrue(asyncio.run(cancelled()))
+
+        # a Spansh search timing out says so ("search failed: " said nothing)
+        async def timed_out():
+            async def boom(seq, params, stop):
+                raise asyncio.TimeoutError()
+            with unittest.mock.patch.object(s, "_run", boom):
+                s.start({})
+                await s.task
+                return s.result["status"]
+        self.assertEqual(asyncio.run(timed_out()), "search failed: Spansh did not answer in time")
 
 
 class SuitLow(unittest.TestCase):

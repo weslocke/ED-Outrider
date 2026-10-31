@@ -561,9 +561,8 @@ def main(argv=None):
     a = p.parse_args(argv)
     cfg = {}
     try:   # ed_outrider's config, when it can be read: the same folders and key the server uses
-        import tomllib
-        with open(os.path.join(ROOT, "ed_outrider.toml"), "rb") as f:
-            cfg = tomllib.load(f)
+        from . import read_toml
+        cfg = read_toml(os.path.join(ROOT, "ed_outrider.toml"))
     except Exception:   # no file, no tomllib (Python before 3.11), a broken file
         pass
     sec = lambda n: cfg.get(n) if isinstance(cfg.get(n), dict) else {}   # a section that is not a table: ignored

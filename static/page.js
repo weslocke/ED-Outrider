@@ -8653,7 +8653,9 @@ function hwyBody() {
   const p = hwyPlotter(), b = {plotter: p, to: hEl("hwyTo").value.trim()}, num = id => hEl(id).value === "" ? null : Number(hEl(id).value);
   const from = hEl("hwyFrom").value.trim();
   if (from) b.from = from;   // empty: where you are (the server knows)
-  if (hEl("hwyShip").value !== "") b.ship_id = Number(hEl("hwyShip").value);
+  // "another ship: type its range" (value ""): no ship, said so (complete review 2026-10-30: no ship_id meant the ship
+  // you fly, its booster and its range on a re-plot)
+  b.ship_id = hEl("hwyShip").value !== "" ? Number(hEl("hwyShip").value) : null;
   if (num("hwyCargo") != null) b.cargo = num("hwyCargo");
   if (p === "exact") Object.assign(b, {injections: hEl("hwyInject").checked, exclude_secondary: hEl("hwyNoSec").checked,
                                        supercharged: hEl("hwySuper").checked, no_neutrons: hEl("hwyNoNeu").checked});

@@ -825,9 +825,8 @@ def main(argv=None):
     a = p.parse_args(argv)
     cfg = {}
     try:
-        import tomllib
-        with open(os.path.join(ROOT, "ed_outrider.toml"), "rb") as f:
-            cfg = tomllib.load(f)
+        from . import read_toml
+        cfg = read_toml(os.path.join(ROOT, "ed_outrider.toml"))
     except Exception:
         pass
     hw = cfg.get("highway") if isinstance(cfg.get("highway"), dict) else {}

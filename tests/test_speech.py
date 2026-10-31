@@ -1031,6 +1031,15 @@ class BatchAAudio(unittest.TestCase):
         self.assertEqual(self.played(), [(b"RIFFone", "-")])   # on stdin; the refused line never played
         self.assertFalse(self.state.player.busy)
 
+    def test_a_speaker_number_too_big_is_no_speaker(self):
+        """Complete review 2026-10-30: speaker 1e999 (JSON's way to say infinity) raised OverflowError: a 500."""
+        self.state.player = self.fake(seconds=0.0)
+
+        async def go(c):
+            r = await c.post("/api/say/play", data='{"text": "hello", "speaker": 1e999}', headers={"Content-Type": "application/json"})
+            return r.status
+        self.assertEqual(self.client(go), 200)
+
     def test_your_own_sound_files(self):   # S16
         import wave
         import outrider.tts

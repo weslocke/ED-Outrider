@@ -16,7 +16,6 @@ import asyncio
 import json
 import os
 import sys
-import tomllib
 
 if __package__ in (None, ""):   # run as a file: the repository root on the path
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -172,9 +171,8 @@ def main(argv=None):
     cfg = {}
     if os.path.exists(args.config):
         try:
-            with open(args.config, "rb") as f:
-                cfg = tomllib.load(f)
-        except (OSError, tomllib.TOMLDecodeError) as e:
+            cfg = outrider.read_toml(args.config)   # a BOM dropped, as the server reads it
+        except (OSError, ValueError) as e:
             print(f"outrider.mcp: {args.config}: {e}; using the defaults", file=sys.stderr)
     st = mcp_settings(cfg)
     url = (args.url or st["mcp_url"] or default_url(cfg)).rstrip("/")

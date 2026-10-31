@@ -1567,8 +1567,12 @@ class Server(unittest.TestCase):
         loopback too, or the window draws nothing (review 2026-10-11)."""
         self.assertTrue(ed_outrider.loopback_too("192.168.1.20"))
         self.assertTrue(ed_outrider.loopback_too("mypc.lan"))
-        for h in ("127.0.0.1", "::1", "localhost", "0.0.0.0", "::", ""):
+        for h in ("127.0.0.1", "localhost", "0.0.0.0", "::", ""):
             self.assertFalse(ed_outrider.loopback_too(h), h)
+        # complete review 2026-10-30: IPv6's loopback alone has no 127.0.0.1 for the window; "::" binds every address,
+        # IPv4's too (asyncio made it IPv6 only)
+        self.assertTrue(ed_outrider.loopback_too("::1"))
+        self.assertEqual([ed_outrider.bind_host(h) for h in ("::", "0.0.0.0", "127.0.0.1")], [None, "0.0.0.0", "127.0.0.1"])
 
     def test_window_wanted(self):
         import outrider.overlay_runner as R

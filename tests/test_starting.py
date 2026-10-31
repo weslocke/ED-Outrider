@@ -138,6 +138,14 @@ class Reread(unittest.TestCase):
         self.assertEqual(ed_outrider.reread_due(db), (False, ed_outrider.PARSER_VERSION))
         self.assertEqual(ed_outrider.reread_due(db, rescan=True)[0], True)
 
+    def test_a_stop_before_a_rescan_says_what_follows(self):
+        """Complete review 2026-10-30: stopped during the backup of a --rescan (the reader's version current), the log
+        said the re-read "happens at the next start"; it does not."""
+        V = ed_outrider.PARSER_VERSION
+        self.assertIn("start with --rescan again", ed_outrider.reread_stop_words(True, V, False))
+        self.assertIn("it happens at the next start", ed_outrider.reread_stop_words(True, V - 1, False))   # a new reader too
+        self.assertIn("it happens at the next start", ed_outrider.reread_stop_words(False, V, True))       # the filter changed
+
     def test_the_backup_needs_no_connection(self):
         """On the worker thread the backup is given journals_gone's answer: it never touches the loop's connection."""
         tmp = tempfile.TemporaryDirectory()

@@ -95,7 +95,7 @@ class Settings(unittest.TestCase):
             self.assertEqual(st.set_chatter(body)[1], 200, body)
         self.assertEqual(st.chatter_raw(), {"on": True, "level": "chatty", "off": ["comms"]})
         for bad in ({}, None, {"on": "yes"}, {"level": "loud"}, {"role": "chef", "takes_part": True},
-                    {"role": "comms"}, {"volume": 3}):
+                    {"role": "comms"}, {"volume": 3}, {"level": []}, {"level": {}}):   # a list or dict: was a 500
             self.assertEqual(st.set_chatter(bad)[1], 400, bad)
         self.db.executescript(ed_outrider.RESET_JOURNAL_DATA)
         self.assertEqual(st.chatter_raw()["level"], "chatty")

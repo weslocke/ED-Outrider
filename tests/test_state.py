@@ -1935,13 +1935,20 @@ class BatchAIntegrity(unittest.TestCase):
     def test_shutdown_cancels_every_background_task(self):
         """Review 2026-10-08 #7: a survey or trade plot (riches_task, up to 10 minutes) was not among the tasks
         cancelled at shutdown, so it ran on into the closed Spansh session and database."""
+        import inspect
+        import re
         import types
-        names = ("refresh_task", "target_task", "unsold_task", "seller_task", "carrier_task", "honk_test_task",
-                 "highway_task", "riches_task", "autotarget_task", "autotarget_test_task", "reported_task")
+        # every *_task the State keeps (complete review 2026-10-30: the carrier trip's plot, the Boxel view's asks, the
+        # colours' Retry and the screenshot converter were missed), but the backup's: finish_backup waits for those
+        src = inspect.getsource(ed_outrider.State)
+        names = set(re.findall(r"self\.(\w+_task)\s*=", src)) - {"backup_task", "backup_wait_task"}
+        self.assertGreater(len(names), 20)
         for n in names:
             setattr(self.state, n, n)
         self.state.searcher = types.SimpleNamespace(task="searcher")
-        self.assertEqual(set(self.state.background_tasks()), set(names) | {"searcher"})
+        self.state.boxel_tasks = {"boxel"}
+        self.assertEqual(set(self.state.background_tasks()) - set(self.state.upload_tasks.values()),
+                         names | {"searcher", "boxel"})
 
     def test_closing_right_after_the_game_still_backs_up(self):   # F32
         import asyncio, contextlib, io

@@ -1105,3 +1105,32 @@ class ToolingSafety(unittest.TestCase):
             self.assertIn("server would start", lines)
             self.assertIn(f"{tmp}/journals", m.group(1))
             self.assertNotIn("elsewhere", m.group(1))
+
+
+
+class BrowserDefaultsWrites(unittest.TestCase):
+    def test_two_saves_at_once(self):
+        """Complete review 2026-10-30: two "Use these for new browsers" saves at once shared one .part file (a mixed
+        file, and a 500 for one device). Each write has its own; the file reads back whole."""
+        import json
+        import tempfile
+        import threading
+        d = tempfile.mkdtemp()
+        self.addCleanup(__import__("shutil").rmtree, d)
+        path = os.path.join(d, "browser_defaults.json")
+        errs = []
+
+        def write(n):
+            try:
+                for _ in range(30):
+                    ed_outrider.write_browser_defaults(path, {"version": 1, "settings": {"who": n, "pad": "x" * 5000}})
+            except Exception as e:  # noqa: BLE001
+                errs.append(e)
+        ts = [threading.Thread(target=write, args=(n,)) for n in range(4)]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+        with open(path) as f:
+            self.assertIn(json.load(f)["settings"]["who"], range(4))
+        self.assertEqual((errs, [x for x in os.listdir(d) if x.endswith(".part")]), ([], []))

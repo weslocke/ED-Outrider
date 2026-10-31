@@ -143,7 +143,7 @@ Tests: scripts/verify.sh runs them all (python3 -m unittest discover tests, one 
 tests/test_*.py, shared fakes in tests/support.py); python3 -m outrider.bio --backtest scores the bio rules against
 your journals.
 
-Requires Python 3.11+ (for reading the config file; 3.9/3.10 need `pip install tomli`) and aiohttp;
+Requires Python 3.11+ (the launchers pick one) and aiohttp;
 piper-tts (spoken alerts) and evdev (auto honk, Linux; Windows needs nothing extra) are optional, as are wl-copy or
 xclip (the Highway's clipboard copy, Linux).
 """
@@ -889,7 +889,7 @@ def load_config(path):
             import tomli as tomllib
         except ImportError:
             if os.path.exists(path):
-                print(f"config {path} ignored: reading it needs Python 3.11+ (or pip install tomli)", file=sys.stderr)
+                print(f"config {path} ignored: reading it needs Python 3.11+", file=sys.stderr)
             return {}
     raw = b""
     try:
@@ -2348,6 +2348,26 @@ def reread_due(db, rescan=False):
     or a PARSER_VERSION other than the one that wrote it."""
     old = meta_get(db, "parser_version")
     return bool(rescan or old != PARSER_VERSION), old
+
+
+def heavy_fuel_words(need_t, have_t):
+    """"It needs about 2 tons aboard; you have 3.": both rounded the same way, one decimal where whole tons would read
+    the same, "ton" for one (complete review 2026-10-30: "1 tons", and "needs about 2 tons; you have 2")."""
+    if need_t < 1:
+        return f"It needs under a ton aboard; you have {round(have_t, 1):g}."
+    need, have = round(need_t), round(have_t)
+    if need >= have:   # the same whole number: the tenths say which is more
+        need, have = round(need_t, 1), round(have_t, 1)
+    return f"It needs about {need:g} ton{'' if need == 1 else 's'} aboard; you have {have:g}."
+
+
+def reread_stop_words(rescan, old, filter_changed):
+    """What a stop during the backup before a journal re-read says will happen. Asked for by --rescan alone (the
+    reader's version is current, the filter unchanged), the next plain start does not re-read (complete review
+    2026-10-30: it said it would)."""
+    if rescan and old == PARSER_VERSION and not filter_changed:
+        return "before the journal re-read: start with --rescan again to do it"
+    return "before the journal re-read: it happens at the next start"
 
 
 def reset_journal_data(db):
@@ -3902,7 +3922,10 @@ class Journals:
         # in time order: the old names (Journal.YYMMDDhhmmss.NN.log, before 2023) sort after every new one as text
         paths = sorted(glob(os.path.join(glob_escape(d), "Journal.*.log")), key=outrider.uploads.name_key)
         self._newest = paths[-1] if paths else None
-        self.dir_journals[d] = len(paths)   # bug check #26: a share let go keeps its mount point, empty
+        # bug check #26: a share let go keeps its mount point, empty. A folder not there at all is not "emptied" as
+        # well: its one missed look counted twice and flashed the card (complete review 2026-10-30)
+        if paths or os.path.isdir(d):
+            self.dir_journals[d] = len(paths)
         if paths:
             self.dir_had_journals.add(d)
         if self.upload_mode is not None:   # a live folder (legacy ones are scanned with no upload mode): who plays now,
@@ -6649,6 +6672,9 @@ BOOKMARK_NOTE_MAX = 2000             # a note's characters, as POST /api/bookmar
 BOOKMARK_PROBLEMS_SHOWN = 20         # bad rows described one by one; the rest only counted
 
 
+GALAXY_LY = 100_000   # ly from Sol on any axis: past it a coordinate is no star's (an import's, complete review 2026-10-30)
+
+
 def import_items(text, required, what, header):
     """A Bookmarks import file read into [(where, row dict)] and its number reader (S53's rules: JSON when it starts
     with "[" (a "{" refused as no list), else CSV with a header row holding the `required` columns; a byte-order mark,
@@ -6693,7 +6719,13 @@ def import_items(text, required, what, header):
         if isinstance(v, str):
             v = v.strip().replace(",", ".") if decimal_comma else v.strip()
             v = float(v) if v else None
-        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            raise ValueError
+        try:   # a 400-digit integer: no float (complete review 2026-10-30: OverflowError, an import's 500)
+            v = float(v)
+        except OverflowError:
+            raise ValueError from None
+        if not math.isfinite(v):
             raise ValueError
         return float(v)
     return numbered, number
@@ -6789,6 +6821,9 @@ def parse_bookmarks(text):
                         xyz.append(number(r.get(k)))
                     except (ValueError, TypeError):
                         why = f"no {k}" if r.get(k) in (None, "") else f"{k} is not a number"
+                        break
+                    if abs(xyz[-1]) > GALAXY_LY:   # 1e200 was taken, then every payload's distance raised
+                        why = f"{k} is outside the galaxy"
                         break
         if why:
             bad += 1
@@ -8043,10 +8078,20 @@ def read_browser_defaults(path):
 
 
 def write_browser_defaults(path, doc):
-    """Save atomically: a .part file renamed over the old one, so a crash never leaves half a file."""
-    with open(path + ".part", "w", encoding="utf-8") as f:
-        json.dump(doc, f, indent=1)
-    os.replace(path + ".part", path)
+    """Save atomically: a .part file renamed over the old one, so a crash never leaves half a file. A file of its own
+    per write: two devices saving at once shared one and left a mixed file (complete review 2026-10-30)."""
+    import tempfile
+    fd, part = tempfile.mkstemp(dir=os.path.dirname(path) or ".", prefix=os.path.basename(path) + ".", suffix=".part")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(doc, f, indent=1)
+        os.replace(part, path)
+    except BaseException:
+        try:
+            os.remove(part)
+        except OSError:
+            pass
+        raise
 
 
 # The dated zips of builds before they were named after the database (local time): rotated only for the
@@ -8602,6 +8647,7 @@ class State:
         # done, why (the failure in words), its task
         self.bio_colours_job = {"state": "idle", "why": None}
         self.bio_colours_task = None
+        self.boxel_tasks = set()   # the Boxel view's Spansh asks, running (make_app's boxel_view and boxel_nearby)
         # Spansh's commodity names ({ts, norm: {letters-only: name}}): the lookup asks by these; cached a week (meta,
         # live-only)
         self.spansh_commodities = meta_get(db, "spansh_commodities")
@@ -8993,6 +9039,8 @@ class State:
             text = config_text(st)
         except OSError as e:
             return {"error": f"cannot read {path}: {e}"}, 500
+        except UnicodeDecodeError:   # complete review 2026-10-30: a 500 (Settings, an upload switched on)
+            return {"error": f"{path} is not saved as UTF-8: save it again as UTF-8 in your editor (nothing was written)"}, 400
         n = 0
         for sec, keys in changes.items():
             for key, value in keys.items():
@@ -17580,7 +17628,7 @@ class State:
         """meta chatter as kept: {on (default off), level (outrider.chatter.LEVELS), off: [roles that take no part]}."""
         raw = meta_get(self.db, "chatter")
         raw = raw if isinstance(raw, dict) else {}
-        level = raw.get("level") if raw.get("level") in outrider.chatter.LEVELS else outrider.chatter.LEVEL_DEFAULT
+        level = raw.get("level") if isinstance(raw.get("level"), str) and raw["level"] in outrider.chatter.LEVELS else outrider.chatter.LEVEL_DEFAULT
         off = [r for r in outrider.speech.CREW_IDS if r in (raw.get("off") if isinstance(raw.get("off"), list) else ())]
         return {"on": raw.get("on") is True, "level": level, "off": off}
 
@@ -17595,7 +17643,7 @@ class State:
                 return {"error": "on must be true or false"}, 400
             c["on"] = body["on"]
         elif "level" in body:
-            if body["level"] not in outrider.chatter.LEVELS:
+            if not isinstance(body["level"], str) or body["level"] not in outrider.chatter.LEVELS:   # [] was a 500
                 return {"error": f"level must be one of {', '.join(outrider.chatter.LEVELS)}"}, 400
             c["level"] = body["level"]
         elif "role" in body:
@@ -18516,13 +18564,10 @@ class State:
         heavy, short = c["heavy"], c["short"]
         if heavy and not c["said"]:
             c["said"] = True
-            need = int(heavy["need_t"])
             jump = "the next jump" if (heavy.get("hop") or 1) == 1 else f"the jump to {heavy['next']}"
             j.moment("highway", iso_ts(now), what="heavy", system=rows[hw["at"]]["system"], index=hw["at"],
                      next=heavy["next"], need_t=heavy["need_t"], have_t=heavy["have_t"],
-                     text=f"Too much fuel for {jump}. " +
-                          (f"It needs about {need} tons aboard" if need >= 1 else "It needs under a ton aboard") +
-                          f"; you have {round(heavy['have_t'])}.")
+                     text=f"Too much fuel for {jump}. " + heavy_fuel_words(heavy["need_t"], heavy["have_t"]))
         if short and not short["here_refuel"] and not c["said_short"]:
             c["said_short"] = True
             j.moment("highway", iso_ts(now), what="short", system=rows[hw["at"]]["system"], index=hw["at"],
@@ -19011,9 +19056,15 @@ class State:
         if o.get("conservative_ly"):
             body["conservative_ly"] = o["conservative_ly"]
         if body["plotter"] == "neutron":
-            body.update({k: o[k] for k in ("efficiency", "supercharge_multiplier") if o.get(k) is not None})
-            if not hw.get("ship"):   # a range typed in, no ship behind it
+            if o.get("efficiency") is not None:
+                body["efficiency"] = o["efficiency"]
+            if not hw.get("ship"):   # a range typed in, no ship behind it: its range and multiplier, still no ship
                 body["range"] = o.get("range_full") or o.get("range")
+                body["ship_id"] = None
+                if o.get("supercharge_multiplier") is not None:
+                    body["supercharge_multiplier"] = o["supercharge_multiplier"]
+            # with a ship: the ship flown now's own multiplier (complete review 2026-10-30: the old ship's ×6 was kept
+            # for a ×4 ship, and Spansh planned neutron legs it cannot jump)
         return self.highway_start_plot(body)
 
     def highway_local(self, name):
@@ -19663,7 +19714,10 @@ class State:
         d, ts = w["dist"], iso_ts(time.time())
         band = sum(1 for b in PIN_BANDS if d < b)
         ground = bool(h["flags"] & FLAG_IN_SRV or h["flags2"] & 1)
-        if d <= PIN_ARRIVE_M["ground" if ground else "ship"]:
+        # in the ship the distance through the air, with Status.json's altitude: passing over a pin high up is no arrival
+        # (complete review 2026-10-30: it was "arrived" at 30 km, and the next pin took over)
+        alt = h.get("alt") if not ground and isinstance(h.get("alt"), (int, float)) else 0
+        if math.hypot(d, alt) <= PIN_ARRIVE_M["ground" if ground else "ship"]:
             self.db.execute("UPDATE surface_pins SET reached_ts=? WHERE id=?", (ts, act["id"]))
             nxt = self.pin_active(h["system"], h["name"])
             nw = self.pin_where(h, nxt) if nxt else None
@@ -19732,7 +19786,7 @@ class State:
         if not to or max(len(frm), len(to), len(via)) > FIND_NAME_MAX:
             return {"error": f"give the destination system (up to {FIND_NAME_MAX} characters)"}, 400
         kind = body.get("type") or d["type"]
-        if kind not in CARRIER_TYPES:
+        if not isinstance(kind, str) or kind not in CARRIER_TYPES:   # ["fleet"] was a 500
             return {"error": "type must be fleet or squadron"}, 400
         capacity, mass = CARRIER_TYPES[kind]
 
@@ -20574,12 +20628,15 @@ class State:
     def background_tasks(self):
         """The State's own background tasks, all cancelled at shutdown before the database closes (a survey or trade
         plot can run up to TRADE_PLOT_TIMEOUT: review 2026-10-08 #7, it was left running into the closed session)."""
+        # every *_task attribute but the backup's (finish_backup waits for those): a test checks it (complete review
+        # 2026-10-30: the carrier trip's plot, the Boxel view's Spansh asks, the colours' Retry and the screenshot
+        # converter ran on into the closed session and database)
         return [t for t in (self.refresh_task, self.target_task, self.unsold_task, self.seller_task, self.carrier_task,
                             self.sc_task, self.sc_locate_task, self.searcher.task, self.honk_test_task, self.honk_run_task,
-                            self.highway_task, self.riches_task,
+                            self.highway_task, self.riches_task, self.carrier_trip_task, self.bio_colours_task, self.shots_task,
                             self.autotarget_task, self.autotarget_test_task, self.lease_task, self.edsm_discard_task,
                             self.edsm_bf_task, self.edsm_import_task, self.reported_task, self.route_task,
-                            *self.upload_tasks.values()) if t]
+                            *self.upload_tasks.values(), *self.boxel_tasks) if t]
 
     def arrival_danger_until(self, now=None, st=None):
         """The game sets Status.json's in-danger flag on every use of the FSD, from the charge until some 16-26 s after
@@ -21724,11 +21781,15 @@ class Searcher:
         try:
             await self._run(seq, params, stop)
         except asyncio.CancelledError:
+            if stop is not None:   # its worker thread stops too, however it was cancelled (shutdown, Restart: complete
+                stop.set()         # review 2026-10-30, the process waited for it to walk the whole box)
             raise
         except SearchStopped:
             return
+        except asyncio.TimeoutError:   # its words are empty: "search failed: " said nothing (complete review 2026-10-30)
+            self.update(seq, running=False, status="search failed: Spansh did not answer in time")
         except Exception as e:
-            self.update(seq, running=False, status=f"search failed: {e}")
+            self.update(seq, running=False, status=f"search failed: {e or type(e).__name__}")
 
     async def _run(self, seq, params, stop=None):
         # S49: around another system (params' "around": destination, carrier, next_stop or an id64; State.search_origin),
@@ -21813,10 +21874,13 @@ class Searcher:
             n_rings = sum(1 for *_, recs in systems.values() if any(r.get("rings") for r in recs))
             n_hot = sum(1 for *_, recs in systems.values()
                         if any(minerals(x.get("hotspots")) for r in recs for x in r.get("rings") or []))
+            # a planetary mining search is Local's only (Spansh cannot filter on it): no Spansh offered for it (complete
+            # review 2026-10-30: the button re-asked Spansh, which refused)
+            mining = "mining" in sections
             note = (f"searched {n} system{'s' if n != 1 else ''} with body data ({n_rings} with ring data, "
                     f"{n_hot} with mapped hotspots); the local database only holds systems you've visited or "
-                    f"passed within {self.state.radius:g} ly of — Spansh (online) covers everything reported")
-            sparse = bool(sections) and (("hotspots" in sections and n_hot < 5) or ("rings" in sections and n_rings < 10) or n < 20)
+                    f"passed within {self.state.radius:g} ly of" + ("" if mining else " — Spansh (online) covers everything reported"))
+            sparse = bool(sections) and not mining and (("hotspots" in sections and n_hot < 5) or ("rings" in sections and n_rings < 10) or n < 20)
         visited = {r[0] for r in db.execute("SELECT id64 FROM visits")}
         edsm_visited = outrider.edsmlog.ids(db) - visited   # S67: your EDSM flight log's (no firsts of yours there)
         # a mineral you have refined somewhere: those bodies first ("Gold 22 t mined here before"), surveyed for it or
@@ -22259,8 +22323,17 @@ def own_addresses():
 
 def loopback_too(host):
     """Whether Outrider listens on 127.0.0.1 as well as `host`: the overlay window talks to this PC's loopback (where no
-    sign-in is asked), and a [server] host set to one LAN address does not listen there."""
+    sign-in is asked), and a [server] host set to one LAN address does not listen there, nor IPv6's own loopback ::1
+    (complete review 2026-10-30: the window was never answered)."""
+    if ":" in str(host or "") and outrider.auth.is_loopback(host):
+        return True
     return host not in WILDCARD_HOSTS and host != "localhost" and not outrider.auth.is_loopback(host)
+
+
+def bind_host(host):
+    """The address the sites listen on: "::" is every address, IPv4's too (asyncio makes an IPv6 socket IPv6 only, so
+    127.0.0.1, the overlay window and IPv4 devices were refused: complete review 2026-10-30); None asks for both."""
+    return None if host == "::" else host
 
 
 def allowed_hosts(host, port, extra=(), own=own_addresses):
@@ -22990,7 +23063,7 @@ def make_app(state, hosts=None):
         """A speaker number as the page sent it ("37" in a query, 37 in a body), or None."""
         try:
             n = int(v) if v not in (None, "") and not isinstance(v, bool) else None
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):   # 1e999 too (complete review 2026-10-30: a 500)
             return None
         return n if n is not None and n >= 0 else None
 
@@ -23561,12 +23634,11 @@ def make_app(state, hosts=None):
         b = out.get("boxel")
         if b and state.boxel_spansh_due(b["prefix"]) and b["prefix"] not in state._boxel_fetching:
             task = asyncio.get_running_loop().create_task(state.boxel_spansh_fetch(b["prefix"]))
-            boxel_tasks.add(task)
-            task.add_done_callback(boxel_tasks.discard)
+            state.boxel_tasks.add(task)
+            task.add_done_callback(state.boxel_tasks.discard)
             out["spansh_asking"] = True
         return web.json_response(out)
 
-    boxel_tasks = set()
 
     async def boxel_set_view(request):
         """POST /api/boxel {prefix: str | null, sector_index?: [sx, sy, sz]} picks the boxel to explore (null: the one
@@ -23601,13 +23673,13 @@ def make_app(state, hosts=None):
         Spansh is asked about the ones it has no list of yet (a day old), one after another in the background."""
         out = state.boxel_nearby()
         due = [b["prefix"] for b in out["boxels"] if state.boxel_spansh_due(b["prefix"])]
-        if due and not any(not t.done() for t in boxel_tasks):
+        if due and not any(not t.done() for t in state.boxel_tasks):
             async def ask_each(prefixes):
                 for p in prefixes:
                     await state.boxel_spansh_fetch(p)
             task = asyncio.get_running_loop().create_task(ask_each(due))
-            boxel_tasks.add(task)
-            task.add_done_callback(boxel_tasks.discard)
+            state.boxel_tasks.add(task)
+            task.add_done_callback(state.boxel_tasks.discard)
         return web.json_response(out)
 
     async def pronounce_view(_):
@@ -24112,7 +24184,7 @@ async def serve_starting(starting, hosts, host, port):
     runner = web.AppRunner(make_starting_app(starting, hosts))
     await runner.setup()
     try:
-        await web.TCPSite(runner, host, port).start()
+        await web.TCPSite(runner, bind_host(host), port).start()
     except OSError as e:
         await runner.cleanup()
         print(f"cannot listen on {host}:{port}: {e.strerror or e}", file=sys.stderr)
@@ -24660,6 +24732,9 @@ async def run(args, st):
                                   "Stop one, or give one its own --db.", action="open:log")
     if outrider.serverlog.ACTIVE:   # beside the database, never outrider.DATA_DIR (verify.sh's server would write data/)
         outrider.serverlog.ACTIVE.open(os.path.join(os.path.dirname(os.path.abspath(args.db)), outrider.serverlog.FILE_NAME))
+    if outrider.bio:   # your refreshed exobiology rules and colours: beside the database too, never in resources/ (D1)
+        outrider.bio.OWN_RULES = os.path.join(os.path.dirname(os.path.abspath(args.db)), "bio_rules.json")
+        outrider.bio.load_rules(outrider.bio.rules_file(), force=True)
     loop = asyncio.get_running_loop()
     # a stop (SIGTERM: docker stop, systemd, verify.sh) from here on: during the start-up it ends between two journal
     # files (each is committed as it is read: what is read stays), once serving through the usual cleanup below
@@ -24720,7 +24795,7 @@ async def run(args, st):
             await loop.run_in_executor(None, lambda: backup_before_reread(
                 None, args.db, BACKUP_DIR, BACKUP_KEEP, extras, LIVE_DIRS, notices, gone=gone))
             if stop.is_set():   # waited for the backup (a thread cannot be stopped part way); nothing cleared yet
-                await stopped_starting("before the journal re-read: it happens at the next start")
+                await stopped_starting(reread_stop_words(args.rescan, old, filter_changed))
                 return None
         reset_journal_data(db)
     meta_set(db, "commander_filter", st["commander"])
@@ -24909,7 +24984,7 @@ async def run(args, st):
     await runner.setup()
     await starting_runner.cleanup()   # the real app takes the port over (S9): open starting pages reload into it
     try:
-        await web.TCPSite(runner, args.host, args.port).start()
+        await web.TCPSite(runner, bind_host(args.host), args.port).start()
     except OSError as e:   # taken in the moment since port_free() said it was free
         print(f"cannot listen on {args.host}:{args.port}: {e.strerror or e}", file=sys.stderr)
         await spansh.close()

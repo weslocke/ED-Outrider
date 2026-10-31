@@ -109,6 +109,20 @@ class Pins(unittest.TestCase):
         self.state.pin_watch()
         self.assertEqual(self.said()[5:], [("set", "Wreck")])
 
+    def test_in_the_ship_arrival_needs_being_down(self):
+        """Complete review 2026-10-30: only the distance along the ground counted, so flying over a pin at 30 km was
+        "arrived" and the next pin took over. In the ship the distance through the air counts (Status.json's altitude)."""
+        self.post(action="add", system="1", sysname="Sys", body="Sys B 7", name="Wreck", lat=0.0, lon=lon_for(100))
+        self.state.pin_watch()
+        for alt in (30000, 2000):
+            self.at(0.0, lon_for(80), flags=0, flags2=0)
+            self.j.status_json["alt"] = alt
+            self.state.pin_watch()
+            self.assertNotIn(("arrived", "Wreck"), self.said(), alt)
+        self.j.status_json["alt"] = 100                     # 20 m along, 100 m up
+        self.state.pin_watch()
+        self.assertEqual(self.said()[-1], ("arrived", "Wreck"))
+
     def test_sweep_fixes(self):
         """The sweep of 2026-10-17: the body you are on is named with no pins yet (the legend's first 📍 needs it); after
         arriving, the next pin's way is said once (not again a tick later); a rolled-back tick says its lost line again."""

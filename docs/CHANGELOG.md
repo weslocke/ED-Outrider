@@ -2,6 +2,28 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Complete review, batch 6: the server's last mediums and correctness lows
+- Findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
+  test that fails without it.
+- **Plot Route**: "another ship: type its range" is plotted with no ship (it took the ship you fly: its booster, and
+  its range on a re-plot); Re-plot from here uses the ship flown's neutron boost (an SCO ship's ×6 was kept for a ×4
+  ship).
+- **Surface pins**: in the ship, arrival is counted through the air: flying over a pin high up no longer marks it
+  reached and moves on.
+- **Exobiology rules**: refreshed rules and ExploData's colours are written beside your database (data/), read before
+  the shipped copy; resources/bio_rules.json is never written, so a git clone's `git pull` update no longer aborts on
+  "local changes".
+- **Bad input**: a huge coordinate in a bookmarks or pins import is a refused row (it was a 500, or taken and then every
+  page poll failed); a speaker 1e999, a chatter level or carrier trip type that is not a word, a config file not saved
+  as UTF-8 are answered with words, not a server error; two "Use these for new browsers" at once no longer mix.
+- **Shutdown and start-up**: a running Local search, the Boxel view's Spansh asks, the carrier trip's plot, the colours'
+  Retry and the screenshot converter are stopped at shutdown (a test now checks every task Outrider keeps); a journal
+  folder missing for one look no longer flashes "cannot be reached"; a stop during a --rescan's backup says to start
+  with --rescan again; `[server] host = "::"` listens on IPv4 too, and "::1" gives the overlay window its 127.0.0.1.
+- **Words**: a Local mining search no longer offers a Spansh search Spansh refuses; a timed-out search says so; "Too
+  much fuel" says "1 ton" and never "needs about 2; you have 2"; the launchers' overlay step and the MCP bridge read a
+  config saved with a BOM; --help names the Python Outrider needs (3.11+).
+
 ## 2026-10-31 · Complete review, batch 5: the page
 - Page findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
   test that fails without it (tests/page_unit.js, page_smoke.js, Python for the server's part).

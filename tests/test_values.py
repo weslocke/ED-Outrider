@@ -1052,6 +1052,55 @@ class RulesDownload(unittest.TestCase):
         with open(self.path) as fh:
             self.assertEqual(json.load(fh)["versions"]["explodata"], "")   # and ExploData is fetched again next start
 
+    def test_the_server_never_writes_the_shipped_rules(self):
+        """Complete review 2026-10-30 (D1): a fresh git clone's first start rewrote the tracked resources/bio_rules.json
+        (no colours file yet: out of date), so the guide's `git pull` update aborted. The server's updates go to your own
+        copy beside the database (OWN_RULES), read in preference to the shipped one; the shipped file is never written."""
+        import shutil
+        d = os.path.dirname(self.path)
+        with unittest.mock.patch.object(outrider.bio, "_get", self.fake_get()):
+            outrider.bio.update_rules(self.path, log=self.log.append, versions=dict(self.V))
+        os.remove(outrider.bio.colours_path(self.path))   # the shipped copy: no colours beside it
+        with open(self.path, "rb") as f:
+            shipped = f.read()
+        own = os.path.join(d, "data", "bio_rules.json")
+        os.makedirs(os.path.dirname(own))
+        self.addCleanup(lambda: outrider.bio.load_rules(outrider.bio.RULES_FILE, force=True))
+        with unittest.mock.patch.object(outrider.bio, "RULES_FILE", self.path), \
+                unittest.mock.patch.object(outrider.bio, "OWN_RULES", own):
+            self.assertEqual(outrider.bio.rules_file(), self.path)          # no copy of yours yet: the shipped one
+            with unittest.mock.patch.object(outrider.bio, "remote_versions", return_value=dict(self.V)), \
+                    unittest.mock.patch.object(outrider.bio, "_get", self.fake_get()):
+                self.assertTrue(outrider.bio.update_if_newer(log=self.log.append))
+            self.assertTrue(os.path.exists(own) and os.path.exists(outrider.bio.colours_path(own)))
+            self.assertEqual(outrider.bio.rules_file(), own)                # yours read from now on
+        with open(self.path, "rb") as f:
+            self.assertEqual(f.read(), shipped)                             # the shipped file never written
+        self.assertFalse(os.path.exists(outrider.bio.colours_path(self.path)))
+        shutil.rmtree(os.path.dirname(own))
+
+    def test_the_colours_retry_writes_your_copy(self):
+        """D1 too: the colours' Retry (update_colours) with only the shipped rules there copies them to yours and puts
+        the colours beside yours; the shipped file is not written."""
+        d = os.path.dirname(self.path)
+        shipped_path = os.path.join(d, "shipped.json")
+        doc = {"species": [{"id": "$X;", "genus_id": "$G;", "genus": "G", "name": "X", "rulesets": [], "colors": None}]}
+        with open(shipped_path, "w") as f:
+            json.dump(doc, f)
+        own = os.path.join(d, "own", "bio_rules.json")
+        self.addCleanup(lambda: outrider.bio.load_rules(outrider.bio.RULES_FILE, force=True))
+        with unittest.mock.patch.object(outrider.bio, "RULES_FILE", shipped_path), \
+                unittest.mock.patch.object(outrider.bio, "OWN_RULES", own), \
+                unittest.mock.patch.object(outrider.bio, "_explodata_table", return_value={}), \
+                unittest.mock.patch.object(outrider.bio, "_species_colours", return_value={"star": {"F": "Teal"}}):
+            outrider.bio.load_rules(shipped_path, force=True)
+            self.assertEqual(outrider.bio.update_colours(log=self.log.append), 1)
+            self.assertTrue(os.path.exists(own) and os.path.exists(outrider.bio.colours_path(own)))
+            self.assertEqual(outrider.bio.rules_file(), own)
+        with open(shipped_path) as f:
+            self.assertEqual(json.load(f), doc)
+        self.assertFalse(os.path.exists(os.path.join(d, outrider.bio.COLOURS_NAME)))
+
     def test_no_colour_file_means_out_of_date(self):
         """The shipped rules carry no colours (ExploData's are downloaded, never shipped: the author, 2026-10-10): with
         no bio_colours.json beside them they are fetched on the first start even when their versions are current."""

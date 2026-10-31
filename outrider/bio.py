@@ -84,7 +84,16 @@ except ImportError:  # standalone use without the price table
 
 from . import RESOURCES_DIR  # noqa: E402
 
-RULES_FILE = os.path.join(RESOURCES_DIR, "bio_rules.json")
+RULES_FILE = os.path.join(RESOURCES_DIR, "bio_rules.json")   # the shipped copy (refreshed by --update-rules, the author's)
+# Your own refreshed copy, beside the database: set by the server at start (ed_outrider.run), None in tests and the CLI.
+# The server never writes the shipped file (complete review 2026-10-30: a fresh git clone's first start rewrote the
+# tracked resources/bio_rules.json, and the guide's `git pull` update then aborted on "local changes")
+OWN_RULES = None
+
+
+def rules_file():
+    """The rules read: your refreshed copy when there is one, else the shipped one."""
+    return OWN_RULES if OWN_RULES and os.path.exists(OWN_RULES) else RULES_FILE
 # ExploData's colour tables are kept apart, in bio_colours.json beside the rules (git- and docker-ignored): downloaded on
 # the first start and refreshed with the rules, never shipped (its repository carries the GPL v2 text without "or
 # later"; the author, 2026-10-10). The shipped bio_rules.json has every species' "colors" None.
@@ -93,7 +102,7 @@ COLOURS_NAME = "bio_colours.json"
 
 def colours_path(rules_path=None):
     """The colour tables' file beside a rules file."""
-    return os.path.join(os.path.dirname(rules_path or RULES_FILE), COLOURS_NAME)
+    return os.path.join(os.path.dirname(rules_path or rules_file()), COLOURS_NAME)
 
 BIOSCAN = "https://raw.githubusercontent.com/Silarn/EDMC-BioScan/master/src/bio_scan/"
 BIOSCAN_API = "https://api.github.com/repos/Silarn/EDMC-BioScan/"
@@ -315,8 +324,10 @@ def remote_versions():
 def update_if_newer(path=None, log=print):
     """Refresh bio_rules.json when upstream has changed (or the file is missing). Returns True if
     it was rewritten, False if it was already current, None if it could not check or update (offline,
-    rate-limited, a download failing midway): the copy there is kept and used, and the log says so."""
-    current = load_rules(path)
+    rate-limited, a download failing midway): the copy there is kept and used, and the log says so. Without `path`:
+    the rules read now (rules_file), and an update is written to your own copy (OWN_RULES), never the shipped one."""
+    read = path or rules_file()
+    current = load_rules(read)
     try:
         remote = remote_versions()
     except Exception as e:  # noqa: BLE001 -- no network, GitHub down or throttled
@@ -326,10 +337,10 @@ def update_if_newer(path=None, log=print):
             return None
         raise
     # without the colour tables (a fresh install: they are never shipped) it is out of date whatever its versions say
-    if current and current.get("versions") == remote and os.path.exists(colours_path(path)):
+    if current and current.get("versions") == remote and os.path.exists(colours_path(read)):
         return False
     try:
-        update_rules(path, log=lambda *_: None, versions=remote)
+        update_rules(path or OWN_RULES or RULES_FILE, log=lambda *_: None, versions=remote)
     except Exception as e:  # noqa: BLE001 -- the old file is only replaced once everything has arrived
         if not current:
             raise
@@ -483,9 +494,16 @@ def update_colours(path=None, log=print):
     them. -> how many species have a colour table. Raises when they did not arrive or gave no colours at all (a file
     there is left as it is). The rules file's ExploData version is not touched: the next start's check still sees
     whether ExploData changed."""
-    path = path or _rules_path or RULES_FILE
-    with open(path, encoding="utf-8") as fh:
-        species = json.load(fh).get("species") or []
+    src = path or _rules_path or rules_file()
+    path = path or (OWN_RULES if OWN_RULES and src == RULES_FILE else src)   # never beside the shipped copy: yours
+    with open(src, encoding="utf-8") as fh:
+        text = fh.read()
+    species = json.loads(text).get("species") or []
+    if path != src:   # your copy starts as the shipped one; its colours go beside it
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(path + ".tmp", "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(path + ".tmp", path)
     genus_data = _explodata_table()
     colours = {}
     for sp in species:
@@ -511,7 +529,7 @@ _rules_path = None
 def load_rules(path=None, force=False):
     """The rule set from bio_rules.json (None if it has not been downloaded). Cached."""
     global _rules, _rules_path
-    path = path or _rules_path or RULES_FILE
+    path = path or _rules_path or rules_file()
     if _rules is not None and not force and path == _rules_path:
         return _rules
     _rules_path = path

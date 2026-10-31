@@ -710,8 +710,9 @@ upstream project's choices, not rules of the game.
   and a step list is checked as it is saved (`CONFIG_CHECKS`) so the refusal names the bad step.
 - **ExploData's colour tables are downloaded, never shipped** (the author, 2026-10-10). EDMC-ExploData's repository
   carries the GPL v2 text without "or later", so its tables are kept out of the repository and the Docker image, and
-  Outrider's own licence does not depend on them: `resources/bio_colours.json` is fetched on the first start (and refreshed with the
-  rules) and merged in at load. A first start offline has no colour check until the next start or the Retry (S7:
+  Outrider's own licence does not depend on them: `bio_colours.json` is fetched on the first start (and refreshed with the
+  rules) and merged in at load. Both it and the refreshed rules go beside the database (`data/`, `bio.OWN_RULES`), never
+  into `resources/`, whose `bio_rules.json` git tracks (complete review 2026-10-30, D1: a clone's `git pull` aborted). A first start offline has no colour check until the next start or the Retry (S7:
   the banner's card and a note where colours would show; `bio.update_colours` fetches only ExploData's table, then the
   rules are reloaded and the bases' guesses worked out again). Whether they are there is judged by
   `colours_available()`, never by the file, and a failed fetch no longer writes one with no colours in it. BioScan's rules (GPL v2 or later) and the region map (MIT) still ship. The colony distances

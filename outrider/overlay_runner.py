@@ -183,10 +183,9 @@ class OverlayRunner:
 
 def overlay_enabled(path):
     """Whether the config at `path` has [overlay] enabled = true (False when it is missing or does not parse)."""
-    import tomllib
+    from . import read_toml
     try:
-        with open(path, "rb") as f:
-            cfg = tomllib.load(f)
+        cfg = read_toml(path)
     except (OSError, ValueError):
         return False
     o = cfg.get("overlay")

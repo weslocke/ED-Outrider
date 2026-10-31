@@ -34,6 +34,7 @@ import urllib.error
 import urllib.request
 
 from . import overlay as O
+from . import read_toml
 
 POLL_S = 1.0           # how often the window asks Outrider for the panels
 FOLLOW_MS = 500        # how often it looks where Elite's window is
@@ -268,11 +269,9 @@ def rgba(colour, alpha=1.0):
 def config_url(path=None):
     """This PC's Outrider, at the config file's [server] port (a missing or broken file: 8025). Outrider passes --url
     when it starts the window; this is for a window started by hand."""
-    import tomllib
     path = path or os.path.join(O_ROOT, "ed_outrider.toml")
     try:
-        with open(path, "rb") as f:
-            cfg = tomllib.load(f)
+        cfg = read_toml(path)   # a BOM dropped, as the server reads it
     except (OSError, ValueError):
         cfg = {}
     sv = cfg.get("server") if isinstance(cfg.get("server"), dict) else {}

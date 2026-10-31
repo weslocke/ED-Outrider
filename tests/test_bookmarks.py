@@ -88,6 +88,18 @@ class Parse(unittest.TestCase):
             rows, bad, problems = ed_outrider.parse_bookmarks(text)
             self.assertEqual((rows[0][:5], bad, problems), ((BIG, "A", 1.0, 2.0, 3.0), 0, []), text)
 
+    def test_huge_coordinates_are_refused_per_row(self):
+        """Complete review 2026-10-30: a 400-digit coordinate raised OverflowError (the import's 500); 1e200 was taken,
+        and from then on every payload raised. Each is a bad row now, with its reason; the pins import too."""
+        huge = "1" * 400
+        rows, bad, problems = ed_outrider.parse_bookmarks(f'[{{"id64": 5, "name": "A", "x": {huge}, "y": 0, "z": 0}}, '
+                                                          '{"id64": 6, "name": "B", "x": 1, "y": 2, "z": 3}]')
+        self.assertEqual(([r[0] for r in rows], bad, problems), ([6], 1, ["item 1: x is not a number"]))
+        rows, bad, problems = ed_outrider.parse_bookmarks("id64,name,x,y,z\n123,Far,1e200,0,0\n")
+        self.assertEqual((rows, bad, problems), ([], 1, ["line 2: x is outside the galaxy"]))
+        rows, bad, _ = ed_outrider.parse_pins(f'[{{"system_id64": 1, "body": "Sys A 1", "name": "P", "lat": {huge}, "lon": 0}}]')
+        self.assertEqual((rows, bad), ([], 1))
+
     def test_bad_rows_are_counted_with_reasons(self):
         text = ("id64,name,x,y,z,note,created_ts\n"
                 "1.15292E+18,Rounded,1,2,3,,\n"     # line 2: what a spreadsheet does to a long number

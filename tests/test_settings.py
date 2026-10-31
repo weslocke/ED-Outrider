@@ -276,6 +276,20 @@ class ReviewConfigFixes(unittest.TestCase):
         self.assertIn('backup_dir = "data/backups"', text)
 
 
+class NotUtf8(TempConfig):
+    def test_a_config_not_saved_as_utf8(self):
+        """Complete review 2026-10-30: a cp1252 config file with an accent made every save (Settings, an upload switched
+        on) a 500 (UnicodeDecodeError); now said, and nothing written."""
+        with open(self.path, "wb") as f:
+            f.write("# r\u00e9glages\n[speech]\npad_delay = 5\n".encode("cp1252"))
+        out, status = self.state.config_save({"speech": {"pad_delay": 7}})
+        self.assertEqual(status, 400)
+        self.assertIn("not saved as UTF-8", out["error"])
+        with open(self.path, "rb") as f:
+            self.assertIn(b"pad_delay = 5", f.read())
+        self.assertIn("UTF-8", str(self.state.set_upload("eddn", True)))
+
+
 class WritingFile(TempConfig):
     """R2, R8, R9 through POST /api/config: the file's mode and a symlinked config."""
 
@@ -476,6 +490,26 @@ class SweepConfigFixes(TempConfig):
         self.assertEqual(self.state.config_save({"defaults": {"speech_speed": 1.2}})[1], 200)
         with open(self.path, "rb") as f:
             self.assertFalse(f.read().startswith(b"\xef\xbb\xbf"))   # written back without it
+
+    def test_the_launchers_and_the_bridge_read_a_bom_too(self):
+        """Complete review 2026-10-30: PowerShell's utf8 writes a BOM; Outrider read it, but the launchers' overlay step
+        saw the overlay off and the MCP bridge ignored [mcp] (url, password)."""
+        import outrider.mcp
+        import outrider.overlay_runner
+        with open(self.path, "w", encoding="utf-8-sig") as f:
+            f.write('[overlay]\nenabled = true\n[mcp]\nurl = "http://nas:8030"\npassword = "pw"\n')
+        self.assertTrue(outrider.overlay_runner.overlay_enabled(self.path))
+        seen = {}
+        with unittest.mock.patch.object(outrider.mcp, "serve", lambda *a: None), \
+                unittest.mock.patch.object(outrider.mcp, "http_get", lambda url, password="": seen.update(url=url, pw=password)), \
+                contextlib.redirect_stderr(io.StringIO()):
+            outrider.mcp.main(["--config", self.path])
+        self.assertEqual(seen, {"url": "http://nas:8030", "pw": "pw"})
+
+    def test_the_python_named_is_the_one_outrider_needs(self):
+        """Complete review 2026-10-30: --help said Python 3.9/3.10 work with tomli; Outrider's modules need 3.11."""
+        self.assertIn("Requires Python 3.11+", ed_outrider.__doc__)
+        self.assertNotIn("tomli", ed_outrider.__doc__)
 
     def test_a_file_that_does_not_parse_says_so(self):
         with open(self.path, "w", encoding="utf-8") as f:

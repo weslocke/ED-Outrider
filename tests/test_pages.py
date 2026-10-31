@@ -411,6 +411,9 @@ class ReviewBatchF(unittest.TestCase):
     def test_search_mining_local_and_spansh_refused(self):
         r = self.search({"source": "local", "mining": True, "mining_mineral": "Platinum"})
         self.assertEqual([x["name"] for x in r["results"]], ["S1"])
+        # complete review 2026-10-30: no "Search Spansh instead" for it (Spansh refuses a mining search)
+        self.assertFalse(r.get("sparse"))
+        self.assertNotIn("Spansh (online)", r["status"])
         self.assertEqual([h["body"] for h in r["results"][0]["matches"]["mining"]], ["A 2"])   # icy has no platinum
         r = self.search({"source": "local", "mining": True, "mining_mineral": "Unobtainium"})  # unknown: any mineral
         self.assertEqual([h["body"] for h in r["results"][0]["matches"]["mining"]], ["A 1", "A 2"])

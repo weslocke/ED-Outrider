@@ -551,7 +551,7 @@ back to.
   not reached, in their order (▲ ▼ in the panel). From orbital cruise down, the strip and Now say how far and which
   way ("📍 Wreck: 12.4 km, turn 30° right"), the map draws it (on the rim when it is off the map) and the overlay's
   radar shows it with a line. The Navigator says it when it is set ("Wreck set. 340 kilometres, bearing 120."), at
-  10 km, 1 km and 100 m, and on arrival (within 50 m on foot or in the SRV, 250 m in the ship), then the next pin's
+  10 km, 1 km and 100 m, and on arrival (within 50 m on foot or in the SRV, 250 m in the ship, counted through the air: flying over a pin high up is no arrival), then the next pin's
   way; the status report starts with it. Reached pins are dimmed, with ↺ to undo.
 - **Finding them again:** a 📍 beside a body with pins in Here and Overview, and every pin in **Bookmarks** (with
   Plot route to its system).
