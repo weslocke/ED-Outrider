@@ -11,6 +11,120 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## 2026.10.30 · 31 October 2026 · The Misc Release
+
+**Your squadron's carrier beside your own, the commander you follow picked from a list, the station your stored
+modules and ships are at, Sell all for the whole hold, known Guardian and geology sites one tap from a pin, and about
+150 fixes from a complete code review of the whole of Outrider.**
+
+> [!IMPORTANT]
+> **The first start re-reads your journals once** (your squadron's carrier, the stations your stored modules and ships
+> are at, deposits into your carrier's bank, each sample's colour in any game language): a few seconds, or a few
+> minutes for years of journals. Outrider **backs up your database first**, and the page shows how far it has got.
+> Your bookmarks, pins, routes and settings are kept.
+
+### 🛸 Your squadron's carrier
+
+(Thanks to Hiner399, [discussion #3](https://github.com/weslocke/ED-Outrider/discussions/3).)
+
+- **On the Carrier tile**: with your own carrier as well, an **FC | SC** switch in its heading picks which one it
+  shows; docking at either shows that one, and your pick is kept on this device. Its side has the squadron carrier
+  marker and its name, where it is (or Spansh's newer report of it, marked "Spansh"), how far, 🎯 and 🛣, your jumps to
+  it, and UC and Vista. An officer who opens its management or books a jump gets the tritium reading and the countdown
+  too. See [the views](views.md#-the-views).
+- **Somewhere to sell and dock**: the sell lists and Now's sell line offer it as your squadron's; Nearest place to
+  dock lists it as **your squadron's**, with no "squadron only" warning; the voice says "your squadron's carrier".
+
+### 🧑‍🚀 Your commanders and your fleet
+
+- **Choose the commander from a list** (thanks to Hiner399,
+  [discussion #18](https://github.com/weslocke/ED-Outrider/discussions/18)): with more than one commander in a journal
+  folder, the card's **Choose a commander** lists every one (their journals, when each last played, "playing now") and
+  "every commander"; a pick restarts Outrider and reads the journals again for that commander. The same list is behind
+  **Choose…** beside ⚙ Settings → Server → `[journals] commander`, and on the "CMDR B is playing" card. The estimate of
+  the data on board and the Log follow the commander you chose too. See
+  [Two commanders on one PC](install.md#two-commanders-on-one-pc).
+- **CMDR → Inventory names the station** a stored module is at, and a ship stored elsewhere (thanks to
+  docfallingapart, [discussion #17](https://github.com/weslocke/ED-Outrider/discussions/17)); a carrier is marked
+  "(carrier)", and a place you never docked at shows its system only. See [CMDR](views.md#-commander).
+
+### 💱 ⛏ Selling and mining
+
+- **Sell all** on the Cargo section's ship line (two lines or more you can sell): stations ranked by what they pay for
+  the whole hold ("Takes 3/4 lines, 85 t of 98 t"), the profit over what you paid, and opened, each line and what a
+  station doesn't buy. See [Trading](cargo-and-trading.md#-trading).
+- **Now's at-risk line names where to sell**: "… · 6 d unsold · sell (UC + Vista): Far Sys 412 ly", the nearest
+  station (or your carrier, or your squadron's) with a large pad when your ship needs one; 🎯 targets it and, from
+  250 ly, 🛣 plots a route there at once.
+- **Your record at a hotspot** as you drop out of supercruise at one you have mined before: "⛏ Alexandrite hotspot ·
+  you, 3 stints · 38 t/h · 41 % hits · last here 1 h 20 min ago". Now's mining line adds this stint's hits ("hits
+  3/8").
+- **Limpets you can synthesise**: the mining line says "limpets 4 (+12 by synthesis)" under 10 limpets, limpets low adds
+  "You can synthesise 12 more", and the undock reminder says "No limpets aboard, but you can synthesise 12". See
+  [Alerts](voice-and-alerts.md#-alerts).
+
+### 🔭 Exploring
+
+- **Known sites from Canonn**: on a landable body with Guardian or geological signals, the body panel's 📍 Pins lists
+  what other commanders reported with a position (Guardian ruins and structures, each geological formation), each with
+  **📍 pin it**; one you have pinned shows ✓. See [the surface map](views.md#-the-surface-map).
+- **The schematic gives the orbit's distance too** (thanks to Hiner399): under a moon or another star's planet,
+  "2,026 ls / 2.6 ls", from arrival and from what it orbits.
+- **Sweep ticks on the checklists' 🔍 nearby lists**: tick a body for each species you are missing, then **🧹 Plot a
+  sweep** for one trip to them all. See [the exobiology checklist](views.md#-the-exobiology-checklist).
+
+### 🎙 Voice
+
+- **"Nearest scoopable star"** (or "where can I scoop", "fuel star"): the nearest known one, and whether it is within
+  one jump. The AI's tools have it too. See [Ask Outrider by voice](voice-and-alerts.md#-ask-outrider-by-voice).
+- **"show the highway"** and **"open plot route"** switch the tablet's page; "next stop" follows the other route when
+  one is at its last stop.
+- **Piper's voices use far less CPU**: each one now takes a few threads instead of every one the PC has, as fast for
+  a medium voice and faster for a high one.
+
+### 🧰 Running it
+
+- **The tablet's rail presses only into Elite's window**: with another program in front it says "Elite is not the
+  active window: click into the game" instead of typing into it, and while another commander plays it is greyed. See
+  [On a tablet](tablet.md#-on-a-tablet).
+- **Auto-target reads the galaxy map's controls from your General Controls preset** (where the game keeps them), so a
+  General preset that differs from your Ship one no longer gives the wrong key or "no keyboard binding".
+- **A proxy on the Outrider PC**: nginx adds no forwarding header by itself, so every device behind it skipped the
+  password. If you use one, add the line the guide gives and check once from a phone that the page asks for the
+  password. See [Other devices on your network](install.md#-other-devices-on-your-network).
+- **No false "journal files are gone"** before a re-read when your journal folder is reached by another path now (a
+  moved Steam library, or a database brought over from another PC) (thanks to Kurbo26,
+  [issue #16](https://github.com/weslocke/ED-Outrider/issues/16)).
+- **The docking pad** shows on Now (and the tablet switches to Now) at once with a pad delay set; only its voice waits
+  (thanks to Kurbo26, [discussion #3](https://github.com/weslocke/ED-Outrider/discussions/3)).
+- **`git pull` updates no longer stop on "local changes"**: refreshed exobiology rules are kept beside your database
+  in `data/`, and the guide no longer says to edit `requirements.txt` (`git checkout -- requirements.txt` puts an
+  edited one back). See [Getting started](install.md#-getting-started).
+- **Docker**: the image holds only what runs Outrider, and a Windows clone builds an image that starts.
+
+### 🔧 Fixes from a complete code review
+
+- **Security:** in Docker, wrong passwords count against the connection, never a forwarding header; Server settings no
+  longer puts a saved password back in its box.
+- **Games in other languages:** Sell lookups and Sell all find Low Temperature Diamonds, Void Opal and the other
+  commodities named differently; the Exo-Biology checklist finds colours; Bark Mounds reach the surface map; a ring
+  hotspot is said by its name.
+- **Exobiology values:** a genus your composition scan's codex entry names is counted before the DSS, in Here's value,
+  the leaving line, Nearby and the approach briefing.
+- **Your carrier:** a deposit into its bank counts at once; a jump made docked aboard keeps the dock.
+- **Routes:** back at a loop route's start partway round is no longer "Sweep complete"; "another ship: type its
+  range" plots with no ship; Re-plot from here uses the ship flown's neutron boost.
+- **The Map:** a tapped system's card on a tablet or phone stays open, so its buttons can be pressed; the boosted
+  range says ×6 for the SCO drive.
+- **The overlay:** Linux's panels follow the game window's new size; on Windows the panels sit in the game's picture,
+  not over its title bar; over the galaxy map the Docked and On foot boxes hold.
+- **Surface pins:** flying over a pin high up no longer counts as arriving.
+- **And many smaller ones:** clicks and typing kept while the page redraws, old moments not said after a journal share
+  comes back, a huge coordinate in an import refused as a row, the voice's words ("in Ryker's Hope", "an M star", "1
+  leg").
+
+---
+
 ## 2026.10.29 · 26 October 2026 · Build Your Own Codex
 
 **Build your own codex: your screenshots converted and named as you take them, filed by species, colour and

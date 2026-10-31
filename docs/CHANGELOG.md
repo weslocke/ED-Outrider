@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Version 2026.10.30, The Misc Release
+- `outrider.__version__` 2026.10.30; What's new has its section (your squadron's carrier, the commander chooser, the
+  stations of stored modules and ships, Sell all, Canonn's known sites, Piper's threads, about 150 fixes from the
+  complete code review). PARSER_VERSION 69 (65 at 2026.10.29): one journal re-read, backup first.
+
 ## 2026-10-31 · Screenshots retaken; the Docker image no longer opens up its resources
 - Retaken for the release: overview (and the 27-inch one), Here, the schematic, the surface map, the tablet, the ship
   card and the overlay's docking pads. They now show the Carrier tile's FC | SC switch, the moons' distance from what
