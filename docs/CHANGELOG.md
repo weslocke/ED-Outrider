@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · CMDR: where stored modules and ships are, by station
+- CMDR → Inventory names the station a stored module is at, and a ship stored elsewhere too (Discussion #17): the
+  game's lists give only the system and a market ID, so Outrider now keeps the stations you have docked at by their
+  market (`stations`). A carrier is marked "(carrier)". A place you never docked at shows its system only.
+  PARSER_VERSION 69: the journals are read again once.
+
 ## 2026-10-31 · Complete review, batch 8: the last lows
 - The last findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each
   with a test that fails without it. The review is done.

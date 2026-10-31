@@ -96,6 +96,32 @@ class Inventory(unittest.TestCase):
         self.assertEqual((rows[2]["name"], rows[2]["ident"]), ("Big Mama", "BM-01"))
         self.assertEqual((rows[4]["name"], rows[4]["ident"]), ("Listed", "AD-01"))   # the list's name wins
 
+    def test_stored_things_name_their_station(self):
+        """Discussion #17: stored modules showed only the system, remote ships neither; the lists carry the market ID of
+        where each is, and the stations you docked at name it (a carrier marked as one)."""
+        docked = lambda t, market, name, kind, system: ev(T(t), "Docked", StationName=name, StationType=kind, StarSystem=system,
+                                                          SystemAddress=9, MarketID=market)
+        j, state = setup(self, [
+            docked("07:00:00", 3700251648, "G0X-85Z", "FleetCarrier", "Smojooe AR-E b25-8"),
+            docked("07:10:00", 128000000, "Jaques Station", "Bernal", "Colonia"),
+            ev(T("07:20:00"), "Location", StarSystem="Sol", SystemAddress=10, Docked=False, MarketID=55, StationName="Not Docked"),
+            ev(T("09:01:00"), "StoredShips", StationName="Old Port", StarSystem="Sol", MarketID=1, ShipsHere=[],
+               ShipsRemote=[{"ShipID": 5, "ShipType": "anaconda", "StarSystem": "Colonia", "ShipMarketID": 128000000,
+                             "TransferPrice": 1, "TransferTime": 2, "Value": 3, "Hot": False}]),
+            ev(T("09:02:00"), "StoredModules", StationName="Old Port", StarSystem="Sol", MarketID=1, Items=[
+                {"Name": "$hpt_multicannon_fixed_medium_name;", "StorageSlot": 2, "StarSystem": "Smojooe AR-E b25-8",
+                 "MarketID": 3700251648, "TransferCost": 0, "TransferTime": 0, "BuyPrice": 0, "Hot": False},
+                {"Name": "$int_fuelscoop_size6_class5_name;", "StorageSlot": 3, "StarSystem": "Achenar", "MarketID": 777,
+                 "TransferCost": 0, "TransferTime": 0, "BuyPrice": 0, "Hot": False}])])
+        inv = state.commander_inventory()
+        ship = next(r for r in inv["ships"]["ships"] if r["id"] == 5)
+        self.assertEqual((ship["system"], ship["station"]), ("Colonia", "Jaques Station"))
+        mods = {m["system"]: m for m in inv["modules"]["modules"]}
+        self.assertEqual((mods["Smojooe AR-E b25-8"]["station"], mods["Smojooe AR-E b25-8"]["station_type"]), ("G0X-85Z", "FleetCarrier"))
+        self.assertIsNone(mods["Achenar"].get("station"))                             # never docked there: the system only
+        self.assertEqual(j.db.execute("SELECT name FROM stations WHERE market_id=55").fetchall(), [])   # not docked
+        self.assertEqual(j.db.execute("SELECT name FROM stations WHERE market_id=1").fetchone()[0], "Old Port")   # the lists' own
+
     def test_the_fleet_after_the_list(self):
         """Should 1: a ship sold, swapped, sent for or renamed after the last StoredShips (as inara._fleet reads them);
         a Loadout newer than the list gives the value."""

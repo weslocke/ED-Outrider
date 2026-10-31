@@ -12903,13 +12903,16 @@ function cmdrProfileHtml(d) {
       `<div class="cmfigs">${p.career.map(c => cmTile(esc(c.label), fig(c))).join("")}</div>` : "");
 }
 
+// where a stored ship or module is: the system and its station (a carrier marked; Discussion #17: a module's station
+// was not shown, so whether it sat at a station or a carrier was not known)
+const cmWhere = x => esc([x.system, x.station].filter(Boolean).join(" · ") || "?") +
+  (x.station && x.station_type === "FleetCarrier" ? ` <span class="unk">(carrier)</span>` : "");
 // Inventory. Pure.
 function cmdrInventoryHtml(d) {
   const s = d.ships || {ships: []}, m = d.modules || {modules: []}, lk = d.locker || {kinds: []}, suits = d.suits || [];
   const shipRow = x => {
     const label = shipLabel(x.name, x.type), type = x.type_name || shipLabel(null, x.type);
-    const where = x.current ? `<span class="ok">you fly it</span>` : x.in_transit ? `<span class="warnc">in transit</span>`
-      : esc([x.system, x.station].filter(Boolean).join(" · ") || "?");
+    const where = x.current ? `<span class="ok">you fly it</span>` : x.in_transit ? `<span class="warnc">in transit</span>` : cmWhere(x);
     const move = x.transfer_cost ? `${cmCr(x.transfer_cost)}${x.transfer_s ? ` · ${cmSpan(x.transfer_s)}` : ""}` : "";
     // a type with a picture: the row shows it on a hover, its name on a tap on the tablet (shipCardShow)
     const pic = shipPicture(x.type) ? ` data-shipimg="${esc(String(x.type).toLowerCase())}"` : "";
@@ -12919,7 +12922,7 @@ function cmdrInventoryHtml(d) {
   const modRow = x => `<tr><td><span class="cmcls">${cmCls(x)}</span> <b>${esc(x.name)}</b>${x.mount ? ` <span class="unk">${esc(x.mount)}</span>` : ""}` +
     `${cmHot(x, "module")}</td>` +
     `<td>${x.blueprint ? `<b>${esc(x.blueprint)}</b>${x.level ? ` G${cmNum(x.level)}` : ""}` : `<span class="unk">stock</span>`}</td>` +
-    `<td>${x.in_transit ? `<span class="warnc">in transit</span>` : esc(x.system || "?")}</td><td class="num">${cmCr(x.value)}</td>` +
+    `<td>${x.in_transit ? `<span class="warnc">in transit</span>` : cmWhere(x)}</td><td class="num">${cmCr(x.value)}</td>` +
     `<td class="num">${x.transfer_cost ? `${cmCr(x.transfer_cost)}${x.transfer_s ? ` · ${cmSpan(x.transfer_s)}` : ""}` : ""}</td></tr>`;
   const held = lk.kinds.filter(k => k.items.length);
   const suitRow = x => `<tr><td><b>${esc(x.loadout || "?")}</b></td><td>${esc(x.suit)}${x.class ? ` <span class="unk">G${cmNum(x.class)}</span>` : ""}` +

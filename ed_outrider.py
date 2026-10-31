@@ -1752,6 +1752,7 @@ def commander_matches(filt, who):
     return not f or f in (who[0].strip().lower(), who[1].strip().lower())
 
 
+STATION_EVENTS = ("Docked", "Location", "StoredModules", "StoredShips")   # Journals.note_station: a market's station name
 WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + outrider.commander.EVENTS))
 # the journal events the unsold estimate reads (outrider.unsold.INTERESTING): only these make it run again (S6-S1)
 UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTING if outrider.unsold else ()))
@@ -1786,7 +1787,7 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 # 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
 # 65: codex entries keep their own code (codex.code: "$Codex_Ent_Stratum_02_F_Name;"), Here's 📷 in any language
 # 66: your squadron's carrier is kept (meta squadron_carrier), no longer thrown away: where it was at your last login
-PARSER_VERSION = 68
+PARSER_VERSION = 69
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1812,6 +1813,7 @@ PARSER_VERSION = 68
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    69: "the stations you have docked at are kept by their market, so CMDR's stored modules and ships name the station they are at",
     68: "each sample keeps its variant's code, so the Exo-Biology checklist finds its colour in any game language",
     67: "deposits into your carrier's bank count for its upkeep, a squadron carrier's purchase is not taken for your own, a session started on foot names your ship, and a carrier jump made docked aboard keeps the dock",
     66: "your squadron's carrier is kept beside your own, so the Carrier tile, the places to sell and the nearest places to dock know where it is",
@@ -2226,6 +2228,7 @@ CREATE TABLE IF NOT EXISTS cargo_events (src TEXT PRIMARY KEY, ts TEXT, event TE
 -- Your carrier's Market.json, each one read (the game overwrites the file at the next market). Live only: a journal
 -- re-read keeps them (not in RESET_JOURNAL_DATA); backups carry them.
 CREATE TABLE IF NOT EXISTS carrier_markets (ts TEXT, market_id INTEGER, items TEXT, PRIMARY KEY (ts, market_id));
+CREATE TABLE IF NOT EXISTS stations (market_id INTEGER PRIMARY KEY, name TEXT, system TEXT, type TEXT, ts TEXT);
 -- The counts you entered for your carrier's lines (Recount; count 0 removes a line). Live only, as above.
 CREATE TABLE IF NOT EXISTS carrier_counts (
     ts TEXT, carrier INTEGER, commodity TEXT, count INTEGER, name TEXT, PRIMARY KEY (ts, carrier, commodity));
@@ -2255,7 +2258,7 @@ DELETE FROM own_firsts; DELETE FROM own_mapped; DELETE FROM own_footfall; DELETE
 DELETE FROM own_genera; DELETE FROM own_organic; DELETE FROM codex; DELETE FROM bio_sales;
 DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM phenomena_sites; DELETE FROM poi; DELETE FROM sale_events; DELETE FROM logins;
 DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here');
-DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population;
+DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population; DELETE FROM stations;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
 DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_carrier', 'mined_died', 'sale_dock');
 DELETE FROM play_activity; DELETE FROM mining_stints;
@@ -4112,6 +4115,8 @@ class Journals:
                 return
         if name in SALE_DOCK_EVENTS:
             self.note_sale_dock(name, ev, ts)
+        if name in STATION_EVENTS:
+            self.note_station(name, ev, ts)
         if name in SQUADRON_CARRIER_EVENTS:
             self.handle_squadron_carrier(name, ev, ts)
         # before the Commander view's fold: its Sessions count a sale's mined part as this works it out (one rule)
@@ -5474,6 +5479,22 @@ class Journals:
             self.db.execute("UPDATE mining_stints SET open=0, end_ts=? WHERE start_ts=?",
                             (min(ts, row["last_ts"] or ts) if row["last_ts"] else ts, row["start_ts"]))
         self.mining_version += 1
+
+    def note_station(self, name, ev, ts):
+        """A station's name by its market (the stations table): where you docked, and the station a shipyard or outfitting
+        list was opened at. CMDR's stored modules and ships carry only the market ID of where each one is (Discussion
+        #17). The newest line wins (a carrier keeps its callsign, but moves)."""
+        if name == "Location" and not ev.get("Docked"):
+            return
+        if name in ("Docked", "Location") and (ev.get("Taxi") or ev.get("Multicrew")):
+            return
+        market, station = ev.get("MarketID"), ev.get("StationName")
+        if not isinstance(market, int) or not isinstance(station, str) or not station:
+            return
+        self.db.execute("INSERT INTO stations (market_id, name, system, type, ts) VALUES (?, ?, ?, ?, ?) "
+                        "ON CONFLICT(market_id) DO UPDATE SET name=excluded.name, system=excluded.system, "
+                        "type=COALESCE(excluded.type, stations.type), ts=excluded.ts WHERE excluded.ts >= stations.ts",
+                        (market, station, ev.get("StarSystem"), ev.get("StationType"), ts))
 
     def handle_cargo(self, name, ev, ts):
         """The ship's hold (folded now, outrider.cargo.ship_apply) and your carrier's history (stored per journal line
@@ -11177,7 +11198,23 @@ class State:
         with that Loadout's EDSY and Coriolis links."""
         rows = [dict(r) for r in self.db.execute(
             "SELECT ship_id, name, ship_type, ident, ts, value, loadout FROM fleet_loadouts ORDER BY ts DESC")]
-        return outrider.commander.ships(self.journals.cmdr_view.get("stored_ships"), rows)
+        return self.with_stations(outrider.commander.ships(self.journals.cmdr_view.get("stored_ships"), rows), "ships")
+
+    def with_stations(self, view, key):
+        """CMDR's stored ships or modules (view[key]) with the station each is at, by its market: the lists carry only
+        the market ID (Discussion #17); the stations you docked at name them (Journals.note_station). A row whose
+        station is already named keeps it; `station_type` says a carrier ("FleetCarrier") from the docking."""
+        markets = {r.get("market") for r in view.get(key) or [] if isinstance(r.get("market"), int)}
+        if not markets:
+            return view
+        names = {r["market_id"]: r for r in self.db.execute(
+            f"SELECT market_id, name, type FROM stations WHERE market_id IN ({','.join('?' * len(markets))})", tuple(markets))}
+        for r in view.get(key) or []:
+            st = names.get(r.get("market"))
+            if st:
+                r["station"] = r.get("station") or st["name"]
+                r["station_type"] = st["type"]
+        return view
 
     def commander_profile(self):
         """GET /api/commander/profile."""
@@ -11189,7 +11226,7 @@ class State:
     def commander_inventory(self):
         """GET /api/commander/inventory."""
         v = self.journals.cmdr_view
-        return {"ships": self.commander_fleet(), "modules": outrider.commander.stored_modules(v.get("stored_modules")),
+        return {"ships": self.commander_fleet(), "modules": self.with_stations(outrider.commander.stored_modules(v.get("stored_modules")), "modules"),
                 "locker": outrider.commander.locker(v.get("ship_locker")), "suits": outrider.commander.suits(v.get("suit_loadouts"))}
 
     def commander_engineering(self):

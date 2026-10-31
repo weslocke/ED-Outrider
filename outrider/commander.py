@@ -146,7 +146,7 @@ def fleet_apply(state, ev, here=None):
             return
         row = ships.setdefault(str(sid), {"id": sid, "name": None, "ident": None, "value": None, "value_ts": None})
         row.update(type=kind or row.get("type"), type_name=kind_name or row.get("type_name"), system=here.get("system"),
-                   station=here.get("station"), transfer_cost=None, transfer_s=None, in_transit=False, arrive_ts=None,
+                   station=here.get("station"), market=here.get("market"), transfer_cost=None, transfer_s=None, in_transit=False, arrive_ts=None,
                    hot=hot.get(str(sid), False))
         row.update(kw)
     if name == "Loadout" and ev.get("ShipID") is not None:
@@ -170,13 +170,15 @@ def fleet_apply(state, ev, here=None):
                     "name": (s.get("Name") or "").strip() or None, "ident": (old.get(str(s["ShipID"])) or {}).get("ident"),
                     "system": ev.get("StarSystem") if local else s.get("StarSystem"),
                     "station": ev.get("StationName") if local else None, "value": s.get("Value"), "value_ts": ts,
+                    # a remote ship's station: by its market (State.with_stations; the list names none)
+                    "market": ev.get("MarketID") if local else s.get("ShipMarketID"),
                     "hot": bool(s.get("Hot")), "transfer_cost": None if local else s.get("TransferPrice"),
                     "transfer_s": None if local else s.get("TransferTime"), "in_transit": bool(s.get("InTransit")), "arrive_ts": None}
                 was = old.get(str(s["ShipID"])) or {}
                 if s.get("InTransit") and was.get("arrive_ts"):
                     # the list says in transit only: the fold's transfer knows where to and when (as StoredModules;
                     # review 2026-10-20 L5: else it stayed "on its way" until another shipyard was opened)
-                    ships[str(s["ShipID"])].update({k: was.get(k) for k in ("system", "station", "arrive_ts")})
+                    ships[str(s["ShipID"])].update({k: was.get(k) for k in ("system", "station", "market", "arrive_ts")})
                 hot[str(s["ShipID"])] = bool(s.get("Hot"))
     elif name in ("ShipyardBuy", "ShipyardSwap", "ShipyardSell", "SellShipOnRebuy"):
         if ev.get("StoreShipID") is not None:
@@ -236,6 +238,7 @@ def ships(fleet, loadouts=(), now=None):
         lo_n = named.get(s["id"]) or {}
         rows.append({"id": s["id"], "type": s.get("type"), "type_name": s.get("type_name"), "name": s.get("name") or lo_n.get("name") or None,
                      "ident": s.get("ident") or lo_n.get("ident") or None, "current": False, "system": s.get("system"), "station": s.get("station"),
+                     "market": s.get("market"),
                      "value": value, "hot": bool(hot.get(str(s["id"]), s.get("hot"))), "transfer_cost": s.get("transfer_cost"),
                      "transfer_s": s.get("transfer_s"), "in_transit": bool(arriving), "links": links(s["id"])})
     listed = fleet.get("listed")
@@ -374,6 +377,7 @@ def stored_modules(snap, now=None):
         moving = not _arrived(m, at)
         rows.append({"name": name, "size": size, "rating": rating, "mount": mount,
                      "system": None if moving else m.get("StarSystem"), "in_transit": moving, "hot": bool(m.get("Hot")),
+                     "market": None if moving else m.get("MarketID"),   # its station: State.with_stations
                      "value": m.get("BuyPrice"), "transfer_cost": m.get("TransferCost"), "transfer_s": m.get("TransferTime"),
                      "blueprint": blueprint,
                      "level": m.get("Level"), "quality": m.get("Quality")})

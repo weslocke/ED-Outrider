@@ -222,6 +222,16 @@ t("Targeting sound: not while hushed (batch 5)", () => {
   ev(`hushState = __hs; soundOn = __so; isSpeaker = __sp`);
   eq(`[${on}, ${off}]`, [true, false]);
 });
+t("CMDR: a stored module or ship names its station, a carrier marked (Discussion #17)", () => {
+  const html = ev(`cmdrInventoryHtml({ships: {ships: [{id: 5, type: "anaconda", system: "Colonia", station: "Jaques Station", station_type: "Bernal"}]},
+    modules: {modules: [{name: "Multi-Cannon", system: "Smojooe AR-E b25-8", station: "G0X-85Z", station_type: "FleetCarrier"},
+                        {name: "Fuel Scoop", system: "Achenar"}]}})`);
+  const div = w.document.createElement("div"); div.innerHTML = html;
+  const where = [...div.querySelectorAll("tr")].map(tr => tr.cells[2] && tr.cells[1] ? tr.textContent : "").join("|");
+  assert.ok(where.includes("Colonia · Jaques Station"), where);
+  assert.ok(where.includes("Smojooe AR-E b25-8 · G0X-85Z (carrier)"), where);
+  assert.ok(where.includes("Achenar"), where);
+});
 later.push(["Hold full: the price answer is not said once you have left the ring (batch 5)", async () => {
   ev(`window.__ao = alertOut; window.__said = []; alertOut = (...a) => __said.push(a[1]); window.__d = data; MW.start = "s1";
       window.__ask = async () => [{station: "Hub", system: "Sys", price: 100000, distance: 12, carrier: false}]`);
