@@ -541,7 +541,7 @@ function carrierFinanceHtml(fi) {
   // the line says only "~N wks upkeep" (the author, 2026-10-14); how old the stats are goes in the title
   const title = `balance ${crSign(fi.balance)} cr · reserve ${crSign(fi.reserve)} cr · available ${crSign(fi.available)} cr, from the carrier's last stats (${(fi.ts || "").slice(0, 10)}${old ? `: as of ${shortDay(fi.ts)}` : ""}: opening its management writes them).` +
     (fi.upkeep ? ` Upkeep ≈ ${credits(fi.upkeep)} cr a week at the published rates (the core and each service, a suspended one at its lower rate), not yet checked against the game's carrier Finance screen: the journal has no upkeep figure. Upkeep is drawn from the balance each week.` : "") +
-    (fi.weeks_since ? ` ≈ ${w < 10 ? w.toFixed(1) : Math.floor(w).toLocaleString()} weeks now: ${fi.weeks_since} week${fi.weeks_since === 1 ? "" : "s"} of upkeep taken off since those stats (${fi.weeks < 10 ? fi.weeks.toFixed(1) : Math.floor(fi.weeks).toLocaleString()} then), an estimate: the market moves the balance too.` : "");
+    (fi.weeks_since && w != null && fi.weeks != null ? ` ≈ ${w < 10 ? w.toFixed(1) : Math.floor(w).toLocaleString()} weeks now: ${fi.weeks_since} week${fi.weeks_since === 1 ? "" : "s"} of upkeep taken off since those stats (${fi.weeks < 10 ? fi.weeks.toFixed(1) : Math.floor(fi.weeks).toLocaleString()} then), an estimate: the market moves the balance too.` : "");
   return `<span id="carrierFin" class="${fi.warn ? "warnc" : ""}" title="${esc(title)}">Balance <b>${crSign(fi.balance)}</b>` +
     (w != null ? ` · ~<b>${w < 10 ? w.toFixed(1) : Math.floor(w).toLocaleString()}</b> wks upkeep${fi.weeks_since ? " now" : ""}` : "") + `</span>`;
 }
@@ -1116,7 +1116,9 @@ function tilesLineHtml() {
     const where = c.aboard ? "aboard" : c.here ? "here" : c.distance != null ? ly(c.distance) : esc(c.system || "");
     // the countdown in a "cd" span: setLive updates it in place, the line is not rebuilt every second (S5-B3)
     const dep = left != null && left > 0 ? ` · departs in <span class="cd">${left >= 3600 ? `${Math.floor(left / 3600)} h ${Math.floor(left % 3600 / 60)} min` : `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`}</span>` : "";
-    out.push(sq ? bit(`${mk("squadron-carrier")}carrier ${where}${dep}`, "", c.name || c.callsign || "your squadron's carrier") + sysAimBtn(c.system, c.id64)
+    // decommissioned: said so, as the tile does, never as a place to fly to (complete review 2026-10-30)
+    if (!sq && c.decommission && c.decommission.done) out.push(bit(`${mk("fleet-carrier")}carrier decommissioned`, "bad", c.name || "your fleet carrier"));
+    else out.push(sq ? bit(`${mk("squadron-carrier")}carrier ${where}${dep}`, "", c.name || c.callsign || "your squadron's carrier") + sysAimBtn(c.system, c.id64)
       : bit(`${mk("fleet-carrier")}carrier ${where}${dep}`, dep && left < 300 && !c.aboard ? "urgent" : "", c.name || "your fleet carrier") + carrierAim(c));
   }
   const dl = tileLevel("tData");
@@ -1456,7 +1458,7 @@ function padMapSvg(m) {
 function renderNow() {
   drawNowBar();
   const el = document.getElementById("nowBody"), p = data.position, f = data.fuel, t = data.target, a = data.arrival;
-  if (!p) { el.innerHTML = `<div class="now-sys">${esc(noJumpText())}</div>`; renderSurface(); return; }
+  if (!p) { el.innerHTML = `<div class="now-sys">${esc(noJumpText())}</div>`; el._liveKey = null; renderSurface(); return; }
   const lines = [`<div class="now-sys">${esc(p.name)}</div>`];
   // #3: docking: the pad in large letters (the author, 2026-10-14), or why the station refused; gone once docked
   const dk = data.docking;
@@ -1554,10 +1556,12 @@ function renderNow() {
   if (lastAlert && Date.now() - lastAlert.at < 15000)
     lines.push(`<div class="now-card alert">${esc(lastAlert.title)}${lastAlert.body ? ` <span class="unk">${esc(lastAlert.body)}</span>` : ""}</div>`);
   if (captions.length) lines.push(`<div class="now-caps">${captions.slice().reverse().map(c =>
-    `<div class="now-cap" data-words="${esc(c.words)}"${c.priv ? ` data-priv="1"` : ""} title="say it again (through the window that is speaking)">▶ ${esc(c.shown || c.words)} <span class="unk">${agoText(c.at)}</span></div>`).join("")}</div>`);
+    `<div class="now-cap" data-words="${esc(c.words)}"${c.priv ? ` data-priv="1"` : ""} title="say it again (through the window that is speaking)">▶ ${esc(c.shown || c.words)} <span class="unk"><span class="cd">${agoText(c.at)}</span></span></div>`).join("")}</div>`);
   if (nowHintUntil && Date.now() < nowHintUntil && !window.OutriderApp)   // the Android app keeps the screen on itself
     lines.push(`<div class="now-line now-small now-hint">screen may sleep: set the tablet's screen timeout, or open over localhost/HTTPS</div>`);
-  el.innerHTML = lines.join("");
+  // rewritten only when something but its ticking figures changed (setLive): a click or hover lasts across the 2 s
+  // redraw and the payloads (complete review 2026-10-30: the sell line's plot, Replace and a caption's replay lost clicks)
+  setLive(el, lines.join(""));
   renderSurface();
 }
 // Now's route line: the route the strip shows (this device's pick with both), its next stop with 🎯 (the review's
@@ -1979,7 +1983,17 @@ async function loadPins() {
 function refreshPinsUi() {
   for (const id of ["bodyPanel", "sBodyPanel"]) { const sec = document.querySelector(`#${id} [data-sec="pins"] .secbody`);
     if (!sec || !sec.dataset.sys) continue;
+    // what you were typing (coordinates, a name) and where, kept through the rewrite (complete review 2026-10-30: it was
+    // wiped when Canonn's answer or another device's pin came in)
+    const typed = ["input[data-pinin]", "input[data-pinname]"].map(q => { const i = sec.querySelector(q); return i && {q, v: i.value, f: document.activeElement === i}; });
     sec.innerHTML = pinsListHtml(sec.dataset.sys, sec.dataset.body);
+    for (const t of typed) {
+      const i = t && t.v !== undefined && sec.querySelector(t.q);
+      if (!i || (!t.v && !t.f)) continue;
+      i.value = t.v;
+      if (t.f) i.focus({preventScroll: true});
+      i.dispatchEvent(new Event("input", {bubbles: true}));   // the "reads as" line follows
+    }
     const lbl = sec.parentNode.querySelector(".lbl"); if (lbl) lbl.textContent = pinsLabel(sec.dataset.sys, sec.dataset.body); }
   drawBmPins();
 }
@@ -3689,7 +3703,9 @@ async function holdFullSell(m, ask = null) {
     best = usable(await ask(w, "near", true))[0];
     if (best) { near = true; break; }
   }
-  if (MW.start !== stint) return;
+  // still in that stint: MW.start is not cleared when you leave the ring (mining_live goes null), so that is asked too
+  // (complete review 2026-10-30: the answer was said after you had jumped away, its distances from the ring you left)
+  if (MW.start !== stint || !data || !data.mining_live || data.mining_live.start !== stint) return;
   const range = plainRange();
   const ownNear = own && own.distance != null && range && own.distance <= range ? own : null;
   if (!best && !ownNear) return;
@@ -5441,7 +5457,7 @@ function discHtml(b, depth) {
   const belts = (b.belts || []).length ? `<span class="belt" title="${b.belts.length} belt${b.belts.length === 1 ? "" : "s"}">⋯</span>` : "";
   return `<div class="sbody${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}">` +
     `<div class="discwrap" style="width:${size + 14}px;height:${size + 14}px">${ring}<span class="${cls}" style="width:${size}px;height:${size}px;--c:${col}"></span>${stopsHtml(b)}</div>` +
-    `<div class="sname" title="${esc(b.name)}">${esc(b.name)}${pinMark(b.name)}${belts}</div><div class="badges">${badges}</div>` +
+    `<div class="sname" title="${esc(b.name)}">${esc(b.name)}${pinMarkFor(schemSystem, b.name)}${belts}</div><div class="badges">${badges}</div>` +
     `<div class="sval${maxOf(b) ? "" : " unk"}">${maxOf(b) ? credits(maxOf(b)) : "—"}</div>` +
     (b.type === "Planet" && b.dist_ls != null ? sdistHtml(b) : "") + `</div>`;
 }
@@ -5962,8 +5978,9 @@ function paintBody(g, W, L, R, ambient = 0.1) {
 
 // ---- My firsts ----
 let firstsKey = null, firstsData = null;
+const firstsKeyNow = () => `${data && data.scan_version}|${data && data.unsold && data.unsold.computed}|${data && data.firsts_watch && data.firsts_watch.seen}`;
 async function loadFirsts() {
-  const key = `${data && data.scan_version}|${data && data.unsold && data.unsold.computed}|${data && data.firsts_watch && data.firsts_watch.seen}`;
+  const key = firstsKeyNow();
   if (key === firstsKey) return;
   firstsKey = key;
   document.getElementById("fStatus").textContent = "loading…";
@@ -6161,8 +6178,9 @@ let leftKey = null, leftData = null;
 const lbRadius = document.getElementById("lbRadius");
 lbRadius.value = store.get("lbRadius", "100");
 lbRadius.onchange = () => { store.set("lbRadius", lbRadius.value); leftKey = null; loadLeft(); };
+const leftKeyNow = () => `${lbRadius.value}|${data && data.left_seq}|${posId()}`;   // not every scan here (S2-S1)
 async function loadLeft() {
-  const key = `${lbRadius.value}|${data && data.left_seq}|${posId()}`;   // not every scan here (S2-S1)
+  const key = leftKeyNow();
   if (key === leftKey) return renderLeft();
   leftKey = key;
   const g = newRequest("left");
@@ -6435,7 +6453,7 @@ function nearRowHtml(r) {
     `<td class="num"${r.from_you != null ? ` title="${Math.round(r.from_you).toLocaleString()} ly from you"` : ""}>${r.here ? "here" : `${Math.round(r.ly).toLocaleString()} ly`}${r.jumps ? `<div class="unk">≈ ${r.jumps} jump${r.jumps === 1 ? "" : "s"}</div>` : ""}</td>` +
     `<td class="num${r.far ? " warnc" : ""}">${r.ls == null ? `<span class="unk">?</span>` : `${r.ls.toLocaleString()} ls`}${r.far ? `<div class="small">⚠ far from the star</div>` : ""}</td>` +
     `<td class="has">${has}</td><td class="num">${esc(r.pads || "")}</td><td class="dk">${dock}</td><td class="src unk">${src}</td>` +
-    `<td class="num">${r.here ? `<span class="unk">${r.own ? "aboard" : "here"}</span>` : `<button type="button" class="mini go" data-nplot="${esc(r.system || "")}">Plot here</button>` +
+    `<td class="num">${r.here ? `<span class="unk">${r.own && r.aboard ? "aboard" : "here"}</span>` : `<button type="button" class="mini go" data-nplot="${esc(r.system || "")}">Plot here</button>` +
       sysAimBtn(r.system, r.id64)}</td></tr>`;
 }
 function renderNearest() {
@@ -6964,6 +6982,30 @@ async function moreLog() {
   renderLog();
   if (L.partial && gen === L.gen) moreLog();   // still searching: the next part
 }
+// S68's marks on rows already shown, asked again while any is not final (⏳ waiting, ⏸ held): the tail brings new lines
+// only (complete review 2026-10-30: a row stayed "waiting" after its upload went); with "not sent" ticked, a row whose
+// messages all went drops off
+// the targeting sound's rule: a new verdict, sounds on and the discovery sound ticked, in the window that speaks, and not
+// while hushed, as every alert sound but danger's (complete review 2026-10-30: it played through a hush)
+const targetSoundOn = t => !!(t && t.fresh && soundOn && t.sound && alertSound.discovery && speakerHere() && !hushed());
+async function refreshLogMarks() {
+  if (view !== "log" || L.marksAsking || !L.rows || !L.rows.length) return;
+  const open = L.rows.filter(r => (r.up || []).some(m => m.state === "queued" || m.state === "held")).slice(0, 500);
+  if (!open.length) return;
+  L.marksAsking = true;
+  try {
+    const r = await apiJson("api/log/marks", {method: "POST", headers: {"Content-Type": "application/json"},
+                                              body: JSON.stringify({rows: open.map(x => ({id: x.id, at: x.at, ts: x.ts}))})});
+    let changed = false;
+    for (const x of open) {
+      const m = r && r.marks && r.marks[x.id];
+      if (m && JSON.stringify(m) !== JSON.stringify(x.up)) { x.up = m; changed = true; }
+    }
+    if (changed && lUnsent.checked) L.rows = L.rows.filter(x => !x.up || x.up.some(m => ["queued", "held", "dropped"].includes(m.state)));
+    if (changed) renderLog();
+  } catch { /* asked again at the next round */ } finally { L.marksAsking = false; }
+}
+setInterval(() => refreshLogMarks(), 15000);
 async function tailLog() {   // new journal lines since the newest row: prepend them
   const j = logMark();
   if (!L.newest || L.loading || j === L.journal) return;
@@ -7856,8 +7898,8 @@ function drawMap() {
   };
   ringAt(jr, C.accent, [4, 4]);
   if (data && data.boost) ringAt(jr * data.boost, "#5ce1e6", [2, 3]);   // charged: this jump's real reach
-  // Boosted range from here: neutron cone ×4, white dwarf ×1.5.
-  const hs = d.here_star, mult = hs === "N" ? 4 : /^D/.test(hs || "") ? 1.5 : 0;
+  // Boosted range from here: neutron cone ×4 (the SCO Mk II's ×6: d.supercharge), white dwarf ×1.5.
+  const hs = d.here_star, mult = hs === "N" ? d.supercharge || 4 : /^D/.test(hs || "") ? 1.5 : 0;
   if (jr && mult) ringAt(jr * mult, "#5ce1e6", [2, 6]);
 
   // exact string ids (id), as the points carry: an id64 over 2^53 is rounded as a JavaScript number
@@ -8005,7 +8047,7 @@ function mapClickWords(pt) {
 }
 function mapPopHtml(pt, touch = false) {
   const c = M.data.center, dd = Math.hypot(pt.x - c.x, pt.y - c.y, pt.z - c.z);
-  const boost = pt.boost ? (pt.boost === "N" ? "neutron star: jet-cone boost ×4" : "white dwarf: jet-cone boost ×1.5") : "";
+  const boost = pt.boost ? (pt.boost === "N" ? `neutron star: jet-cone boost ×${(M.data && M.data.supercharge) || 4}` : "white dwarf: jet-cone boost ×1.5") : "";
   const what = (c.id ?? String(c.id64)) === pt.id ? "you are here" : pt.first ? "you discovered it" : pt.visited ? (pt.edsm ? "visited (your EDSM flight log)" : "visited")
     : pt.kind === "route" ? "only in your route plots" : pt.scanned ? "known, has scanned bodies"
     : pt.kind === undefined ? (pt.carrier ? `your carrier ${esc(pt.carrier)} is here` : boost) : "no scan data";
@@ -8027,12 +8069,15 @@ function mapPopHtml(pt, touch = false) {
 // Asks for what is not loaded yet once, and draws again when it comes.
 function mapWork() {
   const loading = !leftData || !firstsData;
-  // asked once: their own renders draw the Map again when the answers come (bug check 2026-10-24 #1: re-asking from a
-  // .then looped without end while a load already under way returned at once, and the page froze)
-  if (loading && !M.workAsked) {
-    M.workAsked = true;
-    if (!leftData) loadLeft();
-    if (!firstsData) loadFirsts();
+  // asked again only when its key moved (a jump, work finished, a sale or a death: complete review 2026-10-30, they were
+  // asked once per page life); a failure waits 30 s. Never on an equal key: loadLeft then redraws, which draws the Map,
+  // which comes here (bug check 2026-10-24 #1: that looped without end and the page froze)
+  const now = Date.now();
+  for (const [keyNow, key, d, load, at] of [[leftKeyNow, leftKey, leftData, loadLeft, "leftRetry"],
+                                            [firstsKeyNow, firstsKey, firstsData, loadFirsts, "firstsRetry"]]) {
+    if (keyNow() === key || (d && d.error && now < (M[at] || 0))) continue;
+    if (d && d.error) M[at] = now + 30e3;
+    load();
   }
   const by = {}, add = (id, kind, text) => { const e = by[id] || (by[id] = {kind, bits: []}); e.bits.push(text);
     if (["lost", "left", "unsold"].indexOf(kind) < ["lost", "left", "unsold"].indexOf(e.kind)) e.kind = kind; };
@@ -8119,7 +8164,9 @@ function mapPointerEnd(e) {
 }
 mapCanvas.addEventListener("pointerup", mapPointerEnd);
 mapCanvas.addEventListener("pointercancel", mapPointerEnd);
-mapCanvas.addEventListener("pointerleave", () => { if (!M.drag) { M.hover = null; if (popId === "map") hidePop(); drawMap(); } });
+// a tapped card (.taps) stays: a touch pointer leaves the canvas right after the tap that opened it (complete review
+// 2026-10-30: the card closed as it opened); a tap elsewhere closes it
+mapCanvas.addEventListener("pointerleave", () => { if (!M.drag) { M.hover = null; if (popId === "map" && !pop.classList.contains("taps")) hidePop(); drawMap(); } });
 mapCanvas.addEventListener("wheel", e => {
   e.preventDefault(); M.zoom = Math.max(0.2, Math.min(12, M.zoom * Math.exp(-e.deltaY * 0.0015))); drawMap();
 }, {passive: false});
@@ -8261,6 +8308,9 @@ function plotRouteTo(name) {
   H.openForm = true;   // renderHwy opens the form (it folds away while a route is followed)
   if (view !== "hwy") { const v = document.querySelector('[data-view="hwy"]'); if (v) v.click(); } else renderHwy();
   if (routeFollowed()) { toast(`Plot Route: to ${name} · press Plot to replace the route you follow`); return; }
+  // the tab's data not read yet (it was never opened): its form is not filled (Conservative unticked, no range), so
+  // the plot waits for renderHwy to fill it (complete review 2026-10-30: Conservative went as false)
+  if (!H.data) { H.plotWhenLoaded = true; return; }
   hForm.dispatchEvent(new Event("submit", {cancelable: true, bubbles: true}));
 }
 document.addEventListener("click", e => {
@@ -8935,6 +8985,7 @@ function renderHwy() {
   renderHwyList(hd);
   renderRichList(rich ? rd : null);
   fillHwyForm(hd);
+  if (H.plotWhenLoaded) { H.plotWhenLoaded = false; hForm.dispatchEvent(new Event("submit", {cancelable: true, bubbles: true})); }
   // a new route (or none): the form folds away while one is followed, and opens when there is none
   const rid = rich ? `rich|${rr.id}` : r ? r.id : null;
   if (rid !== H.routeId) {
@@ -10829,7 +10880,7 @@ function onData() {
   hullLatch = band;
   const t = data.target;
   if (t && t.seq !== lastSeq) {
-    if (t.fresh && soundOn && t.sound && alertSound.discovery && speakerHere()) play(t.sound);   // the targeting sound
+    if (targetSoundOn(t)) play(t.sound);   // the targeting sound
     if (t.fresh && t.status === "unreported")   // the fanfare above is the sound; this adds the notification (never
                                                 // spoken: arriving in an undiscovered system is announced instead)
       alertOut("discovery", "New discovery targeted", `${t.name} is not in Spansh or EDSM`, {sound: null});
@@ -12661,7 +12712,10 @@ if (typeof ResizeObserver === "function") new ResizeObserver(() => {
 document.getElementById("cmRefresh").addEventListener("click", () => loadCmdr(true));
 document.getElementById("cmFilter").addEventListener("input", e => { CM.q = e.target.value; cmdrDrawBody(); });
 document.getElementById("cmCraft").addEventListener("change", e => { CM.craft = e.target.checked; cmdrDrawBody(); });
-document.getElementById("cmdrBody").addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.cmmod; if (k) CM.open[k] = e.target.open; }, true);
+// a module folded or unfolded by you is kept; not while a filter or "only what I can craft now" is on: the draw opens
+// what they show itself, and each fires toggle (complete review 2026-10-30: every module shown stayed unfolded for good)
+const cmdrOwnToggle = () => !((CM.q || "").trim() || CM.craft);
+document.getElementById("cmdrBody").addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.cmmod; if (k && cmdrOwnToggle()) CM.open[k] = e.target.open; }, true);
 // links out of the tab (should 5: the tiles stay informational, the links go from here): the career to History's
 // Career row, Earnings' per-trip line to History's Trips (the Ledger); a material Engineering is short of to the
 // Materials tab (filtered to it) and its ⇄ to the nearest trader. In the tab: a month's bar in Earnings' chart picks that month
@@ -13177,7 +13231,9 @@ function cmdrDrawBody() {
   CM.chartW = el.clientWidth;   // Earnings' chart: its month labels thinned to fit
   const h = CM.error[tab] && !d ? `<div class="short">Could not be read: ${esc(CM.error[tab])}</div>`
     : !d ? `<div class="unk">${CM.loading[tab] ? "Reading your journals…" : ""}</div>` : CM_HTML[tab](d);
-  if (el.innerHTML !== h) el.innerHTML = h;
+  // against the last string drawn, not the browser's serialisation (SVG and <details open> never match it: complete
+  // review 2026-10-30, the pane was replaced on every payload, a tooltip or a focused button lost each time)
+  if (el._drawn !== h || el.innerHTML === "") { el.innerHTML = h; el._drawn = h; }
 }
 // the controls above the pane (the tab switch, Engineering's filter, the status), then the pane
 function renderCmdr() {
@@ -13768,7 +13824,8 @@ document.getElementById("overlayBox").addEventListener("change", e => {
   else if (t.dataset.ovdocked) overlayPost("api/overlay", {hide_docked: [...e.currentTarget.querySelectorAll("[data-ovdocked]:checked")].map(x => x.dataset.ovdocked)});
   else if (t.dataset.ovlay) {
     const k = t.dataset.k, word = k === "corner" || k === "text", v = word ? t.value : Number(t.value) / 100;
-    if (!word && !isFinite(v)) return;
+    // an emptied box is not 0 (complete review 2026-10-30: Size 20 %, Opacity 10 %), as the All Panels boxes above
+    if (!word && (t.value === "" || !isFinite(v))) return;
     t.blur();
     overlayPost("api/overlay/layout", {[t.dataset.ovlay]: {[k]: v}});
   }
@@ -14119,7 +14176,9 @@ function sfRows(sec) {
   const rows = [], boxes = [], blocks = [], sum = sec.querySelector(":scope > summary");
   const walk = (el, ctx) => {
     for (const c of el.children) {
-      if (c.tagName === "SUMMARY" || SF_CONTENT.has(c.id)) continue;
+      // a section's Save row (data-find-keep) is shown with its section: a field found without its Save was never
+      // written (complete review 2026-10-30)
+      if (c.tagName === "SUMMARY" || SF_CONTENT.has(c.id) || c.dataset.findKeep != null) continue;
       if (c.tagName === "H4" && el.dataset.findBlock != null) continue;   // a block's own heading: shown with any of it
       if (c.tagName === "TABLE") {
         boxes.push(c);
@@ -14289,7 +14348,7 @@ async function loadServerSettings() {
           `${k.set || k.secret ? "" : ` <span class="unk">(default)</span>`}</label><div class="srvin">${field(k.section, k)}` +
           `${k.help ? `<div class="hint">${esc(k.help)}</div>` : ""}</div></div>`).join("") + `</details>`;
     }).join("") +
-    `<div class="btns"><button type="button" id="srvSave" class="primary">Save server settings</button><span id="srvMsg" class="hint"></span></div>`;
+    `<div class="btns" data-find-keep><button type="button" id="srvSave" class="primary">Save server settings</button><span id="srvMsg" class="hint"></span></div>`;
   box.querySelectorAll("[data-key]").forEach(el => {
     el.dataset.orig = srvValue(el);
     if (el.id in typed) {

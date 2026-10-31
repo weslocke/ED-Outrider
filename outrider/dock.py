@@ -158,7 +158,8 @@ def own_row(carrier):
     return {"kind": "carrier", "callsign": str(c.get("callsign") or "").upper(), "name": c.get("name") or "",
             "system": c.get("system"), "id64": c.get("id64"), "x": c["x"], "y": c["y"], "z": c["z"], "ls": 0,
             "services": services, "pads": "L M", "large": True, "medium": True, "access": "yours",
-            "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True, "squadron": False}
+            "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True, "squadron": False,
+            "aboard": bool(c.get("aboard"))}   # docked at it: the page says "aboard", else only "here" (complete review 2026-10-30)
 
 
 def squadron_row(sc):
@@ -179,7 +180,7 @@ def squadron_row(sc):
             "system": c.get("system"), "id64": id64, "x": c["x"], "y": c["y"], "z": c["z"], "ls": c.get("ls"),
             "services": services, "pads": "L M", "large": True, "medium": True, "access": "your squadron's",
             "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True, "squadron": True,
-            "market_id": c.get("id")}
+            "market_id": c.get("id"), "aboard": bool(c.get("aboard"))}
 
 
 def merge(spansh, dssa, own=None, squadron=None):

@@ -118,5 +118,117 @@ t("knownPinned: a name counts only when no other known site shares it (review 8)
   const pins = `[{name: "Guardian ruins", lat: 10, lon: 10}, {name: "Guardian ruins 1", lat: 2, lon: 2}]`;
   eq(`(() => { const s = ${sites}, mine = ${pins}; return s.map(x => knownPinned(x, [x.lat, x.lon], mine, s)); })()`, [true, false, true]);
 });
-console.log(`page unit: ${ok} OK, ${failed} FAIL`);
-process.exit(failed ? 1 : 0);
+// ---- complete review 2026-10-30, batch 5 ----
+t("Map: a tapped card stays when the touch pointer leaves the canvas (batch 5)", () => {
+  ev(`popId = "map"; pop.classList.add("taps"); pop.style.display = "block"; M.drag = null`);
+  w.document.getElementById("mapCanvas").dispatchEvent(new w.Event("pointerleave"));
+  eq(`pop.style.display`, "block");
+  ev(`pop.classList.remove("taps"); hidePop()`);
+});
+t("Plot route waits for Plot Route's form when the tab was never read (batch 5)", () => {
+  ev(`window.__subs = 0; hForm.addEventListener("submit", e => { __subs++; e.preventDefault(); e.stopImmediatePropagation(); }, true);
+      H.data = null; H.plotWhenLoaded = false; plotRouteTo("Colonia")`);
+  eq(`[__subs, H.plotWhenLoaded]`, [0, true]);
+  ev(`H.plotWhenLoaded = false`);
+});
+t("Map card: the SCO Mk II's boost is ×6 (batch 5)", () => {
+  ev(`window.__d = data; data = Object.assign({}, data || {}, {bookmarks: []}); M.data = {supercharge: 6, center: {x: 0, y: 0, z: 0, id: "9"}}`);
+  const h = ev(`mapPopHtml({id: "1", name: "N1", boost: "N", x: 0, y: 0, z: 0, distance: 3}, false)`);
+  ev(`M.data = null; data = __d`);
+  assert.match(h, /boost ×6/);
+});
+t("Map work colours: asked again when their key moves, never on an equal key (batch 5)", () => {
+  ev(`window.__loads = []; loadLeft = () => __loads.push("left"); loadFirsts = () => __loads.push("firsts");
+      leftData = {systems: []}; firstsData = {firsts: []}; leftKey = leftKeyNow(); firstsKey = firstsKeyNow(); mapWork()`);
+  eq(`__loads`, []);
+  ev(`leftKey = "an older place"; mapWork()`);
+  eq(`__loads`, ["left"]);
+});
+t("CMDR pane: drawn again only when its markup changed (batch 5)", () => {
+  ev(`CM.tab = "earnings"; CM.data.earnings = {}; window.__cmh = CM_HTML.earnings; CM_HTML.earnings = () => '<svg><rect x="1"/></svg><details open></details>'`);
+  ev(`cmdrDrawBody(); window.__first = document.getElementById("cmdrBody").firstChild; cmdrDrawBody()`);
+  assert.ok(ev(`document.getElementById("cmdrBody").firstChild === __first`));
+  ev(`CM_HTML.earnings = __cmh`);
+});
+t("Pins: what you were typing survives the pins section's rewrite (batch 5)", () => {
+  ev(`window.__plh = pinsListHtml; pinsListHtml = () => '<div class="srow pinadd"><input data-pinin><input data-pinname></div>';
+      (() => { const p = document.createElement("div"); p.id = "bodyPanel"; p.innerHTML = '<div data-sec="pins"><span class="lbl"></span><div class="secbody" data-sys="5" data-body="A 1"></div></div>';
+               document.body.appendChild(p); p.querySelector(".secbody").innerHTML = pinsListHtml();
+               p.querySelector("input[data-pinin]").value = "-12.34, 45.67"; p.querySelector("input[data-pinname]").value = "camp"; })();
+      refreshPinsUi()`);
+  eq(`[document.querySelector("#bodyPanel input[data-pinin]").value, document.querySelector("#bodyPanel input[data-pinname]").value]`,
+     ["-12.34, 45.67", "camp"]);
+  ev(`pinsListHtml = __plh; document.getElementById("bodyPanel").remove()`);
+});
+t("Overlay layout: an emptied number box posts nothing (batch 5)", () => {
+  ev(`window.__posts = []; window.__op = overlayPost; overlayPost = (p, b) => __posts.push(b);
+      (() => { const i = document.createElement("input"); i.type = "number"; i.dataset.ovlay = "system"; i.dataset.k = "alpha"; i.value = "";
+               document.getElementById("overlayBox").appendChild(i); i.dispatchEvent(new Event("change", {bubbles: true})); i.value = "50";
+               i.dispatchEvent(new Event("change", {bubbles: true})); i.remove(); })()`);
+  eq(`__posts`, [{system: {alpha: 0.5}}]);
+  ev(`overlayPost = __op`);
+});
+t("Engineering: folds the draw makes under a filter are not taken as yours (batch 5)", () => {
+  eq(`(() => { const q = CM.q, c = CM.craft; CM.q = "fsd"; CM.craft = false; const a = cmdrOwnToggle(); CM.q = ""; CM.craft = true;
+       const b = cmdrOwnToggle(); CM.craft = false; const d = cmdrOwnToggle(); CM.q = q; CM.craft = c; return [a, b, d]; })()`, [false, false, true]);
+});
+t("Carrier finance: no upkeep figure and a week gone does not throw (batch 5)", () => {
+  assert.match(ev(`carrierFinanceHtml({balance: 5e8, reserve: null, available: null, ts: "2026-09-01T00:00:00Z", upkeep: null, weeks: null, weeks_now: null, weeks_since: 8})`),
+               /Balance/);
+});
+t("Tiles line: a decommissioned carrier is said so, not as a place (batch 5)", () => {
+  ev(`window.__d = data; data = Object.assign({}, data || {}, {carrier: {name: "OLD", system: "Far", distance: 4321.5, decommission: {done: true}}})`);
+  const h = ev(`tilesLineHtml()`);
+  ev(`data = __d`);
+  assert.ok(/decommissioned/.test(h) && !/4,322 ly/.test(h), h);
+});
+t("Schematic: pin marks only for the system you are in (batch 5)", () => {
+  ev(`window.__d = data; data = Object.assign({}, data || {}, {position: {id64: "1", name: "Here"}, pins: {counts: {"A 1": 1}}})`);
+  const other = ev(`schemSystem = "2"; discHtml({name: "A 1", type: "Planet", subtype: "Rocky body", genera: []}, 0)`);
+  const here = ev(`schemSystem = "1"; discHtml({name: "A 1", type: "Planet", subtype: "Rocky body", genera: []}, 0)`);
+  ev(`data = __d; schemSystem = ""`);
+  assert.ok(!/📍/.test(other) && /📍/.test(here), other);
+});
+t("Nearest: your carrier in your system is 'here', 'aboard' only docked at it (batch 5)", () => {
+  const row = a => ev(`nearRowHtml({kind: "carrier", own: true, here: true, aboard: ${a}, name: "C", callsign: "ABC-123", system: "Here", distance: 0, services: [], pads: "L M"})`);
+  assert.ok(row(false).includes('<span class="unk">here</span>') && !row(false).includes(">aboard<") && row(true).includes('<span class="unk">aboard</span>'));
+});
+const later = [];   // asynchronous checks, awaited before the summary
+later.push(["Log: rows not yet final are asked again; with 'not sent', rows that went drop off (batch 5)", async () => {
+  ev(`window.__aj = apiJson; window.__rl = renderLog; renderLog = () => {}; view = "log"; lUnsent.checked = true;
+      apiJson = async () => ({marks: {"J.log|100": [{state: "sent", service: "edsm", why: ""}], "J.log|200": [{state: "held", service: "edsm", why: "no key"}]}});
+      L.rows = [{id: "J.log|100", at: 100, ts: "2026-10-30T10:00:00Z", up: [{state: "queued", service: "edsm", why: "waiting"}]},
+                {id: "J.log|200", at: 200, ts: "2026-10-30T10:01:00Z", up: [{state: "queued", service: "edsm", why: "waiting"}]}]`);
+  await ev(`refreshLogMarks()`);
+  eq(`L.rows.map(r => [r.id, r.up[0].state])`, [["J.log|200", "held"]]);
+  ev(`apiJson = __aj; renderLog = __rl; L.rows = []; lUnsent.checked = false`);
+}]);
+t("Targeting sound: not while hushed (batch 5)", () => {
+  ev(`window.__hs = hushState; window.__so = soundOn; window.__sp = isSpeaker; soundOn = true; alertSound.discovery = true; isSpeaker = true`);
+  const t1 = {fresh: true, sound: "fanfare"};
+  const on = ev(`targetSoundOn(${JSON.stringify(t1)})`);
+  ev(`hushState = {mode: "30m", end: Date.now() + 60000}`);
+  const off = ev(`targetSoundOn(${JSON.stringify(t1)})`);
+  ev(`hushState = __hs; soundOn = __so; isSpeaker = __sp`);
+  eq(`[${on}, ${off}]`, [true, false]);
+});
+later.push(["Hold full: the price answer is not said once you have left the ring (batch 5)", async () => {
+  ev(`window.__ao = alertOut; window.__said = []; alertOut = (...a) => __said.push(a[1]); window.__d = data; MW.start = "s1";
+      window.__ask = async () => [{station: "Hub", system: "Sys", price: 100000, distance: 12, carrier: false}]`);
+  ev(`data = Object.assign({}, __d || {}, {mining_live: null, carrier: null})`);
+  await ev(`holdFullSell({held: [["platinum", "Platinum", 10]]}, __ask)`);
+  const gone = ev(`__said.length`);
+  ev(`data = Object.assign({}, __d || {}, {mining_live: {start: "s1"}, carrier: null})`);
+  await ev(`holdFullSell({held: [["platinum", "Platinum", 10]]}, __ask)`);
+  const still = ev(`__said.length`);
+  ev(`alertOut = __ao; data = __d; MW.start = null`);
+  assert.deepStrictEqual([gone, still], [0, 1]);
+}]);
+(async () => {
+  for (const [name, fn] of later) {
+    try { await fn(); ok++; console.log("OK |", name); }
+    catch (e) { failed++; console.log("FAIL |", name, "|", e.message.split("\n").slice(0, 6).join(" ")); }
+  }
+  console.log(`page unit: ${ok} OK, ${failed} FAIL`);
+  process.exit(failed ? 1 : 0);
+})();

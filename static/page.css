@@ -1223,7 +1223,7 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 .tilesline .tl, .tilesline .tl-sys { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tilesline .tl-sys { color: var(--accent); }
 .tilesline .tl-sep { color: var(--muted); }
-.tilesline .tl-warn { color: var(--warn); } .tilesline .tl-urgent { color: var(--bad); }
+.tilesline .tl-warn { color: var(--warn); } .tilesline .tl-urgent, .tilesline .tl-bad { color: var(--bad); }
 .tilesline .tl-urgent::before { content: "⚠ "; }
 .tilesline .tl { display: inline-block; max-width: min(36ch, 100%); overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
 .tilesbtn { flex: 0 0 auto; background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 6px;

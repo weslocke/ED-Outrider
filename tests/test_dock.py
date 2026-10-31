@@ -84,6 +84,12 @@ class Rows(unittest.TestCase):
         rows = dock.merge(spansh(), [], own)
         self.assertEqual([r["access"] for r in rows if r["callsign"] == "G0X-85Z"], ["yours"])   # not Spansh's copy
         self.assertIsNone(dock.own_row({"id": 1, "x": 1, "y": 2, "z": 3, "decommission": {"done": True}}))
+        # complete review 2026-10-30: "aboard" only when docked at it, not when in its system
+        self.assertEqual((own["aboard"], dock.own_row({"id": 1, "x": 1, "y": 2, "z": 3, "aboard": True})["aboard"]), (False, True))
+        self.assertTrue(dock.squadron_row({"id": 5, "x": 1, "y": 2, "z": 3, "aboard": True})["aboard"])
+        near = dock.nearest([dock.own_row({"id": 1, "callsign": "X", "system": "Here", "x": 0.0, "y": 0.0, "z": 0.0})],
+                            {"x": 0.0, "y": 0.0, "z": 0.0})["rows"]
+        self.assertEqual([r["aboard"] for r in near], [False])
 
 
     def test_missing_coordinate(self):

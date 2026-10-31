@@ -869,7 +869,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <label title="a press this soon after a tap's release: a double tap">double tap <input type="number" id="cpDouble" class="hcfg" data-sec="copilot" data-key="double_ms" min="100" max="1000" step="1"> ms</label></div>
       <div class="hint">To find the device and button: <code>python3 -m outrider.button --listen</code> in the Outrider folder, then press the button.</div>
       <div class="hint" id="copilotLine" hidden></div>
-      <div class="btns"><button type="button" id="hcSave" class="primary">Save</button><span id="hcMsg" class="hint" role="status"></span></div>
+      <div class="btns" data-find-keep><button type="button" id="hcSave" class="primary">Save</button><span id="hcMsg" class="hint" role="status"></span></div>
     </details>
     <details class="setsec pcOnly" data-sec-key="autotarget" data-chip="Auto-target" id="atSettings"><summary>Auto-target <span class="sum-note">the galaxy map keys every target button presses</span></summary>
       <div class="hint">Every target button <span class="mk mk-destination mkg" aria-hidden="true"></span> uses these steps (a bookmark's, Nearby's, Search's, the Map's, a checklist find's, the header's
@@ -912,7 +912,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <label title="go through the steps and log them (Settings → Server → Show log) without pressing anything"><input type="checkbox" id="atDryRun"> dry run: log the steps, press nothing</label>
         <label class="atkeys" title="a control's own key, whatever your controls preset says, as JSON: control or Enter/Paste → keys by name (the Macro cheatsheet's names)">your own keys
           <input type="text" id="atKeys" spellcheck="false" autocapitalize="off" autocomplete="off" size="40" placeholder='{"UI_Select": "KEY_SPACE"}'></label></div>
-      <div class="btns"><button type="button" id="atSave" class="primary">Save the steps</button><span id="atMsg" class="hint" role="status"></span></div>
+      <div class="btns" data-find-keep><button type="button" id="atSave" class="primary">Save the steps</button><span id="atMsg" class="hint" role="status"></span></div>
       <div id="atMissing" class="warnc" hidden></div>
       <details id="atStepsBox"><summary>the whole sequence, with your keys</summary><ul id="atSteps"></ul></details>
       <div class="srow"><button type="button" class="try" id="atTest" title="one run against the system typed beside it, or with none typed the nearest known system a plain jump away (no route needed): Outrider brings the game to the front where it can, else 5 seconds from now: click into the game meanwhile">▶ test now</button>
@@ -996,7 +996,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <span class="hint">tagged: the plant (and its colour) or formation is known. Biology/Tussock/Tussock Albata/Green, Geology/Geyser/Water Geyser… inside the export folder (not per commander); a shot whose plant, colour or formation cannot be told is not saved there</span></div>
       <label data-find="screenshots.codex_show" class="mod subopt" title="the Bio/Geo checklists show one of your own pictures of a species' colour or a formation, picked at random from its codex folder each time; Canonn's when the folder has none"><input type="checkbox" class="scfg" data-sec="screenshots" data-key="codex_show"> Show your own pictures on the Bio/Geo checklists
         <span class="hint">a random one from the matching folder, any picture you put there too (crop or edit them as you like); Canonn's when there is none</span></label>
-      <div class="mod"><button type="button" id="shotSave">Save</button> <span id="shotMsg" class="hint"></span></div>
+      <div class="mod" data-find-keep><button type="button" id="shotSave">Save</button> <span id="shotMsg" class="hint"></span></div>
       <div class="mod"><button type="button" id="shotBacklog" title="the BMPs still in the game's pictures folder, each matched to its journal line (where and when it was taken); those exported already are left alone">Convert the screenshots already there</button> <span id="shotBacklogMsg" class="hint"></span></div>
     </details>
     <details class="setsec" data-sec-key="uploads" data-chip="Uploads"><summary>Uploads <span class="sum-note">EDDN, EDSM and Inara: send what you find, keep your profiles current (off by default)</span></summary>

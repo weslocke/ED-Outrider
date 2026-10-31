@@ -11963,7 +11963,7 @@ class State:
         if dinfo["error"]:
             errors.append(dinfo["error"])
         c = self.carrier_summary() or {}
-        own = outrider.dock.own_row(dict(self.journals.carrier or {}, **{k: c.get(k) for k in ("x", "y", "z", "has_uc", "has_vista")},
+        own = outrider.dock.own_row(dict(self.journals.carrier or {}, **{k: c.get(k) for k in ("x", "y", "z", "has_uc", "has_vista", "aboard")},
                                          decommission=self.carrier_decommission()))
         rows = outrider.dock.merge(spansh, dssa, own, outrider.dock.squadron_row(self.squadron_carrier_summary()))
         permits = set()
@@ -17215,7 +17215,15 @@ class State:
                 "partial": failed or bool(boosts and boosts.get("error")),
                 "boost": boosts, "here_star": self.here_star(),
                 "jump_range": (self.journals.jump_range or {}).get("ly"),
+                "supercharge": self.supercharge_now(),
                 "carrier": self.carrier_summary()}
+
+    def supercharge_now(self):
+        """The ship flown's neutron supercharge (4, the SCO Mk II's 6) for the Map's boosted ring and card (complete review
+        2026-10-30: they said ×4 for every drive)."""
+        sid = (self.journals.ship or {}).get("ship_id")
+        ship = self.fleet_ship(sid) if isinstance(sid, int) and not isinstance(sid, bool) else None
+        return ((ship or {}).get("figures") or {}).get("supercharge") or 4
 
     def maybe_locate_carrier(self):
         self._locate_carrier("carrier")
@@ -23785,6 +23793,20 @@ def make_app(state, hosts=None):
         out["marks_days"] = outrider.uploads.MARK_DAYS
         return web.json_response(out)
 
+    async def log_marks_view(request):
+        """POST /api/log/marks {rows: [{id, at, ts}]} (the Log's shown rows, 500 at most): their upload marks now (S68),
+        {marks: {id: [...]}}. Read only. The Log tails new lines only, so a row's ⏳ waiting stayed after its upload
+        went (complete review 2026-10-30): the page asks again for the rows not yet final."""
+        body = await json_object(request)
+        rows = body.get("rows") if body else None
+        if not isinstance(rows, list) or len(rows) > 500 or not all(
+                isinstance(r, dict) and isinstance(r.get("id"), str) and isinstance(r.get("at"), int)
+                and not isinstance(r.get("at"), bool) and isinstance(r.get("ts"), str) for r in rows):
+            return web.json_response({"error": "expected {\"rows\": [{\"id\", \"at\", \"ts\"}, ...]} (500 at most)"}, status=400)
+        rows = [{"id": r["id"], "at": r["at"], "ts": r["ts"]} for r in rows]
+        state.log_marks(rows)
+        return web.json_response({"marks": {r["id"]: r.get("up", []) for r in rows}})
+
     async def export_view(request):
         what, fmt = request.query.get("what", "firsts"), request.query.get("format", "csv")
         if what == "system":   # one system's bodies and values (Pioneer's export), from Here
@@ -23827,6 +23849,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/checklist/find", checklist_find_view)
     app.router.add_get("/api/checklist/picture", checklist_picture_view)   # S29: asks Spansh, so not among the AI's READ_ROUTES
     app.router.add_get("/api/log", log_view)
+    app.router.add_post("/api/log/marks", log_marks_view)
     app.router.add_get("/api/materials", materials_view)
     for part, fn in (("profile", state.commander_profile), ("inventory", state.commander_inventory),
                      ("engineering", state.commander_engineering), ("missions", state.commander_missions),

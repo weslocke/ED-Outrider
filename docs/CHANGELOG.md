@@ -2,6 +2,25 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-31 · Complete review, batch 5: the page
+- Page findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
+  test that fails without it (tests/page_unit.js, page_smoke.js, Python for the server's part).
+- **Map**: a tapped system's card on a tablet or phone stays open (it closed as it opened, so Target / Copy name / Plot
+  route could not be pressed on touch); the boosted-range ring and the card say ×6 for the SCO Mk II drive (`supercharge`
+  in api/map); the "work left" colours follow jumps, finished work, sales and deaths.
+- **Plot route** from a bookmark, a Map card or a next stop before Plot Route was opened waits for its form to be
+  filled (Conservative went as off, and the neutron plotter refused for no range).
+- **Clicks and typing kept**: Now's lines and the CMDR pane are written again only when they change (a click during a
+  rebuild was lost, a hover closed); a body panel keeps the pin coordinates and name you are typing when Canonn's
+  answer or a pin from another device arrives; an emptied overlay layout box sends nothing (it set 20 % size, 10 %
+  opacity); Engineering's filter no longer leaves every module it showed unfolded.
+- **Shown right**: the carrier's finance tooltip with no upkeep figure no longer throws (it stopped the header's redraw);
+  the folded tiles line says a decommissioned carrier is decommissioned; another system's schematic shows no 📍 of
+  yours; Nearest says "here" for your carrier in your system, "aboard" only docked at it; the Log's upload marks are
+  asked again while any is waiting (POST /api/log/marks), and "not sent" drops what went; Find a setting keeps a
+  section's Save in sight.
+- **Sound**: the targeting fanfare is quiet while hushed; "Hold full: best price..." is not said after you leave the ring.
+
 ## 2026-10-31 · Complete review, batch 4: names, and games in other languages
 - Findings of the complete review (project/done/reviews/review-2026-10-30-full), each checked by hand, each with a
   test that fails without it. PARSER_VERSION 68: the journals are read again once (each sample keeps its variant code).

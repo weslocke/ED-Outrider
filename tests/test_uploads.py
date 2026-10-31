@@ -4,6 +4,7 @@ gate through the journal reader, priming a file met part way through, and the ou
 Run all: python3 -m unittest discover tests (or scripts/verify.sh).
 """
 import glob
+import asyncio
 import json
 import os
 import shutil
@@ -1508,6 +1509,26 @@ class LogMarks(unittest.TestCase):
         self.assertEqual([r["at"] for r in rows], starts[::-1])   # what Journals.read_file hands the uploader
         only = outrider.log.read_log([self.dir], days=1, cats=set(), only={self.name: {starts[1]}})["rows"]
         self.assertEqual([r["event"] for r in only], ["Location"])   # "not sent" overrides the category boxes
+
+    def test_shown_rows_are_asked_again(self):
+        """Complete review 2026-10-30: the Log tails new lines only, so a row's ⏳ EDSM waiting stayed after it went.
+        POST /api/log/marks gives the shown rows' marks now."""
+        from aiohttp.test_utils import TestClient, TestServer
+        n = self.name
+        self.queue("edsm", f"{n}:100", next_try=time.time() + 300)
+        row = {"id": f"{n}|100", "at": 100, "ts": now_ts(30)}
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                before = await (await c.post("/api/log/marks", json={"rows": [row]})).json()
+                self.db.execute("UPDATE upload_queue SET state='sent', last_status='100 OK'")
+                after = await (await c.post("/api/log/marks", json={"rows": [row]})).json()
+                bad = (await c.post("/api/log/marks", json={"rows": [{"id": 1}]})).status
+                return before, after, bad
+        before, after, bad = asyncio.run(go())
+        self.assertIn([m["state"] for m in before["marks"][row["id"]]], (["queued"], ["held"]))   # held: no EDSM key here
+        self.assertEqual([m["state"] for m in after["marks"][row["id"]]], ["sent"])
+        self.assertEqual(bad, 400)
 
     def test_worst_state_wins_per_service_and_the_backfill_is_edsm(self):
         n = self.name

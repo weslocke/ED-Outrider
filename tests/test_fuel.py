@@ -456,3 +456,20 @@ class ScoopToFull(unittest.TestCase):
     def test_the_words(self):
         import outrider.overlay as O
         self.assertEqual([O.to_full_text(s) for s in (38, 60, 125)], ["38 s", "1 min 00", "2 min 05"])
+
+
+class MapSupercharge(unittest.TestCase):
+    def test_the_maps_boost_is_the_ships(self):
+        """Complete review 2026-10-30: the Map's boosted-range ring and card said ×4 for every drive; the SCO Mk II's
+        supercharge is ×6. api/map sends the flown ship's."""
+        import json
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        state = ed_outrider.State(db, j, None, 25)
+        self.assertEqual(state.supercharge_now(), 4)                       # no ship known
+        db.execute("INSERT INTO fleet_loadouts (ship_id, name, ship_type, figures) VALUES (7, 'Caspian', 'explorer_nx', ?)",
+                   (json.dumps({"supercharge": 6}),))
+        j.ship = {"name": "Caspian", "ship_id": 7}
+        self.assertEqual(state.supercharge_now(), 6)
+

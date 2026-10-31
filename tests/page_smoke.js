@@ -2622,7 +2622,8 @@ const releasePayloads = async () => {
     w.eval("apiJson = __nReal; localStorage.removeItem('nearest')");
     d.getElementById("hwyTo").value = "";
     const bad = [];
-    if (!got.open || got.rows.length !== 3 || !/yours/.test(got.rows[0]) || !/aboard/.test(got.rows[0])) bad.push("rows");
+    // in your carrier's system, not docked at it (the fixture's row has no `aboard`): "here" (complete review 2026-10-30)
+    if (!got.open || got.rows.length !== 3 || !/yours/.test(got.rows[0]) || !/here$/.test(got.rows[0]) || /aboard/.test(got.rows[0])) bad.push("rows");
     if (!/⚠ docking not reported/.test(got.rows[1]) || !/≈ 10 jumps/.test(got.rows[1]) || !got.badge || !/stationed until September 1, 2032/.test(got.rows[2])) bad.push("row details");
     if (!/Hidden: 6 reported more than 30 days ago/.test(got.foot) || !/101 carriers/.test(got.foot)) bad.push("foot");
     if (JSON.stringify(got.marks) !== JSON.stringify(["[fleet-carrier]OU", "[fleet-carrier]JB", "[fleet-carrier][I"])) bad.push("carrier markers");
@@ -5687,6 +5688,18 @@ const releasePayloads = async () => {
     allOk = allOk && goodS;
     console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "15 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
   }
+  // Now's lines written again only when they changed (complete review 2026-10-30: rebuilt every 2 s and on every payload,
+  // a click spanning a rebuild was lost, a hover closed)
+  now_keeps_its_nodes: { if (skip("now_keeps_its_nodes")) break now_keeps_its_nodes;
+    const w = dom.window, before = errors.length;
+    const got = w.eval(`(() => {
+      renderNow(); const a = document.querySelector("#nowBody > *");
+      renderNow(); const b = document.querySelector("#nowBody > *");
+      return JSON.stringify([!!data.position, !!a, a === b]); })()`);
+    const goodN = got === "[true,true,true]" && errors.length === before;
+    allOk = allOk && goodN;
+    console.log(goodN ? "OK" : "FAIL", "| now_keeps_its_nodes |", goodN ? "the same lines are not rebuilt" : got, errors.slice(before));
+  }
   // Server settings saved twice (complete review 2026-10-30): after a Save the password went back into its box and every
   // later Save sent it again; now the second Save has nothing to send
   server_settings_save_twice: { if (skip("server_settings_save_twice")) break server_settings_save_twice;
@@ -6882,16 +6895,18 @@ const releasePayloads = async () => {
   bug_check_1: { if (skip("bug_check_1")) break bug_check_1;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
-      const o = {}, was = [leftData, firstsData, M.workAsked, loadLeft, loadFirsts, data.carrier];
+      const o = {}, was = [leftData, firstsData, leftKey, firstsKey, loadLeft, loadFirsts, data.carrier];
       let calls = 0;
-      leftData = null; firstsData = null; M.workAsked = false;
-      loadLeft = () => { calls++; return undefined; }; loadFirsts = () => { calls++; return undefined; };
+      // the loaders set their key before they ask (as the real ones do): asked once each, never again on that key
+      // (complete review 2026-10-30: asked again when the key moves, not once per page life)
+      leftData = null; firstsData = null; leftKey = null; firstsKey = null;
+      loadLeft = () => { calls++; leftKey = leftKeyNow(); }; loadFirsts = () => { calls++; firstsKey = firstsKeyNow(); };
       mapWork(); mapWork(); mapWork();
       o.calls = calls;
-      [leftData, firstsData, M.workAsked, loadLeft, loadFirsts] = was.slice(0, 5);
+      [leftData, firstsData, leftKey, firstsKey, loadLeft, loadFirsts] = was.slice(0, 6);
       data.carrier = {name: "C", system: "Far", distance: 40, planned: {departure: new Date(Date.now() + 600000).toISOString()}};
       o.cd = /departs in <span class="cd">/.test(tilesLineHtml());
-      data.carrier = was[5];
+      data.carrier = was[6];
       o.buy = tritiumToBuy({short: 240, ship: 0, hold: 100});
       o.after = lineWithAfter({line: {key: "no_such_key_here", fills: {}, after: " Note: x."}, words: "Bookmarked S. Note: x."});
       return JSON.stringify(o); })()`));
@@ -9056,6 +9071,13 @@ const releasePayloads = async () => {
     const arrTr = `document.querySelector('#alertOpts [data-alert="arrival"]').closest("tr")`;
     got.fine = [vis('#alertOpts [data-alert="arrival"]'), w.eval(`${arrTr}.classList.contains("sfmark")`), w.eval(`/lengths/.test(${arrTr}.textContent)`),
       w.eval(`document.querySelector('#alertOpts [data-alert="jump"]').closest("tr").classList.contains("sfmark")`)];
+    // a field found keeps its section's Save in sight (complete review 2026-10-30: Save was hidden, nothing written)
+    await find("hold");
+    got.save = [vis("#ahHold"), vis("#hcSave")];
+    await find("autotarget_map_wait");
+    got.save.push(vis("#atMapWait"), vis("#atSave"));
+    await find("port");
+    got.save.push(vis('#serverSettingsBody [data-sec="server"][data-key="port"]'), vis("#srvSave"));
     await find("zzqxw");
     got.none = [msg(), secs().length, w.eval(`[...document.querySelectorAll("#alertChips [data-sec]")].every(b => b.classList.contains("sfhide"))`)];
     got.every = JSON.parse(w.eval(`(() => {
@@ -9077,6 +9099,7 @@ const releasePayloads = async () => {
     const want = {speed: [true, false, false, true, true], password: [true, false, true, false, true],
       key: [true, false, false, "values"], two: [true, true],
       backups: [true, true, true, false, true], zips: [true, true], inara: true, fine: [true, true, false, false],
+      save: [true, true, true, true, true, true],
       none: ["Nothing matches", 0, true], cleared: [0, true, "", true, true, 0]};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     if (got.every.length < 12 || !got.every.every(e => e[1] && e[2])) bad.push("every");
@@ -10379,7 +10402,7 @@ const releasePayloads = async () => {
           ["ownHere", {}, {callsign: "K7Q-1HT", distance: 0}]]) {
         const asked = [];
         w.__rows = rows; w.__asked = asked;
-        w.eval(`data = Object.assign({}, data, {carrier: ${JSON.stringify(carrier)}, jump_range_now: 40}); __spoken.length = 0`);
+        w.eval(`data = Object.assign({}, data, {carrier: ${JSON.stringify(carrier)}, jump_range_now: 40, mining_live: {start: MW.start}}); __spoken.length = 0`);
         await w.eval(`holdFullSell({held: [["platinum", "Platinum", 200]]}, async (within, sort, carriers) => { __asked.push([within, sort, carriers]); return __rows[String(within)] || []; })`);
         got.sell.push([label, JSON.parse(w.eval("JSON.stringify(__spoken.splice(0))")), asked]);
       }
