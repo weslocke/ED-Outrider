@@ -11265,6 +11265,7 @@ let browserVoiceKey = null;
 function drawBrowserVoice() {
   const eng = speechEngine(), sel = document.getElementById("browserVoice"), t = data && data.tts;
   for (const r of document.querySelectorAll('input[name="speechEngine"]')) r.checked = r.value === eng;
+  document.getElementById("piperBox").hidden = eng === "browser";   // Piper's own settings only while it speaks
   const vs = browserVoices(), id = store.get("browserVoice", "");
   const key = vs.map(v => v.voiceURI).join("\n");
   if (key !== browserVoiceKey && document.activeElement !== sel) {
@@ -11283,7 +11284,8 @@ function drawBrowserVoice() {
     : eng === "browser" ? "every line in this voice, the co-pilot's too; crew and personality voices are Piper's"
     : piperHere ? "used only if you choose this browser's voice" : "Piper is not installed, so this voice speaks";
 }
-for (const r of document.querySelectorAll('input[name="speechEngine"]')) r.onchange = e => { store.set("speechEngine", e.target.value); drawTts(); drawSpeechBtn(); };
+for (const r of document.querySelectorAll('input[name="speechEngine"]')) r.onchange = e => {
+  store.set("speechEngine", e.target.value); drawTts(); drawSpeechBtn(); drawMainHint(); if (crewUi) drawCrew(true); };
 document.getElementById("tryBrowserVoice").onclick = () => document.getElementById("trySpeak").click();
 document.getElementById("browserVoice").onchange = e => { store.set("browserVoice", e.target.value); drawBrowserVoice(); drawSpeechBtn(); };
 // Chrome fills its voice list after the page loads: redrawn when it does
@@ -11441,14 +11443,18 @@ document.getElementById("speechMain").onchange = e => {
   else { store.set("speechStyles", [v]); store.set("speechMix", false); }
   shiftStyle = null; e.target.blur(); drawSpeechStyles();
 };
-// under Main voice and Main personality: what they are for, with the crew on (the XO's) and off (every alert)
+// under Main personality: what it and the main voice (Piper's, or this browser's) are for, with the crew on (the XO's)
+// and off (every alert)
 function drawMainHint() {
+  const browser = speechEngine() === "browser";
   document.getElementById("mainHint").textContent = data && data.crew && data.crew.on   // (crewOn: defined further down)
-    ? "The XO's voice and personality: voice answers, status reports, the co-pilot and the hush, every crew member left " +
+    ? (browser ? "The XO's personality, in this browser's voice: " : "The XO's voice and personality: ") +
+      "voice answers, status reports, the co-pilot and the hush, every crew member left " +
       "\"as the XO\", and the stand-in for any crew member whose voice cannot speak. With the crew off (Split the alerts " +
       "among a crew, below), this voice and personality say every alert."
-    : "This voice and personality say every alert, as well as voice answers, status reports and the co-pilot. To give " +
-      "alerts to other voices, tick Split the alerts among a crew below: these then become the XO's.";
+    : (browser ? "This browser's voice and this personality say every alert" : "The main voice (Piper, above) and this personality say every alert") +
+      ", as well as voice answers, status reports and the co-pilot. To give alerts to other " + (browser ? "personalities" : "voices") +
+      ", tick Split the alerts among a crew below: these then become the XO's.";
 }
 document.getElementById("speakMode").onchange = e => { store.set("speakMode", e.target.value); drawSpeaker(); };
 document.getElementById("serverPlay").onchange = e => { store.set("speakOnServer", e.target.checked); drawServerPlay(); drawSoundBtn(); };
@@ -12085,6 +12091,10 @@ function drawCrew(force = false) {
   document.getElementById("crewDanger").checked = crewDangerOn();
   for (const id of ["crewDangerWrap", "crewAudition", "crewLinesAudition", "crewTable", "crewXoNote", "ttsXo", "ttsXoP", "styleVoicesCrew"])
     document.getElementById(id).hidden = !on;
+  // this browser's voice: one voice for all, so no Voice and Speaker columns (their Piper picks kept for Piper again)
+  const browser = speechEngine() === "browser";
+  document.getElementById("crewTable").classList.toggle("nopiper", browser);
+  document.getElementById("crewBrowserNote").hidden = !on || !browser;
   drawMainHint();
   drawAlertCrew(force);
   if (!on) { crewDrawn = ""; return; }
@@ -12185,8 +12195,10 @@ async function crewPlay(role, out) {
   if (!Object.keys(speechLib.lines || {}).length) await loadSpeechLib();
   const s = crewSample(role);
   if (!s) { out(`No lines for ${crewLabel(role)} yet`, true); return null; }
-  out(`${crewLabel(role)}${s.fill ? ` (the XO stands in: ${s.fill})` : ""} · ${labStyleName(s.ln.style)} · in ${voiceWords(s.voice)}: “${spokenText(s.ln.text)}”`, false);
-  const ok = await labSay(s.ln.text, {voice: s.voice.voice, speaker: s.voice.speaker, speed: speechSpeed() * (s.voice.pace || 1)});
+  out(`${crewLabel(role)}${s.fill ? ` (the XO stands in: ${s.fill})` : ""} · ${labStyleName(s.ln.style)} · in ${speechEngine() === "browser" ? "this browser's voice" : voiceWords(s.voice)}: “${spokenText(s.ln.text)}”`, false);
+  const speed = speechSpeed() * (s.voice.pace || 1);
+  const ok = speechEngine() === "browser" ? await browserSay(s.ln.text, speed)
+    : await labSay(s.ln.text, {voice: s.voice.voice, speaker: s.voice.speaker, speed});
   if (!ok && labEl("labMsg").className === "warnc") out(labEl("labMsg").textContent, true);
   return ok;
 }
@@ -12217,7 +12229,7 @@ async function crewLinesAudition(out, chosen = null) {
     if (!ln) continue;   // no crew lines for this alert in that personality
     n++;
     out(`${k} · ${labStyleName(st)}: “${spokenText(ln.text)}”`, false);
-    if (!(await labPlayLine(ln))) return;   // stopped (or failed): the audition ends
+    if (!(await (speechEngine() === "browser" ? browserSay(ln.text) : labPlayLine(ln)))) return;   // stopped (or failed): the audition ends
     const token = labToken;
     await new Promise(res => setTimeout(res, 1500));
     if (token !== labToken) return;
@@ -12352,6 +12364,27 @@ async function labFetch(text, {voice, speaker, speed}) {
   return null;
 }
 // say `text`; resolves true once it played to the end, false when stopped or failed
+// a line in this browser's voice (Settings' pick) through the lab's player, so a new ▶ (or the lab's ■ Stop) stops it:
+// the crew's ▶ and auditions while Speak with is this browser's voice. -> said to its end (false: stopped or failed)
+async function browserSay(text, speed = speechSpeed()) {
+  labStop();
+  const token = labToken;
+  if (typeof speechSynthesis === "undefined") { labMsg("This browser has no voice of its own", true); return false; }
+  const words = spokenText(text), u = new SpeechSynthesisUtterance(words), bv = chosenBrowserVoice();
+  u.rate = Math.min(2, Math.max(0.5, speed)); u.volume = outVolume();
+  if (bv) { u.voice = bv; u.lang = bv.lang; }
+  let ok = true;
+  const done = new Promise(res => {
+    u.onend = () => res();
+    u.onerror = ev => { if (!ev || !["interrupted", "canceled"].includes(ev.error)) ok = false; res(); };
+    setTimeout(res, Math.max(15000, 5000 + words.length * 90 / u.rate));   // the end event does not always come
+  });
+  labNow = {stop() { speechSynthesis.cancel(); }, done};
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+  await done;
+  if (token === labToken) labNow = null;
+  return ok && token === labToken;
+}
 async function labSay(text, how) {
   labStop();
   const token = labToken;

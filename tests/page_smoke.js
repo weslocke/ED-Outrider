@@ -2803,11 +2803,26 @@ const releasePayloads = async () => {
       const picker = {groups: [...sel.querySelectorAll("optgroup")].map(g => g.label + ": " + [...g.children].map(o => o.textContent).join(", ")),
                       value: sel.value, engine: document.getElementById("ttsEngine").textContent,
                       title: /this browser's voice Libby, chosen in Settings/.test(speechBtn.title)};
+      // Piper's own settings hidden while the browser speaks; the crew keeps its rows, without Voice and Speaker, and
+      // its ▶ speaks in the browser's voice
+      const crewWas = data.crew, ct = document.getElementById("crewTable");
+      data.crew = Object.assign({}, data.crew || {}, {on: true}); drawMainHint(); drawCrew(true);
+      const shown = el => !el.closest("[hidden]") && getComputedStyle(el).display !== "none";
+      const crewRow = ct.querySelector("tr[data-crole]"), cells = crewRow ? [...crewRow.children] : [];
+      const layout = {piperBox: document.getElementById("piperBox").hidden, hint: /^The XO's personality, in this browser's voice: /.test(document.getElementById("mainHint").textContent),
+                      crewNote: !document.getElementById("crewBrowserNote").hidden, crewRows: !!crewRow,
+                      cols: cells.slice(0, 6).map(shown), personality: !!(crewRow && crewRow.querySelector("[data-cpers], .asxo"))};
+      const crewSaid = spoken.length; await crewPlay("xo", () => {});
+      layout.crewPlay = spoken.length === crewSaid + 1 && spoken[spoken.length - 1][1] === "Libby";
+      spoken.splice(crewSaid);
       const plain = {words: "Chosen check.", prio: 1, kind: "manual", pace: 1};
       await sayNow(plain);
       const copilot = {words: "Copilot check.", prio: 1, kind: "manual", pace: 1, piperOnly: true};
       await sayNow(copilot);
       radio("piper");
+      layout.piperAgain = [document.getElementById("piperBox").hidden, ct.classList.contains("nopiper"), document.getElementById("crewBrowserNote").hidden,
+                           /^The XO's voice and personality: /.test(document.getElementById("mainHint").textContent)];
+      data.crew = crewWas; drawMainHint(); drawCrew(true);
       const back = {words: "Piper again check.", prio: 1, kind: "manual", pace: 1};
       await sayNow(back);   // Piper on the PC (503 here), then not the browser's voice while Outrider has Piper
       cb.checked = false; cb.onchange({target: cb});
@@ -2824,9 +2839,11 @@ const releasePayloads = async () => {
       const gone = [sel.value, document.getElementById("browserVoiceHint").textContent];
       for (const [k, v] of keep) v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v);
       window.speechSynthesis = ss; window.SpeechSynthesisUtterance = U; data.tts = tts; drawTts();
-      return {picker, spoken, engines: [plain.engine, copilot.engine, back.engine || null, none.engine], lost, gone}; })()`);
+      return {picker, layout, spoken, engines: [plain.engine, copilot.engine, back.engine || null, none.engine], lost, gone}; })()`);
     w.fetch = realFetch;
     const want = {picker: {groups: ["en-GB: Libby, Ryan", "en-US: Aria", "de-DE: Hans"], value: "libby", engine: "· this browser's voice", title: true},
+      layout: {piperBox: true, hint: true, crewNote: true, crewRows: true, cols: [true, true, true, false, false, true], personality: true,
+               crewPlay: true, piperAgain: [false, false, true, true]},
       spoken: [["Chosen check.", "Libby", "en-GB"], ["Copilot check.", "Libby", "en-GB"], ["No Piper check.", "Libby", "en-GB"]],
       engines: ["browser voice (chosen): Libby", "browser voice (chosen): Libby", null, "browser voice: Libby"],
       lost: ["browser", ["Lost contact with Outrider. No alerts until it is back. [connection]"], null],
@@ -11085,12 +11102,14 @@ const releasePayloads = async () => {
       got.swear = d.getElementById("speechProfanityWho").textContent;
       w.eval(`speechLib.styles.calm = "Calm"; drawSpeechStyles()`);
       got.swearFew = d.getElementById("speechProfanityWho").textContent;
-      got.hintOff = [hint.textContent.startsWith("This voice and personality say every alert"), d.getElementById("ttsXoP").hidden];
+      got.hintOff = [hint.textContent.startsWith("The main voice (Piper, above) and this personality say every alert"), d.getElementById("ttsXoP").hidden];
       w.eval(`data.crew = Object.assign({}, data.crew, {on: true}); drawMainHint()`);
       got.hintOn = /^The XO's voice and personality: .*With the crew off .* say every alert\.$/.test(hint.textContent);
-      // on one line with Main voice; the voice's status only when it says something (not "ready"); Voice above Server
-      // settings with the other wide sections; Uploads "off by default" (the author, 2026-10-16)
-      got.row = [sel.closest(".mainrow") !== null && sel.closest(".mainrow") === d.getElementById("ttsVoice").closest(".mainrow")];
+      // Main voice in the Piper box, Main personality outside it, after Speak with (the author, 2026-11-01: was one line,
+      // 2026-10-16); the voice's status only when it says something (not "ready"); Voice above Server settings with the
+      // other wide sections; Uploads "off by default" (the author, 2026-10-16)
+      const pb = d.getElementById("piperBox"), sw = d.getElementById("speakWithRow");
+      got.row = [pb.contains(d.getElementById("ttsVoice")) && !pb.contains(sel) && !!(sw.compareDocumentPosition(pb) & 4)];
       const st = () => d.getElementById("ttsStatus").textContent;
       w.eval(`window.__mp.tts = data.tts; data.tts = Object.assign({}, data.tts, {available: true, status: "ready"}); drawTts()`);
       got.row.push(st());

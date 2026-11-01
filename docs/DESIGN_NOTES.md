@@ -425,7 +425,12 @@ upstream project's choices, not rules of the game.
   (`speak(..., {piperOnly: true})`; the author's choice, 2026-10-04): the caption is there either way. Unless the
   player chose **Speak with: this browser's voice** (2026-11-01, issue #21's question; per device, `speechEngine` and
   `browserVoice` in localStorage): then the browser says every line, the co-pilot's too, in the one voice picked, never
-  Piper or the PC (crew and personality voices stay Piper's: a browser voice per crew member was not worth the UI). `spoken` says
+  Piper or the PC (crew and personality voices stay Piper's: a browser voice per crew member was not worth the UI).
+  Settings → Voice is laid out by it (the author, 2026-11-01): Speak with first, then a **Piper** box (Main voice, Voice
+  lab, Personality voices, Voices kept loaded) hidden while the browser speaks, then what works with either (Main
+  personality and the mix, danger lines, what the voice says, chatter, the crew, speed, volume). The crew is not
+  Piper's: only its Voice and Speaker columns go (`.crewtable.nopiper`), and its ▶ and auditions speak through
+  `browserSay`. A hidden Piper box is not found by Find a setting, as the crew table with the crew off (`sfLaidOut`). `spoken` says
   whether a window that speaks has asked for the payload in the last minute (S24: its long poll says `speaker=1`).
   Vespa's "status report" is composed on the server (system, fuel, unsold, the next stop of the route you follow:
   `route_next`, S9-S2), not the page's report: that one depends on each browser's thresholds (S23). The AI layer is

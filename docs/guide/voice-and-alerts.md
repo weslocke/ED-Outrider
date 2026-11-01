@@ -141,8 +141,9 @@ as docked. A carrier jump booked just before you quit shows as "not yet confirme
 
 Alerts are spoken when 🗣 in the header is on. **Piper**, a neural voice running on your CPU, sounds far
 better than the browser's own voice. The voice is Cori (`en_GB-cori-medium`) unless you pick another, and it
-downloads into `data/piper-voices/` the first time. ⚙ Settings → Voice's **Main voice** switches between installed
-voices.
+downloads into `data/piper-voices/` the first time. ⚙ Settings → Voice's **Piper** box holds what is Piper's own:
+**Main voice** (switches between installed voices), the Voice lab, Personality voices and Voices kept loaded. Everything
+below it (the personalities, what the voice says, space chatter, the crew, speed and volume) works with either voice.
 
 **🎙 Voice lab** (⚙ Settings → Voice) is where you try them out first. It plays in the browser you are using, wherever
 Outrider runs (a Docker server too):
@@ -178,8 +179,10 @@ can't say is not said (what you asked for is still shown as a caption).
 **Speak with: Piper / this browser's voice** (⚙ Settings → Voice) chooses the browser's voice instead, and which of
 its voices (grouped by language, yours first; ▶ says a sample). Some browsers have good ones: Edge's natural voices,
 for one. It is per browser, as each has voices of its own. Chosen, the browser says every line, the co-pilot's
-too, in that one voice: crew and personality voices are Piper's, and Play speech and sounds on this PC then plays
-only the sounds. The voice picked also speaks where Outrider has no Piper at all.
+too, in that one voice, and the Piper box is hidden. The personalities and the crew keep working (their words, names
+and who says what); only their own voices are Piper's, so the crew table drops its Voice and Speaker columns and its ▶
+speaks in the browser's voice. Play speech and sounds on this PC then plays only the sounds. Your Piper choices are
+kept for when you switch back. The voice picked also speaks where Outrider has no Piper at all.
 
 **Body names are said letter by letter.** With an English Piper voice, "A 1" is "ay one" (not "uh one") and "ABC 3 a"
 is "ay, bee, see, three, ay", each letter clearly. Only a body's letters are spelled out: system, station and carrier
@@ -217,7 +220,7 @@ Sound: Allow; Firefox: Autoplay: Allow Audio and Video).
   partner, or sugar and darlin'), and **Klingon** (loud, honour-bound, exploration as the hunt; it calls you Captain,
   Sir, Commander or My Lord), and **Scoundrel** (a cocky smuggler who cares about credits, calls you buddy and pal,
   and tells stories about the Hutton twins).
-- **Main personality** (beside **Main voice**) picks one of them. Its last entry, **A mix…**, shows a box per
+- **Main personality** (under the Piper box) picks one of them. Its last entry, **A mix…**, shows a box per
   personality: tick several and the lines come from all of them, and **One personality per system** holds one
   character a system. With the crew off, the main voice and personality say every alert; with it on, they are the
   XO's (see The crew below).

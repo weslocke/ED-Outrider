@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · Settings → Voice laid out by Speak with
+- The author's ask: what only Piper uses together, so it can depend on Piper being chosen. Speak with is now first, then
+  a **Piper** box (Main voice, 🎙 Voice lab, Personality voices, Voices kept loaded), hidden while this browser's voice
+  is chosen; then what works with either: Main personality and the mix, profanity, danger lines down to business (moved
+  up beside them), What the voice says, the landing pad, Space chatter, Chat, the Crew, then This screen speaks, Play on
+  this PC, speed, volume, Call me. Main voice and Main personality are no longer on one line (2026-10-16).
+- The crew stays with either voice (its names, personalities and who says what still apply). With the browser's
+  voice its Voice and Speaker columns are hidden (`.crewtable.nopiper`; the Piper picks kept), a note says why every
+  member sounds alike, and its ▶ and both auditions speak in the browser's voice (`browserSay`, through the lab's
+  player so a new ▶ stops the last). The hint under Main personality names the voice in use.
+- Smoke: `browser_voice` checks the box, the crew columns and ▶, and Piper again; `main_personality`'s layout check
+  follows the new places.
+
 ## 2026-11-01 · Speak with this browser's voice: the lost-contact line
 - Chosen, "Lost contact with Outrider" was still played from the Piper line made in advance; now the browser says
   it (it needs no server), and no Piper line is made for it. Checked in the `browser_voice` smoke block.

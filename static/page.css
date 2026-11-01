@@ -1082,6 +1082,9 @@ body.nowmode header, body.nowmode main { display: none; }
   #alertDialog #alertsSettings .alerttable td.acrew { width: auto; white-space: nowrap; }
   #alertDialog #alertsSettings .alerttable td.acrew select { max-width: none; }
 }
+/* this browser's voice chosen: one voice for all, so no Voice and Speaker columns */
+.crewtable.nopiper tr { grid-template-columns: 8.5em 6.5em minmax(0, 15em) 4.5em 2.2em 2.2em; }
+.crewtable.nopiper tr > :nth-child(4), .crewtable.nopiper tr > :nth-child(5) { display: none; }
 @media (max-width: 700px) { .crewtable thead { display: none; } .crewtable tr { grid-template-columns: 1fr 1fr; }
   .crewtable td.crole, .crewtable td.cfor { grid-column: 1 / -1; grid-row: auto; } }
 #alertDialog .chips { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px; }
