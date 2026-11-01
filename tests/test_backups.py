@@ -193,6 +193,11 @@ class BackupBeforeReread(Scratch):
         db.executemany("INSERT INTO journal_files (path, offset) VALUES (?, 10)", [(p,) for p in old + [lost]])
         self.assertEqual(ed_outrider.journals_gone(db), (4, 4))            # by path alone, as before
         self.assertEqual(ed_outrider.journals_gone(db, [now]), (1, 4))     # found by name in the folder read now
+        # review round 9: a database first filled on Windows (Kurbo26 ran Outrider there first), read on Linux
+        db.execute("DELETE FROM journal_files")
+        db.execute("INSERT INTO journal_files (path, offset) VALUES (?, 10)",
+                   (r"C:\Users\cmdr\Saved Games\Frontier Developments\Elite Dangerous\Journal.2026-10-01T100000.01.log",))
+        self.assertEqual(ed_outrider.journals_gone(db, [now]), (0, 1))
 
 
 class DatabaseLock(Scratch):

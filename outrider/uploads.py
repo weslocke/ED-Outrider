@@ -444,6 +444,9 @@ class UploadHub:
         # are also the hand-over between two Outriders): with two folders growing at once one can still be skipped
         self.sessions, self.dir = {}, None
         self.primed = set()              # files (paths) whose top their folder's session has read
+        # a journal's file name -> the folder whose session it feeds: one game's journal reached through two live folders
+        # (a synced copy, the reader's twins) is one session (review round 9: its lines were split between two)
+        self.file_dir = {}
         self.queued = 0                  # messages queued since start (the status view)
         self.marks, self.marks_dirty = {}, False
 
@@ -470,7 +473,7 @@ class UploadHub:
             for d, old in list(self.sessions.items()):
                 self.sessions[d] = new = Session()
                 new.status_body, new.status_pos = old.status_body, old.status_pos
-            self.primed = set()
+            self.primed, self.file_dir = set(), {}
 
     def prime(self, path, upto, session=None, depth=0):
         """Feed a session the lines of `path` before byte `upto` (state only): a file met part way through. A
@@ -547,9 +550,13 @@ class UploadHub:
         """One journal line (bytes) at `offset` of `path`. mode: "catchup" (the start-up scan: state only) or "live"
         (the running tail: may queue). Returns the number of messages queued. Database errors propagate."""
         b = os.path.basename(path)
-        self.dir = os.path.dirname(path)
+        here = os.path.dirname(path)
+        self.dir = self.file_dir.setdefault(b, here)
         if path not in self.primed:
-            self.prime(path, offset)
+            if self.dir == here:
+                self.prime(path, offset)
+            else:
+                self.primed.add(path)   # its twin's session has the file's top already
         self.session.dir = self.dir
         try:
             ev = json.loads(raw)
@@ -685,21 +692,26 @@ class UploadHub:
         self.queued += n
         return n
 
-    def status(self, st):
-        """The live Status.json reading: the body it names (EDDN's codex entries say it only then) and, on a body, where
-        you are on it with the reading's time (EDDN's scanorganic, only when it matches the scan)."""
+    def status(self, st, d=None):
+        """The live Status.json reading of folder d (its game's session; without d, the session in use): the body it
+        names (EDDN's codex entries say it only then) and, on a body, where you are on it with the reading's time (EDDN's
+        scanorganic, only when it matches the scan). Two live folders: each game's reading in its own session (review
+        round 9: it went into the session of whichever folder's line came last)."""
         st = st or {}
         live = bool(st.get("live"))
-        self.session.status_body = st.get("body") if live else None
-        self.session.status_pos = (st.get("lat"), st.get("lon"), st.get("body"), st.get("ts")) \
+        s = self.sessions.setdefault(d, Session()) if d is not None else self.session
+        s.status_body = st.get("body") if live else None
+        s.status_pos = (st.get("lat"), st.get("lon"), st.get("body"), st.get("ts")) \
             if live and st.get("lat") is not None and st.get("lon") is not None and st.get("body") else None
 
     def snapshot(self):
         return ({d: x.snapshot() for d, x in self.sessions.items()}, self.dir, set(self.primed), self.queued,
-                copy.deepcopy(self.marks), self.marks_dirty, {k: o.snapshot() for k, o in self.keep.items()})
+                copy.deepcopy(self.marks), self.marks_dirty, {k: o.snapshot() for k, o in self.keep.items()},
+                dict(self.file_dir))
 
     def restore(self, snap):
-        sessions, self.dir, primed, self.queued, marks, self.marks_dirty, keep = snap
+        sessions, self.dir, primed, self.queued, marks, self.marks_dirty, keep, file_dir = snap
+        self.file_dir = dict(file_dir)
         for d in list(self.sessions):
             if d not in sessions:   # a folder first met in the failed tick: met again on its retry
                 del self.sessions[d]

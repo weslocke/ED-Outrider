@@ -2191,8 +2191,13 @@ const releasePayloads = async () => {
       data.squadron_carrier = Object.assign({}, sc, {carrier_id: "2", planned: {system: "Sol", departure: soon, jump_ly: 74, distance_from_you: 12.3}});
       store.set("carrierSide", "sc"); store.set("carrierDocked", null); renderCarrier();
       o.departs = [cards.join(" / "), text().replace(/\\d+:\\d\\d/, "M:SS"), !!document.querySelector("#carrierLine .noscoop .cd")];
+      // round 9: the folded tiles line marks the squadron carrier's last minutes too; a lone paused service shows
+      const line9 = document.createElement("div"); line9.innerHTML = tilesLineHtml();
+      o.folded = [...line9.querySelectorAll(".tl-urgent")].length;   // the squadron carrier, the side shown
+      o.paused = squadronCarrierHtml(Object.assign({}, data.squadron_carrier, {planned: null, services: [], suspended: ["UC"], has_uc: false, has_vista: false}))
+        .includes("UC <span class=\\"noscoop\\"");
       renderCarrier();
-      o.once = cards.length;
+      o.once = cards.length;   // both at once: one alert naming both (round 9)
       carrierWarned.clear(); cards.length = 0;
       data.carrier = null; data.squadron_carrier = Object.assign({}, data.squadron_carrier, {aboard: true, here: true}); renderCarrier();
       o.aboard = cards.length;
@@ -2210,9 +2215,9 @@ const releasePayloads = async () => {
                          "[squadron-carrier]ABCDSquadron carrier · Hajangai",
                          "[fleet-carrier]Out Of The Blue G0X-85ZFleet carrier · yours · Hajangai"],
                   sell: "THE WINCHESTER (your squadron's carrier) · Hajangai · 100 ly",
-                  departs: ["Out Of The Blue departs in 4 minutes | for Elsewhere; you are not aboard / THE WINCHESTER departs in 4 minutes | for Sol; you are not aboard",
+                  departs: ["Out Of The Blue departs in 4 minutes · THE WINCHESTER departs in 4 minutes | for Elsewhere; you are not aboard · for Sol; you are not aboard",
                             "[squadron-carrier]THE WINCHESTERHajangai · 100 ly [destination]departs for Sol in M:SS (74 ly jump, then 12.3 ly from you)UC ✓ · Vista ✓", true],
-                  once: 2, aboard: 0};
+                  folded: 1, paused: true, once: 1, aboard: 0};
     const o = JSON.parse(got);
     const goodSq = JSON.stringify(o) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodSq;
@@ -10736,6 +10741,20 @@ const releasePayloads = async () => {
         Object.assign(sBody, {sys: null, name: null, data: null}); panel.innerHTML = "";
         return JSON.stringify([/failed/.test(before || ""), /Painite 100k/.test(after || ""), n]);
       })()`));
+      // B4 (review round 9): after a jump an open panel's redraw found no price for where you are now and said "asking…"
+      // with nothing asking: the redraw asks
+      got.prices4 = JSON.parse(await w.eval(`(async () => {
+        RING_PRICES.clear();
+        const b = {rings: [{name: "A Ring", hotspots: {Painite: 1}}]}, pos = data.position, asked = [];
+        const realAsk = holdSellAsk; holdSellAsk = async m => { asked.push(m); return [{station: "Hub", system: "S", distance: 5, price: 100000}]; };
+        await ringPricesAsk(b, "90");
+        data.position = Object.assign({}, pos, {id: "123456789", id64: 123456789});   // jumped
+        const wait = ringPricesWait(b, "90");
+        await new Promise(r => setTimeout(r, 20));
+        const out = [wait, asked, ringPricesLine(b, "90").startsWith("Best nearby")];
+        data.position = pos; holdSellAsk = realAsk; RING_PRICES.clear();
+        return JSON.stringify(out);
+      })()`));
       // C: the 2+ tick goes with the form
       const hm = d.getElementById("sHotMin");
       hm.checked = true;
@@ -10779,6 +10798,7 @@ const releasePayloads = async () => {
       saved1: JSON.stringify({painite: 25, platinum: 40}), saved2: JSON.stringify({platinum: 40}), combined: [true, true],
       keepField: [true, "", "3"],
       prices3: [true, true, 2],
+      prices4: ["Best nearby: asking…", ["Painite", "Painite"], true],
       prices2: ["Best nearby: not known (the price lookup failed; asked again in a few minutes)", "Best nearby: asking…", true, true, true],
       prices: [true, false, ["Painite", "Platinum", "Alexandrite", "Alexandrite"], "Best nearby from you: Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly · Alexandrite: lookup failed (asked again in a few minutes)",
                true, "Best nearby from you: Alexandrite 900k cr/t (Far, Out, 90 ly) · Painite 412k cr/t (Hub, Sys, 34 ly) · Platinum: no buyer within 100 ly",

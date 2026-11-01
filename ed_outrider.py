@@ -163,6 +163,7 @@ import json
 import math
 import mimetypes
 import os
+import ntpath
 import random
 import re
 import secrets
@@ -4196,6 +4197,9 @@ class Journals:
         if name == "Loadout":
             if not_a_ship(ev.get("Ship")):
                 return   # an Apex shuttle's: not your ship (it wiped the fuel model and replaced ship, range, hull)
+            # a login on foot with no ship of its own yet (handle_commander): this session's ship, from its Loadout
+            self.db.execute("UPDATE play_activity SET ship=? WHERE ship='' AND login_ts=(SELECT max(login_ts) FROM "
+                            "play_activity WHERE login_ts <= ?)", (ev.get("ShipName") or ev.get("Ship"), ts))
             self.note_modules(ev, ts)
             self.note_fleet(ev, ts)
             if ev.get("HullHealth") is not None and ts >= (self.hull or {}).get("ts", ""):
@@ -4236,7 +4240,7 @@ class Journals:
                     meta_set(self.db, "fuel_hist", [])
                     self.fresh("fuel_hist", ts)
                 self.ship = {"name": ev.get("ShipName") or ev.get("Ship"), "type": ev.get("Ship"),
-                             "ship_id": ev.get("ShipID"),
+                             "ship_id": ev.get("ShipID"), "fid": (self.commander or {}).get("fid"),   # whose (round 9)
                              "fuel_main": cap.get("Main"), "fuel_reserve": cap.get("Reserve"),
                              "max_range": ev["MaxJumpRange"], "fsd_size": int(size.group(1)) if size else None,
                              # the fuel model's inputs (see fuel_model): the mass without fuel or cargo, the drive
@@ -5135,7 +5139,10 @@ class Journals:
         elif name == "LoadGame":
             ship = ev.get("ShipName") or ev.get("Ship_Localised") or ev.get("Ship")
             if not_a_ship(ev.get("Ship")):   # on foot or in a shuttle: your ship, as handle_cmdr (complete review 2026-10-30)
-                ship = (self.ship or {}).get("name") or ""
+                # only when the last ship read was this commander's (review round 9: another commander's in a shared
+                # folder, or a legacy folder read late); else none until this session's Loadout (handle_ship) names it
+                mine = (self.ship or {}).get("fid") in (None, ev.get("FID"))
+                ship = (self.ship or {}).get("name") or "" if mine else ""
             self.db.execute("INSERT OR IGNORE INTO play_activity (login_ts, commander, ship) VALUES (?, ?, ?)",
                             (ts, ev.get("Commander"), ship))
         elif name in outrider.commander.ACTIVITY_EVENTS:
@@ -6205,20 +6212,23 @@ class Journals:
 
     def read_status(self, d):
         """Status.json: the live fuel gauge (rewritten by the game every few seconds). Not while another commander
-        plays (S9-S4: the commander filter's stand-down)."""
+        plays (S9-S4: the commander filter's stand-down). -> folder d's own reading (its uploads session's: review round
+        9), or None when there is none to read."""
         if self.other_playing:
-            return
+            return None
         try:
             with open(os.path.join(d, "Status.json"), encoding="utf-8") as f:
                 st = json.load(f)
         except (OSError, ValueError):
-            return
+            return None
+        own = self.status_reading(st, self.status_json)
         # with two live folders, a stale Status.json in one (an old Proton prefix) must not replace the reading
         # just taken from the other
         old = (self.status_json or {}).get("ts")
         if isinstance(st.get("timestamp"), str) and isinstance(old, str) and st["timestamp"] < old:
-            return
-        self.status_json = self.status_reading(st, self.status_json)
+            return own
+        self.status_json = own
+        return own
 
     def status_reading(self, st, prev_json):
         """A Status.json document as status_json keeps it (prev_json: the reading before, for what the file leaves out),
@@ -8606,7 +8616,9 @@ def journals_gone(db, dirs=()):
             names.update(os.listdir(d))
         except OSError:
             pass
-    return sum(1 for p in paths if not os.path.exists(p) and os.path.basename(p) not in names), len(paths)
+    # the file's name split at either separator: a database first filled on Windows keeps "C:\\...\\Journal...", and
+    # os.path.basename on Linux does not split a backslash (review round 9: every such file counted as gone)
+    return sum(1 for p in paths if not os.path.exists(p) and ntpath.basename(p) not in names), len(paths)
 
 
 def backup_before_reread(db, db_path, folder, keep, extras=(), live_dirs=(), board=None, gone=None):
@@ -21420,8 +21432,9 @@ class State:
                 if m and route_mtimes.get(sj) != m:
                     route_mtimes[sj] = m
                     before = self.journals.status_json
-                    self.journals.read_status(d)
-                    self.uploads_hub.status(self.journals.status_json)   # EDDN's codex entries name the body from it
+                    own = self.journals.read_status(d)
+                    if own is not None:   # EDDN's codex entries name the body from it: this folder's game's, its session's
+                        self.uploads_hub.status(own, d)
                     gist = lambda st: st and (round(st.get("fuel_main") or 0, 1), st.get("flags"), st.get("flags2"),
                                               st.get("body"), json.dumps(st.get("destination")), st.get("live"),
                                               st.get("selected_weapon"))
@@ -22768,15 +22781,18 @@ def make_app(state, hosts=None):
             return web.json_response({"error": "expected {\"password\": \"...\"}", "code": "bad_request"}, status=400)
         if not state.password:   # nothing to sign in to: every device may use it
             return web.json_response({"ok": True, "token": ""})
-        who = outrider.auth.client_key(request.remote, request.headers, LOOPBACK_TRUSTED)
-        wait = state.signin_limit.wait(who)
+        # every client the forwarding headers name: the one the proxy sets holds still (review round 9: client_keys)
+        who = outrider.auth.client_keys(request.remote, request.headers, LOOPBACK_TRUSTED)
+        wait = max(state.signin_limit.wait(k) for k in who)
         if wait:
             return web.json_response({"error": f"too many wrong passwords: try again in {wait} s", "code": "rate_limited"},
                                      status=429, headers={"Retry-After": str(wait)})
         if not outrider.auth.password_ok(body["password"], state.password):
-            state.signin_limit.failed(who)
+            for k in who:
+                state.signin_limit.failed(k)
             return web.json_response({"error": "wrong password", "code": "bad_password"}, status=401)
-        state.signin_limit.clear(who)
+        for k in who:
+            state.signin_limit.clear(k)
         token = state.new_session()
         resp = web.json_response({"ok": True, "token": token})
         resp.set_cookie(outrider.auth.COOKIE, token, max_age=SESSION_COOKIE_AGE, path="/", httponly=True, samesite="Strict")

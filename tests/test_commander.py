@@ -603,6 +603,24 @@ class Sessions(unittest.TestCase):
             j.handle(e)
         self.assertEqual([r["ship"] for r in state.commander_sessions(now=NOW)["sessions"]], ["Wanderer", "Wanderer"])
 
+    def test_a_login_on_foot_after_another_commander(self):
+        """Review round 9: a login on foot took the last ship read, another commander's in a shared folder; it waits for
+        this session's own Loadout now."""
+        events = [ev(T("08:00:00"), "LoadGame", Commander="Alpha", FID="F1", Ship="krait_mkii", ShipName="Alpha's Krait"),
+                  ev(T("08:00:01"), "Loadout", Ship="krait_mkii", ShipName="Alpha's Krait", ShipID=1, MaxJumpRange=50,
+                     FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[]),
+                  ev(T("08:10:00"), "Bounty", Target="anaconda", TotalReward=5),
+                  ev(T("09:00:00"), "LoadGame", Commander="Beta", FID="F2", Ship="ExplorationSuit_Class1"),
+                  ev(T("09:10:00"), "Bounty", Target="anaconda", TotalReward=5)]
+        j, state = setup(self)
+        for e in events:
+            j.handle(e)
+        ships = lambda: {r["start"]: r["ship"] for r in state.commander_sessions(now=NOW)["sessions"]}   # noqa: E731
+        self.assertEqual(ships()[T("09:00:00")], "")
+        j.handle(ev(T("09:00:02"), "Loadout", Ship="python", ShipName="Beta's Python", ShipID=2, MaxJumpRange=30,
+                    FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[]))
+        self.assertEqual((ships()[T("09:00:00")], ships()[T("08:00:00")]), ("Beta's Python", "Alpha's Krait"))
+
     def test_the_last_30_days(self):
         """Batch 4: Sessions by days, as History: the logins of the last 30 days, 40 at most."""
         old = [ev(T("10:00:00", "2026-09-11"), "LoadGame", Commander="Tester", Ship="python"),     # 31 days before NOW

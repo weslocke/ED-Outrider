@@ -127,9 +127,16 @@ t("Map: a tapped card stays when the touch pointer leaves the canvas (batch 5)",
 });
 t("Plot route waits for Plot Route's form when the tab was never read (batch 5)", () => {
   ev(`window.__subs = 0; hForm.addEventListener("submit", e => { __subs++; e.preventDefault(); e.stopImmediatePropagation(); }, true);
-      H.data = null; H.plotWhenLoaded = false; plotRouteTo("Colonia")`);
-  eq(`[__subs, H.plotWhenLoaded]`, [0, true]);
-  ev(`H.plotWhenLoaded = false`);
+      H.data = null; H.plotWhenLoaded = 0; plotRouteTo("Colonia")`);
+  eq(`[__subs, H.plotWhenLoaded > 0]`, [0, true]);   // when it was asked (round 9: it goes ahead only that soon after)
+  ev(`H.plotWhenLoaded = 0`);
+});
+t("Plot route: a plot asked for while the tab loaded never goes ahead late, elsewhere or after a failed load (round 9)", () => {
+  const due = (age, tab) => ev(`(() => { const v = view; view = ${JSON.stringify(tab)}; H.plotWhenLoaded = Date.now() - ${age};
+      const out = [plotWhenLoadedDue(), H.plotWhenLoaded]; view = v; return out; })()`);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify([due(1000, "hwy"), due(3600000, "hwy"), due(1000, "map")])),
+                         [[true, 0], [false, 0], [false, 0]]);
+  assert.match(ev(`loadHwy.toString()`), /H\.error = d\.error; H\.key = null; H\.plotWhenLoaded = 0;/);   // a failed load drops it
 });
 t("Map card: the SCO Mk II's boost is ×6 (batch 5)", () => {
   ev(`window.__d = data; data = Object.assign({}, data || {}, {bookmarks: []}); M.data = {supercharge: 6, center: {x: 0, y: 0, z: 0, id: "9"}}`);
@@ -204,6 +211,19 @@ t("Overlay pill: on the tablet 'behind' is never 'behind this page' (batch 7)", 
      ["bad", "Elite is behind this page", "bad"]);
 });
 const later = [];   // asynchronous checks, awaited before the summary
+later.push(["Add pin empties its boxes once saved, keeps them on an error (round 9)", async () => {
+  ev(`window.__api = apiJson; window.__lp = loadPins; loadPins = async () => refreshPinsUi();
+      window.__sec = document.createElement("div"); __sec.dataset.sec = "pins";
+      __sec.innerHTML = '<div class="secbody" data-sys="1" data-sysname="S" data-body="A 1"></div>';
+      document.body.appendChild(__sec); __sec.firstChild.innerHTML = pinsListHtml("1", "A 1")`);
+  const add = async answer => ev(`(async () => { apiJson = async () => (${answer});
+      const b = __sec.firstChild; b.querySelector("[data-pinin]").value = "-12.34, 45.67"; b.querySelector("[data-pinname]").value = "camp";
+      await pinPanelClick({target: b.querySelector("[data-pinadd]"), preventDefault() {}});
+      return JSON.stringify([b.querySelector("[data-pinin]").value, b.querySelector("[data-pinname]").value]); })()`);
+  const saved = await add(`{ok: true}`), refused = await add(`{error: "no such body"}`);
+  ev(`apiJson = __api; loadPins = __lp; __sec.remove()`);
+  assert.deepStrictEqual([JSON.parse(saved), JSON.parse(refused)], [["", ""], ["-12.34, 45.67", "camp"]]);
+}]);
 later.push(["Log: rows not yet final are asked again; with 'not sent', rows that went drop off (batch 5)", async () => {
   ev(`window.__aj = apiJson; window.__rl = renderLog; renderLog = () => {}; view = "log"; lUnsent.checked = true;
       apiJson = async () => ({marks: {"J.log|100": [{state: "sent", service: "edsm", why: ""}], "J.log|200": [{state: "held", service: "edsm", why: "no key"}]}});

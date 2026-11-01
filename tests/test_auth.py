@@ -220,6 +220,23 @@ class Auth(Base):
             guide = f.read()
         self.assertTrue("proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;" in guide)
         self.assertFalse("which Caddy and nginx add" in guide)
+        # review round 9: nginx's own Host made every change look like another site's (the sign-in refused 403)
+        self.assertTrue("proxy_set_header Host $host;" in guide)
+
+    def test_a_proxy_setting_one_header_cannot_be_rotated_past(self):
+        """Review round 9: behind an nginx that sets only X-Real-IP, the client's own X-Forwarded-For came through, and
+        a new one at each try was a new count: unlimited guesses at the password. Every header the proxy may have set
+        is counted; the one it did set holds still."""
+        A = outrider.auth
+        self.assertEqual(A.client_keys("127.0.0.1", {"X-Real-IP": "192.168.1.66", "X-Forwarded-For": "10.0.0.1"}),
+                         ["10.0.0.1", "192.168.1.66"])
+        self.assertEqual(A.client_keys("192.168.1.7", {"X-Forwarded-For": "1.2.3.4"}), ["192.168.1.7"])   # not trusted
+        self.assertEqual(A.client_keys("127.0.0.1", {}), ["127.0.0.1"])
+
+        async def go(c):
+            return [(await c.post("/api/auth/signin", json={"password": "no"},
+                                  headers={"X-Real-IP": "192.168.1.66", "X-Forwarded-For": f"10.0.0.{n}"})).status for n in range(7)]
+        self.assertEqual(self.client(go), [401] * 5 + [429] * 2)
 
     def test_pages_cannot_be_framed_and_inlined_values_cannot_end_the_script(self):
         """Review 2026-10-23 S4-B16: no frame-ancestors / X-Frame-Options, so another site could frame the loopback page

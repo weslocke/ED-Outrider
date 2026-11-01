@@ -99,6 +99,22 @@ def client_key(remote, headers, trust_headers=True):
     return str(remote)
 
 
+def client_keys(remote, headers, trust_headers=True):
+    """Every client a sign-in is counted against (review round 9): behind a proxy on this PC, each forwarding header's
+    (X-Forwarded-For's last hop, X-Real-IP, Forwarded's last for=). A proxy sets one of them and passes the rest on as the
+    client sent them, so a single one could be the client's own to change at each try (an nginx that sets only X-Real-IP
+    let a new X-Forwarded-For through every time): the one the proxy sets holds still, and counting against all of them
+    keeps the limit. The peer alone otherwise (client_key's rule)."""
+    if not (trust_headers and is_loopback(remote)):
+        return [str(remote)]
+    keys = [(headers.get("X-Forwarded-For") or "").split(",")[-1].strip(), (headers.get("X-Real-IP") or "").strip()]
+    if headers.get("Forwarded"):
+        hops = re.findall(r'for="?\[?([^;,\]"\s]+)', headers["Forwarded"], re.IGNORECASE)
+        keys.append(hops[-1] if hops else "forwarded")
+    keys = list(dict.fromkeys(k for k in keys if k))
+    return keys or [str(remote)]
+
+
 def request_token(headers, cookies):
     """The session token a request carries: `Authorization: Bearer <token>` (the app's own calls) or the cookie."""
     auth = headers.get("Authorization") or ""

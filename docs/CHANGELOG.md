@@ -2,6 +2,25 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · Review round 9, batch 5: the page, the carriers, sign-in and uploads
+- **Add pin empties its boxes once the pin is saved** (M5): the rewrite kept what was typed, so a second press saved a
+  duplicate (kept on an error, to put right).
+- A plot asked for while Plot Route's data loads goes ahead only within 30 s, on that tab, with no route followed
+  meanwhile (`plotWhenLoadedDue`); a failed load drops it (it plotted an hour later over the route you followed).
+- Ring prices: a redraw that finds none for where you are now (after a jump) asks (`ringPricesKick`), instead of
+  "asking…" with nothing asking.
+- Both carriers leaving together: one alert naming both (one tag: the second replaced the first's line and
+  notification); the folded tiles line marks the squadron carrier's last five minutes; "UC ✗" shows when no other
+  listed service is on.
+- Sign-in behind a proxy on this PC: failures count against every client the forwarding headers name
+  (`auth.client_keys`): the header the proxy sets holds still, so a client's own rotating X-Forwarded-For past an
+  X-Real-IP-only nginx no longer resets the limit. install.md's nginx lines add `proxy_set_header Host $host;` (nginx's
+  own Host made every change, the sign-in too, look like another site's).
+- Uploads: each live folder's Status.json goes into its own game's session (`read_status` returns the folder's own
+  reading); one game's journal reached through two live folders (a synced copy) feeds one session
+  (`UploadHub.file_dir`); journals_gone finds a Windows path's file by name on Linux (`ntpath.basename`); a session that
+  starts on foot after another commander's names no ship of theirs, and takes its own from its Loadout.
+
 ## 2026-11-01 · Review round 9, batch 4: the browser's voice
 - **Before a click on the page** (M6): Chromium and Edge refuse a page's speech until it is clicked, and nothing asked:
   lines, danger ones included, failed until a click by chance. A refusal ("not-allowed") now raises the red pill and

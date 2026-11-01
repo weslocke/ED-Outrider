@@ -152,6 +152,29 @@ class HubThroughTheReader(unittest.TestCase):
             self.assertEqual(c, owner[f][0], rows)
             self.assertIn(place, owner[f][1], rows)
 
+    def test_a_twin_journal_is_one_session(self):
+        """Review round 9: one game's journal in two live folders (a synced copy) is read through whichever copy is
+        further; per-folder sessions split its lines, so a jump read through the copy left the other folder's session in
+        the old system. The folder that fed the file first keeps it."""
+        other = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, other)
+        name = "Journal.2026-10-30T110000.01.log"
+        a, b = os.path.join(self.dir, name), os.path.join(other, name)
+        first = [header(now_ts(60)), loadgame(now_ts(59), cmdr="Alpha"), location(now_ts(58), name="Sys 1", addr=1)]
+        jump = {"timestamp": now_ts(10), "event": "FSDJump", "StarSystem": "Sys 2", "SystemAddress": 2, "StarPos": [1, 2, 3]}
+
+        def write(path, events, mode="w"):
+            with open(path, mode, encoding="utf-8") as f:
+                for e in events:
+                    f.write(json.dumps(e) + "\n")
+        write(a, first)
+        write(b, first + [jump])                                # the copy is ahead
+        self.j.scan_dir(self.dir, upload="live")
+        self.j.scan_dir(other, upload="live")                    # the jump comes through the copy
+        hub = self.j.uploads
+        self.assertEqual((hub.file_dir[name], hub.sessions[self.dir].system), (self.dir, "Sys 2"))
+        self.assertIsNone(hub.sessions.get(other))               # never a second session for the same game
+
     def test_old_lines_legacy_folders_and_off(self):
         week = 8 * 86400
         self.write(header(now_ts(week)), loadgame(now_ts(week - 1)), location(now_ts(week - 2)))
@@ -1105,6 +1128,31 @@ class StatusForEddn(unittest.TestCase):
         self.assertIsNone(hub.session.status_pos)
         hub.status({"live": False, "body": "X 1", "lat": 1.5, "lon": -2.5})   # not live: nothing
         self.assertEqual((hub.session.status_body, hub.session.status_pos), (None, None))
+
+    def test_each_folders_reading_goes_to_its_own_session(self):
+        """Review round 9: with two live folders, folder A's Status.json went into the session of the folder whose line
+        came last (B), so B's next codex entry named A's body. Each reading goes to its folder's session, and the tick
+        hands the hub the folder's own reading, not the newer of the two."""
+        hub = U.UploadHub(None, {}, enabled=lambda s: False)
+        hub.dir = "B"                                         # B's line came last
+        hub.status({"live": True, "body": "SysA 1", "lat": 1.0, "lon": 2.0, "ts": "2026-10-08T10:00:00Z"}, "A")
+        self.assertEqual((hub.sessions["A"].status_body, hub.session.status_body), ("SysA 1", None))
+        import inspect
+        src = inspect.getsource(ed_outrider.State)
+        self.assertIn("self.uploads_hub.status(own, d)", src)
+        # read_status gives the folder's own reading, even when the other folder's newer one stays the live one
+        import json, shutil, tempfile
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        a, b = tempfile.mkdtemp(), tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, a)
+        self.addCleanup(shutil.rmtree, b)
+        for d, ts, body in ((b, "2026-10-08T10:05:00Z", "SysB 2"), (a, "2026-10-08T10:00:00Z", "SysA 1")):
+            with open(os.path.join(d, "Status.json"), "w") as f:
+                json.dump({"timestamp": ts, "event": "Status", "Flags": 1, "Flags2": 0, "BodyName": body}, f)
+        self.assertEqual(j.read_status(b)["body"], "SysB 2")
+        self.assertEqual((j.read_status(a)["body"], j.status_json["body"]), ("SysA 1", "SysB 2"))
 
 
 

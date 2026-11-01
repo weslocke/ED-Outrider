@@ -435,18 +435,28 @@ setInterval(() => { if (data) renderStrip(); }, 30000);
 const carrierWarned = new Set();
 // a carrier's booked jump in its last five minutes while you are not aboard: once per booking (its carrier and departure:
 // your fleet carrier's and, from an officer's journal, your squadron's, #16). sq: the squadron's
-function carrierDepartWarn(c, sq) {
+// a carrier's departure warning when it is due (under five minutes, not aboard, not warned of yet): {key, title, body,
+// say}, or null
+function carrierDepartDue(c, sq) {
   const pl = c && c.planned, key = pl && `${c.carrier_id || c.id}|${pl.departure}`;
-  if (!pl || !pl.departure || c.aboard || (c.decommission && c.decommission.done) || carrierWarned.has(key)) return;
+  if (!pl || !pl.departure || c.aboard || (c.decommission && c.decommission.done) || carrierWarned.has(key)) return null;
   const left = (Date.parse(pl.departure) - Date.now()) / 1000;
-  if (!(left > 0 && left < 300)) return;
-  carrierWarned.add(key);
+  if (!(left > 0 && left < 300)) return null;
   // the last minute: one plain line (speech.json's lines say "{minutes} minutes", which cannot be singular: F37)
   const mins = Math.ceil(left / 60), last = mins <= 1, name = c.name || c.callsign || (sq ? "your squadron's carrier" : "your carrier");
   const whose = sq ? "Your squadron's carrier" : "Your carrier";
-  alertOut("carrier", `${name} departs in ${last ? "under a minute" : `${mins} minutes`}`, `for ${pl.system}; you are not aboard`,
-           {sound: "alert", tag: "carrier_departs", say: () => last ? `${whose} departs in under a minute, and you are not aboard.`
-             : line("carrier_departs", {minutes: mins, carrier: name}, `${whose} departs in ${mins} minutes, and you are not aboard.`)});
+  return {key, title: `${name} departs in ${last ? "under a minute" : `${mins} minutes`}`, body: `for ${pl.system}; you are not aboard`,
+          say: () => last ? `${whose} departs in under a minute, and you are not aboard.`
+            : line("carrier_departs", {minutes: mins, carrier: name}, `${whose} departs in ${mins} minutes, and you are not aboard.`)};
+}
+// the warnings due now as one alert: both carriers leaving together are named in one (review round 9: with one tag, the
+// second's line and notification replaced the first's)
+function carrierDepartWarn(...due) {
+  due = due.filter(Boolean);
+  if (!due.length) return;
+  for (const d of due) carrierWarned.add(d.key);
+  alertOut("carrier", due.map(d => d.title).join(" · "), due.map(d => d.body).join(" · "),
+           {sound: "alert", tag: "carrier_departs", say: () => due.map(d => d.say()).join(" ")});
 }
 // 🎯 beside your carrier when it is in another system (the author, 2026-10-11): auto-target puts its system in the
 // galaxy map, as 🎯 on a route's row does; where auto-target can work (hwyAimBtn: canAim)
@@ -598,7 +608,8 @@ function squadronCarrierHtml(c) {
     move = `<span title="about ${mine} jump${mine === 1 ? "" : "s"} for you to reach it (a straight line: the real route is never shorter)">To it <b>${mine}</b> jump${mine === 1 ? "" : "s"}</span>`;
   }
   const trit = c.fuel == null ? "" : `<span title="the depot when the carrier's management was last opened (an officer's journal): members donate tritium, so it is not estimated">Tritium: <b>${c.fuel.toLocaleString()}t</b> <span class="unk">(${esc(shortDay(c.fuel_ts || ""))})</span></span>`;
-  const svc = c.services && c.services.length ? carrierServicesHtml(c) : "";
+  // a paused service ("UC ✗") shows with nothing else on too (review round 9: the line was left out)
+  const svc = (c.services && c.services.length) || (c.suspended && c.suspended.length) ? carrierServicesHtml(c) : "";
   return val(mk("squadron-carrier") + esc(c.name || c.callsign || "your squadron's carrier"),
              esc([c.callsign, c.squadron].filter(Boolean).join(" · ") || "your squadron's carrier")) +
     ln(where) + ln(move) + ln([svc, trit].filter(Boolean).join(" · "));
@@ -614,8 +625,7 @@ function renderCarrier() {
   tileCols();
   const side = carrierSide();
   drawCarrierLabel(!!fc && !!sc, side);
-  carrierDepartWarn(fc);   // both, whichever the tile shows
-  carrierDepartWarn(sc, true);
+  carrierDepartWarn(carrierDepartDue(fc), carrierDepartDue(sc, true));   // both, whichever the tile shows
   if (side === "sc") {
     drawFcTrip();
     if (typeof hForm !== "undefined" && hwyPlotter() === "carrier") { fillFcForm(); drawHwyStatus(); }
@@ -1127,7 +1137,8 @@ function tilesLineHtml() {
     const dep = left != null && left > 0 ? ` · departs in <span class="cd">${left >= 3600 ? `${Math.floor(left / 3600)} h ${Math.floor(left % 3600 / 60)} min` : `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`}</span>` : "";
     // decommissioned: said so, as the tile does, never as a place to fly to (complete review 2026-10-30)
     if (!sq && c.decommission && c.decommission.done) out.push(bit(`${mk("fleet-carrier")}carrier decommissioned`, "bad", c.name || "your fleet carrier"));
-    else out.push(sq ? bit(`${mk("squadron-carrier")}carrier ${where}${dep}`, "", c.name || c.callsign || "your squadron's carrier") + sysAimBtn(c.system, c.id64)
+    // the last five minutes in red for either carrier (review round 9: the squadron carrier's never was)
+    else out.push(sq ? bit(`${mk("squadron-carrier")}carrier ${where}${dep}`, dep && left < 300 && !c.aboard ? "urgent" : "", c.name || c.callsign || "your squadron's carrier") + sysAimBtn(c.system, c.id64)
       : bit(`${mk("fleet-carrier")}carrier ${where}${dep}`, dep && left < 300 && !c.aboard ? "urgent" : "", c.name || "your fleet carrier") + carrierAim(c));
   }
   const dl = tileLevel("tData");
@@ -2100,7 +2111,12 @@ async function pinPanelClick(e) {
   if (add) {
     const c = parsePinCoords(b.querySelector("[data-pinin]").value), see = b.querySelector("[data-pinsee]");
     if (c.error) { see.textContent = c.error; see.className = "warnc"; return true; }
-    pinsPost({action: "add", system: info.sys, sysname: info.sysname, body: info.body, name: b.querySelector("[data-pinname]").value, lat: c.lat, lon: c.lon});
+    const r = await pinsPost({action: "add", system: info.sys, sysname: info.sysname, body: info.body, name: b.querySelector("[data-pinname]").value, lat: c.lat, lon: c.lon});
+    // saved: the boxes empty for the next one (review round 9: the rewrite kept what was typed, and a second press saved
+    // the same pin again); kept on an error, to put right
+    if (r && !r.error) for (const q of ["[data-pinin]", "[data-pinname]"]) {
+      const i = b.querySelector(q); if (i) { i.value = ""; i.dispatchEvent(new Event("input", {bubbles: true})); }
+    }
     return true;
   }
   return false;
@@ -3814,6 +3830,18 @@ async function ringPricesAsk(b, sys, ask = m => holdSellAsk(m, 1, 100, "price", 
   })]);
   return true;
 }
+// a redraw that finds a mineral never asked from where you are now (a jump since: the key has your place) asks, and the
+// panels showing that system are drawn again with the answer (review round 9: "asking…" stayed, with nothing asking)
+function ringPricesKick(b, sys) {
+  if (bodyHotMinerals(b).some(m => !RING_PRICES.get(ringKey(sys, m))))
+    ringPricesAsk(b, sys).then(got => { if (got) ringPricesRedraw(sys); }, () => {});
+}
+function ringPricesRedraw(sys) {
+  if (typeof selectedSystem !== "undefined" && String(selectedSystem) === String(sys) && bodyData && !bodyData.error) renderBody();
+  const sb = typeof sBody !== "undefined" ? sBody : null;
+  if (sb && String(sb.sys) === String(sys) && sb.data && !sb.data.error)
+    renderBodyInto(document.getElementById("sBodyPanel"), sb.data, sb.name, "closeSearchBody()", sys);
+}
 // a failed lookup asked again RING_PRICE_RETRY_MS on for the body panel still showing that system (in-depth review
 // 2026-10-25: "asked again in a few minutes" waited for a redraw nothing made); one timer per system
 const RING_PRICE_TIMERS = new Map();
@@ -3835,6 +3863,7 @@ function ringPricesRetry(sys) {
 // the line's stand-in while it has no price: asking (a lookup is under way or not yet made), or the lookup failed and
 // is asked again in a few minutes (review 2026-10-25: "asking…" stayed after a failure, with nothing asking)
 function ringPricesWait(b, sys) {
+  ringPricesKick(b, sys);
   const cs = bodyHotMinerals(b).map(m => RING_PRICES.get(ringKey(sys, m)));
   return cs.length && cs.every(c => c && c.failed && !c.busy) ? "Best nearby: not known (the price lookup failed; asked again in a few minutes)"
     : "Best nearby: asking…";
@@ -8365,6 +8394,12 @@ function renderSysAims() {
   if (document.getElementById("nearDlg").open) renderNearest();
   if (CL.find) clDrawSide();
 }
+const PLOT_WHEN_LOADED_MS = 30000;   // a plot asked for while Plot Route's data loads goes ahead only this soon after
+// whether that plot goes now (the flag cleared either way): asked lately, this tab showing, no route followed meanwhile
+function plotWhenLoadedDue(now = Date.now()) {
+  const at = H.plotWhenLoaded; H.plotWhenLoaded = 0;
+  return !!at && now - at < PLOT_WHEN_LOADED_MS && view === "hwy" && !routeFollowed();
+}
 function plotRouteTo(name) {
   hidePop();   // a tapped card (the Map's, S5-S5) does not linger over Plot Route
   hEl("hwyTo").value = name;
@@ -8374,7 +8409,7 @@ function plotRouteTo(name) {
   if (routeFollowed()) { toast(`Plot Route: to ${name} · press Plot to replace the route you follow`); return; }
   // the tab's data not read yet (it was never opened): its form is not filled (Conservative unticked, no range), so
   // the plot waits for renderHwy to fill it (complete review 2026-10-30: Conservative went as false)
-  if (!H.data) { H.plotWhenLoaded = true; return; }
+  if (!H.data) { H.plotWhenLoaded = Date.now(); return; }
   hForm.dispatchEvent(new Event("submit", {cancelable: true, bubbles: true}));
 }
 document.addEventListener("click", e => {
@@ -8468,7 +8503,7 @@ async function loadHwy(force = false) {
   try { d = await apiJson("api/highway"); } catch (err) { d = {error: err.message}; }
   if (!isNewest("hwy", g)) return;   // a newer request went out meanwhile: its answer is the one to show (Codex F11)
   H.loading = false;
-  if (d.error) { H.error = d.error; H.key = null; }
+  if (d.error) { H.error = d.error; H.key = null; H.plotWhenLoaded = 0; }   // no plot waits for a later load
   else { H.error = null; H.data = d; }
   if (d.plotting && d.plotting.state === "running" && !H.poll) hwyPoll();
   if (CP.to && d.plotting && d.plotting.state !== "running") {   // the carrier's 🛣 plot has ended
@@ -9053,7 +9088,9 @@ function renderHwy() {
   renderHwyList(hd);
   renderRichList(rich ? rd : null);
   fillHwyForm(hd);
-  if (H.plotWhenLoaded) { H.plotWhenLoaded = false; hForm.dispatchEvent(new Event("submit", {cancelable: true, bubbles: true})); }
+  // the plot asked for before the tab's data came: only now, on this tab, with no route followed meanwhile (review round 9:
+  // a flag left by a load that failed, or a tab left during it, plotted an hour later over the route you followed)
+  if (H.plotWhenLoaded && plotWhenLoadedDue()) hForm.dispatchEvent(new Event("submit", {cancelable: true, bubbles: true}));
   // a new route (or none): the form folds away while one is followed, and opens when there is none
   const rid = rich ? `rich|${rr.id}` : r ? r.id : null;
   if (rid !== H.routeId) {

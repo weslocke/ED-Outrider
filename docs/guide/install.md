@@ -300,9 +300,11 @@ An HTTPS reverse proxy on your own network (Caddy, nginx, a NAS's) works too: pu
 pages. A proxy running on the Outrider PC itself is fine with a password too, as long as it sends a forwarding
 header (`X-Forwarded-For`, `Forwarded` or `X-Real-IP`): Outrider then asks each device to sign in, as it would without
 the proxy. Caddy adds one by itself; nginx does not: add
-`proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` beside its `proxy_pass` (or `include proxy_params;` on
-Debian and Ubuntu). Without it every device looks like this PC and skips the password, so check once from a phone:
-the page must ask for the password. A **TCP-level** forwarder on the Outrider PC (stunnel, an ssh or socat tunnel, HAProxy in tcp
+`proxy_set_header Host $host;` and `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` beside its
+`proxy_pass` (or `include proxy_params;` on Debian and Ubuntu, which has both). Without the forwarding header every
+device looks like this PC and skips the password, so check once from a phone: the page must ask for the password.
+Without the Host line nginx names Outrider's own address to it, and every change, the sign-in included, is refused as
+coming from another web site. A **TCP-level** forwarder on the Outrider PC (stunnel, an ssh or socat tunnel, HAProxy in tcp
 mode) adds no such header: every device it serves looks like this PC and skips the password, so do not put one in
 front of Outrider (in Docker, Outrider never counts loopback as this PC, so the container's own port forwarding is
 safe).
