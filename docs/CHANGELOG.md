@@ -2,6 +2,21 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · A moved Outrider folder, and why Piper would not load (issue #21)
+- A player renamed the folder Outrider lives in (spaces to dashes) and Piper became "not installed"; reinstalling it
+  did not help. A `.venv` keeps the folder it was made in: after a move its pip runs a Python that is gone (or the
+  old copy's) and `activate` puts the old `bin/` first on the PATH, while `.venv/bin/python` itself still works, so
+  the launcher's checks passed and its `exec python` ran whichever `python` came next.
+- **`launch_outrider.sh` makes a moved environment again** ("made in another folder … making it again"): pip's script
+  names its Python (`#!`, or the `/bin/sh` trampoline pip writes for a path with spaces or a long one), compared by
+  folder with `-ef`, so the same folder through a symlink is still here. It starts Outrider with
+  `"$HERE/.venv/bin/python"` by its full path, never the PATH's `python`. (`launch_outrider.bat` already did.)
+- **An installed Piper that will not load says why**: `tts._import_piper` returns the reason (a module it needs
+  missing, a library that will not open, any error, not only ImportError, which used to stop the start), shown as
+  the voice status ("Piper would not load: …"), in `info()["import_error"]` for the page (the speech button's title,
+  and Settings' hint, which now says to delete `.venv` and start again instead of how to install Piper) and in the
+  start-up line. Not installed at all is still "Piper not installed".
+
 ## 2026-11-01 · Your squadron's carrier: what an officer's journal adds
 - Hiner399's session as his squadron's leader (issue #16: docked at it, tritium out and in, three bookings, Refuel
   paused and resumed, trade orders, bank transfers) confirmed the officers' lines Outrider had read by Frontier's

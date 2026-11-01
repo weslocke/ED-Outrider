@@ -11,7 +11,8 @@
 Open **<http://127.0.0.1:8025/>** and go fly.
 
 `launch_outrider.sh` sets Outrider up the first time (a virtual environment in `.venv` with `requirements.txt`),
-installs again only when `requirements.txt` has changed (after a `git pull`) or the environment is broken, and
+installs again only when `requirements.txt` has changed (after a `git pull`), the environment is broken or the
+folder was moved or renamed (a `.venv` keeps the folder it was made in, so it is made afresh there), and
 otherwise starts Outrider at once (once a week it first checks for a newer certificate bundle: a few seconds); its
 arguments go to Outrider (`./launch_outrider.sh --port 8026`), and relative paths in them (`--config my.toml`) are
 taken from the folder you run it in. With the [in-game overlay](overlay.md) on (`[overlay] enabled = true`) it also
@@ -58,7 +59,8 @@ requirements.txt` puts it back):
   onnxruntime has no build for Python 3.15 yet. The launchers pick such a Python by themselves when you have one
   (Windows: through the `py` launcher; Linux: `python3`, else `python3.14` … `python3.11`) and say so before the setup
   when you have none: Outrider then runs with the browser's voice. Installed Python 3.14 afterwards? Delete the `.venv`
-  folder and start again. `PYTHON=` still picks one yourself.
+  folder and start again. `PYTHON=` still picks one yourself. An installed Piper that will not load says why (⚙
+  Settings, beside Voice, and Outrider's start-up line) rather than "not installed".
 - **evdev** (Linux only) for auto honk, auto-target, the control rail and the co-pilot button (Windows needs
   nothing extra for the first three). It is built from
   source, so it needs your distribution's Python development headers.

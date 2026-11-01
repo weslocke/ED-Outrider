@@ -11199,7 +11199,7 @@ function drawSpeechBtn() {
   speechBtn.classList.toggle("on", !!speechOn); speechBtn.style.opacity = speechOn && speakerHere() ? 1 : .45;
   const t = data && data.tts;
   speechBtn.title = (speechOn ? "spoken alerts on" : "spoken alerts off") + " — " +
-    (t && t.engine === "piper" ? `Piper voice ${t.voice}` : t && t.available ? `Piper: ${t.status}; browser speech meanwhile` : "browser speech (install Piper for a better voice: see outrider/tts.py)") +
+    (t && t.engine === "piper" ? `Piper voice ${t.voice}` : t && t.available ? `Piper: ${t.status}; browser speech meanwhile` : t && t.import_error ? `browser speech (Piper would not load: ${t.import_error})` : "browser speech (install Piper for a better voice: see outrider/tts.py)") +
     (speakerHere() ? "" : speakMode() === "never" ? " — this browser never speaks (see Settings)" : " — another window is speaking");
 }
 // "This screen speaks": the setting, whether this window is the one, and a way to take over
@@ -11502,7 +11502,10 @@ function drawTts() {
   document.getElementById("ttsEngine").textContent = t && t.engine === "piper" ? "· Piper" : "· browser speech";
   // only when it says something: loading, downloading, a failure (the author, 2026-10-16: "ready" told nothing)
   document.getElementById("ttsStatus").textContent = t && t.available && t.status !== "ready" ? t.status : "";
-  document.getElementById("ttsHint").textContent = !t || !t.available
+  // installed but would not load (issue #21): the reason, and the fix that rebuilds the environment, not "install it"
+  document.getElementById("ttsHint").textContent = t && !t.available && t.import_error
+    ? `Piper is installed but would not load (${t.import_error}), so the browser's own voice is used. Delete the .venv folder where Outrider runs and start it again with its launcher, which sets Piper up afresh; if it still will not load, that error is the one to report.`
+    : !t || !t.available
     ? "Piper is not installed, so the browser's own voice is used (robotic on Linux). For a natural voice: python3 -m venv --system-site-packages .venv && .venv/bin/pip install piper-tts, then restart Outrider."
     : "Voices live in data/piper-voices/ where Outrider runs; More voices below downloads any of Piper's there.";
   const opts = (t && t.voices) || [];

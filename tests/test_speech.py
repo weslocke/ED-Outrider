@@ -1722,6 +1722,47 @@ class SweepVoiceFixes(unittest.TestCase):
             f.write("version = 2.7.18\n")                       # another Python's packages: not taken
         self.assertEqual(len(T._venv_site_packages(root, nt=True)), 1)
 
+    def test_why_an_installed_piper_would_not_load(self):
+        """Issue #21: an installed Piper that would not load (a module it needs missing, a library that will not open)
+        was "Piper not installed", so the player installed it again and again. The reason is kept and said: the status,
+        the page (info) and the start-up line. A stand-in package in a .venv, so this machine's own Piper never decides."""
+        import importlib, tempfile, shutil, sys, unittest.mock
+        import outrider.tts as T
+        root, name = tempfile.mkdtemp(), "outrider_test_piper"
+        self.addCleanup(shutil.rmtree, root)
+        site = T._venv_site_packages(root)[0]
+        os.makedirs(site)
+        path0 = list(sys.path)
+
+        def cleanup():
+            sys.modules.pop(name, None)
+            if site in sys.path:
+                sys.path.remove(site)
+        self.addCleanup(cleanup)
+
+        def package(body):
+            os.makedirs(os.path.join(site, name), exist_ok=True)
+            with open(os.path.join(site, name, "__init__.py"), "w") as f:
+                f.write(body)
+            sys.modules.pop(name, None)
+            importlib.invalidate_caches()
+        self.assertEqual(T._import_piper(root, name), (None, ""))         # not installed: nothing to say
+        package("import outrider_test_gone_dependency\n")
+        self.assertEqual(T._import_piper(root, name),
+                         (None, "ModuleNotFoundError: No module named 'outrider_test_gone_dependency'"))
+        self.assertEqual(sys.path, path0)                                  # a .venv that would not load is not kept
+        package('raise OSError("libespeak-ng.so.1: cannot open shared object file")\n')   # not an ImportError: said too
+        self.assertEqual(T._import_piper(root, name), (None, "OSError: libespeak-ng.so.1: cannot open shared object file"))
+        package("class PiperVoice:\n    pass\n")
+        voice, why = T._import_piper(root, name)
+        self.assertEqual((voice.__name__, why), ("PiperVoice", ""))
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        for got, status in (((None, "OSError: x.so"), "Piper would not load: OSError: x.so"), ((None, ""), "Piper not installed")):
+            with unittest.mock.patch.object(T, "_import_piper", return_value=got):
+                sp = T.Speaker(voices_dir=d)
+            self.assertEqual((sp.status, sp.info()["import_error"], sp.available), (status, got[1], False))
+
     def test_abandoned_downloads_are_swept(self):
         import tempfile, shutil, time
         import outrider.tts as T

@@ -19,6 +19,7 @@ import asyncio
 import glob
 import hashlib
 import http.client
+import importlib
 import io
 import json
 import math
@@ -348,22 +349,24 @@ def load_voice(piper_voice, path):
         return voice
 
 
-def _import_piper():
-    """PiperVoice, from this interpreter or from the repository's .venv; None if neither has it."""
-    try:
-        from piper import PiperVoice
-        return PiperVoice
-    except ImportError:
-        pass
-    for venv in _venv_site_packages():
-        if os.path.isdir(venv) and venv not in sys.path:
+def _import_piper(root=None, name="piper"):
+    """(PiperVoice, why), from this interpreter or from the repository's .venv. Neither: (None, why), why "" when
+    neither has Piper, else what stopped an installed one loading (a module it needs missing, a library that will not
+    load): issue #21's "Piper not installed" hid it. name: the package (a test's stand-in)."""
+    why = ""
+    for venv in [None, *_venv_site_packages(root)]:
+        if venv is not None:
+            if not os.path.isdir(venv) or venv in sys.path:
+                continue
             sys.path.append(venv)
-            try:
-                from piper import PiperVoice
-                return PiperVoice
-            except ImportError:
+        try:
+            return importlib.import_module(name).PiperVoice, ""
+        except Exception as e:  # noqa: BLE001 -- whatever stops it loading: browser speech, and the reason said
+            if not (isinstance(e, ModuleNotFoundError) and e.name == name):
+                why = why or f"{type(e).__name__}: {e}"
+            if venv is not None:
                 sys.path.remove(venv)
-    return None
+    return None, why
 
 
 def _venv_site_packages(root=None, nt=None):
@@ -427,7 +430,7 @@ class Speaker:
         # called (from the thread) with the voice name once a use() switch has it speaking: the place to
         # remember the choice (a choice that never loads must not be tried again at the next start)
         self.on_switched = on_switched or (lambda name: None)
-        self.PiperVoice = _import_piper()
+        self.PiperVoice, self.import_error = _import_piper()   # import_error: why an installed Piper would not load
         self.SynthesisConfig = None
         if self.PiperVoice:
             from piper import SynthesisConfig   # importable once _import_piper found Piper
@@ -448,7 +451,8 @@ class Speaker:
         self._in_use = 0            # how many voices besides the main one lines may ask for now (size_extra)
         self.fetching = set()       # voices downloading for the voice lab (fetch: not switched to)
         self.fetch_failed = {}      # voice -> why its last fetch failed (the lab says so)
-        self.status = "Piper not installed" if not self.PiperVoice else "starting"
+        self.status = ("starting" if self.PiperVoice else f"Piper would not load: {self.import_error}" if self.import_error
+                       else "Piper not installed")
 
     @property
     def available(self):
@@ -472,6 +476,7 @@ class Speaker:
         people = self.voice_speakers(self.voice_name) if self.voice_name else []
         return {"engine": "piper" if self.ready else None, "voice": self.voice_name, "status": self.status,
                 "voices": self.installed() if self.available else [], "available": self.available,
+                "import_error": self.import_error,   # why an installed Piper would not load ("" when not installed)
                 "fetching": sorted(self.fetching), "fetch_failed": dict(self.fetch_failed),
                 # the voice's speaker when it has several (the list itself: GET /api/voices/speakers)
                 "speaker": sid, "speakers": len(people),

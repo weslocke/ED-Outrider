@@ -49,9 +49,30 @@ HASHPY="${PYTHON:-python3}"
 want=$(req_hash "$HASHPY")
 have=$(cat "$STAMP" 2>/dev/null || true)
 
+# the environment is still in the folder it was made in. Moved with this folder (renamed: issue #21), a .venv keeps the
+# old path in its scripts: its pip runs a Python that is gone (or the old copy's) and activate puts the old bin/ first
+# on the PATH, while .venv/bin/python itself still works. pip's script names its Python in one of three ways:
+# `#!/path/bin/python3.x`, `'''exec' "/path with spaces/bin/python3.x" ...` or `'''exec' /a/long/path/... "$0" "$@"`.
+# Compared by folder (-ef), so the same folder reached through a symlink counts as here. No pip script: taken as here.
+venv_here() {
+    local line py="" n=0
+    [ -r "$VENV/bin/pip" ] || return 0
+    while [ $n -lt 2 ] && IFS= read -r line; do
+        n=$((n + 1))
+        case $line in
+            "#!/bin/sh"*) ;;
+            "#!"*) py=${line#\#!}; py=${py%% *}; break ;;
+            "'''exec' \""*) py=${line#"'''exec' \""}; py=${py%%\"*}; break ;;
+            "'''exec' "*) py=${line#"'''exec' "}; py=${py%% *}; break ;;
+        esac
+    done < "$VENV/bin/pip"
+    [ -z "$py" ] || [ "${py%/*}" -ef "$VENV/bin" ]
+}
+
 needs_install() {
     [ -n "${OUTRIDER_REINSTALL:-}" ] && return 0   # asked for (an optional package that could not be built before)
     [ ! -x "$VENV/bin/python" ] && return 0
+    venv_here || return 0   # moved with the folder: made again
     "$VENV/bin/python" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null || return 0   # too old: made again
     [ "$want" != "$have" ] && return 0
     "$VENV/bin/python" -c "import aiohttp" 2>/dev/null || return 0   # a broken or emptied environment
@@ -61,7 +82,10 @@ needs_install() {
 if needs_install; then
     # a half-made environment (venv failed part way: python but no pip, e.g. before python3-venv was installed) is
     # made again rather than failing on every run
-    if [ -x "$VENV/bin/python" ] && ! "$VENV/bin/python" -m pip --version >/dev/null 2>&1; then
+    if [ -x "$VENV/bin/python" ] && ! venv_here; then
+        echo "$VENV was made in another folder (this one was moved or renamed): making it again"
+        rm -rf "$VENV"
+    elif [ -x "$VENV/bin/python" ] && ! "$VENV/bin/python" -m pip --version >/dev/null 2>&1; then
         echo "$VENV is incomplete (no pip): making it again"
         rm -rf "$VENV"
     elif [ -x "$VENV/bin/python" ] && ! "$VENV/bin/python" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; then
@@ -194,4 +218,5 @@ source "$VENV/bin/activate"
 # setup above runs again, so requirements changed by a git pull are installed)
 export OUTRIDER_LAUNCHER="$HERE/$(basename "$0")"
 cd "$CALLER"
-exec python "$HERE/ed_outrider.py" "$@"
+# the environment's Python by its full path: never whichever `python` the PATH finds first (issue #21)
+exec "$HERE/$VENV/bin/python" "$HERE/ed_outrider.py" "$@"

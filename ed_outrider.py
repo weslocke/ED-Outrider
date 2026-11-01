@@ -25039,6 +25039,9 @@ async def run(args, st):
     state.speaker.voices_loaded, state.speaker.voices_preload = st["voices_loaded"], st["voices_preload"]
     state.journals.pad_delay = st["pad_delay"]   # [speech] pad_delay: the landing pad said after the station's voice
     print("spoken alerts: " + ("Piper found, preparing a voice" if state.speaker.available else
+                               f"Piper is installed but would not load ({state.speaker.import_error}), the page uses "
+                               "browser speech: delete .venv and start the launcher again to set it up afresh"
+                               if state.speaker.import_error else
                                "Piper not installed, the page uses browser speech (see outrider/tts.py)"))
     state.speaker.start()
     state.game_pc, why = resolve_game_pc(st["game_pc"])

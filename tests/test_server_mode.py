@@ -180,7 +180,7 @@ class Packaging(unittest.TestCase):
         self.assertEqual(subprocess.run(["bash", "-n", path], capture_output=True).returncode, 0)
         script = self.read("launch_outrider.sh")
         for part in ("hashlib.sha256(open(\"requirements.txt\"", ".requirements.sha256", "import aiohttp", "scripts/install_requirements.py requirements.txt",
-                     'exec python "$HERE/ed_outrider.py" "$@"', "upgrade pip || true", "sys.version_info < (3, 11)",
+                     'exec "$HERE/$VENV/bin/python" "$HERE/ed_outrider.py" "$@"', "upgrade pip || true", "sys.version_info < (3, 11)",
                      "command -v wl-copy", "command -v xclip"):   # the clipboard tools pip cannot install: a hint
             self.assertIn(part, script)
 
@@ -195,7 +195,7 @@ class Packaging(unittest.TestCase):
         script = self.read("launch_outrider.sh")
         func = re_.search(r"^clipboard_hint\(\) \{\n.*?^\}\n", script, re_.S | re_.M).group(0)
         self.assertIn("\nclipboard_hint\n", script)                    # called at every start, before Outrider
-        self.assertLess(script.index("\nclipboard_hint\n"), script.index('exec python "$HERE/ed_outrider.py" "$@"'))
+        self.assertLess(script.index("\nclipboard_hint\n"), script.index('exec "$HERE/$VENV/bin/python" "$HERE/ed_outrider.py" "$@"'))
         bash, uname = shutil.which("bash"), shutil.which("uname")
 
         def hint(env, tools=()):
@@ -989,3 +989,119 @@ class PiperPython(unittest.TestCase):
         notice = bat.index("%PY% scripts\\python_check.py\n")
         self.assertLess(bat.index(":piperpy"), notice)
         self.assertLess(notice, bat.index('%PY% -m venv "%VENV%"'))                                  # said before the setup
+
+
+class MovedFolder(unittest.TestCase):
+    """Issue #21 (2026-11-01): a player renamed Outrider's folder (spaces to dashes) and Piper was "not installed". A .venv
+    keeps the folder it was made in inside its scripts: pip runs a Python that is gone (or the old copy's), and activate
+    puts the old bin/ first on the PATH, so the launcher's `exec python` ran whichever python came next. The launcher now
+    makes a moved environment again and starts Outrider with the environment's Python by its full path."""
+    ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        self.d = tempfile.mkdtemp(prefix="Elite Data ")   # a space in the path, as the player's was
+        self.bins = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d)
+        self.addCleanup(shutil.rmtree, self.bins)
+        for tool in ("dirname", "cat", "rm", "mkdir", "chmod", "uname", "cut"):
+            p = shutil.which(tool)
+            if p:
+                os.symlink(p, os.path.join(self.bins, tool))
+
+    def write(self, path, text, mode=0o644):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(text)
+        os.chmod(path, mode)
+
+    def pip_naming(self, py, form, root=None):
+        """root's .venv/bin/pip naming `py` the way pip writes it: a #! line (a short path without spaces), or the
+        /bin/sh trampoline (quoted when the path has spaces, bare when it is only long)."""
+        text = {"shebang": f"#!{py}\n", "quoted": f"#!/bin/sh\n'''exec' \"{py}\" \"$0\" \"$@\"\n' '''\n",
+                "bare": f"#!/bin/sh\n'''exec' {py} \"$0\" \"$@\"\n' '''\n"}[form]
+        self.write(os.path.join(root or self.d, ".venv", "bin", "pip"), text + "import sys\n", 0o755)
+
+    def test_venv_here(self):
+        import re
+        import shutil
+        import subprocess
+        import tempfile
+        with open(os.path.join(self.ROOT, "launch_outrider.sh"), encoding="utf-8") as f:
+            text = f.read()
+        fn = re.search(r"^venv_here\(\) \{\n.*?^\}\n", text, re.S | re.M).group(0)
+
+        def here(cwd=None):
+            r = subprocess.run([shutil.which("bash"), "-c", "set -euo pipefail; VENV=.venv\n" + fn + "venv_here"],
+                               cwd=cwd or self.d, capture_output=True, text=True, timeout=10)
+            self.assertEqual(r.stderr, "")
+            return r.returncode == 0
+        os.makedirs(os.path.join(self.d, ".venv", "bin"))
+        self.assertTrue(here())                                        # no pip script: nothing to tell by, kept
+        own = os.path.join(self.d, ".venv", "bin", "python3.14")
+        self.pip_naming(own, "quoted")
+        self.assertTrue(here())
+        self.pip_naming("/gone/Elite Data Being Held/.venv/bin/python3.14", "quoted")
+        self.assertFalse(here())                                       # moved: its old folder is gone
+        plain = tempfile.mkdtemp()                                     # #! and bare: only for paths without spaces
+        self.addCleanup(shutil.rmtree, plain)
+        os.makedirs(os.path.join(plain, ".venv", "bin"))
+        for form in ("shebang", "bare"):
+            self.pip_naming(os.path.join(plain, ".venv", "bin", "python3.14"), form, plain)
+            self.assertTrue(here(plain), form)
+            self.pip_naming("/gone/Elite-Data-Being-Held/.venv/bin/python3.14", form, plain)
+            self.assertFalse(here(plain), form)
+        other = os.path.join(self.bins, ".venv", "bin")                # copied: the old copy is still there
+        os.makedirs(other)
+        self.pip_naming(os.path.join(other, "python3.14"), "quoted")
+        self.assertFalse(here())
+        link = self.d.rstrip("/") + "-link"                            # the same folder through a symlink: here
+        os.symlink(self.d, link)
+        self.addCleanup(os.remove, link)
+        self.pip_naming(os.path.join(link, ".venv", "bin", "python3.14"), "quoted")
+        self.assertTrue(here())
+
+    def start(self, pip_py, decoy=False):
+        """The launcher on a fake .venv whose requirements stamp matches (nothing to install), its pip naming pip_py.
+        decoy: activate puts a folder first on the PATH whose `python` is not the environment's."""
+        import hashlib
+        import shutil
+        import subprocess
+        shutil.copy(os.path.join(self.ROOT, "launch_outrider.sh"), self.d)
+        os.makedirs(os.path.join(self.d, "scripts"))
+        shutil.copy(os.path.join(self.ROOT, "scripts", "python_check.py"), os.path.join(self.d, "scripts"))
+        self.write(os.path.join(self.d, "requirements.txt"), "aiohttp\n")
+        venv_bin = os.path.join(self.d, ".venv", "bin")
+        self.write(os.path.join(self.d, ".venv", ".requirements.sha256"), hashlib.sha256(b"aiohttp\n").hexdigest() + "\n")
+        self.write(os.path.join(venv_bin, "python"),
+                   '#!/bin/sh\nif [ "$2" = "import aiohttp" ]; then exit 0; fi\nif [ "$1" = "-c" ]; then exec "%s" "$@"; fi\n'
+                   'if [ "$1" = "-m" ]; then exit 0; fi\necho "OUTRIDER ARGS=$*"\n' % shutil.which("python3"), 0o755)
+        self.pip_naming(pip_py, "quoted")
+        path = venv_bin
+        if decoy:
+            path = os.path.join(self.bins, "old")
+            self.write(os.path.join(path, "python"), '#!/bin/sh\necho "WRONG PYTHON"\n', 0o755)
+        self.write(os.path.join(venv_bin, "activate"), 'PATH="%s:$PATH"\n' % path)
+        # the system's python3 (for a new environment): suits Piper, its venv says so and fails, so the run ends there
+        self.write(os.path.join(self.bins, "python3"),
+                   '#!/bin/sh\nif [ "$2" = "--ok" ]; then exit 0; fi\nif [ "$1" = "-m" ] && [ "$2" = "venv" ]; then '
+                   'echo "NEW VENV"; exit 1; fi\nexit 0\n', 0o755)
+        env = {k: v for k, v in os.environ.items() if k not in ("PYTHON", "DISPLAY", "WAYLAND_DISPLAY", "XDG_SESSION_TYPE")}
+        env["PATH"] = self.bins
+        return subprocess.run([shutil.which("bash"), os.path.join(self.d, "launch_outrider.sh")], cwd=self.d,
+                              capture_output=True, text=True, env=env, timeout=60)
+
+    def test_a_moved_environment_is_made_again(self):
+        r = self.start("/gone/Elite Data Being Held/.venv/bin/python3.14")
+        self.assertIn(".venv was made in another folder (this one was moved or renamed): making it again", r.stdout)
+        self.assertIn("NEW VENV", r.stdout)                            # made again with the system's Python
+        self.assertNotIn("OUTRIDER", r.stdout)
+        self.assertEqual(r.returncode, 1, r.stderr)                    # (the fake venv failed: the run ends there)
+
+    def test_outrider_runs_on_the_environments_python(self):
+        r = self.start(os.path.join(self.d, ".venv", "bin", "python3.14"), decoy=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("making it again", r.stdout)                  # its own folder: kept
+        self.assertNotIn("WRONG PYTHON", r.stdout)
+        self.assertIn(f"OUTRIDER ARGS={self.d}/ed_outrider.py", r.stdout, r.stderr)
