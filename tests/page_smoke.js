@@ -2829,12 +2829,13 @@ const releasePayloads = async () => {
       data.tts = null;
       const none = {words: "No Piper check.", prio: 1, kind: "manual", pace: 1};
       await sayNow(none);
-      radio("browser");   // Outrider gone quiet: the browser says it (no Piper line made in advance), none made
-      const realSpeak = speak, f = [speechOn, isSpeaker], lostKey = lostLine.key, lostSpoke = [];
+      radio("browser");   // Outrider gone quiet: the browser says it (no Piper line made in advance), none made, through a hush
+      const realSpeak = speak, f = [speechOn, isSpeaker], lostKey = lostLine.key, lostSpoke = [], hushWas = hushState;
       speak = (text, o) => lostSpoke.push(text + " [" + o.kind + "]"); speechOn = isSpeaker = true; lostLine.key = null;
+      takeHush({mode: "30m", left: 1800});
       data.tts = {engine: "piper", voice: "x", available: true}; await prepareLostLine();
-      const lost = [await sayLost(), lostSpoke, lostLine.key];
-      speak = realSpeak; [speechOn, isSpeaker] = f; lostLine.key = lostKey; data.tts = null;
+      const lost = [await sayLost(), lostSpoke, lostLine.key, spoken.pop()];
+      speak = realSpeak; [speechOn, isSpeaker] = f; lostLine.key = lostKey; data.tts = null; hushState = hushWas;
       store.set("browserVoice", "gone"); drawBrowserVoice();
       const gone = [sel.value, document.getElementById("browserVoiceHint").textContent];
       for (const [k, v] of keep) v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v);
@@ -2846,11 +2847,81 @@ const releasePayloads = async () => {
                crewPlay: true, piperAgain: [true, false, false, true, true]},
       spoken: [["Chosen check.", "Libby", "en-GB"], ["Copilot check.", "Libby", "en-GB"], ["No Piper check.", "Libby", "en-GB"]],
       engines: ["browser voice (chosen): Libby", "browser voice (chosen): Libby", null, "browser voice: Libby"],
-      lost: ["browser", ["Lost contact with Outrider. No alerts until it is back. [connection]"], null],
+      lost: ["browser", [], null, ["Lost contact with Outrider. No alerts until it is back.", "Libby", "en-GB"]],
       gone: ["", "the voice chosen before is not in this browser: its default speaks"]};
     const goodBV = JSON.stringify(got) === JSON.stringify(want) && JSON.stringify(asked) === JSON.stringify(["api/say/play"]) && errors.length === before;
     allOk = allOk && goodBV;
     console.log(goodBV ? "OK" : "FAIL", "| browser voice |", goodBV ? "chosen: every line in the picked voice, never Piper or the PC; grouped picker; Piper again as before; no Piper: the picked voice" : JSON.stringify({got, asked}), errors.slice(before));
+  }
+  // review round 9, the browser's voice: refused before a click (Chromium) the line waits for it, the pill asking; a
+  // crew ▶ never cuts an alert off, and an alert cut off by anything else is not "said"; a crew member's Piper voice
+  // trouble keeps its personality; chatter needs two voices; the audition's pace; Find a setting reads the chosen voice
+  browser_voice_review: { if (skip("browser_voice_review")) break browser_voice_review;
+    const w = dom.window, before = errors.length;
+    const got = await w.eval(`(async () => {
+      const ss = window.speechSynthesis, U = window.SpeechSynthesisUtterance, tts = data.tts, crewWas = data.crew, a = actx;
+      const keep = ["speechEngine", "browserVoice"].map(k => [k, localStorage.getItem(k)]), f = [speechOn, isSpeaker];
+      const spoken = [];
+      let refuse = 1, cutNext = false;
+      window.SpeechSynthesisUtterance = function (words) { this.text = words; };
+      window.speechSynthesis = {speaking: false, pending: false, getVoices: () => [], cancel() {},
+        speak(u) { spoken.push([u.text, u.rate]); setTimeout(() => refuse-- > 0 ? u.onerror({error: "not-allowed"})
+          : cutNext ? (cutNext = false, u.onerror({error: "interrupted"})) : u.onend && u.onend(), 0); }};
+      const cb = document.getElementById("serverPlay"); cb.checked = false; cb.onchange({target: cb});
+      store.set("speechEngine", "browser"); speechOn = isSpeaker = true; data.tts = {engine: "piper", voice: "x", available: true};
+      actx = {state: "suspended", resume() { return Promise.resolve(); }};
+      const out = {};
+      // refused: held, the pill asks; the click: said
+      const held = {words: "Held for a click.", prio: 1, kind: "manual", pace: 1, at: Date.now(), notBefore: Date.now()};
+      const p = sayNow(held);
+      await new Promise(r => setTimeout(r, 50));
+      out.held = [held.heldForClick === true, audioBlocked(), !document.getElementById("audioPill").hidden];
+      actx.state = "running"; audioStateChanged(); await p;
+      out.after = [held.unsaid || null, spoken.map(x => x[0]), audioBlocked()];
+      // cut off by something else: not said
+      const cut = {words: "Cut off.", prio: 1, kind: "manual", pace: 1, at: Date.now(), notBefore: Date.now()};
+      cutNext = true; await sayNow(cut);
+      out.cut = cut.unsaid;
+      // a crew ▶ while an alert is said: refused, the alert untouched
+      speechNow = {prio: 1}; out.refused = [await browserSay("Crew line."), document.getElementById("labMsg").textContent]; speechNow = null;
+      out.played = await browserSay("Crew line."); out.msg = document.getElementById("labMsg").textContent;
+      // the crew: a Piper voice's trouble is none with the browser's voice; a personality gone still is
+      data.crew = {on: true, danger: false, rows: {"x": "engineer"}, members: {engineer: {personality: "business", voice: "en_GB-gone-medium", fill: "voice en_GB-gone-medium not installed"}}};
+      out.member = crewMember("x", "k").role;
+      data.crew.members.engineer.fill = "personality pirate is not in the lines file";
+      out.gone = crewMember("x", "k").role;
+      store.set("speechEngine", "piper"); data.crew.members.engineer.fill = "voice en_GB-gone-medium not installed";
+      out.piper = crewMember("x", "k").role;
+      store.set("speechEngine", "browser");
+      out.chat = chatVoiceKey({role: "engineer", personality: "business"}) === chatVoiceKey({role: "navigator", personality: "sarcastic"});
+      out.find = document.getElementById("browserVoice").hasAttribute("data-sfone");
+      // the main hint names the browser's voice when no Piper speaks (not installed here)
+      store.set("speechEngine", "piper"); data.tts = {engine: null, available: false}; data.crew = {on: false};
+      drawMainHint(); out.hint = document.getElementById("mainHint").textContent.startsWith("This browser's voice");
+      store.set("speechEngine", "browser"); data.tts = {engine: "piper", voice: "x", available: true};
+      // the narrow screen's crew grid wins over the browser voice's columns
+      out.narrow = [...document.styleSheets].some(sh => [...sh.cssRules].some(r => r.media && r.cssText.includes(".crewtable.nopiper tr")
+        && r.cssText.includes("1fr 1fr")));
+      // the crew lines audition at the personality's pace
+      const lw = labLine, lib = speechLib, rates = [];
+      speechLib = Object.assign({}, lib, {styles: Object.assign({}, lib.styles, {fast: {speed: 1.5}}), lines: {k: {}}});
+      let once = true; labLine = () => once ? (once = false, {key: "k", style: "fast", text: "Paced."}) : null;
+      const sp = speechSpeed();
+      await crewLinesAudition(() => {}, "fast");
+      out.pace = Math.abs(spoken[spoken.length - 1][1] - Math.min(2, sp * 1.5)) < 1e-9;
+      labLine = lw; speechLib = lib;
+      [speechOn, isSpeaker] = f; actx = a; data.tts = tts; data.crew = crewWas;
+      window.speechSynthesis = ss; window.SpeechSynthesisUtterance = U;
+      for (const [k, v] of keep) v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v);
+      drawAudioPill(); drawTts();
+      return out; })()`);
+    const want = {held: [true, true, true], after: [null, ["Held for a click.", "Held for a click."], false],
+      cut: "cut off in this browser (another line or ▶ took its voice)",
+      refused: [false, "An alert is being said: try again in a moment"], played: true, msg: "",
+      member: "engineer", gone: "xo", piper: "xo", chat: true, find: true, hint: true, narrow: true, pace: true};
+    const goodBR = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && goodBR;
+    console.log(goodBR ? "OK" : "FAIL", "| browser voice review |", goodBR ? "held for a click and said; cut off not said; no ▶ over an alert; crew fills, chatter, Find" : JSON.stringify(got), errors.slice(before));
   }
   // the browser holds audio back until a click: a red pill on the menu bar and 🔇 in the title, Outrider told (the
   // tablet asks too), and the line waits for the click, then plays in Piper (here: the server's Piper answer stubbed
@@ -4827,7 +4898,16 @@ const releasePayloads = async () => {
     const sayItem = async () => w.eval(`(async () => { const t = data.tts; data.tts = null; const it = {words: "Test line.", pace: 1};
       try { await sayNow(it); } finally { data.tts = t; } return it.unsaid || "said"; })()`);
     got.voice = [await sayItem()];
-    fail = "interrupted"; got.voice.push(await sayItem());
+    // Outrider's own stop (a hush, a higher line): the browser's "interrupted" is no failure; anything else's is (review
+    // round 9: a crew ▶ cut alerts off and they were logged said)
+    let pending = null;
+    w.speechSynthesis = {speak: u => { pending = u; }, cancel() { if (pending) { const u = pending; pending = null; u.onerror({error: "interrupted"}); } },
+                         speaking: true, pending: false};
+    got.voice.push(await w.eval(`(async () => { const t = data.tts; data.tts = null; const it = {words: "Test line.", pace: 1};
+      try { const p = sayNow(it); await new Promise(r => setTimeout(r, 20)); speechNow.stop(); await p; } finally { data.tts = t; }
+      return it.unsaid || "said"; })()`));
+    w.speechSynthesis = {speak: u => setTimeout(() => u.onerror({error: "interrupted"}), 10), cancel() {}, speaking: false, pending: false};
+    got.voice.push(await sayItem());
     w.speechSynthesis = realSS; w.SpeechSynthesisUtterance = realU;
     // F46: a heat line dropped unsaid does not hold back the next one
     got.cool = w.eval(`(() => { const f = [speechOn, isSpeaker]; speechOn = isSpeaker = true; speechItems = []; speechLast = {};
@@ -4841,7 +4921,8 @@ const releasePayloads = async () => {
     if (got.hidden !== 0) bad.push("hidden");
     if (JSON.stringify(got.schem) !== JSON.stringify([4, true])) bad.push("schem");
     if (JSON.stringify(got.ids) !== JSON.stringify([false, "5", null]) || got.sys !== "9007199254740992") bad.push("ids");
-    if (!/^the browser voice failed \(synthesis-failed\)$/.test(got.voice[0]) || got.voice[1] !== "said") bad.push("voice");
+    if (!/^the browser voice failed \(synthesis-failed\)$/.test(got.voice[0]) || got.voice[1] !== "said"
+        || !/^cut off in this browser/.test(got.voice[2])) bad.push("voice");
     if (!/^dropped/.test(got.cool.split(" / ")[0]) || /refused/.test(got.cool)) bad.push("cool");
     const goodB8 = !bad.length && errors.length === before;
     allOk = allOk && goodB8;

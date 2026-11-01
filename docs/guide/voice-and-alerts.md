@@ -182,7 +182,9 @@ for one. It is per browser, as each has voices of its own. Chosen, the browser s
 too, in that one voice, and the Piper box is hidden. The personalities and the crew keep working (their words, names
 and who says what); only their own voices are Piper's, so the crew table drops its Voice and Speaker columns and its ▶
 speaks in the browser's voice. Play speech and sounds on this PC then plays only the sounds. Your Piper choices are
-kept for when you switch back. The voice picked also speaks where Outrider has no Piper at all.
+kept for when you switch back. The voice picked also speaks where Outrider has no Piper at all. Chrome and Edge let
+a page speak only after a click on it: until then the red pill asks for one and the line waits for it (Firefox does
+not ask). Space chatter's dialogues need two voices, so with the browser's voice each station talks alone.
 
 **Body names are said letter by letter.** With an English Piper voice, "A 1" is "ay one" (not "uh one") and "ABC 3 a"
 is "ay, bee, see, three, ay", each letter clearly. Only a body's letters are spelled out: system, station and carrier

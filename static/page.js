@@ -3010,7 +3010,7 @@ function speak(text, {delay = 0, kind = "manual", tag = null, still = null, voic
   const words = spokenText(text);
   const entry = log || logSpeech({kind, tag});
   if (words) entry.words = words;
-  if (voice || speaker != null) entry.voice = (voice || "the main voice") + (speaker != null ? ` #${speaker}` : "");
+  if ((voice || speaker != null) && piperSpeaks(data && data.tts)) entry.voice = (voice || "the main voice") + (speaker != null ? ` #${speaker}` : "");
   if (crew) entry.crew = crewWords(crew);
   if (!words) return setFate(entry, "nothing to say");
   const now = Date.now();
@@ -3184,14 +3184,20 @@ async function sayNow(item) {
     const bv = chosenBrowserVoice();
     item.engine = (browserPick ? "browser voice (chosen)" : tts && tts.engine === "piper" ? (ctx ? "browser voice (Piper failed)" : "browser voice (Piper audio blocked)") : "browser voice")
       + (bv ? `: ${bv.name}` : "") + (onPc ? " (the PC could not play it)" : "");
-    await new Promise(res => {
+    const sayIt = () => new Promise(res => {
       let done = false; const finish = () => { if (!done) { done = true; res(); } };
       const rate = Math.min(2, Math.max(0.5, speechSpeed() * (item.pace || 1)));
       const u = new SpeechSynthesisUtterance(item.words); u.rate = rate; u.volume = outVolume(); u.onend = finish;
       if (bv) { u.voice = bv; u.lang = bv.lang; }   // Settings' browser voice; else the browser's default
       // an error is not "said" (nor the line "say again" repeats: review F44), unless Outrider's own cancel() caused it
+      // (stopped, timed out): cut off by anything else is not said either (review round 9: a crew ▶ cut alerts off,
+      // logged "said"); refused before any click on the page (Chromium, Edge) waits for one (needsClick)
       u.onerror = ev => { const why = ev && ev.error;
-        if (!cur.stopped && !item.timedOut && why !== "interrupted" && why !== "canceled") item.unsaid = `the browser voice failed (${why || "?"})`;
+        if (!cur.stopped && !item.timedOut) {
+          if (why === "not-allowed") item.needsClick = true;
+          item.unsaid = why === "interrupted" || why === "canceled" ? "cut off in this browser (another line or ▶ took its voice)"
+            : `the browser voice failed (${why || "?"})`;
+        }
         finish(); };
       cur.halt = () => { speechSynthesis.cancel(); finish(); };
       speechSynthesis.speak(u);
@@ -3207,6 +3213,18 @@ async function sayNow(item) {
       };
       setTimeout(check, 15000);
     });
+    await sayIt();
+    if (item.needsClick && !cur.stopped) {
+      // the browser's voice before any click on the page (review round 9: Chromium refuses it, and nothing asked for
+      // the click): the pill and 🔇 ask, the line waits as Piper's does, and is said then if still worth it
+      browserRefused = true; item.heldForClick = true; drawAudioPill();
+      await audioUnlocked(cur);
+      cur.halt = null;
+      if (cur.stopped) return;
+      if (!speechExpire([item], Date.now(), posId()).length) { item.unsaid = "waited too long for a click to allow speech"; return; }
+      item.needsClick = false; item.unsaid = null;
+      await sayIt();
+    }
   } finally { if (speechNow === cur) speechNow = null; }
 }
 // ---- spoken lines: speech.json's versions of each alert, per personality (see outrider/speech.py) ----
@@ -3390,6 +3408,10 @@ const crewNamed = t => [...String(t).matchAll(/\{(\w+)\}/g)].map(m => m[1]).filt
 const crewLineOk = (t, crew) => { const n = crewNamed(t); return !n.length || !!(crew && !n.includes(crew.role)); };
 // the crew member who says a line of alert row `row` with speech key `key`: {role, personality, voice, speaker, fill,
 // for}; null with the crew off. `row` null (a line that is no alert's: speech on, the ▶ try) is the XO's.
+// why the XO speaks for a crew member (the server's crew_fill), or null: with this browser's voice a Piper voice's
+// trouble ("voice ... not installed") is none, every member speaking in the browser's (review round 9: the member
+// lost its personality too); a personality gone from the lines file still is
+const crewFill = m => m && m.fill && !(speechEngine() === "browser" && /^voice /.test(m.fill)) ? m.fill : null;
 function crewMember(row, key) {
   const c = data && data.crew;
   if (!c || !c.on) return null;
@@ -3400,7 +3422,7 @@ function crewMember(row, key) {
   if (!role) return xo(`no crew member for the alert row ${row}`);
   if (role === "xo") return xo();
   const m = (c.members && c.members[role]) || {};
-  if (m.fill) return xo(m.fill, role);
+  if (crewFill(m)) return xo(crewFill(m), role);
   const styles = speechLib.styles || {};
   if (m.personality && !(m.personality in styles)) return xo(`personality ${m.personality} is not in the lines file`, role);
   return {role, personality: m.personality || null, voice: m.voice || null, speaker: spkNum(m.speaker), fill: null, for: null};
@@ -10240,15 +10262,19 @@ document.addEventListener("pointerdown", () => { if ((soundOn || speechOn) && (!
 // suspended, and Piper's voice and the sounds cannot play (on the PC itself, "Play on this PC" needs no click). The
 // speaking window shows a red pill on the menu bar and 🔇 in its title, tells Outrider (POST api/speaker/audio: the
 // tablet then asks for the click too), and holds its lines until the click (see sayNow). Never the browser's voice.
+// this browser refused its own voice before a click on the page (sayNow: "not-allowed"); a click clears it
+let browserRefused = false;
 function audioBlocked() {
-  if (!speakerHere() || serverPlay()) return false;   // (a tablet only with Play alerts here)
+  if (!speakerHere()) return false;   // (a tablet only with Play alerts here)
+  if (browserRefused && speechOn && speechEngine() === "browser") return true;   // speaks here, whatever plays on the PC
+  if (serverPlay()) return false;
   const t = data && data.tts;
   if (!((speechOn && piperSpeaks(t)) || soundOn)) return false;
   const ctx = audio();   // made here if not yet: a browser holding audio back leaves it suspended
   return !!ctx && ctx.state !== "running";
 }
 function audioStateChanged() {
-  if (actx && actx.state === "running") { for (const go of audioWaiters) go(); audioWaiters.clear(); }
+  if (actx && actx.state === "running") { browserRefused = false; for (const go of audioWaiters) go(); audioWaiters.clear(); }
   drawAudioPill(); drawSoundBtn();
 }
 function drawAudioPill() {
@@ -11254,8 +11280,8 @@ document.getElementById("trySpeak").onclick = () => {
     lineStyle = lineKey = lineTemplate = null;
     text = line(key, lineSample(key), "Leaving with unfinished work: A 2, a class two gas giant, plus 1.4M to map.");
   } finally { lineNoRecord = false; }
-  const sv = styleVoice(lineStyle);
-  document.getElementById("speechTried").textContent = `${key}: “${spokenText(text)}”${sv.voice || sv.speaker != null ? ` (${voiceWords(sv)})` : ""}`;
+  const sv = styleVoice(lineStyle), named = piperSpeaks(data && data.tts) && (sv.voice || sv.speaker != null);   // the browser's: its own
+  document.getElementById("speechTried").textContent = `${key}: “${spokenText(text)}”${named ? ` (${voiceWords(sv)})` : ""}`;
   // in Spoken lines with its wording, so a line you dislike can be banned straight from trying it
   speak(text, {...sv, log: logSpeech({kind: "manual", style: lineStyle, key: lineKey, template: lineTemplate})});
 };
@@ -11446,7 +11472,7 @@ document.getElementById("speechMain").onchange = e => {
 // under Main personality: what it and the main voice (Piper's, or this browser's) are for, with the crew on (the XO's)
 // and off (every alert)
 function drawMainHint() {
-  const browser = speechEngine() === "browser";
+  const browser = !piperSpeaks(data && data.tts);   // chosen, or no Piper speaking here (missing, would not load)
   document.getElementById("mainHint").textContent = data && data.crew && data.crew.on   // (crewOn: defined further down)
     ? (browser ? "The XO's personality, in this browser's voice: " : "The XO's voice and personality: ") +
       "voice answers, status reports, the co-pilot and the hush, every crew member left " +
@@ -11553,7 +11579,7 @@ function drawTts() {
   document.getElementById("ttsStatus").textContent = t && t.available && t.status !== "ready" ? t.status : "";
   // installed but would not load (issue #21): the reason, and the fix that rebuilds the environment, not "install it"
   document.getElementById("ttsHint").textContent = t && !t.available && t.import_error
-    ? `Piper is installed but would not load (${t.import_error}), so the browser's own voice is used. Delete the .venv folder where Outrider runs and start it again with its launcher, which sets Piper up afresh; if it still will not load, that error is the one to report.`
+    ? `Piper is installed but would not load (${t.import_error}), so the browser's own voice is used. To fix it: ${t.fix || "delete the .venv folder where Outrider runs and start it again with its launcher, which sets Piper up afresh"}; if it still will not load, that error is the one to report.`
     : !t || !t.available
     ? "Piper is not installed, so the browser's own voice is used (robotic on Linux). For a natural voice: python3 -m venv --system-site-packages .venv && .venv/bin/pip install piper-tts, then restart Outrider."
     : "Voices live in data/piper-voices/ where Outrider runs; More voices below downloads any of Piper's there.";
@@ -11795,7 +11821,7 @@ function chatMember(role) {
   if (!c || !c.on) return null;
   if (role === "xo") return {role: "xo", personality: null, voice: null, speaker: null, fill: null, for: null};
   const m = (c.members && c.members[role]) || {};
-  if (m.fill || (m.personality && !(m.personality in (speechLib.styles || {})))) return null;
+  if (crewFill(m) || (m.personality && !(m.personality in (speechLib.styles || {})))) return null;
   return {role, personality: m.personality || null, voice: m.voice || null, speaker: spkNum(m.speaker), fill: null, for: null};
 }
 // the stations that may chatter now: the crew's, ticked to take part and able to speak; none with the crew off
@@ -11811,6 +11837,7 @@ const chatPersona = m => m.personality || chatXoStyle() || "xo";
 // main voice (as heardVoice), the main voice named is the main voice, a person left unset on it is the main voice's
 // own; on another voice an unset person is the one picked for that voice, which the page does not know ("picked")
 const chatVoiceKey = m => {
+  if (!piperSpeaks(data && data.tts)) return "browser";   // one voice for every station: no dialogue (review round 9)
   const t = data && data.tts, main = (t && t.voice) || null, v = crewVoice(m, m.personality || chatXoStyle());
   const own = v.voice && v.voice !== main && ((t && t.voices) || []).includes(v.voice) ? v.voice : null;
   const missing = v.voice && v.voice !== main && !own;   // heard in the main voice, without that voice's person
@@ -12118,7 +12145,7 @@ function drawCrew(force = false) {
       (xo ? (vs.length ? "" : opt("", "(none installed)", true)) : opt("", m.personality ? "as the personality" : "as the XO", !m.voice)) +
       vs.map(v => opt(v, v + (voices.includes(v) ? "" : " (not installed)"), m.voice === v || (xo && t.voice === v))).join("") + `</select>`;
     return `<tr data-crole="${esc(r.id)}"${xo ? ` class="xo"` : ""}><td class="crole"><b>${nm}</b>${xo ? `<small>the main voice</small>` : ""}` +
-      (m.fill ? `<small class="warnc" title="the XO says its lines meanwhile">the XO speaks for it: ${esc(m.fill)}</small>` : "") + `</td>` +
+      (crewFill(m) ? `<small class="warnc" title="the XO says its lines meanwhile">the XO speaks for it: ${esc(crewFill(m))}</small>` : "") + `</td>` +
       `<td><input type="text" data-cname maxlength="40" placeholder="no name" aria-label="${nm}: name" value="${esc(m.name || "")}"></td>` +
       `<td>${pers}</td><td>${voice}</td>` +
       `<td><select data-cspk data-sfone aria-label="${nm}: speaker" hidden></select><span data-cnospk class="unk">—</span></td>` +
@@ -12180,7 +12207,7 @@ function crewSample(role) {
   const c = data && data.crew, m = (c && c.members && c.members[role]) || {}, lib = speechLib.styles || {};
   const keys = [...(role === "tactical" && crewDangerOn() ? [...DANGER] : []), ...crewRowsOf(role).flatMap(r => ROW_KEYS[r] || []),
     ...(role === "xo" ? ["speech_on"] : [])];
-  const fill = m.fill || (m.personality && !(m.personality in lib) ? `personality ${m.personality} is not in the lines file` : null);
+  const fill = crewFill(m) || (m.personality && !(m.personality in lib) ? `personality ${m.personality} is not in the lines file` : null);
   const ticked = speechStyles().filter(st => st in lib);
   const styles = !fill && m.personality ? [m.personality] : ticked.length ? ticked : Object.keys(lib);
   const lns = keys.flatMap(k => styles.map(st => labLine(k, st))).filter(Boolean);
@@ -12229,7 +12256,9 @@ async function crewLinesAudition(out, chosen = null) {
     if (!ln) continue;   // no crew lines for this alert in that personality
     n++;
     out(`${k} · ${labStyleName(st)}: “${spokenText(ln.text)}”`, false);
-    if (!(await (speechEngine() === "browser" ? browserSay(ln.text) : labPlayLine(ln)))) return;   // stopped (or failed): the audition ends
+    // the browser's voice at the personality's pace too, as its alerts (review round 9)
+    const pace = speechEngine() === "browser" ? (styleVoice(ln.style.replace(/_profane$/, "")).pace || 1) : 1;
+    if (!(await (speechEngine() === "browser" ? browserSay(ln.text, speechSpeed() * pace) : labPlayLine(ln)))) return;   // stopped (or failed): the audition ends
     const token = labToken;
     await new Promise(res => setTimeout(res, 1500));
     if (token !== labToken) return;
@@ -12370,17 +12399,20 @@ async function browserSay(text, speed = speechSpeed()) {
   labStop();
   const token = labToken;
   if (typeof speechSynthesis === "undefined") { labMsg("This browser has no voice of its own", true); return false; }
+  // the browser has one voice queue: never over an alert being said (review round 9: cancel() cut it off, logged said)
+  if (speechNow) { labMsg("An alert is being said: try again in a moment", true); return false; }
+  labMsg("");
   const words = spokenText(text), u = new SpeechSynthesisUtterance(words), bv = chosenBrowserVoice();
   u.rate = Math.min(2, Math.max(0.5, speed)); u.volume = outVolume();
   if (bv) { u.voice = bv; u.lang = bv.lang; }
   let ok = true;
   const done = new Promise(res => {
     u.onend = () => res();
-    u.onerror = ev => { if (!ev || !["interrupted", "canceled"].includes(ev.error)) ok = false; res(); };
+    u.onerror = ev => { if (!ev || !["interrupted", "canceled"].includes(ev.error)) { ok = false; labMsg(`This browser's voice failed (${(ev && ev.error) || "?"})`, true); } res(); };
     setTimeout(res, Math.max(15000, 5000 + words.length * 90 / u.rate));   // the end event does not always come
   });
-  labNow = {stop() { speechSynthesis.cancel(); }, done};
-  speechSynthesis.cancel(); speechSynthesis.speak(u);
+  labNow = {stop() { speechSynthesis.cancel(); }, done};   // ■ Stop or the next ▶: this line (no alert was speaking)
+  speechSynthesis.speak(u);
   await done;
   if (token === labToken) labNow = null;
   return ok && token === labToken;
@@ -15266,7 +15298,18 @@ async function sayLost() {
   const entry = logSpeech({kind: "connection", words: LOST_TEXT});
   if (!(speechOn && speakerHere())) { toast(LOST_TEXT); setFate(entry, `silent: ${hushReason()}`); return ""; }
   // Speak with this browser's voice: said by the browser, which needs no server (never the Piper line made in advance)
-  if (speechEngine() === "browser") { toast(LOST_TEXT); speak(LOST_TEXT, {kind: "connection", log: entry}); return "browser"; }
+  if (speechEngine() === "browser") {
+    // straight to the browser, past the queue and a hush, as Piper's line made in advance plays (review round 9: a hush
+    // dropped it, and nothing said the alerts had stopped)
+    toast(LOST_TEXT);
+    if (typeof speechSynthesis === "undefined") { setFate(entry, "not said: no voice in this browser"); return ""; }
+    const u = new SpeechSynthesisUtterance(spokenText(LOST_TEXT)), bv = chosenBrowserVoice();
+    u.rate = Math.min(2, Math.max(0.5, speechSpeed())); u.volume = outVolume();
+    if (bv) { u.voice = bv; u.lang = bv.lang; }
+    speechSynthesis.speak(u);
+    addCaption(LOST_TEXT); entry.engine = "browser voice" + (bv ? `: ${bv.name}` : ""); setFate(entry, "said");
+    return "browser";
+  }
   const ctx = await runningAudio();   // paused audio starts again if this page has had a click since it loaded
   if (!ctx) {
     toast(LOST_TEXT + " (click the page once so it may play sound)");

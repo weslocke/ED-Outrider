@@ -1763,6 +1763,24 @@ class SweepVoiceFixes(unittest.TestCase):
                 sp = T.Speaker(voices_dir=d)
             self.assertEqual((sp.status, sp.info()["import_error"], sp.available), (status, got[1], False))
 
+    def test_the_voice_endpoints_and_the_fix_say_why(self):
+        """Review round 9: the voice lab's endpoints still answered "Piper is not installed" for an installed one that
+        would not load (issue #21's words), and the advice to delete .venv and use the launcher was given in the Docker
+        image, which has neither."""
+        import types, unittest.mock
+        from support import ed_outrider as E
+        self.assertEqual(E.no_piper_words(types.SimpleNamespace(import_error="OSError: x.so")), "Piper is installed but would not load (OSError: x.so)")
+        self.assertEqual((E.no_piper_words(types.SimpleNamespace(import_error="")), E.no_piper_words(None)),
+                         ("Piper is not installed", "Piper is not installed"))
+        with unittest.mock.patch.object(E, "in_container", return_value=True):
+            self.assertIn("pull the image again", E.piper_fix_words())
+        with unittest.mock.patch.object(E, "in_container", return_value=False):
+            self.assertIn("delete .venv", E.piper_fix_words())
+        import inspect
+        src = inspect.getsource(E.make_app)
+        self.assertNotIn('"Piper is not installed"', src)
+        self.assertGreaterEqual(src.count("no_piper_words(state.speaker)"), 6)
+
     def test_abandoned_downloads_are_swept(self):
         import tempfile, shutil, time
         import outrider.tts as T

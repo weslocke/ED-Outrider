@@ -2,6 +2,22 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · Review round 9, batch 4: the browser's voice
+- **Before a click on the page** (M6): Chromium and Edge refuse a page's speech until it is clicked, and nothing asked:
+  lines, danger ones included, failed until a click by chance. A refusal ("not-allowed") now raises the red pill and
+  🔇, holds the line for the click as Piper's lines wait, and says it then if still worth it (`browserRefused`).
+- **A crew ▶ or audition no longer cuts an alert off** (M7): `browserSay` cancelled the browser's whole queue. It now
+  refuses while an alert is being said, cancels only on ■ Stop or the next ▶, clears and sets its own messages; and an
+  alert cut off by anything but Outrider is logged as not said ("said" before, so "say again" repeated it).
+- "Lost contact with Outrider" in the browser's voice goes past a hush, as Piper's line made in advance does.
+- A crew member whose Piper voice is missing keeps its personality with the browser's voice (`crewFill`); space chatter
+  pairs no stations when one voice says them all; the crew lines audition keeps the personality's pace; the ▶ sample and
+  Spoken lines name no Piper voice the browser did not use; the main hint names the browser's voice without Piper; Find
+  a setting reads only the chosen browser voice; the crew table's phone layout wins over the browser voice's columns.
+- The voice lab's endpoints say "installed but would not load (why)" (`no_piper_words`), and the advice for it is the
+  image's in Docker ("pull the image again"), not .venv and the launcher (`piper_fix_words`, the payload's `tts.fix`).
+- Smoke block `browser_voice_review`.
+
 ## 2026-11-01 · Review round 9, batch 3: games in other languages, and bio values
 - **The codex in other game languages** (M3, batch 4's siblings): the journal keeps the game's own words, so a German
   game's codex matched none of the rules' names or regions. New `codex_en` gives each codex row its English species

@@ -742,6 +742,20 @@ NOT_GAME_PC = "needs Outrider on the PC the game runs on (this one is a server: 
 PASTE_DEVICES = "📋 reads the game PC's clipboard for that PC's own browser and the Android app only"
 
 
+def no_piper_words(speaker):
+    """The voice endpoints' 503 when Piper cannot speak: installed but would not load (its reason: issue #21's case, which
+    "not installed" hid; review round 9), else not installed."""
+    why = getattr(speaker, "import_error", None) if speaker is not None else None
+    return f"Piper is installed but would not load ({why})" if why else "Piper is not installed"
+
+
+def piper_fix_words():
+    """What to do about a Piper that would not load: rebuild the environment, or in a container the image (no .venv or
+    launcher there: review round 9)."""
+    return ("pull the image again (or rebuild it), and report the error if it stays" if in_container()
+            else "delete .venv and start the launcher again to set it up afresh")
+
+
 def in_container(dockerenv="/.dockerenv", env=None):
     """Whether this runs inside a container: Docker's /.dockerenv, or OUTRIDER_CONTAINER=1 (the image sets it)."""
     env = os.environ if env is None else env
@@ -9037,7 +9051,8 @@ class State:
             "radius_choices": sorted({float(x) for x in RADIUS_CHOICES} | {self.radius}),
             "sphere_cut": self.sphere_cut,
             "near_around": self.near_around_summary(),   # Nearby's Around: its centre when not you (the strip)
-            "tts": self.speaker.info() if self.speaker else None,
+            # fix: what to do about a Piper that would not load, here (a container has no .venv: review round 9)
+            "tts": dict(self.speaker.info(), fix=piper_fix_words()) if self.speaker else None,
             "style_picks": self.style_picks(),   # S40: each personality's voice and speaker picked in Settings
             "crew": self.crew_summary(),          # the crew: who speaks each alert row, and who cannot (the XO speaks for it)
             "chatter": self.chatter_summary(),    # space chatter (#15): its settings, where you are for it
@@ -23840,7 +23855,7 @@ def make_app(state, hosts=None):
         if body is None or not (isinstance(body.get("voice"), str) or "speaker" in body):
             return web.json_response({"error": "bad request"}, status=400)
         if not state.speaker or not state.speaker.available:
-            return web.json_response({"error": "Piper is not installed"}, status=503)
+            return web.json_response({"error": no_piper_words(state.speaker)}, status=503)
         name = str(body.get("voice") or getattr(state.speaker, "voice_name", None) or "")[:100]
         if "speaker" in body:
             sid = body["speaker"]
@@ -23866,7 +23881,7 @@ def make_app(state, hosts=None):
                                                      and outrider.speech.speaker_number(body["speaker"]) is None):
             return web.json_response({"error": "expected {style, voice, speaker?}"}, status=400)
         if body["voice"] is not None and (not state.speaker or not state.speaker.available):
-            return web.json_response({"error": "Piper is not installed"}, status=503)
+            return web.json_response({"error": no_piper_words(state.speaker)}, status=503)
         why = state.set_style_pick(body.get("style"), body["voice"], body.get("speaker"))
         if why:
             return web.json_response({"error": why}, status=400)
@@ -23880,7 +23895,7 @@ def make_app(state, hosts=None):
         if body is None:
             return web.json_response({"error": "expected a JSON object"}, status=400)
         if body.get("voice") is not None and (not state.speaker or not state.speaker.available):
-            return web.json_response({"error": "Piper is not installed"}, status=503)
+            return web.json_response({"error": no_piper_words(state.speaker)}, status=503)
         out, status = state.set_crew(body)
         return web.json_response(out, status=status)
 
@@ -24000,7 +24015,7 @@ def make_app(state, hosts=None):
         if body is None or not isinstance(body.get("voice"), str):
             return web.json_response({"error": "expected {voice}"}, status=400)
         if not state.speaker or not state.speaker.available:
-            return web.json_response({"error": "Piper is not installed"}, status=503)
+            return web.json_response({"error": no_piper_words(state.speaker)}, status=503)
         if not state.speaker.fetch(body["voice"][:100]):
             return web.json_response({"error": "not a Piper voice name"}, status=400)
         state.bump()
@@ -24011,7 +24026,7 @@ def make_app(state, hosts=None):
         one-person voice), speaker (the one picked for it, or null)}. 404 for a voice that is not installed."""
         sp, name = state.speaker, str(request.query.get("voice") or "")[:100]
         if not sp or not sp.available:
-            return web.json_response({"error": "Piper is not installed"}, status=503)
+            return web.json_response({"error": no_piper_words(state.speaker)}, status=503)
         if name not in sp.installed():
             return web.json_response({"error": f"{name or 'no voice'} is not installed"}, status=404)
         return web.json_response({"voice": name, "speakers": sp.voice_speakers(name), "speaker": sp.speaker_for(name)})
@@ -24021,7 +24036,7 @@ def make_app(state, hosts=None):
         language, language_name, quality, speakers, size_mb, installed}], current}. One is fetched and used with POST
         /api/voice (the server downloads it): a Docker install has no voice lab. 503 without Piper, 502 offline."""
         if not state.speaker or not state.speaker.available:
-            return web.json_response({"error": "Piper is not installed", "code": "no_piper"}, status=503)
+            return web.json_response({"error": no_piper_words(state.speaker), "code": "no_piper"}, status=503)
         try:
             doc = await asyncio.get_running_loop().run_in_executor(
                 None, lambda: outrider.tts.fetch_catalogue(force=request.query.get("refresh") == "1"))
@@ -25156,7 +25171,7 @@ async def run(args, st):
     state.journals.pad_delay = st["pad_delay"]   # [speech] pad_delay: the landing pad said after the station's voice
     print("spoken alerts: " + ("Piper found, preparing a voice" if state.speaker.available else
                                f"Piper is installed but would not load ({state.speaker.import_error}), the page uses "
-                               "browser speech: delete .venv and start the launcher again to set it up afresh"
+                               f"browser speech: {piper_fix_words()}"
                                if state.speaker.import_error else
                                "Piper not installed, the page uses browser speech (see outrider/tts.py)"))
     state.speaker.start()
