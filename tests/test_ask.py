@@ -591,7 +591,12 @@ class VoiceBatchH(unittest.TestCase):
                  "jump range": "fuel", "how far can i jump": "fuel",
                  # complete review 2026-10-30: a page whose words are also next_jump's
                  "show the highway": "show_page", "open plot route": "show_page", "go to the highway": "show_page",
-                 "how many jumps left on the highway": "next_jump", "next stop on the route": "next_jump"}
+                 "how many jumps left on the highway": "next_jump", "next stop on the route": "next_jump",
+                 # review round 9: a page word somewhere in a question is no page switch; a page's name after the verb is
+                 "show me what's left here": "whats_left", "open the bookmarks and bookmark this system": "bookmark_here",
+                 "show me unsold cargo": "unsold", "show me the status report now": "status_report",
+                 "show me the nearest scoopable star from here": "nearest_scoop", "show me the map now": "show_page",
+                 "go to the log page": "show_page", "show my firsts please": "show_page"}
         for text, want in cases.items():
             self.assertEqual(ask.match(text, ph), want, text)
         self.assertEqual((ask.page_named("open my firsts"), ask.page_named("show the galaxy map"), ask.page_named("open sesame")),
@@ -623,12 +628,19 @@ class VoiceBatchH(unittest.TestCase):
         last = dict(sv, next=None, index=8, left_here=3)
         r = call(highway=hw, survey=last)
         self.assertEqual((r["kind"], r["next"]["system"]), ("highway", "Neu"))
-        self.assertEqual(ask.route_words(call(survey=last)), "You are at the last stop of your Road to Riches route; 3 bodies left here.")
+        self.assertEqual(ask.route_words(call(survey=last)), "You are at the last stop of your Road to Riches route; 3 bodies to do here.")
         # the game's route while NavRoute.json is not written (route_minimal): what the journal said
         r = call(route={"minimal": True, "hops": [], "jumps_left": 7, "destination": "Colonia", "next": "Hop 1"})
         self.assertEqual(ask.route_words(r), "Next on the route plotted in the game: Hop 1, 7 jumps to Colonia.")
         r = call(route={"minimal": True, "hops": [], "jumps_left": 7, "destination": "Colonia"})
         self.assertEqual(ask.route_words(r), "7 jumps left to Colonia on the route plotted in the game.")
+        # review round 9: the last stop in the route's own words; off the route from it; the game's route, no end known
+        exo = dict(last, kind="exo")
+        self.assertEqual(ask.route_words(call(survey=exo)), "You are at the last stop of your Exomastery route; 3 species to sample here.")
+        off = dict(last, off_route={"system": "Fuel Stop"}, destination="Rich End")
+        self.assertEqual(ask.route_words(call(survey=off)), "You are off your Road to Riches route; its last stop, Rich End, still has work left.")
+        r = call(route={"minimal": True, "hops": [], "jumps_left": 5, "destination": None, "next": "Col 285 Sector AB-C d1"})
+        self.assertEqual(ask.route_words(r), "Next on the route plotted in the game: Col 285 Sector AB-C d1, 5 jumps left.")
 
     def test_where_am_i_and_the_range(self):
         async def status(name, args, get, rows):

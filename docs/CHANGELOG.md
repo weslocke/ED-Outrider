@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · Review round 9, batch 2: routes and the voice's answers
+- **A loop route back at its start mid-way** (M2): the voice named the next open stop but the tab, the clipboard and
+  the co-pilot named a stop already reached, and the voice called the visited rows before it finished. The route now
+  keeps `resume` (where it goes on from), `outrider.riches.riches_next` reads it for every "next", and the line names
+  the stop without calling the rows already reached finished (`next_stop`'s `ahead`).
+- **"show me …" questions** (M8): batch 7's rule took any question starting with show / open / go to that had a page
+  word anywhere ("show me what's left here", "open the bookmarks and bookmark this system") as a page switch. Now only
+  a page's name after the verb (a few small words aside: `ask.page_only`).
+- "next stop" at a route's last stop says what is left in the route's own words ("3 species to sample here", "3
+  bodies to do here"); off the route from its last stop it says so and names that stop ("No route plotted." before).
+- The game's route without NavRoute.json: no destination when Status.json names none (the next system stood in for
+  it: "5 jumps left to <the next system>" on the line and in the voice); the voice says "5 jumps left".
+
 ## 2026-11-01 · Review round 9, batch 1: the overlay, the commander filter, keys only into the game
 - **The in-game overlay no longer dies after an Arrange edit** (H1): after a drag, Done or a one-panel wheel, the
   answer's check did `round(None)` in the window's timer slot and PyQt aborted the overlay (batch 7's change).

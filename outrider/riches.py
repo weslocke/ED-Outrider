@@ -212,6 +212,16 @@ def _species(landmarks):
     return sorted(out, key=lambda x: -(x["value"] or 0))
 
 
+def riches_next(rc, rows):
+    """The index of a survey route's next system after where you are (None once you are at the end). A loop's start
+    again mid-way (Journals.riches_arrival's "home", review round 9) goes on from rc["resume"]: the furthest reached."""
+    at, furthest = rc.get("at"), rc.get("furthest")
+    if at == 0 and rc.get("resume") is not None:
+        return rc["resume"] if rc["resume"] < len(rows) else None
+    i = at + 1 if at is not None else furthest + 1 if furthest is not None else 0
+    return i if i < len(rows) else None
+
+
 def riches_match(rows, id64, name, near=0):
     """The route row a system is, or None: by id64 (by name when a row has none). A system on the route twice gives
     the occurrence at or after `near` (where you were), else the latest before it."""
@@ -266,24 +276,25 @@ def had_work(kind, row):
     return work == "bodies" and bool(row.get("bodies"))
 
 
-def next_stop(rows, i, skip=0):
+def next_stop(rows, i, skip=0, ahead=0):
     """The next stop after row i in words, `skip` finished rows passed over on the way (S12): "Next stop: X." or
-    "Next stop: X, skipping 2 systems you've finished."."""
-    nxt = rows[i + 1 + skip]["system"]
+    "Next stop: X, skipping 2 systems you've finished.". `ahead`: rows passed over first because you reached them
+    already (a loop's start again mid-way, riches_next), never called finished (review round 9)."""
+    nxt = rows[i + 1 + ahead + skip]["system"]
     return f"Next stop: {nxt}" + (f", skipping {skip} system{'' if skip == 1 else 's'} you've finished." if skip else ".")
 
 
-def riches_text(rows, i, left, skip=0, complete="Road to Riches complete.", mapping=False):
+def riches_text(rows, i, left, skip=0, complete="Road to Riches complete.", mapping=False, ahead=0):
     """The line said on arriving at route row i: how many bodies are worth the stop and what they are, then where
     next. `left` is the system's bodies still to do (todo() output, not done); `skip` the finished rows after i the
     next stop passes over (S12); `complete` the kind's end. Plain words (the page's personality lines can replace them
     later). A sweep's stops have no bodies: only where next. `mapping`: the route counts the map (survey_mapping), so
     the body's worth is scan and map, as the tab shows (complete review 2026-10-30: the scan alone was said)."""
     here = rows[i]
-    last = i + skip >= len(rows) - 1
+    last = i + ahead + skip >= len(rows) - 1
     if not left:
         return (f"Nothing left to do in {here['system']}. " if here["bodies"] else "") + (
-            complete if last else next_stop(rows, i, skip))
+            complete if last else next_stop(rows, i, skip, ahead))
     n = len(left)
     best = max(left, key=lambda b: body_value(b, mapping) or 0)
     what = (best.get("subtype") or best.get("type") or "body").lower()
@@ -319,15 +330,15 @@ def body_short(name, system):
     return name[len(system) + 1:] if name.lower().startswith(system.lower() + " ") else name
 
 
-def exo_text(rows, i, left, skip=0, complete="Exomastery complete."):
+def exo_text(rows, i, left, skip=0, complete="Exomastery complete.", ahead=0):
     """The line said on arriving at an Exomastery route row: how many species on how many bodies are left to sample,
     the best of them and its body, then nothing more (the next stop is said once they are sampled). `left` is
     exo_left()'s, `skip` and `complete` as riches_text's. Plain words, as riches_text."""
     here = rows[i]
-    last = i + skip >= len(rows) - 1
+    last = i + ahead + skip >= len(rows) - 1
     if not left:
         return (f"Every species in {here['system']} is sampled. " if any(b.get("species") for b in here["bodies"]) else "") + (
-            complete if last else next_stop(rows, i, skip))
+            complete if last else next_stop(rows, i, skip, ahead))
     n, bodies = len(left), len({b["name"] for b, _x in left})
     b, best = left[0]
     words = lambda k, one, many: f"{number_words(k) if k < 11 else k} {one if k == 1 else many}"
@@ -337,23 +348,23 @@ def exo_text(rows, i, left, skip=0, complete="Exomastery complete."):
     return text + (f", about {val} credits." if val else ".")
 
 
-def arrival_text(kind, rows, i, left, skip=0, mapping=False):
+def arrival_text(kind, rows, i, left, skip=0, mapping=False, ahead=0):
     """The line said on arriving at route row i of a route of this kind (riches_text, exo_text, cargo.trade_text);
     `mapping` as the route counts it (survey_mapping)."""
     k = survey_kind(kind)
     if k.work == "trade":
         return trade_text(rows, i, left)
     if k.work == "species":
-        return exo_text(rows, i, left, skip, k.complete)
-    return riches_text(rows, i, left, skip, k.complete, mapping=mapping)
+        return exo_text(rows, i, left, skip, k.complete, ahead)
+    return riches_text(rows, i, left, skip, k.complete, mapping=mapping, ahead=ahead)
 
 
-def done_text(kind, rows, i, skip=0):
+def done_text(kind, rows, i, skip=0, ahead=0):
     """Said once the last of route row i's work is done: that, then the next stop (`skip` finished rows passed over),
     or the end of the route at its last row."""
     k = survey_kind(kind)
     head = "Every species here is sampled. " if k.work == "species" else "Everything here is done. "
-    return head + (k.complete if i == len(rows) - 1 else next_stop(rows, i, skip))
+    return head + (k.complete if i == len(rows) - 1 else next_stop(rows, i, skip, ahead))
 
 
 def tourist_rows(result):

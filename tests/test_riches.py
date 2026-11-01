@@ -795,13 +795,17 @@ class SurveyKinds(unittest.TestCase):
         self.jump(-85, 10477373803, "Sol", 0)              # home to refuel
         rc = ed_outrider.meta_get(self.db, "riches")
         self.assertEqual((rc["done_ts"], rc["at"], rc["furthest"]), (None, 0, 1))
+        # review round 9: the tab, the clipboard and the co-pilot name the same next stop as the voice (they named
+        # Alpha Centauri, already reached), and Alpha Centauri, visited but not finished, is not said "finished"
+        _meta, rows = self.state.riches_state()
+        self.assertEqual(rows[self.state.riches_next_open(rc, rows)[0]]["system"], "Barnard's Star")
         self.jump(-80, 18263140541865, "Barnard's Star", -3)
         self.assertIsNotNone(ed_outrider.meta_get(self.db, "riches"))   # the route kept
         self.jump(-70, 24860210308521, "Wolf 359", 4)
         self.jump(-60, 10477373803, "Sol", 0)              # the true end
         said = [(m["what"], m["text"]) for m in self.j.moments if m["kind"] == "riches"]
         self.assertEqual(said, [("next", "Next stop: Barnard's Star."),
-                                ("next", "Next stop: Barnard's Star, skipping 1 system you've finished."),
+                                ("next", "Next stop: Barnard's Star."),
                                 ("next", "Next stop: Wolf 359."), ("next", "Next stop: Sol."), ("complete", "Sweep complete.")])
         self.assertTrue(ed_outrider.meta_get(self.db, "riches")["done_ts"])
 

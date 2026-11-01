@@ -372,7 +372,7 @@ async def route_next(get, args, rows):
         kind = "highway" if end is hw else "survey"
         what = "Neutron Highway" if kind == "highway" else riches.survey_kind(end.get("kind")).what
         return {"kind": kind, "route": what, "at_end": True, "destination": end.get("destination"), "next": None,
-                "left_here": end.get("left_here")}
+                "left_here": end.get("left_here"), "survey_kind": end.get("kind") if kind == "survey" else None}
     if pick is None:
         pick = _newer(hw, sv)
     if pick is not None:

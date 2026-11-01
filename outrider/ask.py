@@ -22,6 +22,7 @@ import outrider
 import outrider.dock as dock
 from outrider.core import iso_ts, region_spoken, ts_seconds
 import outrider.materials as materials
+import outrider.riches as riches
 import outrider.tools as tools
 
 ASK_FILE = os.path.join(outrider.RESOURCES_DIR, "ask.json")
@@ -66,6 +67,22 @@ def page_named(text):
     t = f" {WAKE.sub('', norm(text)).strip()} "
     found = [(t.find(f" {w} "), -len(w), w) for w in PAGE_WORDS if f" {w} " in t]
     return PAGE_WORDS[min(found)[2]] if found else None
+
+
+PAGE_LEAD, PAGE_TAIL = ("me", "my", "the"), ("page", "tab", "view", "please", "now")
+
+
+def page_only(rest):
+    """Whether what follows a page command ("show", "open", "go to") is a page's name and nothing more, a few small
+    words aside ("me the", "page", "now"): only then does the page command come before every other (review round 9:
+    "show me what's left here" and "open the bookmarks and bookmark this system" were switched, not answered)."""
+    w = rest.split()
+    while len(w) > 1 and w[0] in PAGE_LEAD:
+        w = w[1:]
+    while len(w) > 1 and w[-1] in PAGE_TAIL:
+        w = w[:-1]
+    name = " ".join(w)
+    return name in PAGE_WORDS or f"the {name}" in PAGE_WORDS
 
 
 def bookmark_note(text, phrase):
@@ -150,7 +167,7 @@ def match_phrase(text, phrases):
     # complete review 2026-10-30, the tablet never switched)
     if page_named(t) is not None:
         for p in phrases.get("show_page") or ():
-            if t.startswith(p + " "):
+            if t.startswith(p + " ") and page_only(t[len(p) + 1:]):
                 return "show_page", p
     for name, ps in phrases.items():
         if name == "show_page" and page_named(t) is None:
@@ -565,12 +582,18 @@ def route_words(r):
     """S9-S2's answer to "next stop" from route_next: "Next stop on your Road to Riches route: X, 38 light years, 6
     stops left." / the Highway's with its neutron star and refuel / the header's next stop / the game's own route."""
     nx = r.get("next")
-    if r.get("at_end"):   # its last stop, work still there
+    if r.get("at_end"):   # its last stop, work still there: in the route's own words (species, sales: review round 9)
         n = r.get("left_here")
-        return f"You are at the last stop of your {r['route']}" + (f"; {n} bod{'y' if n == 1 else 'ies'} left here." if n else ".")
+        left = (riches.left_words(r["survey_kind"], n) if r.get("survey_kind") else f"{n} bod{'y' if n == 1 else 'ies'} left here") \
+            if n else ""
+        return f"You are at the last stop of your {r['route']}" + (f"; {left}." if left else ".")
     if (not nx or not nx.get("system")) and r.get("minimal") and r.get("jumps_left"):   # the game's route, no stars
         return f"{jumps(r['jumps_left'])} left to {r['destination']} on the route plotted in the game." if r.get("destination") \
             else f"{jumps(r['jumps_left'])} left on the route plotted in the game."
+    if (not nx or not nx.get("system")) and r.get("off_route") and r.get("kind") in ("highway", "survey"):
+        # off the route from its last stop, work left there (review round 9: "No route plotted.")
+        dest = r.get("destination")
+        return f"You are off your {r['route']}" + (f"; its last stop, {dest}, still has work left." if dest else ".")
     if not nx or not nx.get("system"):
         return "The route is complete, and no other is plotted." if r.get("complete_route") else "No route plotted."
     dist = f", {ly(nx['distance_ly'])} light years" if nx.get("distance_ly") is not None else ""
@@ -586,8 +609,9 @@ def route_words(r):
     elif kind == "next_stop":
         out = f"Your next stop: {nx['system']}{dist}."
     else:
+        left = r.get("jumps_left")
         out = f"Next on the route plotted in the game: {nx['system']}{dist}" + \
-              (f", {jumps(r['jumps_left'])} to {r['destination']}." if r.get("jumps_left") and r.get("destination") else ".")
+              ((f", {jumps(left)} to {r['destination']}." if r.get("destination") else f", {jumps(left)} left.") if left else ".")
     if r.get("off_route"):   # a survey route names no nearest route system (bug check #7: "... is None")
         near = r.get("nearest_route_system")
         out = (f"You are off the route; the nearest route system is {near}. " if near else "You are off the route. ") + out

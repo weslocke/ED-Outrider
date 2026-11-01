@@ -57,9 +57,10 @@ class LateNavRoute(unittest.TestCase):
         self.assertEqual((self.state.navroute_ahead(), self.state.route_ahead()), ([], []))
         self.assertEqual(self.state.game_target()["via"], "destination")
         self.assertIsNone((self.state.map_route() or {}).get("navroute") or None)
-        # Status.json's Destination gone (or in this system): the FSDTarget's name stands for the end
+        # Status.json's Destination gone (or in this system): no end known. The FSDTarget's name stood for it, but that is
+        # the next system, so the line and the voice said "2 jumps left to <the next system>" (review round 9)
         self.j.status_json = dict(self.j.status_json, destination=None)
-        self.assertEqual(self.state.route_summary()["destination"], "Smojooe BB-B h2")
+        self.assertEqual((self.state.route_summary()["destination"], self.state.route_summary()["next"]), (None, "Smojooe BB-B h2"))
 
     def test_late_write_is_taken(self):
         """The file written after all (late): read as today, the line's stars back, nothing owed any more."""

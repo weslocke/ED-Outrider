@@ -243,7 +243,7 @@ from outrider.highway import (   # the Neutron Highway's route helpers and the d
 from outrider.cargo import trade_counts, trade_done_text, trade_left   # the survey slot's trade routes (outrider.riches has the rest)
 from outrider.riches import (   # the survey slot's routes (Road to Riches, Exomastery, the worlds, sweeps; trade's too)
     SURVEY_KINDS, SWEEP_MAX, RichesError, arrival_text, body_value, done_text, exo_left, exo_todo, had_work, kind_of,
-    norm_name, riches_match, splice_survey, survey_kind, survey_mapping, survey_rows, todo, unknown_systems,
+    norm_name, riches_match, riches_next, splice_survey, survey_kind, survey_mapping, survey_rows, todo, unknown_systems,
 )
 try:  # one-line summaries of every journal event, for the Log view
     import outrider.log
@@ -3574,12 +3574,16 @@ class Journals:
         i = riches_match(rows, id64, name, at if at is not None else furthest or 0)
         # a loop ends at its start: back there before its stops are done (to refuel, to sell) is the start again, not
         # the end (complete review 2026-10-30: "Sweep complete." and the next jump cleared the route); `home`: the next
-        # stop then, from the furthest one reached
+        # stop then, from the furthest one reached: kept as rc["resume"], so every "next" (the tab, the clipboard, the
+        # co-pilot, the voice: riches_next) goes there, and only rows past it you have finished are skipped (review
+        # round 9: the voice alone knew it, and called the visited rows before it finished)
         home = None
+        rc.pop("resume", None)
         if i is not None and i == len(rows) - 1 and i > 1 and riches_match(rows[:1], rows[-1]["id64"], rows[-1]["system"]) == 0:
             nx0 = self.riches_open(rc, rows, (furthest or 0) + 1)[0]
             if nx0 is not None and nx0 < i:
-                i, home = 0, nx0
+                i, home = 0, (furthest or 0) + 1
+                rc["resume"] = home
         rc["arrival_ts"] = ts
         say = None
         if i is None:
@@ -3591,9 +3595,10 @@ class Journals:
             back = bool(rc.get("off_route"))
             rc.update(at=i, furthest=max(i, furthest if furthest is not None else i), off_route=None)
             left = self.riches_left(rc, rows, i)
-            nx, skipped = self.riches_open(rc, rows, i + 1)   # S12: the next stop past the systems you finished
-            if home is not None:
-                nx, skipped = home, list(range(1, home))
+            # S12: the next stop past the systems you finished (riches_next: from the furthest reached, back home)
+            start = riches_next(rc, rows)
+            nx, skipped = self.riches_open(rc, rows, start)
+            ahead = start - (i + 1) if start is not None else 0
             if done:
                 pass   # finished: kept, quietly, until you jump out of its last system (forget_finished_route)
             elif not left and i == len(rows) - 1:
@@ -3603,7 +3608,7 @@ class Journals:
             else:
                 if not left:
                     rc["said_done"] = i   # nothing to do here: no "all done" to say later
-                words = arrival_text(kind, rows, i, left, len(skipped), mapping=survey_mapping(kind, rc.get("options")))
+                words = arrival_text(kind, rows, i, left, len(skipped), mapping=survey_mapping(kind, rc.get("options")), ahead=ahead)
                 say = ("back" if back else "next", ("Back on the route. " if back else "") + words, len(left))
         meta_set(self.db, "riches", rc)
         if say and live_event(ts):
@@ -3730,10 +3735,12 @@ class Journals:
             rc.update(done_ts=ts, done_id64=id64)   # the next jump out of it clears the route
         meta_set(self.db, "riches", rc)
         if live_event(ts):
-            nx, skipped = (None, []) if last else self.riches_open(rc, rows, i + 1)   # S12: past the systems you finished
-            nxt = None if last else rows[nx]["system"]
+            start = None if last else riches_next(rc, rows)   # where the route goes on (a loop's start again: resume)
+            nx, skipped = self.riches_open(rc, rows, start)   # S12: past the systems you finished
+            nxt = None if nx is None else rows[nx]["system"]
+            ahead = start - (i + 1) if start is not None else 0
             self.moment(survey_kind(kind).alert, ts, what="complete" if last else "done", system=rows[i]["system"], index=i,
-                        next=nxt, left=0, text=done_text(kind, rows, i, len(skipped)), route=kind)
+                        next=nxt, left=0, text=done_text(kind, rows, i, len(skipped), ahead), route=kind)
 
     def highway_arrival(self, id64, name, ts):
         """A jump into a system with a Highway route active: progress (the row you are at, the furthest reached),
@@ -17651,8 +17658,9 @@ class State:
         dest = (self.journals.status_json or {}).get("destination")
         end = dest.get("Name") if isinstance(dest, dict) and dest.get("System") and dest["System"] != pos["id64"] \
             and isinstance(dest.get("Name"), str) and not dest["Name"].startswith("$") else None
-        return {"minimal": True, "hops": [], "jumps_left": left, "destination": end or t.get("name"), "ts": wait,
-                "next": t.get("name")}   # the system targeted now: the route's next (the voice's "next stop")
+        # destination: the route's end only when Status.json names one (review round 9: the next system stood in for it,
+        # "5 jumps left to <the next system>"); next: the system targeted now, the route's next (the voice's "next stop")
+        return {"minimal": True, "hops": [], "jumps_left": left, "destination": end, "ts": wait, "next": t.get("name")}
 
     def next_stop_summary(self):
         ns, pos = meta_get(self.db, "next_stop"), self.journals.pos
@@ -19403,19 +19411,14 @@ class State:
         rows = self.journals.riches_route(rc) if rc else []
         return (rc, rows) if rc and rows else (None, [])
 
-    @staticmethod
-    def riches_next(rc, rows):
-        """The index of the next route system after where you are (None once you are at the end)."""
-        at, furthest = rc.get("at"), rc.get("furthest")
-        i = at + 1 if at is not None else furthest + 1 if furthest is not None else 0
-        return i if i < len(rows) else None
+    riches_next = staticmethod(riches_next)   # outrider.riches: where the route goes on from
 
     def riches_next_open(self, rc, rows):
         """S12: (index, [skipped indices]) of the next stop past the systems after where you are that you have finished
         (Journals.riches_open: they had work and none is left; trade routes never skip). Every "next" of a survey route
         is this one: the line, the tab, the clipboard, the co-pilot button, the voice. Cached per route, place on it and
         journal data (data_seq: a scan, a map or a sample moves it)."""
-        key = (rc.get("id"), rc.get("at"), rc.get("furthest"), len(rows), self.journals.data_seq)
+        key = (rc.get("id"), rc.get("at"), rc.get("furthest"), rc.get("resume"), len(rows), self.journals.data_seq)
         c = self._rc_open
         if c[0] != key:
             c = self._rc_open = (key, self.journals.riches_open(rc, rows, self.riches_next(rc, rows)))
