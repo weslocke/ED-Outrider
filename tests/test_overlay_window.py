@@ -198,6 +198,17 @@ class Arranging(unittest.TestCase):
                           W.panel_scale_of({}), W.panel_scale_of(None), W.panel_scale_of({"panel_scale": "big"})),
                          (0.5, 0.8, 1.0, 1.0, 1.0))
 
+    def test_an_answer_after_an_edit_without_ctrl_wheel(self):
+        """Review round 9: after a drag, Done or a one-panel wheel (nothing wheeled for all panels), the answer's check
+        did round(None) in the window's timer slot, and PyQt aborted the overlay. The window's tick asks wheel_saved."""
+        self.assertTrue(W.wheel_saved({"panel_scale": 100}, None))       # nothing wheeled: nothing to keep
+        self.assertTrue(W.wheel_saved(None, None))
+        self.assertTrue(W.wheel_saved({"panel_scale": 110}, 109.6))       # the answer has it: the local figure goes
+        self.assertFalse(W.wheel_saved({"panel_scale": 100}, 109.6))      # not yet: kept
+        self.assertFalse(W.wheel_saved(None, 110))
+        import inspect
+        self.assertIn("wheel_saved(feed.data, self.all_pct)", inspect.getsource(W.run_window))
+
     def test_drag_corner_with_all_panels_and_the_floor(self):
         """Sizing a panel draws it as paint does: times all panels' size, and never under the text floor."""
         e = dict(O.LAYOUT_DEFAULT["system"])

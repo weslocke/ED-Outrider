@@ -1970,6 +1970,9 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS journal_files (
     path TEXT PRIMARY KEY, offset INTEGER NOT NULL);
+-- S9-S4: each journal file's commander (Journals.file_cmdrs, by file name): kept, as a start reads only the files with
+-- new lines, and the commander filter needs every file's (review round 9: lost at every restart)
+CREATE TABLE IF NOT EXISTS journal_file_cmdrs (name TEXT PRIMARY KEY, fid TEXT NOT NULL, cmdr TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS visits (
     id64 INTEGER PRIMARY KEY, name TEXT, x REAL, y REAL, z REAL,
     first_ts TEXT, last_ts TEXT, count INTEGER NOT NULL DEFAULT 0);
@@ -2263,7 +2266,7 @@ DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 's
 DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population; DELETE FROM stations;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
 DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_carrier', 'mined_died', 'sale_dock');
-DELETE FROM play_activity; DELETE FROM mining_stints;
+DELETE FROM play_activity; DELETE FROM mining_stints; DELETE FROM journal_file_cmdrs;
 DELETE FROM meta WHERE key IN ('reputation', 'powerplay', 'squadron', 'stored_ships', 'stored_modules', 'ship_locker',
                                'suit_loadouts', 'engineers', 'missions');
 DELETE FROM meta WHERE key IN ('ship', 'carrier', 'squadron_carrier', 'fuel_hist', 'last_scoop', 'commander', 'materials',
@@ -3213,7 +3216,7 @@ class Journals:
     # ("overwritten by the retry" is not enough when it is read before the line that sets it comes round again).
     MEMORY = ("moment_seq", "moments", "last_heat", "body_touched", "approached", "brief_key", "regions_said", "rings_said",
               "codex_said", "fss_signals_pending", "region_entered", "jumponium", "sale_run", "burst", "nsp_burst",
-              "docking_hold", "chat_seq", "chat", "shots_new",
+              "docking_hold", "chat_seq", "chat", "shots_new", "_cmdrs_backfilled",
               "last_all_found",   # read by note_jumponium as "the FSS is done here"
               "last_honk",        # read by the FSSAllBodiesFound line ("all found by the honk")
               "jump_class",       # the StartJump's star class, taken by the FSDJump that follows
@@ -3285,6 +3288,7 @@ class Journals:
         # ({fid: {name, first_ts, last_ts, files, last_file}}, meta commanders_seen), for the "also logs CMDR B" card
         self.commander_filter = ""
         self.file_cmdrs = {}
+        self._cmdrs_backfilled = set()   # folders whose files' commanders were all looked at this run (_scan_steps)
         self.other_playing = None
         self._newest = None
         self._newest_live = {}   # live folder -> its newest journal (who plays: the newest of them all)
@@ -3844,6 +3848,7 @@ class Journals:
         db = self.db
         self.new_sales = []   # a rolled-back tick reads its sales again
         self.offsets = {r["path"]: r["offset"] for r in db.execute("SELECT * FROM journal_files")}
+        self.file_cmdrs = {r["name"]: (r["fid"], r["cmdr"]) for r in db.execute("SELECT * FROM journal_file_cmdrs")}
         # the same journal in two folders (a legacy copy of the live folder, two Proton prefixes) is one
         # file: basename -> the path read furthest, so a copy continues where the other stopped
         self.twins = {}
@@ -3940,6 +3945,13 @@ class Journals:
         # well: its one missed look counted twice and flashed the card (complete review 2026-10-30)
         if paths or os.path.isdir(d):
             self.dir_journals[d] = len(paths)
+        # under a commander filter, every file's commander once per folder and run (review round 9): an install from
+        # before journal_file_cmdrs, or a file another path read, is not opened by the scan below
+        if self.commander_filter and d not in self._cmdrs_backfilled:
+            self._cmdrs_backfilled.add(d)
+            for p in paths:
+                if os.path.basename(p) not in self.file_cmdrs:
+                    self.file_commander(p)
         if paths:
             self.dir_had_journals.add(d)
         if self.upload_mode is not None:   # a live folder (legacy ones are scanned with no upload mode): who plays now,
@@ -4018,12 +4030,15 @@ class Journals:
                 except ValueError:
                     continue
                 if isinstance(ev, dict) and (ev.get("FID") or ev.get("Name") or ev.get("Commander")):
-                    who = self.file_cmdrs[b] = (str(ev.get("FID") or ""), str(ev.get("Name") or ev.get("Commander") or ""))
-                    return who
+                    return self._keep_file_cmdr(b, (str(ev.get("FID") or ""), str(ev.get("Name") or ev.get("Commander") or "")))
         prev = outrider.uploads.continued_from(path) if depth < 20 else None
         who = self.file_commander(prev, depth + 1) if prev else None
-        if who:
-            self.file_cmdrs[b] = who
+        return self._keep_file_cmdr(b, who) if who else None
+
+    def _keep_file_cmdr(self, b, who):
+        """file_cmdrs[b] = who, kept in the database too (journal_file_cmdrs): a start reads only files with new lines."""
+        self.file_cmdrs[b] = who
+        self.db.execute("INSERT OR REPLACE INTO journal_file_cmdrs (name, fid, cmdr) VALUES (?, ?, ?)", (b, *who))
         return who
 
     def files_not_mine(self):
@@ -20588,7 +20603,7 @@ class State:
         self.bump()
         return self.rail_info(full=True), 200
 
-    RAIL_NO_WINDOW = "Elite's window was not found: is the game running?"
+    RAIL_NO_WINDOW = "Elite's window was not found: is the game running (and not as a native Wayland window)?"
 
     def rail_why_not(self):
         """Why no button can be pressed now (None: they can), whatever the context: the keyboard's side."""
@@ -20944,8 +20959,8 @@ class State:
 
     async def _autotarget_front(self, tgt, test, cancel):
         """Bring Elite's window to the front for a run (S74): the Targeter's check before every key (`front`), None when
-        nothing can be checked (no wmctrl, no game window found: the keys go as before), or False when the run ended
-        meanwhile (stale, jumped). A page run that started without its countdown counts it down now, saying why, when
+        nothing can be checked (no wmctrl or xprop, no X display: the keys go as before), or False when the run ended
+        (stale, jumped, or no game window found while the tools work: refused before any key, as the rail is). A page run that started without its countdown counts it down now, saying why, when
         the game did not come forward; any other run goes on and its check refuses the first key."""
         gw, loop = self.game_window, asyncio.get_running_loop()
         got = await loop.run_in_executor(None, gw.bring_forward)
@@ -20963,7 +20978,14 @@ class State:
                 self._autotarget_done(tgt, {"ok": False, "phase": 0, "label": "wait", "why": "you had jumped"}, test, say=False)
                 return False
             got = {"checked": await loop.run_in_executor(None, gw.locate)}   # you clicked into the game (or not): the check says
-        return gw.front_why if got["checked"] else None
+        if got["checked"]:
+            return gw.front_why
+        if gw.why_not() is None:
+            # the tools work and no game window was found (the game crashed with Status.json live, or a native-Wayland
+            # game): no key into whatever is in front, as the rail refuses (review round 9)
+            self._autotarget_done(tgt, {"ok": False, "phase": 0, "label": "wait", "why": outrider.game_window.NOT_FOUND}, test)
+            return False
+        return None
 
     def _autotarget_done(self, tgt, res, test=None, say=True):
         name, ok = tgt["name"], bool(res.get("ok"))
@@ -21466,7 +21488,8 @@ class State:
             files[fid] += 1
             known.setdefault(fid, {"fid": fid, "name": name, "files": 0, "last": None})
             known[fid]["name"] = known[fid]["name"] or name
-            newest[fid] = max(newest.get(fid, ""), b)
+            # in time order: a pre-2023 name (Journal.YYMMDDhhmmss) as the new form, so its date is read (round 9)
+            newest[fid] = max(newest.get(fid, ""), outrider.uploads.name_key(b))
         for fid, e in known.items():
             e["files"] = max(e["files"], files.get(fid, 0))
             m = re.search(r"(\d{4}-\d{2}-\d{2})T", newest.get(fid, ""))
@@ -21488,7 +21511,10 @@ class State:
         hit = next((n for n in named if want.lower() in (n[0].lower(), n[1].lower())), None) if want else None
         if want and not hit:
             return {"error": "commander: an FID or commander name the journals named"}, 400
-        value = (hit and hit[1]) or want   # the name as shown reads best in the file; the FID matches as well
+        # the name as shown reads best in the file; a commander the journals named by two names (renamed) by its FID,
+        # which matches every name's journals (review round 9: one name dropped the other's)
+        names = {n for f, n in named if hit and f == hit[0] and n}
+        value = (hit[0] if hit and hit[0] and len(names) > 1 else (hit and hit[1])) or want
         out, status = self.config_save({"journals": {"commander": value}})
         if status != 200:
             return out, status
@@ -24027,7 +24053,9 @@ def make_app(state, hosts=None):
             kw["days"] = min(days, outrider.uploads.MARK_DAYS)
             kw["only"] = outrider.uploads.unsent_lines(state.db, iso_ts(time.time() - kw["days"] * 86400))
         dirs = LIVE_DIRS + LEGACY_DIRS
-        kw["skip"] = state.journals.files_not_mine()   # another commander's journals (Discussion #18)
+        # another commander's journals (Discussion #18); not in "not sent": every commander's lines wait in the one queue,
+        # and hiding some made a waiting upload look sent (review round 9)
+        kw["skip"] = frozenset() if "only" in kw else state.journals.files_not_mine()
         if not kw["after"]:
             kw["budget_s"] = LOG_BUDGET_S   # a long search comes back in parts the page asks for in turn (S6-S2)
         out = await asyncio.get_running_loop().run_in_executor(None, lambda: outrider.log.read_log(dirs, **kw))

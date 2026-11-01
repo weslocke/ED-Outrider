@@ -1595,6 +1595,16 @@ class LogMarks(unittest.TestCase):
         self.assertEqual([(r["event"], [m["state"] for m in r["up"]]) for r in a["rows"]], [("Docked", []), ("FSDJump", ["sent"])])
         self.assertEqual([r["event"] for r in b["rows"]], ["Music"])           # noise too: "not sent" overrides the boxes
         self.assertEqual(b["rows"][0]["up"], [{"service": "eddn", "state": "queued", "why": "waiting to be sent"}])
+        # review round 9: under a commander filter "not sent" still lists the other commander's waiting lines (one queue)
+        import unittest.mock
+
+        async def other():
+            with unittest.mock.patch.object(self.state.journals, "files_not_mine", return_value=frozenset({self.name})):
+                async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                    return (await (await c.get("/api/log?days=7&cat=travel,other")).json(),
+                            await (await c.get("/api/log?days=7&cat=travel&unsent=1")).json())
+        a, b = asyncio_run(other())
+        self.assertEqual((a["rows"], [r["event"] for r in b["rows"]]), ([], ["Music"]))
 
 
 class RetriedRowsKeepTheirPlace(unittest.TestCase):

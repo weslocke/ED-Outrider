@@ -136,6 +136,13 @@ def dragged(entry, start_rect, dx, dy, mode, nat_w, nat_h, win_w, win_h, panel_s
     return dict(entry, scale=scale, **place(x, y, nat_w * s, nat_h * s, win_w, win_h))
 
 
+def wheel_saved(data, pct):
+    """Outrider's answer has the size wheeled here for all panels (Ctrl + wheel), so the local figure can go. pct None:
+    nothing was wheeled (a drag, Done or a one-panel wheel was saved): round(None) there raised in the window's timer
+    slot and PyQt aborted the overlay (review round 9)."""
+    return pct is None or (data or {}).get("panel_scale") == round(pct)
+
+
 def wheel_key(shift, ctrl):
     """What the wheel over a panel changes in Arrange mode: its background's opacity ("bg"), with Shift the whole
     panel's ("alpha"), with Ctrl all panels' size ("all", [overlay] panel_scale; the 4K TV report, 2026-10-14)."""
@@ -826,7 +833,7 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
                 self.seq = feed.seq
                 if self.saved_at is not None and self.seq > self.saved_at and not self.drag and not self.dirty:
                     self.override, self.saved_at = {}, None   # Outrider has the edits now
-                    if (feed.data or {}).get("panel_scale") == round(self.all_pct):
+                    if wheel_saved(feed.data, self.all_pct):
                         self.all_pct = None
                 if not self.arranging():
                     self.override, self.drag, self.all_pct = {}, None, None

@@ -2,6 +2,26 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · Review round 9, batch 1: the overlay, the commander filter, keys only into the game
+- **The in-game overlay no longer dies after an Arrange edit** (H1): after a drag, Done or a one-panel wheel, the
+  answer's check did `round(None)` in the window's timer slot and PyQt aborted the overlay (batch 7's change).
+  `overlay_window.wheel_saved` decides it, tested.
+- **The commander filter keeps every file's commander over a restart** (H2): Journals.file_cmdrs was in memory only and
+  a start opens only files with new lines, so after any restart the unsold estimate and the Log read the other
+  commander's journals again (Discussion #18's bug back), the chooser listed only the followed commander and picking
+  another was refused. New table `journal_file_cmdrs` (cleared with the journal data, the re-read makes it again);
+  under a filter, each folder's files without one have their head read once per run (an install from before it).
+- A renamed commander (two names, one FID) is saved by the FID, so both names' journals are read; one name stays the
+  name. The chooser's "last played" reads a pre-2023 journal name's date. The Log's "not sent" lists every commander's
+  waiting lines under a filter (one queue).
+- **Auto-target in the stale-map window** (M1): the stale GuiFocus 6 counted as the cockpit only until the first key,
+  so step 1's wait for the map passed at once and a slow map took the search keys and the typed name in the cockpit.
+  It stays the cockpit until this run's map shows in the journal (`Targeter._stale6`).
+- **No auto-target key without the game's window**: with wmctrl/xprop working and no game window found (a crash with
+  Status.json live, a native-Wayland game), every run is refused before any key, as the rail is; it pressed into the
+  window in front. The rail's message names native Wayland; DESIGN_NOTES, plot-route.md, tablet.md (the check needs
+  wmctrl and xprop) and game_window's notes say what happens now.
+
 ## 2026-11-01 · The browser's voices only with the browser chosen
 - The author: the voice picker, its ▶ and its notes showed beside Speak with's Piper too. They now show only while
   this browser's voice is chosen (a pick made then still speaks where Outrider has no Piper); the picker's two

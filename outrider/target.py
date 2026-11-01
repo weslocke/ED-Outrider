@@ -361,6 +361,7 @@ class Targeter:
     _music0, _music_t, _fsd0, _closing, _started, _overrode, _say = (_PerRun(), _PerRun(), _PerRun(), _PerRun(),
                                                                      _PerRun(), _PerRun(), _PerRun())
     _keyed = _PerRun()   # a key of this run has gone down
+    _stale6 = _PerRun()   # the run started on a stale GuiFocus 6 (focus()): it stays the cockpit until this run's map shows
 
     def cancelled(self):
         """Shutdown, or the current run's own token."""
@@ -477,7 +478,7 @@ class Targeter:
         try:
             while True:
                 self._music0 = self._music_t = self._fsd0 = None
-                self._closing = self._started = self._overrode = self._keyed = False
+                self._closing = self._started = self._overrode = self._keyed = self._stale6 = False
                 self._run(result, say, name, id64, status, system, dry, origin, route_end, ly, one_jump, entry)
                 # a pasted name that found nothing (the author, 2026-10-23: the first paste of a run came out empty, the
                 # second worked): once more, typing it, when it can be typed (review C1)
@@ -670,6 +671,12 @@ class Targeter:
         elif m[2] != "GalaxyMap" and g == GUI_GALAXY_MAP and not self._keyed:
             # before the first key, guard()'s rule (review B2): Status.json's 6 lags the map Target System closed, the
             # last Music says otherwise; it let the run start, and step 1 failed on the same 6 (complete review 2026-10-30)
+            self._stale6 = True
+            out = GUI_COCKPIT
+        elif g == GUI_GALAXY_MAP and self._stale6 and not self._closing \
+                and not (m[2] == "GalaxyMap" and self._newer(m, self._music0)):
+            # and after it, until this run's own map shows in the journal (review round 9: the stale 6 passed step 1's
+            # wait at once, and a slow map took the search keys and the typed name in the cockpit)
             out = GUI_COCKPIT
         else:
             return g

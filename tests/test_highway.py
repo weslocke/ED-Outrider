@@ -2249,6 +2249,22 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(self.status["destination"]["System"], 102)
         self.assertEqual(len([n for n, v in g.writes if n == "KEY_T" and v]), 1)
 
+    def test_a_slow_map_in_the_stale_window_is_waited_for(self):
+        """Review round 9: the stale 6 counted as the cockpit only until the first key; then step 1's wait for the map
+        passed at once on the same 6, and a map slow to open (here: never) took the search keys and the typed name in
+        the cockpit. It stays the cockpit until this run's map shows in the journal: one key, then "did not open"."""
+        self.fake_time()
+        g = self.game
+        g.status_lag, g.screen, g.target_closes, g.ignore_open = True, 0, True, True
+        self.status["gui_focus"] = 6
+        g.music[:] = [("GalaxyMap", g.clock() - 20), ("Supercruise", g.clock() - 2)]
+        r = self.run_target(one_jump=True, music=g.music_now, fsd_target=g.fsd_now)
+        self.assertFalse(r["ok"], r)
+        self.assertIn("did not open", r["why"])
+        downs = [n for n, v in g.writes if v]
+        self.assertEqual((downs[-1], downs.count("KEY_T"), [n for n in downs if n in ("KEY_B", "KEY_R", "KEY_SPACE")]),
+                         ("KEY_T", 1, []))                               # the map's key alone: no search, no letters
+
     def test_music_now_reads_the_journals_end(self):
         """State.music_now: the newest live journal's last Music event, its position growing with each new one."""
         import tempfile
@@ -3307,6 +3323,15 @@ class HighwayAutoTarget(unittest.TestCase):
         seen = asyncio.run(go())
         self.assertEqual((seen["state"], seen["note"]), ("counting", G.NOT_FOUND))
         self.assertEqual(self.state.game_window.status()["why"], G.NOT_FOUND)
+        # review round 9: still none after the countdown, the tools working: refused before any key, as the rail is
+        # (it pressed into whatever was in front); the co-pilot's run (no countdown) the same
+        self.assertEqual(([n for n, v in self.game.writes if v], self.state.autotarget_last["why"]), ([], G.NOT_FOUND))
+
+        async def copilot():
+            self.state.start_autotarget_run("next", countdown=0.01, fallback=False)
+            await self.state.autotarget_test_task
+        asyncio.run(copilot())
+        self.assertEqual(([n for n, v in self.game.writes if v], self.state.autotarget_last["why"]), ([], G.NOT_FOUND))
         desk.windows[FakeDesktop.GAME] = "Elite - Dangerous (CLIENT)"
         self.assertTrue(self.state.game_window.locate())
         self.assertEqual(self.state.game_window.status(), {"front": True, "why": None})

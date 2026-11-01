@@ -3399,7 +3399,7 @@ class JournalsRegistry(unittest.TestCase):
         "other_playing": "who else is playing: worked out again at each folder scan",
         "line_source": "the journal line being handled: set before each line",
         "bad_files": "journals that could not be read, said once each: a retry says nothing again, which is the point",
-        "file_cmdrs": "each file's commander, by path: the retry finds the same",
+        "file_cmdrs": "each file's commander, by file name: reload() reads it back from journal_file_cmdrs, the retry finds the same",
         "full_check_at": "when each folder is listed whole again: a timer, not what was read",
         "_hw_rows": "a cache of the Highway route's rows (read once per plot, from the database)",
         "_rc_rows": "a cache of the Road to Riches rows (read once per plot, from the database)",

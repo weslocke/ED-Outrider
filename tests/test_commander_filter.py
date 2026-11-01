@@ -185,6 +185,67 @@ class CommanderFilter(unittest.TestCase):
         with open(self.state.config_path, encoding="utf-8") as f:
             self.assertIn('commander = "Beta"', f.read())
 
+    # ---- review round 9 ----
+
+    def reopened(self, path, filt):
+        """A plain restart: the same database file, a new reader under the filter, the start-up scan."""
+        db = ed_outrider.open_db(path)
+        self.addCleanup(db.close)
+        j = ed_outrider.Journals(db)
+        j.commander_filter = filt
+        j.scan_dir(self.dir, upload="catchup")
+        db.commit()
+        state = ed_outrider.State(db, j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        state.config_path = os.path.join(self.dir, "ed_outrider.toml")
+        return db, j, state
+
+    def test_a_restart_keeps_every_files_commander(self):
+        """Round 9: each file's commander was kept in memory only, and a start opens only files with new lines, so after
+        any restart the estimate and the Log read the other commander's journals again, the chooser listed only the
+        followed commander and picking another was refused."""
+        self.two_commanders()
+        path = os.path.join(tempfile.mkdtemp(), "o.sqlite")
+        self.addCleanup(shutil.rmtree, os.path.dirname(path))
+        db, j, _ = self.reopened(path, "Alpha")
+        db.close()
+        db, j, state = self.reopened(path, "Alpha")
+        self.assertEqual(j.files_not_mine(), frozenset({"Journal.2026-10-02T100000.01.log"}))
+        self.assertEqual([(e["fid"], e["files"]) for e in state.commanders_known()["list"]], [("F1", 2), ("F2", 1)])
+        self.assertEqual(state.set_commander_filter("Beta")[1], 200)
+        # an install from before the table (nothing kept): the start under a filter looks at every file's head once
+        db.execute("DELETE FROM journal_file_cmdrs")
+        db.commit()
+        db.close()
+        _, j, _ = self.reopened(path, "Alpha")
+        self.assertEqual(j.files_not_mine(), frozenset({"Journal.2026-10-02T100000.01.log"}))
+        # journal data cleared for a re-read: the re-read makes it again
+        self.assertIn("DELETE FROM journal_file_cmdrs", ed_outrider.RESET_JOURNAL_DATA)
+
+    def test_a_renamed_commander_is_followed_by_fid(self):
+        """Round 9: a commander the journals named by two names was saved by one name, and the other name's journals were
+        left out of the re-read; saved by the FID, both are read. One name: still the name."""
+        self.two_commanders()
+        self.write("Journal.2026-10-04T100000.01.log", header("2026-10-04T10:00:00Z"),
+                   commander("2026-10-04T10:00:01Z", "F1", "Alpha Renamed"))
+        self.j.commander_filter = "F1"
+        self.j.scan_dir(self.dir, upload="catchup")
+        self.state.config_path = os.path.join(self.dir, "ed_outrider.toml")
+        self.assertEqual(self.state.set_commander_filter("Alpha Renamed")[0]["commander"], "F1")
+        self.assertEqual(self.state.set_commander_filter("F2")[0]["commander"], "Beta")
+        self.assertTrue(all(ed_outrider.commander_matches("F1", w) for w in (("F1", "Alpha"), ("F1", "Alpha Renamed"))))
+
+    def test_last_played_from_old_journal_names(self):
+        """Round 9: a pre-2023 name (Journal.YYMMDDhhmmss) sorted after every new one, so its date was not found."""
+        self.write("Journal.2026-10-01T100000.01.log", header("2026-10-01T10:00:00Z"), commander("2026-10-01T10:00:01Z", "F1", "Alpha"))
+        self.write("Journal.221104203004.01.log", header("2022-11-04T20:30:04Z"), commander("2022-11-04T20:30:05Z", "F2", "Beta"))
+        self.write("Journal.2026-10-02T100000.01.log", header("2026-10-02T10:00:00Z"), commander("2026-10-02T10:00:01Z", "F2", "Beta"))
+        self.write("Journal.2026-10-03T100000.01.log", header("2026-10-03T10:00:00Z"), commander("2026-10-03T10:00:01Z", "F1", "Alpha"))
+        self.write("Journal.210305101010.01.log", header("2021-03-05T10:10:10Z"), commander("2021-03-05T10:10:11Z", "F3", "Gamma"))
+        self.j.commander_filter = "Alpha"
+        self.j.scan_dir(self.dir, upload="catchup")
+        last = {e["fid"]: e["last"] for e in self.state.commanders_known()["list"]}
+        self.assertEqual((last["F2"], last["F3"]), ("2026-10-02", "2021-03-05"))
+
     # ---- the Fable bug check of 2026-10-24, batch 3 ----
 
     def continued(self, name, ts, *events):

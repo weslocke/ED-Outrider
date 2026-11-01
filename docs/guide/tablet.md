@@ -65,7 +65,9 @@ for this: see [Other devices on your network](install.md#-other-devices-on-your-
   N/A in supercruise, where they can't be used (the game even reports hardpoints deployed there after a jump). A control with no keyboard binding says "bind a
   key" (give it a second, keyboard binding in Elite's controls). Edit chooses, renames and orders each set (stored on
   the PC). The rail presses keys only while the game runs and its window is the one in front ("click into the game"
-  otherwise: a tap never goes into another window), through auto honk's keyboard (Linux; Windows experimental), and
+  otherwise). On Linux that check needs `wmctrl` and `xprop` (`sudo apt install wmctrl x11-utils`): without them a tap
+  is pressed into whatever window is in front, so stay in the game; with them, a game run as a native Wayland window
+  (Proton's Wayland driver) cannot be found and the rail refuses. It presses through auto honk's keyboard (Linux; Windows experimental), and
   never while auto honk or auto-target is pressing or another commander is playing (its buttons are greyed
   then, under "presses off: CMDR B is playing"); one tap per button, never a sequence.
 

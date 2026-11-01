@@ -477,8 +477,8 @@ upstream project's choices, not rules of the game.
 - **Outrider presses keys for three things now:** auto honk, auto-target and the tablet's rail. The rail is one key
   per tap, only for signed-in devices (or this PC), only while the game is live and Elite's window is the one in front
   (S74's rule, as auto-target; never brought forward, and refused when the window cannot be found though it could be
-  looked for: a crash leaves Status.json live; pressed as before only where nothing can look, such as no wmctrl or
-  native Wayland), never while another commander plays (S9-S4) or one of the other two is pressing (complete review
+  looked for: a crash leaves Status.json live, and the game as a native Wayland window is not in X's list either;
+  pressed unchecked only where nothing can look: no wmctrl or xprop, or no X display), never while another commander plays (S9-S4) or one of the other two is pressing (complete review
   2026-10-30), and only the binding the game itself has for that control; there are no macros or sequences on it (Board
   ship and Disembark were dropped for that reason). Status.json is the only confirmation; a press that is not
   confirmed says so rather than guessing. Hide UI, Screenshot and HighRes (2026-10-25, at the end of every set) press
@@ -657,8 +657,10 @@ upstream project's choices, not rules of the game.
   have no countdown; when the game did not come, they count down 5 s after all ("Elite is not the active window:
   click into the game"), the server telling the page through the test's `note`; the automatic run and the
   co-pilot's (whose short wait is for a cancelling press) stop and say so. Where nothing can be known (no wmctrl
-  or xprop, no window with that title: the game as a native Wayland window) it does as before: the countdown, keys
-  unchecked; the box says why. On Windows, SetForegroundWindow from a background process needs the usual
+  or xprop, no X display) it does as before: the countdown, keys unchecked; the box says why. With the tools working
+  and no window with that title (the game crashed with Status.json live, or the game as a native Wayland window) every
+  run is refused before any key, "no game window found", as the rail is (review round 9: it pressed into the window
+  in front). On Windows, SetForegroundWindow from a background process needs the usual
   workaround: attaching to the input of the thread in front, not the other usual one, an Alt tap, which would be a
   key into the window in front. Untried there.
   **Its settings apply to the next run, and the controls are named in any case** (a Windows player's report on

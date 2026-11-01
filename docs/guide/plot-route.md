@@ -214,9 +214,11 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
   - When the game does not come to the front, 🎯, Target next and Test now count down 5 s instead ("Elite is not the
     active window: click into the game", or "no game window found" when there is none to bring forward) and still
     check before the first key; the automatic run and the co-pilot button's say so and press nothing.
-  - Where it cannot see the game's window (no `wmctrl`; the game as a native Wayland window, Proton's Wayland driver;
-    Sway, Hyprland and window managers that refuse focus stealing ignore it): the 5 s countdown as before, and then
-    **the keys go to whichever window has focus**: stay in the game until it is done.
+  - With `wmctrl` working but no game window to be found (the game has crashed, or runs as a native Wayland window,
+    Proton's Wayland driver): no key at all, "no game window found".
+  - Where nothing can look for the window (no `wmctrl` or `xprop`; Sway, Hyprland and window managers that refuse
+    focus stealing ignore it): the 5 s countdown as before, and then **the keys go to whichever window has focus**:
+    stay in the game until it is done.
 - The log gets one line per run ("highway auto-target: targeted Hwy Stop 38"); every step is printed when a run
   fails, and for every ▶ test now, each with the key it pressed ("5 plot the route: hold Space … for 1 s: done").
 - **🎯 Target next** (in the box, and beside "Next:" in the route line under the tiles, on every tab, and on Now) does the same

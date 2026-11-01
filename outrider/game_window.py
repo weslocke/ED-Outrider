@@ -10,8 +10,9 @@ Wayland session for the game under XWayland, which is how Proton runs it; Win32 
 - Windows: SetForegroundWindow, with the usual workaround of attaching to the thread in front (AttachThreadInput) and
   AllowSetForegroundWindow; never the other common trick, an Alt key tap, which is a key into the window in front.
   Untried against the game: Windows is experimental.
-- Cannot work (then nothing is checked, as before this: the page's countdown to click into the game): the game as a
-  native Wayland window (Proton's Wayland driver: wmctrl cannot see it, nor can the overlay follow it); compositors
+- Cannot work: the game as a native Wayland window (Proton's Wayland driver: wmctrl cannot see it, nor can the overlay
+  follow it), so with the tools there no game window is found and the rail and auto-target refuse (review round 9);
+  without wmctrl or xprop nothing is checked (the page's countdown to click into the game, as before); compositors
   that ignore X11 activation (Sway, Hyprland: their own IPC, not planned) or a window manager set to refuse focus
   stealing: the activation is then ignored, which the check sees, so the run falls back to the countdown or stops.
 
