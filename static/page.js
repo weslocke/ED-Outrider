@@ -11263,9 +11263,11 @@ document.getElementById("trySpeak").onclick = () => {
 // language first). The list is rebuilt only when the browser's voices change (Edge lists hundreds).
 let browserVoiceKey = null;
 function drawBrowserVoice() {
-  const eng = speechEngine(), sel = document.getElementById("browserVoice"), t = data && data.tts;
+  const eng = speechEngine(), sel = document.getElementById("browserVoice");
   for (const r of document.querySelectorAll('input[name="speechEngine"]')) r.checked = r.value === eng;
   document.getElementById("piperBox").hidden = eng === "browser";   // Piper's own settings only while it speaks
+  // and the browser's voices only while it does (the author, 2026-11-01; a pick made then still speaks without Piper)
+  for (const id of ["browserVoiceWrap", "browserVoiceNote"]) document.getElementById(id).hidden = eng !== "browser";
   const vs = browserVoices(), id = store.get("browserVoice", "");
   const key = vs.map(v => v.voiceURI).join("\n");
   if (key !== browserVoiceKey && document.activeElement !== sel) {
@@ -11278,11 +11280,9 @@ function drawBrowserVoice() {
       groups.get(g).sort((a, b) => a.name.localeCompare(b.name)).map(v => `<option value="${esc(v.voiceURI)}">${esc(v.name)}</option>`).join("") + "</optgroup>").join("");
   }
   if (document.activeElement !== sel) sel.value = vs.some(v => v.voiceURI === id) ? id : "";
-  const piperHere = !!(t && t.available);
   document.getElementById("browserVoiceHint").textContent = !vs.length ? "this browser lists no voices of its own"
     : id && !vs.some(v => v.voiceURI === id) ? "the voice chosen before is not in this browser: its default speaks"
-    : eng === "browser" ? "every line in this voice, the co-pilot's too; crew and personality voices are Piper's"
-    : piperHere ? "used only if you choose this browser's voice" : "Piper is not installed, so this voice speaks";
+    : "every line in this voice, the co-pilot's too; crew and personality voices are Piper's";
 }
 for (const r of document.querySelectorAll('input[name="speechEngine"]')) r.onchange = e => {
   store.set("speechEngine", e.target.value); drawTts(); drawSpeechBtn(); drawMainHint(); if (crewUi) drawCrew(true); };

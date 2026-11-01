@@ -176,8 +176,8 @@ Outrider runs (a Docker server too):
 Without Piper installed, the browser's own voice speaks. With Piper, the browser's voice is never used: a line Piper
 can't say is not said (what you asked for is still shown as a caption).
 
-**Speak with: Piper / this browser's voice** (⚙ Settings → Voice) chooses the browser's voice instead, and which of
-its voices (grouped by language, yours first; ▶ says a sample). Some browsers have good ones: Edge's natural voices,
+**Speak with: Piper / this browser's voice** (⚙ Settings → Voice) chooses the browser's voice instead, and then which of
+its voices (grouped by language, yours first; ▶ says a sample): the list shows only while it is chosen. Some browsers have good ones: Edge's natural voices,
 for one. It is per browser, as each has voices of its own. Chosen, the browser says every line, the co-pilot's
 too, in that one voice, and the Piper box is hidden. The personalities and the crew keep working (their words, names
 and who says what); only their own voices are Piper's, so the crew table drops its Voice and Speaker columns and its ▶

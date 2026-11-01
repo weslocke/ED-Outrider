@@ -2809,7 +2809,7 @@ const releasePayloads = async () => {
       data.crew = Object.assign({}, data.crew || {}, {on: true}); drawMainHint(); drawCrew(true);
       const shown = el => !el.closest("[hidden]") && getComputedStyle(el).display !== "none";
       const crewRow = ct.querySelector("tr[data-crole]"), cells = crewRow ? [...crewRow.children] : [];
-      const layout = {piperBox: document.getElementById("piperBox").hidden, hint: /^The XO's personality, in this browser's voice: /.test(document.getElementById("mainHint").textContent),
+      const layout = {piperBox: document.getElementById("piperBox").hidden, picker: !document.getElementById("browserVoiceWrap").hidden && !document.getElementById("browserVoiceNote").hidden, hint: /^The XO's personality, in this browser's voice: /.test(document.getElementById("mainHint").textContent),
                       crewNote: !document.getElementById("crewBrowserNote").hidden, crewRows: !!crewRow,
                       cols: cells.slice(0, 6).map(shown), personality: !!(crewRow && crewRow.querySelector("[data-cpers], .asxo"))};
       const crewSaid = spoken.length; await crewPlay("xo", () => {});
@@ -2820,7 +2820,7 @@ const releasePayloads = async () => {
       const copilot = {words: "Copilot check.", prio: 1, kind: "manual", pace: 1, piperOnly: true};
       await sayNow(copilot);
       radio("piper");
-      layout.piperAgain = [document.getElementById("piperBox").hidden, ct.classList.contains("nopiper"), document.getElementById("crewBrowserNote").hidden,
+      layout.piperAgain = [document.getElementById("browserVoiceWrap").hidden && document.getElementById("browserVoiceNote").hidden, document.getElementById("piperBox").hidden, ct.classList.contains("nopiper"), document.getElementById("crewBrowserNote").hidden,
                            /^The XO's voice and personality: /.test(document.getElementById("mainHint").textContent)];
       data.crew = crewWas; drawMainHint(); drawCrew(true);
       const back = {words: "Piper again check.", prio: 1, kind: "manual", pace: 1};
@@ -2842,8 +2842,8 @@ const releasePayloads = async () => {
       return {picker, layout, spoken, engines: [plain.engine, copilot.engine, back.engine || null, none.engine], lost, gone}; })()`);
     w.fetch = realFetch;
     const want = {picker: {groups: ["en-GB: Libby, Ryan", "en-US: Aria", "de-DE: Hans"], value: "libby", engine: "· this browser's voice", title: true},
-      layout: {piperBox: true, hint: true, crewNote: true, crewRows: true, cols: [true, true, true, false, false, true], personality: true,
-               crewPlay: true, piperAgain: [false, false, true, true]},
+      layout: {piperBox: true, picker: true, hint: true, crewNote: true, crewRows: true, cols: [true, true, true, false, false, true], personality: true,
+               crewPlay: true, piperAgain: [true, false, false, true, true]},
       spoken: [["Chosen check.", "Libby", "en-GB"], ["Copilot check.", "Libby", "en-GB"], ["No Piper check.", "Libby", "en-GB"]],
       engines: ["browser voice (chosen): Libby", "browser voice (chosen): Libby", null, "browser voice: Libby"],
       lost: ["browser", ["Lost contact with Outrider. No alerts until it is back. [connection]"], null],

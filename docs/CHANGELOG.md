@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · The browser's voices only with the browser chosen
+- The author: the voice picker, its ▶ and its notes showed beside Speak with's Piper too. They now show only while
+  this browser's voice is chosen (a pick made then still speaks where Outrider has no Piper); the picker's two
+  Piper-side hints went with them. Checked both ways in the `browser_voice` smoke block.
+
 ## 2026-11-01 · Settings → Voice laid out by Speak with
 - The author's ask: what only Piper uses together, so it can depend on Piper being chosen. Speak with is now first, then
   a **Piper** box (Main voice, 🎙 Voice lab, Personality voices, Voices kept loaded), hidden while this browser's voice

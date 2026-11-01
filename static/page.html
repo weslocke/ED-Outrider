@@ -657,10 +657,10 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="mod inlineopts" id="speakWithRow">Speak with
         <label><input type="radio" name="speechEngine" value="piper"> Piper</label>
         <label><input type="radio" name="speechEngine" value="browser"> this browser's voice</label>
-        <select id="browserVoice" aria-label="this browser's voice"></select>
-        <button type="button" class="try" id="tryBrowserVoice" title="say a sample line">▶</button>
-        <span id="browserVoiceHint" class="hint"></span>
-        <div class="hint">Per browser: each has voices of its own (Edge's natural voices, the system's on Linux). The browser's voice says every line, the co-pilot's too, in that one voice.</div></div>
+        <span id="browserVoiceWrap" hidden><select id="browserVoice" aria-label="this browser's voice"></select>
+          <button type="button" class="try" id="tryBrowserVoice" title="say a sample line">▶</button>
+          <span id="browserVoiceHint" class="hint"></span></span>
+        <div class="hint" id="browserVoiceNote" hidden>Per browser: each has voices of its own (Edge's natural voices, the system's on Linux). The browser's voice says every line, the co-pilot's too, in that one voice.</div></div>
       <div id="piperBox" class="vmbox" data-find-block="piper">
         <h4 class="vmhead">Piper</h4>
         <label data-find="defaults.voice defaults.voice_fallback" class="mod">Main voice<b id="ttsXo" hidden> = XO</b> <select id="ttsVoice"></select>
