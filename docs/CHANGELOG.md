@@ -2,6 +2,25 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · Your squadron's carrier: what an officer's journal adds
+- Hiner399's session as his squadron's leader (issue #16: docked at it, tritium out and in, three bookings, Refuel
+  paused and resumed, trade orders, bank transfers) confirmed the officers' lines Outrider had read by Frontier's
+  documentation, and showed what was missing. Its carrier and dock lines are now a test fixture.
+- **Mined ore moved to your squadron's carrier** was counted as on your own carrier, so a later sale from your
+  carrier could count as mining income; cargo taken from the squadron's carrier could move your own carrier's mined
+  stock back aboard. Now ore given to it leaves your mined stock, and cargo from it is not mined ore of yours.
+- **Its departure warning:** an officer who books its jump and is not aboard hears "departs in N minutes" as for
+  your own carrier, whichever carrier the tile shows. Its countdown turns red in the last five minutes, and the line
+  gives the jump's length and where it leaves the carrier from you (no tritium cost: two 17.5 ly jumps burned 7 t
+  where the fleet carrier's formula says 8).
+- **Its services from its crew:** a service an officer switches off or pauses (CarrierStats' crew, then each
+  CarrierCrewServices) is off on the tile ("Vista ✗") and in the sell lists and the dock finder, as for your own carrier.
+  The crew parsing is shared (`outrider.cargo.crew_from_stats`, `crew_after`).
+- Its untyped lines (a transfer there, its `CarrierDepositFuel`, its jump aboard) no longer land in your carrier's
+  history (`cargo_events`); nothing read them, but the test claimed they never did.
+- 21 `carrier_departs` lines that fit only a fleet carrier you bought ("Fleet carrier departure…", "you pay upkeep on
+  that thing…") reworded to fit either (speech.json 15, Scoundrel 3, Vulcan 2, Royal Navy 1).
+
 ## 2026-10-31 · Version 2026.10.30, The Misc Release
 - `outrider.__version__` 2026.10.30; What's new has its section (your squadron's carrier, the commander chooser, the
   stations of stored modules and ships, Sell all, Canonn's known sites, Piper's threads, about 150 fixes from the

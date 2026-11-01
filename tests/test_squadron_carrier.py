@@ -1,6 +1,7 @@
 """Your squadron's carrier (plan 2026-10-30, Hiner399 in discussion #3): the reader's record beside your fleet carrier,
 Spansh's word on it, the summary, the dock finder's and the sell lists' "your squadron's". Line shapes from the author's
-journals (a member's: CarrierLocation at each login); the officers' lines from their documented shape. Fakes only."""
+journals (a member's: CarrierLocation at each login); the officers' lines from Hiner399's journal as his squadron's
+leader (issue #16, tests/fixtures/squadron_carrier_officer.jsonl: its carrier and dock lines). Fakes only."""
 import asyncio
 import json
 import os
@@ -147,7 +148,7 @@ class Reader(unittest.TestCase):
         self.assertEqual((sc["system"], sc["x"], sc["planned"], sc["moved_ts"]), ("Sol", 0.0, None, "2026-07-19T21:16:00Z"))
 
     def test_the_officers_lines(self):
-        """CarrierStats, a booking, its cancelling and a tritium deposit, by their documented shape (unconfirmed)."""
+        """CarrierStats, a booking, its cancelling and a tritium deposit (the real deposit has no CarrierType: Officer)."""
         self.feed(login("2026-07-19T20:44"))
         self.j.handle(ev("2026-07-19T21:00:00Z", "CarrierStats", CarrierType="SquadronCarrier", CarrierID=SC_ID,
                          Callsign="7738", Name="THE WINCHESTER", FuelLevel=812, JumpRangeCurr=500.0))
@@ -166,15 +167,98 @@ class Reader(unittest.TestCase):
         self.assertIsNone(self.j.carrier)
 
     def test_its_lines_never_reach_your_carriers_cargo(self):
+        """In their real shapes (#16): the deposit has no CarrierType, nor do a transfer there and its jump aboard."""
         self.feed(login("2026-07-19T20:44", docked_at=SC_ID))
-        self.j.handle(ev("2026-07-19T21:03:00Z", "CarrierDepositFuel", CarrierType="SquadronCarrier", CarrierID=SC_ID,
-                         Amount=100, Total=912))
+        self.j.handle(ev("2026-07-19T21:00:00Z", "Docked", StationName="7738", StationType="FleetCarrier", MarketID=SC_ID,
+                         StarSystem="Hajangai", SystemAddress=HAJANGAI))
+        self.j.handle(ev("2026-07-19T21:02:00Z", "CargoTransfer", Transfers=[{"Type": "tritium", "Count": 5, "Direction": "toship"}]))
+        self.j.handle(ev("2026-07-19T21:03:00Z", "CarrierDepositFuel", CarrierID=SC_ID, Amount=5, Total=912))
+        self.j.handle(ev("2026-07-19T21:30:00Z", "CarrierJump", Docked=True, StationName="7738", StationType="FleetCarrier",
+                         MarketID=SC_ID, StarSystem="Sol", SystemAddress=10477373803, StarPos=[0.0, 0.0, 0.0]))
         self.assertEqual(self.db.execute("SELECT count(*) FROM cargo_events WHERE market = ?", (SC_ID,)).fetchone()[0], 0)
+        self.assertEqual((self.j.squadron_carrier["fuel"], self.j.squadron_carrier["system"]), (912, "Sol"))
+
+    def mine(self, ts, n, what="$platinum_name;"):
+        for i in range(n):
+            self.j.handle(ev(f"{ts}:{10 + i}Z", "MiningRefined", Type=what))
+
+    def dock(self, ts, market, name):
+        self.j.handle(ev(ts, "Docked", StationName=name, StationType="FleetCarrier", MarketID=market,
+                         StarSystem="Hajangai", SystemAddress=HAJANGAI))
+
+    def test_mined_ore_given_to_it_is_not_on_your_carrier(self):
+        """Ore moved to your squadron's carrier leaves the ship's mined stock, and is not your own carrier's (#16)."""
+        self.feed(login("2026-07-19T20:44"))
+        self.mine("2026-07-19T20:50", 3)
+        self.dock("2026-07-19T21:00:00Z", SC_ID, "7738")
+        self.j.handle(ev("2026-07-19T21:01:00Z", "CargoTransfer", Transfers=[{"Type": "platinum", "Count": 3, "Direction": "tocarrier"}]))
+        self.assertEqual((self.j.mined_stock, self.j.mined_carrier), ({}, {}))
+
+    def test_cargo_from_it_is_no_mined_ore(self):
+        """Your own carrier's mined stock stays when cargo comes aboard at your squadron's carrier (#16)."""
+        self.feed(login("2026-07-19T20:44"))
+        self.mine("2026-07-19T20:50", 3)
+        self.dock("2026-07-19T21:00:00Z", FC_ID, "G0X-85Z")
+        self.j.handle(ev("2026-07-19T21:01:00Z", "CargoTransfer", Transfers=[{"Type": "platinum", "Count": 3, "Direction": "tocarrier"}]))
+        self.assertEqual(self.j.mined_carrier, {"platinum": 3})   # your own carrier: still your mined ore
+        self.j.handle(ev("2026-07-19T21:05:00Z", "Undocked", StationName="G0X-85Z", StationType="FleetCarrier", MarketID=FC_ID))
+        self.dock("2026-07-19T21:10:00Z", SC_ID, "7738")
+        self.j.handle(ev("2026-07-19T21:11:00Z", "CargoTransfer", Transfers=[{"Type": "platinum", "Count": 3, "Direction": "toship"}]))
+        self.assertEqual((self.j.mined_stock, self.j.mined_carrier), ({}, {"platinum": 3}))
 
     def test_a_reread_clears_it(self):
         self.feed(login("2026-07-19T20:44"))
         self.db.executescript(ed_outrider.RESET_JOURNAL_DATA)
         self.assertIsNone(ed_outrider.meta_get(self.db, "squadron_carrier"))
+
+
+OFFICER = os.path.join(os.path.dirname(__file__), "fixtures", "squadron_carrier_officer.jsonl")
+CURY, HIS_FC = 3714858752, 3712901888
+
+
+class Officer(unittest.TestCase):
+    """Hiner399's session as his squadron's leader (2026-11-01, #16), its carrier and dock lines as the game wrote them:
+    docked at it, tritium out and back in, three bookings (two flown, one aboard, one cancelled), Refuel paused and
+    resumed, trade orders and bank transfers. He owns a fleet carrier too."""
+
+    def setUp(self):
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        # his own fleet carrier, known from an earlier session: its stats and a booked jump of its own
+        self.j.handle(ev("2026-10-31T10:00:00Z", "CarrierStats", CarrierType="FleetCarrier", CarrierID=HIS_FC,
+                         Callsign="ABC-12X", Name="HIS OWN", FuelLevel=500, JumpRangeCurr=500.0))
+        self.j.handle(ev("2026-10-31T10:01:00Z", "CarrierLocation", CarrierType="FleetCarrier", CarrierID=HIS_FC,
+                         StarSystem="HIP 102929", SystemAddress=39957030076, BodyID=18))
+        self.j.handle(ev("2026-10-31T10:02:00Z", "CarrierJumpRequest", CarrierType="FleetCarrier", CarrierID=HIS_FC,
+                         SystemName="Sol", SystemAddress=10477373803, DepartureTime="2026-11-02T10:00:00Z"))
+        with open(OFFICER, encoding="utf-8") as f:
+            for line in f:
+                self.j.handle(json.loads(line))
+
+    def test_the_squadron_carriers_record(self):
+        sc = self.j.squadron_carrier
+        self.assertEqual((sc["id"], sc["name"], sc["callsign"], sc["fuel"], sc["system"], sc["planned"]),
+                         (CURY, "THE CURRY MONSTER", "CURY", 986, "Synuefai MD-I c26-19", None))
+        self.assertEqual(sc["crew"]["roles"]["Refuel"], "on")   # paused, then resumed
+        self.assertEqual(sc["crew"]["ts"], "2026-11-01T12:57:29Z")   # the last CarrierStats
+
+    def test_his_fleet_carrier_untouched(self):
+        c = self.j.carrier
+        self.assertEqual((c["id"], c["name"], c["fuel"], c["planned"]["system"]), (HIS_FC, "HIS OWN", 500, "Sol"))
+        self.assertEqual(c["system"], "HIP 102929")   # its own CarrierLocation at the login
+
+    def test_none_of_its_lines_in_your_carriers_history(self):
+        self.assertEqual(self.db.execute("SELECT count(*) FROM cargo_events WHERE market = ?", (CURY,)).fetchone()[0], 0)
+
+    def test_a_pause_after_the_stats(self):
+        self.j.handle(ev("2026-11-01T13:05:00Z", "CarrierCrewServices", CarrierID=CURY, CarrierType="SquadronCarrier",
+                         CrewRole="Refuel", Operation="Pause", CrewName="Celia Bryan"))
+        self.assertEqual(self.j.squadron_carrier["crew"]["roles"]["Refuel"], "suspended")
+        # another carrier's line (your own fleet carrier's) changes nothing here
+        self.j.handle(ev("2026-11-01T13:06:00Z", "CarrierCrewServices", CarrierID=HIS_FC, CarrierType="FleetCarrier",
+                         CrewRole="Refuel", Operation="Resume", CrewName="X"))
+        self.assertEqual(self.j.squadron_carrier["crew"]["roles"]["Refuel"], "suspended")
 
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "spansh_squadron_carrier.json")
@@ -263,6 +347,42 @@ class Summary(unittest.TestCase):
         self.j.docked = {"market_id": SC_ID}
         s = self.state.squadron_carrier_summary()
         self.assertEqual((s["services"], s["has_vista"], s["aboard"]), (["UC", "Refuel"], False, True))
+
+    def stats(self, ts, **roles):
+        crew = [{"CrewRole": r, "Activated": v != "off", "Enabled": v == "on"} for r, v in roles.items()]
+        self.j.handle(ev(ts, "CarrierStats", CarrierType="SquadronCarrier", CarrierID=SC_ID, Callsign="7738",
+                         Name="THE WINCHESTER", FuelLevel=800, Crew=crew))
+
+    def crew(self, ts, role, op):
+        self.j.handle(ev(ts, "CarrierCrewServices", CarrierType="SquadronCarrier", CarrierID=SC_ID, CrewRole=role, Operation=op))
+
+    def test_an_officers_crew_says_its_services(self):
+        """A service an officer pauses is off for the sell lists, and the tile says so (#16), as your own carrier's."""
+        self.stats("2026-11-01T10:00:00Z", Exploration="on", VistaGenomics="on", Refuel="on")
+        s = self.state.squadron_carrier_summary()
+        self.assertEqual((s["services"], s["has_uc"], s["has_vista"], s["suspended"]), (["UC", "Vista", "Refuel"], True, True, []))
+        self.crew("2026-11-01T10:05:00Z", "VistaGenomics", "Pause")
+        s = self.state.squadron_carrier_summary()
+        self.assertEqual((s["has_uc"], s["has_vista"], s["suspended"]), (True, False, ["Vista"]))
+        self.assertEqual(dock.squadron_row(s)["services"], {"UC", "Refuel"})
+        self.crew("2026-11-01T10:06:00Z", "VistaGenomics", "Resume")
+        self.assertTrue(self.state.squadron_carrier_summary()["has_vista"])
+        # a dock there after it is newer: its list wins
+        self.j.handle(ev("2026-11-01T11:00:00Z", "Docked", StationName="7738", StationType="FleetCarrier", StarSystem="Hajangai",
+                         SystemAddress=HAJANGAI, MarketID=SC_ID, StationServices=["dock", "exploration", "refuel"]))
+        s = self.state.squadron_carrier_summary()
+        self.assertEqual((s["has_uc"], s["has_vista"]), (True, False))
+
+    def test_a_booked_jump_has_its_length(self):
+        sol = (0.0, 0.0, 0.0)
+        self.where[10477373803] = ("Sol",) + sol
+        self.j.handle(ev("2026-07-19T21:00:00Z", "CarrierJumpRequest", CarrierType="SquadronCarrier", CarrierID=SC_ID,
+                         SystemName="Sol", SystemAddress=10477373803, DepartureTime="2099-01-01T00:00:00Z"))
+        pl = self.state.squadron_carrier_summary()["planned"]
+        self.assertEqual(pl["jump_ly"], round(ed_outrider.dist({"x": -28.125, "y": 4.90625, "z": -68.28125},
+                                                                dict(zip("xyz", sol))), 1))
+        self.assertEqual(pl["distance_from_you"], round(ed_outrider.dist(self.j.pos, dict(zip("xyz", sol))), 1))
+        self.assertNotIn("burn", pl)   # the fleet carrier's formula does not fit it
 
     def test_a_long_gone_booking_is_dropped(self):
         self.j.squadron_carrier["planned"] = {"system": "Sol", "id64": 10477373803, "departure": "2026-07-19T21:00:00Z",

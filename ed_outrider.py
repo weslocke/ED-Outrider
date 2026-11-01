@@ -1684,10 +1684,12 @@ CARGO_EVENTS = frozenset(CARGO_ONLY) | {"Cargo", "Docked", "Undocked", "CarrierS
     | frozenset(CARRIER_MOVE_EVENTS)
 # Your squadron's carrier (Journals.handle_squadron_carrier; Hiner399 in discussion #3, plan 2026-10-30): every one is
 # read for something else too. A member's journal has its CarrierLocation at each login; the officers' lines (stats, a
-# booked jump, tritium) are taken from their documented shape, unconfirmed. Leaving the squadron drops it
+# booked jump, tritium, its crew's services) confirmed by Hiner399's journal as its leader (#16; its CarrierDepositFuel
+# has no CarrierType: matched by ID). Leaving the squadron drops it
 SQUADRON_CARRIER_EVENTS = frozenset({"SquadronStartup", "LoadGame", "Shutdown", "Location", "Docked", "CarrierJump",
                                      "CarrierLocation", "CarrierStats", "CarrierJumpRequest", "CarrierJumpCancelled",
-                                     "CarrierDepositFuel", "LeftSquadron", "KickedFromSquadron", "DisbandedSquadron"})
+                                     "CarrierDepositFuel", "CarrierCrewServices", "LeftSquadron", "KickedFromSquadron",
+                                     "DisbandedSquadron"})
 # your carrier's history (cargo_events); CarrierCrewServices (a service switched on, off, paused or resumed) for the
 # services the tile and the nearest places to sell use between two CarrierStats (S55); its movements and the tritium
 # you deposit for the jumps it measured (outrider.cargo.carrier_burns, S13 B)
@@ -5293,7 +5295,9 @@ class Journals:
         planet the same event moves cargo between the ship and the SRV) moves up to what the carrier's mined stock holds
         back aboard, first capped at what the carrier held of it then (carrier_holding:
         ore other players bought from it is not in the journal, but its Market.json reads show the hold going down), and
-        mined ore sold to your own carrier goes into its stock too; a new carrier (CarrierBuy) starts empty. A MarketSell
+        mined ore sold to your own carrier goes into its stock too; a new carrier (CarrierBuy) starts empty. Your squadron's
+        carrier is not yours: ore moved to it leaves the ship's stock for good, and cargo taken from it is no mined ore of
+        yours (Hiner399's journal, issue #16: it counted as your own carrier's). A MarketSell
         counts as mining up to what the stock holds of it, min(Count, stock): when that is over 0 it gets a mining_sales
         row (own_carrier 1 at your own carrier's market) and comes off the stock; the rest of the sale was trade.
         Returns, for a MarketSell, the credits that count as mining income (0 when none was mined, and at your own
@@ -5320,16 +5324,21 @@ class Journals:
             if ev.get("CarrierType", "FleetCarrier") == "FleetCarrier":   # a squadron's leaves your own one's ore
                 kept = {}   # a new carrier: what the old one held is gone with it
         elif name == "CargoTransfer":
+            sq = (self.squadron_carrier or {}).get("id")
+            at_sc = sq is not None and self.cargo_dock == sq   # docked at your squadron's carrier, not your own
             for t in ev.get("Transfers") or []:
                 if not isinstance(t, dict) or not cid(t.get("Type")):
                     continue
                 k, n = cid(t.get("Type")), count(t)
                 if t.get("Direction") == "tocarrier":
                     moved = min(n, stock.get(k, 0))
-                    stock[k], kept[k] = stock.get(k, 0) - moved, kept.get(k, 0) + moved
-                elif t.get("Direction") == "toship" and self.cargo_dock is not None:
-                    # from your carrier only while docked (transfers happen at your own carrier alone): the same event
-                    # moves cargo between the ship and the SRV on a planet (toship / tosrv), one stock here (review M6)
+                    stock[k] = stock.get(k, 0) - moved
+                    if not at_sc:
+                        kept[k] = kept.get(k, 0) + moved
+                elif t.get("Direction") == "toship" and self.cargo_dock is not None and not at_sc:
+                    # from your carrier only while docked (transfers happen only at a carrier: yours or your squadron's):
+                    # the same event moves cargo between the ship and the SRV on a planet (toship / tosrv), one stock here
+                    # (review M6)
                     if kept.get(k):   # never more than the carrier holds of it (ore others bought is not journaled)
                         held = self.carrier_holding(k, ts)
                         if held is not None:
@@ -5527,6 +5536,8 @@ class Journals:
                 market = ev.get("MarketID") if ev.get("StationType") == "FleetCarrier" else None
             elif ev.get("CarrierType", "FleetCarrier") != "FleetCarrier":
                 market = None   # a squadron's carrier: not yours to track
+            if market is not None and market == (self.squadron_carrier or {}).get("id"):
+                market = None   # its untyped lines too: a transfer there, its CarrierDepositFuel, its jump aboard (#16)
             if market is not None:
                 data = dict(ev, _at=self.cargo_dock) if name == "CargoTransfer" else ev
                 if self.db.execute("INSERT OR IGNORE INTO cargo_events VALUES (?, ?, ?, ?, ?)",
@@ -5782,9 +5793,9 @@ class Journals:
         its Shutdown or the next LoadGame means the squadron has no carrier (any more); leaving the squadron drops it
         at once."""
         sc = self.squadron_carrier or {}
-        fresh = lambda: self.fresh("squadron_carrier", ts, max(sc.get("ts") or "", sc.get("stats_ts") or "",
-                                                               (sc.get("planned") or {}).get("ts") or ""))
-        newest = max(sc.get("ts") or "", sc.get("stats_ts") or "", (sc.get("planned") or {}).get("ts") or "")
+        newest = max(sc.get("ts") or "", sc.get("stats_ts") or "", (sc.get("planned") or {}).get("ts") or "",
+                     (sc.get("crew") or {}).get("ts") or "")
+        fresh = lambda: self.fresh("squadron_carrier", ts, newest)
         left = name in ("LeftSquadron", "KickedFromSquadron", "DisbandedSquadron")
         if left or name in ("LoadGame", "Shutdown", "SquadronStartup") and self.sc_login:
             # a login read out of order (an older folder after a newer one) left open says nothing about the carrier
@@ -5822,12 +5833,20 @@ class Journals:
                 sc.update(services=ev["StationServices"], services_ts=ts)
             if name != "CarrierJump" and isinstance(ev.get("StationName"), str) and ev["StationName"].strip():
                 sc["callsign"] = ev["StationName"].strip()   # its four-letter callsign, before Spansh names it (review 8)
-        elif name == "CarrierStats":   # an officer's: the carrier's management screen (unconfirmed for a squadron's)
+        elif name == "CarrierStats":   # an officer's: the carrier's management screen
             if not typed or ev.get("CarrierID") is None or not fresh():
                 return
             if not mine:
                 sc = {"id": ev["CarrierID"]}
             sc.update(name=ev.get("Name"), callsign=ev.get("Callsign"), fuel=ev.get("FuelLevel"), stats_ts=ts)
+            crew = outrider.cargo.crew_from_stats(ev, ts)   # its services, a paused one too (Hiner399's journal, #16)
+            if crew:
+                sc["crew"] = crew
+        elif name == "CarrierCrewServices":   # a service switched on or off, paused or resumed by an officer
+            crew = outrider.cargo.crew_after(sc.get("crew"), ev, ts) if typed and mine else None
+            if not crew or not fresh():
+                return
+            sc["crew"] = crew
         elif name in ("CarrierJumpRequest", "CarrierJumpCancelled", "CarrierDepositFuel"):
             if not mine or not fresh():   # by its ID: a booking for a carrier not known yet has no place to show
                 return
@@ -11684,11 +11703,20 @@ class State:
                 else xyz
         pos = self.journals.pos
         d = dist(pos, dict(zip("xyz", xyz))) if pos and xyz[0] is not None else None
-        # the newer of a Docked there (the game's ids) and Spansh's report
-        if sc.get("services_ts") and ts_seconds(sc["services_ts"]) >= seen:
+        # the newest of a Docked there (the game's ids), an officer's crew lines (a role's name is its game id, lower
+        # case; a paused service is off: Hiner399's journal, #16) and Spansh's report
+        roles = (sc.get("crew") or {}).get("roles") or {}
+        crew_s = ts_seconds(sc["crew"]["ts"]) if roles and sc["crew"].get("ts") else 0
+        docked_s = ts_seconds(sc["services_ts"]) if sc.get("services_ts") else 0
+        if crew_s and crew_s >= max(docked_s, seen):
+            services = outrider.dock.game_services([r for r, v in roles.items() if v == "on"])
+        elif docked_s and docked_s >= seen:
             services = outrider.dock.game_services(sc.get("services"))
         else:
             services = set(row.get("services") or [])
+        # the tile's "UC ✗": a service an officer paused, as your own carrier's (carrier_services)
+        paused = [outrider.cargo.CREW_LABELS.get(r, r) for r, v in roles.items() if v == "suspended"
+                  and outrider.dock.GAME_SERVICES.get(r.lower()) not in services]
         planned = dict(sc["planned"]) if sc.get("planned") else None
         if planned and planned.get("departure"):
             try:   # long gone: no settle_carrier for it, and its next CarrierLocation may be a login away
@@ -11700,6 +11728,10 @@ class State:
             where = self.locate(int(planned["id64"]))
             if where:
                 planned["distance_from_you"] = round(dist(pos, {"x": where[1], "y": where[2], "z": where[3]}), 1)
+                # the jump's length, as your carrier's line has it; no tritium for it: the fleet carrier's formula said
+                # 8 t where Hiner399's squadron carrier burned 7 (#16)
+                if xyz[0] is not None:
+                    planned["jump_ly"] = round(dist(dict(zip("xyz", xyz)), {"x": where[1], "y": where[2], "z": where[3]}), 1)
         return {"name": row.get("name") or sc.get("name") or "", "callsign": sc.get("callsign") or row.get("callsign") or "",
                 "squadron": (meta_get(self.db, "squadron") or {}).get("name"),
                 "carrier_id": str(sc["id"]), "id": sc["id"], "system": system, "id64": str(id64), "source": source,
@@ -11709,7 +11741,7 @@ class State:
                 # Spansh's distance from the star only for the place shown (review 8: after a move it was the old one's)
                 "ls": row.get("ls") if row.get("id64") == int(id64) else None,
                 "services": sorted(services, key=outrider.dock.SERVICES.index),
-                "has_uc": "UC" in services, "has_vista": "Vista" in services, "planned": planned,
+                "has_uc": "UC" in services, "has_vista": "Vista" in services, "suspended": paused, "planned": planned,
                 "fuel": sc.get("fuel"), "fuel_ts": sc.get("stats_ts"), "ts": sc.get("ts"), "moved_ts": sc.get("moved_ts")}
 
     def maybe_squadron_spansh(self):

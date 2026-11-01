@@ -1384,8 +1384,12 @@ upstream project's choices, not rules of the game.
   as one that can come to you (no "to you" jumps, no trip). Its place is the journal's unless Spansh has a newer report
   of it elsewhere (a member hears of a move only at the next login), shown as Spansh's. It is dropped when a session
   wrote `SquadronStartup` but no carrier line by its end, or you leave the squadron: never on a missing line alone,
-  since some logins write neither (JOURNAL_REFERENCE). No alerts for its moves: they are learned late. The
-  officers' lines (stats, a booking, a deposit) are read by their documented shape, unconfirmed. Frontier's API
+  since some logins write neither (JOURNAL_REFERENCE). No alerts for its moves: they are learned late. An
+  officer's lines (confirmed by Hiner399's journal as its leader, issue #16) add the tritium reading, a booked jump
+  (its countdown, length and where it leaves it from you, and the "departs in N minutes, you are not aboard" warning,
+  as your own carrier's) and its crew's services (a paused UC or Vista is off for the sell lists); no tritium cost
+  for a jump (the fleet carrier's formula read 8 t where 7 t burned) and no balance or cargo (management, not
+  exploration). Mined ore moved to it is not your carrier's mined stock. Frontier's API
   (`/squadron`, read-only) would fill the rest, but needs the sign-in above: kept for later, optional if ever.
 - **Old carrier history is trusted only while it adds up.** Unjournaled trades (other players buying from an old
   sell order) leave old lines wrong: the author's 2025 colonisation hauling left 34,000 t tracked that was long gone.
@@ -1869,8 +1873,7 @@ confirmed while playing. Treat reports about them as likely real.
   preset), and the overlay on Linux hiding over the galaxy map, following a game-window resize and placed right in
   windowed mode; your squadron's carrier as a member (the Carrier tile's FC | SC switch, the author and players). Not
   yet: Sell all and Now's at-risk line naming where to sell (no sale docked yet), the overlay on Windows placed in the
-  game's client rectangle (`client_bounds`), your squadron's carrier's officer lines (CarrierStats, a booking, a
-  deposit: read by their documented shape), a non-English game's names (the Sell / Buy lookups and Sell all by the
+  game's client rectangle (`client_bounds`), a non-English game's names (the Sell / Buy lookups and Sell all by the
   commodity's id, the Exo-Biology checklist's colours by the variant's code and its regions by the system's place,
   Bark Mounds by name), the password behind nginx with the guide's `proxy_set_header` line, and Canonn's known sites in
   a body panel's 📍 Pins (📍 pin it).

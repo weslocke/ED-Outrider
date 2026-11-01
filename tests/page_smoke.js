@@ -2182,6 +2182,21 @@ const releasePayloads = async () => {
                 row({own: true, squadron: false, name: "Out Of The Blue", callsign: "G0X-85Z"})];
       o.sell = sellerTxt({name: "7738", carrier_name: "THE WINCHESTER", squadron: true, carrier: true, system: "Hajangai",
                           distance: 100, age_days: 3}).replace(/ ≈ \\d+ jumps?/, "");
+      // an officer's booking (Hiner399's journal, #16): the departure warning for either carrier, whichever the tile shows,
+      // once per booking, none aboard; the SC's line has the jump's length and where it leaves it from you
+      const realAO = alertOut, cards = []; alertOut = (k, t, b) => cards.push(t + " | " + b);
+      const cw = new Set(carrierWarned); carrierWarned.clear();
+      const soon = new Date(Date.now() + 230000).toISOString();
+      data.carrier = Object.assign({}, fc, {carrier_id: "1", planned: {system: "Elsewhere", departure: soon}});
+      data.squadron_carrier = Object.assign({}, sc, {carrier_id: "2", planned: {system: "Sol", departure: soon, jump_ly: 74, distance_from_you: 12.3}});
+      store.set("carrierSide", "sc"); store.set("carrierDocked", null); renderCarrier();
+      o.departs = [cards.join(" / "), text().replace(/\\d+:\\d\\d/, "M:SS"), !!document.querySelector("#carrierLine .noscoop .cd")];
+      renderCarrier();
+      o.once = cards.length;
+      carrierWarned.clear(); cards.length = 0;
+      data.carrier = null; data.squadron_carrier = Object.assign({}, data.squadron_carrier, {aboard: true, here: true}); renderCarrier();
+      o.aboard = cards.length;
+      alertOut = realAO; carrierWarned.clear(); cw.forEach(k => carrierWarned.add(k));
       data.carrier = saved.c; data.squadron_carrier = saved.s; store.set("carrierSide", saved.side); store.set("carrierDocked", saved.at); renderCarrier();
       return JSON.stringify(o);
     })()`);
@@ -2194,11 +2209,14 @@ const releasePayloads = async () => {
                   rows: ["[squadron-carrier]THE WINCHESTER 7738Squadron carrier · your squadron's · Hajangai",
                          "[squadron-carrier]ABCDSquadron carrier · Hajangai",
                          "[fleet-carrier]Out Of The Blue G0X-85ZFleet carrier · yours · Hajangai"],
-                  sell: "THE WINCHESTER (your squadron's carrier) · Hajangai · 100 ly"};
+                  sell: "THE WINCHESTER (your squadron's carrier) · Hajangai · 100 ly",
+                  departs: ["Out Of The Blue departs in 4 minutes | for Elsewhere; you are not aboard / THE WINCHESTER departs in 4 minutes | for Sol; you are not aboard",
+                            "[squadron-carrier]THE WINCHESTERHajangai · 100 ly [destination]departs for Sol in M:SS (74 ly jump, then 12.3 ly from you)UC ✓ · Vista ✓", true],
+                  once: 2, aboard: 0};
     const o = JSON.parse(got);
     const goodSq = JSON.stringify(o) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodSq;
-    console.log(goodSq ? "OK" : "FAIL", "| squadron carrier |", goodSq ? "the FC | SC switch, docking picks, a squadron's alone, whose in the finder and the sell line"
+    console.log(goodSq ? "OK" : "FAIL", "| squadron carrier |", goodSq ? "the FC | SC switch, docking picks, a squadron's alone, whose in the finder and the sell line, its departure warning and jump"
       : JSON.stringify(o), errors.slice(before));
   }
   // Cargo: the Carrier tile's tritium only with a tritium sell order (else as before, one line); the Materials tab's
@@ -4688,14 +4706,15 @@ const releasePayloads = async () => {
     holdPayloads();
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
-      const o = {}, saved = {carrier: data.carrier, position: data.position, systems: data.systems};
+      const o = {}, saved = {carrier: data.carrier, squadron_carrier: data.squadron_carrier, position: data.position, systems: data.systems};
       const realAO = alertOut, cards = []; alertOut = (k, t, b, opt) => cards.push([t, typeof opt.say === "function" ? opt.say() : opt.say]);
-      const cw = carrierWarned; carrierWarned = null;
+      const cw = new Set(carrierWarned); carrierWarned.clear();
+      data.squadron_carrier = null;
       data.carrier = {name: "Out Of The Blue", system: "Far", distance: 10, aboard: false, here: false,
                       planned: {system: "Elsewhere", departure: new Date(Date.now() + 50000).toISOString()}};
       renderCarrier();
       o.carrier = cards.map(c => c.join(" | ")).join(" / ");
-      alertOut = realAO; carrierWarned = cw;
+      alertOut = realAO; carrierWarned.clear(); cw.forEach(k => carrierWarned.add(k));
       // F23
       fShowLost.checked = false; fWithin.disabled = true;
       const a = document.createElement("a"); a.href = "#"; a.setAttribute("data-lossfirsts", ""); document.body.appendChild(a);

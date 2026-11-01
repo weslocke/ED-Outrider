@@ -4246,7 +4246,7 @@
     "{name}, {carrier} departs in {minutes} minutes. You are not aboard.",
     "Carrier jump in {minutes} minutes. Recommend immediate return.",
     "Be advised. {carrier} jumps in {minutes} minutes without us.",
-    "Fleet carrier departure in {minutes} minutes. We are not docked.",
+    "Carrier departure in {minutes} minutes. We are not docked.",
     "{name}, recommend returning to {carrier}. {minutes} minutes to departure.",
     "{carrier} jump sequence active. {minutes} minutes remaining.",
     "Warning. Carrier departs in {minutes} minutes. We are not aboard.",

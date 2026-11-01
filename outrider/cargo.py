@@ -331,6 +331,28 @@ CREW_LABELS = {"Exploration": "UC", "VistaGenomics": "Vista", "Refuel": "Refuel"
                "PioneerSupplies": "Pioneer supplies", "Bartender": "Bar", "Captain": "Captain"}
 
 
+def crew_from_stats(ev, ts):
+    """A CarrierStats line's crew: {roles: role -> on | suspended | off, ts}, or None when it has no Crew list. Your
+    carrier's (carrier_fold) and your squadron's (Journals.handle_squadron_carrier)."""
+    if not isinstance(ev.get("Crew"), list):
+        return None
+    roles = {}
+    for c in ev["Crew"]:
+        if isinstance(c, dict) and isinstance(c.get("CrewRole"), str):
+            # an inactive role has no Enabled; Activated with Enabled false is a suspended service
+            roles[c["CrewRole"]] = "off" if not c.get("Activated") else "on" if c.get("Enabled", True) else "suspended"
+    return {"roles": roles, "ts": ts}
+
+
+def crew_after(crew, ev, ts):
+    """The crew after a CarrierCrewServices line (a service switched on or off, paused or resumed in the carrier's
+    management, between two CarrierStats), or None when the line changes nothing (a Replace, an odd line)."""
+    state = CREW_OPERATIONS.get(ev.get("Operation"))
+    if not state or not isinstance(ev.get("CrewRole"), str):
+        return None
+    return {"roles": dict((crew or {}).get("roles") or {}, **{ev["CrewRole"]: state}), "ts": ts}
+
+
 def carrier_fold(carrier_id, events, markets=(), counts=()):
     """Your carrier's hold from its history, in time order.
 
@@ -406,20 +428,13 @@ def _carrier_event(st, carrier_id, ev, ts):
             # AvailableBalance is the balance less the reserve, and can be negative (seen: -1,051,595,783)
             st["finance"] = {"balance": fin["CarrierBalance"], "reserve": fin.get("ReserveBalance"),
                              "available": fin.get("AvailableBalance"), "ts": ts}
-        if isinstance(ev.get("Crew"), list):
-            roles = {}
-            for c in ev["Crew"]:
-                if isinstance(c, dict) and isinstance(c.get("CrewRole"), str):
-                    # an inactive role has no Enabled; Activated with Enabled false is a suspended service
-                    roles[c["CrewRole"]] = "off" if not c.get("Activated") else "on" if c.get("Enabled", True) else "suspended"
-            st["crew"] = {"roles": roles, "ts": ts}
+        crew = crew_from_stats(ev, ts)
+        if crew:
+            st["crew"] = crew
     elif name == "CarrierCrewServices":
-        # a service switched on or off, paused or resumed in the carrier's management, between two CarrierStats
-        state = CREW_OPERATIONS.get(ev.get("Operation"))
-        if ev.get("CarrierID") != carrier_id or not state or not isinstance(ev.get("CrewRole"), str):
+        if ev.get("CarrierID") != carrier_id:
             return
-        crew = st["crew"] or {"roles": {}}
-        st["crew"] = {"roles": dict(crew["roles"], **{ev["CrewRole"]: state}), "ts": ts}
+        st["crew"] = crew_after(st["crew"], ev, ts) or st["crew"]
     elif name == "CarrierTradeOrder":
         if ev.get("CarrierID") != carrier_id or ev.get("BlackMarket"):
             return

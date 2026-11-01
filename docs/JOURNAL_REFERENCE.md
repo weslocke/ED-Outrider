@@ -145,9 +145,16 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   `SquadronStartup` and no carrier line by its `Shutdown` or the next `LoadGame` means the squadron has none
   (Journals.handle_squadron_carrier drops it then).
   Every `Carrier*` line names its `CarrierType` but `CarrierJump` (by `MarketID`, like `Docked` there: `StationType`
-  FleetCarrier, the four-letter callsign as `StationName`). A member's journal has only the CarrierLocation lines; the
-  officers' (`CarrierStats`, `CarrierJumpRequest`...) are read by their documented shape, unconfirmed. Spansh calls a
-  squadron carrier a "Drake-Class Carrier" too: its four-character callsign (`name`) tells it apart.
+  FleetCarrier, the four-letter callsign as `StationName`) and `CarrierDepositFuel` (`CarrierID`, `Amount`, `Total`
+  only). A member's journal has only the CarrierLocation lines. An officer's (Hiner399's as his squadron's leader,
+  2026-11-01, issue #16; `tests/fixtures/squadron_carrier_officer.jsonl`) have the fleet carrier's shapes:
+  `CarrierStats` (`TotalCapacity` 60000, `JumpRangeCurr`/`Max` 500, `DockingAccess` "squadron", Finance and Crew),
+  `CarrierJumpRequest` / `CarrierJumpCancelled`, `CarrierCrewServices`, `CarrierTradeOrder`, `CarrierBankTransfer`; at
+  a booking's departure a `CarrierLocation`, and aboard a `CarrierJump` about a minute later. Docked there:
+  `LandingPads` 8 small, 8 medium, 16 large, and `squadronBank` among the services; the squadron bank itself writes
+  nothing. Its tritium: two 17.5 ly jumps burned 7 t each (depot 1000, 5,074 t used) where the fleet carrier's
+  formula says 8, so it is not estimated. Spansh calls a squadron carrier a "Drake-Class Carrier" too: its
+  four-character callsign (`name`) tells it apart.
   The depot changes only by a jump and a `CarrierDepositFuel` (`Amount`, `Total` the depot after) or tritium donated by
   other players (not in your journal).
 

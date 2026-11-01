@@ -302,7 +302,9 @@ Its side has the galaxy map's squadron carrier marker and its name, where it is 
 login, or Spansh's newer report of it elsewhere, marked "Spansh"), how far, 🎯 and 🛣, your jumps to it, and UC and
 Vista (Spansh's, or what it listed when you last docked). A member's journal holds nothing more: no balance, cargo or
 tritium estimate (other members move and donate them). An officer who opens its management, or books a jump, gets
-the tritium reading and the countdown too (read as Frontier documents those lines: not yet tried in a live game). Nearest place to dock lists it as **your squadron's**, with no "squadron
+the tritium reading and the countdown too, with the jump's length and where it leaves the carrier from you, and the
+same warning as your own carrier's when it is about to leave without you; a service an officer pauses shows as
+"UC ✗" or "Vista ✗" and is left out of the places to sell. Nearest place to dock lists it as **your squadron's**, with no "squadron
 only" warning, and any carrier with a four-character callsign as a squadron carrier.
 
 The **In-Game Route:** line under the tiles is the route the game plotted in the galaxy map (a route of more than one

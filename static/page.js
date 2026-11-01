@@ -432,19 +432,21 @@ document.getElementById("radiusSel").onchange = async e => {
 // hung or crashed game writes nothing, every poll answers 204, and nothing would redraw it.
 setInterval(() => { if (data) renderStrip(); }, 30000);
 // ---- carrier tile: where it is, the rendezvous maths, and a live countdown to a booked jump ----
-let carrierWarned = null;
-// your fleet carrier's booked jump in its last five minutes while you are not aboard: once per booking
-function carrierDepartWarn(c) {
-  const pl = c && c.planned;
-  if (!pl || !pl.departure || c.aboard || (c.decommission && c.decommission.done) || carrierWarned === pl.departure) return;
+const carrierWarned = new Set();
+// a carrier's booked jump in its last five minutes while you are not aboard: once per booking (its carrier and departure:
+// your fleet carrier's and, from an officer's journal, your squadron's, #16). sq: the squadron's
+function carrierDepartWarn(c, sq) {
+  const pl = c && c.planned, key = pl && `${c.carrier_id || c.id}|${pl.departure}`;
+  if (!pl || !pl.departure || c.aboard || (c.decommission && c.decommission.done) || carrierWarned.has(key)) return;
   const left = (Date.parse(pl.departure) - Date.now()) / 1000;
   if (!(left > 0 && left < 300)) return;
-  carrierWarned = pl.departure;
+  carrierWarned.add(key);
   // the last minute: one plain line (speech.json's lines say "{minutes} minutes", which cannot be singular: F37)
-  const mins = Math.ceil(left / 60), last = mins <= 1;
-  alertOut("carrier", `${c.name} departs in ${last ? "under a minute" : `${mins} minutes`}`, `for ${pl.system}; you are not aboard`,
-           {sound: "alert", tag: "carrier_departs", say: () => last ? `Your carrier departs in under a minute, and you are not aboard.`
-             : line("carrier_departs", {minutes: mins, carrier: c.name}, `Your carrier departs in ${mins} minutes, and you are not aboard.`)});
+  const mins = Math.ceil(left / 60), last = mins <= 1, name = c.name || c.callsign || (sq ? "your squadron's carrier" : "your carrier");
+  const whose = sq ? "Your squadron's carrier" : "Your carrier";
+  alertOut("carrier", `${name} departs in ${last ? "under a minute" : `${mins} minutes`}`, `for ${pl.system}; you are not aboard`,
+           {sound: "alert", tag: "carrier_departs", say: () => last ? `${whose} departs in under a minute, and you are not aboard.`
+             : line("carrier_departs", {minutes: mins, carrier: name}, `${whose} departs in ${mins} minutes, and you are not aboard.`)});
 }
 // 🎯 beside your carrier when it is in another system (the author, 2026-10-11): auto-target puts its system in the
 // galaxy map, as 🎯 on a route's row does; where auto-target can work (hwyAimBtn: canAim)
@@ -587,7 +589,10 @@ function squadronCarrierHtml(c) {
   const pl = c.planned, left = pl && pl.departure ? (Date.parse(pl.departure) - Date.now()) / 1000 : null;
   if (left != null) {
     const mmss = t => t >= 3600 ? `${Math.floor(t / 3600)} h ${Math.floor(t % 3600 / 60)} min` : `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
-    move = left > 0 ? `departs for <b>${esc(pl.system)}</b> in <b class="cd">${mmss(left)}</b>` : `jumping to <b>${esc(pl.system)}</b>`;
+    const urgent = left > 0 && left < 300 && !c.aboard;
+    // its length and where it leaves it from you, as your carrier's line; no tritium (the formula does not fit it, #16)
+    const fmtJ = pl.jump_ly ? ` <span class="unk">(${fmtLy(pl.jump_ly)} ly jump${pl.distance_from_you != null ? `, then ${fmtLy(pl.distance_from_you)} ly from you` : ""})</span>` : "";
+    move = `<span class="${urgent ? "noscoop" : ""}">${left > 0 ? `departs for <b>${esc(pl.system)}</b> in <b class="cd">${mmss(left)}</b>` : `jumping to <b>${esc(pl.system)}</b>`}</span>` + fmtJ;
   } else if (!c.here && !c.aboard && c.distance && effRange()) {
     const mine = jumpsFor(c.distance);
     move = `<span title="about ${mine} jump${mine === 1 ? "" : "s"} for you to reach it (a straight line: the real route is never shorter)">To it <b>${mine}</b> jump${mine === 1 ? "" : "s"}</span>`;
@@ -609,7 +614,8 @@ function renderCarrier() {
   tileCols();
   const side = carrierSide();
   drawCarrierLabel(!!fc && !!sc, side);
-  carrierDepartWarn(fc);   // whichever the tile shows
+  carrierDepartWarn(fc);   // both, whichever the tile shows
+  carrierDepartWarn(sc, true);
   if (side === "sc") {
     drawFcTrip();
     if (typeof hForm !== "undefined" && hwyPlotter() === "carrier") { fillFcForm(); drawHwyStatus(); }
