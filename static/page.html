@@ -661,6 +661,13 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <label data-find="defaults.speech_styles">Main personality<b id="ttsXoP" hidden> = XO</b>
           <select id="speechMain" aria-label="main personality"></select></label>
       </div>
+      <div class="mod inlineopts" id="speakWithRow">Speak with
+        <label><input type="radio" name="speechEngine" value="piper"> Piper</label>
+        <label><input type="radio" name="speechEngine" value="browser"> this browser's voice</label>
+        <select id="browserVoice" aria-label="this browser's voice"></select>
+        <button type="button" class="try" id="tryBrowserVoice" title="say a sample line">▶</button>
+        <span id="browserVoiceHint" class="hint"></span>
+        <div class="hint">Per browser: each has voices of its own (Edge's natural voices, the system's on Linux). The browser's voice says every line, the co-pilot's too, in that one voice.</div></div>
       <div class="hint" id="mainHint"></div>
       <div class="hint" id="ttsHint"></div>
       <div class="mod"><button type="button" class="try" id="labOpen">🎙 Voice lab…</button>

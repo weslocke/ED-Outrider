@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · Speak with this browser's voice
+- Asked on issue #21: Edge's natural voices beat Piper's for some, but with Piper installed the browser's voice was
+  never used, and without it the page took the browser's default voice (Edge on Linux: an American one only).
+- **⚙ Settings → Voice → Speak with: Piper / this browser's voice**, and a picker of the browser's voices (grouped by
+  language, the browser's own language first; ▶ says a sample; rebuilt only when the browser's list changes, as
+  Chrome fills it late and Edge lists hundreds). Per device (`speechEngine`, `browserVoice`: neither in SETTINGS_KEYS
+  nor BROWSER_SETTINGS), as each browser has voices of its own.
+- Chosen, `sayNow` sends every line to the browser in that voice (`u.voice`, `u.lang`), the co-pilot's Piper-only
+  lines too, never Piper or Play on this PC (sounds still play there); the audio pill no longer asks for a click for a
+  Piper that is not speaking (`piperSpeaks`). The picked voice also speaks where Outrider has no Piper. Crew and
+  personality voices stay Piper's.
+- Smoke block `browser_voice`.
+
 ## 2026-11-01 · A moved Outrider folder, and why Piper would not load (issue #21)
 - A player renamed the folder Outrider lives in (spaces to dashes) and Piper became "not installed"; reinstalling it
   did not help. A `.venv` keeps the folder it was made in: after a move its pip runs a Python that is gone (or the

@@ -175,6 +175,12 @@ Outrider runs (a Docker server too):
 Without Piper installed, the browser's own voice speaks. With Piper, the browser's voice is never used: a line Piper
 can't say is not said (what you asked for is still shown as a caption).
 
+**Speak with: Piper / this browser's voice** (⚙ Settings → Voice) chooses the browser's voice instead, and which of
+its voices (grouped by language, yours first; ▶ says a sample). Some browsers have good ones: Edge's natural voices,
+for one. It is per browser, as each has voices of its own. Chosen, the browser says every line, the co-pilot's
+too, in that one voice: crew and personality voices are Piper's, and Play speech and sounds on this PC then plays
+only the sounds. The voice picked also speaks where Outrider has no Piper at all.
+
 **Body names are said letter by letter.** With an English Piper voice, "A 1" is "ay one" (not "uh one") and "ABC 3 a"
 is "ay, bee, see, three, ay", each letter clearly. Only a body's letters are spelled out: system, station and carrier
 names are read as they are written.

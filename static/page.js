@@ -2823,6 +2823,14 @@ function claimSpeaker(steal = false) {
 }
 const speakMode = () => { if (TABLET) return tabletSpeaks() ? "always" : "never"; const m = store.get("speakMode", "auto"); return ["auto", "always", "never"].includes(m) ? m : "auto"; };
 const speakerHere = () => speakMode() === "always" || (speakMode() === "auto" && isSpeaker);
+// Speak with Piper or with this browser's own voice (issue #21's question, 2026-11-01), and which of the browser's
+// voices: per device, as each browser has voices of its own. browserVoice: a voice's voiceURI ("" the browser's
+// default); it also picks the voice that speaks where Outrider has no Piper. The browser chosen says every line, the
+// co-pilot's too (Piper-only otherwise), in the one voice: crew and personality voices are Piper's.
+const speechEngine = () => store.get("speechEngine", "piper") === "browser" ? "browser" : "piper";
+const browserVoices = () => { try { return typeof speechSynthesis === "undefined" ? [] : speechSynthesis.getVoices() || []; } catch { return []; } };
+const chosenBrowserVoice = () => { const id = store.get("browserVoice", ""); return id && browserVoices().find(v => v.voiceURI === id) || null; };
+const piperSpeaks = t => !!(t && t.engine === "piper") && speechEngine() !== "browser";
 // "Play speech and sounds on this PC" (per browser, off by default): the speaking window still picks and queues
 // the lines, but the PC running Outrider plays them and the alert sounds through its own player, so no click on
 // the page is needed. Whatever the server cannot play (no Piper voice, no player, another line playing, no
@@ -3099,7 +3107,8 @@ addEventListener("pagehide", () => {
   if (!pcLineId || typeof navigator === "undefined" || !navigator.sendBeacon) return;
   try { navigator.sendBeacon("api/say/stop", new Blob([JSON.stringify({id: pcLineId})], {type: "application/json"})); } catch {}
 });
-// say one line: Piper on the server when it has a voice ready, else the browser's own; stop() cuts it short
+// say one line: Piper on the server when it has a voice ready, else the browser's own (or the browser's when Settings
+// chooses it); stop() cuts it short
 // the line the worker will pick after this one, as Piper needs it: made while this one plays (review S11)
 const lineSpeed = it => Math.min(2, Math.max(0.5, speechSpeed() * (it.pace || 1)));
 function nextLine() {
@@ -3109,7 +3118,8 @@ function nextLine() {
 async function sayNow(item) {
   const cur = speechNow = {prio: item.prio, kind: item.kind, stopped: false, halt: null, stop() { this.stopped = true; if (this.halt) this.halt(); }};
   try {
-    const onPc = serverPlay();
+    const browserPick = speechEngine() === "browser";   // never Piper, on the PC or here
+    const onPc = !browserPick && serverPlay();
     if (onPc) {   // said on the PC: the answer comes once the line has played (or was stopped)
       const id = Math.random().toString(36).slice(2);
       cur.halt = () => { fetch("api/say/stop", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({id})}).catch(() => {}); };
@@ -3129,8 +3139,8 @@ async function sayNow(item) {
       if (cur.stopped) return;
     }
     const tts = data && data.tts;
-    let ctx = tts && tts.engine === "piper" ? await runningAudio() : null;
-    if (!ctx && tts && tts.engine === "piper" && actx && actx.state !== "running" && !cur.stopped) {
+    let ctx = !browserPick && tts && tts.engine === "piper" ? await runningAudio() : null;
+    if (!ctx && !browserPick && tts && tts.engine === "piper" && actx && actx.state !== "running" && !cur.stopped) {
       // the browser holds audio back until a click: the line waits for it (the red pill asks), then plays in Piper
       // if it is still worth saying; never the browser's voice instead. Only when the pill shows and a click lets
       // it go: with Play on this PC (its call failed) or speech off, nothing asks for that click, and the whole queue
@@ -3164,19 +3174,21 @@ async function sayNow(item) {
     if (cur.stopped) return;
     // the browser's own voice only where Outrider has no Piper at all (the author's choice): with Piper, a line it
     // could not say (or said while its voice is still loading) is not said
-    if (item.piperOnly || (tts && tts.available)) {
+    if (!browserPick && (item.piperOnly || (tts && tts.available))) {
       item.unsaid = tts && tts.engine === "piper" ? "Piper could not say it (never the browser's voice while Outrider has Piper)"
         : tts && tts.available ? "Piper's voice is not ready yet (never the browser's voice while Outrider has Piper)"
         : "Piper could not say it (never the browser's voice for this line)";
       return;
     }
     if (typeof speechSynthesis === "undefined") { item.unsaid = "no voice in this browser"; return; }
-    item.engine = (tts && tts.engine === "piper" ? (ctx ? "browser voice (Piper failed)" : "browser voice (Piper audio blocked)") : "browser voice")
-      + (onPc ? " (the PC could not play it)" : "");
+    const bv = chosenBrowserVoice();
+    item.engine = (browserPick ? "browser voice (chosen)" : tts && tts.engine === "piper" ? (ctx ? "browser voice (Piper failed)" : "browser voice (Piper audio blocked)") : "browser voice")
+      + (bv ? `: ${bv.name}` : "") + (onPc ? " (the PC could not play it)" : "");
     await new Promise(res => {
       let done = false; const finish = () => { if (!done) { done = true; res(); } };
       const rate = Math.min(2, Math.max(0.5, speechSpeed() * (item.pace || 1)));
       const u = new SpeechSynthesisUtterance(item.words); u.rate = rate; u.volume = outVolume(); u.onend = finish;
+      if (bv) { u.voice = bv; u.lang = bv.lang; }   // Settings' browser voice; else the browser's default
       // an error is not "said" (nor the line "say again" repeats: review F44), unless Outrider's own cancel() caused it
       u.onerror = ev => { const why = ev && ev.error;
         if (!cur.stopped && !item.timedOut && why !== "interrupted" && why !== "canceled") item.unsaid = `the browser voice failed (${why || "?"})`;
@@ -10231,7 +10243,7 @@ document.addEventListener("pointerdown", () => { if ((soundOn || speechOn) && (!
 function audioBlocked() {
   if (!speakerHere() || serverPlay()) return false;   // (a tablet only with Play alerts here)
   const t = data && data.tts;
-  if (!((speechOn && t && t.engine === "piper") || soundOn)) return false;
+  if (!((speechOn && piperSpeaks(t)) || soundOn)) return false;
   const ctx = audio();   // made here if not yet: a browser holding audio back leaves it suspended
   return !!ctx && ctx.state !== "running";
 }
@@ -11199,7 +11211,8 @@ function drawSpeechBtn() {
   speechBtn.classList.toggle("on", !!speechOn); speechBtn.style.opacity = speechOn && speakerHere() ? 1 : .45;
   const t = data && data.tts;
   speechBtn.title = (speechOn ? "spoken alerts on" : "spoken alerts off") + " — " +
-    (t && t.engine === "piper" ? `Piper voice ${t.voice}` : t && t.available ? `Piper: ${t.status}; browser speech meanwhile` : t && t.import_error ? `browser speech (Piper would not load: ${t.import_error})` : "browser speech (install Piper for a better voice: see outrider/tts.py)") +
+    (speechEngine() === "browser" ? `this browser's voice${chosenBrowserVoice() ? ` ${chosenBrowserVoice().name}` : " (its default)"}, chosen in Settings` :
+     t && t.engine === "piper" ? `Piper voice ${t.voice}` : t && t.available ? `Piper: ${t.status}; browser speech meanwhile` : t && t.import_error ? `browser speech (Piper would not load: ${t.import_error})` : "browser speech (install Piper for a better voice: see outrider/tts.py)") +
     (speakerHere() ? "" : speakMode() === "never" ? " — this browser never speaks (see Settings)" : " — another window is speaking");
 }
 // "This screen speaks": the setting, whether this window is the one, and a way to take over
@@ -11246,6 +11259,35 @@ document.getElementById("trySpeak").onclick = () => {
   // in Spoken lines with its wording, so a line you dislike can be banned straight from trying it
   speak(text, {...sv, log: logSpeech({kind: "manual", style: lineStyle, key: lineKey, template: lineTemplate})});
 };
+// Speak with: Piper or this browser's voice, and the browser voice picker (grouped by language, this browser's own
+// language first). The list is rebuilt only when the browser's voices change (Edge lists hundreds).
+let browserVoiceKey = null;
+function drawBrowserVoice() {
+  const eng = speechEngine(), sel = document.getElementById("browserVoice"), t = data && data.tts;
+  for (const r of document.querySelectorAll('input[name="speechEngine"]')) r.checked = r.value === eng;
+  const vs = browserVoices(), id = store.get("browserVoice", "");
+  const key = vs.map(v => v.voiceURI).join("\n");
+  if (key !== browserVoiceKey && document.activeElement !== sel) {
+    browserVoiceKey = key;
+    const mine = ((typeof navigator !== "undefined" && navigator.language) || "en").split("-")[0].toLowerCase();
+    const groups = new Map();
+    for (const v of vs) { const g = v.lang || "?"; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(v); }
+    const langs = [...groups.keys()].sort((a, b) => (b.toLowerCase().startsWith(mine) - a.toLowerCase().startsWith(mine)) || a.localeCompare(b));
+    sel.innerHTML = `<option value="">the browser's default</option>` + langs.map(g => `<optgroup label="${esc(g)}">` +
+      groups.get(g).sort((a, b) => a.name.localeCompare(b.name)).map(v => `<option value="${esc(v.voiceURI)}">${esc(v.name)}</option>`).join("") + "</optgroup>").join("");
+  }
+  if (document.activeElement !== sel) sel.value = vs.some(v => v.voiceURI === id) ? id : "";
+  const piperHere = !!(t && t.available);
+  document.getElementById("browserVoiceHint").textContent = !vs.length ? "this browser lists no voices of its own"
+    : id && !vs.some(v => v.voiceURI === id) ? "the voice chosen before is not in this browser: its default speaks"
+    : eng === "browser" ? "every line in this voice, the co-pilot's too; crew and personality voices are Piper's"
+    : piperHere ? "used only if you choose this browser's voice" : "Piper is not installed, so this voice speaks";
+}
+for (const r of document.querySelectorAll('input[name="speechEngine"]')) r.onchange = e => { store.set("speechEngine", e.target.value); drawTts(); drawSpeechBtn(); };
+document.getElementById("tryBrowserVoice").onclick = () => document.getElementById("trySpeak").click();
+document.getElementById("browserVoice").onchange = e => { store.set("browserVoice", e.target.value); drawBrowserVoice(); drawSpeechBtn(); };
+// Chrome fills its voice list after the page loads: redrawn when it does
+try { if (typeof speechSynthesis !== "undefined" && speechSynthesis.addEventListener) speechSynthesis.addEventListener("voiceschanged", () => { drawBrowserVoice(); drawSpeechBtn(); }); } catch {}
 // personalities: one box per style in speech.json, plus profanity for the styles with swearing versions
 function drawSpeechStyles() {
   const box = document.getElementById("speechStyles"), on = speechStyles();
@@ -11499,7 +11541,8 @@ function drawServerPlay() {
 let mvVoices = null;   // More voices: Piper's catalogue once fetched (see loadMoreVoices)
 function drawTts() {
   const t = data && data.tts, sel = document.getElementById("ttsVoice");
-  document.getElementById("ttsEngine").textContent = t && t.engine === "piper" ? "· Piper" : "· browser speech";
+  document.getElementById("ttsEngine").textContent = speechEngine() === "browser" ? "· this browser's voice" : t && t.engine === "piper" ? "· Piper" : "· browser speech";
+  drawBrowserVoice();
   // only when it says something: loading, downloading, a failure (the author, 2026-10-16: "ready" told nothing)
   document.getElementById("ttsStatus").textContent = t && t.available && t.status !== "ready" ? t.status : "";
   // installed but would not load (issue #21): the reason, and the fix that rebuilds the environment, not "install it"

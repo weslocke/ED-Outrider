@@ -2780,6 +2780,54 @@ const releasePayloads = async () => {
     allOk = allOk && goodA;
     console.log(goodA ? "OK" : "FAIL", "| play on this PC |", goodA ? "503 from the PC: no Piper, the browser's voice; with Piper never the browser's voice; the sound played here" : JSON.stringify({got, asked}), errors.slice(before));
   }
+  // Speak with this browser's voice (issue #21's question, 2026-11-01): chosen, every line goes to the browser in the
+  // picked voice (the co-pilot's too), never to Piper or the PC; the picker groups the browser's voices, this browser's
+  // language first; Piper chosen again is as before; with no Piper the picked voice speaks
+  browser_voice: { if (skip("browser_voice")) break browser_voice;
+    const w = dom.window, realFetch = w.fetch, before = errors.length, asked = [];
+    w.fetch = (u, o) => { if (/^api\/say/.test(String(u))) asked.push(String(u).split("?")[0]); return realFetch(u, o); };
+    const got = await w.eval(`(async () => {
+      const ss = window.speechSynthesis, U = window.SpeechSynthesisUtterance, tts = data.tts;
+      const keep = ["speechEngine", "browserVoice"].map(k => [k, localStorage.getItem(k)]);
+      const spoken = [], voices = [{name: "Libby", lang: "en-GB", voiceURI: "libby"}, {name: "Hans", lang: "de-DE", voiceURI: "hans"},
+                                   {name: "Aria", lang: "en-US", voiceURI: "aria"}, {name: "Ryan", lang: "en-GB", voiceURI: "ryan"}];
+      window.SpeechSynthesisUtterance = function (words) { this.text = words; };
+      window.speechSynthesis = {speaking: false, pending: false, getVoices: () => voices,
+        speak(u) { spoken.push([u.text, u.voice ? u.voice.name : null, u.lang || null]); setTimeout(() => u.onend && u.onend(), 0); }, cancel() {}};
+      const cb = document.getElementById("serverPlay"); cb.checked = true; cb.onchange({target: cb});   // the PC would play Piper
+      data.tts = {engine: "piper", voice: "x", available: true};
+      const radio = v => { const r = document.querySelector('input[name="speechEngine"][value="' + v + '"]'); r.checked = true; r.onchange({target: r}); };
+      radio("browser");
+      const sel = document.getElementById("browserVoice"); sel.value = "libby"; sel.onchange({target: sel});
+      drawTts();
+      const picker = {groups: [...sel.querySelectorAll("optgroup")].map(g => g.label + ": " + [...g.children].map(o => o.textContent).join(", ")),
+                      value: sel.value, engine: document.getElementById("ttsEngine").textContent,
+                      title: /this browser's voice Libby, chosen in Settings/.test(speechBtn.title)};
+      const plain = {words: "Chosen check.", prio: 1, kind: "manual", pace: 1};
+      await sayNow(plain);
+      const copilot = {words: "Copilot check.", prio: 1, kind: "manual", pace: 1, piperOnly: true};
+      await sayNow(copilot);
+      radio("piper");
+      const back = {words: "Piper again check.", prio: 1, kind: "manual", pace: 1};
+      await sayNow(back);   // Piper on the PC (503 here), then not the browser's voice while Outrider has Piper
+      cb.checked = false; cb.onchange({target: cb});
+      data.tts = null;
+      const none = {words: "No Piper check.", prio: 1, kind: "manual", pace: 1};
+      await sayNow(none);
+      store.set("browserVoice", "gone"); drawBrowserVoice();
+      const gone = [sel.value, document.getElementById("browserVoiceHint").textContent];
+      for (const [k, v] of keep) v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v);
+      window.speechSynthesis = ss; window.SpeechSynthesisUtterance = U; data.tts = tts; drawTts();
+      return {picker, spoken, engines: [plain.engine, copilot.engine, back.engine || null, none.engine], gone}; })()`);
+    w.fetch = realFetch;
+    const want = {picker: {groups: ["en-GB: Libby, Ryan", "en-US: Aria", "de-DE: Hans"], value: "libby", engine: "· this browser's voice", title: true},
+      spoken: [["Chosen check.", "Libby", "en-GB"], ["Copilot check.", "Libby", "en-GB"], ["No Piper check.", "Libby", "en-GB"]],
+      engines: ["browser voice (chosen): Libby", "browser voice (chosen): Libby", null, "browser voice: Libby"],
+      gone: ["", "the voice chosen before is not in this browser: its default speaks"]};
+    const goodBV = JSON.stringify(got) === JSON.stringify(want) && JSON.stringify(asked) === JSON.stringify(["api/say/play"]) && errors.length === before;
+    allOk = allOk && goodBV;
+    console.log(goodBV ? "OK" : "FAIL", "| browser voice |", goodBV ? "chosen: every line in the picked voice, never Piper or the PC; grouped picker; Piper again as before; no Piper: the picked voice" : JSON.stringify({got, asked}), errors.slice(before));
+  }
   // the browser holds audio back until a click: a red pill on the menu bar and 🔇 in the title, Outrider told (the
   // tablet asks too), and the line waits for the click, then plays in Piper (here: the server's Piper answer stubbed
   // as failed) or is dropped when it waited too long; never the browser's voice

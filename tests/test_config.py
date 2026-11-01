@@ -1013,7 +1013,7 @@ class Batch7Data(unittest.TestCase):
             js = f.read()
         page_keys = re.findall(r'"(\w+)"', js[js.index("const SETTINGS_KEYS = ["):js.index("];", js.index("const SETTINGS_KEYS = ["))])
         self.assertEqual(page_keys, list(ed_outrider.BROWSER_SETTINGS))       # the page and the server share one list
-        for per_device in ("view", "overview", "hereModes", "bodySecs", "search", "speakMode"):
+        for per_device in ("view", "overview", "hereModes", "bodySecs", "search", "speakMode", "speechEngine", "browserVoice"):
             self.assertNotIn(per_device, ed_outrider.BROWSER_SETTINGS)
         ok, why = ed_outrider.check_browser_defaults({"version": 1, "settings": {"view": "map"}})
         self.assertIsNone(ok)
