@@ -101,7 +101,10 @@ touches:
 The page's own settings (theme, alerts, voice choices) live in each browser.
 
 - **A `git clone`:** quit Outrider, run `git pull` in its folder, and start it again (`launch_outrider.sh` or
-  `launch_outrider.bat`: it installs whatever changed).
+  `launch_outrider.bat`: it installs whatever changed). If `git pull` stops on `resources/bio_rules.json` ("Your local
+  changes ... would be overwritten"), an Outrider before 2026.10.30 wrote its rules update there: run `git checkout
+  resources/bio_rules.json` and pull again (yours are downloaded again beside your database). Outrider says so at
+  start while that file is changed.
 - **A downloaded ZIP:**
   1. Quit Outrider.
   2. Rename its folder (say `ED-Outrider` to `ED-Outrider-old`).

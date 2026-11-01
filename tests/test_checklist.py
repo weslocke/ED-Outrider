@@ -284,6 +284,39 @@ class ChecklistServer(unittest.TestCase):
         row = next(r for g in out["genera"] for r in g["species"] if r["name"] == "Bacterium Aurasus")
         self.assertEqual((status, row["state"]), (200, "logged"))
 
+    def codex_de(self, ts, entry_id, code, local, body=1, category="$Codex_Category_Biology;", sub="Organische Strukturen", **extra):
+        """A CodexEntry as a German game writes it (Inner Orion Spur, system 1)."""
+        self.j.handle(dict({"event": "CodexEntry", "timestamp": ts, "EntryID": entry_id, "Name": code, "Name_Localised": local,
+                            "Category": category, "SubCategory_Localised": sub, "Region": "$Codex_RegionName_18;",
+                            "Region_Localised": "Innerer Orion-Sporn", "System": "Near Sol", "SystemAddress": 1, "BodyID": body,
+                            "IsNewEntry": True}, **extra))
+
+    def test_a_game_in_another_language_everywhere(self):
+        """Review round 9: batch 4 placed the bio list by the system, but the codex stayed in the game's own words
+        elsewhere: the Geology list by the localised region (no progress anywhere), codex-only species by their
+        localised name (never "logged"), every species new to your codex in its region (codex_species), codex-seen
+        pricing never applied (codex_species_seen: an "organic" subcategory) and a tagged amphora never stored. Each
+        now goes by the entry's code and its system's place."""
+        self.jump("2026-01-01T00:00:00Z", 1, "Near Sol", [0, 0, 0])                         # Inner Orion Spur (18)
+        self.codex_de("2026-01-01T00:01:00Z", 2320000, "$Codex_Ent_Seed_Name;", "Rosa Hirnbaum")
+        self.codex_de("2026-01-01T00:02:00Z", 2310400, "$Codex_Ent_Bacterial_04_Name;", "Bacterium Acies - Rot", body=2)
+        self.codex_de("2026-01-01T00:03:00Z", 2100400, "$Codex_Ent_Vents_Name;", "Amphorapflanze", body=3,
+                      Latitude=1.5, Longitude=2.5)
+        self.codex_de("2026-01-01T00:04:00Z", 1400102, "$Codex_Ent_SulphurDioxideFumarole_Name;", "Schwefeldioxid-Fumarole",
+                      category="$Codex_Category_Biology;", sub="Geologie")
+        self.db.commit()
+        row = lambda out, name: next(r for g in out["genera"] for r in g["species"] if r["name"] == name)   # noqa: E731
+        out, _ = self.state.checklist("18")
+        self.assertEqual(row(out, "Roseum Brain Tree")["state"], "logged")
+        out, status = self.state.checklist("18", kind="geo")
+        self.assertEqual((status, next(r for g in out["genera"] for r in g["species"] if r["id"] == "1400102")["state"]),
+                         (200, "logged"))
+        names, species = ed_outrider.codex_species(self.db, "Inner Orion Spur")
+        self.assertTrue({"roseum brain tree", "bacterium acies", "amphora plant"} <= species, species)
+        self.assertEqual(ed_outrider.codex_species_seen(self.db, 1)[2], {"Bacterium": ("Bacterium Acies", "Bacterium Acies - Rot")})
+        self.assertEqual(self.db.execute("SELECT species FROM bio_tags").fetchone()[0], "$Codex_Ent_Vents_Name;")
+        self.assertIn(1400102, ed_outrider.codex_types_logged(self.db, {}).get("Inner Orion Spur", []))
+
     def test_checklist(self):
         if not outrider.bio.colours_available():   # the colours' states below need ExploData's tables (downloaded)
             self.skipTest("ExploData's colour tables not downloaded (bio_colours.json)")

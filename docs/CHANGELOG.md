@@ -2,6 +2,26 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · Review round 9, batch 3: games in other languages, and bio values
+- **The codex in other game languages** (M3, batch 4's siblings): the journal keeps the game's own words, so a German
+  game's codex matched none of the rules' names or regions. New `codex_en` gives each codex row its English species
+  (from its code: `outrider.bio.species_by_code`, `species_of_entry`) and its region (from its system's place), cached
+  until the codex changes; `codex_species`, `codex_species_all`, `region_codex_count`, `codex_species_seen` and
+  `codex_types_logged` read it. So: every species no longer looks new to your codex, codex-seen pricing applies, the
+  ✦ / ✪ marks follow your codex. The Exo-Biology checklist finds a codex entry's species by its code
+  (`checklist._key_of`), the Geology list places entries by the system's region, and a tagged bark mound, amphora or
+  brain tree is stored by its code. A test fixture paired a code with another species' name (corrected).
+- **resources/bio_rules.json rewritten by an older Outrider** (M4): a clone stays changed, so `git pull` can stop on it.
+  The start now says so with the command (`outrider.bio.shipped_changed`; never put back by itself: a scratch server in
+  the author's checkout would revert a fresh --update-rules), and install.md's update steps say it.
+- A legacy install's colour tables (beside the shipped file) go with the first update into your own copy when
+  ExploData does not answer (they were lost until it did).
+- A Spansh search that fails with no words says the error's kind ("search failed: " said nothing).
+- **Bio values:** a genus your codex names on a body that the rules rule out is priced before the DSS
+  (`with_seen_genera`); a run under way is priced first at its species wherever the rules rank it (`runs_under_way`,
+  `seen_and_runs`: Here, Nearby, the approach and arrival values, the hits) as the leaving summary already did; Left
+  behind lists a body with a run under way and no signal count of yours.
+
 ## 2026-11-01 · Review round 9, batch 2: routes and the voice's answers
 - **A loop route back at its start mid-way** (M2): the voice named the next open stop but the tab, the clipboard and
   the co-pilot named a stop already reached, and the voice called the visited rows before it finished. The route now

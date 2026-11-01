@@ -323,6 +323,23 @@ def remote_versions():
             "explodata": _latest_commit(EXPLODATA_API, EXPLODATA_PATH)}
 
 
+def shipped_changed(run=None, root=None):
+    """Whether the shipped resources/bio_rules.json has local changes in a git clone (review round 9): an Outrider before
+    2026.10.30 wrote its updates there (D1), and `git pull` stops on it whenever the shipped file changes. Only said,
+    never put back here: a scratch server (verify.sh) in the author's checkout would revert a fresh --update-rules.
+    False outside a clone, without git or on any git error."""
+    import subprocess
+    root = root or os.path.dirname(RESOURCES_DIR)
+    if not os.path.isdir(os.path.join(root, ".git")):
+        return False
+    try:
+        r = (run or subprocess.run)(["git", "-C", root, "diff", "--quiet", "--", os.path.relpath(RULES_FILE, root)],
+                                    capture_output=True, timeout=10)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 1
+
+
 def update_if_newer(path=None, log=print):
     """Refresh bio_rules.json when upstream has changed (or the file is missing). Returns True if
     it was rewritten, False if it was already current, None if it could not check or update (offline,
@@ -402,6 +419,12 @@ def update_rules(path=None, log=print, versions=None):
         versions["explodata"] = ""   # still retried at the next start
         # Keep the colour tables already downloaded rather than turning the colour check off until then.
         kept = _read_colours(colours_path(path))
+        if kept is None and OWN_RULES and os.path.abspath(path) == os.path.abspath(OWN_RULES):
+            # the first update into your own copy: a legacy install's tables beside the shipped file carried over, and
+            # written beside the new copy (review round 9: they were lost until ExploData answered)
+            kept = _read_colours(colours_path(RULES_FILE))
+            if kept:
+                _write_colours(path, kept, "")
         log(f"bio rules: could not fetch colour variants ({e})"
             + (f"; keeping the {len(kept)} colour tables already there" if kept else ""))
 
@@ -982,7 +1005,34 @@ def predict(body, system=None):
     return out
 
 
-_BY_NAME = {}
+_BY_NAME, _BY_ID = {}, {}
+_VARIANT_CODE = re.compile(r"^\$Codex_Ent_([A-Za-z]+)_(\d+)(?:_\w+)?_Name;$")
+
+
+def species_by_code(code):
+    """The rules' entry for a codex code, in any game language (review round 9: the localised names matched nothing in
+    a non-English game): a species' own id (the colourless older species: "$Codex_Ent_Seed_Name;") or a colour variant's
+    ("$Codex_Ent_Bacterial_04_Red_Name;" is "$Codex_Ent_Bacterial_04_Name;"), the entry with rules when the rules list
+    an id twice; None when the rules have no such species."""
+    R = load_rules()
+    if not R or not code:
+        return None
+    if _BY_ID.get("_rules") is not R:
+        _BY_ID.clear()
+        for sp in R["species"]:
+            if sp.get("id") and (sp["id"] not in _BY_ID or (sp.get("rulesets") and not _BY_ID[sp["id"]].get("rulesets"))):
+                _BY_ID[sp["id"]] = sp
+        _BY_ID["_rules"] = R
+    code = str(code)
+    if code in _BY_ID and code != "_rules":
+        return _BY_ID[code]
+    m = _VARIANT_CODE.match(code)
+    return _BY_ID.get(f"$Codex_Ent_{m.group(1)}_{m.group(2)}_Name;") if m else None
+
+
+def species_of_entry(code, name):
+    """A codex entry's species: by its code first (any language), else by its name (the variant cut off at " - ")."""
+    return species_by_code(code) or species_by_name(str(name or "").split(" - ")[0])
 
 
 def species_by_name(name):

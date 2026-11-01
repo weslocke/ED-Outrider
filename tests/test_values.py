@@ -708,7 +708,9 @@ class SampleSpacing(unittest.TestCase):
                        "StarSystem": "Sys", "SystemAddress": 1, "PlanetClass": "Rocky body", "Landable": True,
                        "MassEM": 0.1, "ScanType": "Detailed", "WasDiscovered": False, "WasMapped": False})
         self.at("2026-01-01T00:10:00Z", 0.0, 0.03)
-        self.codex("2026-01-01T00:10:00Z", variant="$Codex_Ent_SeedABCD_01_Name;", name="Roseum Brain Tree")
+        # the game's own code for it (review round 9: the code now comes first, and this test's "$Codex_Ent_SeedABCD_01_Name;"
+        # is Gypseeum Brain Tree's)
+        self.codex("2026-01-01T00:10:00Z", variant="$Codex_Ent_Seed_Name;", name="Roseum Brain Tree")
         row = self.db.execute("SELECT species, genus, name FROM bio_tags").fetchone()
         self.assertEqual(tuple(row), ("$Codex_Ent_Seed_Name;", "$Codex_Ent_Brancae_Name;", "Roseum Brain Tree"))
         h = {"system": 1, "body_id": 4, "lat": 0.0, "lon": 0.0, "radius": 1_000_000, "heading": 0}
@@ -1006,6 +1008,47 @@ class RulesDownload(unittest.TestCase):
         with open(self.path) as fh:
             self.assertEqual(json.load(fh)["versions"]["explodata"], "")
         self.assertTrue(any("could not fetch colour variants" in m and "no data table" in m for m in self.log))
+
+    def test_a_legacy_installs_colours_go_with_the_first_own_copy(self):
+        """Review round 9: the first update into your own copy (beside the database) read the colours to keep from beside
+        that copy, where there were none yet; a legacy install's tables beside the shipped file were lost until ExploData
+        answered. They are carried over, and written beside the new copy."""
+        shipped, own = os.path.join(self.tmp.name, "shipped"), os.path.join(self.tmp.name, "own")
+        os.makedirs(shipped)
+        os.makedirs(own)
+        rules = os.path.join(shipped, "bio_rules.json")
+        outrider.bio._write_colours(rules, {("$G;", "$S;"): {"star": {"F": "Teal"}}}, "e0")
+        with unittest.mock.patch.object(outrider.bio, "RULES_FILE", rules), \
+                unittest.mock.patch.object(outrider.bio, "OWN_RULES", os.path.join(own, "bio_rules.json")), \
+                unittest.mock.patch.object(outrider.bio, "_get", self.fake_get(fail=("genus.py",))):
+            outrider.bio.update_rules(os.path.join(own, "bio_rules.json"), log=self.log.append, versions=dict(self.V))
+        self.assertTrue(any("keeping the 1 colour tables" in m for m in self.log), self.log)
+        self.assertEqual(outrider.bio._read_colours(outrider.bio.colours_path(os.path.join(own, "bio_rules.json"))),
+                         {("$G;", "$S;"): {"star": {"F": "Teal"}}})
+
+    def test_a_changed_shipped_copy_is_said(self):
+        """Review round 9: a clone whose resources/bio_rules.json an older Outrider rewrote stays changed, so git pull
+        stops on it; the start says the command (never puts it back itself: a scratch server in the author's checkout
+        would revert a fresh --update-rules)."""
+        import subprocess
+        import types
+        root = self.tmp.name
+        ran = []
+        run = lambda code: lambda cmd, **kw: ran.append(cmd) or types.SimpleNamespace(returncode=code)   # noqa: E731
+        self.assertFalse(outrider.bio.shipped_changed(run(1), root))          # not a clone: git never asked
+        self.assertEqual(ran, [])
+        os.makedirs(os.path.join(root, ".git"))
+        self.assertTrue(outrider.bio.shipped_changed(run(1), root))
+        self.assertEqual(ran[-1][:5], ["git", "-C", root, "diff", "--quiet"])
+        self.assertFalse(outrider.bio.shipped_changed(run(0), root))         # as shipped
+        self.assertFalse(outrider.bio.shipped_changed(run(128), root))       # git's own error
+
+        def no_git(cmd, **kw):
+            raise FileNotFoundError("git")
+        self.assertFalse(outrider.bio.shipped_changed(no_git, root))
+        self.assertFalse(outrider.bio.shipped_changed(lambda c, **k: (_ for _ in ()).throw(subprocess.TimeoutExpired(c, 10)), root))
+        import inspect
+        self.assertIn("outrider.bio.shipped_changed()", inspect.getsource(ed_outrider.run))
 
     def test_a_failed_part_is_saved_without_a_version(self):   # F38
         with unittest.mock.patch.object(outrider.bio, "_get", self.fake_get(fail=("contents/", "genus.py"))):

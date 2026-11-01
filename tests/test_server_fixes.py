@@ -208,6 +208,16 @@ class ServerFixes(unittest.TestCase):
                 return s.result["status"]
         self.assertEqual(asyncio.run(timed_out()), "search failed: Spansh did not answer in time")
 
+        # review round 9: an exception with no words (a dropped connection) says its kind
+        async def dropped():
+            async def boom(seq, params, stop):
+                raise ConnectionResetError()
+            with unittest.mock.patch.object(s, "_run", boom):
+                s.start({})
+                await s.task
+                return s.result["status"]
+        self.assertEqual(asyncio.run(dropped()), "search failed: ConnectionResetError")
+
 
 class SuitLow(unittest.TestCase):
     """S9-S7: the suit's oxygen or health running low on foot on a planet, with data aboard: one danger moment per rise."""

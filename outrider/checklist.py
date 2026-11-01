@@ -127,6 +127,21 @@ def _with_colours(keep, drop):
     return dict(keep, colors=merged) if merged != kc else keep
 
 
+_VARIANT = re.compile(r"^\$Codex_Ent_([A-Za-z]+)_(\d+)(?:_\w+)?_Name;$")
+
+
+def _key_of(code, ids):
+    """A codex entry's species key from its code: the code itself for a colourless species ("$Codex_Ent_Seed_Name;"),
+    its species' for a colour variant's ("$Codex_Ent_Bacterial_04_Red_Name;"); None when the rules have neither."""
+    if not code:
+        return None
+    if code in ids:
+        return code
+    m = _VARIANT.match(str(code))
+    sid = f"$Codex_Ent_{m.group(1)}_{m.group(2)}_Name;" if m else None
+    return sid if sid in ids else None
+
+
 def _records(species_list, names, runs, codex):
     """(species key, colour or None, region, state, is a run) for each of your runs and codex entries the rules know;
     a run under way counts as logged."""
@@ -147,7 +162,7 @@ def _records(species_list, names, runs, codex):
     for entry in codex:
         full = (entry.get("name") or "").strip()
         name = full.rsplit(" - ", 1)[0] if " - " in full else full
-        key = names.get(name.lower())
+        key = _key_of(entry.get("code"), ids) or names.get(name.lower())   # by code first: any game language (round 9)
         if key is not None:
             yield key, colour(key, entry.get("code"), full, name), entry.get("region"), "logged", False
 

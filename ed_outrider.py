@@ -4959,9 +4959,9 @@ class Journals:
         if ev.get("Category") != "$Codex_Category_Biology;" or ev.get("BodyID") is None or system is None:
             return
         name = str(ev.get("Name_Localised") or "").split(" - ")[0].strip() or None
-        # the species and genus by name from the rules (the older variant-less species have no number in their codex
-        # code: review #1), else from the code's own shape
-        sp = outrider.bio.species_by_name(name) if outrider.bio else None
+        # the species and genus from the rules by the code, in any language (review round 9: a German "Amphorapflanze"
+        # was never stored), else by name, else from the code's own shape
+        sp = outrider.bio.species_of_entry(ev.get("Name"), name) if outrider.bio else None
         m = BIO_CODEX_RE.match(ev.get("Name") or "")
         if sp:
             species, genus = sp["id"], sp["genus_id"]
@@ -6310,13 +6310,49 @@ def materials_stale(materials, commander):
     return bool(login and snap and ts_seconds(login) - ts_seconds(snap) > 120)
 
 
+_CODEX_EN = {}   # id(db) -> (key, rows): codex_en's cache
+
+
+def codex_en(db):
+    """Your codex rows in English (review round 9): the journal keeps the game's own words, so a German game's
+    "Bacterium Acies - Blaugrün" in "Innerer Orion-Sporn" matched none of the rules' names or region names, and every
+    species looked new, the checklists stayed empty and codex-seen pricing never applied. [{name: "bacterium acies -
+    teal" (lower case; the species alone when its colour cannot be told), species: "bacterium acies", sp (the rules'
+    entry or None), region: the region's English name from the system's place (the row's own words when the system's
+    place is unknown), entry_id, code, system, body_id, organic, ts, localised (the name as logged)}], in time order;
+    kept until the codex or the rules change."""
+    R = outrider.bio.load_rules() if outrider.bio else None
+    key = (db.execute("SELECT count(*), max(rowid) FROM codex").fetchone()[:], id(R))
+    hit = _CODEX_EN.get(id(db))
+    if hit and hit[0] == key:
+        return hit[1]
+    tables = bool(R and R.get("colours"))
+    rows = []
+    for r in db.execute("SELECT c.ts, c.entry_id, c.name, c.code, c.subcategory, c.region, c.system, c.body_id, v.x, v.y, v.z "
+                        "FROM codex c LEFT JOIN visits v ON v.id64 = c.system ORDER BY c.ts"):
+        local = (r["name"] or "").strip()
+        sp = outrider.bio.species_of_entry(r["code"], local) if outrider.bio else None
+        if sp:
+            colour = outrider.checklist.variant_colour(sp, r["code"], local, tables) if outrider.checklist else None
+            species = sp["name"].lower()
+            name = f"{species} - {colour.lower()}" if colour else species
+        else:
+            name = local.lower()
+            species = name.split(" - ")[0].strip()
+        region = outrider.bio.region_name(r["x"], r["y"], r["z"]) if outrider.bio and r["x"] is not None else None
+        rows.append({"name": name, "species": species, "sp": sp, "region": region or r["region"], "entry_id": r["entry_id"],
+                     "code": r["code"], "system": r["system"], "body_id": r["body_id"], "ts": r["ts"], "localised": local,
+                     "organic": bool(sp) or bool(BIO_CODEX_RE.match(r["code"] or "")) or "organic" in (r["subcategory"] or "").lower()})
+    _CODEX_EN[id(db)] = (key, rows)
+    return rows
+
+
 def region_codex_count(db, region, number):
     """Species logged in your codex in other regions, not yet in this one, that the bio rules let grow here (a
     species the rules do not know is left out): what a crossing into `region` could add. 0 when none or unknown."""
     if not outrider.bio or not region:
         return 0
-    logged = {(r[0] or "").strip().lower().split(" - ")[0].strip()
-              for r in db.execute("SELECT DISTINCT name FROM codex WHERE region IS NOT NULL AND region != ?", (region,))}
+    logged = {r["species"] for r in codex_en(db) if r["region"] and r["region"] != region}
     here = codex_species(db, region)[1]
     return sum(1 for sp in logged - here if sp and outrider.bio.region_allows(sp, number))
 
@@ -6327,15 +6363,15 @@ def codex_species(db, region):
     once any of its variants is logged there, for when the colour cannot be told."""
     if not region:
         return set(), set()
-    names = {(r[0] or "").strip().lower() for r in db.execute("SELECT name FROM codex WHERE region = ?", (region,))}
-    return names, {n.split(" - ")[0].strip() for n in names}
+    rows = [r for r in codex_en(db) if r["region"] == region]   # in English, placed by the system (codex_en)
+    return {r["name"] for r in rows}, {r["species"] for r in rows}
 
 
 def codex_species_all(db):
     """Your codex entries in every region, as codex_species gives one region's: a species in none of them is new to
     your codex anywhere (worth more effort than one new only in this region; BioScan's 🌌 against its 📝)."""
-    names = {(r[0] or "").strip().lower() for r in db.execute("SELECT DISTINCT name FROM codex")}
-    return names, {n.split(" - ")[0].strip() for n in names}
+    rows = codex_en(db)
+    return {r["name"] for r in rows}, {r["species"] for r in rows}
 
 
 def codex_new_group(g, known):
@@ -6398,11 +6434,10 @@ def codex_species_seen(db, id64):
     """{body_id: {genus: (species, codex entry name)}}: the species your organic codex entries in system id64 name,
     per body (with_codex_species); the latest entry of a genus on a body wins."""
     out = {}
-    for r in db.execute("SELECT body_id, name FROM codex WHERE system=? AND body_id IS NOT NULL AND "
-                        "lower(subcategory) LIKE '%organic%' ORDER BY ts", (id64,)):
-        sp = outrider.bio.species_by_name((r["name"] or "").split(" - ")[0]) if outrider.bio else None
-        if sp and sp.get("genus"):
-            out.setdefault(r["body_id"], {})[sp["genus"]] = (sp["name"], r["name"])
+    for r in codex_en(db):   # by the entry's code in any language (review round 9: only English rows counted)
+        sp = r["sp"]
+        if r["system"] == id64 and r["body_id"] is not None and r["organic"] and sp and sp.get("genus"):
+            out.setdefault(r["body_id"], {})[sp["genus"]] = (sp["name"], r["localised"])
     return out
 
 
@@ -7021,9 +7056,10 @@ def codex_types_logged(db, scanned=None):
     journals kept (the author's go back to 2023, their codex further), so a type scanned without a line was logged
     before. Geology (S22: 1400000-1400499, not the anomalies above it) only from its codex lines: a scan logs none."""
     out = {k: set(v) for k, v in (scanned if scanned is not None else codex_types_scanned(db)[0]).items()}
-    for region, i in db.execute("SELECT DISTINCT region, entry_id FROM codex WHERE entry_id BETWEEN 1100000 AND 1399999"
-                                " OR entry_id BETWEEN ? AND ?", (outrider.codex_geo.LOW, outrider.codex_geo.HIGH)):
-        out.setdefault(region or "", set()).add(i)
+    for r in codex_en(db):   # each entry's region by its system's place, in English (review round 9)
+        i = r["entry_id"]
+        if i is not None and (1100000 <= i <= 1399999 or outrider.codex_geo.LOW <= i <= outrider.codex_geo.HIGH):
+            out.setdefault(r["region"] or "", set()).add(i)
     return {k: sorted(v) for k, v in out.items()}
 
 
@@ -7449,6 +7485,32 @@ def bio_pick(group, history, shape, region):
     return group.get("best")
 
 
+def runs_under_way(db, id64):
+    """{body_id: {genus: (species, variant or species)}}: your sample runs not finished on system id64's bodies, as
+    bio_left_groups' `seen` takes a codex entry there (review round 9: below the rules' top N a run under way was left
+    out of the value and a guess priced instead; the leaving summary already priced it)."""
+    out = {}
+    for r in db.execute("SELECT body_id, genus_name, species_name, variant_name FROM own_organic WHERE system=? "
+                        "AND done_ts IS NULL AND species_name IS NOT NULL ORDER BY ts", (id64,)):
+        out.setdefault(r["body_id"], {})[r["genus_name"]] = (r["species_name"], r["variant_name"] or r["species_name"])
+    return out
+
+
+def seen_and_runs(seen, runs):
+    """A body's codex entries and runs under way as bio_left_groups' `seen` (a run's species wins: it is the one you
+    are sampling); None for neither."""
+    return {**(seen or {}), **(runs or {})} or None
+
+
+def with_seen_genera(groups, seen, done=()):
+    """`groups` and, ahead of them, a group for each genus your codex entry on the body names that the rules left out
+    (review round 9: a genus the rules rule out was never among those priced, and a guess took its signal): with no
+    species of its own, with_codex_species gives it the codex entry's."""
+    have = {g["genus"] for g in groups}
+    return [{"genus": g, "best": None, "value": None, "min_value": None, "species": [], "variants": [], "variant": None}
+            for g in (seen or {}) if g not in have and g not in done] + groups
+
+
 def bio_left_groups(r, star, known, ctx, done, seen=None):
     """The genus groups still to sample on a body. With the DSS's genera: those not analysed yet. Before
     the DSS: every genus the rules allow less the ones analysed, and the most valuable of the rest, one
@@ -7463,7 +7525,7 @@ def bio_left_groups(r, star, known, ctx, done, seen=None):
     if left_n <= 0:
         return []
     _, groups = bio_guess(dict(r, bio=None), star, None, ctx)
-    groups = [g for g in groups if g["genus"] not in done]
+    groups = with_seen_genera([g for g in groups if g["genus"] not in done], seen, done)
     if seen:
         groups.sort(key=lambda g: g["genus"] not in seen)   # stable: the rest stay most valuable first
     return with_codex_species(groups[:left_n], seen)
@@ -7478,7 +7540,7 @@ def bio_guess_seen(r, star, genera, ctx, seen):
         _, groups = bio_guess(r, star, genera, ctx)
     else:
         _, groups = bio_guess(dict(r, bio=None), star, None, ctx)
-        groups = sorted(groups, key=lambda g: g["genus"] not in seen)[:r["bio"]]
+        groups = sorted(with_seen_genera(groups, seen), key=lambda g: g["genus"] not in seen)[:r["bio"]]
     groups = with_codex_species(groups, seen)
     return (sum(g.get("value") or 0 for g in groups) or None), groups
 
@@ -11157,7 +11219,8 @@ class State:
                    factor=5 if f and f["was_footfalled"] == 0 else 1)
         if sig_left or left:
             seen = {g: x for g, x in codex_species_seen(self.db, id64).get(bid, {}).items() if g not in sampled}
-            groups = bio_left_groups(rec, mr["star"], genera, mr["ctx"], done, seen)
+            groups = bio_left_groups(rec, mr["star"], genera, mr["ctx"], done,
+                                     seen_and_runs(seen, runs_under_way(self.db, id64).get(bid)))
             out["bio_value"] = sum((g.get("value") or 0) for g in groups) or None
             opts = None if genera else bio_options(rec, mr["star"], mr["ctx"], sampled, fix=lambda gs: with_codex_species(gs, seen))
             if opts:
@@ -11185,13 +11248,13 @@ class State:
                                  (id64,)):
             if organic_state(self.db, r["done_ts"], (id64, r["body_id"], r["species"])) != "lost":
                 got.setdefault(short_name(mr["name"], r["name"]), set()).add(r["genus_name"])
-        worth, bio, seen = [], None, codex_species_seen(self.db, id64)
+        worth, bio, seen, runs = [], None, codex_species_seen(self.db, id64), runs_under_way(self.db, id64)
         for r in mr["records"]:
             if r.get("type") != "Planet":
                 continue
             if r.get("bio") or r.get("genera"):   # mapped or not: mapping says nothing about the sampling
                 groups = bio_left_groups(r, mr["star"], r.get("genera") or None, mr["ctx"], got.get(r["name"], set()),
-                                         seen.get(r.get("body_id")))
+                                         seen_and_runs(seen.get(r.get("body_id")), runs.get(r.get("body_id"))))
                 val = sum((g.get("value") or 0) for g in groups)
                 if val and (not bio or val > bio["value"]):
                     bio = {"body": r["name"], "value": val}
@@ -12372,6 +12435,11 @@ class State:
         for r in q("SELECT system, body_id, species, genus_name, done_ts FROM own_organic WHERE system IN ({marks}) AND done_ts IS NOT NULL"):
             if organic_state(self.db, r["done_ts"], (r["system"], r["body_id"], r["species"])) != "lost":
                 done.setdefault((r["system"], r["body_id"]), set()).add(r["genus_name"])
+        # runs under way: listed with no signal count of yours too, as the leaving summary (review round 9)
+        partial = {}
+        for r in q("SELECT system, body_id, genus_name, species_name, variant_name FROM own_organic WHERE system IN ({marks}) "
+                   "AND done_ts IS NULL AND species_name IS NOT NULL"):
+            partial.setdefault((r["system"], r["body_id"]), {})[r["genus_name"]] = (r["species_name"], r["variant_name"] or r["species_name"])
         mapped = {(r["system"], r["body_id"]): (r["ts"], r["first_ts"])
                   for r in q("SELECT system, body_id, ts, first_ts FROM own_mapped WHERE system IN ({marks})")}
         # FSS bio signals (by body name, as own_signals keys them) and each system's latest star, for the bodies
@@ -12409,19 +12477,23 @@ class State:
                                 "value": sum((outrider.bio.genus_value(g) or 0) if outrider.bio else 0 for g in left)})
             for bid, rec in recs.items():
                 n_sig = signals.get((id64, rec.get("name")), 0)
-                if not n_sig or (id64, bid) in genera:   # a DSS'd body is listed above (its genera win)
+                part = partial.get((id64, bid), {})
+                if (not n_sig and not part) or (id64, bid) in genera:   # a DSS'd body is listed above (its genera win)
                     continue
                 done_set = done.get((id64, bid), set())
-                n_left = n_sig - len(done_set)
-                if n_left <= 0:
+                n_left = max(0, n_sig - len(done_set) - len(part))
+                if n_left <= 0 and not part:
                     continue
                 if ctx is None:   # only for a system with such a body: the common case stays free
                     ctx = bio_context(c["name"], list(recs.values()), c["x"], c["y"], c["z"], stars.get(id64),
                                       h and h["body_count"])
-                groups = bio_left_groups(dict(rec, bio=n_sig), stars.get(id64), None, ctx, done_set,
-                                         codex_species_seen(self.db, id64).get(bid))
-                bio.append({"body": short_name(c["name"], bs[bid]["name"]), "genera": None, "signals": n_left,
-                            "value": sum((g.get("value") or 0) for g in groups)})
+                groups = bio_left_groups(dict(rec, bio=n_sig), stars.get(id64), None, ctx, done_set | set(part),
+                                         codex_species_seen(self.db, id64).get(bid)) if n_left else []
+                # the runs under way at their species (as the leaving summary prices them), named
+                runs = with_codex_species(bio_guess(rec, stars.get(id64), sorted(part), ctx)[1], part) if part else []
+                more = [f"{n_left} more signal{'' if n_left == 1 else 's'}"] if part and n_left else []
+                bio.append({"body": short_name(c["name"], bs[bid]["name"]), "genera": (sorted(part) + more) if part else None,
+                            "signals": n_left, "value": sum((g.get("value") or 0) for g in groups + runs)})
             judge = None
             for bid, r in bs.items():
                 rec = recs[bid]
@@ -13557,7 +13629,10 @@ class State:
             # on board: samples not yet sold (sold ones are banked, like sold cartographics)
             bio_now = sum((o.get("value") or 0) for o in held if o["state"] == "aboard") * bio_factor
             got = {o["genus"] for o in held if o["done"] and not o["lost"]}   # sold ones are done too
-            left_groups = bio_left_groups(r, star, known_genera, ctx, got, seen) if (r.get("bio") or known_genera) else []
+            under_way = {o["genus"]: (o["species"], o["variant"] or o["species"]) for o in held
+                         if not o["done"] and not o["lost"] and o["species"]}   # priced as runs, whatever the rules rank them
+            left_groups = bio_left_groups(r, star, known_genera, ctx, got, seen_and_runs(seen, under_way)) \
+                if (r.get("bio") or known_genera) else []
             bio_left = sum((g.get("value") or 0) for g in left_groups) * bio_factor
             carto_now, carto_left = cv["now"], cv["left"]
             # Max without any bonus: no first-discovery / first-mapped multipliers, bio at x1
@@ -14408,23 +14483,26 @@ class State:
                 return {"error": f"region is 1 to {count}"}, 400
         placed = {}
         number = {n.lower(): i for i, n in enumerate(names) if n}   # the codex says its region by name
-        if kind == "geo":
-            entries = self.geo_codex()
-            if not entries:
-                return {"error": "the geology list is missing (resources/geo_codex.json)"}, 503
-            ids = {e["id"] for e in entries}
-            codex = [{"entry_id": c["entry_id"], "region": number.get((c["region"] or "").lower())}
-                     for c in self.db.execute("SELECT entry_id, region FROM codex") if c["entry_id"] in ids]
-            out = self.codex_marks(outrider.checklist.geo_table(entries, region, codex, count), "geo")
-            done = outrider.checklist.geo_completion(entries, codex, count)
-            return dict(out, kind="geo", regions=[{"id": i, "name": n, "completion": done.get(i)} for i, n in enumerate(names) if n],
-                        completion_all=done["all"], here=here, region=region, region_name=names[region] if region else None), 200
 
         def region_of(system):
             if system not in placed:
                 loc = self.locate(system)
                 placed[system] = outrider.bio.region_number(loc[1], loc[2], loc[3]) if loc and loc[1] is not None else None
             return placed[system]
+        if kind == "geo":
+            entries = self.geo_codex()
+            if not entries:
+                return {"error": "the geology list is missing (resources/geo_codex.json)"}, 503
+            ids = {e["id"] for e in entries}
+            # placed by the system's place, the localised region name only as a fallback, as the bio list (review
+            # round 9: a non-English game's Geology list never showed any progress)
+            codex = [{"entry_id": c["entry_id"],
+                      "region": (region_of(c["system"]) if c["system"] is not None else None) or number.get((c["region"] or "").lower())}
+                     for c in self.db.execute("SELECT entry_id, region, system FROM codex") if c["entry_id"] in ids]
+            out = self.codex_marks(outrider.checklist.geo_table(entries, region, codex, count), "geo")
+            done = outrider.checklist.geo_completion(entries, codex, count)
+            return dict(out, kind="geo", regions=[{"id": i, "name": n, "completion": done.get(i)} for i, n in enumerate(names) if n],
+                        completion_all=done["all"], here=here, region=region, region_name=names[region] if region else None), 200
         fates = organic_fates(self.db)
         runs = []
         for r in self.db.execute("SELECT system, body_id, species, species_name, variant_name, variant, done_ts FROM own_organic"):
@@ -14876,7 +14954,7 @@ class State:
                     aboard.setdefault(r["body_id"], {})[r["genus_name"]] = v
         now_c = self.system_values.get(name, 0)   # on board: the unsold estimate's own figure for this system
         rem_c = now_b = rem_b = 0
-        seen = codex_species_seen(self.db, id64)
+        seen, runs = codex_species_seen(self.db, id64), runs_under_way(self.db, id64)
         judge = pickup_judge(self.db, name)
         latest = {r["body_id"]: r["ts"] for r in self.db.execute("SELECT body_id, ts FROM own_bodies WHERE system=?", (id64,))}
         for r in records:
@@ -14892,7 +14970,8 @@ class State:
             if r.get("bio") or r.get("genera"):
                 got = done.get(bid, {}) if bid is not None else {}
                 known = (genera.get(bid) if bid is not None else None) or r.get("genera") or None
-                rem_b += sum((g.get("value") or 0) for g in bio_left_groups(r, star, known, ctx, got, seen.get(bid))) * factor
+                rem_b += sum((g.get("value") or 0) for g in bio_left_groups(r, star, known, ctx, got,
+                                                                          seen_and_runs(seen.get(bid), runs.get(bid)))) * factor
         return {"value_now": int(now_c + now_b), "value_max": int(now_c + now_b + rem_c + rem_b),
                 "value_parts": {"carto_now": int(now_c), "bio_now": int(now_b), "carto_left": int(rem_c), "bio_left": int(rem_b)}}
 
@@ -21791,7 +21870,7 @@ def bio_hits(db, id64, system, x, y, z, records, threshold):
             got.setdefault(r["body_id"], set()).add(r["genus_name"])
     for r in db.execute("SELECT body_id, genus_name FROM own_genera WHERE system=?", (id64,)):
         genera.setdefault(r["body_id"], []).append(r["genus_name"])
-    seen = codex_species_seen(db, id64)
+    seen, runs = codex_species_seen(db, id64), runs_under_way(db, id64)
     row = db.execute("SELECT star_class FROM star_classes WHERE id64=?", (id64,)).fetchone()
     star = row["star_class"] if row else None
     cnt = db.execute("SELECT body_count FROM own_systems WHERE id64=?", (id64,)).fetchone()
@@ -21807,7 +21886,7 @@ def bio_hits(db, id64, system, x, y, z, records, threshold):
         left_n = signals - len(done)
         if left_n <= 0:
             continue                      # every species here analysed
-        rest = bio_left_groups(r, star, known, ctx, done, seen.get(bid))
+        rest = bio_left_groups(r, star, known, ctx, done, seen_and_runs(seen.get(bid), runs.get(bid)))
         priced = [g for g in rest if g.get("value")]
         left = sum(g["value"] for g in priced) if priced else None
         if (left or 0) < threshold or (left is None and threshold):
@@ -21987,7 +22066,8 @@ class Searcher:
         except asyncio.TimeoutError:   # its words are empty: "search failed: " said nothing (complete review 2026-10-30)
             self.update(seq, running=False, status="search failed: Spansh did not answer in time")
         except Exception as e:
-            self.update(seq, running=False, status=f"search failed: {e or type(e).__name__}")
+            # an exception is always truthy: its words, else its kind (review round 9: a dropped connection said nothing)
+            self.update(seq, running=False, status=f"search failed: {str(e) or type(e).__name__}")
 
     async def _run(self, seq, params, stop=None):
         # S49: around another system (params' "around": destination, carrier, next_stop or an id64; State.search_origin),
@@ -24936,6 +25016,11 @@ async def run(args, st):
     if outrider.bio:   # your refreshed exobiology rules and colours: beside the database too, never in resources/ (D1)
         outrider.bio.OWN_RULES = os.path.join(os.path.dirname(os.path.abspath(args.db)), "bio_rules.json")
         outrider.bio.load_rules(outrider.bio.rules_file(), force=True)
+        if outrider.bio.shipped_changed():   # left changed by an Outrider before D1: git pull stops on it (review round 9)
+            outrider.notices.warn("bio_rules_changed", "warning: resources/bio_rules.json has local changes (an Outrider "
+                                  "before 2026.10.30 wrote its updates there), so the next `git pull` can stop on it. Run "
+                                  "`git checkout resources/bio_rules.json` in the Outrider folder: your refreshed rules "
+                                  "are downloaded again beside your database.")
     loop = asyncio.get_running_loop()
     # a stop (SIGTERM: docker stop, systemd, verify.sh) from here on: during the start-up it ends between two journal
     # files (each is committed as it is read: what is read stays), once serving through the usual cleanup below

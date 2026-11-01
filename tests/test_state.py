@@ -2487,6 +2487,59 @@ class BatchBState(unittest.TestCase):
                              (top + v) * b["value_parts"]["bio_factor"])
             self.assertEqual(self.state.approach_facts(1, 4, "S1 A 4")["bio_value"], top + v)
 
+    def test_a_codex_seen_genus_the_rules_rule_out_is_priced(self):
+        """Review round 9: the codex-seen genus was put first only among the genera the rules predict; one the rules rule
+        out (a gap in them) was never priced, and a guess took its signal. It is priced at its species now."""
+        if not outrider.bio or not outrider.bio.species_by_name("Bacterium Vesicula"):
+            self.skipTest("no bio_rules.json")
+        self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, PlanetClass="Rocky body", MassEM=0.2)
+        self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:01:30Z", "SystemAddress": 1, "BodyID": 4,
+                       "BodyName": "S1 A 4", "Signals": [{"Type": ed_outrider.BIO, "Count": 2}]})
+        self.db.execute("INSERT INTO codex (ts, entry_id, name, category, subcategory, system, body_id, code) VALUES "
+                        "('2026-01-01T00:03:00Z', 2310901, 'Bacterium Vesicula - Red', '$Codex_Category_Biology;', "
+                        "'$Codex_SubCategory_Organic_Structures;', 1, 4, '$Codex_Ent_Bacterial_05_Red_Name;')")
+        self.db.commit()
+        v = outrider.bio.species_value("Bacterium Vesicula")
+        no_bacterium = [c for c in self.CANDS if c["genus"] != "Bacterium"]
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=no_bacterium):
+            b = next(b for b in self.state.system_detail(1)["bodies"] if b["name"] == "A 4")
+            g = {x["genus"]: x for x in b["bio_guess"]}
+            self.assertEqual((len(g), g["Bacterium"]["best"], g["Bacterium"]["value"], g["Bacterium"]["seen"]),
+                             (2, "Bacterium Vesicula", v, True))
+            pot = next(p for p in self.state.leaving_summary(1)["bio_pending"] if p["body"] == "A 4")["potential"]
+            self.assertEqual(pot, b["bio_potential"])
+            self.assertIn(v, [pot - x["value"] for x in no_bacterium])
+
+    def test_a_run_under_way_below_the_top_n_is_priced(self):
+        """Review round 9: before the DSS the rules' top N genera were priced, so a run under way of a genus below them
+        (Bacterium, last of the four) was left out of Here's value and a guess priced in its place; the leaving
+        summary already priced it. Its species is priced now, first, whatever the rules rank it."""
+        self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, PlanetClass="Rocky body")
+        self.j.handle({"event": "FSSBodySignals", "timestamp": "2026-01-01T00:01:30Z", "SystemAddress": 1, "BodyID": 4,
+                       "BodyName": "S1 A 4", "Signals": [{"Type": ed_outrider.BIO, "Count": 2}]})
+        for i, kind in enumerate(("Log", "Sample")):
+            voice_organic(self, f"2026-01-01T00:0{2 + i}:00Z", kind, "Bacterium Aurasus", "Bacterium")
+        self.db.commit()
+        va = outrider.bio.species_value("Bacterium Aurasus") if outrider.bio else None
+        if not va:
+            self.skipTest("no bio_rules.json")
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=self.CANDS):
+            b = next(b for b in self.state.system_detail(1)["bodies"] if b["name"] == "A 4")
+            self.assertEqual(b["value_parts"]["bio_left"], (19_010_800 + va) * b["value_parts"]["bio_factor"])
+            self.assertEqual(self.state.approach_facts(1, 4, "S1 A 4")["bio_value"], 19_010_800 + va)
+
+    def test_left_behind_keeps_a_run_under_way_with_no_signal_count(self):
+        """Review round 9: the leaving summary warned "Bacterium 2/3" for a body sampled with no FSS or DSS, but Left
+        behind needed a signal count of yours, so the unfinished run was forgotten once you left."""
+        self.planet("2026-01-01T00:01:00Z", 1, 4, "A 4", Landable=True, PlanetClass="Rocky body")
+        for i, kind in enumerate(("Log", "Sample")):
+            voice_organic(self, f"2026-01-01T00:0{2 + i}:00Z", kind, "Bacterium Aurasus", "Bacterium")
+        self.jump("2026-01-01T01:00:00Z", 2, 20)
+        self.db.commit()
+        with unittest.mock.patch.object(outrider.bio, "predict", return_value=self.CANDS):
+            left = {r["id"]: r for r in self.state.left_behind(100)["systems"]}
+        self.assertEqual([(b["body"], b["genera"]) for b in left["1"]["bio"]], [("A 4", ["Bacterium"])])
+
     def test_a_run_under_way_with_no_signal_count_is_pending(self):
         """Complete review 2026-10-30: the leaving summary looked only at bodies with your own signal count or DSS, so a
         run under way on a body picked from Spansh's counts (no FSS, no DSS) was left out and the summary said clean."""
