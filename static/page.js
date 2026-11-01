@@ -15211,7 +15211,7 @@ const lostLineKey = (t, speed) => `${t.voice || ""}|${t.speaker ?? ""}|${speed}`
 async function prepareLostLine() {
   if (TABLET && !tabletSpeaks()) return;   // never said here
   const t = data && data.tts;
-  if (!t || t.engine !== "piper") return;
+  if (!t || t.engine !== "piper" || speechEngine() === "browser") return;   // the browser's voice needs no server
   const ctx = actx || audio();   // decoding needs no click: the context may stay paused until the line is played
   if (!ctx) return;
   const speed = speechSpeed(), key = lostLineKey(t, speed);
@@ -15232,6 +15232,8 @@ async function prepareLostLine() {
 async function sayLost() {
   const entry = logSpeech({kind: "connection", words: LOST_TEXT});
   if (!(speechOn && speakerHere())) { toast(LOST_TEXT); setFate(entry, `silent: ${hushReason()}`); return ""; }
+  // Speak with this browser's voice: said by the browser, which needs no server (never the Piper line made in advance)
+  if (speechEngine() === "browser") { toast(LOST_TEXT); speak(LOST_TEXT, {kind: "connection", log: entry}); return "browser"; }
   const ctx = await runningAudio();   // paused audio starts again if this page has had a click since it loaded
   if (!ctx) {
     toast(LOST_TEXT + " (click the page once so it may play sound)");

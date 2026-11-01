@@ -2814,15 +2814,22 @@ const releasePayloads = async () => {
       data.tts = null;
       const none = {words: "No Piper check.", prio: 1, kind: "manual", pace: 1};
       await sayNow(none);
+      radio("browser");   // Outrider gone quiet: the browser says it (no Piper line made in advance), none made
+      const realSpeak = speak, f = [speechOn, isSpeaker], lostKey = lostLine.key, lostSpoke = [];
+      speak = (text, o) => lostSpoke.push(text + " [" + o.kind + "]"); speechOn = isSpeaker = true; lostLine.key = null;
+      data.tts = {engine: "piper", voice: "x", available: true}; await prepareLostLine();
+      const lost = [await sayLost(), lostSpoke, lostLine.key];
+      speak = realSpeak; [speechOn, isSpeaker] = f; lostLine.key = lostKey; data.tts = null;
       store.set("browserVoice", "gone"); drawBrowserVoice();
       const gone = [sel.value, document.getElementById("browserVoiceHint").textContent];
       for (const [k, v] of keep) v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v);
       window.speechSynthesis = ss; window.SpeechSynthesisUtterance = U; data.tts = tts; drawTts();
-      return {picker, spoken, engines: [plain.engine, copilot.engine, back.engine || null, none.engine], gone}; })()`);
+      return {picker, spoken, engines: [plain.engine, copilot.engine, back.engine || null, none.engine], lost, gone}; })()`);
     w.fetch = realFetch;
     const want = {picker: {groups: ["en-GB: Libby, Ryan", "en-US: Aria", "de-DE: Hans"], value: "libby", engine: "· this browser's voice", title: true},
       spoken: [["Chosen check.", "Libby", "en-GB"], ["Copilot check.", "Libby", "en-GB"], ["No Piper check.", "Libby", "en-GB"]],
       engines: ["browser voice (chosen): Libby", "browser voice (chosen): Libby", null, "browser voice: Libby"],
+      lost: ["browser", ["Lost contact with Outrider. No alerts until it is back. [connection]"], null],
       gone: ["", "the voice chosen before is not in this browser: its default speaks"]};
     const goodBV = JSON.stringify(got) === JSON.stringify(want) && JSON.stringify(asked) === JSON.stringify(["api/say/play"]) && errors.length === before;
     allOk = allOk && goodBV;

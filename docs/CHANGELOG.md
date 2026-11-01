@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-01 · Speak with this browser's voice: the lost-contact line
+- Chosen, "Lost contact with Outrider" was still played from the Piper line made in advance; now the browser says
+  it (it needs no server), and no Piper line is made for it. Checked in the `browser_voice` smoke block.
+
 ## 2026-11-01 · Speak with this browser's voice
 - Asked on issue #21: Edge's natural voices beat Piper's for some, but with Piper installed the browser's voice was
   never used, and without it the page took the browser's default voice (Edge on Linux: an American one only).
