@@ -298,9 +298,11 @@ t("sysRowHtml: a route pane row has its # cell, Dist along the route and From yo
   assert.deepStrictEqual(near.slice(2, 4), ["0.00", ""]);   // Nearby around you: Dist is the row's own, no From you
 });
 t("surface map zoom: the slider's log scale both ways, clamped; the span in words", () => {
-  eq(`[surfZoomSpan(0), surfZoomSpan(100), surfZoomSpan(50), surfZoomSpan(-5), surfZoomSpan(250)]`, [50000, 100, 2236, 50000, 100]);
-  eq(`[0, 13, 50, 87, 100].map(v => surfZoomPos(surfZoomSpan(v)))`, [0, 13, 50, 87, 100]);
-  eq(`[surfZoomPos(50), surfZoomPos(200000)]`, [100, 0]);
+  // the widest is the layout's maxSpan (what this body needs, plus 10 km): 50 km here
+  eq(`[surfZoomSpan(0, 50000), surfZoomSpan(100, 50000), surfZoomSpan(50, 50000), surfZoomSpan(-5, 50000), surfZoomSpan(250, 50000), surfZoomSpan(0, 21200)]`,
+     [50000, 100, 2236, 50000, 100, 21200]);
+  eq(`[0, 13, 50, 87, 100].map(v => surfZoomPos(surfZoomSpan(v, 50000), 50000))`, [0, 13, 50, 87, 100]);
+  eq(`[surfZoomPos(50, 50000), surfZoomPos(200000, 50000), surfZoomPos(21200, 21200)]`, [100, 0, 0]);
   eq(`[metresText(500), metresText(2236), metresText(50000)]`, ["500 m", "2.2 km", "50 km"]);
 });
 t("routeShare: the pane's share of Nearby's height from the divider, 25-75 %", () =>

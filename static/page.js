@@ -1711,14 +1711,17 @@ function surfLocal(s, lat, lon) {
 }
 // Everything the map and legend draw, sized for a square canvas of side S (px): pure, so the tests can check it.
 // the zoom (the author, 2026-11-02): Auto fits the markers near you (below); the slider sets a span of its own, from
-// SURF_ZOOM_MIN to SURF_ZOOM_MAX m across, and moving it switches Auto off. This device's (surfZoom {auto, span}): every
-// surface map here (Now's, the Overview's, the strip) follows it. The slider is a log scale, the closest at its right
-const SURF_ZOOM_MIN = 100, SURF_ZOOM_MAX = 50000, SURF_ZOOM_STEPS = 100;   // 50 km: the author, 2026-11-02
+// SURF_ZOOM_MIN m across to the widest this body needs (the layout's maxSpan: every marker, sample and your trail here,
+// plus SURF_ZOOM_MARGIN, at most SURF_ZOOM_CAP: a pin across the planet is not that, and the map is flat), and moving it
+// switches Auto off. This device's (surfZoom {auto, span}): every surface map here (Now's, the Overview's, the strip)
+// follows it. The slider is a log scale, the closest at its right
+const SURF_ZOOM_MIN = 100, SURF_ZOOM_MARGIN = 10000, SURF_ZOOM_CAP = 500000, SURF_ZOOM_STEPS = 100;
 const surfZoom = () => { const z = store.get("surfZoom", null) || {}, span = Number(z.span);
-  return {auto: z.auto !== false, span: z.span != null && isFinite(span) && span > 0 ? Math.min(SURF_ZOOM_MAX, Math.max(SURF_ZOOM_MIN, span)) : null}; };
-const surfZoomSpan = v => Math.round(SURF_ZOOM_MAX * Math.pow(SURF_ZOOM_MIN / SURF_ZOOM_MAX, Math.min(SURF_ZOOM_STEPS, Math.max(0, v)) / SURF_ZOOM_STEPS));
-const surfZoomPos = span => Math.min(SURF_ZOOM_STEPS, Math.max(0,
-  Math.round(Math.log(SURF_ZOOM_MAX / span) / Math.log(SURF_ZOOM_MAX / SURF_ZOOM_MIN) * SURF_ZOOM_STEPS)));
+  return {auto: z.auto !== false, span: z.span != null && isFinite(span) && span > 0 ? Math.min(SURF_ZOOM_CAP, Math.max(SURF_ZOOM_MIN, span)) : null}; };
+// slider position (0 the widest, max; SURF_ZOOM_STEPS the closest) and metres across, both ways
+const surfZoomSpan = (v, max) => Math.round(max * Math.pow(SURF_ZOOM_MIN / max, Math.min(SURF_ZOOM_STEPS, Math.max(0, v)) / SURF_ZOOM_STEPS));
+const surfZoomPos = (span, max) => Math.min(SURF_ZOOM_STEPS, Math.max(0,
+  Math.round(Math.log(max / span) / Math.log(max / SURF_ZOOM_MIN) * SURF_ZOOM_STEPS)));
 const metresText = m => m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 1)} km` : `${Math.round(m)} m`;
 function surfaceLayout(s, cfg, S, zoom = surfZoom()) {
   const hd = s.heading == null ? 0 : s.heading, rad = hd * Math.PI / 180, ch = Math.cos(rad), sh = Math.sin(rad);
@@ -1749,8 +1752,14 @@ function surfaceLayout(s, cfg, S, zoom = surfZoom()) {
                                           ringM: b.need || 0}, p.lat, p.lon);
   }
   for (const it of items) it.far = it.kind === "rig" && it.dist > cfg.warn;
-  // a span of your own: what fits in it shows too (zoomed out past SURF_NEAR's reach)
-  const fixed = !zoom.auto && zoom.span ? zoom.span : null, near = fixed ? Math.max(SURF_NEAR, fixed / 2) : SURF_NEAR;
+  // the widest the slider goes: everything here (each marker, a sample's colony ring, the trail) fitted as Auto fits
+  // its own, plus SURF_ZOOM_MARGIN (the author, 2026-11-02); a span of your own never wider. What fits in a span of your
+  // own shows too (zoomed out past SURF_NEAR's reach)
+  let far = 0;
+  for (const it of items) far = Math.max(far, it.dist + (it.kind === "bio" && !it.faint ? it.ringM : 0));
+  for (const q of s.trail || []) if (q) far = Math.max(far, surfLocal(s, q[0], q[1]).dist);
+  const maxSpan = Math.round(Math.min(SURF_ZOOM_CAP, far * 2 * 1.12 + SURF_ZOOM_MARGIN));
+  const fixed = !zoom.auto && zoom.span ? Math.min(zoom.span, maxSpan) : null, near = fixed ? Math.max(SURF_NEAR, fixed / 2) : SURF_NEAR;
   const shown = items.filter(it => it.keep || it.dist <= near);
   // auto-zoom: every marker within SURF_NEAR (a run's rings with it), never tighter than surface_map_min across
   let reach = 0;
@@ -1771,7 +1780,7 @@ function surfaceLayout(s, cfg, S, zoom = surfZoom()) {
   // a null is a break (a high stretch: never a line across ground not flown low)
   const trail = (s.trail || []).map(q => { if (!q) return null; const p = surfLocal(s, q[0], q[1]), rx = p.east * ch - p.north * sh, ry = p.east * sh + p.north * ch;
     return [c + rx * scale, c - ry * scale]; });
-  return {S, c, rimR, span, auto: !fixed, scale, heading: hd, headingKnown: s.heading != null, north: -rad, items: shown, trail,
+  return {S, c, rimR, span, maxSpan, auto: !fixed, scale, heading: hd, headingKnown: s.heading != null, north: -rad, items: shown, trail,
           bar: {m: nice, px: nice * scale}};
 }
 const surfColours = () => { const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
@@ -1962,17 +1971,17 @@ const SURF_ZOOM_ROW = `<div class="smap-zoom"><span class="lbl">Zoom</span><span
   `<span class="unk" aria-hidden="true">+</span><button type="button" class="mini" data-surfauto aria-pressed="true"` +
   ` title="Auto fits the markers near you (sites, rigs, your ship, the run's plants); off, the slider's zoom stays">Auto</button>` +
   `<span class="unk zspan"></span></div>`;
-let surfSpanShown = null;   // the span the last map was drawn at: Auto switched off keeps it
+let surfSpanShown = null, surfMaxShown = null;   // the last map's span (Auto switched off keeps it) and widest
 function drawSurfZoom(el, L) {
   const input = el.querySelector("[data-surfzoom]"), btn = el.querySelector("[data-surfauto]"), sp = el.querySelector(".zspan");
-  if (document.activeElement !== input) input.value = String(surfZoomPos(L.span));
+  if (document.activeElement !== input) input.value = String(surfZoomPos(L.span, L.maxSpan));
   btn.classList.toggle("on", L.auto); btn.setAttribute("aria-pressed", L.auto ? "true" : "false");
   const t = `${metresText(L.span)} across`; if (sp.textContent !== t) sp.textContent = t;
 }
 function setSurfLegend(el, s, L, cfg) {
   let body = el.querySelector(":scope > .smap-legbody");
   if (!body) { el.innerHTML = SURF_ZOOM_ROW + `<div class="smap-legbody"></div>`; body = el.lastElementChild; }
-  surfSpanShown = L.span;
+  surfSpanShown = L.span; surfMaxShown = L.maxSpan;
   drawSurfZoom(el, L);
   el = body;
   const html = `<div class="lg-title">${esc(s.body || "")}${s.alt != null && !s.down ? ` <span class="unk">${Math.round(s.alt)} m up</span>` : ""}` +
@@ -1985,7 +1994,7 @@ for (const id of ["nowMapLegend", "ovMapLegend"]) {
   const el = document.getElementById(id);
   el.addEventListener("input", e => {   // the slider: a zoom of your own, Auto off
     if (!e.target.matches("[data-surfzoom]")) return;
-    store.set("surfZoom", {auto: false, span: surfZoomSpan(Number(e.target.value))}); renderSurface();
+    store.set("surfZoom", {auto: false, span: surfZoomSpan(Number(e.target.value), surfMaxShown || SURF_ZOOM_MARGIN)}); renderSurface();
   });
   el.addEventListener("click", e => {   // Auto on, or off at the zoom Auto had
     if (!e.target.closest("[data-surfauto]")) return;

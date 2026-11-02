@@ -3549,7 +3549,8 @@ const releasePayloads = async () => {
   // an off-map chevron, the legend, the strip copy and the settings round trip (the canvas itself is not drawn here)
   // the surface map's zoom (the author, 2026-11-02): a slider (right closer) and Auto beside it, on top of the legend;
   // moving the slider switches Auto off and sets a span of its own (what fits in it shows, past Auto's 3 km); Auto on
-  // fits the markers near you again; Auto off keeps the zoom Auto had. This device's (surfZoom)
+  // fits the markers near you again; Auto off keeps the zoom Auto had. Its widest: everything here and the trail
+  // fitted, plus 10 km, moving with them; a span of your own never wider. This device's (surfZoom)
   surface_zoom: { if (skip("surface_zoom")) break surface_zoom;
     const w = dom.window, before = errors.length;
     holdPayloads();
@@ -3565,9 +3566,15 @@ const releasePayloads = async () => {
       const lg = document.getElementById("nowMapLegend"), sl = () => lg.querySelector("[data-surfzoom]"), auto = () => lg.querySelector("[data-surfauto]");
       const L = () => surfaceLayout(data.surface, surfaceCfg(), 400), sites = () => L().items.filter(i => i.kind === "site").length;
       const slide = v => { sl().value = String(v); sl().dispatchEvent(new Event("input", {bubbles: true})); };
-      o.auto = [auto().getAttribute("aria-pressed"), L().auto, L().span, Number(sl().value) === surfZoomPos(L().span), sites(), lg.querySelector(".zspan").textContent];
+      o.auto = [auto().getAttribute("aria-pressed"), L().auto, L().span, Number(sl().value) === surfZoomPos(L().span, L().maxSpan), sites(), lg.querySelector(".zspan").textContent];
       slide(100); o.closest = [auto().getAttribute("aria-pressed"), L().auto, L().span, store.get("surfZoom", null).auto];
-      slide(0); o.widest = [L().span, sites(), lg.querySelector(".zspan").textContent];
+      slide(0); o.widest = [L().span, L().maxSpan, sites(), lg.querySelector(".zspan").textContent];   // the far site at 5 km: 11.2 + 10 km
+      // a trail reaching 8 km away widens it (17.9 + 10 km); the slider's widest follows
+      const t1 = at(-100, 0), t2 = at(8000, 0); data.surface.trail = [[t1.lat, t1.lon], [t2.lat, t2.lon]]; render();
+      slide(0); o.trailWidest = [L().maxSpan, L().span];
+      // a span of your own wider than this body needs (kept from a bigger one): the widest it has
+      store.set("surfZoom", {auto: false, span: 400000}); o.capped = L().span;
+      data.surface.trail = []; render(); slide(0);
       auto().click(); o.backAuto = [auto().getAttribute("aria-pressed"), L().auto, L().span];
       auto().click(); o.offKeeps = [auto().getAttribute("aria-pressed"), L().auto, L().span];
       o.sameRow = lg.querySelectorAll(".smap-zoom").length;   // made once, not again with each redraw
@@ -3575,7 +3582,7 @@ const releasePayloads = async () => {
       data.surface = s0; view = v0; render();
       return JSON.stringify(o); })()`));
     await releasePayloads();
-    const want = {auto: ["true", true, 500, true, 1, "500 m across"], closest: ["false", false, 100, false], widest: [50000, 2, "50 km across"],
+    const want = {auto: ["true", true, 500, true, 1, "500 m across"], closest: ["false", false, 100, false], widest: [21200, 21200, 2, "21 km across"], trailWidest: [27920, 27920], capped: 27920,
                   backAuto: ["true", true, 500], offKeeps: ["false", false, 500], sameRow: 1};
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;

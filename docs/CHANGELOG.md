@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · The surface map's widest zoom fits everything on the body
+- The zoom slider's widest end is what this body needs (the author, after a path that ran off the map): every marker,
+  sample (with its colony ring) and the trail fitted as Auto fits, plus 10 km (`SURF_ZOOM_MARGIN`), at most 500 km
+  (`SURF_ZOOM_CAP`: a pin across the planet, a flat map); worked out with each draw (`surfaceLayout`'s `maxSpan`), a span of
+  your own never wider. Was a fixed 50 km.
+
 ## 2026-11-02 · The surface map zooms out to 50 km
 - The zoom slider's widest is 50 km across (was 12 km: the author); the scale bar goes to 10 and 20 km.
 

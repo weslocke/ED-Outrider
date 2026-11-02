@@ -537,8 +537,9 @@ their letters), a crosshair along your heading and quarter rings, to read a bear
 
 - **Heading-up:** the way you face is the top, you are the arrow in the middle, N on the rim is north. It
   zooms to fit everything within 3 km, never narrower than 500 m, with a scale bar.
-- **Zoom:** the slider on top of the legend zooms by hand, from 50 km across (left) to 100 m (right), and switches
-  **Auto** off; the map then stays at that zoom, showing whatever fits in it (past the 3 km too). **Auto** beside it
+- **Zoom:** the slider on top of the legend zooms by hand, from 100 m across (right) out to everything on this body
+  (left: every site, rig, sample, pin and the path you have flown and walked here, plus 10 km; at most 500 km), and
+  switches **Auto** off; the map then stays at that zoom, showing whatever fits in it (past the 3 km too). **Auto** beside it
   fits everything near you again; pressing it off keeps the zoom Auto had. The figure after it is how much ground the
   map shows. This device remembers it, for Now's map, the Overview's and the small one on the other tabs.
 - **What is drawn:** your ship (a landing-pad H), the samples of unfinished bio runs with each species' colony ring (the
