@@ -1747,7 +1747,7 @@ function surfaceLayout(s, cfg, S, zoom = surfZoom()) {
   for (const t of s.tags || []) add({kind: "tag", tag: "", species: t.species, colour: colours.get(t.species), faint: !t.usable,
                                       keep: !!(t.usable && (t.current || nearestTag.has(t)))}, t.lat, t.lon);
   for (const b of s.bio || []) {
-    // a species finished here (done): its samples solid in its colour with a ✓, no colony ring (the author, 2026-11-02)
+    // a species finished here (done): its samples as small × in its colour, no colony ring (the author, 2026-11-02)
     const colour = colours.get(b.species);
     for (const p of b.points || []) add({kind: "bio", tag: "", species: b.species, colour, done: !!b.done, faint: !b.current && !b.done,
                                           keep: !!b.current, ringM: b.done ? 0 : b.need || 0}, p.lat, p.lon);
@@ -1847,11 +1847,10 @@ function drawSurface(canvas, L, small) {
   for (const it of L.items) {
     if (it.off) continue;
     const x = it.sx, y = it.sy;
-    if (it.kind === "bio" && it.done) {   // a finished species' sample: a bigger dot in its colour, ticked
-      const r = small ? mr * 0.55 : mr * 0.8;
-      g.fillStyle = it.colour; g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fill();
-      if (!small) { g.strokeStyle = C.panel; g.lineWidth = Math.max(1.5, r / 3); g.lineCap = "round"; g.lineJoin = "round"; g.beginPath();
-        g.moveTo(x - r * 0.5, y); g.lineTo(x - r * 0.12, y + r * 0.4); g.lineTo(x + r * 0.5, y - r * 0.4); g.stroke(); g.lineCap = "butt"; }
+    if (it.kind === "bio" && it.done) {   // a finished species' sample: a small × in its colour (the author, 2026-11-02)
+      const r = small ? mr * 0.45 : mr * 0.55;
+      g.strokeStyle = it.colour; g.lineWidth = small ? 1.5 : 2; g.lineCap = "round"; g.beginPath();
+      g.moveTo(x - r, y - r); g.lineTo(x + r, y + r); g.moveTo(x + r, y - r); g.lineTo(x - r, y + r); g.stroke(); g.lineCap = "butt";
     }
     else if (it.kind === "bio") { g.fillStyle = it.colour; g.globalAlpha = it.faint ? 0.45 : 1; g.beginPath(); g.arc(x, y, mr * 0.55, 0, 2 * Math.PI); g.fill(); g.globalAlpha = 1; }
     else if (it.kind === "pin") { const r = it.active ? mr + 2 : mr; g.fillStyle = it.active ? C.accent : C.muted; g.globalAlpha = it.faint ? 0.4 : 1;

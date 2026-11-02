@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · A finished species' samples are small × marks
+- On the surface map a finished species' three samples are small × marks in its colour (the author), not ticked
+  dots; the legend keeps "✓ done".
+
 ## 2026-11-02 · The surface map keeps a finished species
 - A species sampled to the end stays on the surface map (the author: it used to vanish): its three samples where you
   took them, solid in its colour with a ✓ and no colony ring, and "✓ done" in the legend after the runs under way

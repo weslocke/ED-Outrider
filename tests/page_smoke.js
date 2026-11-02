@@ -3547,7 +3547,7 @@ const releasePayloads = async () => {
   }
   // M2 surface map: shows below the altitude and hides above it, heading-up, rings to scale, rig slots and states,
   // an off-map chevron, the legend, the strip copy and the settings round trip (the canvas itself is not drawn here)
-  // a species finished on this body stays (the author, 2026-11-02): its three samples solid in its own colour, ticked,
+  // a species finished on this body stays (the author, 2026-11-02): its three samples as small × in its own colour,
   // with no colony ring, and its legend row "✓ done" after the runs under way, in the same colour as its dots
   surface_done_species: { if (skip("surface_done_species")) break surface_done_species;
     const w = dom.window, before = errors.length;
@@ -3574,15 +3574,24 @@ const releasePayloads = async () => {
       const sw = r => r ? r.querySelector(".sw").style.background : "";   // each species' own colour, the done one's too
       o.swatch = sw(rows[1]) !== "" && sw(rows[1]) !== sw(rows[0]) && sw(rows[1]) !== sw(rows[2]);
       o.noSpots = /no spots/.test(rows[2] ? rows[2].textContent : "");
+      // drawn as a small × in its colour (the author, 2026-11-02): two strokes through each spot, no dot there
+      const st = {strokeStyle: "", fillStyle: ""}, log = [];
+      const ctx = new Proxy({}, {get: (t, p) => p in st ? st[p] : ["arc", "moveTo", "lineTo"].includes(p)
+          ? (...a) => log.push([p, Math.round(a[0]), Math.round(a[1]), p === "arc" ? st.fillStyle : st.strokeStyle]) : () => {},
+        set: (t, p, v) => { if (p in st) st[p] = v; return true; }});
+      drawSurface({style: {}, width: 0, getContext: () => ctx}, L, false);
+      o.drawn = doneIt.map(it => { const near = e => Math.abs(e[1] - it.sx) <= 8 && Math.abs(e[2] - it.sy) <= 8;
+        return [log.filter(e => e[0] === "arc" && near(e)).length, log.filter(e => e[0] === "moveTo" && near(e) && e[3] === it.colour).length,
+                log.filter(e => e[0] === "lineTo" && near(e) && e[3] === it.colour).length]; });
       data.surface = s0; view = v0; render();
       return JSON.stringify(o); })()`));
     await releasePayloads();
     const want = {items: [4, 3, true, true], colour: true,
                   legend: [["Bacterium Aurasus", false, false], ["Tubus Compagibus", true, true], ["Concha Labiata", true, true]],
-                  swatch: true, noSpots: true};
+                  swatch: true, noSpots: true, drawn: [[0, 2, 2], [0, 2, 2], [0, 2, 2]]};
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;
-    console.log(good ? "OK" : "FAIL", "| surface done species |", good ? "a finished species stays: its three samples in its colour, ticked in the legend" : JSON.stringify(got), errors.slice(before));
+    console.log(good ? "OK" : "FAIL", "| surface done species |", good ? "a finished species stays: its three samples as small × in its colour, ✓ done in the legend" : JSON.stringify(got), errors.slice(before));
   }
   // the surface map's zoom (the author, 2026-11-02): a slider (right closer) and Auto beside it, on top of the legend;
   // moving the slider switches Auto off and sets a span of its own (what fits in it shows, past Auto's 3 km); Auto on
