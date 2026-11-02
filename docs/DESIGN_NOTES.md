@@ -1865,8 +1865,6 @@ upstream project's choices, not rules of the game.
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
 confirmed while playing. Treat reports about them as likely real.
 
-- The Plotted Route pane (2026-11-02, #22): the rows on a real plotted route as Spansh answers, the switch between
-  routes, the divider on a desktop, the swap in a small window and on a phone.
 - Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the
   prospector call-out, the ⛏ line and its warnings' timing (limpets low, hold nearly full, hold full with where to
   sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone); each

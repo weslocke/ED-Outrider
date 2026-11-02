@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · Tried in game
+- The author, in game: the Plotted Route pane (Show / Hide route with a plotted route), the surface map's zoom and the
+  legend's species pictures work; the pane leaves DESIGN_NOTES' "not yet tried" list.
+
 ## 2026-11-02 · The legend's tagged plants as Here's too
 - The surface map legend's Tagged rows name each species as its Samples rows do (the author): the colour from the
   composition scan's variant code (in any language), 📷, and the picture under the mouse (`bio_tags_here`'s
