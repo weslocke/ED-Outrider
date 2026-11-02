@@ -3547,8 +3547,8 @@ const releasePayloads = async () => {
   }
   // M2 surface map: shows below the altitude and hides above it, heading-up, rings to scale, rig slots and states,
   // an off-map chevron, the legend, the strip copy and the settings round trip (the canvas itself is not drawn here)
-  // a species' name in the map's legend as Here writes it (the author, 2026-11-02): its colour as named, 📷 for a picture
-  // of your own; a mouse over it shows a picture (api/species/picture: your own, another each time, else Canonn's), gone
+  // a species' name in the map's legend as Here writes it (the author, 2026-11-02), a sample run's and a tagged plant's:
+  // its colour as named, 📷 for a picture of your own; a mouse over it shows a picture (api/species/picture: your own, another each time, else Canonn's), gone
   // when the mouse leaves
   surface_species_pictures: { if (skip("surface_species_pictures")) break surface_species_pictures;
     const w = dom.window, d = w.document, before = errors.length;
@@ -3562,7 +3562,9 @@ const releasePayloads = async () => {
       const R = 1500000, lat0 = -53.794, lon0 = -144.581, k = 180 / Math.PI / R;
       const at = (n, e) => ({lat: lat0 + n * k, lon: lon0 + e * k / Math.cos(lat0 * Math.PI / 180)});
       data.surface = {body: "ABC 3 d", system: "1", body_id: 19, ...at(0, 0), heading: 0, alt: 0, radius: R, show: true, down: true,
-        alt_avg: false, rhino: false, ship: null, rigs: [], sites: [], locations: [], tags: [], trail: [],
+        alt_avg: false, rhino: false, ship: null, rigs: [], sites: [], locations: [], trail: [],
+        tags: [{species: "Stratum Paleas", genus: "Stratum", ...at(27, 0), dist: 27, bearing: 0, way: "", current: false, usable: true,
+                code: "$Codex_Ent_Stratum_05_Name;", variant: "Stratum Paleas - Lime", variant_code: "$Codex_Ent_Stratum_05_K_Name;", own_pic: true}],
         bio: [{species: "Bacterium Aurasus", genus: "Bacterium", code: "$Codex_Ent_Bacterial_01_Name;", variant: null, variant_code: null,
                own_pic: false, samples: 1, current: true, need: 500, clear: false, points: [{n: 1, ...at(100, 0), dist: 100}]},
               {species: "Tubus Compagibus", genus: "Tubus", code: "$Codex_Ent_Tubus_04_Name;", variant: "Tubus Compagibus - Green",
@@ -3585,7 +3587,8 @@ const releasePayloads = async () => {
     w.eval(`apiJson = __sp.api; data.surface = __sp.s0; view = __sp.v0; render()`);
     await releasePayloads();
     const want = {names: [["$Codex_Ent_Bacterial_01_Name;", "Bacterium Aurasus", "Bacterium Aurasus", false],
-                          ["$Codex_Ent_Tubus_04_Name;", "Tubus Compagibus - Green", "Tubus Compagibus - Green", true]],
+                          ["$Codex_Ent_Tubus_04_Name;", "Tubus Compagibus - Green", "Tubus Compagibus - Green", true],
+                          ["$Codex_Ent_Stratum_05_Name;", "Stratum Paleas - Lime", "Stratum Paleas - Lime", true]],   // a tagged plant's too
                   colourWord: true, waiting: [false, "a picture…"],
                   own: ["api/codex_picture?one", "Tubus Compagibus - Green · your picture"], out: true,
                   canonn: ["https://c/tubus.jpg", "Tubus Compagibus - Green · Canonn, CMDR Someone", true],

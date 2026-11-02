@@ -677,6 +677,11 @@ class SampleSpacing(unittest.TestCase):
         tags = self.state.bio_tags_here(h)
         self.assertEqual([(t["genus"], t["dist"], t["current"], t["usable"]) for t in tags],
                          [("Tussock", 87, True, False), ("Tussock", 524, True, True), ("Bacterium", 524, False, True)])
+        # the surface map legend's name as Here's (the author, 2026-11-02): the colour from the tag's variant code (a code
+        # the colour tables do not place: the name alone), its code for the hover's picture, no codex folders: no 📷
+        self.assertEqual([(t["variant"], t["variant_code"], t["own_pic"]) for t in tags][1:], [
+            ("Tussock Pennata", "$Codex_Ent_Tussocks_01_A_Name;", False),
+            ("Bacterium Acies - Cyan", "$Codex_Ent_Bacterial_04_Antimony_Name;", False)])
         # a journal re-read keeps them (live only: the ship's position could not be rebuilt)
         self.db.executescript(ed_outrider.RESET_JOURNAL_DATA)
         self.assertEqual(self.db.execute("SELECT count(*) FROM bio_tags").fetchone()[0], 3)

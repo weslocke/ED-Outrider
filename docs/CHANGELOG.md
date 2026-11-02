@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · The legend's tagged plants as Here's too
+- The surface map legend's Tagged rows name each species as its Samples rows do (the author): the colour from the
+  composition scan's variant code (in any language), 📷, and the picture under the mouse (`bio_tags_here`'s
+  `variant`, `variant_code`, `own_pic`).
+
 ## 2026-11-02 · The surface map legend's species as Here's, with a picture on hover
 - The legend names each species as Here does (the author): its colour as the game names it ("Tubus Compagibus -
   Green", the colour's word coloured) and 📷 for a picture of your own (`State.surface_bio`'s `code`, `variant`,

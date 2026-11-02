@@ -10042,7 +10042,11 @@ class State:
         pts = [dict(r) for r in self.db.execute("SELECT lat, lon FROM sample_points WHERE system=? AND body_id=? AND species=?",
                                                 (h["system"], h["body_id"], run["species"]))] if run else []
         out = []
-        for t in self.db.execute("SELECT species, genus, name, lat, lon FROM bio_tags WHERE system=? AND body_id=? ORDER BY ts",
+        # the legend's name as Here's (the author, 2026-11-02): the colour from the tag's variant code, in any language
+        R = (outrider.bio.load_rules() or {}) if outrider.bio else {}
+        find = self.bio_species_lookup(R) if R.get("species") else (lambda *a: (None, ""))
+        own_pic = None
+        for t in self.db.execute("SELECT species, genus, name, lat, lon, variant FROM bio_tags WHERE system=? AND body_id=? ORDER BY ts",
                                  (h["system"], h["body_id"])):
             if any(same(t, r) for r in done):
                 continue
@@ -10052,10 +10056,14 @@ class State:
             cur = bool(run and same(t, run))
             usable = not (cur and need and any(surface_m(p["lat"], p["lon"], t["lat"], t["lon"], h["radius"]) < need for p in pts))
             bearing = surface_bearing(h["lat"], h["lon"], t["lat"], t["lon"])
+            colour = find(t["species"], t["variant"], t["name"])[1]
+            variant = f"{t['name']} - {colour}" if colour and t["name"] else t["name"]
+            own_pic = own_pic or self.own_pic_check()
             out.append({"species": t["name"], "genus": genus, "lat": t["lat"], "lon": t["lon"],
                         "dist": round(surface_m(h["lat"], h["lon"], t["lat"], t["lon"], h["radius"])),
                         "bearing": round(bearing), "way": which_way(bearing, h.get("heading")),
-                        "current": cur, "usable": usable, "code": t["species"]})
+                        "current": cur, "usable": usable, "code": t["species"], "variant": variant,
+                        "variant_code": t["variant"], "own_pic": own_pic(t["species"], t["variant"], variant)})
         return sorted(out, key=lambda t: t["dist"])
 
     # ---- commander, materials, fuel, carrier, current system ----

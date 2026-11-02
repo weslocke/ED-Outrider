@@ -1941,7 +1941,8 @@ function surfaceLegend(s, L, cfg) {
   const tagged = new Map();
   for (const it of by("tag")) { const g = tagged.get(it.species) || {n: 0, near: null}; g.n++; if (!it.faint && !g.near) g.near = it; tagged.set(it.species, g); }
   if (tagged.size) rows.push(`<div class="lg-h">Tagged <span class="unk">(○ a sample would count · faint: inside a colony)</span></div>` +
-    [...tagged].map(([sp, g]) => `<div class="lg-row lg-tag"><i class="sw ring" style="border-color:${colours.get(sp)}"></i><b>${esc(sp)}</b> ${g.n}` +
+    [...tagged].map(([sp, g]) => `<div class="lg-row lg-tag"><i class="sw ring" style="border-color:${colours.get(sp)}"></i>` +
+      `${spLegendName((s.tags || []).find(t => t.species === sp) || {species: sp})} ${g.n}` +
       (g.near ? ` · <span class="unk">nearest ${surfWhere(g.near)}</span>` : "") + `</div>`).join(""));
   const rigs = by("rig"), slot = n => rigs.find(r => r.n === n);
   if (rigs.length || s.rhino) rows.push(`<div class="lg-h">Rigs <span class="unk">(○ filling · ● probably full${cfg.spacing ? ` · ring ~${cfg.spacing} m, an estimate` : ""})</span></div>` +
