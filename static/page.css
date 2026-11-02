@@ -294,6 +294,19 @@ body.viewwin .views { display: none; }
 /* Nearby's Around and filters (2026-10-14, Rainmangames' PR #8's ideas): From you only while the list is around another
    system; the strip above the list names that centre (and Spansh's cut sphere) */
 #nearTable:not(.around) .fromcol { display: none; }
+/* the Plotted Route pane (#22): under Nearby's list; in app mode a share of the height (--routeh, the divider), on a
+   scrolling page in place of the list (.routeonly) */
+#routeBar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+#routeBar #routeClose { margin-left: auto; }
+#nearWrap.routeonly > #nearPane, #nearWrap.routeonly > #boxelPane, #nearWrap.routeonly > #nearOpts,
+#nearWrap.routeonly > #nearStrip { display: none; }
+#ovNear #routeWrap, #ovNear #routeDivider { display: none; }
+body.app #nearWrap.routeon > #routeWrap { flex: 0 0 var(--routeh, 45%); min-height: 0; display: flex; flex-direction: column; }
+body.app #nearWrap.routeon > #routeWrap > #routeBar { flex: 0 0 auto; margin-top: 4px; }
+body.app #nearWrap.routeon > #routeDivider { flex: 0 0 6px; cursor: row-resize; background: var(--line); border-radius: 4px;
+  margin-top: 6px; touch-action: none; }
+body.app #nearWrap.routeon > #routeDivider:hover, body.app #nearWrap.routeon > #routeDivider.drag { background: var(--accent); }
+body.rtdrag { user-select: none; cursor: row-resize; }
 .nearAround { display: inline-flex; align-items: center; gap: 6px; }
 .nearAround .lbl { color: var(--muted); }
 #nearStrip { margin-top: 6px; font-size: 13px; }
@@ -496,10 +509,11 @@ th[data-sort].on.rev::after { content: " ▴"; }
 #hereHead .unpin { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; cursor: pointer; font: inherit; margin-right: 6px; }
 #hereHead .unpin:hover { border-color: var(--accent); color: var(--accent); }
 #hereHead .pintag { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin-right: 4px; }
-#rows td.bodies { cursor: pointer; }
+#rows td.bodies, #routeRows td.bodies { cursor: pointer; }
 /* a click anywhere on a Nearby row but its name and ☆ shows the system (S73); not the tablet (its tap opens the sheet) */
-body:not(.tablet) #rows tr[data-id], body:not(.tablet) #boxelTable tr[data-id] { cursor: pointer; } #rows td.bmcell { cursor: auto; }
-body:not(.tablet) #rows tr[data-id]:not(.pinned):hover td,
+body:not(.tablet) #rows tr[data-id], body:not(.tablet) #boxelTable tr[data-id], body:not(.tablet) #routeRows tr[data-id] { cursor: pointer; }
+#rows td.bmcell, #routeRows td.bmcell { cursor: auto; }
+body:not(.tablet) #rows tr[data-id]:not(.pinned):hover td, body:not(.tablet) #routeRows tr[data-id]:not(.pinned):hover td,
 body:not(.tablet) #boxelTable tr[data-id]:not(.pinned):hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 /* Nearby with a pinned system: list on the left, panel on the right at 40 % */
 main.nearPinned { display: flex; align-items: flex-start; gap: 16px; }
@@ -513,7 +527,7 @@ main.nearPinned > #hereView #hereTable .hide-sm, main.nearPinned > #hereView .hi
 main.nearPinned > #hereView #hereTable th, main.nearPinned > #hereView #hereTable td { padding: 4px 4px; font-size: 12px; }
 main.nearPinned > #hereView #hereTable td.bio { max-width: 180px; }
 @media (max-width: 900px) { main.nearPinned { display: block; } main.nearPinned > #hereView { position: static; max-height: none; border-left: 0; padding-left: 0; } }
-#rows tr.pinned td, #boxelTable tr.pinned td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+#rows tr.pinned td, #boxelTable tr.pinned td, #routeRows tr.pinned td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 #rows tr.pinned td.bodies, #boxelTable td.bodies { cursor: pointer; }
 
 /* ---- Bio/Geo: My Samples (the exobiology log) ---- */

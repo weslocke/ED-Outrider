@@ -412,6 +412,8 @@ REPORTED_RETRY_S = 600     # s: ...and after a failed ask, not before this
 ROUTE_LOOKUP_MAX = 24      # hops of the game's route asked of Spansh at once (the In-Game Route strip shows 24 chips)
 ROUTE_LOOKUP_KEEP_S = 86400   # s: Spansh's answer for a route hop (has it or not) is trusted this long
 ROUTE_LOOKUP_RETRY_S = 300    # s: after a failed hop lookup, not asked again before this
+ROUTE_LIST_MAX = 24        # the Plotted Route pane's rows: the hops ahead on the route it shows (issue #22)
+ROUTE_LIST_KEEP = 500      # systems the pane listed that a click can still open (route_list_found, the oldest go first)
 # the populated regions, where Spansh knows every system and its records are heavy (Sol and Colonia: ~190 KB for the
 # two): a route hop inside one is never looked up (the author, 2026-10-14). (x, y, z, radius ly)
 ROUTE_LOOKUP_SKIP = ((0.0, 0.0, 0.0, 1000.0), (-9530.5, -910.28125, 19808.125, 500.0))
@@ -8726,11 +8728,21 @@ class State:
         self._sights = (None, [], {})      # (meta sights' checked, entries, by id64): read again when a check stored new ones
         self.reported_seen = None  # the overlay_detail key of the last look that found no life
         self.records_version = 0   # bumped by each on-demand Spansh records fetch (ensure_records): in the detail keys
-        self.route_spansh = {}     # id64 -> (when, has a record): Spansh asked about the game's route hops (in memory only)
+        # id64 -> (when, has a record, its search record {body_count, updated_at, x, y, z} or None): Spansh asked about
+        # the game's route hops and the Plotted Route pane's (in memory only)
+        self.route_spansh = {}
         self.route_task = None     # that ask (one at a time)
         self.route_retry_at = 0.0  # time.time() before which a failed ask is not repeated
         self.route_seen = None     # (route ts, where you are, State.version) of the last look that found nothing to ask
-        self.searcher = None       # set once the Searcher exists
+        # the Plotted Route pane (issue #22): its fetch (one at a time), how many systems it has to ask and has answered,
+        # its answers' count (the payload's key: the page asks again), a failed search's wait, a failed dump's per system
+        self.route_list_task = None
+        self.route_list_progress = (0, 0)
+        self.route_list_seq = 0
+        self.route_list_retry_at = 0.0
+        self.route_list_failed = {}   # id64 -> time.time() of a failed dump: not asked again for ROUTE_LOOKUP_RETRY_S
+        self.route_list_found = {}    # id64 -> (name, x, y, z) of the pane's rows, for locate (a click opens the system)
+        self.searcher = None      # set once the Searcher exists
         self.speaker = None        # outrider.tts.Speaker, set at start (None in tests)
         self.player = None         # outrider.tts.LinePlayer: the tick that plays speech and sounds here (None in tests)
         self.sounds = outrider.tts.SoundBank()   # static/sounds.json rendered to WAV for it
@@ -9098,6 +9110,8 @@ class State:
             "sellers": self.sellers_summary(),
             "next_stop": self.next_stop_summary(),
             "route": self.route_summary(),
+            # the Plotted Route pane (#22): the routes it can show, and the key it fetches api/route/list on
+            "route_lists": {"choices": self.route_lists(), "key": self.route_list_key()},
             "highway": self.highway_summary(),
             "dry_stretch": self.dry_stretch_summary(),   # S2: the last scoopable star before a stretch the fuel won't cover
             "docking": self.docking_shown(),   # #3: the pad you were given (#12: where, its diagram), or why a station refused
@@ -14799,6 +14813,8 @@ class State:
             return self.checklist_found[id64]
         if id64 in self.nearest_found:     # S31: a system the Nearest finder listed (its 🎯)
             return self.nearest_found[id64]
+        if id64 in self.route_list_found:  # a system the Plotted Route pane listed (#22)
+            return self.route_list_found[id64]
         for table in ("visits", "route_systems"):
             r = self.db.execute(f"SELECT name, x, y, z FROM {table} WHERE id64=?", (id64,)).fetchone()
             if r:
@@ -17641,8 +17657,12 @@ class State:
             dry = 0 if scoop else dry + 1
             longest = max(longest, dry)
             # True, False (Spansh asked: no record) or None (never asked: no claim, Kurbo26's Sol in discussion #3)
+            known = self.spansh_knows(h["id64"])
+            bodies, updated = self.spansh_brief(h["id64"]) if known else (None, None)
             out.append({"id": str(h["id64"]), "name": h["name"], "star_class": h.get("star_class"), "scoopable": scoop,
-                        "ly": round(d, 1), "visited": h["id64"] in visited, "known": self.spansh_knows(h["id64"])})
+                        "ly": round(d, 1), "visited": h["id64"] in visited, "known": known,
+                        # the chip's hover: Spansh's FSS body count and its record's last update (#22), when known
+                        "spansh_bodies": bodies, "spansh_updated": updated})
             prev = h
         next_scoop = next((k + 1 for k, h in enumerate(out) if h["scoopable"]), None)
         return {"hops": out, "ly": round(total, 1), "longest_dry": longest, "next_scoop": next_scoop, "ts": route.get("ts"),
@@ -17725,17 +17745,35 @@ class State:
 
     async def fetch_route_ids(self, ids):
         try:
-            found = {x.get("id64") for x in await self.spansh.records_by_id(ids)}
+            found = await self.spansh.records_by_id(ids)
         except Exception as e:   # noqa: BLE001 -- Spansh down, slow or odd: no answer, asked again later
             self.route_retry_at = time.time() + ROUTE_LOOKUP_RETRY_S
             print(f"route hop lookup: {type(e).__name__}: {e}", file=sys.stderr)
             return
-        now = time.time()
+        self.keep_route_spansh(ids, found)
+        self.bump()
+
+    def keep_route_spansh(self, ids, found):
+        """Spansh's id search answer for these hops into route_spansh: each one asked, with its record's body count,
+        update time and position (the chips' hover, the pane's fetch and a carrier leg's place), or none."""
+        now, recs = time.time(), {x.get("id64"): x for x in found}
         for i in ids:
-            self.route_spansh[i] = (now, i in found)
+            x = recs.get(i)
+            self.route_spansh[i] = (now, x is not None, x and {k: x.get(k) for k in ("body_count", "updated_at", "x", "y", "z")})
         while len(self.route_spansh) > 2000:   # a long session's routes: the oldest asks go first
             self.route_spansh.pop(next(iter(self.route_spansh)))
-        self.bump()
+
+    def spansh_brief(self, id64):
+        """(body count, updated_at) of Spansh's record of a system, from what was already asked (the Nearby sphere, the
+        cache, the hop search), or (None, None): the chips' hover says them. Nothing is asked here."""
+        source, base = self.bases.get(id64) or (None, None)
+        updated, cached = self.spansh.cached(id64) if self.spansh else (None, None)
+        if source == "spansh":
+            cached = base   # the sphere's (a dump may be on its way: its search record counts meanwhile)
+        hit = self.route_spansh.get(id64)
+        rec = hit[2] if hit and len(hit) > 2 and hit[2] else {}
+        count = (cached or {}).get("body_count") if cached and cached_source(cached) == "spansh" else None
+        return count if count is not None else rec.get("body_count"), updated or rec.get("updated_at")
 
     def summary_hops(self):
         """The game's route hops after where you are (route_summary's), [] with none."""
@@ -17745,6 +17783,210 @@ class State:
         hops = route["hops"]
         i = next((k for k, h in enumerate(hops) if h["id64"] == pos["id64"]), None)
         return hops[i + 1:] if i is not None else hops
+
+    # ---- the Plotted Route pane (issue #22, Psilovybin; project/PLAN-route-pane-2026-11-02.md): Nearby's rows for the
+    # systems ahead on a route, the next ROUTE_LIST_MAX; Spansh asked only while a page looks (GET /api/route/list) ----
+    def route_lists(self):
+        """The routes the pane can show now, [{id, label}]: the game's (a route of more than one jump, as the In-Game
+        Route line), the Highway's and the survey slot's while not finished, a carrier trip with legs to fly. From the
+        stored routes' state only (it runs with every payload): one may turn out to have nothing ahead."""
+        out = []
+        route = self.journals.game_route()
+        if route and len(route.get("hops") or []) > 2 and self.summary_hops():
+            out.append({"id": "game", "label": "In game"})
+        hw, rc, trip = meta_get(self.db, "highway"), meta_get(self.db, "riches"), meta_get(self.db, "carrier_trip")
+        if hw and not hw.get("done_ts"):
+            out.append({"id": "highway", "label": "Highway"})
+        if rc and not rc.get("done_ts"):
+            k = survey_kind(kind_of(rc))
+            out.append({"id": "survey", "label": k.name, "glyph": k.glyph})
+        if trip and not trip.get("done_ts") and (trip.get("at") or 0) < len(trip.get("legs") or []) - 1:
+            out.append({"id": "carrier", "label": "Carrier trip"})
+        return out
+
+    def route_list_default(self, ids):
+        """The route the pane shows when none is asked for (or the one asked for is gone): the game's, which the ship flies
+        now, else the route Outrider follows (route_newest), else what there is."""
+        newest = {"highway": "highway", "riches": "survey"}.get(self.route_newest())
+        return next((w for w in ("game", newest) if w in ids), ids[0] if ids else None)
+
+    def route_list_key(self):
+        """The payload's route_lists key: the page asks /api/route/list again when it changes (a jump, a plot, a step on
+        a route, a scan, the pane's Spansh answers)."""
+        pos, hw, rc, trip = self.journals.pos or {}, meta_get(self.db, "highway") or {}, meta_get(self.db, "riches") or {}, \
+            meta_get(self.db, "carrier_trip") or {}
+        return "|".join(str(x) for x in (
+            pos.get("id64"), (self.journals.game_route() or {}).get("ts"), hw.get("id"), hw.get("at"), hw.get("furthest"),
+            hw.get("off_route"), rc.get("id"), rc.get("at"), rc.get("furthest"), rc.get("resume"), trip.get("id"),
+            trip.get("at"), self.journals.data_seq, self.route_list_seq))
+
+    def route_list_hops(self, which):
+        """The hops ahead on a route, ([{id64, name, x, y, z, star_class, n, along}], how many there are in all): the
+        first ROUTE_LIST_MAX. n: jumps from you (the game's route; the Highway's rows count the jumps they stand for) or
+        the stop's number (a survey route, a carrier trip); along: ly along the route from you (a carrier trip: from
+        where the carrier is, by its legs). A position may be None (a carrier leg: Spansh's id search places it)."""
+        pos = self.journals.pos
+        if not pos:
+            return [], 0
+        hops, along, prev = [], 0.0, pos
+
+        def add(id64, name, p, n, ly=None, star=None):
+            nonlocal along, prev
+            placed = None not in (p.get("x"), p.get("y"), p.get("z"))
+            if ly is None and placed and None not in (prev.get("x"), prev.get("y"), prev.get("z")):
+                ly = dist(prev, p)
+            along += ly or 0
+            hops.append({"id64": id64, "name": name, "x": p.get("x"), "y": p.get("y"), "z": p.get("z"),
+                         "star_class": star, "n": n, "along": round(along, 1)})
+            prev = p if placed else prev
+        if which == "game":
+            for k, h in enumerate(self.summary_hops()):
+                add(h["id64"], h["name"], h, k + 1, star=h.get("star_class"))
+        elif which == "highway":
+            hw, rows = self.highway_state()
+            nx = self.highway_next(hw, rows) if hw and not hw.get("done_ts") else None
+            jumps = 0
+            for r in rows[nx:] if nx is not None else []:
+                jumps += r.get("jumps") or 1
+                add(r["id64"], r["system"], r, jumps)
+        elif which == "survey":
+            rc, rows = self.riches_state()
+            nx = self.riches_next_open(rc, rows)[0] if rc and not rc.get("done_ts") else None
+            for r in rows[nx:] if nx is not None else []:
+                if hops and r["id64"] is not None and hops[-1]["id64"] == r["id64"]:
+                    continue   # a trade route's next station in the same system: one row
+                add(r["id64"], r["system"], r, len(hops) + 1)
+        elif which == "carrier":
+            t = meta_get(self.db, "carrier_trip") or {}
+            legs, at = t.get("legs") or [], t.get("at") or 0
+            prev = {}   # the carrier's legs are its own: "along" is by their ly, not from you
+            for k, leg in enumerate(legs[at + 1:] if not t.get("done_ts") else []):
+                place = self.locate(leg["id64"]) if leg.get("id64") is not None else None
+                hit = self.route_spansh.get(leg.get("id64"))
+                rec = hit[2] if hit and len(hit) > 2 and hit[2] else {}
+                p = {"x": place[1], "y": place[2], "z": place[3]} if place else {k_: rec.get(k_) for k_ in "xyz"}
+                add(leg.get("id64"), leg.get("system"), p, k + 1, ly=leg.get("ly") or 0)
+        return hops[:ROUTE_LIST_MAX], len(hops)
+
+    def route_list_fallback(self, h):
+        """(source, base) for a pane row outside the Nearby sphere: Spansh's cached record, else a stand-in that says
+        what is known (Spansh has it, its dump not here yet; Spansh has none; never asked)."""
+        _, cached = self.spansh.cached(h["id64"])
+        if cached:
+            return cached_source(cached), cached
+        knows = self.spansh_knows(h["id64"])
+        hit = self.route_spansh.get(h["id64"])
+        rec = hit[2] if hit and len(hit) > 2 and hit[2] else {}
+        stub = {"v": CACHE_VERSION, "name": h["name"], "x": h["x"], "y": h["y"], "z": h["z"], "records": [],
+                "body_count": rec.get("body_count"), "star_class": h.get("star_class")}
+        if knows:
+            return "spansh", stub
+        return "route", dict(stub, unasked=knows is None)
+
+    def route_list(self, which=None):
+        """GET /api/route/list: {choices, which, rows, more, asking: [answered, to ask] or None}. Each row Nearby's
+        (State.row) plus n, along and from_you; a hop with no id64 or position: {name, n, along, nodata}."""
+        choices = self.route_lists()
+        ids = [c["id"] for c in choices]
+        which = which if which in ids else self.route_list_default(ids)
+        hops, total = self.route_list_hops(which) if which else ([], 0)
+        pos, rows = self.journals.pos, []
+        for h in hops:
+            placed = None not in (h["x"], h["y"], h["z"])
+            if h["id64"] is None or not placed:
+                rows.append({"name": h["name"], "id": str(h["id64"]) if h["id64"] is not None else None, "n": h["n"],
+                             "along": h["along"], "nodata": True})
+                continue
+            self.route_list_found.pop(h["id64"], None)
+            self.route_list_found[h["id64"]] = (h["name"], h["x"], h["y"], h["z"])
+            try:
+                s = self.row(h["id64"], self.route_list_fallback(h))
+            except (KeyError, TypeError, ValueError) as e:   # a row that cannot be made: the list still shows
+                print(f"route list: no row for {h['name']} ({type(e).__name__}: {e})", file=sys.stderr)
+                s = {"name": h["name"], "id": str(h["id64"]), "nodata": True}
+            s.update(n=h["n"], along=h["along"], from_you=round(dist(pos, h), 2) if pos else None,
+                     xyz=[round(h[k], 3) for k in "xyz"])
+            rows.append(s)
+        while len(self.route_list_found) > ROUTE_LIST_KEEP:
+            self.route_list_found.pop(next(iter(self.route_list_found)))
+        busy = self.route_list_task is not None and not self.route_list_task.done()
+        return {"choices": choices, "which": which, "rows": rows, "more": total - len(hops),
+                "asking": list(self.route_list_progress) if busy else None}
+
+    def route_list_needs(self, hops, now=None):
+        """What the pane's fetch has to do for these hops: (ids to ask Spansh's id search about, [(id64, updated_at,
+        base)] dumps to fetch). Asked: a hop never asked (or longer ago than ROUTE_LOOKUP_KEEP_S) outside the populated
+        regions (Spansh knows every system there: its dump says the rest), or with no position (a carrier leg).
+        Dumped: one Spansh has, outside the Nearby sphere (its refresh fetches those), whose cached dump is older than
+        Spansh's record (or a day old, with no update time known), not failed within ROUTE_LOOKUP_RETRY_S."""
+        now = time.time() if now is None else now
+        ask, dump = [], []
+        for h in hops:
+            i = h["id64"]
+            if i is None or (self.bases.get(i) or (None,))[0] == "spansh":
+                continue
+            placed = None not in (h["x"], h["y"], h["z"])
+            hit = self.route_spansh.get(i)
+            fresh = hit and now - hit[0] < ROUTE_LOOKUP_KEEP_S
+            cached_at, cached = self.spansh.cached(i)
+            knows = self.spansh_knows(i)
+            if knows is None and not fresh and (not placed or not route_hop_populated(h)):
+                ask.append(i)
+                continue
+            if knows is False or not placed or now - self.route_list_failed.get(i, 0) < ROUTE_LOOKUP_RETRY_S:
+                continue
+            rec = hit[2] if hit and len(hit) > 2 and hit[2] else {}
+            updated = rec.get("updated_at")
+            if cached and cached_source(cached) == "spansh":
+                age = self.spansh.fetched_age(i)
+                if (updated and cached_at == updated) or (not updated and age is not None and age < ON_DEMAND_MAX_AGE):
+                    continue
+            dump.append((i, updated, {"v": CACHE_VERSION, "name": h["name"], "x": h["x"], "y": h["y"], "z": h["z"],
+                                      "body_count": rec.get("body_count") if rec.get("body_count") is not None
+                                      else (cached or {}).get("body_count"), "records": []}))
+        return ask, dump
+
+    def maybe_route_list_fetch(self, which):
+        """Start the pane's fetch for the route it shows, when there is anything to ask and none is under way. Asked by
+        GET /api/route/list only: nobody who never opens the pane sends Spansh anything for it."""
+        if getattr(self.spansh, "session", None) is None or not hasattr(self.spansh, "records_by_id") \
+                or (self.route_list_task and not self.route_list_task.done()):
+            return
+        hops, _ = self.route_list_hops(which) if which else ([], 0)
+        ask, dump = self.route_list_needs(hops)
+        if not dump and (not ask or time.time() < self.route_list_retry_at):
+            return
+        self.route_list_task = asyncio.get_running_loop().create_task(self.fetch_route_list(which, ask))
+
+    async def fetch_route_list(self, which, ask):
+        """One search for the hops never asked about, then a dump for each one Spansh has whose cached copy is old (on
+        the bulk lane, nearest first); each answer bumps the payload's key. A failed search waits ROUTE_LOOKUP_RETRY_S
+        (the dumps of what is known still go); a failed dump is left for ROUTE_LOOKUP_RETRY_S."""
+        if ask and time.time() >= self.route_list_retry_at:
+            try:
+                self.keep_route_spansh(ask, await self.spansh.records_by_id(ask))
+            except Exception as e:   # noqa: BLE001 -- Spansh down, slow or odd: no answer, asked again later
+                self.route_list_retry_at = time.time() + ROUTE_LOOKUP_RETRY_S
+                print(f"route list lookup: {type(e).__name__}: {e}", file=sys.stderr)
+            self.route_list_seq += 1
+            self.bump()
+        hops, _ = self.route_list_hops(which)   # positions from the search's answer (a carrier leg)
+        _, dump = self.route_list_needs(hops)
+        self.route_list_progress = (0, len(dump))
+
+        async def one(id64, updated, base):   # the bulk lane's semaphore (Spansh.sem) paces them
+            try:
+                await self.spansh.full_records(id64, updated, base)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:   # noqa: BLE001 -- one system's dump: the others still go
+                self.route_list_failed[id64] = time.time()
+                print(f"route list: body lookup for {base['name']} failed: {type(e).__name__}: {e}", file=sys.stderr)
+            self.route_list_progress = (self.route_list_progress[0] + 1, len(dump))
+            self.route_list_seq += 1
+            self.records_version += 1   # what was worked out from the cache before is stale (as ensure_records)
+            self.bump()
+        await asyncio.gather(*(one(*d) for d in dump))
 
     def route_minimal(self):
         """The In-Game Route line while the game has not written NavRoute.json for the route it plotted (2026-10-14:
@@ -20896,7 +21138,7 @@ class State:
                             self.sc_task, self.sc_locate_task, self.searcher.task, self.honk_test_task, self.honk_run_task,
                             self.highway_task, self.riches_task, self.carrier_trip_task, self.bio_colours_task, self.shots_task,
                             self.autotarget_task, self.autotarget_test_task, self.lease_task, self.edsm_discard_task,
-                            self.edsm_bf_task, self.edsm_import_task, self.reported_task, self.route_task,
+                            self.edsm_bf_task, self.edsm_import_task, self.reported_task, self.route_task, self.route_list_task,
                             *self.upload_tasks.values(), *self.boxel_tasks) if t]
 
     def arrival_danger_until(self, now=None, st=None):
@@ -23044,6 +23286,16 @@ def make_app(state, hosts=None):
         boost = request.query.get("boost") in ("1", "true")
         return web.json_response(await state.map_payload(radius, path_len, boost))
 
+    async def route_list_view(request):
+        """GET /api/route/list?which=game|highway|survey|carrier: the Plotted Route pane's rows (State.route_list; an
+        unknown or missing which: the default route). Starts the Spansh fetch for them in the background: the
+        payload's route_lists key moves as it answers."""
+        out = state.route_list(request.query.get("which"))
+        state.maybe_route_list_fetch(out["which"])
+        if out["asking"] is None and state.route_list_task and not state.route_list_task.done():
+            out["asking"] = list(state.route_list_progress)
+        return web.json_response(out)
+
     async def system_view(request):
         try:
             id64 = parse_id64(request.match_info["id64"])
@@ -24226,6 +24478,7 @@ def make_app(state, hosts=None):
     app.router.add_post("/api/auth/signout", signout_view)
     app.router.add_get("/signin", signin_page)
     app.router.add_get("/api/map", map_view)
+    app.router.add_get("/api/route/list", route_list_view)
     app.router.add_get("/api/system/{id64}", system_view)
     app.router.add_get("/api/history", history_view)
     app.router.add_get("/api/organics", organics_view)

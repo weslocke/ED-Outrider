@@ -1400,6 +1400,9 @@ function renderOnBody() {
 }
 // ---- route strip: the route plotted in the game (NavRoute.json) from here, hop by hop; "In-Game Route:" (the author,
 // 2026-10-12): Outrider's own route is the "Next:" line, and the two differ until 🎯 targets its next stop ----
+// a known hop's Spansh record in its chip's hover (#22): " · Spansh: 23 bodies, updated 2024-06-12"
+const spanshHopNote = h => h.spansh_bodies == null && !h.spansh_updated ? "" :
+  ` · Spansh: ${h.spansh_bodies != null ? `${h.spansh_bodies} bod${h.spansh_bodies === 1 ? "y" : "ies"}` : "known"}${h.spansh_updated ? `, updated ${spanshDay(h.spansh_updated)}` : ""}`;
 function renderRoute() {
   const r = data.route, el = document.getElementById("routeStrip");
   // the game plotted a route but wrote no NavRoute.json for it (2026-10-14): what FSDTarget and Status.json tell, no stars
@@ -1425,7 +1428,7 @@ function renderRoute() {
     : `the fuel in your tank does not make the next jump${keep}: scoop or refuel here`}">⛽</span>`;
   const chips = r.hops.slice(0, 24).map((h, k) => (fr && !fr.whole && fr.hops === k ? reachMark(k) : "") +
     `<span class="hop copy${h.scoopable ? " sc" : h.scoopable === false ? " dry" : ""}${h.visited ? " vis" : ""}" data-name="${esc(h.name)}" ` +
-    `title="${esc(h.name)} · ${esc(h.star_class || "?")}${h.scoopable ? " (scoopable)" : h.scoopable === false ? " (not scoopable)" : ""} · ${h.ly} ly${h.visited ? " · visited" : ""}${h.known === false ? " · not reported to Spansh" : ""}">` +
+    `title="${esc(h.name)} · ${esc(h.star_class || "?")}${h.scoopable ? " (scoopable)" : h.scoopable === false ? " (not scoopable)" : ""} · ${h.ly} ly${h.visited ? " · visited" : ""}${h.known === false ? " · not reported to Spansh" : ""}${h.known ? spanshHopNote(h) : ""}">` +
     `${esc(h.star_class || "?")}${h.known === false ? "✦" : ""}</span>`).join("");
   el.innerHTML = `In-Game Route: <b>${n}</b> jump${n === 1 ? "" : "s"} · <b>${Math.round(r.ly).toLocaleString()}</b> ly` +
     (r.next_scoop ? ` · next scoop in <b>${r.next_scoop}</b>` : ` · <span class="warnc">no scoopable star on the route</span>`) +
@@ -2549,7 +2552,7 @@ const VIEW_PANE = {overview: "nearPane", near: "nearPane", here: "hereMain", bio
 // The width compared is the table's min-content width (what it needs at the least, wrapping cells wrapped), measured
 // with each level's forms in turn; going back to a longer form needs COMPACT_SLACK px to spare, so a scrollbar that
 // comes and goes with the row heights cannot make it flap.
-const FIT_TABLES = ["nearTable", "hereTable", "firstsTable", "leftTable", "bioTable", "codexTable", "histTable", "tripTable",
+const FIT_TABLES = ["nearTable", "routeTable", "hereTable", "firstsTable", "leftTable", "bioTable", "codexTable", "histTable", "tripTable",
                     "topTable", "logTable", "sTable", "bmTable", "hwyTable", "cmMissions", "cmCombat", "cmMining",
                     "cmEarnSales", "cmEarnStations", "cmEarnSpecies", "cmEarnShips", "cmEarnOre", "cmEarnOreAt", "cmEarnOreBest",
                     "cmEarnStars", "cmEarnBodies", "cmEarnFound", "cmEarnEst"];
@@ -4357,6 +4360,38 @@ function unsoldHtml(u) {
     `<div class="sec unk">first-discovery and mapping bonuses included · belts and rings not counted · updated ${u.computed}</div>`;
 }
 
+// one Nearby row (Nearby's list, and the Plotted Route pane's: #22). c: {jr (jump range), elsewhere (Nearby is around
+// another system), prev, scoopNext, bms, aimCol}; the route pane's also ly (from you), dist (the Dist column's figure:
+// ly along the route) and lead (cells after the bookmark's)
+function sysRowHtml(s, c) {
+  const {jr, elsewhere, prev, scoopNext, bms, aimCol} = c;
+  const isPrev = prev && sysId(s) === sysId(prev);
+  const ly = c.ly ? c.ly(s) : lyFromYou(s), far = jr && ly != null && ly > jr;
+  const jumps = jr && ly != null ? jumpsFor(ly) : null;   // from you, wherever the list is around
+  const cls = [s.visited && "visited", far && "far", isPrev && "prev", scoopNext && sysId(s) === sysId(scoopNext) && "scoopnext",
+               data.next_stop && s.id === data.next_stop.id && "nextstop",
+               pinnedSystem === s.id && "pinned",
+               data.target && sysId(s) === sysId(data.target) && "target"]
+    .filter(Boolean).join(" ");
+  const known = s.body_count ? `${s.bodies_known}/${s.body_count}` : (s.bodies_known || "");
+  // compact3 merges (compact2 drops Jumps and Known first): the status badges go under the name, the notable tags under
+  // the bodies
+  const status = statusPill(s) + spanshOldBadge(s) + (s.mapped ? statusBadge("s-mapped", `${s.mapped} mapped`, "DSS-mapped bodies, from your own journal", `🗺${s.mapped}`) : "") +
+    (s.source === "own" ? statusBadge("s-own", "yours only", s.in_spansh === false ? "Spansh doesn't have this system; data is from your own scans"
+                                                                                    : "data is from your own scans (Spansh's answer did not cover this system)") : "") +
+    (s.source === "edsm" ? `<span class="badge s-edsm" title="Spansh is unreachable; this comes from EDSM (no body data)">EDSM</span>` : "");
+  const nb = notable(s);
+  return `<tr class="${cls}" data-id="${esc(s.id)}">
+    <td class="bmcell">${bmIcon(s.id, s.name, bms)}</td>${c.lead ? c.lead(s) : ""}
+    <td class="name" data-name="${esc(s.name)}" title="click to copy">${aimCol ? `<span class="nearaim">${nearAimBtn(s)}</span>` : ""}${isPrev
+      ? `<span class="prevmark" title="you just came from here">↩</span>` : ""}${nameWords(s.name)}${firstsIcon(s.firsts)}${sysRecordMark(s.id)}<div class="sf3 sub2">${status}</div></td>
+    <td class="num dist"${far && !elsewhere ? ` title="beyond your max jump range"` : ""}>${(c.dist ? c.dist(s) : s.distance).toFixed(2)}</td>
+    <td class="num fromcol"${far ? ` title="beyond your max jump range"` : ""}>${(elsewhere || c.ly) && ly != null ? ly.toFixed(2) : ""}</td>
+    <td class="num hide-sm c2hide">${jumps == null ? "" : jumps === 1 ? "1" : `<span class="unk">${jumps}</span>`}</td>
+    <td class="c3hide">${status}</td>
+    <td>${star(s)}</td><td class="bodies" data-pop data-id="${esc(s.id)}">${bodies(s)}${nb ? `<div class="sf3 sub2 notable">${nb}</div>` : ""}</td>
+    <td class="notable c3hide">${nb}</td><td class="num hide-sm" title="${valueTitle(s)}">${valueCell(s)}</td><td class="num hide-sm c2hide">${known}</td></tr>`;
+}
 function render() {
   recordsWanted();   // the lists' 🏆
   if (boxelPinDrawn !== pinnedSystem || boxelRecDrawn !== REC.ver) drawBoxel();   // a pin cleared elsewhere (a tab switch),
@@ -4511,36 +4546,12 @@ function render() {
   document.getElementById("nearTable").classList.toggle("around", elsewhere);   // its From you column
   const distTh = document.getElementById("nearDistTh"), distTitle = elsewhere ? `ly from ${na.name} (the system Nearby is around)` : "ly from you";
   if (distTh.title !== distTitle) distTh.title = distTitle;
-  document.getElementById("rows").innerHTML = rows.map(s => {
-    const isPrev = prev && sysId(s) === sysId(prev);
-    const ly = lyFromYou(s), far = jr && ly != null && ly > jr;
-    const jumps = jr && ly != null ? jumpsFor(ly) : null;   // from you, wherever the list is around
-    const cls = [s.visited && "visited", far && "far", isPrev && "prev", scoopNext && sysId(s) === sysId(scoopNext) && "scoopnext",
-                 data.next_stop && s.id === data.next_stop.id && "nextstop",
-                 pinnedSystem === s.id && "pinned",
-                 data.target && sysId(s) === sysId(data.target) && "target"]
-      .filter(Boolean).join(" ");
-    const known = s.body_count ? `${s.bodies_known}/${s.body_count}` : (s.bodies_known || "");
-    // compact3 merges (compact2 drops Jumps and Known first): the status badges go under the name, the notable tags under
-    // the bodies
-    const status = statusPill(s) + spanshOldBadge(s) + (s.mapped ? statusBadge("s-mapped", `${s.mapped} mapped`, "DSS-mapped bodies, from your own journal", `🗺${s.mapped}`) : "") +
-      (s.source === "own" ? statusBadge("s-own", "yours only", s.in_spansh === false ? "Spansh doesn't have this system; data is from your own scans"
-                                                                                      : "data is from your own scans (Spansh's answer did not cover this system)") : "") +
-      (s.source === "edsm" ? `<span class="badge s-edsm" title="Spansh is unreachable; this comes from EDSM (no body data)">EDSM</span>` : "");
-    const nb = notable(s);
-    return `<tr class="${cls}" data-id="${esc(s.id)}">
-      <td class="bmcell">${bmIcon(s.id, s.name, bms)}</td>
-      <td class="name" data-name="${esc(s.name)}" title="click to copy">${aimCol ? `<span class="nearaim">${nearAimBtn(s)}</span>` : ""}${isPrev
-        ? `<span class="prevmark" title="you just came from here">↩</span>` : ""}${nameWords(s.name)}${firstsIcon(s.firsts)}${sysRecordMark(s.id)}<div class="sf3 sub2">${status}</div></td>
-      <td class="num dist"${far && !elsewhere ? ` title="beyond your max jump range"` : ""}>${s.distance.toFixed(2)}</td>
-      <td class="num fromcol"${far ? ` title="beyond your max jump range"` : ""}>${elsewhere && ly != null ? ly.toFixed(2) : ""}</td>
-      <td class="num hide-sm c2hide">${jumps == null ? "" : jumps === 1 ? "1" : `<span class="unk">${jumps}</span>`}</td>
-      <td class="c3hide">${status}</td>
-      <td>${star(s)}</td><td class="bodies" data-pop data-id="${esc(s.id)}">${bodies(s)}${nb ? `<div class="sf3 sub2 notable">${nb}</div>` : ""}</td>
-      <td class="notable c3hide">${nb}</td><td class="num hide-sm" title="${valueTitle(s)}">${valueCell(s)}</td><td class="num hide-sm c2hide">${known}</td></tr>`;
-  }).join("") || `<tr><td colspan="11" class="unk">${emptyMessage(rows)}</td></tr>`;
+  const rowCtx = {jr, elsewhere, prev, scoopNext, bms, aimCol};
+  document.getElementById("rows").innerHTML = rows.map(s => sysRowHtml(s, rowCtx)).join("") ||
+    `<tr><td colspan="11" class="unk">${emptyMessage(rows)}</td></tr>`;
   refocus("rows", fkRows);
   renderBoxelMode();
+  renderRoutePane();
   document.getElementById("updateLine").hidden = !data.restart_needed;
   drawRestart();
   renderNotices();
@@ -4617,6 +4628,72 @@ async function nearRefresh() {
 document.getElementById("nearStrip").addEventListener("click", e => {
   if (e.target.closest("[data-nearback]")) setNearAround("here");
   else if (e.target.closest("[data-nearrefresh]")) nearRefresh();
+});
+// ---- the Plotted Route pane (issue #22, Psilovybin: "shows the route and EDSM data along that route"; project/
+// PLAN-route-pane-2026-11-02.md): Nearby's rows for the next systems on a route (the game's, the Highway's, the survey
+// slot's, a carrier trip's), under the list, the author's design (2026-11-02). 🛣 Show route in Nearby's heading while a
+// route exists; app mode splits the height (the divider: routeSplit), a scrolling page shows it in place of the list.
+// Not in the Overview (cramped beside Here). The server asks Spansh for its systems only while it is fetched
+// (api/route/list), and the payload's route_lists.key moves as the answers come. This device's: routePane (open),
+// routeWhich (the route picked), routeSplit (its share, 25-75 %)
+const RT = {data: null, key: null, loading: false, split: null};
+const routeOpen = () => store.get("routePane", false) === true;
+const routeSplitPct = () => { const v = Number(store.get("routeSplit", 45)); return Number.isFinite(v) ? Math.max(25, Math.min(75, v)) : 45; };
+async function loadRouteList() {   // the newest answer only; a key moved during the fetch looks again (loadBoxel's way)
+  if (RT.loading) return;
+  RT.loading = true;
+  const k = RT.key, w = store.get("routeWhich", "");
+  try { const r = await fetch("api/route/list" + (w ? `?which=${encodeURIComponent(w)}` : "")); if (r.ok) RT.data = await r.json(); } catch {}
+  RT.loading = false;
+  drawRouteList();
+  if (RT.key !== k) loadRouteList();
+}
+function renderRoutePane() {
+  const choices = (data.route_lists && data.route_lists.choices) || [], inOv = view === "overview";
+  const on = routeOpen() && choices.length > 0 && !inOv, app = appOn();
+  const btn = document.getElementById("routeBtn"), nw = document.getElementById("nearWrap");
+  btn.hidden = !choices.length || inOv;
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  const label = on ? "🛣 Hide route" : "🛣 Show route";
+  if (btn.textContent !== label) btn.textContent = label;
+  document.getElementById("routeWrap").hidden = !on;
+  document.getElementById("routeDivider").hidden = !on || !app;
+  nw.classList.toggle("routeon", on);
+  nw.classList.toggle("routeonly", on && !app);   // a scrolling page: a pane under a long list would be off screen
+  nw.style.setProperty("--routeh", (RT.split || routeSplitPct()) + "%");
+  if (!on) return;
+  const key = `${data.route_lists.key}|${store.get("routeWhich", "")}`;
+  if (key !== RT.key) { RT.key = key; loadRouteList(); }
+  drawRouteList();   // the rows' marks follow the payload (target, next stop, pinned) between fetches
+}
+function drawRouteList() {
+  const d = RT.data, tb = document.getElementById("routeRows");
+  if (!data || document.getElementById("routeWrap").hidden) return;
+  const sw = document.getElementById("routeWhich"), choices = d ? d.choices : [];
+  const swHtml = choices.length > 1 ? choices.map(c => `<label title="${esc(c.label)}"><input type="radio" name="routeWhich" value="${esc(c.id)}"${c.id === d.which ? " checked" : ""}>${c.glyph ? `${c.glyph} ` : ""}${esc(c.label)}</label>`).join("")
+    : choices.length ? `<span class="unk">${choices[0].glyph ? `${choices[0].glyph} ` : ""}${esc(choices[0].label)}</span>` : "";
+  if (sw.innerHTML !== swHtml) sw.innerHTML = swHtml;
+  const a = d && d.asking, note = a ? (a[1] ? `asking Spansh: ${a[0]} of ${a[1]}…` : "asking Spansh…") : "";
+  const ne = document.getElementById("routeNote"); if (ne.textContent !== note) ne.textContent = note;
+  if (!d) { tb.innerHTML = `<tr><td colspan="12" class="unk">loading…</td></tr>`; return; }
+  // Dist is the ly along the route, From you straight from you; elsewhere: no "beyond your jump range" on Dist
+  const ctx = {jr: effRange(), elsewhere: true, prev: data.previous, scoopNext: null, bms: bmMap(), aimCol: canAim(),
+               ly: s => s.from_you, dist: s => s.along, lead: s => `<td class="num">${s.n}</td>`};
+  const fk = focusKey("routeRows");
+  tb.innerHTML = d.rows.map(s => s.nodata
+    ? `<tr${s.id ? ` data-id="${esc(s.id)}"` : ""}><td class="bmcell"></td><td class="num">${s.n || ""}</td><td class="name" data-name="${esc(s.name)}" title="click to copy">${nameWords(s.name)}</td>` +
+      `<td class="num dist">${s.along != null ? s.along.toFixed(2) : ""}</td><td colspan="8" class="unk">${a ? "asking Spansh…" : "not placed yet: Spansh has no record of it, or was not reached"}</td></tr>`
+    : sysRowHtml(s, ctx)).join("") ||
+    `<tr><td colspan="12" class="unk">${d.which ? "nothing ahead on this route" : "no route plotted"}</td></tr>`;
+  refocus("routeRows", fk);
+  const more = d.more > 0 ? `+${d.more} more system${d.more === 1 ? "" : "s"} on this route` +
+    (d.which === "highway" || d.which === "survey" ? " · the whole route is on the Plot Route tab" : "") : "";
+  const me = document.getElementById("routeMore"); if (me.textContent !== more) me.textContent = more;
+}
+document.getElementById("routeBtn").onclick = () => { store.set("routePane", !routeOpen()); render(); };
+document.getElementById("routeClose").onclick = () => { store.set("routePane", false); render(); };
+document.getElementById("routeWhich").addEventListener("change", e => {
+  if (e.target.name === "routeWhich") { store.set("routeWhich", e.target.value); render(); }
 });
 // the Around select, the strip above the list and the Boxel mode's hint, from the payload's near_around
 function renderNearAround() {
@@ -5090,25 +5167,34 @@ function placeOverview() {
 const saveOv = () => store.set("overview", ovState);
 document.getElementById("ovFlip").onclick = () => keepPanes(() => { ovState.flip = !ovState.flip; saveOv(); render(); });
 document.querySelectorAll("input[name=ovLayout]").forEach(r => r.onchange = () => keepPanes(() => { ovState.layout = r.value; saveOv(); render(); }));
+// A divider dragged with the pointer (mouse, pen or touch): move(ev) as it goes, done() when let go; bodyCls on the page
+// meanwhile (no text selection, the resize cursor everywhere)
+function dragDivider(el, bodyCls, move, done) {
+  el.addEventListener("pointerdown", e => {
+    if (e.button && e.button !== 0) return;
+    e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add("drag"); document.body.classList.add(bodyCls);
+    const up = () => { for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) el.removeEventListener(ev, up);
+      el.removeEventListener("pointermove", move);
+      el.classList.remove("drag"); document.body.classList.remove(bodyCls); done(); };
+    el.addEventListener("pointermove", move);
+    for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) el.addEventListener(ev, up);
+  });
+}
 // Drag the divider: the system pane's share of the width, 20-70 %.
-const ovDivider = document.getElementById("ovDivider");
-ovDivider.addEventListener("pointerdown", e => {
-  if (e.button && e.button !== 0) return;
-  e.preventDefault(); ovDivider.setPointerCapture(e.pointerId); ovDivider.classList.add("drag"); document.body.classList.add("ovdrag");
-  const ov = document.getElementById("overView");
-  const move = ev => {
-    const r = ov.getBoundingClientRect();
-    const fromRight = (r.right - ev.clientX) / r.width * 100, fromLeft = (ev.clientX - r.left) / r.width * 100;
-    ovState.split = Math.round(Math.max(20, Math.min(70, ovState.flip ? fromLeft : fromRight)));
-    ov.style.setProperty("--ovw", ovState.split + "%");
-    if (data) renderSurface();   // the overview's surface map follows the pane's width
-  };
-  const up = () => { for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) ovDivider.removeEventListener(ev, up);
-    ovDivider.removeEventListener("pointermove", move);
-    ovDivider.classList.remove("drag"); document.body.classList.remove("ovdrag"); saveOv(); };
-  ovDivider.addEventListener("pointermove", move);
-  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) ovDivider.addEventListener(ev, up);
-});
+dragDivider(document.getElementById("ovDivider"), "ovdrag", ev => {
+  const ov = document.getElementById("overView"), r = ov.getBoundingClientRect();
+  const fromRight = (r.right - ev.clientX) / r.width * 100, fromLeft = (ev.clientX - r.left) / r.width * 100;
+  ovState.split = Math.round(Math.max(20, Math.min(70, ovState.flip ? fromLeft : fromRight)));
+  ov.style.setProperty("--ovw", ovState.split + "%");
+  if (data) renderSurface();   // the overview's surface map follows the pane's width
+}, saveOv);
+// the Plotted Route pane's share of Nearby's height (#22), 25-75 %, kept on this device
+const routeShare = (top, bottom, y) => Math.round(Math.max(25, Math.min(75, (bottom - y) / (bottom - top) * 100)));
+dragDivider(document.getElementById("routeDivider"), "rtdrag", ev => {
+  const nw = document.getElementById("nearWrap"), r = nw.getBoundingClientRect();
+  RT.split = routeShare(r.top, r.bottom, ev.clientY);
+  nw.style.setProperty("--routeh", RT.split + "%");
+}, () => { if (RT.split != null) store.set("routeSplit", RT.split); });
 
 function bodyValueTitle(b) {
   const v = b.value_parts; if (!v) return "";
@@ -10055,7 +10141,7 @@ document.addEventListener("click", e => {
   // a click anywhere on a Nearby row (the Overview's too) but its name (copies), ☆ or a control shows the system in
   // Here beside the list; the same system again closes it (S73). Not after a drag that selected text. The tablet's
   // tap opens the row's sheet instead (tabRowTap, which stops this click)
-  const row = e.target.closest("#rows tr[data-id], #boxelTable tr[data-id]");
+  const row = e.target.closest("#rows tr[data-id], #boxelTable tr[data-id], #routeRows tr[data-id]");
   if (row && !e.target.closest("td.name, td.bmcell, [data-bm], button, a, input, select, label") && !selectingIn(row))
     return row.dataset.id === pinnedSystem ? unpinSystem() : pinSystem(row.dataset.id);
   const bm = e.target.closest("[data-bm]");
@@ -10178,7 +10264,8 @@ function showPop(td, x, y) {
   }
   // a Nearby row's system, else a boxel row's (Boxel view: often outside Nearby's sphere)
   const s = data && (data.systems.find(s => s.id === td.dataset.id) ||
-                     ((boxelData && boxelData.rows) || []).map(r => r.summary).find(x => x && x.id === td.dataset.id));
+                     ((boxelData && boxelData.rows) || []).map(r => r.summary).find(x => x && x.id === td.dataset.id) ||
+                     ((RT.data && RT.data.rows) || []).find(x => !x.nodata && x.id === td.dataset.id));   // the route pane's (#22)
   if (!s) return hidePop();
   popId = td.dataset.id;
   pop.innerHTML = popHtml(s); pop.style.display = "block"; placePop(x, y);
@@ -15719,7 +15806,7 @@ function tabBanner(kind, title, body, tag = null) {
 }
 function tabBannerHide() { clearTimeout(TB.bannerTimer); document.getElementById("tabBanner").hidden = true; }
 // ---- the detail sheet: every fact in a table row, its full forms (the compact table hides some) ----
-const TAB_SHEET_TABLES = ["nearTable", "firstsTable", "leftTable", "bioTable", "codexTable", "bmTable", "sTable", "hwyTable", "richTable", "tripTable", "topTable"];
+const TAB_SHEET_TABLES = ["nearTable", "routeTable", "firstsTable", "leftTable", "bioTable", "codexTable", "bmTable", "sTable", "hwyTable", "richTable", "tripTable", "topTable"];
 // what keeps its own tap: links and buttons, the ☆, a pop-up cell, ⌖ Here, a body that opens its own panel
 const TAB_OWN_TAP = "button, a, input, select, label, summary, [data-bm], [data-aim], [data-pop], [data-goto], [data-body], [data-sbodypop], [data-sort], [data-rescanpop]";
 function tabRowTap(e) {

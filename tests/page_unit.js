@@ -33,6 +33,7 @@ const t = (name, fn) => {
 };
 const ev = src => w.eval(src);
 const eq = (src, want) => assert.deepStrictEqual(JSON.parse(JSON.stringify(ev(src) ?? null)), want, src);
+const ROUTE_ROW = {"body_count": null, "bodies_known": 0, "stars": 0, "scoopable_stars": 0, "main_star": "K", "main_scoopable": true, "planets": 0, "star_types": {}, "planet_types": {}, "terraformable": 0, "notable": {}, "est_value": null, "bio_potential": null, "bio_bodies_guessed": 0, "ringed": 0, "detail": {"rings": {}, "ring_bodies": {}, "ringed_types": {}, "ringed_stars": 0, "belts": {}, "landable": 0, "bio": 0, "bio_bodies": 0, "geo": 0, "geo_bodies": 0, "mining": 0, "mining_bodies": 0, "hotspots": [], "rings_mapped": 0, "ring_count": 0}, "stale_bio": null, "spansh_date": null, "spansh_old": null, "bio_unknown": null, "id64": 3, "id": "3", "name": "S3", "source": "route", "in_spansh": false, "visited": false, "distance": 0.0, "xyz": [-3970.0, 0, 3000.0], "own_scans": 0, "firsts": null, "mapped": 0, "value_now": 0, "value_max": 0, "value_parts": {"carto_now": 0, "bio_now": 0, "carto_left": 0, "bio_left": 0}, "no_dump": false, "phenomena": [], "rare_stars": [], "ggg": [], "ggg_green": 0, "sights": [], "codex_types": [], "region": "Inner Orion Spur", "sites": [], "pois": [], "curiosity_list": [], "curiosities": 0, "status": "unreported", "main_class": "K", "n": 2, "along": 20.0, "from_you": 17.5};
 
 t("page.js loads with no server and no payload", () => assert.deepStrictEqual(errors, []));
 t("esc: what HTML needs, double-quoted attributes", () =>
@@ -283,6 +284,25 @@ later.push(["Hold full: the price answer is not said once you have left the ring
   ev(`alertOut = __ao; data = __d; MW.start = null`);
   assert.deepStrictEqual([gone, still], [0, 1]);
 }]);
+// the Plotted Route pane (#22): Nearby's row template with the pane's own cells (a row the server's State.route_list made)
+t("sysRowHtml: a route pane row has its # cell, Dist along the route and From you; Nearby's has neither", () => {
+  const row = ROUTE_ROW;
+  ev(`var __d = data; data = {}`);
+  const cells = ctx => { const tb = w.document.createElement("tbody"); tb.innerHTML = ev(`sysRowHtml(${JSON.stringify(row)}, ${ctx})`);
+    return [...tb.rows[0].cells].map(c => c.textContent.trim()); };
+  const route = cells(`{jr: 30, elsewhere: true, prev: null, scoopNext: null, bms: new Map(), aimCol: false, ly: s => s.from_you, dist: s => s.along, lead: s => \`<td class="num">\${s.n}</td>\`}`);
+  const near = cells(`{jr: 30, elsewhere: false, prev: null, scoopNext: null, bms: new Map(), aimCol: false}`);
+  ev(`data = __d`);
+  assert.strictEqual(route.length, near.length + 1);
+  assert.deepStrictEqual(route.slice(1, 5), ["2", near[1], "20.00", "17.50"]);
+  assert.deepStrictEqual(near.slice(2, 4), ["0.00", ""]);   // Nearby around you: Dist is the row's own, no From you
+});
+t("routeShare: the pane's share of Nearby's height from the divider, 25-75 %", () =>
+  eq(`[routeShare(0, 400, 200), routeShare(0, 400, 0), routeShare(0, 400, 390), routeShare(100, 500, 200)]`, [50, 75, 25, 75]));
+t("spanshHopNote: a chip's Spansh record in its hover", () =>
+  eq(`[spanshHopNote({spansh_bodies: 23, spansh_updated: "2024-06-12 10:00:00+00"}), spanshHopNote({spansh_bodies: 1}),
+       spanshHopNote({spansh_updated: "2025-01-02 00:00:00+00"}), spanshHopNote({})]`,
+     [" · Spansh: 23 bodies, updated 2024-06-12", " · Spansh: 1 body", " · Spansh: known, updated 2025-01-02", ""]));
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); ok++; console.log("OK |", name); }

@@ -157,7 +157,8 @@ Highway, 💰 Road to Riches, 🧬 Exomastery, 🌍 Earth-like worlds, 🧪 ammo
 notifications) as the galaxy map's own **destination** marker, in the text's colour. The
 **In-Game Route:** line above it is the game's own
 route, the one plotted in the galaxy map: it can differ from Outrider's until 🎯 targets the next stop, which has the
-game plot its route there. A 🎯 beside that next system, and beside every system in the tab's lists,
+game plot its route there. Nearby's **🛣 Show route** lists the systems ahead on either one with what is known about
+them (see [the views](views.md)). A 🎯 beside that next system, and beside every system in the tab's lists,
 targets it in the galaxy map for you (Outrider brings the game to the front itself where it can, else
 after a 5 s countdown to click back into the game; on the tablet, the row's sheet has **Target**). The same 🎯 sits beside your carrier's system on the Carrier tile while it is elsewhere,
 and beside a boxel's Next and its rows (see [Boxel exploration](views.md#-boxel-exploration), whose opt-in **auto-target

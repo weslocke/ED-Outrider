@@ -75,7 +75,8 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <label title="the systems around you"><input type="radio" name="nearMode" value="standard"> Standard</label>
       <label title="the boxel you are in (or one you keep): its systems by number, and boxels nearby"><input type="radio" name="nearMode" value="boxel"> Boxel</label></span>
     <span class="stdonly nearAround"><span class="lbl">Focus/Lock</span><select id="nearAround" aria-label="Nearby's focus or lock" title="the system Nearby lists the systems around: you (it follows your ship), your destination, carrier or next stop (it follows them), this system (locked where you are now) or a system by name. Saved for every window and the tablet"></select><input type="text" id="nearAroundName" placeholder="system name" size="18" aria-label="The system Nearby lists around" hidden><button type="button" class="mini pastebtn" title="paste the system name on the game PC's clipboard" aria-label="paste">📋</button></span>
-    <span class="unk" id="nearAroundBx" hidden></span></span></div>
+    <span class="unk" id="nearAroundBx" hidden></span>
+    <button type="button" class="mini" id="routeBtn" aria-pressed="false" hidden title="the systems ahead on your plotted route, with Nearby's columns, in a pane under the list (a small window: in place of it)">🛣 Show route</button></span></div>
   <div class="tablebar" id="nearOpts">
     <label class="stdonly" title="only the systems of this mass code (the letter before the number in a procedural name: a the lightest, h the heaviest); named systems have none">Mass <select id="nearMass" aria-label="Mass code"><option value="">all</option><option>a</option><option>b</option><option>c</option><option>d</option><option>e</option><option>f</option><option>g</option><option>h</option></select></label>
     <label class="stdonly"><input type="checkbox" id="showVisited" checked> visited</label>
@@ -96,6 +97,23 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
 </table>
 </div>
 <div class="pane" id="boxelPane" hidden></div>
+<div id="routeDivider" role="separator" aria-orientation="horizontal" aria-label="resize the route pane" title="drag to resize" hidden></div>
+<div id="routeWrap" hidden>
+  <div class="tablebar" id="routeBar"><b>Plotted route</b>
+    <span class="seg" id="routeWhich" role="radiogroup" aria-label="which route"></span>
+    <span class="unk" id="routeNote"></span>
+    <button type="button" class="mini" id="routeClose" title="hide the route pane" aria-label="hide the route pane">✕</button></div>
+  <div class="pane" id="routePane">
+  <table id="routeTable" class="around">
+    <thead><tr>
+      <th></th><th class="num" title="jumps from you (a Highway row counts the jumps it stands for), or the stop's number on a survey route or a carrier trip">#</th><th>System</th><th class="num" title="ly along the route from you (a carrier trip: from where your carrier is, by its legs)">Along</th><th class="num fromcol" title="how far it is from you now, straight">From you</th><th class="num hide-sm c2hide" title="jumps from you at your max range">Jumps</th><th class="c3hide">Status</th><th>Main star</th>
+      <th>Bodies</th><th class="c3hide">Notable</th><th class="num hide-sm" title="what selling now would pay for data you hold from this system / the most it could pay once fully scanned, mapped and sampled">Value now / max</th><th class="num hide-sm c2hide">Known</th>
+    </tr></thead>
+    <tbody id="routeRows"></tbody>
+  </table>
+  <div class="hint" id="routeMore"></div>
+  </div>
+</div>
 </div>
 <section id="hereView" hidden>
   <div id="hereHead"></div>

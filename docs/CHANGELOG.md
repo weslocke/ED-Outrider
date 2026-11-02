@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · The Plotted Route pane (issue #22)
+- **🛣 Show route** in Nearby's heading, while a route exists (Psilovybin, issue #22: "shows the route and EDSM data
+  along that route"; the author's design): a pane under Nearby's list with Nearby's rows for the next 24 systems on
+  the route, `#` (jumps from you, or the stop) and Dist along the route; a switch between the game's, the Highway's,
+  the survey slot's and a carrier trip's route; resizable in app mode (the Overview's divider code, now
+  `dragDivider`), in place of the list on a scrolling page, not in the Overview. GET `/api/route/list`
+  (`State.route_list`) asks Spansh only while it is fetched: one id search, then a dump per system it has whose cached
+  copy is older than its record (`route_list_needs`, `fetch_route_list`); the payload's `route_lists` key refetches.
+  Nearby's row template is `sysRowHtml` now, shared by both.
+- The In-Game Route chips' hover adds Spansh's body count and last update (`spansh_brief`, from the hop search's
+  record, kept in `route_spansh` by `keep_route_spansh`).
+
 ## 2026-11-01 · Review round 9, batch 5: the page, the carriers, sign-in and uploads
 - **Add pin empties its boxes once the pin is saved** (M5): the rewrite kept what was typed, so a second press saved a
   duplicate (kept on an error, to put right).

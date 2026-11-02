@@ -344,6 +344,17 @@ upstream project's choices, not rules of the game.
   where you are on it, dashed, with ◎ on its next stop (else the header's next stop). At most 300 points
   (`MAP_ROUTE_MAX`, the game's route first); the map's systems stay cached per place and radius while the route is
   worked out at each fetch, which a new plot or a new next stop asks for.
+- **The Plotted Route pane** (issue #22, Psilovybin; the author's design, 2026-11-02): Nearby's rows for the systems
+  ahead on a route, in a pane under Nearby's list (🛣 Show route in its heading, only while a route exists). Every route
+  Outrider knows, picked by a switch (the game's, the Highway's, the survey slot's, a carrier trip's; the game's first,
+  as the ship flies it). Nearby's own row template (`sysRowHtml`), so its columns, badges, 🎯 and click work alike;
+  `#` and Dist along the route are the pane's own. **The next 24** (`ROUTE_LIST_MAX`, the strip's chips' number),
+  moving on with each jump: a Highway route of 400 jumps would be 400 dumps, and the whole route is Plot Route's.
+  **Spansh is asked only while the pane is fetched** (GET `/api/route/list`, as `/api/boxel`): one id search, then a dump
+  only for a system Spansh has whose cache is older than its record; nothing for one it has not, nothing inside the
+  Nearby sphere (its refresh's), no id search around Sol and Colonia (Spansh knows every system there). **Not in the
+  Overview** (beside Here a third pane is too cramped), and **on a scrolling page in place of the list**, not under it
+  (a pane under a long list would be off screen); in app mode the divider sets its share, 25-75 %.
 - **The voice plots far places** (D4, option A, the author): "nearest station" (or carrier, Vista, a trader...) also
   plots a neutron route to the place it names when it is further than `[highway] voice_plot_ly` (on, 500 ly), to its
   system, never the station; never while a route you have not finished is followed or a plot runs ("You're following
@@ -1853,6 +1864,8 @@ upstream project's choices, not rules of the game.
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
 confirmed while playing. Treat reports about them as likely real.
 
+- The Plotted Route pane (2026-11-02, #22): the rows on a real plotted route as Spansh answers, the switch between
+  routes, the divider on a desktop, the swap in a small window and on a phone.
 - Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the
   prospector call-out, the ⛏ line and its warnings' timing (limpets low, hold nearly full, hold full with where to
   sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone); each

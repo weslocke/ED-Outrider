@@ -1904,7 +1904,7 @@ const releasePayloads = async () => {
     const got = JSON.parse(w.eval(`(() => { const saved = data.route, el = document.getElementById("routeStrip");
       data.route = {hops: [{name: "Sol", star_class: "G", scoopable: true, ly: 8.6, known: null},
                            {name: "Drojo OP-V d3-36", star_class: "K", scoopable: true, ly: 70.2, known: false},
-                           {name: "Colonia", star_class: "F", scoopable: true, ly: 60.0, known: true}], ly: 138.8, next_scoop: 1, longest_dry: 0};
+                           {name: "Colonia", star_class: "F", scoopable: true, ly: 60.0, known: true, spansh_bodies: 12, spansh_updated: "2024-06-12 10:00:00+00"}], ly: 138.8, next_scoop: 1, longest_dry: 0};
       renderRoute(); const hops = [...el.querySelectorAll(".hop")].map(h => [h.textContent, h.title]);
       data.route = saved; renderRoute();
       const pill = document.createElement("div");
@@ -1913,7 +1913,7 @@ const releasePayloads = async () => {
                                            arrivalBriefText({undiscovered: false, visits: 1, in_spansh: false})],
                              pill: [pill.textContent, /not known/.test(pill.innerHTML)]}); })()`));
     const want = {hops: [["G", "Sol · G (scoopable) · 8.6 ly"], ["K✦", "Drojo OP-V d3-36 · K (scoopable) · 70.2 ly · not reported to Spansh"],
-                         ["F", "Colonia · F (scoopable) · 60 ly"]],
+                         ["F", "Colonia · F (scoopable) · 60 ly · Spansh: 12 bodies, updated 2024-06-12"]],
                   brief: ["Known.", "Known, not in Spansh."], pill: ["not looked up…", true]};   // the long form and its short mark
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;
@@ -1949,6 +1949,62 @@ const releasePayloads = async () => {
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| route chips copy, fuel reach |", good ? "a chip copies its name; ⛽ where the tank runs out, ⛽✓ when it makes the route" : JSON.stringify(got), errors.slice(before));
+  }
+  // the Plotted Route pane (#22, Psilovybin): 🛣 Show route only while a route exists, Nearby's rows for the systems
+  // ahead (a # cell, Dist along the route), the switch between routes, Spansh's progress, "+N more", a row's click
+  // opens the system as Nearby's does; a scrolling page shows it in place of the list; never in the Overview; ✕ closes
+  // it. And the endpoint answers in its shape
+  route_pane: { if (skip("route_pane")) break route_pane;
+    const w = dom.window, d = w.document, before = errors.length;
+    const api = await (await fetch(base + "api/route/list?which=nonsense")).json();
+    const apiOk = JSON.stringify(Object.keys(api).sort()) === JSON.stringify(["asking", "choices", "more", "rows", "which"]);
+    d.querySelector('[data-view="near"]').click(); await settle(1500);
+    holdPayloads();
+    const got = JSON.parse(w.eval(`(() => { const o = {}, btn = document.getElementById("routeBtn"), wrap = document.getElementById("routeWrap");
+      window.__rtSaved = data.route_lists;
+      store.set("routePane", false); store.set("routeWhich", "");
+      data.route_lists = {choices: [], key: "k0"}; render(); o.noRoute = btn.hidden;
+      const choices = [{id: "game", label: "In game"}, {id: "survey", label: "Road to Riches", glyph: "💰"}];
+      data.route_lists = {choices, key: "k1"}; RT.key = "k1|";
+      const row = Object.assign({}, data.systems[0], {n: 1, along: 12.5, from_you: 11.25});
+      RT.data = {choices, which: "game", more: 30, asking: [3, 12],
+                 rows: [row, {name: "Smojooe XY-Z a1-2", id: "77", n: 2, along: 40.25, nodata: true}]};
+      render(); o.closed = [btn.hidden, btn.textContent, wrap.hidden];
+      btn.click();
+      o.open = [btn.getAttribute("aria-pressed"), btn.textContent, wrap.hidden, store.get("routePane", false)];
+      const trs = [...document.querySelectorAll("#routeRows tr")];
+      o.rows = trs.map(tr => [tr.cells[1].textContent.trim(), tr.cells[3].textContent.trim()]);
+      o.rowId = [trs[0].dataset.id === row.id, row.id != null];
+      o.nodata = trs[1].textContent.includes("asking Spansh…");
+      o.switch = [...document.querySelectorAll("#routeWhich input")].map(i => [i.value, i.checked]);
+      o.note = document.getElementById("routeNote").textContent;
+      o.more = document.getElementById("routeMore").textContent;
+      // app mode splits the height (the divider shows); a scrolling page shows the pane in place of the list
+      const iw = window.innerWidth, ih = window.innerHeight;
+      const size = (vw, vh) => { Object.defineProperty(window, "innerWidth", {value: vw, configurable: true});
+        Object.defineProperty(window, "innerHeight", {value: vh, configurable: true}); window.dispatchEvent(new Event("resize")); render();
+        return [appOn(), document.getElementById("routeDivider").hidden, document.getElementById("nearWrap").classList.contains("routeonly")]; };
+      o.app = size(1920, 1000); o.scrolling = size(390, 844); size(iw, ih);
+      return JSON.stringify(o); })()`));
+    // a click on the row (not its name) opens the system beside the list, as Nearby's
+    d.querySelector("#routeRows tr td.bodies").click(); await settle(1500);
+    got.pinned = w.eval(`pinnedSystem === RT.data.rows[0].id`);
+    w.eval(`unpinSystem()`); await settle(800);
+    d.querySelector('[data-view="overview"]').click(); await sleep(200);
+    got.overview = w.eval(`[document.getElementById("routeBtn").hidden, document.getElementById("routeWrap").hidden]`);
+    d.querySelector('[data-view="near"]').click(); await sleep(200);
+    got.close = w.eval(`(() => { document.getElementById("routeClose").click();
+      const r = [document.getElementById("routeWrap").hidden, store.get("routePane", true)];
+      data.route_lists = window.__rtSaved; RT.data = null; RT.key = null; store.set("routeWhich", ""); render(); return r; })()`);
+    await releasePayloads();
+    const want = {noRoute: true, closed: [false, "🛣 Show route", true], open: ["true", "🛣 Hide route", false, true],
+                  rows: [["1", "12.50"], ["2", "40.25"]],
+                  rowId: [true, true], nodata: true, switch: [["game", true], ["survey", false]], note: "asking Spansh: 3 of 12…",
+                  more: "+30 more systems on this route", app: [true, false, false], scrolling: [false, true, true], pinned: true, overview: [true, true], close: [true, false]};
+    const good = apiOk && JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| route pane |", good ? "Show route, the systems ahead with Nearby's columns, the switch, split or in place of the list, not in the Overview"
+      : JSON.stringify({apiOk, api: Object.keys(api), got}), errors.slice(before));
   }
   // the game logged a plot but wrote no NavRoute.json (2026-10-14): the payload's minimal form, said in words, no chips
   in_game_route_not_written: { if (skip("in_game_route_not_written")) break in_game_route_not_written;
