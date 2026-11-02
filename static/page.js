@@ -1713,7 +1713,7 @@ function surfLocal(s, lat, lon) {
 // the zoom (the author, 2026-11-02): Auto fits the markers near you (below); the slider sets a span of its own, from
 // SURF_ZOOM_MIN to SURF_ZOOM_MAX m across, and moving it switches Auto off. This device's (surfZoom {auto, span}): every
 // surface map here (Now's, the Overview's, the strip) follows it. The slider is a log scale, the closest at its right
-const SURF_ZOOM_MIN = 100, SURF_ZOOM_MAX = 12000, SURF_ZOOM_STEPS = 100;
+const SURF_ZOOM_MIN = 100, SURF_ZOOM_MAX = 50000, SURF_ZOOM_STEPS = 100;   // 50 km: the author, 2026-11-02
 const surfZoom = () => { const z = store.get("surfZoom", null) || {}, span = Number(z.span);
   return {auto: z.auto !== false, span: z.span != null && isFinite(span) && span > 0 ? Math.min(SURF_ZOOM_MAX, Math.max(SURF_ZOOM_MIN, span)) : null}; };
 const surfZoomSpan = v => Math.round(SURF_ZOOM_MAX * Math.pow(SURF_ZOOM_MIN / SURF_ZOOM_MAX, Math.min(SURF_ZOOM_STEPS, Math.max(0, v)) / SURF_ZOOM_STEPS));
@@ -1765,7 +1765,7 @@ function surfaceLayout(s, cfg, S, zoom = surfZoom()) {
     it.sx = c + rx * k; it.sy = c - ry * k; it.ang = Math.atan2(rx, ry);   // screen angle from up, clockwise
     it.ringPx = it.ringM ? it.ringM * scale : 0;
   }
-  const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000].filter(v => v <= span / 3).pop() || 10;
+  const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000].filter(v => v <= span / 3).pop() || 10;
   // where you have been on this body this visit (explorer ideas, item 1): the same turn and scale, never the zoom's
   // concern; the line is cut by the rim's clip when drawn
   // a null is a break (a high stretch: never a line across ground not flown low)

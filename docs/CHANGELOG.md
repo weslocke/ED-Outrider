@@ -2,6 +2,9 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · The surface map zooms out to 50 km
+- The zoom slider's widest is 50 km across (was 12 km: the author); the scale bar goes to 10 and 20 km.
+
 ## 2026-11-02 · The surface map's zoom slider
 - **A zoom slider and Auto** on top of the surface map's legend (Now's and the Overview's; the strip follows): the
   slider (log scale, 12 km to 100 m across) sets a span of its own and switches Auto off, showing what fits in it past

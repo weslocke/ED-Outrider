@@ -3575,7 +3575,7 @@ const releasePayloads = async () => {
       data.surface = s0; view = v0; render();
       return JSON.stringify(o); })()`));
     await releasePayloads();
-    const want = {auto: ["true", true, 500, true, 1, "500 m across"], closest: ["false", false, 100, false], widest: [12000, 2, "12 km across"],
+    const want = {auto: ["true", true, 500, true, 1, "500 m across"], closest: ["false", false, 100, false], widest: [50000, 2, "50 km across"],
                   backAuto: ["true", true, 500], offKeeps: ["false", false, 500], sameRow: 1};
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;
