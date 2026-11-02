@@ -3547,6 +3547,43 @@ const releasePayloads = async () => {
   }
   // M2 surface map: shows below the altitude and hides above it, heading-up, rings to scale, rig slots and states,
   // an off-map chevron, the legend, the strip copy and the settings round trip (the canvas itself is not drawn here)
+  // a species finished on this body stays (the author, 2026-11-02): its three samples solid in its own colour, ticked,
+  // with no colony ring, and its legend row "✓ done" after the runs under way, in the same colour as its dots
+  surface_done_species: { if (skip("surface_done_species")) break surface_done_species;
+    const w = dom.window, before = errors.length;
+    holdPayloads();
+    const got = JSON.parse(w.eval(`(() => {
+      const o = {}, v0 = view, s0 = data.surface;
+      const R = 1500000, lat0 = -53.794, lon0 = -144.581, k = 180 / Math.PI / R;
+      const at = (n, e) => ({lat: lat0 + n * k, lon: lon0 + e * k / Math.cos(lat0 * Math.PI / 180)});
+      data.surface = {body: "ABC 3 d", system: "1", body_id: 19, ...at(0, 0), heading: 0, alt: 0, radius: R, show: true, down: true,
+        alt_avg: false, rhino: false, ship: null, rigs: [], sites: [], locations: [], tags: [], trail: [],
+        bio: [{species: "Bacterium Aurasus", genus: "Bacterium", samples: 1, current: true, need: 500, clear: false,
+               points: [{n: 1, ...at(100, 0), dist: 100}]},
+              {species: "Tubus Compagibus", genus: "Tubus", samples: 3, current: false, done: true, need: null, clear: null,
+               points: [{n: 1, ...at(-300, 0), dist: 300}, {n: 2, ...at(-900, 0), dist: 900}, {n: 3, ...at(-1500, 0), dist: 1500}]},
+              {species: "Concha Labiata", genus: "Concha", samples: 3, current: false, done: true, need: null, clear: null, points: []}]};
+      view = "now"; render();
+      const L = surfaceLayout(data.surface, surfaceCfg(), 400), bio = L.items.filter(i => i.kind === "bio");
+      const doneIt = bio.filter(i => i.done);
+      o.items = [bio.length, doneIt.length, doneIt.every(i => !i.faint && !i.ringPx), bio.filter(i => !i.done).every(i => i.ringPx > 0)];
+      const colours = speciesColours(data.surface.bio);
+      o.colour = doneIt.every(i => i.colour === colours.get("Tubus Compagibus")) && colours.get("Tubus Compagibus") !== colours.get("Bacterium Aurasus");
+      const rows = [...document.querySelectorAll("#nowMapLegend .lg-bio")];
+      o.legend = rows.map(r => [r.dataset.species, r.classList.contains("done"), /✓ done/.test(r.textContent)]);
+      const sw = r => r ? r.querySelector(".sw").style.background : "";   // each species' own colour, the done one's too
+      o.swatch = sw(rows[1]) !== "" && sw(rows[1]) !== sw(rows[0]) && sw(rows[1]) !== sw(rows[2]);
+      o.noSpots = /no spots/.test(rows[2] ? rows[2].textContent : "");
+      data.surface = s0; view = v0; render();
+      return JSON.stringify(o); })()`));
+    await releasePayloads();
+    const want = {items: [4, 3, true, true], colour: true,
+                  legend: [["Bacterium Aurasus", false, false], ["Tubus Compagibus", true, true], ["Concha Labiata", true, true]],
+                  swatch: true, noSpots: true};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| surface done species |", good ? "a finished species stays: its three samples in its colour, ticked in the legend" : JSON.stringify(got), errors.slice(before));
+  }
   // the surface map's zoom (the author, 2026-11-02): a slider (right closer) and Auto beside it, on top of the legend;
   // moving the slider switches Auto off and sets a span of its own (what fits in it shows, past Auto's 3 km); Auto on
   // fits the markers near you again; Auto off keeps the zoom Auto had. Its widest: everything here and the trail

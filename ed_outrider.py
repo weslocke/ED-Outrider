@@ -9952,7 +9952,9 @@ class State:
     def surface_bio(self, h):
         """The sample points of unfinished runs on this body, per species, with the colony distance: the run in
         progress is `current`, any other still in progress (journals read out of order) is drawn faint. Points of a
-        run that is gone (abandoned, died with you) are not shown."""
+        run that is gone (abandoned, died with you) are not shown. Then each species finished here, `done` (the author,
+        2026-11-02: it stays on the map, ticked, its three samples where they were taken): the spots its run's samples
+        were taken at (bio_spots, the last three before its Analyse; none for a run sampled while not playing live)."""
         run = self.db.execute("SELECT system, body_id, species FROM own_organic WHERE done_ts IS NULL ORDER BY ts DESC LIMIT 1").fetchone()
         cur = (run["system"], run["body_id"], run["species"]) if run else None
         out = {}
@@ -9971,7 +9973,19 @@ class State:
         for s in out.values():
             near = min((p["dist"] for p in s["points"]), default=None)
             s["clear"] = bool(s["need"] and near is not None and near >= s["need"])
-        return sorted(out.values(), key=lambda s: not s["current"])
+        done = []
+        for o in self.db.execute("SELECT species, genus_name, species_name, done_ts FROM own_organic WHERE system=? AND body_id=?"
+                                 " AND done_ts IS NOT NULL ORDER BY done_ts", (h["system"], h["body_id"])):
+            if o["species"] in out:
+                continue   # a new run of a species done here before: the run's own points
+            spots = self.db.execute("SELECT lat, lon FROM bio_spots WHERE system=? AND body_id=? AND species=? AND ts < ?"
+                                    " ORDER BY ts DESC LIMIT 3", (h["system"], h["body_id"], o["species"], o["done_ts"])).fetchall()
+            done.append({"species": o["species_name"] or o["species"], "genus": o["genus_name"], "samples": 3, "current": False,
+                         "done": True, "need": None, "clear": None,
+                         "points": [{"n": len(spots) - i, "lat": p["lat"], "lon": p["lon"],
+                                     "dist": round(surface_m(h["lat"], h["lon"], p["lat"], p["lon"], h["radius"]))}
+                                    for i, p in enumerate(spots)][::-1]})
+        return sorted(out.values(), key=lambda s: not s["current"]) + done
 
     def surface_summary(self, now=None):
         """The surface map's block of the payload while you are over a body (None otherwise): where you are, whether

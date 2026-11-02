@@ -1747,9 +1747,10 @@ function surfaceLayout(s, cfg, S, zoom = surfZoom()) {
   for (const t of s.tags || []) add({kind: "tag", tag: "", species: t.species, colour: colours.get(t.species), faint: !t.usable,
                                       keep: !!(t.usable && (t.current || nearestTag.has(t)))}, t.lat, t.lon);
   for (const b of s.bio || []) {
+    // a species finished here (done): its samples solid in its colour with a ✓, no colony ring (the author, 2026-11-02)
     const colour = colours.get(b.species);
-    for (const p of b.points || []) add({kind: "bio", tag: "", species: b.species, colour, faint: !b.current, keep: !!b.current,
-                                          ringM: b.need || 0}, p.lat, p.lon);
+    for (const p of b.points || []) add({kind: "bio", tag: "", species: b.species, colour, done: !!b.done, faint: !b.current && !b.done,
+                                          keep: !!b.current, ringM: b.done ? 0 : b.need || 0}, p.lat, p.lon);
   }
   for (const it of items) it.far = it.kind === "rig" && it.dist > cfg.warn;
   // the widest the slider goes: everything here (each marker, a sample's colony ring, the trail) fitted as Auto fits
@@ -1846,7 +1847,13 @@ function drawSurface(canvas, L, small) {
   for (const it of L.items) {
     if (it.off) continue;
     const x = it.sx, y = it.sy;
-    if (it.kind === "bio") { g.fillStyle = it.colour; g.globalAlpha = it.faint ? 0.45 : 1; g.beginPath(); g.arc(x, y, mr * 0.55, 0, 2 * Math.PI); g.fill(); g.globalAlpha = 1; }
+    if (it.kind === "bio" && it.done) {   // a finished species' sample: a bigger dot in its colour, ticked
+      const r = small ? mr * 0.55 : mr * 0.8;
+      g.fillStyle = it.colour; g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fill();
+      if (!small) { g.strokeStyle = C.panel; g.lineWidth = Math.max(1.5, r / 3); g.lineCap = "round"; g.lineJoin = "round"; g.beginPath();
+        g.moveTo(x - r * 0.5, y); g.lineTo(x - r * 0.12, y + r * 0.4); g.lineTo(x + r * 0.5, y - r * 0.4); g.stroke(); g.lineCap = "butt"; }
+    }
+    else if (it.kind === "bio") { g.fillStyle = it.colour; g.globalAlpha = it.faint ? 0.45 : 1; g.beginPath(); g.arc(x, y, mr * 0.55, 0, 2 * Math.PI); g.fill(); g.globalAlpha = 1; }
     else if (it.kind === "pin") { const r = it.active ? mr + 2 : mr; g.fillStyle = it.active ? C.accent : C.muted; g.globalAlpha = it.faint ? 0.4 : 1;
       g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r * 0.75, y); g.lineTo(x, y + r); g.lineTo(x - r * 0.75, y); g.closePath(); g.fill(); g.globalAlpha = 1;
       if (!small && (it.active || !it.faint)) { g.font = `${font}px system-ui, sans-serif`; g.textAlign = "left"; g.fillText(it.tag, x + r, y - r * 0.8); g.textAlign = "center"; } }
@@ -1915,12 +1922,17 @@ function surfaceLegend(s, L, cfg) {
   // the same colours as the map, which counts the tagged species too (review: the legend's swatch was another species')
   const bio = new Map(), colours = speciesColours([...(s.bio || []), ...(s.tags || [])]);
   for (const it of by("bio")) if (!bio.has(it.species)) bio.set(it.species, it);
-  const species = (s.bio || []).filter(b => b.points && b.points.length).map(b => ({b, it: bio.get(b.species)}))
+  // the runs under way, nearest first; then the species finished here, ticked, in the order they were done (kept the
+  // author, 2026-11-02: a finished one used to leave the map and the legend)
+  const species = (s.bio || []).filter(b => !b.done && b.points && b.points.length).map(b => ({b, it: bio.get(b.species)}))
     .sort((x, y) => (x.it ? x.it.dist : 1e9) - (y.it ? y.it.dist : 1e9));
-  if (species.length) rows.push(`<div class="lg-h">Samples</div>` + species.map(({b, it}) =>
+  const done = (s.bio || []).filter(b => b.done);
+  if (species.length || done.length) rows.push(`<div class="lg-h">Samples</div>` + species.map(({b, it}) =>
     `<div class="lg-row lg-bio${b.current ? " cur" : " faint"}" data-species="${esc(b.species)}"><i class="sw" style="background:${colours.get(b.species)}"></i>` +
     `<b>${esc(b.species)}</b> ${b.samples ?? "?"}/3${b.need ? ` · ${b.need} m` : ""}` +
-    (b.clear ? ` · <span class="ok">✓ clear</span>` : it && b.need ? ` · <span class="unk">${Math.round(it.dist)} of ${b.need} m</span>` : "") + `</div>`).join(""));
+    (b.clear ? ` · <span class="ok">✓ clear</span>` : it && b.need ? ` · <span class="unk">${Math.round(it.dist)} of ${b.need} m</span>` : "") + `</div>`).join("") +
+    done.map(b => `<div class="lg-row lg-bio done" data-species="${esc(b.species)}"><i class="sw" style="background:${colours.get(b.species)}"></i>` +
+      `<b>${esc(b.species)}</b> <span class="ok">✓ done</span>${b.points && b.points.length ? "" : ` <span class="unk" title="sampled while Outrider was not reading the game live: no positions">(no spots)</span>`}</div>`).join(""));
   // plants you tagged with the composition scanner, per species: how many, the nearest one a sample would count at
   const tagged = new Map();
   for (const it of by("tag")) { const g = tagged.get(it.species) || {n: 0, near: null}; g.n++; if (!it.faint && !g.near) g.near = it; tagged.set(it.species, g); }

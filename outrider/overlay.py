@@ -751,7 +751,7 @@ def radar_panel(surf, pal, size="normal", radar_range=800):
     for geology): you, N and the edge's distance."""
     if not surf or surf.get("lat") is None or not surf.get("radius"):
         return None
-    bio = surf.get("bio") or []
+    bio = [s for s in surf.get("bio") or [] if not s.get("done")]   # a species finished here: the page's map keeps it
     cur = next((s for s in bio if s.get("current")), None)
     pins = surf.get("pins") or []
     rng = max(radar_range, (cur.get("need") or 0) * 1.4 if cur else 0)

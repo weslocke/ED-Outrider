@@ -16,6 +16,7 @@ from support import (  # also puts the repository root on sys.path
     RHINO_SESSION, button_fake_evdev, scan, user_docs,
 )
 import outrider.materials  # noqa: E402
+import outrider.overlay  # noqa: E402
 import ed_outrider  # noqa: E402
 import outrider.speech  # noqa: E402
 
@@ -2135,6 +2136,37 @@ class SurfaceRigs(unittest.TestCase):
         self.ev(40, {"event": "Died"})
         self.assertEqual(points(), ["stale"])
         self.assertEqual(self.state.surface_bio(h), [])
+
+    def test_a_finished_species_stays_with_its_three_samples(self):
+        """The author, 2026-11-02: a species sampled to the end stays on the map, ticked (done), with the spots its three
+        samples were taken at (bio_spots, the Analyse's left out), after the runs under way; no colony distance. A
+        species done before and sampled again shows its new run only. The overlay's radar leaves the done ones out."""
+        def scan(s, kind, species="$Codex_Ent_Stratum_07_Name;", genus="Stratum"):
+            self.ev(s, {"event": "ScanOrganic", "ScanType": kind, "Genus": f"$Codex_Ent_{genus}_Genus_Name;", "Genus_Localised": genus,
+                        "Species": species, "Species_Localised": species.strip("$;"), "SystemAddress": self.SYS, "Body": self.BODY})
+        for s, north, kind in ((10, 0, "Log"), (20, 200, "Sample"), (30, 400, "Sample"), (35, 402, "Analyse")):
+            self.status(s, north, 0, flags=0, flags2=1)
+            scan(s, kind)
+        self.status(40, 600, 0, flags=0, flags2=1)
+        scan(40, "Log", "$Codex_Ent_Bacterial_04_Name;", "Bacterial")
+        self.status(50, 600, 0, flags=0, flags2=1)
+        bio = self.state.surface_bio(self.state.surface_here())
+        self.assertEqual([(b["species"], b.get("done", False), b["current"]) for b in bio],
+                         [("Codex_Ent_Bacterial_04_Name", False, True), ("Codex_Ent_Stratum_07_Name", True, False)])
+        done = bio[1]
+        self.assertEqual(([p["n"] for p in done["points"]], [p["dist"] for p in done["points"]], done["need"], done["samples"]),
+                         ([1, 2, 3], [600, 400, 200], None, 3))
+        surf = self.state.surface_summary()
+        self.assertEqual([s["species"] for s in surf["bio"]], ["Codex_Ent_Bacterial_04_Name", "Codex_Ent_Stratum_07_Name"])
+        # the overlay's radar draws what it drew before: the finished species' three are the page's map's
+        pal = outrider.overlay.palette()
+        without = dict(surf, bio=[b for b in surf["bio"] if not b.get("done")])
+        self.assertEqual(outrider.overlay.radar_panel(surf, pal), outrider.overlay.radar_panel(without, pal))
+        # sampled again: the new run's points, not the old run's as well
+        self.status(60, 0, 0, flags=0, flags2=1)
+        scan(60, "Log")
+        bio = self.state.surface_bio(self.state.surface_here())
+        self.assertEqual([(b["species"], b.get("done", False)) for b in bio], [("Codex_Ent_Stratum_07_Name", False)])
 
     def test_site_tags_keep_their_order_while_you_mine(self):
         """R29: the page numbers U1, U2... in the server's order: mining more at the first site must not move it."""

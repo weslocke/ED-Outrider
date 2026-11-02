@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · The surface map keeps a finished species
+- A species sampled to the end stays on the surface map (the author: it used to vanish): its three samples where you
+  took them, solid in its colour with a ✓ and no colony ring, and "✓ done" in the legend after the runs under way
+  ("no spots" for one sampled while Outrider was not reading live). `State.surface_bio` adds each species done on this
+  body (`done`; its spots from `bio_spots`, the last three before its Analyse); a species sampled again shows its new
+  run only. Its colour stays the same through (the colours count the finished species too). The overlay's radar leaves
+  the finished ones out, as before.
+
 ## 2026-11-02 · The surface map's widest zoom fits everything on the body
 - The zoom slider's widest end is what this body needs (the author, after a path that ran off the map): every marker,
   sample (with its colony ring) and the trail fitted as Auto fits, plus 10 km (`SURF_ZOOM_MARGIN`), at most 500 km
