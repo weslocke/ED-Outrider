@@ -1710,7 +1710,17 @@ function surfLocal(s, lat, lon) {
   return {east, north, dist: Math.hypot(east, north), brg: (Math.atan2(east, north) / k + 360) % 360};
 }
 // Everything the map and legend draw, sized for a square canvas of side S (px): pure, so the tests can check it.
-function surfaceLayout(s, cfg, S) {
+// the zoom (the author, 2026-11-02): Auto fits the markers near you (below); the slider sets a span of its own, from
+// SURF_ZOOM_MIN to SURF_ZOOM_MAX m across, and moving it switches Auto off. This device's (surfZoom {auto, span}): every
+// surface map here (Now's, the Overview's, the strip) follows it. The slider is a log scale, the closest at its right
+const SURF_ZOOM_MIN = 100, SURF_ZOOM_MAX = 12000, SURF_ZOOM_STEPS = 100;
+const surfZoom = () => { const z = store.get("surfZoom", null) || {}, span = Number(z.span);
+  return {auto: z.auto !== false, span: z.span != null && isFinite(span) && span > 0 ? Math.min(SURF_ZOOM_MAX, Math.max(SURF_ZOOM_MIN, span)) : null}; };
+const surfZoomSpan = v => Math.round(SURF_ZOOM_MAX * Math.pow(SURF_ZOOM_MIN / SURF_ZOOM_MAX, Math.min(SURF_ZOOM_STEPS, Math.max(0, v)) / SURF_ZOOM_STEPS));
+const surfZoomPos = span => Math.min(SURF_ZOOM_STEPS, Math.max(0,
+  Math.round(Math.log(SURF_ZOOM_MAX / span) / Math.log(SURF_ZOOM_MAX / SURF_ZOOM_MIN) * SURF_ZOOM_STEPS)));
+const metresText = m => m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 1)} km` : `${Math.round(m)} m`;
+function surfaceLayout(s, cfg, S, zoom = surfZoom()) {
   const hd = s.heading == null ? 0 : s.heading, rad = hd * Math.PI / 180, ch = Math.cos(rad), sh = Math.sin(rad);
   const items = [], add = (it, lat, lon) => { if (lat == null || lon == null) return; items.push(Object.assign(it, {lat, lon}, surfLocal(s, lat, lon))); };
   // #16: this body's pins: the active one kept (at the rim when off the map), the others when near; reached ones faint
@@ -1739,11 +1749,13 @@ function surfaceLayout(s, cfg, S) {
                                           ringM: b.need || 0}, p.lat, p.lon);
   }
   for (const it of items) it.far = it.kind === "rig" && it.dist > cfg.warn;
-  const shown = items.filter(it => it.keep || it.dist <= SURF_NEAR);
+  // a span of your own: what fits in it shows too (zoomed out past SURF_NEAR's reach)
+  const fixed = !zoom.auto && zoom.span ? zoom.span : null, near = fixed ? Math.max(SURF_NEAR, fixed / 2) : SURF_NEAR;
+  const shown = items.filter(it => it.keep || it.dist <= near);
   // auto-zoom: every marker within SURF_NEAR (a run's rings with it), never tighter than surface_map_min across
   let reach = 0;
   for (const it of shown) if (it.dist <= SURF_NEAR) reach = Math.max(reach, Math.min(SURF_NEAR, it.dist + (it.kind === "bio" && !it.faint ? it.ringM : 0)));
-  const span = Math.max(cfg.min, reach * 2 * 1.12), rimR = S / 2 - 14, scale = rimR / (span / 2), c = S / 2;
+  const span = fixed || Math.max(cfg.min, reach * 2 * 1.12), rimR = S / 2 - 14, scale = rimR / (span / 2), c = S / 2;
   for (const it of shown) {
     // rotated by -heading: your heading is up. rx to the right, ry up the screen.
     const rx = it.east * ch - it.north * sh, ry = it.east * sh + it.north * ch;
@@ -1759,7 +1771,7 @@ function surfaceLayout(s, cfg, S) {
   // a null is a break (a high stretch: never a line across ground not flown low)
   const trail = (s.trail || []).map(q => { if (!q) return null; const p = surfLocal(s, q[0], q[1]), rx = p.east * ch - p.north * sh, ry = p.east * sh + p.north * ch;
     return [c + rx * scale, c - ry * scale]; });
-  return {S, c, rimR, span, scale, heading: hd, headingKnown: s.heading != null, north: -rad, items: shown, trail,
+  return {S, c, rimR, span, auto: !fixed, scale, heading: hd, headingKnown: s.heading != null, north: -rad, items: shown, trail,
           bar: {m: nice, px: nice * scale}};
 }
 const surfColours = () => { const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
@@ -1942,13 +1954,46 @@ function surfaceLine(L) {
 }
 // Now's map (beside its legend, below on a narrow screen) and the strip's small copy
 // a legend's title and rows, written only when they change (a rewrite would drop a hover or a half-done click)
+// the zoom row on top of the legend: made once (the legend under it is redrawn with each payload, which would cut a
+// drag on the slider short), then kept in step with the map (the slider follows Auto's span while Auto is on)
+const SURF_ZOOM_ROW = `<div class="smap-zoom"><span class="lbl">Zoom</span><span class="unk" aria-hidden="true">−</span>` +
+  `<input type="range" min="0" max="${SURF_ZOOM_STEPS}" step="1" data-surfzoom aria-label="surface map zoom: left wider, right closer"` +
+  ` title="the map's zoom: left shows more ground, right less; moving it switches Auto off">` +
+  `<span class="unk" aria-hidden="true">+</span><button type="button" class="mini" data-surfauto aria-pressed="true"` +
+  ` title="Auto fits the markers near you (sites, rigs, your ship, the run's plants); off, the slider's zoom stays">Auto</button>` +
+  `<span class="unk zspan"></span></div>`;
+let surfSpanShown = null;   // the span the last map was drawn at: Auto switched off keeps it
+function drawSurfZoom(el, L) {
+  const input = el.querySelector("[data-surfzoom]"), btn = el.querySelector("[data-surfauto]"), sp = el.querySelector(".zspan");
+  if (document.activeElement !== input) input.value = String(surfZoomPos(L.span));
+  btn.classList.toggle("on", L.auto); btn.setAttribute("aria-pressed", L.auto ? "true" : "false");
+  const t = `${metresText(L.span)} across`; if (sp.textContent !== t) sp.textContent = t;
+}
 function setSurfLegend(el, s, L, cfg) {
+  let body = el.querySelector(":scope > .smap-legbody");
+  if (!body) { el.innerHTML = SURF_ZOOM_ROW + `<div class="smap-legbody"></div>`; body = el.lastElementChild; }
+  surfSpanShown = L.span;
+  drawSurfZoom(el, L);
+  el = body;
   const html = `<div class="lg-title">${esc(s.body || "")}${s.alt != null && !s.down ? ` <span class="unk">${Math.round(s.alt)} m up</span>` : ""}` +
     ` <button type="button" class="mini" data-pinhere title="pin where you are now, with a name">📍 Pin here</button>` +
     `<button type="button" class="mini" data-pincopy title="copy where you are: latitude, longitude">📋</button></div>` + surfaceLegend(s, L, cfg);
   if (html !== el._surfKey) { el._surfKey = html; el.innerHTML = html; }
 }
 // a rig picked up without a tap (the game writes nothing when one is): marked picked up from its slot's ✕
+for (const id of ["nowMapLegend", "ovMapLegend"]) {
+  const el = document.getElementById(id);
+  el.addEventListener("input", e => {   // the slider: a zoom of your own, Auto off
+    if (!e.target.matches("[data-surfzoom]")) return;
+    store.set("surfZoom", {auto: false, span: surfZoomSpan(Number(e.target.value))}); renderSurface();
+  });
+  el.addEventListener("click", e => {   // Auto on, or off at the zoom Auto had
+    if (!e.target.closest("[data-surfauto]")) return;
+    const z = surfZoom();
+    store.set("surfZoom", z.auto ? {auto: false, span: surfSpanShown || z.span || 1000} : {auto: true, span: z.span});
+    renderSurface();
+  });
+}
 for (const id of ["nowMapLegend", "ovMapLegend"]) document.getElementById(id).addEventListener("click", async e => {
   if (pinLegendClick(e)) return;
   const x = e.target.closest("[data-rigremove]"); if (!x) return;

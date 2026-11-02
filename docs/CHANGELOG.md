@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · The surface map's zoom slider
+- **A zoom slider and Auto** on top of the surface map's legend (Now's and the Overview's; the strip follows): the
+  slider (log scale, 12 km to 100 m across) sets a span of its own and switches Auto off, showing what fits in it past
+  Auto's 3 km; Auto fits the markers near you again; Auto off keeps Auto's zoom. `surfZoom` on this device,
+  `surfaceLayout(s, cfg, S, zoom)`; the row is made once and the legend redrawn under it (`.smap-legbody`), so a
+  payload never cuts a drag short. The overlay's radar keeps its own auto zoom.
+
 ## 2026-11-02 · Here: Hide orbital distance
 - **Hide orbital distance** right of list / tree / schematic (the author: the orbit's line made Here's rows tall),
   shown only when a body has an orbit; it hides every `.orbit` (the table's line, its compact form's "· ↳", the

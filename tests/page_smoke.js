@@ -3547,6 +3547,40 @@ const releasePayloads = async () => {
   }
   // M2 surface map: shows below the altitude and hides above it, heading-up, rings to scale, rig slots and states,
   // an off-map chevron, the legend, the strip copy and the settings round trip (the canvas itself is not drawn here)
+  // the surface map's zoom (the author, 2026-11-02): a slider (right closer) and Auto beside it, on top of the legend;
+  // moving the slider switches Auto off and sets a span of its own (what fits in it shows, past Auto's 3 km); Auto on
+  // fits the markers near you again; Auto off keeps the zoom Auto had. This device's (surfZoom)
+  surface_zoom: { if (skip("surface_zoom")) break surface_zoom;
+    const w = dom.window, before = errors.length;
+    holdPayloads();
+    const got = JSON.parse(w.eval(`(() => {
+      const o = {}, v0 = view, s0 = data.surface, z0 = localStorage.getItem("surfZoom");
+      const R = 1500000, lat0 = -53.794, lon0 = -144.581, k = 180 / Math.PI / R;
+      const at = (n, e) => ({lat: lat0 + n * k, lon: lon0 + e * k / Math.cos(lat0 * Math.PI / 180)});
+      data.surface = {body: "ABC 3 d", system: "1", body_id: 19, ...at(0, 0), heading: 0, alt: 0, radius: R, show: true, down: true,
+        alt_avg: false, rhino: false, ship: null, rigs: [], bio: [], tags: [], locations: [],
+        sites: [{id: 9, kind: "site", n: null, ...at(200, 0), minerals: {}, tons: 0, dist: 200},
+                {id: 10, kind: "site", n: null, ...at(5000, 0), minerals: {}, tons: 0, dist: 5000}]};
+      localStorage.removeItem("surfZoom"); view = "now"; render();
+      const lg = document.getElementById("nowMapLegend"), sl = () => lg.querySelector("[data-surfzoom]"), auto = () => lg.querySelector("[data-surfauto]");
+      const L = () => surfaceLayout(data.surface, surfaceCfg(), 400), sites = () => L().items.filter(i => i.kind === "site").length;
+      const slide = v => { sl().value = String(v); sl().dispatchEvent(new Event("input", {bubbles: true})); };
+      o.auto = [auto().getAttribute("aria-pressed"), L().auto, L().span, Number(sl().value) === surfZoomPos(L().span), sites(), lg.querySelector(".zspan").textContent];
+      slide(100); o.closest = [auto().getAttribute("aria-pressed"), L().auto, L().span, store.get("surfZoom", null).auto];
+      slide(0); o.widest = [L().span, sites(), lg.querySelector(".zspan").textContent];
+      auto().click(); o.backAuto = [auto().getAttribute("aria-pressed"), L().auto, L().span];
+      auto().click(); o.offKeeps = [auto().getAttribute("aria-pressed"), L().auto, L().span];
+      o.sameRow = lg.querySelectorAll(".smap-zoom").length;   // made once, not again with each redraw
+      if (z0 === null) localStorage.removeItem("surfZoom"); else localStorage.setItem("surfZoom", z0);
+      data.surface = s0; view = v0; render();
+      return JSON.stringify(o); })()`));
+    await releasePayloads();
+    const want = {auto: ["true", true, 500, true, 1, "500 m across"], closest: ["false", false, 100, false], widest: [12000, 2, "12 km across"],
+                  backAuto: ["true", true, 500], offKeeps: ["false", false, 500], sameRow: 1};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| surface zoom |", good ? "the slider zooms and switches Auto off; Auto fits again; off keeps its zoom" : JSON.stringify(got), errors.slice(before));
+  }
   m2_surface_map: { if (skip("m2_surface_map")) break m2_surface_map;
     const w = dom.window, before = errors.length;
     const got = JSON.parse(w.eval(`(() => {
