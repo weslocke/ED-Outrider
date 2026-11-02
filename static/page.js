@@ -1916,6 +1916,11 @@ function drawSurface(canvas, L, small) {
 const surfWhere = it => `${surfDist(it.dist)} · ${String(Math.round(it.brg) % 360).padStart(3, "0")}°` +
   ` <span class="relarr" style="transform:rotate(${Math.round(it.rel)}deg)" title="where it is from your heading">↑</span>`;
 // the legend: species, the six rig slots (as the game's HUD shows them), sites, locations, the ship; nearest first
+// a species' name in the map's legend as Here writes it (the author, 2026-11-02): its colour as the game names it
+// ("Bacterium Aurasus - Green", the colour's word in it: colourName) and 📷 for a picture of it in your codex folders;
+// a mouse over the name shows a picture of it (spPicTip)
+const spLegendName = b => `<b class="sppic" data-sppic="${esc(b.code || "")}" data-spvar="${esc(b.variant_code || "")}"` +
+  ` data-spname="${esc(b.variant || b.species)}">${colourName(b.variant || b.species)}</b>${clCam(b.own_pic)}`;
 function surfaceLegend(s, L, cfg) {
   const by = k => L.items.filter(it => it.kind === k).sort((a, b) => a.dist - b.dist), rows = [];
   // the same colours as the map, which counts the tagged species too (review: the legend's swatch was another species')
@@ -1928,10 +1933,10 @@ function surfaceLegend(s, L, cfg) {
   const done = (s.bio || []).filter(b => b.done);
   if (species.length || done.length) rows.push(`<div class="lg-h">Samples</div>` + species.map(({b, it}) =>
     `<div class="lg-row lg-bio${b.current ? " cur" : " faint"}" data-species="${esc(b.species)}"><i class="sw" style="background:${colours.get(b.species)}"></i>` +
-    `<b>${esc(b.species)}</b> ${b.samples ?? "?"}/3${b.need ? ` · ${b.need} m` : ""}` +
+    `${spLegendName(b)} ${b.samples ?? "?"}/3${b.need ? ` · ${b.need} m` : ""}` +
     (b.clear ? ` · <span class="ok">✓ clear</span>` : it && b.need ? ` · <span class="unk">${Math.round(it.dist)} of ${b.need} m</span>` : "") + `</div>`).join("") +
     done.map(b => `<div class="lg-row lg-bio done" data-species="${esc(b.species)}"><i class="sw" style="background:${colours.get(b.species)}"></i>` +
-      `<b>${esc(b.species)}</b> <span class="ok">✓ done</span>${b.points && b.points.length ? "" : ` <span class="unk" title="sampled while Outrider was not reading the game live: no positions">(no spots)</span>`}</div>`).join(""));
+      `${spLegendName(b)} <span class="ok">✓ done</span>${b.points && b.points.length ? "" : ` <span class="unk" title="sampled while Outrider was not reading the game live: no positions">(no spots)</span>`}</div>`).join(""));
   // plants you tagged with the composition scanner, per species: how many, the nearest one a sample would count at
   const tagged = new Map();
   for (const it of by("tag")) { const g = tagged.get(it.species) || {n: 0, near: null}; g.n++; if (!it.faint && !g.near) g.near = it; tagged.set(it.species, g); }
@@ -2013,6 +2018,41 @@ for (const id of ["nowMapLegend", "ovMapLegend"]) {
     store.set("surfZoom", z.auto ? {auto: false, span: surfSpanShown || z.span || 1000} : {auto: true, span: z.span});
     renderSurface();
   });
+}
+// a species' picture under the mouse (the author, 2026-11-02: on the PC, a mouse over a species' name in the legend): one
+// of your own at random (another each time), else Canonn's, from GET api/species/picture; never on a touch screen (no
+// hover there: a tap would leave it up). The last one per species is shown at once while the next comes
+const SPT = {key: null, last: {}, seq: 0};
+const mouseHover = () => typeof matchMedia !== "function" || !matchMedia("(hover: none)").matches;
+function spPicPlace(tip, el) {
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth || 260, h = tip.offsetHeight || 200;
+  const x = Math.max(8, Math.min(innerWidth - w - 8, r.left)), below = r.bottom + 6 + h <= innerHeight;
+  tip.style.left = x + "px"; tip.style.top = (below ? r.bottom + 6 : Math.max(8, r.top - h - 6)) + "px";
+}
+function spPicDraw(tip, el, d) {
+  const img = d && d.image;
+  tip.innerHTML = img ? `<img src="${esc(img.url)}" alt="${esc(d.name || "")}"><div class="unk">${esc(d.name || "")} · ${img.own ? "your picture" : `Canonn${img.cmdr ? `, CMDR ${esc(img.cmdr)}` : ""}`}</div>`
+    : `<div class="unk">${d ? `no picture of ${esc(d.name || el.dataset.spname)}` : "a picture…"}</div>`;
+  const im = tip.querySelector("img"); if (im) im.onload = () => { if (tip.dataset.key === SPT.key) spPicPlace(tip, el); };
+  spPicPlace(tip, el);
+}
+async function spPicTip(el) {
+  const tip = document.getElementById("spPicTip"), key = `${el.dataset.sppic}|${el.dataset.spvar}|${el.dataset.spname}`;
+  SPT.key = key; tip.dataset.key = key; tip.hidden = false;
+  spPicDraw(tip, el, SPT.last[key]);
+  const seq = ++SPT.seq, last = SPT.last[key], avoid = last && last.image && last.image.file || "";
+  let d = null;
+  try { d = await apiJson(`api/species/picture?species=${encodeURIComponent(el.dataset.sppic)}&variant=${encodeURIComponent(el.dataset.spvar)}` +
+                          `&name=${encodeURIComponent(el.dataset.spname)}&avoid=${encodeURIComponent(avoid)}`); } catch { d = null; }
+  if (!d || d.error) return;
+  SPT.last[key] = d;
+  if (seq === SPT.seq && SPT.key === key && el.isConnected) spPicDraw(tip, el, d);
+}
+const spPicHide = () => { SPT.key = null; SPT.seq++; document.getElementById("spPicTip").hidden = true; };
+for (const id of ["nowMapLegend", "ovMapLegend"]) {
+  const el = document.getElementById(id);
+  el.addEventListener("mouseover", e => { const n = e.target.closest("[data-sppic]"); if (n && mouseHover() && !n.contains(e.relatedTarget)) spPicTip(n); });
+  el.addEventListener("mouseout", e => { const n = e.target.closest("[data-sppic]"); if (n && !n.contains(e.relatedTarget)) spPicHide(); });
 }
 for (const id of ["nowMapLegend", "ovMapLegend"]) document.getElementById(id).addEventListener("click", async e => {
   if (pinLegendClick(e)) return;

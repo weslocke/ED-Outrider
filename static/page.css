@@ -1181,6 +1181,12 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 #nowMap .smap { flex: 0 0 auto; } #nowMap canvas, #obMap canvas { display: block; touch-action: manipulation; }
 .smap-legend { flex: 1 1 240px; min-width: 0; font-size: clamp(15px, 1.7vw, 22px); line-height: 1.35; }
 .smap-legend .lg-title { font-weight: 600; margin-bottom: .4em; }
+/* the legend's species picture under the mouse (the author, 2026-11-02) */
+.smap-legend .sppic { cursor: help; }
+.sppictip { position: fixed; z-index: 60; max-width: 280px; padding: 4px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, .45); pointer-events: none; font-size: 12px; }
+.sppictip img { display: block; max-width: 270px; max-height: 200px; border-radius: 5px; }
+.sppictip .unk { margin-top: 3px; }
 /* the surface map's zoom row (the author, 2026-11-02): the slider (right closer) and Auto */
 .smap-zoom { display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 1.2; margin-bottom: .5em; flex-wrap: wrap; }
 .smap-zoom input[type=range] { flex: 1 1 120px; max-width: 240px; min-width: 90px; accent-color: var(--accent); }

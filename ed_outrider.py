@@ -9959,12 +9959,14 @@ class State:
         cur = (run["system"], run["body_id"], run["species"]) if run else None
         out = {}
         for p in self.db.execute(
-                "SELECT sp.species, sp.genus, sp.n, sp.lat, sp.lon, o.species_name, o.genus_name, o.samples FROM sample_points sp "
+                "SELECT sp.species, sp.genus, sp.n, sp.lat, sp.lon, o.species_name, o.genus_name, o.samples, o.variant_name,"
+                " o.variant FROM sample_points sp "
                 "JOIN own_organic o ON o.system = sp.system AND o.body_id = sp.body_id AND o.species = sp.species "
                 "WHERE sp.system=? AND sp.body_id=? AND o.done_ts IS NULL ORDER BY sp.species, sp.n", (h["system"], h["body_id"])):
             s = out.get(p["species"])
             if not s:
-                s = out[p["species"]] = {"species": p["species_name"] or p["species"], "genus": p["genus_name"],
+                s = out[p["species"]] = {"species": p["species_name"] or p["species"], "genus": p["genus_name"], "code": p["species"],
+                                         "variant": p["variant_name"], "variant_code": p["variant"],
                                          "samples": p["samples"], "current": cur == (h["system"], h["body_id"], p["species"]),
                                          "need": outrider.bio.colony_distance(p["genus"], p["genus_name"]) if outrider.bio else None,
                                          "points": []}
@@ -9974,18 +9976,26 @@ class State:
             near = min((p["dist"] for p in s["points"]), default=None)
             s["clear"] = bool(s["need"] and near is not None and near >= s["need"])
         done = []
-        for o in self.db.execute("SELECT species, genus_name, species_name, done_ts FROM own_organic WHERE system=? AND body_id=?"
+        for o in self.db.execute("SELECT species, genus_name, species_name, variant_name, variant, done_ts FROM own_organic"
+                                 " WHERE system=? AND body_id=?"
                                  " AND done_ts IS NOT NULL ORDER BY done_ts", (h["system"], h["body_id"])):
             if o["species"] in out:
                 continue   # a new run of a species done here before: the run's own points
             spots = self.db.execute("SELECT lat, lon FROM bio_spots WHERE system=? AND body_id=? AND species=? AND ts < ?"
                                     " ORDER BY ts DESC LIMIT 3", (h["system"], h["body_id"], o["species"], o["done_ts"])).fetchall()
-            done.append({"species": o["species_name"] or o["species"], "genus": o["genus_name"], "samples": 3, "current": False,
+            done.append({"species": o["species_name"] or o["species"], "genus": o["genus_name"], "code": o["species"],
+                         "variant": o["variant_name"], "variant_code": o["variant"], "samples": 3, "current": False,
                          "done": True, "need": None, "clear": None,
                          "points": [{"n": len(spots) - i, "lat": p["lat"], "lon": p["lon"],
                                      "dist": round(surface_m(h["lat"], h["lon"], p["lat"], p["lon"], h["radius"]))}
                                     for i, p in enumerate(spots)][::-1]})
-        return sorted(out.values(), key=lambda s: not s["current"]) + done
+        # the legend's 📷 (the author, 2026-11-02: as Here's): a picture of that species' colour in your codex folders
+        runs = sorted(out.values(), key=lambda s: not s["current"]) + done
+        if runs:
+            own_pic = self.own_pic_check()
+            for s in runs:
+                s["own_pic"] = own_pic(s["code"], s["variant_code"], s["variant"])
+        return runs
 
     def surface_summary(self, now=None):
         """The surface map's block of the payload while you are over a body (None otherwise): where you are, whether
@@ -13264,22 +13274,50 @@ class State:
             none = lambda *a: False   # noqa: E731
             none.knows = knows
             return none
+        find = self.bio_species_lookup(R)
+
+        def check(species=None, variant=None, name=None):
+            sp, colour = find(species, variant, name)
+            if not sp:
+                return False
+            folder = S.codex_dir(root, {"kind": "bio", "group": sp.get("genus"), "entry": sp["name"], "colour": colour})
+            return bool(folder) and os.path.normcase(folder) in have
+        check.knows = knows
+        return check
+
+    @staticmethod
+    def bio_species_lookup(R):
+        """(species id or None, variant codex code or None, the name logged) -> (the rules' species (merged) or None,
+        its colour as a shot's is filed, "" for none): by id, else by the variant's code (in any game language), else by
+        the name before " - " (own_pic_check's 📷, species_picture's hover). R: the loaded rules."""
         merged, names = outrider.checklist.merge_species(R["species"])
         by_id = {sp.get("id") or sp["name"]: sp for sp in merged}
         tables = bool(R.get("colours"))
 
-        def check(species=None, variant=None, name=None):
+        def find(species=None, variant=None, name=None):
             m = BIO_CODEX_RE.match(str(variant or ""))   # the species from its variant's code, in any language
             sp = (by_id.get(species) or by_id.get(variant)   # a colourless species' code is its own id (no number)
                   or (by_id.get(f"$Codex_Ent_{m.group(1)}_{m.group(2)}_Name;") if m else None)
                   or by_id.get(names.get(str(name or "").split(" - ")[0].strip().lower())))
-            if not sp:
-                return False
-            folder = S.codex_dir(root, {"kind": "bio", "group": sp.get("genus"), "entry": sp["name"],
-                                        "colour": outrider.checklist.variant_colour(sp, variant, name, tables)})
-            return bool(folder) and os.path.normcase(folder) in have
-        check.knows = knows
-        return check
+            return (sp, outrider.checklist.variant_colour(sp, variant, name, tables)) if sp else (None, "")
+        return find
+
+    def species_picture(self, species=None, variant=None, name=None, avoid=None):
+        """GET /api/species/picture?species=&variant=&name=&avoid=: a picture of a species in its colour for the surface
+        map legend's hover (the author, 2026-11-02): one of your own from its codex folder, at random (another than
+        `avoid`), else Canonn's (linked; the colour's, else the species', else its genus'). {name (the rules' English
+        name and colour), image ({url, own, file} or {url, cmdr}) or None}."""
+        R = (outrider.bio.load_rules() or {}) if outrider.bio else {}
+        sp, colour = self.bio_species_lookup(R)(species, variant, name) if R.get("species") else (None, "")
+        if not sp:
+            return {"name": name, "image": None}
+        title = f"{sp['name']} - {colour}" if colour else sp["name"]
+        own = self.codex_own("bio", sp.get("genus"), sp["name"], colour, avoid)
+        if own:
+            return {"name": title, "image": own}
+        have = self.codex_images()
+        hit = have.get(title.lower()) or have.get(sp["name"].lower()) or (have.get(sp["genus"].lower()) if sp.get("genus") else None)
+        return {"name": title, "image": {"url": hit[0], "cmdr": hit[1]} if hit else None}
 
     def codex_marks(self, out, kind):
         """[screenshots] codex_show: each checklist row's `own_pics`, the colours ("" for a species with none, and for a
@@ -23300,6 +23338,12 @@ def make_app(state, hosts=None):
         boost = request.query.get("boost") in ("1", "true")
         return web.json_response(await state.map_payload(radius, path_len, boost))
 
+    async def species_picture_view(request):
+        """GET /api/species/picture?species=&variant=&name=&avoid=: a picture of a species' colour (State.species_picture),
+        the surface map legend's hover."""
+        q = request.query
+        return web.json_response(state.species_picture(q.get("species"), q.get("variant"), q.get("name"), q.get("avoid")))
+
     async def route_list_view(request):
         """GET /api/route/list?which=game|highway|survey|carrier: the Plotted Route pane's rows (State.route_list; an
         unknown or missing which: the default route). Starts the Spansh fetch for them in the background: the
@@ -24493,6 +24537,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/signin", signin_page)
     app.router.add_get("/api/map", map_view)
     app.router.add_get("/api/route/list", route_list_view)
+    app.router.add_get("/api/species/picture", species_picture_view)
     app.router.add_get("/api/system/{id64}", system_view)
     app.router.add_get("/api/history", history_view)
     app.router.add_get("/api/organics", organics_view)

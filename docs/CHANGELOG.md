@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · The surface map legend's species as Here's, with a picture on hover
+- The legend names each species as Here does (the author): its colour as the game names it ("Tubus Compagibus -
+  Green", the colour's word coloured) and 📷 for a picture of your own (`State.surface_bio`'s `code`, `variant`,
+  `variant_code`, `own_pic`). On a PC a mouse over the name shows a picture of it (`#spPicTip`, never on a touch
+  screen): GET `/api/species/picture` (`State.species_picture`): one of your own from its codex folder at random,
+  another than the last, else Canonn's (that colour's, the species', the genus'). `State.bio_species_lookup` is
+  `own_pic_check`'s species and colour lookup, shared.
+
 ## 2026-11-02 · A finished species' samples are small × marks
 - On the surface map a finished species' three samples are small × marks in its colour (the author), not ticked
   dots; the legend keeps "✓ done".

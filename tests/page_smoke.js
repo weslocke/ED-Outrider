@@ -3547,6 +3547,53 @@ const releasePayloads = async () => {
   }
   // M2 surface map: shows below the altitude and hides above it, heading-up, rings to scale, rig slots and states,
   // an off-map chevron, the legend, the strip copy and the settings round trip (the canvas itself is not drawn here)
+  // a species' name in the map's legend as Here writes it (the author, 2026-11-02): its colour as named, 📷 for a picture
+  // of your own; a mouse over it shows a picture (api/species/picture: your own, another each time, else Canonn's), gone
+  // when the mouse leaves
+  surface_species_pictures: { if (skip("surface_species_pictures")) break surface_species_pictures;
+    const w = dom.window, d = w.document, before = errors.length;
+    holdPayloads();
+    w.eval(`(() => {
+      window.__sp = {v0: view, s0: data.surface, api: apiJson, asked: [], n: 0};
+      apiJson = async (url, ...rest) => { if (!String(url).startsWith("api/species/picture")) return __sp.api(url, ...rest);
+        __sp.asked.push(url); __sp.n++;
+        return __sp.n === 1 ? {name: "Tubus Compagibus - Green", image: {url: "api/codex_picture?one", own: true, file: "one.png"}}
+                            : {name: "Tubus Compagibus - Green", image: {url: "https://c/tubus.jpg", cmdr: "Someone"}}; };
+      const R = 1500000, lat0 = -53.794, lon0 = -144.581, k = 180 / Math.PI / R;
+      const at = (n, e) => ({lat: lat0 + n * k, lon: lon0 + e * k / Math.cos(lat0 * Math.PI / 180)});
+      data.surface = {body: "ABC 3 d", system: "1", body_id: 19, ...at(0, 0), heading: 0, alt: 0, radius: R, show: true, down: true,
+        alt_avg: false, rhino: false, ship: null, rigs: [], sites: [], locations: [], tags: [], trail: [],
+        bio: [{species: "Bacterium Aurasus", genus: "Bacterium", code: "$Codex_Ent_Bacterial_01_Name;", variant: null, variant_code: null,
+               own_pic: false, samples: 1, current: true, need: 500, clear: false, points: [{n: 1, ...at(100, 0), dist: 100}]},
+              {species: "Tubus Compagibus", genus: "Tubus", code: "$Codex_Ent_Tubus_04_Name;", variant: "Tubus Compagibus - Green",
+               variant_code: "$Codex_Ent_Tubus_04_F_Name;", own_pic: true, samples: 3, current: false, done: true, need: null,
+               clear: null, points: [{n: 1, ...at(-300, 0), dist: 300}]}]};
+      view = "now"; render(); })()`);
+    const names = () => [...d.querySelectorAll("#nowMapLegend [data-sppic]")];
+    const got = {};
+    got.names = names().map(e => [e.dataset.sppic, e.dataset.spname, e.textContent, !!(e.nextElementSibling && e.nextElementSibling.classList.contains("clcam"))]);
+    got.colourWord = !!names()[1].querySelector(".vc") === w.eval("hereBio().colours");
+    const tip = d.getElementById("spPicTip"), over = el => el.dispatchEvent(new w.MouseEvent("mouseover", {bubbles: true}));
+    over(names()[1]); got.waiting = [tip.hidden, tip.textContent];
+    await sleep(60);
+    got.own = [tip.querySelector("img") && tip.querySelector("img").getAttribute("src"), tip.querySelector(".unk").textContent];
+    names()[1].dispatchEvent(new w.MouseEvent("mouseout", {bubbles: true})); got.out = tip.hidden;
+    over(names()[1]); await sleep(60);   // again: another than the one shown (avoid), here Canonn's
+    got.canonn = [tip.querySelector("img").getAttribute("src"), tip.querySelector(".unk").textContent, /avoid=one\.png/.test(w.eval("__sp.asked[1]"))];
+    got.asked = w.eval(`__sp.asked[0]`);
+    names()[1].dispatchEvent(new w.MouseEvent("mouseout", {bubbles: true}));
+    w.eval(`apiJson = __sp.api; data.surface = __sp.s0; view = __sp.v0; render()`);
+    await releasePayloads();
+    const want = {names: [["$Codex_Ent_Bacterial_01_Name;", "Bacterium Aurasus", "Bacterium Aurasus", false],
+                          ["$Codex_Ent_Tubus_04_Name;", "Tubus Compagibus - Green", "Tubus Compagibus - Green", true]],
+                  colourWord: true, waiting: [false, "a picture…"],
+                  own: ["api/codex_picture?one", "Tubus Compagibus - Green · your picture"], out: true,
+                  canonn: ["https://c/tubus.jpg", "Tubus Compagibus - Green · Canonn, CMDR Someone", true],
+                  asked: "api/species/picture?species=%24Codex_Ent_Tubus_04_Name%3B&variant=%24Codex_Ent_Tubus_04_F_Name%3B&name=Tubus%20Compagibus%20-%20Green&avoid="};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| surface species pictures |", good ? "the legend's names as Here's (colour, 📷), a picture under the mouse" : JSON.stringify(got), errors.slice(before));
+  }
   // a species finished on this body stays (the author, 2026-11-02): its three samples as small × in its own colour,
   // with no colony ring, and its legend row "✓ done" after the runs under way, in the same colour as its dots
   surface_done_species: { if (skip("surface_done_species")) break surface_done_species;

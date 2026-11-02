@@ -544,7 +544,9 @@ their letters), a crosshair along your heading and quarter rings, to read a bear
   map shows. This device remembers it, for Now's map, the Overview's and the small one on the other tabs.
 - **What is drawn:** your ship (a landing-pad H), the samples of unfinished bio runs with each species' colony ring (the
   current run solid), each species you finished on this body (its three samples where you took them, small × in its
-  colour, and "✓ done" in the legend; each species keeps one colour on the body throughout), plants you tagged (below), your rigs 1–6 with a faint spacing ring, saved sites (U1…
+  colour, and "✓ done" in the legend; each species keeps one colour on the body throughout; the legend names each
+  as Here does, its colour as the game names it and 📷 when your codex folders have a picture of it, and on a PC a
+  mouse over the name shows a picture of it: one of your own at random, else Canonn's), plants you tagged (below), your rigs 1–6 with a faint spacing ring, saved sites (U1…
   unmarked, S1… rigs picked up) and mining locations (L3). Anything off the map is a chevron on the rim.
 - **Tagged plants** (as BioScan's waypoints): point the composition scanner at a plant, from the ship flying low,
   the SRV or on foot, and Outrider remembers where it is, as a hollow ring in the species' colour. Faint means a

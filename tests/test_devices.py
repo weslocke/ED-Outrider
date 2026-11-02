@@ -2162,11 +2162,32 @@ class SurfaceRigs(unittest.TestCase):
         pal = outrider.overlay.palette()
         without = dict(surf, bio=[b for b in surf["bio"] if not b.get("done")])
         self.assertEqual(outrider.overlay.radar_panel(surf, pal), outrider.overlay.radar_panel(without, pal))
+        # the legend's name and 📷 (the author, 2026-11-02): the codes for its picture, the variant as logged, no folders
+        self.assertEqual((done["code"], done["variant"], done["own_pic"], bio[0]["code"]),
+                         ("$Codex_Ent_Stratum_07_Name;", None, False, "$Codex_Ent_Bacterial_04_Name;"))
         # sampled again: the new run's points, not the old run's as well
         self.status(60, 0, 0, flags=0, flags2=1)
         scan(60, "Log")
         bio = self.state.surface_bio(self.state.surface_here())
         self.assertEqual([(b["species"], b.get("done", False)) for b in bio], [("Codex_Ent_Stratum_07_Name", False)])
+
+    def test_a_species_picture_for_the_legend(self):
+        """The surface map legend's hover (the author, 2026-11-02): one of your own pictures of that species' colour first
+        (another than the one shown), else Canonn's (that colour's, else the species', else its genus'), found by the
+        species' code in any game language; an unknown species has none."""
+        self.state._codex_images = {"bacterium aurasus - green": ["https://c/green.jpg", "Someone"],
+                                    "stratum tectonicas": ["https://c/st.jpg", "X"]}
+        pic = self.state.species_picture
+        self.assertEqual(pic("$Codex_Ent_Bacterial_01_Name;", None, "Bacterium Aurasus - Green"),
+                         {"name": "Bacterium Aurasus - Green", "image": {"url": "https://c/green.jpg", "cmdr": "Someone"}})
+        self.assertEqual(pic("$Codex_Ent_Bacterial_01_Name;", None, "Bakterium Aurasus - Grün")["name"], "Bacterium Aurasus")   # by code
+        self.assertEqual(pic(None, None, "Stratum Tectonicas - Pink")["image"]["url"], "https://c/st.jpg")   # the species'
+        self.assertEqual(pic(None, None, "Nothing Known - Red"), {"name": "Nothing Known - Red", "image": None})
+        asked = []
+        own = {"url": "api/codex_picture?x", "own": True, "file": "b.png"}
+        with unittest.mock.patch.object(self.state, "codex_own", lambda *a: asked.append(a) or own):
+            self.assertEqual(pic("$Codex_Ent_Bacterial_01_Name;", None, "Bacterium Aurasus - Green", "a.png")["image"], own)
+        self.assertEqual(asked, [("bio", "Bacterium", "Bacterium Aurasus", "Green", "a.png")])
 
     def test_site_tags_keep_their_order_while_you_mine(self):
         """R29: the page numbers U1, U2... in the server's order: mining more at the first site must not move it."""
