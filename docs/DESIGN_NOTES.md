@@ -352,8 +352,9 @@ upstream project's choices, not rules of the game.
   moving on with each jump: a Highway route of 400 jumps would be 400 dumps, and the whole route is Plot Route's.
   **Spansh is asked only while the pane is fetched** (GET `/api/route/list`, as `/api/boxel`): one id search, then a dump
   only for a system Spansh has whose cache is older than its record; nothing for one it has not, nothing inside the
-  Nearby sphere (its refresh's), no id search around Sol and Colonia (Spansh knows every system there). **Not in the
-  Overview** (beside Here a third pane is too cramped), and **on a scrolling page in place of the list**, not under it
+  Nearby sphere (its refresh's), no id search around Sol and Colonia (Spansh knows every system there). **The Overview
+  has it too**, its button on the Overview's bar (first left out as cramped beside Here; the author works in the
+  Overview, 2026-11-02), and **on a scrolling page it takes the list's place**, not under it
   (a pane under a long list would be off screen); in app mode the divider sets its share, 25-75 %.
 - **The voice plots far places** (D4, option A, the author): "nearest station" (or carrier, Vista, a trader...) also
   plots a neutron route to the place it names when it is further than `[highway] voice_plot_ly` (on, 500 ly), to its

@@ -1952,8 +1952,8 @@ const releasePayloads = async () => {
   }
   // the Plotted Route pane (#22, Psilovybin): 🛣 Show route only while a route exists, Nearby's rows for the systems
   // ahead (a # cell, Dist along the route), the switch between routes, Spansh's progress, "+N more", a row's click
-  // opens the system as Nearby's does; a scrolling page shows it in place of the list; never in the Overview; ✕ closes
-  // it. And the endpoint answers in its shape
+  // opens the system as Nearby's does; a scrolling page shows it in place of the list; the Overview has it too (its
+  // button on the Overview's bar: the author works there); ✕ closes it. And the endpoint answers in its shape
   route_pane: { if (skip("route_pane")) break route_pane;
     const w = dom.window, d = w.document, before = errors.length;
     const api = await (await fetch(base + "api/route/list?which=nonsense")).json();
@@ -1991,7 +1991,8 @@ const releasePayloads = async () => {
     got.pinned = w.eval(`pinnedSystem === RT.data.rows[0].id`);
     w.eval(`unpinSystem()`); await settle(800);
     d.querySelector('[data-view="overview"]').click(); await sleep(200);
-    got.overview = w.eval(`[document.getElementById("routeBtn").hidden, document.getElementById("routeWrap").hidden]`);
+    got.overview = w.eval(`[document.getElementById("routeBtn").hidden, document.getElementById("routeWrap").hidden,
+      !!document.querySelector("#overView .ovbar #routeBtn"), !!document.querySelector("#ovNear #routeWrap")]`);
     d.querySelector('[data-view="near"]').click(); await sleep(200);
     got.close = w.eval(`(() => { document.getElementById("routeClose").click();
       const r = [document.getElementById("routeWrap").hidden, store.get("routePane", true)];
@@ -2000,10 +2001,10 @@ const releasePayloads = async () => {
     const want = {noRoute: true, closed: [false, "🛣 Show route", true], open: ["true", "🛣 Hide route", false, true],
                   rows: [["1", "12.50"], ["2", "40.25"]],
                   rowId: [true, true], nodata: true, switch: [["game", true], ["survey", false]], note: "asking Spansh: 3 of 12…",
-                  more: "+30 more systems on this route", app: [true, false, false], scrolling: [false, true, true], pinned: true, overview: [true, true], close: [true, false]};
+                  more: "+30 more systems on this route", app: [true, false, false], scrolling: [false, true, true], pinned: true, overview: [false, false, true, true], close: [true, false]};
     const good = apiOk && JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;
-    console.log(good ? "OK" : "FAIL", "| route pane |", good ? "Show route, the systems ahead with Nearby's columns, the switch, split or in place of the list, not in the Overview"
+    console.log(good ? "OK" : "FAIL", "| route pane |", good ? "Show route, the systems ahead with Nearby's columns, the switch, split or in place of the list, the Overview too"
       : JSON.stringify({apiOk, api: Object.keys(api), got}), errors.slice(before));
   }
   // the game logged a plot but wrote no NavRoute.json (2026-10-14): the payload's minimal form, said in words, no chips

@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · The Plotted Route pane on the Overview too
+- 🛣 Show route sits on the Overview's bar (with Standard / Boxel and Focus/Lock) and the pane splits the Overview's
+  Nearby column, as on the Nearby tab: left out of the Overview at first, where the author found no button.
+
 ## 2026-11-02 · The Plotted Route pane (issue #22)
 - **🛣 Show route** in Nearby's heading, while a route exists (Psilovybin, issue #22: "shows the route and EDSM data
   along that route"; the author's design): a pane under Nearby's list with Nearby's rows for the next 24 systems on

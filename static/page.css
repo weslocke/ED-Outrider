@@ -300,7 +300,6 @@ body.viewwin .views { display: none; }
 #routeBar #routeClose { margin-left: auto; }
 #nearWrap.routeonly > #nearPane, #nearWrap.routeonly > #boxelPane, #nearWrap.routeonly > #nearOpts,
 #nearWrap.routeonly > #nearStrip { display: none; }
-#ovNear #routeWrap, #ovNear #routeDivider { display: none; }
 body.app #nearWrap.routeon > #routeWrap { flex: 0 0 var(--routeh, 45%); min-height: 0; display: flex; flex-direction: column; }
 body.app #nearWrap.routeon > #routeWrap > #routeBar { flex: 0 0 auto; margin-top: 4px; }
 body.app #nearWrap.routeon > #routeDivider { flex: 0 0 6px; cursor: row-resize; background: var(--line); border-radius: 4px;

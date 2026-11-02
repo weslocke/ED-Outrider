@@ -323,7 +323,7 @@ never writes the route's file (NavRoute.json); Outrider then waits a minute for 
 or fuel figures. If the line stays like that, clear the route in the galaxy map and plot a different destination: the
 game writes the file again.
 
-**🛣 Show route** in Nearby's heading (there while you have a route) opens the **Plotted route** pane under the list:
+**🛣 Show route** in Nearby's heading (the Overview's bar on the Overview; there while you have a route) opens the **Plotted route** pane under the list:
 the next 24 systems on the route, with Nearby's columns (status, main star, bodies, notable, value, known), so you see
 what is out there before you go. **#** is the jump number from you (a Highway row counts the jumps it stands for; a
 survey route or a carrier trip numbers its stops), **Dist** the light years along the route, **From you** straight.
@@ -331,8 +331,7 @@ With more than one route (the game's, the Highway's, a survey or trade route, a 
 which; the game's comes first. Outrider asks Spansh about these systems only while the pane is open ("asking Spansh: 3
 of 12…"), and once per system: flying that stretch again asks nothing. Drag the bar between the list and the pane to
 resize it; in a small window or a phone browser the pane takes the list's place instead (🛣 Hide route brings the list
-back). ✕ closes it; this device remembers whether it was open, the route picked and its size. It is not on the
-Overview.
+back). ✕ closes it; this device remembers whether it was open, the route picked and its size.
 
 The **Data tile** says how fresh your journal is (the newer of the journal and Status.json, so a quiet journal in
 supercruise or on foot does not turn it amber), the last backup, the uploads in use, and whether the outside lookups

@@ -4632,8 +4632,8 @@ document.getElementById("nearStrip").addEventListener("click", e => {
 // ---- the Plotted Route pane (issue #22, Psilovybin: "shows the route and EDSM data along that route"; project/
 // PLAN-route-pane-2026-11-02.md): Nearby's rows for the next systems on a route (the game's, the Highway's, the survey
 // slot's, a carrier trip's), under the list, the author's design (2026-11-02). 🛣 Show route in Nearby's heading while a
-// route exists; app mode splits the height (the divider: routeSplit), a scrolling page shows it in place of the list.
-// Not in the Overview (cramped beside Here). The server asks Spansh for its systems only while it is fetched
+// route exists (on the Overview's bar there, with Standard / Boxel and Focus/Lock: the author works there, 2026-11-02);
+// app mode splits the height (the divider: routeSplit), a scrolling page shows it in place of the list. The server asks Spansh for its systems only while it is fetched
 // (api/route/list), and the payload's route_lists.key moves as the answers come. This device's: routePane (open),
 // routeWhich (the route picked), routeSplit (its share, 25-75 %)
 const RT = {data: null, key: null, loading: false, split: null};
@@ -4649,10 +4649,10 @@ async function loadRouteList() {   // the newest answer only; a key moved during
   if (RT.key !== k) loadRouteList();
 }
 function renderRoutePane() {
-  const choices = (data.route_lists && data.route_lists.choices) || [], inOv = view === "overview";
-  const on = routeOpen() && choices.length > 0 && !inOv, app = appOn();
+  const choices = (data.route_lists && data.route_lists.choices) || [];
+  const on = routeOpen() && choices.length > 0, app = appOn();
   const btn = document.getElementById("routeBtn"), nw = document.getElementById("nearWrap");
-  btn.hidden = !choices.length || inOv;
+  btn.hidden = !choices.length;
   btn.setAttribute("aria-pressed", on ? "true" : "false");
   const label = on ? "🛣 Hide route" : "🛣 Show route";
   if (btn.textContent !== label) btn.textContent = label;
