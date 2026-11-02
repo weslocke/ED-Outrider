@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-02 · Here: Hide orbital distance
+- **Hide orbital distance** right of list / tree / schematic (the author: the orbit's line made Here's rows tall),
+  shown only when a body has an orbit; it hides every `.orbit` (the table's line, its compact form's "· ↳", the
+  schematic's "/ 2.6 ls") through `#hereView.noorbits`; this device's (`hereOrbits`). The body's panel keeps it.
+
 ## 2026-11-02 · The Plotted Route pane on the Overview too
 - 🛣 Show route sits on the Overview's bar (with Standard / Boxel and Focus/Lock) and the pane splits the Overview's
   Nearby column, as on the Nearby tab: left out of the Overview at first, where the author found no button.

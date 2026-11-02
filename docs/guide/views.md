@@ -57,6 +57,8 @@ Under a moon's or another star's planet's distance from arrival, **↳** gives h
 15 ls", with the closest and farthest points of an eccentric orbit. The schematic puts both under the body,
 "2,026 ls / 2.6 ls" (from arrival / from what it orbits, the body drawn above or beside it). It is the orbit's size (its
 semi-major axis), not today's distance; the arrival star's own planets have none (their distance from arrival says it).
+**Hide orbital distance**, right of list / tree / schematic, leaves that line out for shorter rows (the schematic's
+"/ 2.6 ls" too; the body's panel keeps it); **Show orbital distance** brings it back. This device remembers it.
 A footer under the list says what each icon means, for the icons that system's list shows (none, no footer); it
 stays in view while the list scrolls.
 "🧬? check in the FSS" marks a landable body you have only from an AutoScan or a nav beacon, whose signals nobody

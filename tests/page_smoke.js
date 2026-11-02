@@ -1313,8 +1313,18 @@ const releasePayloads = async () => {
         const prow = document.querySelector('#hereRows tr[data-body="Fake 3"]');
         o.ownPic = prow ? [...prow.querySelectorAll("td.bio .sp")].map(e => !!e.querySelector(".clcam")) : null;
         // what it orbits under its distance from arrival (Hiner399, discussion #3)
-        const ob = prow && prow.querySelector(".orbit");
+        const ob = prow && prow.querySelector("div.orbit");
         o.orbit = ob ? [ob.textContent, ob.title] : null;
+        // Hide orbital distance (the author, 2026-11-02: the orbit's line makes the rows tall): the button after list /
+        // tree / schematic hides every .orbit (the compact form's too), kept on this device; no button with no orbit
+        const orbBtn = () => document.querySelector("#hereHead [data-orbits]"), hv = document.getElementById("hereView");
+        const keepOrb = store.get("hereOrbits", true), shownOrb = () => [...document.querySelectorAll('#hereRows tr[data-body="Fake 3"] .orbit')].map(e => getComputedStyle(e).display);
+        const orb0 = [orbBtn() && orbBtn().textContent, hv.classList.contains("noorbits"), shownOrb()];
+        orbBtn().click();
+        const orb1 = [orbBtn().textContent, orbBtn().getAttribute("aria-pressed"), hv.classList.contains("noorbits"), shownOrb(), store.get("hereOrbits", true)];
+        orbBtn().click();
+        o.orbitHide = [orb0, orb1, hv.classList.contains("noorbits")];
+        store.set("hereOrbits", keepOrb);
         o.ownPicLegend = [...document.querySelectorAll("#hereLegend .lgi")].some(e => /codex folders/.test(e.parentElement ? e.parentElement.textContent : ""));
         // the icon legend under the list (the author, 2026-10-10): only the icons this list shows; none, no footer
         const plain = {first_discovered: false, first_mapped: false, mapped: false, first_footfall: false, scanned: true, rings: 0,
@@ -1322,6 +1332,7 @@ const releasePayloads = async () => {
         hereData = Object.assign({}, hd, {bodies: [Object.assign({}, fake, plain)], tree: null}); renderHere();
         const lg = document.getElementById("hereLegend"), icons = () => [...lg.querySelectorAll(".lgi")].map(e => e.textContent);
         const used = icons().join(" "), shown = !lg.hidden;
+        o.orbitNoBtn = !orbBtn();
         hereData = Object.assign({}, hd, {bodies: [Object.assign({}, fake, plain, {bio: 0, genera: [], organics: [], bio_guess: [], codex: []})], tree: null});
         renderHere();
         o.legend = shown && used === "1/3 ✦ 📖" && lg.hidden && icons().length === 0 ? true : [shown, used, lg.hidden, icons()];
@@ -1447,7 +1458,7 @@ const releasePayloads = async () => {
     w.setTimeout = realST; w.fetch = realFetch;
     w.eval("search = null; searchWant = 0; searchRefused = false; render()");
     w.speak = realSpeak; w.play = realPlay;
-    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1, true], ownPic: [true, false, true], orbit: ["↳ 15 ls · B", "orbits B at 15 ls (12 ls to 18 ls): the orbit's size (its semi-major axis), not today's distance"], ownPicLegend: true, legend: true, noDss: true, finished: true, mat: true,
+    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1, true], ownPic: [true, false, true], orbit: ["↳ 15 ls · B", "orbits B at 15 ls (12 ls to 18 ls): the orbit's size (its semi-major axis), not today's distance"], orbitHide: [["Hide orbital distance", false, ["inline", "block"]], ["Show orbital distance", "true", true, ["none", "none"], false], false], ownPicLegend: true, orbitNoBtn: true, legend: true, noDss: true, finished: true, mat: true,
                   streak: 2, nulls: ["{}", "ts"], impNull: "bioSort", saved: true, dock: "2026-01-01T01:00:00Z", hlRender: true, more: true};
     const want2 = {onbody: true, here: true, logError: null};
     const goodH = JSON.stringify(out) === JSON.stringify(want) && JSON.stringify(out2) === JSON.stringify(want2)

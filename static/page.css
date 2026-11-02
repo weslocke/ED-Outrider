@@ -635,6 +635,8 @@ h3.subhead { font-size: 13px; font-weight: 600; color: var(--muted); text-transf
 
 /* ---- Here: schematic ---- */
 #hereHead .modes { display: inline-flex; margin-left: 12px; vertical-align: middle; }
+#hereHead [data-orbits] { margin-left: 8px; vertical-align: middle; }
+#hereView.noorbits .orbit { display: none; }   /* Hide orbital distance (this device's choice) */
 #hereHead .modes button { background: var(--panel); color: var(--muted); border: 1px solid var(--line); padding: 1px 8px; font: inherit; font-size: 12px; cursor: pointer; margin-left: -1px; }
 #hereHead .modes button:first-child { border-radius: 6px 0 0 6px; } #hereHead .modes button:last-child { border-radius: 0 6px 6px 0; }
 #hereHead .modes button.on { color: var(--accent); border-color: var(--accent); position: relative; }

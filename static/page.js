@@ -5284,6 +5284,7 @@ function renderHere() {
   // a system opened by name from Search may be far outside the sphere: its distance is the lookup's
   // from you, not from Nearby's centre when Nearby is around another system (review 2026-10-23 S5-B5)
   const away = row ? lyFromYou(row) : pinned && foundSys[pinnedSystem] ? foundSys[pinnedSystem].distance : null;
+  document.getElementById("hereView").classList.toggle("noorbits", !hereOrbits());
   head.innerHTML = (pinned ? `<button type="button" class="unpin" onclick="unpinSystem()" title="back to the system you are in">✕</button><span class="pintag">viewing</span> ` : "") +
     // the bookmark star (its dialog also sets the next stop) for a viewed system, which may be in no other list
     (pinned ? bmIcon(pinnedSystem, h.name, bmMap()) + " " : "") +
@@ -5298,6 +5299,7 @@ function renderHere() {
     ` <button type="button" class="mini" id="hereCopyMd" title="copy a short summary of this system in Markdown, for Reddit or Discord">📋</button>` +
     `<span class="modes">${HERE_MODES.filter(([m]) => m !== "split" || hereCtx() === "tab").map(([m, label, title]) =>
       `<button type="button" data-mode="${m}" title="${title}"${(m === "split" ? hereMode().split : hereMode().top === m) ? ' class="on"' : ""}>${label}</button>`).join("")}</span>` +
+    (h.bodies.some(b => b.orbit) ? ` <button type="button" class="mini" data-orbits aria-pressed="${hereOrbits() ? "false" : "true"}" title="the line under each body's distance saying what it orbits and how far (the body's panel keeps it): shown or hidden on this device">${hereOrbits() ? "Hide orbital distance" : "Show orbital distance"}</button>` : "") +
     (hereRefreshError && h.id64 === shownSystem() ? ` <span class="unk" title="${esc(hereRefreshError)}">· refresh failed</span>` : "");
   const l = h.leaving;
   const firstsBlock = h.firsts ? firstsHtml(h.firsts).replace(/<div class="lbl">Your firsts<\/div>/, "") : "";
@@ -5386,7 +5388,7 @@ function renderHere() {
                     !b.first_mapped && b.mapped && `<span class="fl unk" title="mapped (not first)">🗺</span>`,
                     b.first_footfall && `<span class="fl" title="first footfall">👣</span>`, !b.scanned && `<span class="unk" title="known to Spansh, not scanned by you">—</span>`].filter(Boolean).join("");
     return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${pinMarkFor(h.id64, b.name)}${codexTypeMark(b.codex_type, h.region)}${codexGeoMark(b.codex_geo, h.region)}${recordMark(h.id64, b.name)}${b.shots ? ` <span class="shotmark" title="${b.shots} screenshot${b.shots === 1 ? "" : "s"} of it: click the body for all of them">📷${b.shots > 1 ? b.shots : ""}</span>` : ""}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
-      <td>${sfText(b.type === "Star" ? "star" : "planet", b.subtype || "")}${b.type === "Star" ? (b.scoopable ? ` <span class="scoop">⛽</span>` : "") : ""}${b.rings ? `<span class="sf2"> ${icon("ring", "i-ring", b.rings, ringsText(b))}</span>` : ""}${b.dist_ls != null ? `<div class="sf2 sub2 unk">${Math.round(b.dist_ls).toLocaleString()} ls${b.orbit ? ` · ↳ ${esc(orbitLs(b.orbit.ls))}` : ""}</div>` : ""}</td>
+      <td>${sfText(b.type === "Star" ? "star" : "planet", b.subtype || "")}${b.type === "Star" ? (b.scoopable ? ` <span class="scoop">⛽</span>` : "") : ""}${b.rings ? `<span class="sf2"> ${icon("ring", "i-ring", b.rings, ringsText(b))}</span>` : ""}${b.dist_ls != null ? `<div class="sf2 sub2 unk">${Math.round(b.dist_ls).toLocaleString()} ls${b.orbit ? `<span class="orbit"> · ↳ ${esc(orbitLs(b.orbit.ls))}</span>` : ""}</div>` : ""}</td>
       <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}${b.orbit ? `<div class="sub2 unk orbit" title="${esc(orbitTitle(b.orbit))}">↳ ${esc(orbitLs(b.orbit.ls))} · ${esc(b.orbit.short)}</div>` : ""}</td>
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
       <td class="hide-sm c2hide">${b.type === "Planet" ? (atm ? sfText("atmosphere", atm) : b.landable ? dual("none · landable", "landable") : "") : ""}${b.stale_bio ? ` <span class="unk old" title="${esc(staleBodyTitle(b))}">${dual("landable? (old data)", "landable?", {title: `landable? (old data): ${staleBodyTitle(b)}`})}</span>` : ""}${b.bio_unknown ? ` <span class="warnc" title="${BIO_UNKNOWN_TITLE}">${dual("bio possible: check the FSS", "🧬?")}</span>` : ""}</td>
@@ -5526,6 +5528,9 @@ const hereModes = {tab: {top: "list", split: true}, pane: {top: "list", split: f
 for (const [k, v] of Object.entries(store.get("hereModes", {})))   // older saves held a plain mode name
   if (hereModes[k]) hereModes[k] = typeof v === "string" ? {top: v === "split" ? "list" : v, split: v === "split"} : Object.assign(hereModes[k], v);
 const hereCtx = () => view === "here" ? "tab" : "pane";
+// the orbit's line under each body's distance (↳ 2.6 ls · moon of 3): its rows are taller with it, so this device may
+// hide it (the author, 2026-11-02): #hereView.noorbits hides every .orbit (the table's, the schematic's)
+const hereOrbits = () => store.get("hereOrbits", true) !== false;
 const hereMode = () => { const m = hereModes[hereCtx()]; return hereCtx() === "tab" ? m : {top: m.top, split: false}; };
 function setHereMode(mode) {
   const m = hereModes[hereCtx()];
@@ -5638,7 +5643,7 @@ function discHtml(b, depth) {
 // a planet's distance from arrival, then from what it orbits ("2,026 ls / 2.6 ls", Hiner399, discussion #3): the parent
 // is the body drawn above or beside it, so it is not named; a long pair breaks at the slash, never inside a figure
 const sdistHtml = b => `<div class="sdist"${b.orbit ? ` title="${esc(Math.round(b.dist_ls).toLocaleString())} ls from arrival; ${esc(orbitTitle(b.orbit))}"` : ""}>` +
-  `<span class="nw">${Math.round(b.dist_ls).toLocaleString()} ls</span>${b.orbit ? ` / <span class="nw">${esc(orbitLs(b.orbit.ls))}</span>` : ""}</div>`;
+  `<span class="nw">${Math.round(b.dist_ls).toLocaleString()} ls</span>${b.orbit ? `<span class="orbit"> / <span class="nw">${esc(orbitLs(b.orbit.ls))}</span></span>` : ""}</div>`;
 // S30: the suggested order on Here's schematic, for the system you are in: each stop's number on its body (two on a
 // body with both mapping and bio to do), a stop under your credits per minute of supercruise tinted (Here's "skip?").
 // A tap on a number makes that body the first stop, for every window, Now, the voice and the overlay (POST
@@ -5753,6 +5758,7 @@ function schematicHtml(h) {
   return h.tree.length ? head + h.tree.map(top).join("") : `<div class="unk">No bodies known here.</div>`;
 }
 document.getElementById("hereHead").addEventListener("click", e => {
+  if (e.target.closest("[data-orbits]")) { store.set("hereOrbits", !hereOrbits()); return renderHere(); }
   const m = e.target.closest("[data-mode]"); if (!m) return;
   setHereMode(m.dataset.mode); renderHere();
 });
