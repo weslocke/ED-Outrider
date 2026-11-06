@@ -638,16 +638,21 @@ def _mining_counts():
             "srv_first": None, "srv_last": None, "seen": None, "places": {}}
 
 
-def _ship_line(acc, ship):
-    """One counted line's ship into a login's counts (`ships`: {name: lines}; an older row has none yet)."""
+def _ship_line(acc, ship, ts):
+    """One counted line's ship into a login's counts (`ships`: {name: {n, first, last}}, its lines and the earliest and
+    latest of them, so a line read out of order still counts at its place; an older row has none yet)."""
     if ship:
-        ships = acc.setdefault("ships", {})
-        ships[ship] = ships.get(ship, 0) + 1
+        x = acc.setdefault("ships", {}).setdefault(ship, {"n": 0, "first": None, "last": None})
+        x["n"] += 1
+        _seen(x, ts)
 
 
 def _ships(acc):
-    """The ships a login's fighting or mining was done in, the most lines first ([] when none was known)."""
-    return [k for k, _ in sorted((acc.get("ships") or {}).items(), key=lambda kv: (-kv[1], kv[0]))]
+    """The ships a login's fighting or mining was done in, in the order first flown, and the one it ended in (its
+    latest line's): ([names], last), ([], None) when none was known."""
+    ships = acc.get("ships") or {}
+    order = sorted(ships, key=lambda k: (ships[k]["first"], k))
+    return order, max(order, key=lambda k: (ships[k]["last"], k)) if order else None
 
 
 def activity_apply(acts, ev, srv=False, mined=None, place=None, ship=None):
@@ -660,7 +665,8 @@ def activity_apply(acts, ev, srv=False, mined=None, place=None, ship=None):
     the sale's "sold", in the login the sale was made in, which may have no mining line of its own. place: where a
     mining line happened ({id64, system, body}: the ring, the SRV's body; Journals.mining_place), its tons and lines
     kept per place (the Sessions table's Where, the author 2026-10-20). ship: the ship you were in (the reader's
-    latest Loadout), kept per kill or mining line (`ships`): a swap after the login moves the Sessions' Ship (#23)."""
+    latest Loadout), kept per kill or mining line with when it was first and last flown (`ships`): a swap after the
+    login moves the Sessions' Ship (#23)."""
     name, ts = ev["event"], ev["timestamp"]
     if name in _KILLS + ("Died", "Interdicted", "RedeemVoucher"):
         if name == "RedeemVoucher" and ev.get("Type") not in ("bounty", "CombatBond"):
@@ -672,7 +678,7 @@ def activity_apply(acts, ev, srv=False, mined=None, place=None, ship=None):
             c["n"] += 1
             c["kills"] += 1
             _seen(c, ts)
-            _ship_line(c, ship)
+            _ship_line(c, ship, ts)
             if name == "Bounty":
                 c["bounties"] += ev.get("TotalReward") or sum((r.get("Reward") or 0) for r in ev.get("Rewards") or [] if isinstance(r, dict)) \
                     or ev.get("Reward") or 0
@@ -706,7 +712,7 @@ def activity_apply(acts, ev, srv=False, mined=None, place=None, ship=None):
         m["prospectors" if ev["Type"] == "Prospector" else "collectors"] += 1
         return True
     m["n"] += 1
-    _ship_line(m, ship)
+    _ship_line(m, ship, ts)
     if place and place.get("id64"):
         key = f"{place['id64']}|{place.get('body') or ''}"
         p = m.setdefault("places", {}).setdefault(key, {"id64": place["id64"], "system": place.get("system"),
@@ -733,9 +739,9 @@ def activity_apply(acts, ev, srv=False, mined=None, place=None, ship=None):
 
 def session(row):
     """A play_activity row as the Sessions tab lists it, None without fighting or mining: {start (the login), end (its
-    last such line), commander, ship (the login's), combat: {ships (flown in its kills, the most first; [] when not
-    known: the login's ship stands in), kills, bounties, bonds, by_ship, deaths, interdicted, redeemed, seconds,
-    per_hour} or None, mining: {ships (as combat's, by mining lines), tons, refined: {name: t} (the ship's), srv_tons, srv_refined (the SRV's
+    last such line), commander, ship (the login's), combat: {ships (flown in its kills, in the order first flown; []
+    when not known: the login's ship stands in), ship_last (the latest kill's), kills, bounties, bonds, by_ship, deaths, interdicted, redeemed, seconds,
+    per_hour} or None, mining: {ships, ship_last (as combat's, by mining lines), tons, refined: {name: t} (the ship's), srv_tons, srv_refined (the SRV's
     refinery), prospected, content: {High, Medium, Low}, motherlodes, cracked, prospectors, collectors, sold, seconds,
     per_hour (the ship's), srv_seconds} or None}. A login with nothing mined but ore sold that was mined before (sold
     only) lists its mining too."""
@@ -746,14 +752,16 @@ def session(row):
     combat = mining = None
     if c:
         secs = _span(c["first"], c["last"])
-        combat = {"ships": _ships(c), "kills": c["kills"], "bounties": c["bounties"], "bonds": c["bonds"], "deaths": c["deaths"],
+        ships, last = _ships(c)
+        combat = {"ships": ships, "ship_last": last, "kills": c["kills"], "bounties": c["bounties"], "bonds": c["bonds"], "deaths": c["deaths"],
                   "interdicted": c["interdicted"], "redeemed": c["redeemed"], "seconds": secs,
                   "by_ship": dict(sorted(c["by_ship"].items(), key=lambda kv: (-kv[1], kv[0]))),
                   "per_hour": round(c["kills"] * 3600 / secs, 1) if secs and c["kills"] > 1 else None}
     if m:
         secs, tons, srv = _span(m["first"], m["last"]), sum(m["refined"].values()), sum(m["srv"].values())
         order = lambda d: dict(sorted(d.items(), key=lambda kv: (-kv[1], kv[0])))
-        mining = {"ships": _ships(m), "tons": tons, "refined": order(m["refined"]), "srv_tons": srv, "srv_refined": order(m["srv"]),
+        ships, last = _ships(m)
+        mining = {"ships": ships, "ship_last": last, "tons": tons, "refined": order(m["refined"]), "srv_tons": srv, "srv_refined": order(m["srv"]),
                   "prospected": m["prospected"], "content": m["content"], "motherlodes": m["motherlodes"],
                   "cracked": m["cracked"], "prospectors": m["prospectors"], "collectors": m["collectors"], "sold": m["sold"],
                   "seconds": secs, "per_hour": round(tons * 3600 / secs, 1) if secs and tons > 1 else None,

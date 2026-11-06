@@ -311,6 +311,14 @@ t("spanshHopNote: a chip's Spansh record in its hover", () =>
   eq(`[spanshHopNote({spansh_bodies: 23, spansh_updated: "2024-06-12 10:00:00+00"}), spanshHopNote({spansh_bodies: 1}),
        spanshHopNote({spansh_updated: "2025-01-02 00:00:00+00"}), spanshHopNote({})]`,
      [" · Spansh: 23 bodies, updated 2024-06-12", " · Spansh: 1 body", " · Spansh: known, updated 2025-01-02", ""]));
+t("cmShipsHtml: a session's Ship, start → end from three ships (#23)", () =>
+  eq(`[cmShipsHtml({ships: []}, "Left and Leaving"), cmShipsHtml({ships: ["Aside"], ship_last: "Aside"}, "Left and Leaving"),
+       cmShipsHtml({ships: ["Aside", "federation_corvette"], ship_last: "Aside"}, "X"), cmShipsHtml(null, ""),
+       cmShipsHtml({ships: ["Aside", "Virtute", "<b>"], ship_last: "Virtute"}, "X"),
+       cmShipsHtml({ships: ["Aside", "Virtute", "krait_mkii"], ship_last: "Aside"}, "X")]`,
+     ["Left and Leaving", "Aside", "Aside, Federal Corvette", "",
+      'Aside → Virtute <span class="unk" title="in the order first flown:\nAside\nVirtute\n&lt;b&gt;">+1</span>',
+      'Aside → Aside <span class="unk" title="in the order first flown:\nAside\nVirtute\nKrait Mk II">+2</span>']));
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); ok++; console.log("OK |", name); }

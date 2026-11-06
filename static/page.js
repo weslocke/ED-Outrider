@@ -13394,18 +13394,27 @@ function cmPlacesHtml(places) {
   return `${esc(top.system || "")}${top.body ? ` <b>${esc(top.body)}</b>` : ""}${sysAimBtn(top.system, top.id64)}` +
     (more.length ? ` <span class="unk" title="${esc(more.map(p => `${name(p)}${p.tons ? `: ${p.tons} t` : ""}`).join("\n"))}">+${more.length}</span>` : "");
 }
+// a session's Ship (#23): the ships its fighting or mining was done in, in the order first flown (a swap after the
+// login); three or more are the first → the one it ended in (the author: a list gets long), "+N" for the others
+// (all of them in its hover); the login's ship when none is known. Pure.
+function cmShipsHtml(x, login) {
+  const ships = (x && x.ships) || [], name = n => shipLabel(n);
+  if (ships.length < 3) return esc((ships.length ? ships : [login]).filter(Boolean).map(name).join(", "));
+  const first = ships[0], last = x.ship_last || ships[ships.length - 1];   // back in the first: "A → A +2"
+  const more = ships.length - (first === last ? 1 : 2);
+  return `${esc(name(first))} → ${esc(name(last))}` +
+    (more > 0 ? ` <span class="unk" title="${esc(`in the order first flown:\n${ships.map(name).join("\n")}`)}">+${more}</span>` : "");
+}
 // Sessions: the totals, then each combat and each mining session (per login; the SRV's refinery apart from the
 // ship's mining: its tons are not in t/h). Pure.
 function cmdrSessionsHtml(d) {
   const all = d.sessions || [], t = d.totals || {combat: {}, mining: {}};
   const list = o => Object.entries(o || {}).map(([k, v]) => `${esc(k)} ${cmNum(v)}`).join(", ");
-  // the ships the fighting or mining was done in, the most first (#23: a swap after the login), else the login's
-  const ships = (x, s) => ((x.ships || []).length ? x.ships : [s.ship]).filter(Boolean).map(n => esc(shipLabel(n))).join(", ");
   // fitted tables (compact: short dates, spans and credits; compact2 drops the lists by ship and of minerals, the limpets)
-  const combat = all.filter(s => s.combat).map(s => { const c = s.combat; return `<tr><td>${cmWhenDual(s.start)}</td><td>${ships(c, s)}</td>` +
+  const combat = all.filter(s => s.combat).map(s => { const c = s.combat; return `<tr><td>${cmWhenDual(s.start)}</td><td>${cmShipsHtml(c, s.ship)}</td>` +
     `<td class="num"><b>${cmNum(c.kills)}</b></td><td class="c2hide">${list(c.by_ship)}</td><td class="num">${cmCrS(c.bounties)}</td><td class="num">${cmCrS(c.bonds)}</td>` +
     `<td class="num">${cmNum(c.per_hour)}</td><td class="num">${cmSpanDual(c.seconds)}</td><td class="num">${c.deaths ? `<span class="short">${cmNum(c.deaths)}</span>` : ""}</td></tr>`; });
-  const mining = all.filter(s => s.mining).map(s => { const m = s.mining; return `<tr><td>${cmWhenDual(s.start)}</td><td>${ships(m, s)}</td>` +
+  const mining = all.filter(s => s.mining).map(s => { const m = s.mining; return `<tr><td>${cmWhenDual(s.start)}</td><td>${cmShipsHtml(m, s.ship)}</td>` +
     `<td>${cmPlacesHtml(m.places)}</td>` +
     `<td class="num">${cmRefined(m.tons, m.srv_tons)}</td><td class="c2hide">${list(m.refined)}${m.srv_tons ? `${m.tons ? " · " : ""}<span class="unk">SRV:</span> ${list(m.srv_refined)}` : ""}</td>` +
     `<td class="num">${cmNum(m.per_hour)}</td>` +

@@ -639,8 +639,19 @@ class Sessions(unittest.TestCase):
             ev(T("08:40:00"), "Bounty", Target="anaconda", TotalReward=5),
             ev(T("08:50:00"), "MiningRefined", Type="$gold_name;", Type_Localised="Gold")])
         s = state.commander_sessions(now=NOW)["sessions"][0]
-        self.assertEqual((s["ship"], s["combat"]["ships"], s["mining"]["ships"]),
-                         ("Left and Leaving", ["Aside", "federation_corvette"], ["federation_corvette"]))   # the most kills first
+        self.assertEqual((s["ship"], s["combat"]["ships"], s["combat"]["ship_last"], s["mining"]["ships"], s["mining"]["ship_last"]),
+                         ("Left and Leaving", ["Aside", "federation_corvette"], "federation_corvette", ["federation_corvette"],
+                          "federation_corvette"))   # in the order first flown
+
+    def test_the_ship_a_session_ended_in(self):
+        """#23: three ships or more show the first and the last (the author); back in the first, the first is the last,
+        and a line read out of order counts at its place."""
+        acts = {}
+        for at, ship in (("08:10:00", "Aside"), ("08:20:00", "Virtute"), ("08:30:00", "Cobra"), ("08:40:00", "Aside"),
+                         ("08:15:00", "Cobra")):
+            C.activity_apply(acts, ev(T(at), "Bounty", Target="anaconda", TotalReward=5), ship=ship)
+        c = C.session({"login_ts": T("08:00:00"), "ship": "Aside", "combat": acts["combat"]})["combat"]
+        self.assertEqual((c["ships"], c["ship_last"]), (["Aside", "Cobra", "Virtute"], "Aside"))
 
     def test_no_ship_known(self):
         """#23: with no Loadout read (or another commander's), no ship is claimed: the page shows the login's."""

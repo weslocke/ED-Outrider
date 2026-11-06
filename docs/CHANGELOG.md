@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-05 · Three ships or more in a session: the first and the last
+- The Sessions' Ship lists one or two ships; three or more show the one the session started in and the one it ended
+  in, "Aside → Virtute", with "+N" for the others, all of them named in its hover in the order first flown (the
+  author: a list could get long; `cmShipsHtml`). Each ship keeps when it was first and last flown (`ships`:
+  {n, first, last}; the session's `ships` in the order first flown and `ship_last`), so a line read out of order
+  counts at its place. PARSER_VERSION 71.
+
 ## 2026-11-05 · The Sessions' Ship is the one you fought or mined in (#23)
 - A ship swapped to after logging in got no credit: the Sessions tables named the login's ship (Kurbo26, #23: kills
   in a Kestrel listed under the Caspian Explorer logged in with). Each kill and mining line now keeps the ship you were

@@ -9775,7 +9775,7 @@ const releasePayloads = async () => {
                 srv_tons: 3, srv_refined: {Gold: 3}, srv_seconds: 600,
                 prospected: 2, content: {High: 1, Low: 1}, motherlodes: 1, cracked: 1, prospectors: 1, collectors: 1, sold: 1500000, seconds: 1800, per_hour: 12,
                 places: [{id64: "77", system: "Mine Sys", body: "4 B Ring", tons: 6}, {id64: "77", system: "Mine Sys", body: "A 1", tons: 3}]}},
-              {start: "2026-10-12T08:00:00Z", end: "2026-10-12T09:00:00Z", ship: "Krait Mk II", mining: null, combat: {ships: ["Aside", "federation_corvette"], kills: 3, bounties: 400000, bonds: 60000,
+              {start: "2026-10-12T08:00:00Z", end: "2026-10-12T09:00:00Z", ship: "Krait Mk II", mining: null, combat: {ships: ["Aside", "federation_corvette"], ship_last: "Aside", kills: 3, bounties: 400000, bonds: 60000,
                 deaths: 1, interdicted: 1, redeemed: 400000, by_ship: {Anaconda: 2}, seconds: 1800, per_hour: "<u>6</u>"}}]},
         }[s.slice("api/commander/".length)];
       };
