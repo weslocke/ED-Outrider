@@ -1806,7 +1806,9 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 # 61: geology formations' positions (geo_tags), so a screenshot taken near one names it
 # 65: codex entries keep their own code (codex.code: "$Codex_Ent_Stratum_02_F_Name;"), Here's 📷 in any language
 # 66: your squadron's carrier is kept (meta squadron_carrier), no longer thrown away: where it was at your last login
-PARSER_VERSION = 69
+# 70: each kill and mining line keeps the ship you were in (play_activity's ships): a swap after the login moves the
+#     Sessions' Ship (#23)
+PARSER_VERSION = 70
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1832,6 +1834,7 @@ PARSER_VERSION = 69
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    70: "each kill and mining run keeps the ship you were in, so CMDR → Sessions names the ship you swapped to, not the one you logged in with",
     69: "the stations you have docked at are kept by their market, so CMDR's stored modules and ships name the station they are at",
     68: "each sample keeps its variant's code, so the Exo-Biology checklist finds its colour in any game language",
     67: "deposits into your carrier's bank count for its upkeep, a squadron carrier's purchase is not taken for your own, a session started on foot names your ship, and a carrier jump made docked aboard keeps the dock",
@@ -5161,7 +5164,11 @@ class Journals:
         acts = {k: json.loads(row[k]) if row[k] else None for k in ("combat", "mining")}
         srv = bool(self.vehicle) and ts >= (self.vehicle.get("ts") or "")
         place = self.mining_place(ts, srv) if ev.get("event") in outrider.commander._MINING else None
-        if outrider.commander.activity_apply(acts, ev, srv, mined, place):
+        # the ship you were in: the latest Loadout's, not the login's (a swap after logging in, #23); none when it is
+        # another commander's (a shared folder) or newer than the line (a legacy folder read late)
+        s = self.ship or {}
+        ship = s.get("name") if (s.get("ts") or "") <= ts and s.get("fid") in (None, (self.commander or {}).get("fid")) else None
+        if outrider.commander.activity_apply(acts, ev, srv, mined, place, ship):
             self.db.execute("UPDATE play_activity SET combat=?, mining=? WHERE login_ts=?",
                             (acts["combat"] and json.dumps(acts["combat"]), acts["mining"] and json.dumps(acts["mining"]),
                              row["login_ts"]))

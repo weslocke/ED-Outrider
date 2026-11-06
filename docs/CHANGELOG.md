@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-05 · The Sessions' Ship is the one you fought or mined in (#23)
+- A ship swapped to after logging in got no credit: the Sessions tables named the login's ship (Kurbo26, #23: kills
+  in a Kestrel listed under the Caspian Explorer logged in with). Each kill and mining line now keeps the ship you were
+  in (`activity_apply`'s `ship`, `Journals.note_activity`: the latest Loadout's, never another commander's or one newer
+  than the line), and the Ship column lists the ships of that session's fighting or mining, the most lines first (an
+  unnamed one by its type, `shipLabel`); the login's ship still stands in when none is known. PARSER_VERSION 70: one
+  re-read fills it in for the sessions already listed.
+
 ## 2026-11-02 · Tried in game
 - The author, in game: the Plotted Route pane (Show / Hide route with a plotted route), the surface map's zoom and the
   legend's species pictures work; the pane leaves DESIGN_NOTES' "not yet tried" list.

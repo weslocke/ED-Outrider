@@ -13399,11 +13399,13 @@ function cmPlacesHtml(places) {
 function cmdrSessionsHtml(d) {
   const all = d.sessions || [], t = d.totals || {combat: {}, mining: {}};
   const list = o => Object.entries(o || {}).map(([k, v]) => `${esc(k)} ${cmNum(v)}`).join(", ");
+  // the ships the fighting or mining was done in, the most first (#23: a swap after the login), else the login's
+  const ships = (x, s) => ((x.ships || []).length ? x.ships : [s.ship]).filter(Boolean).map(n => esc(shipLabel(n))).join(", ");
   // fitted tables (compact: short dates, spans and credits; compact2 drops the lists by ship and of minerals, the limpets)
-  const combat = all.filter(s => s.combat).map(s => { const c = s.combat; return `<tr><td>${cmWhenDual(s.start)}</td><td>${esc(s.ship || "")}</td>` +
+  const combat = all.filter(s => s.combat).map(s => { const c = s.combat; return `<tr><td>${cmWhenDual(s.start)}</td><td>${ships(c, s)}</td>` +
     `<td class="num"><b>${cmNum(c.kills)}</b></td><td class="c2hide">${list(c.by_ship)}</td><td class="num">${cmCrS(c.bounties)}</td><td class="num">${cmCrS(c.bonds)}</td>` +
     `<td class="num">${cmNum(c.per_hour)}</td><td class="num">${cmSpanDual(c.seconds)}</td><td class="num">${c.deaths ? `<span class="short">${cmNum(c.deaths)}</span>` : ""}</td></tr>`; });
-  const mining = all.filter(s => s.mining).map(s => { const m = s.mining; return `<tr><td>${cmWhenDual(s.start)}</td><td>${esc(s.ship || "")}</td>` +
+  const mining = all.filter(s => s.mining).map(s => { const m = s.mining; return `<tr><td>${cmWhenDual(s.start)}</td><td>${ships(m, s)}</td>` +
     `<td>${cmPlacesHtml(m.places)}</td>` +
     `<td class="num">${cmRefined(m.tons, m.srv_tons)}</td><td class="c2hide">${list(m.refined)}${m.srv_tons ? `${m.tons ? " · " : ""}<span class="unk">SRV:</span> ${list(m.srv_refined)}` : ""}</td>` +
     `<td class="num">${cmNum(m.per_hour)}</td>` +

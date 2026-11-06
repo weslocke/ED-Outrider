@@ -617,9 +617,35 @@ class Sessions(unittest.TestCase):
             j.handle(e)
         ships = lambda: {r["start"]: r["ship"] for r in state.commander_sessions(now=NOW)["sessions"]}   # noqa: E731
         self.assertEqual(ships()[T("09:00:00")], "")
+        beta = next(r for r in state.commander_sessions(now=NOW)["sessions"] if r["start"] == T("09:00:00"))
+        self.assertEqual(beta["combat"]["ships"], [])   # #23: Alpha's Krait was not Beta's ship
         j.handle(ev(T("09:00:02"), "Loadout", Ship="python", ShipName="Beta's Python", ShipID=2, MaxJumpRange=30,
                     FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[]))
         self.assertEqual((ships()[T("09:00:00")], ships()[T("08:00:00")]), ("Beta's Python", "Alpha's Krait"))
+
+    def test_a_ship_swap_after_the_login(self):
+        """#23 (Kurbo26): the Ship column named the login's ship; the kills and mining were in the one swapped to."""
+        def loadout(at, ship, name, ship_id):
+            return ev(at, "Loadout", Ship=ship, ShipName=name, ShipID=ship_id, MaxJumpRange=20, FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[])
+        _, state = setup(self, [
+            ev(T("08:00:00"), "LoadGame", Commander="Tester", Ship="mamba", ShipName="Left and Leaving"),
+            loadout(T("08:00:01"), "mamba", "Left and Leaving", 1),
+            ev(T("08:05:00"), "ShipyardSwap", ShipType="kestrel", ShipID=2, StoreOldShip="mamba", StoreShipID=1),
+            loadout(T("08:05:01"), "kestrel", "Aside", 2),
+            ev(T("08:10:00"), "FactionKillBond", Reward=60000, AwardingFaction="A", VictimFaction="B"),
+            ev(T("08:20:00"), "Bounty", Target="anaconda", TotalReward=5),
+            ev(T("08:30:00"), "ShipyardSwap", ShipType="federation_corvette", ShipID=3, StoreOldShip="kestrel", StoreShipID=2),
+            loadout(T("08:30:01"), "federation_corvette", "federation_corvette", 3),   # unnamed: its type (the page names it)
+            ev(T("08:40:00"), "Bounty", Target="anaconda", TotalReward=5),
+            ev(T("08:50:00"), "MiningRefined", Type="$gold_name;", Type_Localised="Gold")])
+        s = state.commander_sessions(now=NOW)["sessions"][0]
+        self.assertEqual((s["ship"], s["combat"]["ships"], s["mining"]["ships"]),
+                         ("Left and Leaving", ["Aside", "federation_corvette"], ["federation_corvette"]))   # the most kills first
+
+    def test_no_ship_known(self):
+        """#23: with no Loadout read (or another commander's), no ship is claimed: the page shows the login's."""
+        _, state = setup(self, self.EVENTS)
+        self.assertEqual([(r["combat"] or r["mining"])["ships"] for r in state.commander_sessions(now=NOW)["sessions"]], [[], []])
 
     def test_the_last_30_days(self):
         """Batch 4: Sessions by days, as History: the logins of the last 30 days, 40 at most."""
