@@ -1810,7 +1810,9 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 #     Sessions' Ship (#23)
 # 71: ... with when each was first and last flown: the Sessions' Ship names the first and the last of three or more;
 #     a death keeps its ship too, and an unnamed ship (Loadout's ShipName " ") is kept by its type
-PARSER_VERSION = 71
+# 72: sample runs and DSS genera keep the rules' English genus and species names, from the game's codes (own_organic,
+#     own_genera; review round 10 B2: a non-English game's runs priced nothing and its genera counted as unruled)
+PARSER_VERSION = 72
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1836,6 +1838,7 @@ PARSER_VERSION = 71
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    72: "a game in another language: your sample runs and scanned genera are priced and matched by the game's codes, so bio values and new codex marks are right",
     71: "CMDR → Sessions names the ship a session started and ended in when you flew three ships or more in it, the ship you died in, and an unnamed ship by its type",
     70: "each kill and mining run keeps the ship you were in, so CMDR → Sessions names the ship you swapped to, not the one you logged in with",
     69: "the stations you have docked at are kept by their market, so CMDR's stored modules and ships name the station they are at",
@@ -5975,7 +5978,7 @@ class Journals:
                 """INSERT OR REPLACE INTO own_organic (system, body_id, species, genus_name, species_name, variant_name,
                                                      samples, done_ts, ts, ship_id, variant)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (system, body, species, ev.get("Genus_Localised"), ev.get("Species_Localised"),
+                (system, body, species, *bio_names_en(species, ev.get("Genus"), ev.get("Species_Localised"), ev.get("Genus_Localised")),
                  ev.get("Variant_Localised"), samples, done, ts, self.ship_at(ts),
                  ev.get("Variant")))   # the variant's code: its colour in any game language (complete review 2026-10-30)
             self.note_sample_point(system, body, species, ev.get("Genus"), kind, samples, ts,
@@ -6203,8 +6206,8 @@ class Journals:
                     self.moment("bio", ts, system=system, body_id=ev["BodyID"], signals=signals[BIO])
                 for g in ev.get("Genuses") or []:
                     if g.get("Genus") and ev.get("BodyID") is not None:
-                        self.db.execute("INSERT OR IGNORE INTO own_genera VALUES (?, ?, ?, ?, ?)",
-                                        (system, ev["BodyID"], g["Genus"], g.get("Genus_Localised"), ts))
+                        self.db.execute("INSERT OR IGNORE INTO own_genera VALUES (?, ?, ?, ?, ?)",   # English: round 10 B2
+                                        (system, ev["BodyID"], g["Genus"], genus_en(g["Genus"], g.get("Genus_Localised")), ts))
         self.mark(system)
 
     def note_verdict(self, system, ts, was_discovered):
@@ -6368,7 +6371,8 @@ def codex_en(db):
     species looked new, the checklists stayed empty and codex-seen pricing never applied. [{name: "bacterium acies -
     teal" (lower case; the species alone when its colour cannot be told), species: "bacterium acies", sp (the rules'
     entry or None), region: the region's English name from the system's place (the row's own words when the system's
-    place is unknown), entry_id, code, system, body_id, organic, ts, localised (the name as logged)}], in time order;
+    place is unknown), entry_id, code, system, body_id, organic, ts, localised (the name as logged), en (the English
+    name as written, "Bacterium Acies - Teal": what a run's variant_en is compared with)}], in time order;
     kept until the codex or the rules change."""
     R = outrider.bio.load_rules() if outrider.bio else None
     key = (db.execute("SELECT count(*), max(rowid) FROM codex").fetchone()[:], id(R))
@@ -6385,15 +6389,48 @@ def codex_en(db):
             colour = outrider.checklist.variant_colour(sp, r["code"], local, tables) if outrider.checklist else None
             species = sp["name"].lower()
             name = f"{species} - {colour.lower()}" if colour else species
+            en = f"{sp['name']} - {colour}" if colour else sp["name"]
         else:
             name = local.lower()
             species = name.split(" - ")[0].strip()
+            en = local
         region = outrider.bio.region_name(r["x"], r["y"], r["z"]) if outrider.bio and r["x"] is not None else None
         rows.append({"name": name, "species": species, "sp": sp, "region": region or r["region"], "entry_id": r["entry_id"],
-                     "code": r["code"], "system": r["system"], "body_id": r["body_id"], "ts": r["ts"], "localised": local,
+                     "code": r["code"], "system": r["system"], "body_id": r["body_id"], "ts": r["ts"], "localised": local, "en": en,
                      "organic": bool(sp) or bool(BIO_CODEX_RE.match(r["code"] or "")) or "organic" in (r["subcategory"] or "").lower()})
     _CODEX_EN[id(db)] = (key, rows)
     return rows
+
+
+def bio_names_en(species_code, genus_code, species_l, genus_l):
+    """(genus, species): a sample run's names as the rules write them, from the game's codes in any language (review
+    round 10 B2: a German "Bakterium" priced nothing, its genus counted as unruled), the journal's words when the
+    rules do not know the code (a species added to the game since)."""
+    sp = outrider.bio.species_by_code(species_code) if outrider.bio and species_code else None
+    if sp:
+        return sp.get("genus") or genus_l, sp["name"]
+    return genus_en(genus_code, genus_l), species_l
+
+
+def genus_en(genus_code, genus_l):
+    """A DSS genus as the rules name it, from its code in any language; the journal's word when unknown (round 10 B2)."""
+    genus = outrider.bio.genus_from_id(genus_code) if outrider.bio and genus_code else None
+    return genus if genus and genus != genus_code else genus_l
+
+
+def variant_en(variant_code, species_code, localised):
+    """A run's colour variant as the codex comparisons need it (round 10 B3): "Bacterium Acies - Teal" from its codes,
+    as codex_en names your codex rows (the species alone when the colour cannot be told: the colour tables are
+    downloaded, and codex_en does the same then); the journal's words when the rules do not know the species."""
+    if not localised and not variant_code:
+        return None
+    sp = outrider.bio.species_of_entry(variant_code or species_code, localised) if outrider.bio else None
+    if not sp:
+        return localised
+    R = outrider.bio.load_rules() or {}
+    colour = outrider.checklist.variant_colour(sp, variant_code, localised or "", bool(R.get("colours"))) \
+        if outrider.checklist else None
+    return f"{sp['name']} - {colour}" if colour else sp["name"]
 
 
 def region_codex_count(db, region, number):
@@ -6480,13 +6517,13 @@ def with_codex_species(groups, seen):
 
 
 def codex_species_seen(db, id64):
-    """{body_id: {genus: (species, codex entry name)}}: the species your organic codex entries in system id64 name,
+    """{body_id: {genus: (species, codex entry name in English)}}: the species your organic codex entries in system id64 name,
     per body (with_codex_species); the latest entry of a genus on a body wins."""
     out = {}
     for r in codex_en(db):   # by the entry's code in any language (review round 9: only English rows counted)
         sp = r["sp"]
         if r["system"] == id64 and r["body_id"] is not None and r["organic"] and sp and sp.get("genus"):
-            out.setdefault(r["body_id"], {})[sp["genus"]] = (sp["name"], r["localised"])
+            out.setdefault(r["body_id"], {})[sp["genus"]] = (sp["name"], r["en"])   # English: what the runs compare (round 10 B3)
     return out
 
 
@@ -7539,9 +7576,11 @@ def runs_under_way(db, id64):
     bio_left_groups' `seen` takes a codex entry there (review round 9: below the rules' top N a run under way was left
     out of the value and a guess priced instead; the leaving summary already priced it)."""
     out = {}
-    for r in db.execute("SELECT body_id, genus_name, species_name, variant_name FROM own_organic WHERE system=? "
+    for r in db.execute("SELECT body_id, species, genus_name, species_name, variant_name, variant FROM own_organic WHERE system=? "
                         "AND done_ts IS NULL AND species_name IS NOT NULL ORDER BY ts", (id64,)):
-        out.setdefault(r["body_id"], {})[r["genus_name"]] = (r["species_name"], r["variant_name"] or r["species_name"])
+        # the variant in English from its code, as codex_en names your codex (round 10 B3)
+        out.setdefault(r["body_id"], {})[r["genus_name"]] = (r["species_name"], variant_en(r["variant"], r["species"], r["variant_name"])
+                                                             or r["species_name"])
     return out
 
 
@@ -12546,9 +12585,10 @@ class State:
                 done.setdefault((r["system"], r["body_id"]), set()).add(r["genus_name"])
         # runs under way: listed with no signal count of yours too, as the leaving summary (review round 9)
         partial = {}
-        for r in q("SELECT system, body_id, genus_name, species_name, variant_name FROM own_organic WHERE system IN ({marks}) "
+        for r in q("SELECT system, body_id, species, genus_name, species_name, variant_name, variant FROM own_organic WHERE system IN ({marks}) "
                    "AND done_ts IS NULL AND species_name IS NOT NULL"):
-            partial.setdefault((r["system"], r["body_id"]), {})[r["genus_name"]] = (r["species_name"], r["variant_name"] or r["species_name"])
+            partial.setdefault((r["system"], r["body_id"]), {})[r["genus_name"]] = (
+                r["species_name"], variant_en(r["variant"], r["species"], r["variant_name"]) or r["species_name"])   # round 10 B3
         mapped = {(r["system"], r["body_id"]): (r["ts"], r["first_ts"])
                   for r in q("SELECT system, body_id, ts, first_ts FROM own_mapped WHERE system IN ({marks})")}
         # FSS bio signals (by body name, as own_signals keys them) and each system's latest star, for the bodies
@@ -13523,10 +13563,10 @@ class State:
         for r in self.db.execute("SELECT body_id, genus_name FROM own_genera WHERE system=?", (id64,)):
             genera.setdefault(r["body_id"], set()).add(r["genus_name"])
         done, logged = {}, {}
-        for r in self.db.execute("SELECT body_id, species, genus_name, variant_name, done_ts, samples FROM own_organic WHERE system=?",
+        for r in self.db.execute("SELECT body_id, species, genus_name, variant_name, variant, done_ts, samples FROM own_organic WHERE system=?",
                                  (id64,)):
-            if r["variant_name"]:
-                logged.setdefault(r["body_id"], {})[r["genus_name"]] = r["variant_name"]
+            if r["variant_name"] or r["variant"]:   # in English from its code, as codex_en names your codex (round 10 B3)
+                logged.setdefault(r["body_id"], {})[r["genus_name"]] = variant_en(r["variant"], r["species"], r["variant_name"])
             d = done.setdefault(r["body_id"], {"done": set(), "partial": {}})
             if r["done_ts"] and organic_state(self.db, r["done_ts"], (id64, r["body_id"], r["species"])) != "lost":
                 d["done"].add(r["genus_name"])   # a sample that died with you needs doing again
@@ -13687,13 +13727,17 @@ class State:
         own_pic = self.own_pic_check()   # Here's 📷: a picture of that species' colour in your codex folders
         codes = {(r["body_id"], r["species"]): r["variant"] for r in self.db.execute(
             "SELECT body_id, species, variant FROM bio_spots WHERE system=? AND variant IS NOT NULL ORDER BY ts", (id64,))}
+        logged_en = {}   # {body_id: {genus: the variant in English}}: what the codex marks compare (round 10 B3)
         for r in self.db.execute("SELECT * FROM own_organic WHERE system=? ORDER BY genus_name", (id64,)):
             st = organic_state(self.db, r["done_ts"], (id64, r["body_id"], r["species"]))
+            if r["variant_name"] or r["variant"]:
+                logged_en.setdefault(r["body_id"], {})[r["genus_name"]] = variant_en(r["variant"], r["species"], r["variant_name"])
             organics.setdefault(r["body_id"], []).append(
                 {"genus": r["genus_name"], "species": r["species_name"], "variant": r["variant_name"],
                  "samples": r["samples"], "done": bool(r["done_ts"]) and st != "lost", "state": st,
                  "lost": st == "lost",
-                 "own_pic": own_pic(r["species"], codes.get((r["body_id"], r["species"])), r["variant_name"]),
+                 # the run's own variant code first: bio_spots has none for a run not sampled live (round 10 B7)
+                 "own_pic": own_pic(r["species"], r["variant"] or codes.get((r["body_id"], r["species"])), r["variant_name"]),
                  "value": outrider.bio.species_value(r["species_name"]) if outrider.bio and r["species_name"] else None})
         genera = {}
         for r in self.db.execute("SELECT body_id, genus_name FROM own_genera WHERE system=?", (id64,)):
@@ -13753,7 +13797,7 @@ class State:
             seen = {g: s for g, s in seen_codex.get(bid, {}).items() if g not in sampled}
             bio_val, bio_groups = bio_guess_seen(r, star, known_genera or None, ctx, seen) if (r.get("bio") or known_genera) else (None, [])
             # a genus you have sampled here shows the colour the journal logged, not the guess
-            logged_here = {o["genus"]: o["variant"] for o in organics.get(bid, []) if o["variant"]}
+            logged_here = logged_en.get(bid, {})
             bio_groups = with_logged_variants(bio_groups, logged_here)
             shape = outrider.bio.history_shape(r.get("subtype"), r.get("atmosphere"), r.get("temperature")) if history and bio_groups else None
             f = firsts.get(bid) if bid is not None else None

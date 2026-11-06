@@ -313,7 +313,8 @@ class ChecklistServer(unittest.TestCase):
                          (200, "logged"))
         names, species = ed_outrider.codex_species(self.db, "Inner Orion Spur")
         self.assertTrue({"roseum brain tree", "bacterium acies", "amphora plant"} <= species, species)
-        self.assertEqual(ed_outrider.codex_species_seen(self.db, 1)[2], {"Bacterium": ("Bacterium Acies", "Bacterium Acies - Rot")})
+        # in English, as codex_en names the row (round 10 B3): the species alone, as "Rot" cannot be told without a variant code
+        self.assertEqual(ed_outrider.codex_species_seen(self.db, 1)[2], {"Bacterium": ("Bacterium Acies", "Bacterium Acies")})
         self.assertEqual(self.db.execute("SELECT species FROM bio_tags").fetchone()[0], "$Codex_Ent_Vents_Name;")
         self.assertIn(1400102, ed_outrider.codex_types_logged(self.db, {}).get("Inner Orion Spur", []))
 

@@ -2132,7 +2132,7 @@ class SurfaceRigs(unittest.TestCase):
         self.db.execute("INSERT INTO sample_points VALUES (?, ?, 'stale', 'g', 1, 0, 0, ?)", (self.SYS, self.BODY, self.ts(5)))
         self.status(30, 0, 0, flags=0, flags2=1)
         h = self.state.surface_here()
-        self.assertEqual([b["species"] for b in self.state.surface_bio(h)], ["Codex_Ent_Bacterial_04_Name"])
+        self.assertEqual([b["species"] for b in self.state.surface_bio(h)], ["Bacterium Acies"])   # the rules' name (round 10 B2)
         self.ev(40, {"event": "Died"})
         self.assertEqual(points(), ["stale"])
         self.assertEqual(self.state.surface_bio(h), [])
@@ -2152,12 +2152,12 @@ class SurfaceRigs(unittest.TestCase):
         self.status(50, 600, 0, flags=0, flags2=1)
         bio = self.state.surface_bio(self.state.surface_here())
         self.assertEqual([(b["species"], b.get("done", False), b["current"]) for b in bio],
-                         [("Codex_Ent_Bacterial_04_Name", False, True), ("Codex_Ent_Stratum_07_Name", True, False)])
+                         [("Bacterium Acies", False, True), ("Stratum Tectonicas", True, False)])   # the rules' names (round 10 B2)
         done = bio[1]
         self.assertEqual(([p["n"] for p in done["points"]], [p["dist"] for p in done["points"]], done["need"], done["samples"]),
                          ([1, 2, 3], [600, 400, 200], None, 3))
         surf = self.state.surface_summary()
-        self.assertEqual([s["species"] for s in surf["bio"]], ["Codex_Ent_Bacterial_04_Name", "Codex_Ent_Stratum_07_Name"])
+        self.assertEqual([s["species"] for s in surf["bio"]], ["Bacterium Acies", "Stratum Tectonicas"])
         # the overlay's radar draws what it drew before: the finished species' three are the page's map's
         pal = outrider.overlay.palette()
         without = dict(surf, bio=[b for b in surf["bio"] if not b.get("done")])
@@ -2169,7 +2169,7 @@ class SurfaceRigs(unittest.TestCase):
         self.status(60, 0, 0, flags=0, flags2=1)
         scan(60, "Log")
         bio = self.state.surface_bio(self.state.surface_here())
-        self.assertEqual([(b["species"], b.get("done", False)) for b in bio], [("Codex_Ent_Stratum_07_Name", False)])
+        self.assertEqual([(b["species"], b.get("done", False)) for b in bio], [("Stratum Tectonicas", False)])
 
     def test_a_finished_run_in_the_analyses_second(self):
         """Review round 10 B1: the game writes the third Sample and the Analyse in the same second; `ts < done_ts` lost

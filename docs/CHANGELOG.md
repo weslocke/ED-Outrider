@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Review round 10, batch 2: a game in another language
+- **B2** Your sample runs and the DSS's genera keep the rules' English genus and species names, from the game's codes
+  (`bio_names_en`, `genus_en`; the journal's words only for a code the rules do not know): in a non-English game a run
+  under way was priced at nothing, a scanned genus counted as unruled, a finished genus was never taken off what was
+  left, and every `species_value(species_name)` (Here, the leaving summary, Left behind, My samples, earnings) missed.
+  The unsold estimate's fallback price goes by the code too (`outrider.unsold.rules_value`). PARSER_VERSION 72.
+- **B3** The codex-new marks compare like with like: a run's colour variant in English from its codes (`variant_en`,
+  as `codex_en` names your codex) and a composition scan's codex entry by its English name (`codex_en`'s `en`). A
+  German game's logged colour was marked new, and so was an English one while the colour tables were not downloaded.
+- **B7** Here's 📷 takes the run's own variant code (`own_organic.variant`): a run not sampled live has no sample spots,
+  so a non-English run's colour was never found.
+- `tests/test_localised.py` (round 10's S11): the journals read twice, the second time in other words, must give the
+  same results; it failed on B2 and B3 before these fixes.
+
 ## 2026-11-06 · Review round 10, batch 1: the surface map, the route pane, uploads, the browser's voice
 Fable review round 10 (project/done/reviews/review-2026-11-06), the bugs that stand alone:
 - **B1** The surface map's finished species keeps its own three samples: the game writes the third Sample and the

@@ -1693,7 +1693,13 @@ upstream project's choices, not rules of the game.
   (the exobiology rules and their colour tables, `geo_codex.json`) in any game language, so the checklists find them.
   The Exo-Biology checklist itself reads colours the same way (each run's variant code, `own_organic.variant`, PARSER
   68; each codex entry's `code`) and a codex entry's region from its system's place, the localised words only as the
-  fallback (complete review 2026-10-30: a German "Blaugrün" counted no colour).
+  fallback (complete review 2026-10-30: a German "Blaugrün" counted no colour). Your sample runs and the DSS's
+  genera keep the rules' English genus and species names, worked out from the game's codes when they are read
+  (`bio_names_en`, `genus_en`; PARSER 72), the journal's words only for a code the rules do not know: every value,
+  genus match and codex comparison goes by them (review round 10 B2: a German "Bakterium" priced nothing). A run's
+  colour variant is worked out when it is compared (`variant_en`, as `codex_en`), not stored, since the colour tables
+  are downloaded and may arrive after the journals are read. `tests/test_localised.py` reads the journals twice, the
+  second time with every `*_Localised` word in other letters, and the results must not change.
   The colour is the species table's, from the variant's codex code kept with each sample spot and tagged plant
   (`bio_spots.variant`, `bio_tags.variant`: the star class or material), else the colour at the end of its name, else
   a species' only colour (`checklist.variant_colour`). A shot whose subject is not named, or whose colour cannot be

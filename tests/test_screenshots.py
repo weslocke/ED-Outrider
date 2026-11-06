@@ -763,6 +763,27 @@ class Server(unittest.TestCase):
         self.assertEqual((got["image"].get("own"), got["image"].get("file")), (True, "a.png"))
         self.assertIsNone(self.st.codex_own("bio", "Bacterium", "Bacterium Bullaris", "Yellow"))   # the checklists: still off
 
+    def test_here_marks_a_non_english_run_not_sampled_live(self):
+        """Review round 10 B7: Here's 📷 took the variant code from bio_spots alone, which only a run sampled live has; a
+        run read from the journals in a German game ("Bacterium Bullaris - Gelb") then found no colour and no 📷, though
+        own_organic keeps the run's code."""
+        if not ed_outrider.outrider.bio.colours_available():   # the colour from the code needs ExploData's tables (downloaded)
+            self.skipTest("ExploData's colour tables not downloaded (bio_colours.json)")
+        bug = {"Genus": "$Codex_Ent_Bacterial_Genus_Name;", "Genus_Localised": "Bakterium",
+               "Species": "$Codex_Ent_Bacterial_10_Name;", "Species_Localised": "Bakterium Bullaris",
+               "Variant": "$Codex_Ent_Bacterial_10_Polonium_Name;", "Variant_Localised": "Bakterium Bullaris - Gelb",
+               "SystemAddress": 9, "Body": 6}
+        self.j.status_json = None   # not live: no sample spots
+        for i, kind in enumerate(("Log", "Sample", "Sample", "Analyse")):
+            self.j.handle(dict(bug, event="ScanOrganic", timestamp=self.at(10 + i), ScanType=kind))
+        self.assertEqual(self.db.execute("SELECT count(*) FROM bio_spots").fetchone()[0], 0)
+        folder = os.path.join(self.out, "Biology", "Bacterium", "Bacterium Bullaris", "Yellow")
+        os.makedirs(folder)
+        Image.new("RGB", (10, 10)).save(os.path.join(folder, "a.png"))
+        self.st._codex_folders = None
+        body = next(b for b in self.st.system_detail(9)["bodies"] if b["name"] == "2 a")
+        self.assertEqual([(o["species"], o["own_pic"]) for o in body["organics"]], [("Bacterium Bullaris", True)])
+
     def test_here_marks_a_species_you_have_a_picture_of(self):
         """The author, 2026-10-26: Here's bio column says when your codex folders already hold a picture of that
         species' colour (no second shot needed): a sampled species (its colour from the sample's variant code) and a

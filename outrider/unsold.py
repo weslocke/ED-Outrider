@@ -496,14 +496,17 @@ def species_value(codex_species_name):
     return best[1], best[2]
 
 
-def rules_value(name):
+def rules_value(name, code=None):
     """A species' value from the bio rules (outrider.bio.species_value's fallback), or None: imported here, since bio
-    imports this module, and optional, since this file also runs on its own."""
+    imports this module, and optional, since this file also runs on its own. code: the journal's species code, whose
+    rules name prices it in any game language (review round 10: a German name priced nothing)."""
     try:
         from . import bio
     except ImportError:
         return None
     try:
+        sp = bio.species_by_code(code) if code else None
+        name = sp["name"] if sp else name
         return bio.species_value(name) if name else None
     except Exception:   # noqa: BLE001 -- unreadable rules: unpriced, as before
         return None
@@ -808,7 +811,7 @@ def analyse(events, args):
         value, name = species_value(ev.get("Species", ""))
         label = ev.get("Species_Localised") or name or ev.get("Species", "?")
         if value is None:   # not in the price list (Radicoida Unicus): the bio rules' figure, as My Samples prices it
-            value = rules_value(ev.get("Species_Localised"))
+            value = rules_value(ev.get("Species_Localised"), ev.get("Species"))
         if value is None:
             bio_unknown.append(label)
             value = 0
