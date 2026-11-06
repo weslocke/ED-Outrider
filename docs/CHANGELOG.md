@@ -2,6 +2,34 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Round 10 suggestions, batch 9: a quicker smoke test, one carrier placement, a hostile station while wanted
+Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the last batch: a test-speed item, a refactor
+with no player-visible change, and batch 7's follow-up. No journal re-read.
+- **S7 step 2** tests/page_smoke.js has `until(cond, maxMs, step)` (wait for something named, never a hand-written
+  polling loop: the 20 there were folded into it) and `fastTimers(w, map)` with its restore (the page's setTimeout made
+  quick where its pace is not what a block tests; delays of 30 s or more, the long poll's abort, left alone; the three
+  blocks that sped up setTimeout inline use it now). The slowest blocks first: ship_pictures (the 2 s hover on a tenth
+  of the clock, "not yet" still checked), riches_in_plot_route and highway_tab (their plots' 1.5 s polls sped up, the
+  running words read before the plot is let finish), tablet_layout (each page until filled and answered), the
+  settings find (one wait for Server settings, then each find as applied), the starting page and batch B voice (until
+  the tick or the line's fate). review_view_window_voice keeps its 1.6 s real wait, said why. The prelude now waits
+  for page.js's first payload (the header's words are page.html's own, so a block run alone on a busy machine could
+  start before page.js had run: "data is not defined"), and search_refused waits for the answers it reads. Measured
+  (VERBOSE=1, same machine): the full verify 172 s before, 147 s after; the ten slowest blocks 65.4 s before, 38.8 s
+  after (ship_pictures 12.2 → 1.9 s, highway_tab 8.4 → 3.6, riches_in_plot_route 8.0 → about 2, tablet_layout
+  10.6 → 8.3, s39 6.3 → 3.1).
+- **S25** One placement for both carriers: `carrier_place(c, pos, locate, row, aboard)` (pure: system, id64 as an int,
+  coordinates, source, distance, here), used by the carrier summary and your squadron's (Spansh's newer report elsewhere
+  wins unless you are aboard, as before), and `listed_system` reads both carriers through their summaries.
+  `outrider/dock.py`'s `own_row` and `squadron_row` are thin wrappers over one `carrier_row(place, kind)`;
+  `State.carrier_dock_rows` gives both to the finder. The summary still writes the located coordinates into your
+  carrier's record (a memo saved with its next line; carrier_place alone reads it). The existing carrier tests pass
+  unchanged; a test class runs placement, the dock row, here and aboard over both carriers.
+- **Wanted** A "Hostile" docking refusal while you have a bounty on you in this system (a bounty can make a station
+  hostile: the author's journal had a 500 cr bounty in the same second as its Hostile refusal) names the nearest
+  Interstellar Factors, as the "your offences" refusal does. A hostile reputation with no bounty still says only the
+  refusal.
+
 ## 2026-11-06 · Round 10 suggestions, batch 8: the trip in Markdown, species pictures in Here, Nearby's sure ✦/✪
 Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), page and payload only: no journal re-read.
 - **S17** History's "Since your last sale" row has a 📋 (one only, answer 8): the trip so far in Markdown for Reddit or

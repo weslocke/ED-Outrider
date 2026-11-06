@@ -374,7 +374,8 @@ checked 2026-11-06 for round 10's S8, S9, S15 and S19)
 - **CommitCrime:** 17 lines, each `{CrimeType, Faction, Fine}` (14) or `{CrimeType, Faction, Bounty}` (3), never both,
   never a system. The bounties: `dockingMajorTresspass` and `dockingMajorBlockingLandingPad` (500 cr each), each
   20-30 s after the same faction's `Minor` fine; the police attacked at once (`UnderAttack`, `HullDamage`). One came at
-  the same second as a `DockingDenied` with `Reason` `Hostile` ("Criminals have no docking privileges"); no
+  the same second as a `DockingDenied` with `Reason` `Hostile` ("Criminals have no docking privileges": a bounty can
+  make a station hostile, so that refusal names the nearest Interstellar Factors while one is on you, batch 9); no
   `Offences` refusal is in these journals (`Reason` counts: NoSpace 50, Distance 16, RestrictedAccess 4, TooLarge 2,
   Hostile 1). Fines: blocking a pad, dumping near a station, dumping dangerous cargo, firing or colliding in a no-fire
   zone, reckless weapons discharge.

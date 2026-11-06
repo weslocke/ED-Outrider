@@ -3993,7 +3993,8 @@ async function wantedOut(m, ask) {
            {tag: "wanted", say: `${who} has put a ${bounty} credit bounty on you.` + (f ? " " + factorsSaid(f) : "")});
 }
 async function dockDeniedOut(m, ask) {
-  const f = m.reason === "Offences" ? await factorsNearest(ask) : null;
+  // your offences, or a hostile station with a bounty on you this stay (the server's `wanted`)
+  const f = m.reason === "Offences" || m.wanted ? await factorsNearest(ask) : null;
   alertOut("docking", "🛬 Docking denied", `${m.station ? m.station + ": " : ""}${m.words}${f ? " · " + factorsShown(f) : ""}`, {tag: "docking",
            say: () => line("docking_denied", {reason: m.words, station: m.station || "the station"}, `Docking denied: ${m.words}.`) + (f ? " " + factorsSaid(f) : "")});
 }
@@ -11260,7 +11261,7 @@ function onData() {
         alertOut("pins", m.what === "arrived" ? `📍 Arrived at ${m.name}` : `📍 ${m.name}: ${surfDist(m.dist)}`,
                  m.what === "arrived" ? (m.next ? `next: ${m.next.name}, ${surfDist(m.next.dist)}` : "") : pinTurnWords(m), {tag: "pins", say: pinSpoken(m)});
       else if (m.kind === "docking" && m.what === "denied" && m.words)   // #3: only the reasons that are not obvious
-        dockDeniedOut(m);   // your offences: with the nearest Interstellar Factors (S22)
+        dockDeniedOut(m);   // your offences, or hostile while wanted: with the nearest Interstellar Factors (S22)
       else if (m.kind === "wanted" && m.bounty) wantedOut(m);   // S22: a bounty on you here
       else if (m.kind === "mining_recap" && m.tons) miningRecapOut(m);   // S21: leaving the system or docking after mining
       else if (m.kind === "wrong_suit" && m.body) {   // S4: on foot without the Genetic Sampler, with sampling left

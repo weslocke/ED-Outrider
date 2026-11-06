@@ -517,5 +517,90 @@ class ReviewEight(unittest.TestCase):
         self.assertEqual((sc["services"], sc["moved_ts"]), (["dock", "exploration"], "2026-07-19T20:44:52Z"))
 
 
+class BothCarriers(unittest.TestCase):
+    """Round 10's S25: one placement (ed_outrider.carrier_place) and one dock row (outrider.dock.carrier_row) for your
+    fleet carrier and your squadron's, each case run over both (subTest). The squadron-only rule (Spansh's newer report
+    elsewhere wins unless you are aboard) stays in Summary and ReviewEight."""
+    FAR = 999   # a system Outrider has never placed until locate() says so
+
+    def setUp(self):
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        for e in login("2026-07-19T20:44"):
+            self.j.handle(e)
+        self.j.carrier = {"id": FC_ID, "callsign": "G0X-85Z", "name": "OUT OF THE BLUE", "system": "Hajangai",
+                          "id64": HAJANGAI, "x": None, "y": None, "z": None, "ts": "2026-07-19T20:44:42Z",
+                          "services": ["dock", "exploration"]}
+        self.j.pos = {"id64": 1, "name": "Me", "x": -28.125, "y": 4.90625, "z": -168.28125}
+        self.where = {HAJANGAI: ("Hajangai", -28.125, 4.90625, -68.28125)}
+        self.state.locate = lambda i: self.where.get(i)
+
+    # each kind: the Journals record, its summary, its dock row (carrier_dock_rows' first or second), its carrier id
+    KINDS = {"carrier": ("carrier", "carrier_summary", 0, FC_ID),
+             "squadron_carrier": ("squadron_carrier", "squadron_carrier_summary", 1, SC_ID)}
+
+    def each(self):
+        for name, (attr, summary, i, cid) in self.KINDS.items():
+            with self.subTest(carrier=name):
+                yield (getattr(self.j, attr), lambda s=summary: getattr(self.state, s)(),
+                       lambda i=i: self.state.carrier_dock_rows()[i], cid)
+
+    def move_far(self, rec):
+        ed_outrider.carrier_seen(rec, "Far Away", self.FAR, "2026-07-21T10:00:00Z")
+
+    def test_at_home(self):
+        for rec, summary, row, cid in self.each():
+            s, r = summary(), row()
+            self.assertEqual((s["system"], s["id64"], s["x"], s["distance"], s["here"], s["aboard"]),
+                             ("Hajangai", str(HAJANGAI), -28.125, 100.0, False, False))
+            self.assertEqual((r["system"], r["id64"], r["x"], r["own"], r["aboard"]), ("Hajangai", HAJANGAI, -28.125, True, False))
+            self.assertIs(type(r["id64"]), int)
+
+    def test_moved_to_a_system_locate_knows(self):
+        self.where[self.FAR] = ("Far Away", 10.0, 0.0, -168.28125)
+        for rec, summary, row, cid in self.each():
+            self.move_far(rec)
+            s, r = summary(), row()
+            self.assertEqual((s["system"], s["id64"], s["x"], s["distance"]), ("Far Away", str(self.FAR), 10.0, 38.4))
+            self.assertEqual((r["system"], r["id64"], r["x"]), ("Far Away", self.FAR, 10.0))
+            self.assertIs(type(r["id64"]), int)
+
+    def test_moved_to_a_system_nothing_places(self):
+        for rec, summary, row, cid in self.each():
+            self.move_far(rec)
+            s = summary()
+            self.assertEqual((s["system"], s["id64"], s["x"], s["distance"]), ("Far Away", str(self.FAR), None, None))
+            self.assertIsNone(row())   # no place: not in the finder
+            # the place a later lookup finds (_locate_carrier: Spansh's dump) is used from then on
+            rec.update(x=10.0, y=0.0, z=-168.28125)
+            self.assertEqual((summary()["distance"], row()["id64"]), (38.4, self.FAR))
+
+    def test_here_and_aboard(self):
+        for rec, summary, row, cid in self.each():
+            self.j.pos = {"id64": HAJANGAI, "name": "Hajangai", "x": -28.125, "y": 4.90625, "z": -68.28125}
+            self.assertEqual((summary()["here"], summary()["aboard"], summary()["distance"]), (True, False, 0.0))
+            self.j.docked = {"market_id": cid, "station": "x"}
+            self.assertEqual((summary()["here"], summary()["aboard"], row()["aboard"]), (True, True, True))
+            self.j.docked = None
+
+    def test_the_pure_place(self):
+        pos = {"id64": 1, "x": 0.0, "y": 0.0, "z": 0.0}
+        locate = {5: ("Five", 3.0, 4.0, 0.0)}.get
+        place = ed_outrider.carrier_place
+        self.assertIsNone(place(None, pos, locate))
+        self.assertIsNone(place({"id64": None}, pos, locate))
+        self.assertEqual(place({"system": "Five", "id64": "5"}, pos, locate),
+                         {"system": "Five", "id64": 5, "x": 3.0, "y": 4.0, "z": 0.0, "source": "journal", "distance": 5.0, "here": False})
+        self.assertEqual(place({"system": "Six", "id64": 6}, None, locate)["distance"], None)   # where you are not known
+        # Spansh's row of the same system places it when nothing else does; a newer one elsewhere wins unless aboard
+        row = {"id64": 6, "system": "Six", "x": 0.0, "y": 0.0, "z": 1.0, "seen": 2e9}
+        self.assertEqual(place({"system": "Six", "id64": 6, "ts": "2026-01-01T00:00:00Z"}, pos, locate, row)["distance"], 1.0)
+        c = {"system": "Five", "id64": 5, "ts": "2026-01-01T00:00:00Z"}
+        self.assertEqual(place(c, pos, locate, row)["source"], "Spansh")
+        self.assertEqual(place(c, pos, locate, row, aboard=True)["source"], "journal")
+
+
 if __name__ == "__main__":
     unittest.main()

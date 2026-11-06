@@ -3283,6 +3283,33 @@ def carrier_seen(c, system, id64, ts, jumped=False):
     c.update(ts=ts, assumed=False)
 
 
+def carrier_place(c, pos, locate, row=None, aboard=False):
+    """Where a carrier is, pure (round 10's S25): {system, id64 (an int), x, y, z, source, distance, here} for your
+    carrier (c: Journals.carrier) and your squadron's (Journals.squadron_carrier, with `row`: Spansh's report of it, meta
+    squadron_carrier_spansh's row, `seen` its time). The journal's place, its coordinates from c, else locate(id64)
+    ((name, x, y, z) or None: what Outrider knows of the system), else the row when it names the same system; Spansh's
+    place instead (source "Spansh") when the row names another system with coordinates, is newer than the journal's line
+    and you are not aboard (docked at it: the journal is right). distance: light-years from pos, not rounded (the trip's
+    tritium works from it), None while either place is unknown; here: you are in its system. None without an id64."""
+    if not c or not c.get("id64"):
+        return None
+    row = row or {}
+    system, id64, xyz, source = c.get("system"), int(c["id64"]), (c.get("x"), c.get("y"), c.get("z")), "journal"
+    seen = row.get("seen") or 0
+    if row.get("id64") and row["id64"] != id64 and row.get("x") is not None and not aboard and c.get("ts") \
+            and seen > ts_seconds(c["ts"]):
+        system, id64, xyz, source = row.get("system"), int(row["id64"]), (row["x"], row["y"], row["z"]), "Spansh"
+    elif xyz[0] is None:
+        where = locate(id64)
+        if where:
+            xyz = tuple(where[1:4])
+        elif row.get("id64") == id64 and row.get("x") is not None:
+            xyz = (row["x"], row["y"], row["z"])
+    d = dist(pos, dict(zip("xyz", xyz))) if pos and pos.get("x") is not None and xyz[0] is not None else None
+    return {"system": system, "id64": id64, "x": xyz[0], "y": xyz[1], "z": xyz[2], "source": source, "distance": d,
+            "here": bool(pos and pos.get("id64") is not None and str(pos["id64"]) == str(id64))}
+
+
 def surface_m(lat1, lon1, lat2, lon2, radius):
     """Great-circle metres between two latitude/longitude points on a body of `radius` m."""
     p1, p2 = math.radians(lat1), math.radians(lat2)
@@ -4780,7 +4807,11 @@ class Journals:
         if name == "DockingDenied" and DENIED_WORDS.get(ev.get("Reason")):
             words = DENIED_WORDS[ev["Reason"]]
             meta_set(self.db, "docking", {"denied": ev["Reason"], "words": words, "station": station, "ts": ts})
-            self.moment("docking", ts, what="denied", reason=ev["Reason"], words=words, station=station)
+            # a "Hostile" refusal with a bounty on you this stay (S22's wanted_said): the page names the nearest
+            # Interstellar Factors, as for "Offences" (the author's journal: a 500 cr bounty in the same second)
+            pos = self.pos
+            wanted = bool(ev["Reason"] == "Hostile" and pos and any(k[0] == pos["id64"] for k in self.wanted_said))
+            self.moment("docking", ts, what="denied", reason=ev["Reason"], words=words, station=station, wanted=wanted)
             return
         self.docking_hold = None
         if cur:
@@ -12218,14 +12249,16 @@ class State:
 
     def carrier_summary(self):
         c = self.journals.carrier
-        if not c or not c.get("id64"):
-            return None
-        if c.get("x") is None:
-            where = self.locate(c["id64"])
-            if where:
-                c.update(x=where[1], y=where[2], z=where[3])
         pos = self.journals.pos
-        d = dist(pos, c) if pos and c.get("x") is not None else None
+        place = carrier_place(c, pos, self.locate)
+        if not place:
+            return None
+        if c.get("x") is None and place["x"] is not None:
+            # kept in place (S25): a memo saving a locate() at every summary, and saved with the carrier's next line, so a
+            # carrier placed once stays placed if the system's row leaves the cache. Nothing reads it but carrier_place
+            # (and _locate_carrier's guard, which asks locate() too)
+            c.update(x=place["x"], y=place["y"], z=place["z"])
+        d = place["distance"]
         st = self.carrier_cargo() if c.get("id") is not None else None
         stats = (st or {}).get("stats") or {}
         # the capacity in use now (carrier_burn's: the last CarrierStats and your journaled moves since)
@@ -12240,7 +12273,7 @@ class State:
             where = self.locate(int(planned["id64"])) if str(planned["id64"]).isdigit() else None
             if where:
                 planned["distance_from_you"] = round(dist(pos, {"x": where[1], "y": where[2], "z": where[3]}), 1)
-                planned["jump_ly"] = round(dist(c, {"x": where[1], "y": where[2], "z": where[3]}), 1) if c.get("x") is not None else None
+                planned["jump_ly"] = round(dist(place, {"x": where[1], "y": where[2], "z": where[3]}), 1) if place["x"] is not None else None
             if planned.get("jump_ly") and used is not None and fuel is not None:   # what it burns, what is left (S13)
                 planned["burn"] = round(k * outrider.cargo.carrier_burn(planned["jump_ly"], used, fuel))
                 planned["depot_after"] = fuel - planned["burn"]
@@ -12255,7 +12288,7 @@ class State:
                     planned.update(next_burn=nxt, hold_tritium=hold, last=can < nxt)
         docked = self.journals.docked
         aboard = bool(docked and c.get("id") and docked.get("market_id") == c.get("id"))
-        here = bool(pos and pos["id64"] == c["id64"])
+        here = place["here"]
         has_uc, has_vista, suspended = self.carrier_services(c, st)
         trip = None
         if d and not here and not aboard and used is not None and fuel is not None:
@@ -12278,14 +12311,14 @@ class State:
         return {"name": c.get("name"), "callsign": c.get("callsign"), "system": c.get("system"),
                 "carrier_id": str(c["id"]) if c.get("id") is not None else None,   # which carrier (a new one: no "arrived")
                 "aboard": aboard,
-                "id64": str(c["id64"]), "distance": round(d, 1) if d is not None else None,
+                "id64": str(place["id64"]), "distance": round(d, 1) if d is not None else None,
                 "fuel": fuel, "fuel_estimated": bool(depot and depot["estimated"]),
                 "fuel_read": depot["read"] if depot else None, "fuel_read_ts": depot["read_ts"] if depot else None,
                 "jump_range": c.get("jump_range"), "planned": planned, "trip": trip,
                 "burn_factor": factor,   # {k, n, raw}: the tritium figures' scale from its own jumps (S13 B), or None
                 "has_uc": has_uc, "has_vista": has_vista, "suspended": suspended,
                 "finance": self.carrier_finance(st),
-                "x": c.get("x"), "y": c.get("y"), "z": c.get("z"),
+                "x": place["x"], "y": place["y"], "z": place["z"],
                 "ts": c.get("ts"), "here": here,
                 # when it last arrived somewhere new (the page's arrival alert), and whether that is only
                 # the booked jump's destination, not yet confirmed by the journal
@@ -12309,16 +12342,10 @@ class State:
         seen = row.get("seen") or 0
         docked = self.journals.docked
         aboard = bool(docked and docked.get("market_id") == sc["id"])
-        system, id64, xyz, source = sc.get("system"), sc["id64"], (sc.get("x"), sc.get("y"), sc.get("z")), "journal"
-        if row.get("id64") and row["id64"] != id64 and row.get("x") is not None and not aboard and sc.get("ts") \
-                and seen > ts_seconds(sc["ts"]):
-            system, id64, xyz, source = row.get("system"), row["id64"], (row["x"], row["y"], row["z"]), "Spansh"
-        elif xyz[0] is None:
-            where = self.locate(int(id64))
-            xyz = where[1:4] if where else (row["x"], row["y"], row["z"]) if row.get("id64") == id64 and row.get("x") is not None \
-                else xyz
         pos = self.journals.pos
-        d = dist(pos, dict(zip("xyz", xyz))) if pos and xyz[0] is not None else None
+        place = carrier_place(sc, pos, self.locate, row=row, aboard=aboard)
+        system, id64, source, d = place["system"], place["id64"], place["source"], place["distance"]
+        xyz = (place["x"], place["y"], place["z"])
         # the newest of a Docked there (the game's ids), an officer's crew lines (a role's name is its game id, lower
         # case; a paused service is off: Hiner399's journal, #16) and Spansh's report
         roles = (sc.get("crew") or {}).get("roles") or {}
@@ -12353,12 +12380,20 @@ class State:
                 "carrier_id": str(sc["id"]), "id": sc["id"], "system": system, "id64": str(id64), "source": source,
                 "spansh_ts": iso_ts(seen) if seen else None,
                 "x": xyz[0], "y": xyz[1], "z": xyz[2], "distance": round(d, 1) if d is not None else None,
-                "here": bool(pos and str(pos.get("id64")) == str(id64)), "aboard": aboard,
+                "here": place["here"], "aboard": aboard,
                 # Spansh's distance from the star only for the place shown (review 8: after a move it was the old one's)
-                "ls": row.get("ls") if row.get("id64") == int(id64) else None,
+                "ls": row.get("ls") if row.get("id64") == id64 else None,
                 "services": sorted(services, key=outrider.dock.SERVICES.index),
                 "has_uc": "UC" in services, "has_vista": "Vista" in services, "suspended": paused, "planned": planned,
                 "fuel": sc.get("fuel"), "fuel_ts": sc.get("stats_ts"), "ts": sc.get("ts"), "moved_ts": sc.get("moved_ts")}
+
+    def carrier_dock_rows(self):
+        """(your carrier's, your squadron's) rows for the dock finder (outrider.dock.carrier_row through own_row and
+        squadron_row), each from its summary's place (carrier_place); None for one not placed or not there."""
+        c = self.carrier_summary() or {}
+        own = outrider.dock.own_row(dict(self.journals.carrier or {}, **{k: c.get(k) for k in ("x", "y", "z", "has_uc", "has_vista", "aboard")},
+                                         decommission=self.carrier_decommission()))
+        return own, outrider.dock.squadron_row(self.squadron_carrier_summary())
 
     def maybe_squadron_spansh(self):
         """Spansh's report of your squadron's carrier, by its ID (SPANSH_STATION): its name, services and distance from
@@ -12751,10 +12786,7 @@ class State:
         dssa, dinfo = await self.dssa_list(fetch=q.get("cached") != "1")
         if dinfo["error"]:
             errors.append(dinfo["error"])
-        c = self.carrier_summary() or {}
-        own = outrider.dock.own_row(dict(self.journals.carrier or {}, **{k: c.get(k) for k in ("x", "y", "z", "has_uc", "has_vista", "aboard")},
-                                         decommission=self.carrier_decommission()))
-        rows = outrider.dock.merge(spansh, dssa, own, outrider.dock.squadron_row(self.squadron_carrier_summary()))
+        rows = outrider.dock.merge(spansh, dssa, *self.carrier_dock_rows())
         permits = set()
         if q.get("permit") != "1":
             ids = sorted({r["id64"] for r in rows if r.get("id64") is not None})
@@ -21183,12 +21215,11 @@ class State:
         ns = meta_get(self.db, "next_stop")
         if ns and ns.get("id64") == id64:
             return ns["name"], ns.get("x"), ns.get("y"), ns.get("z")
-        c = self.journals.carrier or {}
-        if c.get("id64") == id64 and c.get("system"):
-            return c["system"], c.get("x"), c.get("y"), c.get("z")
-        sc = self.squadron_carrier_summary() or {}   # your squadron's (its 🎯 on the tile), Spansh's place included
-        if sc.get("id64") == str(id64) and sc.get("system"):
-            return sc["system"], sc.get("x"), sc.get("y"), sc.get("z")
+        # your carrier's and your squadron's (its 🎯 on the tile, Spansh's place included): their summaries' places
+        # (carrier_place, S25)
+        for cs in (self.carrier_summary(), self.squadron_carrier_summary()):
+            if cs and cs.get("id64") == str(id64) and cs.get("system"):
+                return cs["system"], cs.get("x"), cs.get("y"), cs.get("z")
         return None
 
     def search_origin(self, around=None):

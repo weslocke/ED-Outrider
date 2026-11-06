@@ -275,7 +275,10 @@ upstream project's choices, not rules of the game.
     Tactical role keeps no row of its own). The nearest Interstellar Factors (Spansh's "Interstellar Factors Contact",
     the game's `facilitator`: `outrider/dock.py`'s `Factors`, `/api/nearest?need=factors`) is named in another
     system when one is known: the station here may be the one shooting. The line waits 6 s at most for it. The
-    "Offences" docking refusal names the same place; "Hostile" does not (a hostile reputation is no bounty to pay).
+    "Offences" docking refusal names the same place; "Hostile" only with a bounty on you this stay (round 10's batch 9:
+    the moment's `wanted`, from the stay's `wanted_said`; the author's journal had a 500 cr bounty in the same second as
+    its one Hostile refusal), never for a hostile reputation alone (no bounty to pay). A bounty logged after the refusal
+    names the place in its own Wanted line.
     Status.json's `LegalState` stays out until it has been seen live. The finder's own Must have boxes are unchanged
     (no Factors box: the alert asks for it).
 - **Boxels: what can and cannot be known** (2026-10-11, `outrider/boxel.py`). A procedural name's boxel, its centre and

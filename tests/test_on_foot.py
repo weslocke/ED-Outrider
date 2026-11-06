@@ -185,6 +185,22 @@ class Wanted(Base):
         self.assertEqual(len(self.kinds("wanted")), 3)
         self.assertIn("wanted", [m["kind"] for m in self.state.moments_summary()])
 
+    def test_a_hostile_refusal_while_wanted(self):
+        """Batch 9: a "Hostile" docking refusal with a bounty on you this stay is marked `wanted` (the page names the
+        nearest Interstellar Factors, as for "Offences"): the author's journal had a 500 cr bounty in the same second.
+        Without a bounty, or after a jump, or for another reason, it is not."""
+        def denied(s, reason):
+            self.j.handle(ev(self.at(s), "DockingDenied", Reason=reason, StationName="Hub", StationType="Coriolis"))
+            return [m for m in self.kinds("docking") if m.get("what") == "denied"][-1]
+        self.assertFalse(denied(5, "Hostile")["wanted"])                     # no bounty yet
+        self.crime(10, CrimeType="dockingMajorTresspass", Faction="Brewer Corporation", Bounty=500)
+        got = denied(10, "Hostile")
+        self.assertEqual((got["reason"], got["wanted"]), ("Hostile", True))
+        self.assertFalse(denied(12, "NoSpace")["wanted"])                    # another reason: nothing more
+        self.assertFalse(denied(15, "Offences")["wanted"])                   # named for its own reason (the page)
+        self.j.handle(ev(self.at(100), "FSDJump", StarSystem="Next", SystemAddress=10, StarPos=[1, 0, 0]))
+        self.assertFalse(denied(110, "Hostile")["wanted"])                   # a new stay: no bounty here
+
     def test_crime_words(self):
         self.assertEqual([ed_outrider.crime_words(k) for k in ("dockingMajorTresspass", "passengerWanted", None)],
                          ["trespass at a station", "passenger wanted", ""])

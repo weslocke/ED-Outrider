@@ -149,41 +149,50 @@ def game_services(ids):
     return {GAME_SERVICES[x] for x in (str(i).lower() for i in ids or []) if x in GAME_SERVICES}
 
 
-def own_row(carrier):
-    """Your own carrier (Journals.carrier with its place), always usable by you."""
-    c = carrier or {}
-    if c.get("id") is None or c.get("x") is None or (c.get("decommission") or {}).get("done"):
+def carrier_row(place, kind, callsign="", name="", services=(), says=None, ls=None, market_id=None, aboard=False):
+    """The finder's row for a carrier of yours (round 10's S25: one row for both): `place` its {system, id64, x, y, z}
+    (State's carrier_place, or a carrier dict with them), `kind` "own" (your carrier, ls 0: you know where it is) or
+    "squadron" (your squadron's: `market_id`, its CarrierID, which merge drops Spansh's report of it by, and Spansh's
+    ls). Always usable by you: `own` (never hidden as old, no access warning), `squadron` says whose. `services` its
+    finder names; `says` the carrier summary's has_uc / has_vista when known (the newer of its last Docked and its crew:
+    a paused service is off). The id64 an int, as every other row's (review 8: State.nearest_dock sorts them, and the
+    summary's str among ints raised), None when not one. None while its place has no coordinates."""
+    if not place or place.get("x") is None:
         return None
-    services = game_services(c.get("services"))   # those its last Docked listed
-    for key, name in (("has_uc", "UC"), ("has_vista", "Vista")):
-        if key in c:   # the carrier summary's word: the newer of its last Docked and its crew (a paused service is off)
-            (services.add if c[key] else services.discard)(name)
-    return {"kind": "carrier", "callsign": str(c.get("callsign") or "").upper(), "name": c.get("name") or "",
-            "system": c.get("system"), "id64": c.get("id64"), "x": c["x"], "y": c["y"], "z": c["z"], "ls": 0,
-            "services": services, "pads": "L M", "large": True, "medium": True, "access": "yours",
-            "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True, "squadron": False,
-            "aboard": bool(c.get("aboard"))}   # docked at it: the page says "aboard", else only "here" (complete review 2026-10-30)
+    services = set(services)
+    for key, word in (("has_uc", "UC"), ("has_vista", "Vista")):
+        if key in (says or {}):
+            (services.add if says[key] else services.discard)(word)
+    id64 = int(place["id64"]) if str(place.get("id64") or "").isdigit() else None
+    squadron = kind == "squadron"
+    row = {"kind": "carrier", "callsign": str(callsign or "").upper(), "name": name or "",
+           "system": place.get("system"), "id64": id64, "x": place["x"], "y": place["y"], "z": place["z"],
+           "ls": ls if squadron else 0, "services": services, "pads": "L M", "large": True, "medium": True,
+           "access": "your squadron's" if squadron else "yours", "seen": None, "source": "journal", "dssa": False,
+           "until": "", "away": None, "own": True, "squadron": squadron,
+           "aboard": bool(aboard)}   # docked at it: the page says "aboard", else only "here" (complete review 2026-10-30)
+    if squadron:
+        row["market_id"] = market_id
+    return row
+
+
+def own_row(carrier):
+    """Your own carrier (Journals.carrier with its place and the summary's has_uc / has_vista / aboard): its services
+    from its last Docked. None for one decommissioned."""
+    c = carrier or {}
+    if c.get("id") is None or (c.get("decommission") or {}).get("done"):
+        return None
+    return carrier_row(c, "own", c.get("callsign"), c.get("name"), game_services(c.get("services")), says=c,
+                       aboard=c.get("aboard"))
 
 
 def squadron_row(sc):
-    """Your squadron's carrier (State.squadron_carrier_summary: the journal's place, Spansh's name and services), always
-    usable by you: a member may dock there. `own` like your carrier (never hidden as old, no access warning); `squadron`
-    says whose."""
+    """Your squadron's carrier (State.squadron_carrier_summary: the journal's place, Spansh's name and services)."""
     c = sc or {}
-    if c.get("id") is None or c.get("x") is None:
+    if c.get("id") is None:
         return None
-    services = {s for s in c.get("services") or [] if s in SERVICES}
-    for key, name in (("has_uc", "UC"), ("has_vista", "Vista")):
-        if key in c:
-            (services.add if c[key] else services.discard)(name)
-    # the summary's id64 is the payload's string: an int here, as every other row's (review 8: State.nearest_dock sorts
-    # them, and a str among ints raised)
-    id64 = int(c["id64"]) if str(c.get("id64") or "").isdigit() else None
-    return {"kind": "carrier", "callsign": str(c.get("callsign") or "").upper(), "name": c.get("name") or "",
-            "system": c.get("system"), "id64": id64, "x": c["x"], "y": c["y"], "z": c["z"], "ls": c.get("ls"),
-            "services": services, "pads": "L M", "large": True, "medium": True, "access": "your squadron's",
-            "seen": None, "source": "journal", "dssa": False, "until": "", "away": None, "own": True, "squadron": True,
-            "market_id": c.get("id"), "aboard": bool(c.get("aboard"))}
+    return carrier_row(c, "squadron", c.get("callsign"), c.get("name"), [s for s in c.get("services") or [] if s in SERVICES],
+                       says=c, ls=c.get("ls"), market_id=c.get("id"), aboard=c.get("aboard"))
 
 
 def merge(spansh, dssa, own=None, squadron=None):

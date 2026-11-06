@@ -317,6 +317,10 @@ later.push(["S22: wanted: the bounty as danger, the nearest Interstellar Factors
   const deny = {kind: "docking", what: "denied", reason: "Offences", words: "refused for your offences here", station: "Hub"};
   await ev(`dockDeniedOut(${JSON.stringify(deny)}, async () => ${rows})`);
   await ev(`dockDeniedOut(${JSON.stringify(Object.assign({}, deny, {reason: "NoSpace", words: "no pad free"}))}, async () => { throw new Error("not asked"); })`);
+  // batch 9: hostile with a bounty on you this stay (the server's `wanted`) names it too; hostile alone does not
+  const hostile = Object.assign({}, deny, {reason: "Hostile", words: "the station is hostile to you"});
+  await ev(`dockDeniedOut(${JSON.stringify(Object.assign({}, hostile, {wanted: true}))}, async () => ${rows})`);
+  await ev(`dockDeniedOut(${JSON.stringify(Object.assign({}, hostile, {wanted: false}))}, async () => { throw new Error("not asked"); })`);
   const said = JSON.parse(ev(`JSON.stringify(__said)`));
   ev(B7_UNSTUB);
   assert.deepStrictEqual(said[0], ["wanted", "⚖ Wanted: 500 cr bounty", "Brewer Corporation (blocking a landing pad) · nearest Interstellar Factors: Far Hub, Next · 12 ly",
@@ -326,6 +330,9 @@ later.push(["S22: wanted: the bounty as danger, the nearest Interstellar Factors
   assert.deepStrictEqual(said[3].slice(0, 3), ["docking", "🛬 Docking denied", "Hub: refused for your offences here · nearest Interstellar Factors: Far Hub, Next · 12 ly"]);
   assert.ok(said[3][4].endsWith("Nearest Interstellar Factors: Far Hub in Next, 12 light-years."), said[3][4]);
   assert.strictEqual(said[4][2], "Hub: no pad free");
+  assert.strictEqual(said[5][2], "Hub: the station is hostile to you · nearest Interstellar Factors: Far Hub, Next · 12 ly");
+  assert.ok(said[5][4].endsWith("Nearest Interstellar Factors: Far Hub in Next, 12 light-years."), said[5][4]);
+  assert.strictEqual(said[6][2], "Hub: the station is hostile to you");
   assert.ok(ev(`DANGER.has("wanted") && speechPrio("wanted", "wanted") === 0 && ALERT_GROUPS.hull === "Danger and risk"`));
   const rowsAll = JSON.parse(ev(`JSON.stringify(ALERTS.map(a => a[0]))`));
   assert.ok(rowsAll.indexOf("wanted") > rowsAll.indexOf("hull") && rowsAll.indexOf("wanted") < rowsAll.indexOf("carrier"), "under Danger and risk");

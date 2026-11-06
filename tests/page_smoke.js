@@ -46,6 +46,28 @@ const settle = async maxMs => {
     await sleep(25);
   }
 };
+// until(cond, maxMs, step): wait for something the block can name (a row drawn, a poll counted), checked now and then
+// every `step` ms, for maxMs at most; true when it came. A block reads what it waited for afterwards, so a timeout fails
+// its own check with the words it always had. Rather than a sleep "long enough" or a hand-written polling loop.
+const until = async (cond, maxMs, step = 50) => {
+  const end = Date.now() + maxMs;
+  for (;;) {
+    if (await cond()) return true;
+    if (Date.now() >= end) return false;
+    await sleep(step);
+  }
+};
+// fastTimers(w, map): the page's setTimeout with every delay through `map` (by default 5 ms at most) until the restore
+// function it returns is called: a page's own pace (a plot's 1.5 s polls, a retry's back-off) made quick where the block
+// tests what comes of it, not the pace. A delay of FAST_KEEP_MS or more (the long poll's 40 s abort) is left
+// alone. A timer set before the call keeps its delay. Keep the real timer, and say so beside the sleep, where the delay
+// itself is what a block checks.
+const FAST_KEEP_MS = 30000;   // over pollSearch's 16 s back-off, under the long poll's POLL_TIMEOUT_MS
+const fastTimers = (w, map = ms => Math.min(ms, 5)) => {
+  const realST = w.setTimeout;
+  w.setTimeout = (f, ms, ...a) => realST(f, (ms || 0) >= FAST_KEEP_MS ? ms : map(ms || 0), ...a);
+  return () => { w.setTimeout = realST; };
+};
 // A block that injects state into the page's `data` (or what a payload redraws: hereData, the Uploads box...) and then
 // waits must not have it replaced by a payload landing meanwhile (the scratch server's own changes: a backup or a job a
 // block before started finishing): holdPayloads() holds every long-poll answer until releasePayloads(), which lets
@@ -153,7 +175,9 @@ const releasePayloads = async () => {
               common: {stars: [], bodies: [], species: []}, estimates: {label: "estimate", top_systems: [], systems: 0, lost: {deaths: 0, ships: 0, value: 0, carto: 0, bio: 0}},
               notes: ["Exact: what each sale paid, as the journal says."]}};
   })();
-  for (let i = 0; i < 60 && !d.querySelector("#sub") ; i++) await sleep(500);
+  // page.js run and its first payload drawn (#sub's words are page.html's own: a block run alone, on a busy machine,
+  // started before page.js had loaded, "data is not defined"; S7 step 2)
+  await until(() => dom.window.eval("typeof data !== 'undefined' && !!data"), 30000, 100);
   await settle(3000);
   const ok = errors.length === 0 && /known within/.test(d.querySelector("#sub").textContent);
   console.log(ok ? "OK" : "FAIL", "| header |", d.querySelector("#sub").textContent.slice(0, 80), "| errors:", errors);
@@ -171,7 +195,7 @@ const releasePayloads = async () => {
     // a view whose answer is slow (Overview first, right after the load, on a busy machine) gets up to 10 s more:
     // a fixed wait failed it now and then, filled a moment later
     const isFilled = () => { const e = d.querySelector(sel); return !!e && e.textContent.trim().length > 0 && !/^loading/.test(e.textContent.trim()); };
-    for (let waited = 0; !isFilled() && waited < 10000; waited += 100) await sleep(100);
+    await until(isFilled, 10000, 100);
     const el = d.querySelector(sel);
     const filled = isFilled();
     const good = filled && errors.length === before;
@@ -347,7 +371,7 @@ const releasePayloads = async () => {
     await sleep(800);
     const kept = [w.eval("version") === v0, w.eval("data.heldMark === true")];
     await releasePayloads();
-    for (let i = 0; i < 40 && w.eval("version") === v0; i++) await sleep(50);
+    await until(() => w.eval("version") !== v0, 2000);
     const let_in = [w.eval("version") > v0, w.eval("data.heldMark === undefined")];
     const good = kept.every(Boolean) && let_in.every(Boolean) && errors.length === before;
     allOk = allOk && good;
@@ -413,7 +437,7 @@ const releasePayloads = async () => {
   // saying 'searching…', the unsold thresholds show the configured values, Materials refetches after a jump
   retries: { if (skip("retries")) break retries;
     holdPayloads();
-    const w = dom.window, realFetch = w.fetch, realST = w.setTimeout, before = errors.length, asked = [];
+    const w = dom.window, realFetch = w.fetch, before = errors.length, asked = [];
     let sysFail = true;
     w.fetch = (u, o) => {
       const s = String(u); asked.push(s.split("?")[0]);
@@ -426,10 +450,10 @@ const releasePayloads = async () => {
     w.eval('sysRetryAt["999"] = 1'); sysFail = false;             // due now
     const e2 = await w.eval('systemFor("999")');
     const goodS = !!e1.error && e2.bodies && e2.bodies.length === 1 && asked.filter(x => x === "api/system/999").length === 2;
-    w.setTimeout = (f, ms) => realST(f, Math.min(ms || 0, 5));    // the retry back-off, sped up
+    const fast = fastTimers(w);    // the retry back-off, sped up
     w.eval('search = {running: true, status: "searching…", results: []}; pollSearch()');
     await sleep(500);
-    w.setTimeout = realST;
+    fast();
     const sr = w.eval("search"), goodP = !sr.running && /lost track of the search/.test(sr.status);
     w.eval("search = null; render()");
     w.fetch = realFetch;
@@ -1203,7 +1227,7 @@ const releasePayloads = async () => {
   // F62: a refused search POST says so instead of showing the previous search's results as the new ones, and an
   // older result (a poll sent before the POST) is not taken for the search just started
   search_refused: { if (skip("search_refused")) break search_refused;
-    const w = dom.window, realFetch = w.fetch, realST = w.setTimeout, before = errors.length;
+    const w = dom.window, realFetch = w.fetch, before = errors.length;
     const json = (body, status) => Promise.resolve(new Response(JSON.stringify(body), {status, headers: {"Content-Type": "application/json"}}));
     const old = {seq: 3, running: false, status: "7 systems (old search)", results: [{id: "1", name: "Old", distance: 1, matches: {}}]};
     let postReply = [{error: "refused (simulated)"}, 403], gets = [], seen = [];
@@ -1212,16 +1236,17 @@ const releasePayloads = async () => {
       if (o && o.method === "POST") return json(...postReply);
       return json(gets.length > 1 ? gets.shift() : gets[0] || old, 200);
     };
-    w.setTimeout = (f, ms) => realST(f, Math.min(ms || 0, 5));
+    const fast = fastTimers(w);   // the search's polls, sped up
     const submit = () => d.getElementById("searchForm").dispatchEvent(new w.Event("submit", {cancelable: true}));
-    submit(); await sleep(300);
+    const status = () => w.eval("search && search.status") || "";
+    submit(); await until(() => /search failed/.test(status()), 3000);
     const refused = w.eval("({status: search.status, n: (search.results || []).length})");
     postReply = [{seq: 5}, 200];
     gets = [old, old, {seq: 5, running: false, status: "2 systems (new search)", results: []}];
     w.__seen = seen; w.eval("window.__render = render; render = function () { window.__seen.push(search && search.status); return window.__render(); }");
-    submit(); await sleep(400);
+    submit(); await until(() => w.eval("search && search.seq") === 5 && /new search/.test(status()), 3000);
     w.eval("render = window.__render");
-    w.setTimeout = realST; w.fetch = realFetch;
+    fast(); w.fetch = realFetch;
     const fresh = w.eval("({status: search.status, seq: search.seq})");
     w.eval("search = null; searchWant = 0; render()");
     const goodF = /search failed: refused \(simulated\)/.test(refused.status) && refused.n === 0
@@ -1444,8 +1469,7 @@ const releasePayloads = async () => {
       return o; })()`);
     w.fetch = realFetch;
     // F40: a refused search while the previous one is still running keeps saying it failed
-    const realST = w.setTimeout;
-    w.setTimeout = (f, ms) => realST(f, Math.min(ms || 0, 5));
+    const fast = fastTimers(w);   // the search's polls, sped up
     let postReply = [{seq: 7}, 200];
     w.fetch = (u, o) => {
       if (String(u) !== "api/search") return realFetch(u, o);
@@ -1457,7 +1481,7 @@ const releasePayloads = async () => {
     postReply = [{error: "refused (simulated)"}, 403];
     submit(); await sleep(300);
     const refused = w.eval("search.status");
-    w.setTimeout = realST; w.fetch = realFetch;
+    fast(); w.fetch = realFetch;
     w.eval("search = null; searchWant = 0; searchRefused = false; render()");
     w.speak = realSpeak; w.play = realPlay;
     const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, seenMark: [true, 1, true], ownPic: [true, false, true], orbit: ["↳ 15 ls · B", "orbits B at 15 ls (12 ls to 18 ls): the orbit's size (its semi-major axis), not today's distance"], orbitHide: [["Hide orbital distance", false, ["inline", "block"]], ["Show orbital distance", "true", true, ["none", "none"], false], false], ownPicLegend: true, orbitNoBtn: true, legend: true, noDss: true, finished: true, mat: true,
@@ -1664,7 +1688,7 @@ const releasePayloads = async () => {
       w.document.querySelector('[data-view="search"]').click(); await sleep(300);
       w.document.getElementById("findName").value = here.toLowerCase();
       w.document.getElementById("findForm").dispatchEvent(new w.Event("submit", {cancelable: true}));
-      for (let i = 0; i < 20 && !/visited|never/.test(w.document.getElementById("findStatus").textContent); i++) await sleep(250);
+      await until(() => /visited|never/.test(w.document.getElementById("findStatus").textContent), 5000, 250);
       got.find = [w.eval("view"), /visited/.test(w.document.getElementById("findStatus").textContent)];
     } else got.find = ["here", true];   // no position yet on this server: nothing to look up locally
     got.long = (await fetch(base + "api/find?name=" + "x".repeat(101))).status;
@@ -1752,17 +1776,24 @@ const releasePayloads = async () => {
     await w.eval("R.filled = false; loadRich(true)"); await sleep(300);   // back to the Road to Riches route
     pick("riches");
     // a plot: the shared fields and Riches' own, posted to api/riches/plot, then polled until done
-    d.getElementById("hwyTo").value = "Far Away"; d.getElementById("hwyRange").value = "61.5"; let polls = 0;
+    d.getElementById("hwyTo").value = "Far Away"; d.getElementById("hwyRange").value = "61.5"; let polls = 0, plotDone = false;
     answer = url => {
       if (url === "api/riches/plot") return json({ok: true, plotting: {state: "running", from: "Rich B", to: "Far Away", started: new Date().toISOString()}}, 202);
       polls++;
-      return json(payload(polls < 3 ? route : route, polls < 3 ? {state: "running", from: "Rich B", to: "Far Away", started: new Date().toISOString()} : {state: "done", from: "Rich B", to: "Far Away"}));
+      const done = polls >= 3 && plotDone;   // running until the block has read the running words
+      return json(payload(route, done ? {state: "done", from: "Rich B", to: "Far Away"} : {state: "running", from: "Rich B", to: "Far Away", started: new Date().toISOString()}));
     };
-    d.getElementById("hwyGo").click(); await sleep(300);
-    got.plotBody = (calls.find(c => c[0] === "api/riches/plot") || [])[2];
-    got.running = d.getElementById("hwyStatus").textContent;
-    await sleep(5400);
-    got.done = [polls >= 3, d.getElementById("hwyStatus").textContent];
+    // RICH_POLL_MS's polls sped up (S7 step 2): what they bring is tested here, not their 1.5 s pace
+    const status = () => d.getElementById("hwyStatus").textContent, fast = fastTimers(w);
+    try {
+      d.getElementById("hwyGo").click();
+      await until(() => calls.some(c => c[0] === "api/riches/plot") && /^Asking Spansh/.test(status()), 2000);
+      got.plotBody = (calls.find(c => c[0] === "api/riches/plot") || [])[2];
+      got.running = status();
+      plotDone = true;
+      await until(() => polls >= 3 && /^Plotted/.test(status()), 3000);
+    } finally { fast(); }
+    got.done = [polls >= 3, status()];
     // with a Highway route as well: the switch, and the Highway's list when it is picked
     w.eval(`H.data = Object.assign({}, H.data, {route: {id: "h1", plotter: "neutron", from: "Hw A", to: "Hw Z", count: 2, created_ts: "2026-10-06T09:00:00Z",
       points: [[0, 0], [100, 100]], summary: {jumps_total: 1}, done: [], ahead: [{i: 1, system: "Hw Z", x: 100, z: 100}], options: {}}}); renderHwy()`);
@@ -2806,7 +2837,7 @@ const releasePayloads = async () => {
     const d2 = dom2.window.document;
     // the header's count is "…" until the first payload is drawn
     const known2 = () => ((d2.getElementById("subKnown") || {}).textContent || "").trim();
-    for (let i = 0; i < 20 && !/^\d/.test(known2()); i++) await sleep(500);
+    await until(() => /^\d/.test(known2()), 10000, 500);
     const sub2 = (d2.querySelector("#sub") || {}).textContent || "";
     const goodS = errs2.length === 0 && /^\d/.test(known2());
     dom2.window.close();
@@ -3077,8 +3108,10 @@ const releasePayloads = async () => {
     // read the label at once: a live poll during the wait below would replace this made-up hush state
     got.label = w.document.getElementById("hushLbl").textContent;
     w.eval('alertOut("find", "A find", "", {say: "A find."}); alertOut("hull", "Hull at 40%", "", {tag: "hull", say: "Hull at 40 percent."})');
-    await sleep(1400);   // the danger sound plays first (900 ms)
-    got.hush = [fateOf("Quiet until the next jump."), fateOf("A find"), fateOf("Hull at 40 percent.")];
+    // the danger sound plays first (900 ms): until each line has its fate (the first given is kept: setFate)
+    const hushLines = () => [fateOf("Quiet until the next jump."), fateOf("A find"), fateOf("Hull at 40 percent.")];
+    await until(() => hushLines().every(Boolean), 3000);
+    got.hush = hushLines();
     w.eval('data.position = Object.assign({}, data.position, {id64: 4243, id: "4243"})');   // the jump
     got.afterJump = w.eval("hushed()");
     w.eval("data.hush = null; onHush(false)");
@@ -3087,10 +3120,10 @@ const releasePayloads = async () => {
     // the server's hush reaches the header (a scratch server: memory only, and cancelled straight after)
     const hr = await (await fetch(base + "api/hush", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({mode: "10m"})})).json();
     w.eval("speechOn = false");   // the page's own long poll brings it: no confirmation spoken for this part
-    for (let i = 0; i < 20 && !/hushed \d+:\d\d/.test(w.document.getElementById("hushLbl").textContent); i++) await sleep(200);
+    await until(() => /hushed \d+:\d\d/.test(w.document.getElementById("hushLbl").textContent), 4000, 200);
     got.server = [hr.hush && hr.hush.mode, /hushed (9|10):\d\d/.test(w.document.getElementById("hushLbl").textContent)];
     await fetch(base + "api/hush", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({mode: "off"})});
-    for (let i = 0; i < 20 && w.eval("hushState") !== null; i++) await sleep(200);
+    await until(() => w.eval("hushState") === null, 4000, 200);
     got.serverOff = w.eval("hushState === null && document.getElementById('hushLbl').hidden");
     w.eval("speechOn = true");
     // the co-pilot channel: once, only in the speaking window, nothing on a first payload
@@ -3153,7 +3186,7 @@ const releasePayloads = async () => {
     w.eval(`speechLog.length = 0; soundOn = true; alertSound.brief = true; alertSpeak.brief = true;
       data.moments = [{seq: lastMomentSeq + 1, kind: "arrival_brief", system: "4243", system_name: "Routine Sys", undiscovered: false, visits: 1, in_spansh: true,
         body_count: 12, all_found: true, base_known: 12, star_class: "G", worth: [], bio: null}]; onData()`);
-    await sleep(1200);
+    await until(() => played.length && fateOf("Routine Sys: Known"), 3000); await sleep(100);   // and nothing more played
     got.hum = [played.join(), fateOf("Routine Sys: Known")];
     w.play = realPlay; w.localStorage.removeItem("routineQuiet");
     w.sayNow = realSay;
@@ -3252,7 +3285,7 @@ const releasePayloads = async () => {
     const dom2 = new JSDOM(html2, {url: base + "?mode=now", runScripts: "dangerously", resources: "usable", pretendToBeVisual: true,
       beforeParse(w2) { w2.AbortController = AbortController; w2.fetch = (u, o) => fetch(new URL(u, base), o); w2.addEventListener("error", e => errs2.push(e.message)); w2.localStorage.clear(); w2.scrollBy = () => {}; }});
     const d2 = dom2.window.document;
-    for (let i = 0; i < 40 && !(d2.getElementById("nowBody") && d2.getElementById("nowBody").textContent.trim()); i++) await sleep(250);
+    await until(() => d2.getElementById("nowBody") && d2.getElementById("nowBody").textContent.trim(), 10000, 250);
     d2.getElementById("nowBack").click();
     d2.getElementById("nowBody").click();
     d2.getElementById("nowBody").dispatchEvent(new dom2.window.MouseEvent("dblclick", {bubbles: true}));
@@ -4208,15 +4241,15 @@ const releasePayloads = async () => {
     const fates = () => JSON.parse(w.eval("JSON.stringify(speechLog.map(e => [e.words, e.fate]))"));
     const fateOf = words => (fates().find(f => f[0] === words) || [])[1];
     w.eval('speak("Capped line."); speak("Whole line.")');
-    for (let i = 0; i < 30 && !(fateOf("Capped line.") && fateOf("Whole line.")); i++) await sleep(100);
+    await until(() => fateOf("Capped line.") && fateOf("Whole line."), 3000, 100);
     got.capped = [fateOf("Capped line."), fateOf("Whole line.")];
     w.eval('speak("Held line.")');
-    for (let i = 0; i < 30 && !release; i++) await sleep(50);
+    await until(() => release, 1500);
     w.dispatchEvent(new w.Event("pagehide"));
     const b0 = beacons[0];
     got.beacon = b0 ? [b0[0], JSON.parse(await (b0[1].text ? b0[1].text() : new Promise(r => { const fr = new w.FileReader(); fr.onload = () => r(fr.result); fr.readAsText(b0[1]); }))).id === w.eval("pcLineId")] : null;
     if (release) release();
-    for (let i = 0; i < 30 && !fateOf("Held line."); i++) await sleep(50);
+    await until(() => fateOf("Held line."), 1500);
     w.dispatchEvent(new w.Event("pagehide"));
     got.beaconAfter = beacons.length;
     w.fetch = realFetch;
@@ -4748,21 +4781,28 @@ const releasePayloads = async () => {
     rng.value = "48.5"; rng.dispatchEvent(new w.Event("input"));
     d.getElementById("hwyTo").value = "Colonia";
     // a plot: the neutron plotter's body, then polled until the job is done
-    let polls = 0;
+    let polls = 0, plotDone = false;
     answer = (url, o) => {
       if (url === "api/highway/plot") return json({ok: true, plotting: {state: "running", plotter: "neutron", from: "Hwy Stop 37", to: "Colonia", started: new Date().toISOString()}}, 202);
       polls++;
-      if (polls < 3) return json(hwyPayload(fx, {state: "running", plotter: "neutron", from: "Hwy Stop 37", to: "Colonia", started: new Date().toISOString()}));
+      // running until the block has read the running words
+      if (polls < 3 || !plotDone) return json(hwyPayload(fx, {state: "running", plotter: "neutron", from: "Hwy Stop 37", to: "Colonia", started: new Date().toISOString()}));
       const nf = hwyFixture({plotter: "neutron", at: 0}); nf.route.id = nf.summary.id = "hwy-test-2";
       return json(hwyPayload(nf, {state: "done", plotter: "neutron", from: "Hwy Stop 37", to: "Colonia"}));
     };
     w.eval("drawHwyMap()");
     got.exactRefuel = [w.getComputedStyle(d.querySelector('#hwyTable th[title^="refuel"]')).display !== "none",
       /refuel/.test(d.getElementById("hwyMapNote").textContent), /scoop as you go/.test(d.getElementById("hwyHead").textContent)];
-    d.getElementById("hwyGo").click(); await sleep(400);
-    got.plotBody = (calls.find(c => c[0] === "api/highway/plot") || [])[2];
-    got.running = d.getElementById("hwyStatus").textContent;
-    await sleep(4300);
+    // HWY_POLL_MS's polls sped up (S7 step 2): what they bring is tested here, not their 1.5 s pace
+    const hwyStatus = () => d.getElementById("hwyStatus").textContent, fast = fastTimers(w);
+    try {
+      d.getElementById("hwyGo").click();
+      await until(() => calls.some(c => c[0] === "api/highway/plot") && /^Plotting/.test(hwyStatus()), 2000);
+      got.plotBody = (calls.find(c => c[0] === "api/highway/plot") || [])[2];
+      got.running = hwyStatus();
+      plotDone = true;
+      await until(() => polls >= 3 && /^Plotted/.test(hwyStatus()), 3000);
+    } finally { fast(); }
     got.polls = polls;
     w.eval("drawHwyMap()");
     got.neutronRefuel = [w.getComputedStyle(d.querySelector('#hwyTable th[title^="refuel"]')).display !== "none",
@@ -4785,11 +4825,14 @@ const releasePayloads = async () => {
     got.failed = d.getElementById("hwyStatus").textContent;
     // the destination's name suggestions (debounced)
     answer = url => url.startsWith("api/highway/systems") ? json({q: "Col", values: ["Colonia", "Col 285 Sector AA-A c1"]}) : json(hwyPayload(fx));
-    const to = d.getElementById("hwyTo"); to.value = "Col"; to.dispatchEvent(new w.Event("input")); await sleep(600);
+    const to = d.getElementById("hwyTo"); to.value = "Col"; to.dispatchEvent(new w.Event("input"));
+    const names = id => [...d.querySelectorAll(`#${id} option`)].map(o => o.value).join("|");
+    await until(() => names("hwyNames") === "Colonia|Col 285 Sector AA-A c1", 2000);   // HWY_SUGGEST_MS's debounce, then the answer
     got.suggest = [...d.querySelectorAll("#hwyNames option")].map(o => o.value).join("|");
     // and the start's, in its own list (the author, 2026-10-07: From did not suggest)
     answer = url => url.startsWith("api/highway/systems") ? json({q: "Sol", values: ["Sol", "Solati"]}) : json(hwyPayload(fx));
-    const from = d.getElementById("hwyFrom"); from.value = "Sol"; from.dispatchEvent(new w.Event("input")); await sleep(600);
+    const from = d.getElementById("hwyFrom"); from.value = "Sol"; from.dispatchEvent(new w.Event("input"));
+    await until(() => names("hwyFromNames") === "Sol|Solati", 2000); await sleep(100);   // and #hwyNames left as it was
     got.suggestFrom = [from.getAttribute("list"), [...d.querySelectorAll("#hwyFromNames option")].map(o => o.value).join("|"),
                        [...d.querySelectorAll("#hwyNames option")].map(o => o.value).join("|")];
     from.value = "";
@@ -5630,7 +5673,7 @@ const releasePayloads = async () => {
     w.eval(`data.highway = ${JSON.stringify(fx.summary)}`);
     d.querySelector('[data-view="hwy"]').click(); await sleep(800);
     await w.eval("loadRegions()");
-    for (let i = 0; i < 20 && !w.eval("RG.data"); i++) await sleep(250);
+    await until(() => w.eval("RG.data"), 5000, 250);
     got.regions = JSON.parse(w.eval(`JSON.stringify({labels: RG.labels && RG.labels.length, segs: RG.segs ? RG.segs.length / 4 > 10000 : false,
       at: [[0, 0], [25.21875, 25899.96875], [-9530.5, 19808.125], [-1111.5625, 65269.75], [-60000, 0]].map(p => hwyRegionName(...p)),
       biggestFirst: RG.labels[0].cells >= RG.labels[RG.labels.length - 1].cells})`));
@@ -5727,7 +5770,7 @@ const releasePayloads = async () => {
         w.HTMLCanvasElement.prototype.getContext = () => null;
       }});
     const tw = tdom.window, td = tw.document;
-    for (let i = 0; i < 60 && !tw.eval("typeof data !== 'undefined' && data"); i++) await sleep(500);
+    await until(() => tw.eval("typeof data !== 'undefined' && data"), 30000, 100);
     await settle(3000);
     const got = {desk};
     got.shell = ["tabHead", "tabNav", "tabMain", "tabRail", "tabFoot"].map(id => !td.getElementById(id).hidden);
@@ -5746,7 +5789,10 @@ const releasePayloads = async () => {
       for (const v of vs) {
         const before = terr.length;
         td.querySelector(`#tabNav [data-view="${v}"]`).click();
-        await settle(2500);
+        // filled, with its requests answered (S7 step 2: settle's 400 ms of quiet on each of the 12 pages before); an
+        // error after it still fails the block (terr at its end)
+        await until(() => tw.eval("view") === v && (td.querySelector(fills[v]) || {textContent: ""}).textContent.trim() && inflight === 0, 2500, 25);
+        await sleep(50);
         const el = td.querySelector(fills[v]), shown = [...td.querySelectorAll("#tabNav [data-pages]")].filter(x => !x.hidden).map(x => x.dataset.pages);
         const ok = tw.eval("view") === v && el && el.textContent.trim().length > 0 && shown.join() === g && terr.length === before &&
           td.querySelector(`#tabNav [data-view="${v}"]`).classList.contains("on");
@@ -8460,15 +8506,17 @@ const releasePayloads = async () => {
     // review 2026-10-23 S5-S1: no answer for 20 s says Outrider may have stopped, and an answer again carries on
     sw.__down = true;
     sw.eval("lastAnswer = Date.now() - 25000");
-    await sleep(1200);
-    got.quiet = [/has not answered for 2\d s/.test(sw.eval(`document.getElementById("text").textContent`)),
-                 /may have stopped/.test(sw.eval(`document.getElementById("readyHint").textContent`))];
+    // its next tick (once a second) says so; an answer, then the ready one, at the ticks after (S7 step 2: until, not
+    // a sleep of more than a tick each time)
+    const text = id => sw.eval(`document.getElementById("${id}").textContent`);
+    await until(() => /may have stopped/.test(text("readyHint")), 3000);
+    got.quiet = [/has not answered for 2\d s/.test(text("text")), /may have stopped/.test(text("readyHint"))];
     sw.__down = false;
-    await sleep(1200);
-    got.quiet.push(/opens by itself when Outrider is ready/.test(sw.eval(`document.getElementById("readyHint").textContent`)));
+    await until(() => /opens by itself when Outrider is ready/.test(text("readyHint")), 3000);
+    got.quiet.push(/opens by itself when Outrider is ready/.test(text("readyHint")));
     sw.__ready = true;
-    await sleep(1500);
-    got.reloaded = sw.eval(`window.__reloaded || 0`);
+    await until(() => sw.eval(`window.__reloaded || 0`), 3000);
+    got.reloaded = sw.eval(`window.__reloaded || 0`);   // once: a ready answer ends the ticks
     sw.close();
     const want = {real: true, install: ["Install as a service", "cd /o && ./launch_outrider.sh --install-service --port 8026"],
                   installed: [true, true, "Remove the service", "cd /o && ./launch_outrider.sh --uninstall-service"],
@@ -8997,7 +9045,7 @@ const releasePayloads = async () => {
     await settle(1500);
     const ask = text => w.fetch("api/ask", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({text, source: "smoke"})});
     await ask("Vespa, status report"); await ask("what is the meaning of life");
-    for (let i = 0; i < 40 && !/meaning of life/.test(d.getElementById("askLog").textContent); i++) await sleep(250);   // the long poll's ask_seq
+    await until(() => /meaning of life/.test(d.getElementById("askLog").textContent), 10000, 250);   // the long poll's ask_seq
     const rows = [...d.querySelectorAll("#askLog .alog")].slice(0, 2).map(r => [r.className, r.textContent.replace(/\s+/g, " ")]);
     const copied = [], realCopy = w.copyText;
     w.copyText = (text, what) => copied.push([text, what]);
@@ -9032,7 +9080,7 @@ const releasePayloads = async () => {
       const dom2 = new JSDOM(html2, {url: base + search, runScripts: "dangerously", resources: "usable", pretendToBeVisual: true,
         beforeParse(w2) { w2.AbortController = AbortController; w2.fetch = (u, o) => fetch(new URL(u, base), o); w2.addEventListener("error", e => errs.push(e.message));
           w2.localStorage.clear(); w2.localStorage.setItem("view", JSON.stringify("near")); w2.scrollBy = () => {}; w2.HTMLCanvasElement.prototype.getContext = () => null; }});
-      for (let i = 0; i < 60 && !dom2.window.eval("typeof data !== 'undefined' && !!data"); i++) await sleep(250);   // the first payload drawn
+      await until(() => dom2.window.eval("typeof data !== 'undefined' && !!data"), 15000, 250);   // the first payload drawn
       return [dom2, errs];
     };
     const [vb, errsB] = await load("?view=bm"), wb = vb.window, db = wb.document;
@@ -9116,14 +9164,15 @@ const releasePayloads = async () => {
         Object.defineProperty(w2.navigator, "locks", {value: locks, configurable: true});
         Object.defineProperty(w2, "opener", {value: main, configurable: true, writable: true}); }});
     const wv = dom2.window, isSp = () => wv.eval("typeof isSpeaker !== 'undefined' && isSpeaker");
-    for (let i = 0; i < 60 && !isSp(); i++) await sleep(150);   // page.js loaded, then a second late, the voice free: this window has it
+    await until(() => isSp(), 9000, 150);   // page.js loaded, then a second late, the voice free: this window has it
     const got = {first: isSp()};
     main.claim();   // the main window reloaded: in line behind the view window
-    for (let i = 0; i < 20 && isSp(); i++) await sleep(150);
+    await until(() => !isSp(), 3000, 150);
     got.handed = [isSp(), main.holds, locks.queue.length];   // handed back, and in line again behind it
     wv.document.getElementById("speakerClaim").click();   // Speak from this window: taken on purpose
     await sleep(50);
     got.taken = [isSp(), main.holds, main.waiting];
+    // a real wait, kept (S7 step 2): that nothing hands the voice back takes its timers running their course
     await sleep(1600);
     got.kept = [isSp(), main.holds];   // the main window in line does not get it back
     dom2.window.close();
@@ -9176,7 +9225,7 @@ const releasePayloads = async () => {
     w.localStorage.setItem("speakOnServer", "true");
     w.eval(`speechOn = true; isSpeaker = true; speechItems = []; speechLast = {}; hushState = null;
       speak("Second line.", {delay: 300, speaker: 5}); speak("First line.", {voice: "en_GB-vctk-medium", speaker: 2})`);
-    for (let i = 0; i < 40 && played.length < 2; i++) await sleep(50);
+    await until(() => played.length >= 2, 2000);
     got.played = played.map(b => [b.text, b.voice, b.speaker, b.next ? [b.next.text, b.next.speaker] : null]);
     got.again = JSON.parse(w.eval("JSON.stringify(lastSaid && [lastSaid.words, lastSaid.speaker])"));
     // Settings → Voice → Personality voices
@@ -9286,7 +9335,7 @@ const releasePayloads = async () => {
     w.localStorage.setItem("speakOnServer", "true");
     w.eval(`data.crew.on = true; speak = window.__crew.speak; speechItems = []; speechLast = {};
       alertOut("scoop", "Tank full", "", {say: () => line("tank_full", {jumps: 8}, "Tank full.")})`);
-    for (let i = 0; i < 40 && !played.length; i++) await sleep(50);
+    await until(() => played.length, 2000);
     got.played = played.map(b => [b.text, b.voice, b.speaker, b.role]);
     w.eval(`hushSpeech(true); const k = window.__crew; data.tts = k.tts; data.crew = k.crew; speechLib = k.lib; speak = k.speak;
       [speechOn, isSpeaker, soundOn] = k.flags; hushState = k.hush;
@@ -9559,9 +9608,13 @@ const releasePayloads = async () => {
     w.eval(`document.getElementById("alertsBtn").click()`);
     await settle(1500);
     const stored0 = w.localStorage.getItem("settingsOpen"), open0 = w.eval(`JSON.stringify(setSecs.map(s => s.open))`);
+    let srvAsked = false;
     const find = async q => {
       w.eval(`(() => { const b = document.getElementById("setFind"); b.value = ${JSON.stringify(q)}; b.dispatchEvent(new Event("input")); })()`);
-      await settle(2500); await sleep(250);   // Server settings arriving, then the observer's pass
+      // the first find asks for Server settings: their answer drawn, then the observer's pass (SF's 120 ms); a later
+      // find is applied at once (sfSet), the requests it makes answered (S7 step 2: settle's 400 ms quiet each time)
+      if (!srvAsked) { srvAsked = true; await settle(2500); await sleep(250); }
+      else { await until(() => inflight === 0, 2500, 25); await sleep(150); }
     };
     const vis = sel => w.eval(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); return !!el && !el.closest(".sfhide"); })()`);
     const secs = () => JSON.parse(w.eval(`JSON.stringify(setSecs.filter(s => !s.classList.contains("sfhide") && sfLaidOut(s)).map(s => s.dataset.secKey + (s.open ? "" : " (closed)")))`));
@@ -9717,7 +9770,7 @@ const releasePayloads = async () => {
     const pick = async (text, name) => {
       Object.defineProperty(input, "files", {value: [new w.File([text], name)], configurable: true});
       input.dispatchEvent(new w.Event("change"));
-      for (let i = 0; i < 40 && /^(Importing…)?$/.test(msg().textContent); i++) await sleep(100);
+      await until(() => !/^(Importing…)?$/.test(msg().textContent), 4000, 100);
       const said = [msg().textContent, msg().className];
       msg().textContent = "";
       return said;
@@ -9727,7 +9780,7 @@ const releasePayloads = async () => {
     const got = {picked: 0, visible: !d.getElementById("bmTools").hidden && !d.getElementById("bmImport").hidden};
     got.picked = picked;
     got.first = await pick(csv, "bookmarks.csv");
-    for (let i = 0; i < 40 && !w.eval(`data.bookmarks.some(b => b.id === "9007199254740993")`); i++) await sleep(150);
+    await until(() => w.eval(`data.bookmarks.some(b => b.id === "9007199254740993")`), 6000, 150);
     w.eval("renderBookmarks(bmMap())");
     const row = [...d.querySelectorAll("#bmRows tr")].find(r => /Smoke Import One/.test(r.textContent));
     got.row = row ? [/from a file/.test(row.textContent), !!row.querySelector('.swtick[data-sweep="Smoke Import One"]'),
@@ -10127,29 +10180,34 @@ const releasePayloads = async () => {
       d.querySelector('[data-view="cmdr"]').click(); await settle(400);
       d.querySelector('[name=cmdrTab][value="inventory"]').click(); await settle(400);
       got.marked = [...body().querySelectorAll("tr[data-shipimg]")].map(r => r.dataset.shipimg);
-      const cas = row("Far Wanderer");
-      ptr(cas, "pointerenter");
-      ptr(cas.cells[0], "pointerenter"); ptr(cas.cells[0], "pointerleave");   // moving over its cells: still the row's hover
-      await sleep(1500);
-      got.early = shown();
-      await sleep(800);
-      got.after = shown();
-      ptr(cas, "pointerleave");
-      got.left = card().hidden;
-      // a type with no picture: no card, however long
-      ptr(row("Prototype"), "pointerenter"); await sleep(2300);
-      got.unknown = card().hidden;
-      ptr(row("Prototype"), "pointerleave");
-      // a finger's pointer: nothing (the tablet's tap does it)
-      ptr(row("Krait Phantom"), "pointerenter", "touch"); await sleep(2300);
-      got.touch = card().hidden;
-      // Escape closes; another sub-tab closes it
-      ptr(row("Krait Phantom"), "pointerenter"); await sleep(2300);
-      got.krait = shown();
-      d.dispatchEvent(new w.KeyboardEvent("keydown", {key: "Escape", bubbles: true}));
-      got.escape = card().hidden;
-      ptr(row("Krait Phantom"), "pointerleave");
-      ptr(row("Krait Phantom"), "pointerenter"); await sleep(2300);
+      // the hover's SHIP_CARD_MS (2 s) on a tenth of the clock: "not yet" at three quarters of it, then shown; a sleep a
+      // tenth as long is as long to the page (S7 step 2: 12 s of waiting before)
+      const fast = fastTimers(w, ms => ms / 10), tenth = ms => sleep(ms / 10), shownSoon = () => until(() => !card().hidden, 2000, 20);
+      try {
+        const cas = row("Far Wanderer");
+        ptr(cas, "pointerenter");
+        ptr(cas.cells[0], "pointerenter"); ptr(cas.cells[0], "pointerleave");   // moving over its cells: still the row's hover
+        await tenth(1500);
+        got.early = shown();
+        await shownSoon();
+        got.after = shown();
+        ptr(cas, "pointerleave");
+        got.left = card().hidden;
+        // a type with no picture: no card, however long
+        ptr(row("Prototype"), "pointerenter"); await tenth(3000);
+        got.unknown = card().hidden;
+        ptr(row("Prototype"), "pointerleave");
+        // a finger's pointer: nothing (the tablet's tap does it)
+        ptr(row("Krait Phantom"), "pointerenter", "touch"); await tenth(3000);
+        got.touch = card().hidden;
+        // Escape closes; another sub-tab closes it
+        ptr(row("Krait Phantom"), "pointerenter"); await shownSoon();
+        got.krait = shown();
+        d.dispatchEvent(new w.KeyboardEvent("keydown", {key: "Escape", bubbles: true}));
+        got.escape = card().hidden;
+        ptr(row("Krait Phantom"), "pointerleave");
+        ptr(row("Krait Phantom"), "pointerenter"); await shownSoon();
+      } finally { fast(); }
       d.querySelector('[name=cmdrTab][value="profile"]').click(); await settle(400);
       got.otherTab = card().hidden;
       got.pure = w.eval(`[shipPicture("Krait_Light"), shipPicture("new_hull_x"), shipPicture("constructor"),
