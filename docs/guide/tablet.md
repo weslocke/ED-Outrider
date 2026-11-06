@@ -13,7 +13,10 @@ thorn-cut corners and spiked lettering), Sith (black,
 crimson, thin hard lines), Rebel Alliance (cockpit orange and sand, blue for what is chosen) or Dark (a modern app's dark mode: slate
 cards, switches and line icons beside the words). Settings picks one per tablet. The Elite, Babylon 5 and Star Wars
 themes show their emblem in the free space under the page list (credits at the bottom of this page). Outrider must listen on your network
-for this: see [Other devices on your network](install.md#-other-devices-on-your-network).
+for this: see [Other devices on your network](install.md#-other-devices-on-your-network). ⚙ Settings → Server, under
+`[server] host`, gives the address to open (`http://192.168.1.23:8025/tablet`, with Copy), or what to change first;
+on Windows, allow Python through the firewall on **private** networks when it asks (that section says how if Cancel
+was clicked).
 
 <p align="center">
   <img src="../images/tablet.png" alt="The tablet layout on Now, with the surface map: the status strip on top, the pages on the left, the game controls on the right" width="900">

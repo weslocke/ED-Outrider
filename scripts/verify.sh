@@ -135,6 +135,7 @@ db = "$TMP/scratch.sqlite"
 backup_dir = "$TMP/backups"
 backup_every_days = 0
 speech_file = "$TMP/speech.json"
+open_browser = false   # never a browser opened by the scratch server's fresh database
 
 [spansh]
 watch_firsts = false

@@ -6122,6 +6122,50 @@ const releasePayloads = async () => {
     allOk = allOk && goodV;
     console.log(goodV ? "OK" : "FAIL", "| server_settings_save_twice |", goodV ? "a saved password is not put back nor sent again" : JSON.stringify([got, posts]), errors.slice(before));
   }
+  // Round 10's S5: under [server] host, how a tablet reaches this Outrider (GET api/config's listen): the scratch server's
+  // own (loopback: what to change), then from a stubbed answer the addresses with Copy, Windows' firewall line, Docker's
+  // words; S12: a journal folder saved with no journals yet shows the server's note. Nothing is saved (POST answered here)
+  server_settings_tablet_address: { if (skip("server_settings_tablet_address")) break server_settings_tablet_address;
+    const w = dom.window, d = w.document, before = errors.length, got = {};
+    const text = id => ((d.getElementById(id) || {}).textContent || "").replace(/\s+/g, " ").trim();
+    w.eval(`loadServerSettings()`);
+    await settle(2500);
+    got.loopback = [text("srvListen"), !!d.getElementById("srvFirewall"),
+      !!d.querySelector('#serverSettingsBody [data-sec="server"][data-key="host"]').closest(".srvin").querySelector("#srvListen")];
+    w.eval(`window.__realApi = apiJson; apiJson = async (u, o) => {
+      if (u === "api/config" && o && o.method === "POST") return {ok: true, changed: 1, restart: true, live: [], note: window.__note};
+      const r = await window.__realApi(u, o); if (u === "api/config") r.listen = window.__listen; return r; };`);
+    const copied = [], realCopy = w.copyText;
+    w.copyText = (t, what) => copied.push([t, what]);
+    w.__listen = {kind: "network", port: 8025, urls: ["http://192.168.1.23:8025/tablet", "http://10.0.0.5:8025/tablet"], firewall: true};
+    w.eval(`loadServerSettings()`); await settle(1500);
+    d.querySelector('#srvListen [data-copyurl="http://10.0.0.5:8025/tablet"]').click();
+    got.network = [text("srvListen"), /Private networks/.test(text("srvFirewall")), /Allow an app through firewall/.test(text("srvFirewall")), copied];
+    w.__listen = {kind: "network", port: 8025, urls: [], firewall: false};
+    w.eval(`loadServerSettings()`); await settle(1500);
+    got.none = [text("srvListen"), !!d.getElementById("srvFirewall")];
+    w.__listen = {kind: "docker", port: 8030, urls: [], firewall: false};
+    w.eval(`loadServerSettings()`); await settle(1500);
+    got.docker = text("srvListen");
+    w.__note = "/home/me/Saved Games/Frontier Developments has no Journal.*.log yet: they are in /home/me/Saved Games/Frontier Developments/Elite Dangerous";
+    d.querySelector('#serverSettingsBody [data-sec="journals"][data-key="live"]').value = "/home/me/Saved Games/Frontier Developments";
+    await w.eval(`saveServerConfig()`); await settle(1500);
+    got.note = [text("srvMsg").includes(`Note: ${w.__note}.`), !!d.querySelector("#srvMsg .warnc")];
+    w.eval(`apiJson = window.__realApi; delete window.__realApi;`);
+    w.copyText = realCopy;
+    w.eval(`loadServerSettings()`); await settle(1500);
+    const want = {
+      loopback: ["To use a tablet or phone: set host to 0.0.0.0, set a password, then Restart.", false, true],
+      network: ["Open on your tablet or phone: http://192.168.1.23:8025/tablet Copy · http://10.0.0.5:8025/tablet Copy", true, true,
+        [["http://10.0.0.5:8025/tablet", "the address"]]],
+      none: ["Open on your tablet or phone: http://<this PC's address>:8025/tablet", false],
+      docker: "To use a tablet or phone: open http://<the address of the machine running Docker>:8030/tablet.",
+      note: [true, true]};
+    const goodT = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && goodT;
+    console.log(goodT ? "OK" : "FAIL", "| server_settings_tablet_address |", goodT ? "this PC only, the addresses with Copy, the firewall, Docker; the journal folder's note"
+      : JSON.stringify(got), errors.slice(before));
+  }
   // Plot Route: Clear route while a survey or trade plot runs into an empty slot stops that plot (it cleared the Highway)
   plot_route_clear_during_a_survey_plot: { if (skip("plot_route_clear_during_a_survey_plot")) break plot_route_clear_during_a_survey_plot;
     const w = dom.window, d = w.document, before = errors.length, real = w.fetch, posted = [];

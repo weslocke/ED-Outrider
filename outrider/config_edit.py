@@ -37,7 +37,7 @@ def homed(section, key):
 # a listed key in no group goes to OTHER, so a new key is never lost (a test fails on it all the same)
 GROUPS = (
     ("network", "Network and access", (("server", "host"), ("server", "port"), ("server", "allowed_hosts"),
-                                        ("server", "password"), ("server", "game_pc"))),
+                                        ("server", "password"), ("server", "game_pc"), ("server", "open_browser"))),
     ("files", "Files and backups", (("journals", "live"), ("journals", "legacy"), ("journals", "commander"), ("server", "db"), ("server", "backup_dir"),
                                      ("server", "backup_keep"), ("server", "backup_every_days"), ("server", "speech_file"))),
     ("online", "Online checks", (("server", "update_check"), ("spansh", "watch_firsts"), ("spansh", "concurrency"),

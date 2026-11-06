@@ -14792,7 +14792,7 @@ async function loadServerSettings() {
       return `<details class="srvsec" data-srvsec="${esc(g.group)}"${SRV_SET_OPEN[g.group] ? " open" : ""}><summary>${esc(g.title)}</summary>` +
         g.keys.map(k => `<div class="srvrow"><label for="srv-${esc(k.section)}-${esc(k.key)}">${esc(human(k.key))} <code>[${esc(k.section)}] ${esc(k.key)}</code>` +
           `${k.set || k.secret ? "" : ` <span class="unk">(default)</span>`}</label><div class="srvin">${field(k.section, k)}` +
-          `${k.help ? `<div class="hint">${esc(k.help)}</div>` : ""}</div></div>`).join("") + `</details>`;
+          `${k.help ? `<div class="hint">${esc(k.help)}</div>` : ""}${k.section === "server" && k.key === "host" ? listenHtml(c.listen) : ""}</div></div>`).join("") + `</details>`;
     }).join("") +
     `<div class="btns" data-find-keep><button type="button" id="srvSave" class="primary">Save server settings</button><span id="srvMsg" class="hint"></span></div>`;
   box.querySelectorAll("[data-key]").forEach(el => {
@@ -14811,6 +14811,21 @@ async function loadServerSettings() {
   if (focus) { focus.classList.add("srvfocus"); focus.focus(); }
   unsavedRedraw();
 }
+// S5: under [server] host, how a tablet or phone reaches this Outrider as it runs now (GET api/config's `listen`, worked
+// out once at start: listen_info): this PC only (what to change), the addresses with Copy (private IPv4s, at most 3),
+// in Docker the machine running it; on Windows with the network on, the firewall's one question
+function listenHtml(l) {
+  if (!l || !l.kind) return "";
+  const port = esc(l.port);
+  if (l.kind === "docker") return `<div class="hint" id="srvListen">To use a tablet or phone: open <code>http://&lt;the address of the machine running Docker&gt;:${port}/tablet</code>.</div>`;
+  if (l.kind === "loopback") return `<div class="hint" id="srvListen">To use a tablet or phone: set host to <code>0.0.0.0</code>, set a password, then Restart.</div>`;
+  const urls = (l.urls || []).length ? l.urls.map(u => `<code>${esc(u)}</code> <button type="button" class="mini" data-copyurl="${esc(u)}">Copy</button>`).join(" · ")
+    : `<code>http://&lt;this PC's address&gt;:${port}/tablet</code>`;
+  return `<div class="hint" id="srvListen">Open on your tablet or phone: ${urls}</div>` + (l.firewall ? `<div class="hint" id="srvFirewall">Windows asks once
+    whether Python may use the network: tick <b>Private networks</b> and Allow. Clicked Cancel? Windows Security → Firewall &amp; network protection →
+    Allow an app through firewall → Change settings, then tick Private beside Python.</div>` : "");
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-copyurl]"); if (b) copyText(b.dataset.copyurl, "the address"); });
 // a field's value as it is sent (and compared with what it was when drawn: only changes are saved)
 function srvValue(el) {
   const k = el.dataset.kind;
@@ -14844,7 +14859,8 @@ async function saveServerConfig() {
   box.querySelectorAll("[data-clear]").forEach(el => { el.checked = false; });
   await loadServerSettings();
   const m = document.getElementById("srvMsg");
-  m.innerHTML = savedNote(r); m.className = "hint ok";
+  // S12: a journal folder saved with no journals in it yet: the server's note (and the sub-folder that has them)
+  m.innerHTML = savedNote(r) + (r.note ? ` <span class="warnc">Note: ${esc(r.note)}.</span>` : ""); m.className = "hint ok";
 }
 // what a save into the config file comes to: in use now (every key one the server applies at once: its answer's
 // `live`), or Restart now (S10) when Outrider can start itself again, else why not

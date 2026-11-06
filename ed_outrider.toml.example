@@ -55,6 +55,8 @@
 #                      # played on this PC, in-game overlay or screenshot converting; the pages leave them out.
 # update_check = true  # once a day, ask GitHub whether a newer Outrider release is out; the page shows a small
 #                      # "Update" pill when one is (only the request is made: nothing about you is sent)
+# open_browser = true  # the first start (no database yet) on the game PC opens the page in your browser by itself,
+#                      # as soon as the starting page answers (never in Docker, under the service or --simulate)
 # allowed_hosts = ["mypc.lan"]   # extra names the page may be opened by. Outrider answers to any IP address,
 #                      # but by name only to localhost and the host above (with "0.0.0.0": this machine's own
 #                      # name too), so another web site cannot read it through DNS rebinding; list the names a

@@ -123,6 +123,41 @@ class UnsoldEstimate(unittest.TestCase):
             self.assertEqual(live.count(journals), 1)
             self.assertNotIn(journals, outrider.unsold.find_journal_dirs(saved_games=lambda: None)[0])
 
+    def test_linux_launchers_prefixes_are_found(self):
+        """Round 10's S12: the Steam snap, a game added to Steam by hand (any compatdata), Heroic (with and without pfx,
+        old and new layout), Lutris and Bottles (native and Flatpak) are live folders; each place looked in is listed
+        (the "no journal folder found" card counts them); fixed depth only: a folder one level deeper is not found."""
+        import tempfile
+        ed = os.path.join("Saved Games", "Frontier Developments", "Elite Dangerous")
+        with tempfile.TemporaryDirectory() as home:
+            made = {}
+            for name, where in (
+                    ("snap", "snap/steam/common/.local/share/Steam/steamapps/compatdata/359320/pfx/drive_c/users/steamuser"),
+                    ("epic_in_steam", ".local/share/Steam/steamapps/compatdata/3141592653/pfx/drive_c/users/steamuser"),
+                    ("heroic_pfx", "Games/Heroic/Prefixes/default/Elite Dangerous/pfx/drive_c/users/steamuser"),
+                    ("heroic_wine", "Games/Heroic/Prefixes/EliteDangerous/drive_c/users/me"),
+                    ("lutris", "Games/elite-dangerous/drive_c/users/me"),
+                    ("bottles", ".local/share/bottles/bottles/Elite/drive_c/users/me"),
+                    ("bottles_flatpak", ".var/app/com.usebottles.bottles/data/bottles/bottles/Elite/drive_c/users/me"),
+                    ("too_deep", "Games/a/b/c/d/drive_c/users/me")):
+                made[name] = os.path.join(home, where, ed)
+                os.makedirs(made[name])
+            looked = []
+            env = {"HOME": home, "USERPROFILE": home}
+            with unittest.mock.patch.dict(os.environ, env):
+                os.environ.pop("ED_JOURNALS", None)   # put back by patch.dict
+                live, _legacy = outrider.unsold.find_journal_dirs(saved_games=lambda: None, looked=looked, posix=True)
+                windows = outrider.unsold.find_journal_dirs(saved_games=lambda: None, looked=[], posix=False)[0]
+            real = {os.path.realpath(p) for p in live}
+            for name, path in made.items():
+                with self.subTest(name):
+                    self.assertEqual(os.path.realpath(path) in real, name != "too_deep")
+            self.assertEqual(len(real), len(live))                    # each once
+            self.assertEqual(windows, [])                             # Windows looks in Saved Games only
+            self.assertGreaterEqual(len(looked), 12)
+            self.assertTrue(all(p.startswith((home, os.path.realpath(home))) for p in looked), looked)   # nowhere outside the (patched) home
+            self.assertFalse(any("**" in p for p in looked))          # fixed-depth globs, never a walk
+
 
 class FirstsAndRings(unittest.TestCase):
     def setUp(self):

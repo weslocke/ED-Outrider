@@ -53,10 +53,18 @@ update Outrider.
 > If Outrider stops answering for 20 s, the starting page says so and points at its terminal and `data/outrider.log`;
 > it opens by itself if Outrider comes back. A database that cannot be opened is said there and in the terminal, with
 > the command that puts a backup back.
+> The very first start (no database yet) on the game PC opens the page in your browser by itself, and a card at
+> the top says what it found: how many journals, from which folder and which months, the systems visited and what
+> speaks (`[server] open_browser = false` turns the opening off; never in Docker, under the
+> [service](#start-with-your-computer) or with `--simulate`).
 > Journal folders are found automatically on Windows (also when the Saved Games folder was moved to another drive)
-> and Steam/Proton. When none is found, or the folder holds no
-> journals yet, the Data tile and a line at the top of the page say so, and **set the journal folder** opens ⚙
-> Settings → Server at `[journals] live`. A browser needs one click on the
+> and on Linux under Steam/Proton (the native, Flatpak and snap Steams, and the game added to Steam by hand), Heroic,
+> Lutris and Bottles. When none is found, or the folder holds no
+> journals yet, the Data tile and a line at the top of the page say so (with the two usual folders, and how many places
+> were looked in: the terminal lists them), and **set the journal folder** opens ⚙
+> Settings → Server at `[journals] live`. A folder typed there that does not exist is not saved ("… is not a folder
+> on this PC"); one with no journals yet is saved with a note, naming the folder below it that has them (the usual
+> slip stops at `Frontier Developments`). A browser needs one click on the
 > page before it plays sound: the red **Click Here To Allow Audio** pill asks for it.
 
 `requirements.txt` also installs three optional parts. Leave the file as it is: one that will not install is
@@ -309,7 +317,12 @@ note folder in the journal share.
 ## 🌐 Other devices on your network
 
 Outrider listens on 127.0.0.1 only unless `[server] host` says otherwise (`"0.0.0.0"` for your network; ⚙ Settings →
-Server, or the config file). A host that is no longer an address of this PC (the router gave it another) does not
+Server, or the config file). Under that row Settings → Server says how a tablet or phone gets there: on this PC only,
+what to change (host `0.0.0.0`, a password, Restart); on your network, the address to open (`http://192.168.1.23:8025/tablet`,
+this PC's private addresses, up to three, each with Copy); in Docker, the address of the machine running Docker.
+**Windows' firewall** asks once, the first time Outrider listens on your network, whether Python may use it: tick
+**Private networks** and Allow. If Cancel was clicked, a tablet only spins: open Windows Security → Firewall &
+network protection → Allow an app through firewall → Change settings, and tick Private beside Python. A host that is no longer an address of this PC (the router gave it another) does not
 stop Outrider: it listens on 127.0.0.1 only, with a card saying so, until you fix it in Settings. A port already in
 use still stops it. It answers to any IP address, but by name only to `localhost`, the configured host and
 this machine's name; add others (a router's `mypc.lan`, say) to `[server] allowed_hosts`. This, and refusing changes

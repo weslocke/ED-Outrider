@@ -44,6 +44,11 @@ def _no_systemctl(cmd, **kw):
 
 
 outrider.service.RUNNER = _no_systemctl
+# ...nor a real browser: the first start opens the page (S13), and a test run from a terminal may look like one. Every
+# call is recorded here instead (a test that wants to see it patches its own)
+import webbrowser  # noqa: E402
+BROWSER_OPENED = []
+webbrowser.open = lambda url, *a, **kw: BROWSER_OPENED.append(url) and False
 
 
 def user_docs():

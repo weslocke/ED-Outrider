@@ -2,6 +2,29 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Round 10 suggestions, batch 4: the tablet's address, journal folders checked and found, a first start that opens the page
+Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the setup ones:
+- **S5** Settings → Server says under `[server] host` how a tablet or phone gets to Outrider: on this PC only, "set
+  host to 0.0.0.0, set a password, then Restart"; on your network, "Open on your tablet or phone:
+  http://192.168.1.23:8025/tablet" with Copy (this PC's private IPv4 addresses, at most 3); in Docker, the address of
+  the machine running Docker. On Windows with the network on, a second line says to allow Python through the firewall
+  on private networks, and where to put it right if Cancel was clicked. Worked out once at start (`listen_info`;
+  `own_addresses` asks DNS and now runs once for the Host check and this). No notice on a phone, no `.local` name (the
+  author's answers). install.md and tablet.md say the same.
+- **S12** A journal folder typed in Settings → Server is checked on Save: one that does not exist is refused ("… is
+  not a folder on this PC", nothing written; an unplugged drive already listed is not), one with no `Journal.*.log` yet
+  is saved with a note naming the folder below it that has them (at most 3 levels down: the usual slip stops at
+  `Frontier Developments`). The "no journal folder found" card names the two usual folders (Windows' and Proton's)
+  and how many places were looked in; the terminal lists them. Auto-detection now also looks in the Steam snap, a game
+  added to Steam by hand (any compatdata), Heroic's prefixes (with and without pfx), Lutris and Bottles (native and
+  Flatpak), all fixed-depth globs; what they find is a live folder.
+- **S13** The very first start (no database file yet) on the game PC, from a terminal, opens the page in your browser
+  as soon as the starting page answers (`[server] open_browser = true`, a Server → Network row; never in Docker, under
+  the systemd service or `--simulate`, and on Linux only with a desktop). The banner gets one info card on that start:
+  "First start: N journals read from <folder> (2021-03 to 2026-11), N systems visited · voice: …" (DESIGN_NOTES: the
+  one card on the banner that is not a problem). Tests never open a browser (`support.py` records `webbrowser.open`;
+  verify.sh's scratch config sets `open_browser = false`).
+
 ## 2026-11-06 · Round 10 suggestions, batch 3: unsaved settings, one far-rig distance, a lighter tick, first-start help
 Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the small ones that stand alone:
 - **S16** Settings → Risk and warnings: "Or as a multiple of your ship's rebuy" sits right under "Unsold data on

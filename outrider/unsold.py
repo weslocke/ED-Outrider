@@ -63,28 +63,51 @@ def saved_games_dir():
         return None
 
 
-def find_journal_dirs(saved_games=saved_games_dir):
+# Linux launchers' Wine and Proton prefixes, below the home folder (round 10's S12): fixed-depth globs only, never a
+# walk. "users/*": Proton's user is steamuser, Wine's is your login name. Each is a live folder when it has the game's
+# folder in it. Heroic: Prefixes/<game> (older) or Prefixes/default/<game> (newer), with a pfx/ under Proton, without
+# under Wine; Lutris: ~/Games/<game> (its Flatpak's default too, as is Heroic's); Bottles native and its Flatpak.
+LAUNCHER_PREFIXES = ("~/Games/Heroic/Prefixes/*", "~/Games/Heroic/Prefixes/*/pfx", "~/Games/Heroic/Prefixes/*/*",
+                     "~/Games/Heroic/Prefixes/*/*/pfx", "~/Games/*", "~/.local/share/bottles/bottles/*",
+                     "~/.var/app/com.usebottles.bottles/data/bottles/bottles/*")
+STEAM_ROOTS = ("~/.local/share/Steam", "~/.steam/steam", "~/.steam/root", "~/.var/app/com.valvesoftware.Steam/.local/share/Steam",
+               "~/snap/steam/common/.local/share/Steam")   # the last: Ubuntu's Steam snap (its default since 23.04)
+ELITE_APP = "359320"   # Elite Dangerous' Steam app id: its Proton prefix is compatdata/359320
+
+
+def find_journal_dirs(saved_games=saved_games_dir, looked=None, posix=None):
     """(live, legacy) journal directories on this machine.
 
     ED_JOURNALS (os.pathsep-separated) overrides everything. Otherwise: the Windows save
-    folder, every Steam library's Proton prefix for Elite (app 359320, found through
-    libraryfolders.vdf), and, as legacy folders, any mounted Windows drive (Users/*/Saved
-    Games (older journals copied from another install)."""
+    folder, and on Linux every Steam library's Proton prefix for Elite (app 359320, found through
+    libraryfolders.vdf; the native, ~/.steam, Flatpak and snap Steams), the prefix of a game added to
+    Steam by hand (any compatdata), Heroic's, Lutris' and Bottles' prefixes (LAUNCHER_PREFIXES); and,
+    as legacy folders, any mounted Windows drive (Users/*/Saved Games (older journals copied from
+    another install)). `looked`: a list each place looked in (a folder, or a glob pattern) is added to,
+    for the "no journal folder found" notice; `posix`: the Linux places too (default: not on Windows)."""
     import re
     env = os.environ.get("ED_JOURNALS")
     if env:
         return [d for d in env.split(os.pathsep) if os.path.isdir(d)], []
+    looked = [] if looked is None else looked
+    posix = os.name != "nt" if posix is None else posix
     live, legacy = [], []
     home = os.path.expanduser("~")
     win = os.path.join(os.environ.get("USERPROFILE", home), ED_SUFFIX)
     seen = set()   # the same folder twice would be tailed twice (a symlinked save folder)
+
+    def add(p):
+        if os.path.isdir(p) and os.path.realpath(p) not in seen:
+            live.append(p)
+        seen.add(os.path.realpath(p))
     moved = saved_games()
     for d in ([os.path.join(moved, *ED_SUFFIX.split(os.sep)[1:])] if moved else []) + [win]:
-        if os.path.realpath(d) not in seen and os.path.isdir(d):
-            live.append(d)
-        seen.add(os.path.realpath(d))
-    roots = [os.path.expanduser(r) for r in ("~/.local/share/Steam", "~/.steam/steam", "~/.steam/root",
-                                             "~/.var/app/com.valvesoftware.Steam/.local/share/Steam")]
+        looked.append(d)
+        add(d)
+    if not posix:
+        return live, legacy
+    user_dir = os.path.join("drive_c", "users", "*", ED_SUFFIX)
+    roots = [os.path.expanduser(r) for r in STEAM_ROOTS]
     libs = []
     for r in roots:
         vdf = os.path.join(r, "steamapps", "libraryfolders.vdf")
@@ -94,12 +117,21 @@ def find_journal_dirs(saved_games=saved_games_dir):
         except OSError:
             pass
         libs.append(r)
+    libs = list(dict.fromkeys(os.path.realpath(lib.replace("\\\\", "/")) for lib in libs))
     for lib in libs:
-        lib = os.path.realpath(lib.replace("\\\\", "/"))
-        p = os.path.join(lib, "steamapps", "compatdata", "359320", "pfx", "drive_c", "users", "steamuser", ED_SUFFIX)
-        if os.path.isdir(p) and os.path.realpath(p) not in seen:
-            seen.add(os.path.realpath(p))
-            live.append(p)
+        p = os.path.join(lib, "steamapps", "compatdata", ELITE_APP, "pfx", "drive_c", "users", "steamuser", ED_SUFFIX)
+        looked.append(p)
+        add(p)
+    for lib in libs:   # the game added to Steam by hand (the Epic or Frontier version): its prefix has another number
+        pat = os.path.join(glob_escape(lib), "steamapps", "compatdata", "*", "pfx", user_dir)
+        looked.append(pat)
+        for p in sorted(glob(pat)):
+            add(p)
+    for prefix in LAUNCHER_PREFIXES:
+        pat = os.path.join(glob_escape(home), prefix[2:], user_dir)
+        looked.append(pat)
+        for p in sorted(glob(pat)):
+            add(p)
     for base in ("/windows", "/mnt", "/media", "/run/media"):
         for pat in (os.path.join(base, "*", "Users", "*", ED_SUFFIX), os.path.join(base, "*", "*", "Users", "*", ED_SUFFIX)):
             for p in sorted(glob(pat)):

@@ -1082,6 +1082,58 @@ CONFIG_CHECKS = {**{("highway", "autotarget_" + k): _config_plot_steps for k in 
                  **{k: _config_range(*r) for k, r in CONFIG_RANGES.items()}}
 
 
+def has_journals(folder):
+    """Whether `folder` holds a Journal.*.log (the game's own files, either naming style)."""
+    return bool(glob(os.path.join(glob_escape(folder), "Journal.*.log")))
+
+
+JOURNAL_SUB_DEPTH = 3       # S12: how far below a typed folder the note looks for the one with the journals
+JOURNAL_SUB_LIMIT = 2000    # ...and how many folders at most (a typed home folder: never a long walk on Save)
+
+
+def journal_subfolder(folder, depth=JOURNAL_SUB_DEPTH, limit=JOURNAL_SUB_LIMIT):
+    """The shallowest folder at most `depth` levels below `folder` that holds journals, or None (round 10's S12: the
+    usual mistake stops at "Frontier Developments"). Breadth first, by name, at most `limit` folders looked in."""
+    level, seen = [folder], 0
+    for _ in range(depth):
+        below = []
+        for d in level:
+            try:
+                names = sorted(e.name for e in os.scandir(d) if e.is_dir())
+            except OSError:
+                continue
+            for n in names:
+                sub = os.path.join(d, n)
+                seen += 1
+                if has_journals(sub):
+                    return sub
+                if seen >= limit:
+                    return None
+                below.append(sub)
+        level = below
+    return None
+
+
+def journal_folders_check(key, paths, before=()):
+    """S12: [journals] live / legacy as typed in Settings, checked on Save: (error, notes). A folder that does not exist
+    is refused ("... is not a folder on this PC": an unplugged drive already in the list, `before`, is not); one with no
+    Journal.*.log yet is saved with a note naming a sub-folder that has them, if there is one."""
+    norm = lambda p: os.path.normcase(os.path.abspath(os.path.expanduser(p)))   # noqa: E731
+    old = {norm(p) for p in before}
+    notes = []
+    for p in paths:
+        if norm(p) in old:
+            continue
+        full = os.path.expanduser(p)
+        if not os.path.isdir(full):
+            return f"[journals] {key}: {p} is not a folder on this PC", []
+        if not has_journals(full):
+            sub = journal_subfolder(full)
+            notes.append(f"{p} has no Journal.*.log yet" + (f": they are in {sub}" if sub else
+                         " (the game writes them there once it runs)"))
+    return None, notes
+
+
 def shots_move_problem(ss):
     """Why [screenshots]' "moved to" cannot work, or None: no folder, or the game's own Pictures folder (the found one
     when the setting is empty), compared expanded and normalised."""
@@ -1281,6 +1333,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         "allowed_hosts": [h.strip() for h in hosts if h.strip()],
         "password": password, "game_pc": game_pc,
         "update_check": flag("server", sv, "update_check", True),
+        "open_browser": flag("server", sv, "open_browser", True),   # S13: the first start opens the page (should_open_browser)
         # at least 1 ly: a bad config value is reported above; a --radius 0 flag is clamped
         "radius": max(1.0, pick(args.radius, num("server", sv, "radius", _config_radius, None), 25.0)),
         "radius_choices": radius_choices,
@@ -1432,6 +1485,7 @@ allowed_hosts = {lst(st["allowed_hosts"])}   # extra names the page may be opene
 password = {q(st["password"])}   # devices on your network sign in with it ("" = none); this PC never needs it, except in Docker, where every browser signs in
 game_pc = {q(st["game_pc"] if st["game_pc"] == "auto" else ("true" if st["game_pc"] else "false"))}   # is this the PC the game runs on? "auto" (off inside a container, e.g. Docker), "true" or "false". Off: no auto honk, auto-target, tablet rail, co-pilot button, clipboard or playing on this PC
 update_check = {"true" if st["update_check"] else "false"}   # once a day, ask GitHub whether a newer Outrider release is out, and say so on the page (only the request: nothing about you is sent)
+open_browser = {"true" if st["open_browser"] else "false"}   # the first start (no database yet) on the game PC opens the page in your browser
 radius = {n(st["radius"])}      # ly: the sphere of nearby systems the page lists
 radius_choices = [{", ".join(n(x) for x in st["radius_choices"])}]   # ly: what the page's radius dropdown offers
 sights_range = {n(st["sights_range"])}   # ly: Now names the nearest of EDAstro's catalogued sights within this (0 = off: not even fetched)
@@ -2450,15 +2504,39 @@ MONTHS = ("January", "February", "March", "April", "May", "June", "July", "Augus
           "December")
 
 
-def journal_month(path):
-    """The month a journal file's name says it was started in, as the starting page shows it ("March 2024"), from both
-    naming styles (Journal.2024-03-05T201512.01.log; before 2023, Journal.240305201512.01.log), else None."""
+def journal_year_month(path):
+    """(year, month) a journal file's name says it was started in, from both naming styles
+    (Journal.2024-03-05T201512.01.log; before 2023, Journal.240305201512.01.log), else None."""
     b = os.path.basename(path or "")
     m = re.match(r"Journal\.(\d{4})-(\d{2})-\d{2}T", b) or re.match(r"Journal\.(\d{2})(\d{2})\d{8}\.", b)
     if not m:
         return None
     year, month = int(m.group(1)), int(m.group(2))
-    return f"{MONTHS[month - 1]} {year + 2000 if year < 100 else year}" if 1 <= month <= 12 else None
+    return (year + 2000 if year < 100 else year, month) if 1 <= month <= 12 else None
+
+
+def journal_month(path):
+    """The month a journal file's name says it was started in, as the starting page shows it ("March 2024"), else None."""
+    ym = journal_year_month(path)
+    return f"{MONTHS[ym[1] - 1]} {ym[0]}" if ym else None
+
+
+def first_start_text(paths, visited, voice):
+    """S13: the first start's info card on the banner, or None when no journal was read (the no-journals cards say
+    that): "First start: 1,412 journals read from <folder> (2021-03 to 2026-11), 3,201 systems visited · voice: ...".
+    `paths`: the journal files read; `voice`: what speaks (Piper, or the browser and why)."""
+    paths = list(paths)
+    if not paths:
+        return None
+    folders = sorted({os.path.dirname(p) for p in paths})
+    months = sorted(ym for ym in map(journal_year_month, paths) if ym)
+    span = ""
+    if months:
+        first, last = (f"{y}-{m:02d}" for y, m in (months[0], months[-1]))
+        span = f" ({first})" if first == last else f" ({first} to {last})"
+    where = folders[0] if len(folders) == 1 else f"{len(folders)} folders"
+    return (f"First start: {len(paths):,} journal{'' if len(paths) == 1 else 's'} read from {where}{span}, "
+            f"{visited:,} system{'' if visited == 1 else 's'} visited · voice: {voice}")
 
 
 def not_a_ship(kind):
@@ -8867,6 +8945,7 @@ class State:
         self._chatter = {"where": None, "why_not": None, "since": None}
         self.honker = None         # outrider.honk.Honker, set at start (None in tests)
         self.simulate = False      # --simulate: the panels act as if the game were running (shown_status)
+        self.listen_info = None    # S5: how a tablet reaches this Outrider (listen_info, worked out once by run())
         self.game_pc = True        # [server] game_pc: False on a server away from the game PC (no keys, devices, clipboard, PC sound)
         self.button = None         # outrider.button.ButtonWatch when [copilot] enabled (None otherwise and in tests)
         # the voice's hush ({mode, until, sys}): here, not per browser, so the co-pilot button, a tablet and the
@@ -9343,8 +9422,10 @@ class State:
         # groups: the Server list (by purpose); homed: the keys set in a section of their own (config_edit.homed), as
         # {section, title, keys} for the sections that read their values from here (Auto honk's fields)
         homed = [dict(s, keys=[k for k in s["keys"] if outrider.config_edit.homed(s["section"], k["key"])]) for s in secs]
+        # listen: under [server] host, the address a tablet or phone opens (S5; run() worked it out once: own_addresses
+        # asks DNS, never per request)
         return {"path": path, "exists": os.path.exists(path), "groups": outrider.config_edit.server_groups(secs),
-                "homed": [s for s in homed if s["keys"]], "problems": problems}
+                "homed": [s for s in homed if s["keys"]], "problems": problems, "listen": self.listen_info}
 
     def config_save(self, changes, hidden=False):
         """POST /api/config {section: {key: value}}: those keys written into the config file in place (comments kept,
@@ -9372,7 +9453,7 @@ class State:
             return {"error": f"cannot read {path}: {e}"}, 500
         except UnicodeDecodeError:   # complete review 2026-10-30: a 500 (Settings, an upload switched on)
             return {"error": f"{path} is not saved as UTF-8: save it again as UTF-8 in your editor (nothing was written)"}, 400
-        n = 0
+        n, notes = 0, []
         for sec, keys in changes.items():
             for key, value in keys.items():
                 kind, choices = kinds.get((sec, key), (None, ()))
@@ -9385,6 +9466,11 @@ class State:
                     text = outrider.config_edit.set_key(text, sec, key, v)
                 except (TypeError, ValueError) as e:
                     return {"error": f"[{sec}] {key} {e}"}, 400
+                if sec == "journals" and key in ("live", "legacy"):   # S12: a typed folder checked, in words
+                    why, more = journal_folders_check(key, v, st[key])
+                    if why:
+                        return {"error": why}, 400
+                    notes += more
                 n += 1
         try:
             cfg = outrider.config_edit.tomllib.loads(text)
@@ -9416,7 +9502,7 @@ class State:
             return {"error": f"cannot write {path}: {e}"}, 500
         live = self.config_live(saved, [(sec, key) for sec, keys in changes.items() for key in keys])
         return {"ok": True, "path": path, "changed": n, "backup": real + ".bak" if existed or os.path.exists(real + ".bak") else None,
-                "restart": n > len(live), "live": live}, 200
+                "restart": n > len(live), "live": live, **({"note": "; ".join(notes)} if notes else {})}, 200
 
     # config keys config_save also applies at once: Settings -> Voice's Keep loaded and Load them at start (crew batch 2)
     # and the auto-target's sequence ([highway] autotarget_*): tuned by trial and error, so the next run uses it (2026-10-22);
@@ -23106,6 +23192,41 @@ def own_addresses():
     return {n for n in names if n and "%" not in n}   # a link-local address with a scope never appears in Host
 
 
+LISTEN_URLS_MAX = 3   # S5: the addresses Settings -> Server offers a tablet, at most
+
+
+def listen_info(host, port, addresses=(), container=False, platform=None):
+    """S5: how a tablet or phone reaches this Outrider, for Settings -> Server under [server] host (pure; run() calls it
+    once, with own_addresses() when listening on every address). {kind, port, urls, firewall}: kind "docker" (inside a
+    container only the machine running Docker knows its address), "loopback" (this PC only: no urls) or "network" (urls:
+    http://<address>:<port>/tablet for the host itself, or with host 0.0.0.0 this machine's private IPv4 addresses,
+    LISTEN_URLS_MAX at most; none found: the page says "this PC's address"); firewall: on Windows with the network on
+    (Defender asks once whether Python may use it)."""
+    import ipaddress
+    platform = sys.platform if platform is None else platform
+    out = {"kind": "network", "port": port, "urls": [], "firewall": False}
+    if container:
+        return dict(out, kind="docker")
+    h = str(host or "").strip()
+    if h == "localhost" or (h not in WILDCARD_HOSTS and outrider.auth.is_loopback(h)):
+        return dict(out, kind="loopback")
+    if h in WILDCARD_HOSTS:
+        found = []
+        for a in addresses or ():
+            try:
+                ip = ipaddress.ip_address(a)
+            except ValueError:
+                continue
+            if ip.version == 4 and ip.is_private and not (ip.is_loopback or ip.is_link_local or ip.is_unspecified):
+                found.append(ip)
+        # home networks first (192.168, then 10, then 172.16/12: a Docker or VM bridge is usually there)
+        rank = lambda ip: (0 if ip in ipaddress.ip_network("192.168.0.0/16") else 1 if ip in ipaddress.ip_network("10.0.0.0/8") else 2, ip)  # noqa: E731
+        hosts = [str(ip) for ip in sorted(set(found), key=rank)][:LISTEN_URLS_MAX]
+    else:
+        hosts = [_host_name(h)]
+    return dict(out, urls=[f"http://{x}:{port}/tablet" for x in hosts], firewall=platform == "win32")
+
+
 def loopback_too(host):
     """Whether Outrider listens on 127.0.0.1 as well as `host`: the overlay window talks to this PC's loopback (where no
     sign-in is asked), and a [server] host set to one LAN address does not listen there, nor IPv6's own loopback ::1
@@ -25018,6 +25139,43 @@ def newer_release(answer, current):
             "url": url if isinstance(url, str) and url.startswith("https://github.com/") else RELEASES_PAGE}
 
 
+def stream_is_terminal(stream):
+    """Whether `stream` (sys.stdout) is a terminal: someone started Outrider by hand or with a launcher."""
+    try:
+        return bool(stream.isatty())
+    except (AttributeError, OSError, ValueError):
+        return False
+
+
+def should_open_browser(enabled, fresh, game_pc, container, simulate, terminal, platform=None, env=None):
+    """S13: whether this start opens the page in the browser by itself: [server] open_browser on, a fresh database (the
+    first start, never a re-read), on the game PC, not in a container, not under the systemd service, not --simulate,
+    started from a terminal (a launcher's window, not a service's log), and on Linux with a desktop to open it on."""
+    env = os.environ if env is None else env
+    platform = sys.platform if platform is None else platform
+    if not (enabled and fresh and game_pc and terminal) or container or simulate:
+        return False
+    if env.get(outrider.service.SERVICE_ENV) == "systemd":
+        return False
+    if platform.startswith("linux") and not (env.get("DISPLAY") or env.get("WAYLAND_DISPLAY")):
+        return False
+    return True
+
+
+def open_browser(url):
+    """S13: the page in the default browser (run on a worker: webbrowser may wait for the program it starts). A
+    failure only says so: the "starting:" line already gave the address."""
+    import webbrowser
+    try:
+        if webbrowser.open(url):
+            return True
+        why = "no browser found"
+    except Exception as e:  # noqa: BLE001 -- whatever the platform's opener raises
+        why = str(e) or type(e).__name__
+    print(f"could not open your browser ({why}): open {url} yourself", file=sys.stderr)
+    return False
+
+
 def install_kind(root=None, env=None):
     """How this copy of Outrider was installed, for the update's instructions: "docker" (the image sets
     OUTRIDER_CONTAINER), "git" (a clone: git pull), else "download" (a release's source: download the new one)."""
@@ -25445,6 +25603,31 @@ def restore_backup(zip_path, db_path, host, port, now=None):
 
 # S43: Docker's journal folder is the mount at /journals, set by JOURNALS in .env (not in Settings)
 DOCKER_NO_JOURNALS = "No journals in /journals: is the game PC's journal folder mounted? (JOURNALS in .env)"
+def first_start_notice(notices, fresh, paths, visited, speaker):
+    """S13: on a fresh database, the banner's one info card saying what this first start found (first_start_text), with
+    what speaks; gone when dismissed or at the next start (no meta row: the database is no longer fresh). True when set."""
+    if not fresh:
+        return False
+    text = first_start_text(paths, visited, "Piper, preparing a voice" if speaker.available else
+                            "the browser speaks (Piper would not load)" if speaker.import_error else
+                            "the browser speaks (Piper not installed)")
+    return bool(text) and notices.set("first_start", text, level="info")
+
+
+# S12: the two usual journal folders, named when none was found (the terminal lists every place looked in)
+JOURNALS_WINDOWS = "<Saved Games>/Frontier Developments/Elite Dangerous"
+JOURNALS_PROTON = "<Steam library>/steamapps/compatdata/359320/pfx/drive_c/users/steamuser/Saved Games/Frontier Developments/Elite Dangerous"
+
+
+def no_journals_text(places=None):
+    """The "no journal folder found" card (S12): the two usual folders, and how many places auto-detection looked in
+    (`places`: find_journal_dirs' `looked`; None or empty when the folders were set by hand: a flag, ED_JOURNALS or
+    [journals] live, whose missing folder its own card names)."""
+    looked = (f" Looked in {len(places)} place{'' if len(places) == 1 else 's'} (the terminal lists them)."
+              if places else "")
+    return ("No Elite Dangerous journal folder found. Set Settings -> Server -> [journals] live to the folder holding "
+            f"Journal.*.log: on Windows usually '{JOURNALS_WINDOWS}', with Steam on Linux '{JOURNALS_PROTON}'.{looked} "
+            "Or pass --journals PATH or set ED_JOURNALS.")
 
 
 def startup_notices(st, config_path):
@@ -25502,10 +25685,13 @@ async def run(args, st):
         outrider.unsold.DEFAULT_DIRS = LIVE_DIRS + LEGACY_DIRS
     docker = install_kind() == "docker"
     if not LIVE_DIRS:
-        outrider.notices.warn("no_journals", DOCKER_NO_JOURNALS if docker else
-                              "No Elite Dangerous journal folder found. Set Settings -> Server -> [journals] live (the folder "
-                              "holding Journal.*.log, usually '<Saved Games>/Frontier Developments/Elite Dangerous'), or "
-                              "pass --journals PATH or set ED_JOURNALS.", action=None if docker else "open:server:journals")
+        places = []   # S12: auto-detected and nothing found: where it looked (the card counts them, the terminal lists them)
+        if not docker and not st["live"] and outrider.unsold:
+            outrider.unsold.find_journal_dirs(looked=places)
+        outrider.notices.warn("no_journals", DOCKER_NO_JOURNALS if docker else no_journals_text(places),
+                              action=None if docker else "open:server:journals")
+        if places:
+            print("journals: looked in\n" + "\n".join(f"  {p}" for p in places), file=sys.stderr)
     else:
         print("journals: " + ", ".join(LIVE_DIRS))
         if LEGACY_DIRS:
@@ -25526,6 +25712,7 @@ async def run(args, st):
         print(problem, file=sys.stderr)
         raise SystemExit(1)
     migrate_old_layout(args.db)   # an upgrade from before data/: your database and files come along
+    fresh_db = not os.path.exists(args.db)   # S13: a first start (never a re-read: that database exists)
     os.makedirs(os.path.dirname(os.path.abspath(args.db)), exist_ok=True)   # data/ on a fresh copy
     # <db>.lock for the whole run: --restore refuses while it is held, from any port or container (S44)
     try:
@@ -25561,11 +25748,17 @@ async def run(args, st):
         except ValueError:   # not the main thread (a test)
             pass
     # S9: the starting page answers on the port at once, while the database is backed up and the journals are read
-    hosts = allowed_hosts(args.host, args.port, st["allowed_hosts"])
+    own = own_addresses() if args.host in WILDCARD_HOSTS else set()   # asked once (DNS): the Host check, Settings' tablet address (S5)
+    hosts = allowed_hosts(args.host, args.port, st["allowed_hosts"], own=lambda: own)
     starting = Starting(st["password"], resolve_game_pc(st["game_pc"])[0], outrider.serverlog.ACTIVE, stop)
     starting_runner = await serve_starting(starting, hosts, args.host, args.port)
     shown = "127.0.0.1" if args.host in WILDCARD_HOSTS else _host_name(args.host)
     print(f"starting: open http://{shown}:{args.port}/ to watch the start-up")
+    # S13: the first start on the game PC opens that page in the browser (it reloads into the real page when ready)
+    if should_open_browser(st["open_browser"], fresh_db, resolve_game_pc(st["game_pc"])[0], in_container(),
+                           bool(getattr(args, "simulate", False)), stream_is_terminal(sys.stdout)):
+        print("first start: opening the page in your browser ([server] open_browser = false turns this off)")
+        loop.run_in_executor(None, open_browser, f"http://{shown}:{args.port}/")
 
     async def stopped_starting(what):
         """A stop before the page was served: what is read is committed; the rest is read at the next start."""
@@ -25658,6 +25851,7 @@ async def run(args, st):
     state.hide_secrets()   # and the EDSM / Inara keys: never in the log
     state.server_log = outrider.serverlog.ACTIVE
     state.notices = notices
+    state.listen_info = listen_info(args.host, args.port, own, in_container())   # S5: Settings -> Server's tablet address
     state.searcher = Searcher(state)
     state.restart = restart_plan()   # S10: how Settings' Restart starts this Outrider again, or why it cannot
     state.db_path = args.db
@@ -25688,6 +25882,7 @@ async def run(args, st):
                                if state.speaker.import_error else
                                "Piper not installed, the page uses browser speech (see outrider/tts.py)"))
     state.speaker.start()
+    first_start_notice(notices, fresh_db, journals.offsets, n, state.speaker)   # S13: what the first start found
     state.game_pc, why = resolve_game_pc(st["game_pc"])
     if not state.game_pc:   # a server away from the game PC: no keys, devices, clipboard or sound on it
         st = dict(simulate_settings(st), server_player="off")

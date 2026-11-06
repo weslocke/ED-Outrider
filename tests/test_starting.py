@@ -12,6 +12,7 @@ import sqlite3
 import tempfile
 import threading
 import time
+import types
 import unittest
 import unittest.mock
 import urllib.error
@@ -414,6 +415,119 @@ class Run(unittest.TestCase):
         self.assertIn("listening on 127.0.0.1 only", log)
         self.assertIn(f"http://127.0.0.1:{port}/", log)                  # the starting page came up on this PC
         self.assertEqual([n["key"] for n in ed_outrider.outrider.notices.BOARD.active()], ["host_fallback"])
+
+    def start_once(self, db, config="", tty=True, env=None):
+        """main() on a scratch config and journal folder from a terminal (a fake one) with a desktop, stopped while the
+        journals are read: what webbrowser.open was asked, and the log."""
+        import socket
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        jdir = os.path.join(self.tmp.name, "journals")
+        os.makedirs(jdir, exist_ok=True)
+        write_journal(jdir, "Journal.2024-03-05T201512.01.log")
+        cfg = os.path.join(self.tmp.name, "scratch.toml")
+        with open(cfg, "w", encoding="utf-8") as f:
+            f.write(f'[server]\nbackup_dir = "{self.tmp.name}/backups"\nbackup_every_days = 0\n{config}'
+                    f'[spansh]\nwatch_firsts = false\n[speech]\nserver_player = "off"\n')
+        made, opened = [], []
+
+        class Recorded(ed_outrider.Starting):
+            def __init__(self, *a, **kw):
+                super().__init__(*a, **kw)
+                made.append(self)
+
+        def one_step(journals, live_dirs):
+            made[0].stop.set()   # SIGTERM as the first file is read
+            yield {"done": 1, "total": 2, "path": os.path.join(jdir, "Journal.2024-03-05T201512.01.log")}
+
+        class Terminal(io.TextIOWrapper):
+            def isatty(self):
+                return tty
+        out = Terminal(io.BytesIO(), encoding="utf-8")
+        environ = {"DISPLAY": ":0", **(env or {})}
+        with unittest.mock.patch.object(ed_outrider, "Starting", Recorded), \
+                unittest.mock.patch.object(ed_outrider.Journals, "import_steps", one_step), \
+                unittest.mock.patch.object(ed_outrider, "in_container", lambda *a, **kw: False), \
+                unittest.mock.patch("webbrowser.open", lambda url, *a, **kw: opened.append(url) or True), \
+                unittest.mock.patch.dict(os.environ, environ), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            for k in ("OUTRIDER_SERVICE", "OUTRIDER_CONTAINER"):
+                os.environ.pop(k, None)   # put back by patch.dict
+            os.environ.update(environ)
+            ed_outrider.main(["--config", cfg, "--db", db, "--port", str(port), "--host", "127.0.0.1", "--journals", jdir])
+        out.seek(0)
+        return opened, out.read(), port
+
+    def test_the_first_start_opens_the_browser_once(self):
+        """Round 10's S13: a fresh database on the game PC, started from a terminal with a desktop, opens the "starting:"
+        address in the browser, as soon as the starting page answers (before the journals are read); the next start
+        (the database exists) does not, nor one with [server] open_browser = false, nor one with no terminal."""
+        db = os.path.join(self.tmp.name, "x.sqlite")
+        opened, log, port = self.start_once(db)
+        self.assertEqual(opened, [f"http://127.0.0.1:{port}/"], log)
+        self.assertRegex(log, r"first start: +opening the page in your browser")   # the terminal lines the subjects up
+        self.assertLess(log.index(f"open http://127.0.0.1:{port}/ to watch"), log.index("opening the page in your browser"))
+        self.assertTrue(os.path.exists(db))
+        self.assertEqual(self.start_once(db)[0], [])                                          # not a first start
+        other = os.path.join(self.tmp.name, "y.sqlite")
+        self.assertEqual(self.start_once(other, config="open_browser = false\n")[0], [])     # switched off
+        self.assertEqual(self.start_once(os.path.join(self.tmp.name, "z.sqlite"), tty=False)[0], [])   # no terminal
+        self.assertEqual(self.start_once(os.path.join(self.tmp.name, "w.sqlite"), env={"OUTRIDER_SERVICE": "systemd"})[0], [])
+
+
+class FirstStart(unittest.TestCase):
+    """Round 10's S13 (opening the browser, the first start's card) and S12's "no journal folder found" card."""
+
+    def test_should_open_browser(self):
+        yes = dict(enabled=True, fresh=True, game_pc=True, container=False, simulate=False, terminal=True)
+        ok = lambda platform="linux", env=None, **change: ed_outrider.should_open_browser(   # noqa: E731
+            **dict(yes, **change), platform=platform, env={"DISPLAY": ":0"} if env is None else env)
+        self.assertTrue(ok())
+        self.assertTrue(ok(env={"WAYLAND_DISPLAY": "wayland-0"}))
+        self.assertTrue(ok("win32", env={}))                      # Windows and macOS need no display variable
+        self.assertTrue(ok("darwin", env={}))
+        self.assertFalse(ok(env={}))                              # Linux with no desktop (ssh, a headless box)
+        for change in ({"enabled": False}, {"fresh": False}, {"game_pc": False}, {"container": True}, {"simulate": True},
+                       {"terminal": False}):
+            self.assertFalse(ok(**change), change)
+        self.assertFalse(ok(env={"DISPLAY": ":0", "OUTRIDER_SERVICE": "systemd"}))   # the start-with-your-computer service
+
+    def test_a_browser_that_will_not_open_only_says_so(self):
+        err = io.StringIO()
+        for fake in (lambda url: False, unittest.mock.Mock(side_effect=OSError("no opener"))):
+            with unittest.mock.patch("webbrowser.open", fake), contextlib.redirect_stderr(err):
+                self.assertFalse(ed_outrider.open_browser("http://127.0.0.1:8025/"))
+        self.assertEqual(err.getvalue().count("open http://127.0.0.1:8025/ yourself"), 2)
+        self.assertIn("no opener", err.getvalue())
+
+    def test_the_first_start_card(self):
+        paths = ["/g/Journal.2021-03-04T101010.01.log", "/g/Journal.220101101010.01.log", "/g/Journal.2026-11-01T000000.01.log"]
+        self.assertEqual(ed_outrider.first_start_text(paths, 3201, "Piper, preparing a voice"),
+                         "First start: 3 journals read from /g (2021-03 to 2026-11), 3,201 systems visited · voice: Piper, preparing a voice")
+        self.assertEqual(ed_outrider.first_start_text(paths[:1] + ["/h/Journal.2021-03-09T101010.01.log"], 1, "x"),
+                         "First start: 2 journals read from 2 folders (2021-03), 1 system visited · voice: x")
+        self.assertIsNone(ed_outrider.first_start_text([], 0, "x"))   # nothing read: the no-journals cards say it
+        board = outrider.notices.Board()
+        piper = types.SimpleNamespace(available=True, import_error=None)
+        browser = types.SimpleNamespace(available=False, import_error="DLL load failed")
+        self.assertFalse(ed_outrider.first_start_notice(board, False, paths, 9, piper))   # not a first start
+        self.assertEqual(board.active(), [])
+        self.assertTrue(ed_outrider.first_start_notice(board, True, paths, 9, browser))
+        card, = board.active()
+        self.assertEqual((card["key"], card["level"], card["action"]), ("first_start", "info", None))
+        self.assertTrue(card["text"].endswith("voice: the browser speaks (Piper would not load)"), card["text"])
+        self.assertNotIn("Spansh", card["text"])
+        self.assertNotIn("sound", card["text"].lower())
+
+    def test_no_journal_folder_found_says_where_it_looked(self):
+        text = ed_outrider.no_journals_text(["/a", "/b", "/c"])
+        self.assertIn("No Elite Dangerous journal folder found. Set Settings -> Server -> [journals] live", text)
+        self.assertIn("Looked in 3 places (the terminal lists them).", text)
+        self.assertIn("'<Saved Games>/Frontier Developments/Elite Dangerous'", text)
+        self.assertIn("steamapps/compatdata/359320/pfx/drive_c/users/steamuser/Saved Games/Frontier Developments/Elite Dangerous", text)
+        self.assertNotIn("Looked in", ed_outrider.no_journals_text(None))   # set by hand: its own card names the folder
+
 
 if __name__ == "__main__":
     unittest.main()

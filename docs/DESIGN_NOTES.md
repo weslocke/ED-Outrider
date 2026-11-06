@@ -1522,6 +1522,27 @@ upstream project's choices, not rules of the game.
   only in the terminal is a notice in every window and the tablet. The dismissal is the server's, in memory: every
   window agrees, a restart shows it again (still wrong, still worth saying), and a notice whose text changed is a new one.
   One board for every such notice (later the colour tables, outages, a failed backup), never a per-device dismissal.
+  One card on it is not a problem (round 10's S13, the author's answer 21): the very first start's info card (ⓘ,
+  `first_start`: the journals read, their folder and months, the systems visited, what speaks). Only on a fresh
+  database, so no meta row keeps it down: dismissed, or gone at the next start. It makes no claim about Spansh and gives
+  no sound hint (the audio pill says that).
+- **The first start opens the browser, once** (round 10's S13; answers 21 and 22): `[server] open_browser` (on), and
+  `should_open_browser` only for a database file that did not exist before this start (never a re-read), on the game
+  PC, from a terminal, never in a container, under the systemd service or `--simulate`, and on Linux only with a
+  desktop (`DISPLAY` or `WAYLAND_DISPLAY`). It opens the "starting:" address as soon as the starting page answers
+  (the starting page reloads into the real one), through a worker thread (`webbrowser` may wait on the program it
+  starts); a failure is one line in the terminal, which has already printed the address.
+- **The tablet's address is shown in Settings → Server only** (round 10's S5; the author's answers 4 and 5): under
+  `[server] host`, worked out once at start (`listen_info`; `own_addresses` asks DNS, so never per request), private
+  IPv4 addresses only, at most 3; in a container only "the machine running Docker" (its own addresses mean nothing
+  outside); the firewall line on Windows with the network on. No notice on a phone that opened the PC page, and no
+  `<hostname>.local`: not every phone resolves it.
+- **A typed journal folder is checked on Save** (round 10's S12): one that does not exist is refused in words ("… is
+  not a folder on this PC"), since it would only fail after a restart and a re-read; one already in the list (an
+  unplugged drive) is not. One that exists with no `Journal.*.log` yet is saved (a new install's folder is empty until
+  the game runs) with a note naming a sub-folder that has them, at most 3 levels down and 2,000 folders looked at.
+  The launchers' prefixes `find_journal_dirs` looks in (Steam's snap, a game added to Steam by hand, Heroic, Lutris,
+  Bottles) are fixed-depth globs, never a walk, and what they find is a live folder, like Proton's.
 - **Outrider's log is its terminal, kept** (S5b): the Python output only (the overlay window's piped in); the players and
   the clipboard programs still write to the terminal alone. The file lives beside the database, not in `data/`, so a
   second copy (`--db`) or verify.sh's scratch server keeps its own. Secrets: the code never prints them and the log

@@ -147,11 +147,14 @@ class Endpoint(TempConfig):
     def test_save(self):
         async def go(c):
             out = []
-            for body in ({"server": {"port": "8931", "password": "new pw"}, "autohonk": {"enabled": True}, "journals": {"live": "/j/a\n/j/b"}},
+            for body in ({"server": {"port": "8931", "password": "new pw"}, "autohonk": {"enabled": True}, "journals": {"live": f"{ja}\n{jb}"}},
                          {"server": {"port": "x"}}, {"server": {"nope": 1}}, {"mcp": {"max_rows": "0"}}, {}, [1]):
                 r = await c.post("/api/config", json=body)
                 out.append((r.status, await r.json()))
             return out
+        ja, jb = os.path.join(self.tmp, "a"), os.path.join(self.tmp, "b")   # folders that exist (S12 refuses others)
+        os.makedirs(ja)
+        os.makedirs(jb)
         with open(self.path, encoding="utf-8") as f:
             before = f.read()
         out = self.client(go)
@@ -160,7 +163,7 @@ class Endpoint(TempConfig):
             after = f.read()
         cfg = tomllib.loads(after)
         self.assertEqual((cfg["server"]["port"], cfg["server"]["password"], cfg["autohonk"]["enabled"], cfg["journals"]["live"]),
-                         (8931, "new pw", True, ["/j/a", "/j/b"]))
+                         (8931, "new pw", True, [ja, jb]))
         self.assertIn("# The Highway map draws the galactic regions", after)   # the file's comments are kept
         with open(self.path + ".bak", encoding="utf-8") as f:
             self.assertEqual(f.read(), before)
@@ -438,6 +441,100 @@ class HomedKeys(TempConfig):
         with open(self.path, encoding="utf-8") as f:
             self.assertIn("system_seconds = 30", f.read())
         self.assertEqual(s.overlay_set({"radar_range": "far"})[1], 400)
+
+
+class JournalFolderOnSave(TempConfig):
+    """Round 10's S12: a typed journal folder is checked when Settings saves it: one that does not exist is refused in
+    words (nothing written), one with no journals yet is saved with a note naming the sub-folder that has them."""
+
+    def setUp(self):
+        super().setUp()
+        self.fd = os.path.join(self.tmp, "Saved Games", "Frontier Developments")
+        self.ed = os.path.join(self.fd, "Elite Dangerous")
+        os.makedirs(self.ed)
+        with open(os.path.join(self.ed, "Journal.2026-11-06T101010.01.log"), "w") as f:
+            f.write("{}\n")
+
+    def read(self):
+        with open(self.path, encoding="utf-8") as f:
+            return f.read()
+
+    def test_a_folder_that_is_not_there_is_refused(self):
+        before = self.read()
+        gone = os.path.join(self.tmp, "nope")
+        for key in ("live", "legacy"):
+            out, status = self.state.config_save({"journals": {key: f"{self.ed}\n{gone}"}})
+            self.assertEqual((status, out), (400, {"error": f"[journals] {key}: {gone} is not a folder on this PC"}))
+        self.assertEqual(self.read(), before)   # nothing written
+
+    def test_no_journals_yet_saves_with_a_note(self):
+        out, status = self.state.config_save({"journals": {"live": self.fd}})   # the usual mistake: one level up
+        self.assertEqual(status, 200)
+        self.assertEqual(out["note"], f"{self.fd} has no Journal.*.log yet: they are in {self.ed}")
+        self.assertEqual(tomllib.loads(self.read())["journals"]["live"], [self.fd])
+        empty = os.path.join(self.tmp, "empty")
+        os.makedirs(empty)
+        out, status = self.state.config_save({"journals": {"legacy": empty}})
+        self.assertEqual((status, out["note"]), (200, f"{empty} has no Journal.*.log yet (the game writes them there once it runs)"))
+        out, status = self.state.config_save({"journals": {"live": self.ed}})   # the right one: no note
+        self.assertEqual((status, "note" in out), (200, False))
+
+    def test_a_folder_already_listed_is_not_refused(self):
+        """An unplugged drive already in the list does not stop another change to it (its own start-up card names it)."""
+        gone = os.path.join(self.tmp, "unplugged")
+        text = self.read().replace('# legacy = []  turns off', f'legacy = ["{gone}"]  # turns off')
+        with open(self.path, "w", encoding="utf-8") as f:
+            f.write(text)
+        out, status = self.state.config_save({"journals": {"legacy": f"{gone}\n{self.ed}"}})
+        self.assertEqual(status, 200, out)
+
+    def test_the_sub_folder_search_is_bounded(self):
+        root = os.path.join(self.tmp, "x")
+        deep = os.path.join(root, "a", "b", "c", "d")
+        os.makedirs(deep)
+        open(os.path.join(deep, "Journal.2026-11-06T101010.01.log"), "w").close()
+        self.assertIsNone(ed_outrider.journal_subfolder(root))                               # 4 levels down
+        self.assertEqual(ed_outrider.journal_subfolder(os.path.join(root, "a")), deep)       # 3
+        self.assertIsNone(ed_outrider.journal_subfolder(os.path.join(root, "a"), limit=2))   # the folder cap
+
+
+class TabletAddress(TempConfig):
+    """Round 10's S5: Settings -> Server shows under [server] host how a tablet or phone reaches this Outrider, from
+    listen_info, worked out once by run() (own_addresses asks DNS: never per request)."""
+
+    def test_listen_info_cases(self):
+        own = {"127.0.0.1", "127.0.1.1", "192.168.1.23", "10.0.0.5", "172.17.0.1", "192.168.50.2", "fe80::1", "8.8.8.8",
+               "mypc", "mypc.local", "169.254.1.1", "2001:db8::1"}
+        info = lambda host, **kw: ed_outrider.listen_info(host, 8025, own, **kw)   # noqa: E731
+        self.assertEqual(info("0.0.0.0", platform="linux"),
+                         {"kind": "network", "port": 8025, "firewall": False,
+                          "urls": ["http://192.168.1.23:8025/tablet", "http://192.168.50.2:8025/tablet", "http://10.0.0.5:8025/tablet"]})
+        self.assertTrue(info("::", platform="win32")["firewall"])                          # Windows, the network on
+        for host in ("127.0.0.1", "localhost", "::1"):
+            self.assertEqual(info(host, platform="win32"), {"kind": "loopback", "port": 8025, "urls": [], "firewall": False}, host)
+        self.assertEqual(info("192.168.1.23", platform="linux")["urls"], ["http://192.168.1.23:8025/tablet"])
+        self.assertEqual(info("0.0.0.0", container=True, platform="win32"),
+                         {"kind": "docker", "port": 8025, "urls": [], "firewall": False})
+        self.assertEqual(ed_outrider.listen_info("0.0.0.0", 8025, {"8.8.8.8"}, platform="linux")["urls"], [])   # the page says "this PC's address"
+
+    def test_config_info_carries_it_and_never_asks_dns(self):
+        self.assertIsNone(self.state.config_info()["listen"])   # not worked out (a test, a State not started by run())
+        self.state.listen_info = ed_outrider.listen_info("127.0.0.1", 8025)
+        with unittest.mock.patch.object(ed_outrider, "own_addresses", side_effect=AssertionError("DNS per request")):
+            self.assertEqual(self.state.config_info()["listen"]["kind"], "loopback")
+
+    def test_open_browser_is_a_network_row(self):
+        """S13's key is in a Server group (never Other), written by --write-config, in the example and the guide."""
+        groups = {k: g for g, _t, keys in ce.GROUPS for k in keys}
+        self.assertEqual(groups[("server", "open_browser")], "network")
+        self.assertIn("open_browser = true", ed_outrider.config_text(settings({})))
+        self.assertFalse(settings({"server": {"open_browser": False}})["open_browser"])
+        with open(EXAMPLE, encoding="utf-8") as f:
+            self.assertIn("# open_browser = true", f.read())
+        with open(os.path.join(os.path.dirname(EXAMPLE), "docs", "guide", "settings.md"), encoding="utf-8") as f:
+            self.assertIn("`open_browser` (true", f.read())
+        with open(os.path.join(os.path.dirname(EXAMPLE), "scripts", "verify.sh"), encoding="utf-8") as f:
+            self.assertIn("open_browser = false", f.read())   # the scratch server never opens one
 
 
 class SweepConfigFixes(TempConfig):
