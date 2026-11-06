@@ -618,7 +618,7 @@ class Sessions(unittest.TestCase):
         ships = lambda: {r["start"]: r["ship"] for r in state.commander_sessions(now=NOW)["sessions"]}   # noqa: E731
         self.assertEqual(ships()[T("09:00:00")], "")
         beta = next(r for r in state.commander_sessions(now=NOW)["sessions"] if r["start"] == T("09:00:00"))
-        self.assertEqual(beta["combat"]["ships"], [])   # #23: Alpha's Krait was not Beta's ship
+        self.assertEqual(beta["combat"]["ships"], ["On foot"])   # #23: Alpha's Krait was not Beta's ship; Beta logged in on foot
         j.handle(ev(T("09:00:02"), "Loadout", Ship="python", ShipName="Beta's Python", ShipID=2, MaxJumpRange=30,
                     FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[]))
         self.assertEqual((ships()[T("09:00:00")], ships()[T("08:00:00")]), ("Beta's Python", "Alpha's Krait"))
@@ -679,6 +679,31 @@ class Sessions(unittest.TestCase):
             ev(T("08:10:00"), "MarketSell", Type="gold", Count=1, TotalSale=5, MarketID=1)])
         self.assertEqual(j.db.execute("SELECT ship FROM play_activity WHERE login_ts=?", (T("08:00:00"),)).fetchone()[0], "explorer_nx")
         self.assertEqual([m["ship"] for m in j.moments if m["kind"] == "game_start"], ["Caspian Explorer", "explorer_nx"])
+
+    def test_kills_on_foot(self):
+        """#23 (Kurbo26): 49 kills in a ground combat zone were credited to the ship parked in orbit. Out of the ship
+        (a dropship's Disembark too) a kill is "On foot"; back aboard (Embark) the ship's again; a login on foot is on
+        foot; and an Outrider restart mid-fight keeps it (SAVED)."""
+        loadout = ev(T("08:00:01"), "Loadout", Ship="federation_corvette", ShipName="Virtute", ShipID=3, MaxJumpRange=20,
+                     FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[])
+        j, state = setup(self, [
+            ev(T("08:00:00"), "LoadGame", Commander="Tester", Ship="federation_corvette", ShipName="Virtute"), loadout,
+            ev(T("08:05:00"), "Disembark", SRV=False, Taxi=True, Multicrew=False, OnPlanet=True, SystemAddress=1, BodyID=2),
+            ev(T("08:10:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B"),
+            ev(T("08:11:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B")])
+        again = ed_outrider.Journals(j.db)   # an Outrider restart, mid-fight: the Disembark is not read again
+        self.assertEqual(again.on_foot, {"ts": T("08:05:00")})
+        for e in (ev(T("08:12:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B"),
+                  ev(T("08:20:00"), "Embark", SRV=False, Taxi=True, Multicrew=False, OnPlanet=True),
+                  ev(T("08:40:00"), "Bounty", Target="anaconda", TotalReward=5)):
+            again.handle(e)
+        state.journals = again
+        c = state.commander_sessions(now=NOW)["sessions"][0]["combat"]
+        self.assertEqual((c["kills"], c["ships"], c["ship_last"]), (4, ["On foot", "Virtute"], "Virtute"))
+        # a login on foot (a suit, not a ship), then a kill
+        j2, state2 = setup(self, [loadout, ev(T("09:00:00"), "LoadGame", Commander="Tester", Ship="TacticalSuit_Class1"),
+                                   ev(T("09:05:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B")])
+        self.assertEqual(state2.commander_sessions(now=NOW)["sessions"][0]["combat"]["ships"], ["On foot"])
 
     def test_the_ship_a_session_ended_in(self):
         """#23: three ships or more show the first and the last (the author); back in the first, the first is the last,

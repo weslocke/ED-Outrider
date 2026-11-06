@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Kills on foot are "On foot" in Sessions (#23)
+- Kurbo26 (#23, after the ship fix): 49 kills in a ground combat zone were credited to the Corvette parked in orbit.
+  The reader now knows when you are on foot (`Journals.on_foot`, `track_foot`): a Disembark (a dropship's to a
+  ground combat zone too) puts you on foot, an Embark (now read) takes you off it, a login names it (a suit). It is
+  kept through an Outrider restart (SAVED: the reader resumes mid-file and would not see the Disembark again). A kill
+  or death on foot is the Sessions' "On foot" (`ON_FOOT`), so a session fought both ways reads "On foot, Virtute".
+  PARSER_VERSION 74.
+
 ## 2026-11-06 · Round 10 suggestions, batch 9: a quicker smoke test, one carrier placement, a hostile station while wanted
 Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the last batch: a test-speed item, a refactor
 with no player-visible change, and batch 7's follow-up. No journal re-read.

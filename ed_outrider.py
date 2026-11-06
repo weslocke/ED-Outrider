@@ -1801,7 +1801,7 @@ MINING_RECAP_ON = ("FSDJump", "CarrierJump", "Docked")
 # tab's suit loadouts too, comes 2 to 10 s after every Disembark in the author's journals; SwitchSuitLoadout changes it
 # in a ship's locker), a settlement approached (a body with one is settlement business: no wrong-suit warning), and a
 # crime committed (a bounty on you: the `wanted` moment)
-FOOT_EVENTS = ("SwitchSuitLoadout", "ApproachSettlement", "CommitCrime")
+FOOT_EVENTS = ("SwitchSuitLoadout", "ApproachSettlement", "CommitCrime", "Embark")   # Embark: back aboard (#23)
 SUIT_EVENTS = ("SuitLoadout", "SwitchSuitLoadout")
 SUIT_PAIR_S = 45   # s: a Disembark and its suit line this close are one step out (2-10 s in the author's journals, once 36)
 # a suit's journal symbol (SuitName: "utilitysuit_class1") by its prefix, in the words the page speaks: the localised
@@ -1934,7 +1934,8 @@ def line_wanted(line, name=...):
 # 73: round 10's suggestions, batch 6: a massacre mission's kills counted from your Bounty lines (S8), the bounty vouchers
 #     and combat bonds you hold (meta vouchers, S9), a Collect mission marked (S15), Powerplay merits per cycle and
 #     login and the Community Goals you joined (meta community_goals, S19)
-PARSER_VERSION = 73
+# 74: a kill or death made on foot is the Sessions' "On foot", not the ship's (on_foot from Disembark / Embark; #23)
+PARSER_VERSION = 74
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1960,6 +1961,7 @@ PARSER_VERSION = 73
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    74: "kills on foot (a ground combat zone) show as On foot in CMDR → Sessions, not as the ship you left",
     73: "CMDR → Missions counts your kills for massacre missions, lists your Community Goals and finds where to buy what a Collect mission wants; the Unsold tile shows the bounty vouchers and combat bonds you hold; the pledged line says the merits you earned this cycle and this login",
     72: "a game in another language: your sample runs and scanned genera are priced and matched by the game's codes, so bio values and new codex marks are right",
     71: "CMDR → Sessions names the ship a session started and ended in when you flew three ships or more in it, the ship you died in, and an unnamed ship by its type",
@@ -2412,7 +2414,7 @@ DELETE FROM own_systems; DELETE FROM own_bodies; DELETE FROM own_signals; DELETE
 DELETE FROM own_firsts; DELETE FROM own_mapped; DELETE FROM own_footfall; DELETE FROM sales; DELETE FROM deaths;
 DELETE FROM own_genera; DELETE FROM own_organic; DELETE FROM codex; DELETE FROM bio_sales;
 DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM phenomena_sites; DELETE FROM poi; DELETE FROM sale_events; DELETE FROM logins;
-DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here');
+DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here', 'on_foot');
 DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population; DELETE FROM stations;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
 DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_carrier', 'mined_died', 'sale_dock');
@@ -2591,6 +2593,9 @@ def first_start_text(paths, visited, voice):
     where = folders[0] if len(folders) == 1 else f"{len(folders)} folders"
     return (f"First start: {len(paths):,} journal{'' if len(paths) == 1 else 's'} read from {where}{span}, "
             f"{visited:,} system{'' if visited == 1 else 's'} visited · voice: {voice}")
+
+
+ON_FOOT = "On foot"   # the Sessions' "ship" of a kill or death made on foot (#23: a ground combat zone)
 
 
 def not_a_ship(kind):
@@ -3403,6 +3408,7 @@ class Journals:
         # launch the journals never showed), the body you are at ({system, body_id, name, ts}), and your ship's
         # landing spot ({system, body_id, lat, lon, ts}): the surface map and the co-pilot's rig marking
         ("vehicle", "vehicle", None),
+        ("on_foot", "on_foot", None),             # {ts}: out of the ship, SRV and taxi since (track_foot; #23: on-foot kills)
         ("body_here", "body_here", None),
         ("ship_marker", "ship_marker", None),
         # cargo (outrider/cargo.py): the ship's hold folded as it is read; the market you are docked at, for a
@@ -4366,6 +4372,8 @@ class Journals:
             self.note_loading(name, ev, ts)
             if name == "Fileheader":
                 return
+        if name in ("Disembark", "Embark", "LoadGame"):
+            self.track_foot(name, ev, ts)
         if name in SALE_DOCK_EVENTS:
             self.note_sale_dock(name, ev, ts)
         if name in STATION_EVENTS:
@@ -5422,6 +5430,24 @@ class Journals:
         elif name in outrider.commander.ACTIVITY_EVENTS:
             self.note_activity(ev, ts, mined)
 
+    def track_foot(self, name, ev, ts):
+        """Whether you are on foot (self.on_foot: {ts}, or None aboard): a Disembark (from the ship, the SRV or a
+        dropship to a ground combat zone) puts you on foot, an Embark (a ship, the SRV, a taxi) takes you off it, and a
+        login says which by the ship it names (a suit: on foot). Kept through a restart (SAVED): the reader resumes
+        mid-file and never sees the Disembark again. Issue #23 (Kurbo26): 49 kills in a ground combat zone were
+        credited to the ship parked in orbit."""
+        if not self.fresh("on_foot", ts, (self.on_foot or {}).get("ts")):
+            return
+        if name == "Disembark":
+            v = {"ts": ts}
+        elif name == "Embark":
+            v = None
+        else:   # LoadGame: a suit is on foot; a ship or a taxi (adder_taxi) is aboard
+            v = {"ts": ts} if "suit" in str(ev.get("Ship") or "").lower() else None
+        if v != self.on_foot:
+            self.on_foot = v
+            meta_set(self.db, "on_foot", v)
+
     def ship_name(self):
         """The ship you fly, as the last Loadout named it: its own name, else its type ("explorer_nx", which the page
         names); "" when none was read. A name kept from before the Loadout stripped it (" ") counts as none (#23)."""
@@ -5445,6 +5471,8 @@ class Journals:
         s = self.ship or {}
         mine = (s.get("ts") or "") <= ts and s.get("fid") in (None, (self.commander or {}).get("fid"))
         ship = self.ship_name() or None if mine else None
+        if (self.on_foot or {}).get("ts", "~") <= ts:   # out of the ship: a ground fight is yours, not the ship's (#23)
+            ship = ON_FOOT
         if outrider.commander.activity_apply(acts, ev, srv, mined, place, ship):
             self.db.execute("UPDATE play_activity SET combat=?, mining=? WHERE login_ts=?",
                             (acts["combat"] and json.dumps(acts["combat"]), acts["mining"] and json.dumps(acts["mining"]),
