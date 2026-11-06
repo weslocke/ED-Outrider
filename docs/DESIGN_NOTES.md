@@ -86,6 +86,24 @@ upstream project's choices, not rules of the game.
   mission, whose `Expires` is the time itself (a Unix time). Links go from the CMDR tab outward only (the career to
   History, a short material to the Materials tab and the nearest trader); the header tiles stay informational. No
   voice lines: a mission about to expire is marked on the page only.
+- **Kills counted, vouchers held, merits gained, goals joined** (round 10's suggestions, batch 6, 2026-11-06). All four
+  fold into the CMDR tab's own meta keys, journal-derived, with no voice (the CMDR tab has none by design) and no new
+  panel: a massacre mission's kills go in the Missions table's What ("7/18 counted": Outrider's count, not the game's,
+  so worded "counted"; the game's `MissionRedirected` makes it "✓ done" whatever the count; one mission per giving
+  faction, the oldest first, in the target system, `FactionKillBond`s left out: the community's rule, unconfirmed by the
+  author's journals, which hold no finished massacre mission; a wing mission's count is titled "your own kills only").
+  A `Bounty` is folded into the missions only while a massacre mission is held (`commander.counts_kills`), so a kill
+  never moves the missions' `fresh()` mark otherwise. The vouchers (bounties and bonds per faction) are a line in the
+  Unsold tile while above 0 and in its details, never in the docked "sell your data" line or the approach warning
+  (half of that line's 1,011 phrasings say "data"); docked, the line names the station's controlling faction when you
+  hold its vouchers, else Interstellar Factors ("for vouchers the station's Contacts will not take": the author's
+  redemptions were paid in full at ordinary Contacts, factions not of the station included, so the cut is never
+  suggested first). A redemption's blank faction clears what it does not name (each one matched a held faction). The
+  Powerplay merits this cycle and this login ride the pledged line, not a Sessions column (merits come from more than
+  fighting); the cycle's end is a constant, Thursday 07:00 UTC, since no journal line marks it. Community Goals are
+  Missions rows while they run (merits first in the build order, then the goals); one past its Expiry goes even while
+  the game still lists it. A Collect mission's 🔍 opens Materials → Cargo's Buy (Spansh, read only) for the count less
+  what was handed in; an on-foot collection and a Delivery have none.
 - **The CMDR tab's Earnings: exploration, exobiology and mining, exact** (2026-10-14, NEXT-VERSION #7 from javeliuswt's
   GitHub discussion #7; the author's choices of that day; `outrider/earnings.py`). What Universal Cartographics, Vista
   Genomics and a market for ore you mined paid you: trade, missions and bounties are left out (an explorer's and a
@@ -2042,3 +2060,9 @@ confirmed while playing. Treat reports about them as likely real.
 - The In-Game Route's **hop lookups**: Spansh's search by id64 was probed (2026-10-14, `tests/fixtures/spansh_ids.json`),
   but not a real plotted route's ✦ chips out in the black, nor the bubble and Colonia skip (`ROUTE_LOOKUP_SKIP`) on a
   route crossing its edge.
+- Round 10's batch 6 (2026-11-06): a massacre mission's kills counted live (no finished one is in the author's
+  journals: the counting rule is the community's), the vouchers line through a death and a redemption at Interstellar
+  Factors (no redemption through a broker is in his journals), the merits this cycle across a Thursday tick, a
+  Community Goal's row, and a Collect mission's 🔍 into Buy. The vouchers' fold was replayed over his journals' lines
+  (read only): before each bounty redemption it held what the redemption paid per faction (less the ×1.2 bonus some
+  carried), and nothing after the last; combat bonds paid 91 to 96 % of what it held (unexplained).

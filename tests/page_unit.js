@@ -311,6 +311,63 @@ t("settingsUnsaved: a fresh page has nothing unsaved (round 10's S1), and Done w
   eq(`settingsUnsaved().map(x => x.key)`, []);
   eq(`[settingsHold(), Object.keys(UNSAVED_SECS)]`, [false, ["honk", "autotarget", "screenshots", "uploads", "server"]]);
 });
+// round 10's suggestions, batch 6: what the CMDR tab and the Unsold tile draw from the server's answers
+const html = src => { const box = w.document.createElement("div"); box.innerHTML = ev(src) || ""; return box; };
+const words = box => box.textContent.replace(/\s+/g, " ").trim();
+t("missionKillsHtml: a massacre's kills 'counted', a wing's yours only, ✓ done once redirected, nothing for others (S8)", () => {
+  const one = html(`missionKillsHtml({massacre: true, kills: 7, count: 18, wing: false})`);
+  assert.deepStrictEqual([words(one), /^kills counted from your journal/.test(one.querySelector("b").title), /yours only|own kills/.test(one.querySelector("b").title)],
+                         ["7/18 counted", true, false]);
+  const wing = html(`missionKillsHtml({massacre: true, kills: 3, count: 45, wing: true})`);
+  assert.deepStrictEqual([wing.querySelector("b").textContent, /your own kills only/.test(wing.querySelector("b").title)], ["3/45", true]);
+  assert.strictEqual(words(html(`missionKillsHtml({massacre: true, kills: 2, count: 18, redirected: true})`)), "✓ done");
+  eq(`[missionKillsHtml({massacre: false, kills: null, count: 20}), missionKillsHtml({count: 20})]`, [null, null]);
+});
+t("missionBuyBtn: a Collect mission's 🔍 into Buy for what is still wanted, none once handed in or for another kind (S15)", () => {
+  eq(`[missionBuyLeft({collect: true, commodity_id: "agronomictreatment", count: 72, delivered: 30}),
+       missionBuyLeft({collect: true, commodity_id: "agronomictreatment", count: 72, delivered: null}),
+       missionBuyLeft({collect: true, commodity_id: "x", count: 72, delivered: 72}), missionBuyLeft({collect: false, commodity_id: "x", count: 9}),
+       missionBuyLeft({collect: true, commodity_id: null, count: 9})]`, [42, 72, 0, 0, 0]);
+  const b = html(`missionBuyBtn({collect: true, commodity_id: "agronomictreatment", commodity: "Agronomic Treatment", count: 72, delivered: 30})`).querySelector("button");
+  assert.deepStrictEqual([b.dataset.missionbuy, b.dataset.buyname, b.dataset.buytons, b.title],
+                         ["agronomictreatment", "Agronomic Treatment", "42", "where to buy 42 t of Agronomic Treatment near you (Materials → Cargo's Buy, from Spansh)"]);
+  eq(`missionBuyBtn({collect: true, commodity_id: "x", count: 5, delivered: 5})`, "");
+});
+t("cgRowHtml / cmdrMissionsHtml: a Community Goal in the Missions table, the heading counting both (S19)", () => {
+  const now = Date.parse("2026-10-12T12:00:00Z");
+  const row = html(`"<table><tbody>" + cgRowHtml({id: 836, title: "Opening Sample Campaign", system: "Sample Reach", station: "Sample Glow",
+    expiry: "2026-10-15T16:00:00Z", complete: false, contribution: 7408, contributors: 1395, tier: 2, top_tier: 5, band: 25, top_rank: false}, ${now}) + "</tbody></table>"`);
+  const cells = [...row.querySelectorAll("td")].map(td => { const c = td.cloneNode(true); c.querySelectorAll(".sf").forEach(x => x.remove()); return words(c); });
+  assert.deepStrictEqual(cells, ["Opening Sample Campaign community goal", "", "Sample Reach · Sample Glow", "tier 2 of 5 · yours 7,408 (top 25 %)", "", "3 d 4 h"]);
+  const fresh = html(`"<table><tbody>" + cgRowHtml({id: 1, title: "T", system: "S", station: null, expiry: null, complete: true, contribution: 0,
+    tier: null, top_tier: 5, band: 100}, ${now}) + "</tbody></table>"`);
+  assert.strictEqual(words(fresh.querySelectorAll("td")[3]), "✓ complete · no tier yet of 5 · nothing given yet");
+  const head = d => words(html(`cmdrMissionsHtml(${JSON.stringify(d)})`).querySelector(".hwyttl"));
+  const m = {id: 1, name: "Courier", faction: "F", system: "S", count: null, reward: 1, expiry: null};
+  const g = {id: 9, title: "G", system: "S", expiry: null, tier: null, top_tier: null, contribution: 0};
+  assert.deepStrictEqual([head({missions: [m, m]}), head({missions: [m], community_goals: [g]}), head({missions: [], community_goals: [g, g]}), head({missions: []})],
+                         ["2 missions", "1 mission · 1 community goal", "2 community goals", "No missions"]);
+});
+t("vouchersLine / vouchersPopHtml: the vouchers you hold in the Unsold tile, and where to hand them in when docked (S9)", () => {
+  const v = {total: 2400000, bounties: 1800000, bonds: 600000, factions: [{name: "Hub Independents", bounties: 1800000, bonds: 0, total: 1800000},
+                                                                          {name: "Sample Power", bounties: 0, bonds: 600000, total: 600000}]};
+  const line = html(`vouchersLine(${JSON.stringify(v)}, null)`).firstElementChild;
+  assert.deepStrictEqual([words(line), line.title.split("\n")],
+    ["⚖ vouchers 2.4M (bounties 1.8M · bonds 600k)", ["Bounty vouchers and combat bonds you hold: from your journals since your last death or redemption (a death loses them)",
+                                                       "Hub Independents: 1,800,000 cr", "Sample Power: 600,000 cr"]]);
+  assert.strictEqual(words(html(`vouchersLine(${JSON.stringify(v)}, {faction: "Hub Independents", has_factors: true})`)),
+                     "⚖ vouchers 2.4M (bounties 1.8M · bonds 600k) · Hub Independents controls this station: its 1.8M here");
+  assert.strictEqual(words(html(`vouchersLine(${JSON.stringify(v)}, {faction: "Somebody Else", has_factors: true})`)),
+                     "⚖ vouchers 2.4M (bounties 1.8M · bonds 600k) · Interstellar Factors here (25 % cut)");
+  assert.strictEqual(words(html(`vouchersLine(${JSON.stringify(v)}, {faction: "Somebody Else", has_factors: false})`)), "⚖ vouchers 2.4M (bounties 1.8M · bonds 600k)");
+  eq(`[vouchersLine(null, null), vouchersLine({total: 0, factions: []}, null), vouchersPopHtml(null)]`, ["", "", ""]);
+  assert.deepStrictEqual([...html(`vouchersPopHtml(${JSON.stringify(v)})`).querySelectorAll("li")].map(words),
+                         ["Hub Independents1,800,000 cr", "Sample Power (bonds)600,000 cr"]);
+});
+t("cmMeritGains: the pledged line's merits this cycle and this login, each only when some were (S19)", () => {
+  eq(`[cmMeritGains({cycle: 1240, login: 310}), cmMeritGains({cycle: 1240, login: null}), cmMeritGains({cycle: null, login: null}), cmMeritGains(null)]
+      .map(h => h.replace(/<[^>]+>/g, "").trim())`, ["· 1,240 this cycle, 310 this login", "· 1,240 this cycle", "", ""]);
+});
 // round 10's S23 (b): the alert rows' lists in step. A call's argument text, its parentheses balanced (strings and
 // templates skipped), from the "(" at `at`; and a call's first argument
 function callText(src, at) {

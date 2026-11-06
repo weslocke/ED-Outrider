@@ -1891,7 +1891,10 @@ def line_wanted(line, name=...):
 #     a death keeps its ship too, and an unnamed ship (Loadout's ShipName " ") is kept by its type
 # 72: sample runs and DSS genera keep the rules' English genus and species names, from the game's codes (own_organic,
 #     own_genera; review round 10 B2: a non-English game's runs priced nothing and its genera counted as unruled)
-PARSER_VERSION = 72
+# 73: round 10's suggestions, batch 6: a massacre mission's kills counted from your Bounty lines (S8), the bounty vouchers
+#     and combat bonds you hold (meta vouchers, S9), a Collect mission marked (S15), Powerplay merits per cycle and
+#     login and the Community Goals you joined (meta community_goals, S19)
+PARSER_VERSION = 73
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1917,6 +1920,7 @@ PARSER_VERSION = 72
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
+    73: "CMDR → Missions counts your kills for massacre missions, lists your Community Goals and finds where to buy what a Collect mission wants; the Unsold tile shows the bounty vouchers and combat bonds you hold; the pledged line says the merits you earned this cycle and this login",
     72: "a game in another language: your sample runs and scanned genera are priced and matched by the game's codes, so bio values and new codex marks are right",
     71: "CMDR → Sessions names the ship a session started and ended in when you flew three ships or more in it, the ship you died in, and an unnamed ship by its type",
     70: "each kill and mining run keeps the ship you were in, so CMDR → Sessions names the ship you swapped to, not the one you logged in with",
@@ -2374,7 +2378,7 @@ DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
 DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_carrier', 'mined_died', 'sale_dock');
 DELETE FROM play_activity; DELETE FROM mining_stints; DELETE FROM journal_file_cmdrs;
 DELETE FROM meta WHERE key IN ('reputation', 'powerplay', 'squadron', 'stored_ships', 'stored_modules', 'ship_locker',
-                               'suit_loadouts', 'engineers', 'missions');
+                               'suit_loadouts', 'engineers', 'missions', 'vouchers', 'community_goals');
 DELETE FROM meta WHERE key IN ('ship', 'carrier', 'squadron_carrier', 'fuel_hist', 'last_scoop', 'commander', 'materials',
                                'last_session', 'cargo', 'game_load', 'commanders_seen');
 DELETE FROM meta WHERE key LIKE 'legacy:%' OR key IN ('pos', 'prev', 'jump_range', 'state_ts');
@@ -5249,23 +5253,25 @@ class Journals:
                     self.moments[i] = dict(mo, **fields)
 
     def handle_commander(self, name, ev, ts, mined=None):
-        """The Commander view (outrider/commander.py): a fold's line into its meta key (fresh()-guarded per key: a line
+        """The Commander view (outrider/commander.py): a fold's line into its meta keys (fresh()-guarded per key: a line
         older than the newest folded, from a legacy folder read late, is ignored), a login's play_activity row, a
         fighting or mining line into its login's row (mined: a MarketSell's mining income, note_mined's answer). Every
         line it is given moves commander_version."""
         self.commander_version += 1
-        key = outrider.commander.FOLD_OF.get(name)
-        if key:
-            if not self.fresh("cmdr:" + key, ts):
-                return
+        keys = outrider.commander.FOLD_OF.get(name, ())
+        if keys:
             # the place from journal-derived state replayed in order (pos, sale_dock), not self.docked: meta docked is
             # kept through a re-read, so the re-read's older folds would be stamped with the live station
             d = self.sale_dock or {}
             here = {"system": d.get("system") or (self.pos or {}).get("name"), "station": d.get("station"), "market": d.get("market_id"),
                     "login": (self.commander or {}).get("login_ts")}
-            self.cmdr_view[key] = outrider.commander.apply(key, self.cmdr_view.get(key), ev, here)
-            meta_set(self.db, key, self.cmdr_view[key])
-        elif name == "LoadGame":
+        for key in keys:   # a line may feed several folds (a Bounty: the massacre missions and the vouchers)
+            if key == "missions" and name == "Bounty" and not outrider.commander.counts_kills(self.cmdr_view.get(key)):
+                continue   # no massacre mission to count it for: the missions' mark stays where the mission lines put it
+            if self.fresh("cmdr:" + key, ts):
+                self.cmdr_view[key] = outrider.commander.apply(key, self.cmdr_view.get(key), ev, here)
+                meta_set(self.db, key, self.cmdr_view[key])
+        if name == "LoadGame":
             ship = ev.get("ShipName") or ev.get("Ship_Localised") or ev.get("Ship")
             if not_a_ship(ev.get("Ship")):   # on foot or in a shuttle: your ship, as handle_cmdr (complete review 2026-10-30)
                 # only when the last ship read was this commander's (review round 9: another commander's in a shared
@@ -5940,7 +5946,11 @@ class Journals:
                 self.docked = {"station": ev.get("StationName"), "type": ev.get("StationType"),
                                "market_id": ev.get("MarketID"), "system": ev.get("StarSystem"),
                                "ts": self.docked["ts"] if same else ts,
-                               "has_uc": "exploration" in services, "has_vista": "vistagenomics" in services}
+                               "has_uc": "exploration" in services, "has_vista": "vistagenomics" in services,
+                               # round 10's S9: Interstellar Factors ("facilitator": 196 of the author's 1,228 Docked
+                               # lines) and the faction that controls the station, for the vouchers you hold
+                               "has_factors": "facilitator" in services,
+                               "faction": (ev.get("StationFaction") or {}).get("Name") if isinstance(ev.get("StationFaction"), dict) else None}
                 meta_set(self.db, "docked", self.docked)
             if ev.get("StationType") != "FleetCarrier" or ev.get("MarketID") != c.get("id") or stale():
                 return
@@ -9346,6 +9356,7 @@ class State:
             "previous": with_id(self.journals.prev),
             "commander": self.commander_summary(),
             "commander_version": self.journals.commander_version,   # the Commander view asks again when it moves
+            "vouchers": outrider.commander.vouchers(self.journals.cmdr_view.get("vouchers")),   # S9: the Unsold tile's ⚖ line
             "materials": self.materials_summary(), "jump_range": jr["ly"] if jr else None,
             # the range with the fuel and cargo aboard now (the fuel model), None without the Loadout's mass
             "jump_range_now": self.range_now(),
@@ -11655,9 +11666,11 @@ class State:
         """GET /api/commander/engineering: the blueprints against the materials held now."""
         return outrider.commander.engineering(self.journals.materials, self.journals.cmdr_view.get("engineers"))
 
-    def commander_missions(self):
-        """GET /api/commander/missions."""
-        return {"missions": outrider.commander.missions(self.journals.cmdr_view.get("missions"))}
+    def commander_missions(self, now=None):
+        """GET /api/commander/missions: the missions you hold and the Community Goals you joined that still run."""
+        v = self.journals.cmdr_view
+        return {"missions": outrider.commander.missions(v.get("missions"), now),
+                "community_goals": outrider.commander.community_goals(v.get("community_goals"), now)}
 
     def mining_live(self, now=None):
         """The mining strip (mining D): while you mine in a ring (an open stint, in normal space, Status.json live) in a

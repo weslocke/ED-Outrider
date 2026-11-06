@@ -351,6 +351,13 @@ jump's cost ("38.2 ly · 0.9 t · leaves 5 max jumps"). "scoopable: 9 of last 20
 short for the gaps between scoopable stars. In the SRV or the Nomad it keeps the ship's tank and adds the
 vehicle's own fuel.
 
+The **Unsold tile** also has a line while you hold bounty vouchers or combat bonds: "⚖ vouchers 2.4M (bounties 1.8M ·
+bonds 600k)", from your journals since your last death or redemption (a death loses them; its hover, and the tile's
+details, list them by faction). Docked at a station whose controlling faction you hold vouchers from, it says so ("Hub
+Independents controls this station: its 1.8M here"); else, where there is one, "Interstellar Factors here (25 % cut)",
+for vouchers the station's Contacts will not take. Nothing is said aloud, and the docked "sell your data" line never
+counts them.
+
 The Where tile names the system you are in and, beside it, the one you jumped from ("from Xyz AB-C d1-2 (75.9 ly)");
 the Commander tile has your jump range under the ship ("max jump 83.0 ly · 75.9 laden", and the boosted reach while a
 jet-cone charge holds). Under the Where tile, the **discovery streak** is a dot per arrival for your last 20 (gold:
@@ -629,7 +636,8 @@ above the list:
   and stored modules, your carrier as the Carrier tile shows it (its balance and weeks of upkeep); every rank with a
   bar to the next one and, for exobiology, about how many credits it still takes (the community's figures for each
   rank's step, times the share your game says is left: an estimate; Elite IV and V are marked uncertain);
-  reputation, Powerplay and squadron; your ships (a red ⚖ beside one the game marks hot: wanted, the one you fly
+  reputation, Powerplay (with the merits you earned this cycle, which ends Thursday 07:00 UTC, and this login: "1,240
+  this cycle, 310 this login") and squadron; your ships (a red ⚖ beside one the game marks hot: wanted, the one you fly
   included; **EDSY ↗** and **Coriolis ↗** open that ship's build in the ship designer, in a new tab, as the game last
   described it when you flew it; a ship you have not boarded since your journals begin says "no build"); and career figures (time played, systems visited, distance,
   profits by career; **History ›** opens History at its Career row, the game's statistics beside your sessions).
@@ -662,7 +670,15 @@ above the list:
 - **Missions**: the missions you hold, the soonest to expire first: where they go, what they ask (and how much is
   delivered), the reward, and the time left, marked when under half an hour. A mining mission's 🔍 searches Spansh for
   where to mine its commodity within 100 ly: its hotspots, or for a mineral that has none (Bertrandite, Gold...) the ring
-  types that yield it (Search's choices are replaced). A mission whose acceptance is in no journal Outrider has read has none.
+  types that yield it (Search's choices are replaced). A Collect mission's 🔍 opens Materials → Cargo's **Buy** for what
+  it still wants (the count less what you handed in). A massacre mission shows your kills as **counted** from your
+  journal ("7/18 counted"): a kill counts for one mission of each giving faction (its oldest first), when the victim is
+  of the target faction and you are in the target system; a wing mission counts your own kills only. It is Outrider's
+  count, not the game's: once the game sends you back to hand it in, the row says **✓ done** whatever the count. A
+  mission whose acceptance is in no journal Outrider has read has none of these.
+  The **Community Goals** you have signed up to are listed under them while they run: their system and station, the
+  tier reached of the top one, your contribution and the top share of contributors you are in, and the time left (a
+  goal that has ended goes, even while the game still lists it for its reward).
 - **Sessions**: your sessions of the last 30 days with fighting or mining in them (40 at most), each from one login to
   the next. Combat:
   kills, by ship, bounties and bonds, kills an hour, deaths. Mining: **Where** (the system and the ring, or the body your

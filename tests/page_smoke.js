@@ -12004,6 +12004,76 @@ const releasePayloads = async () => {
       JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]]))), errors.slice(before));
   }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
+  // Round 10's suggestions, batch 6: CMDR → Missions shows a massacre's kills counted (✓ done once redirected) and a
+  // Community Goal's row; a Collect mission's 🔍 opens Materials → Cargo's Buy for what it still wants; the pledged line
+  // says this cycle's and this login's merits; the Unsold tile has the vouchers line (with the docked station's hint)
+  r10_batch6_cmdr_vouchers: { if (skip("r10_batch6_cmdr_vouchers")) break r10_batch6_cmdr_vouchers;
+    holdPayloads();
+    const w = dom.window, d = w.document, before = errors.length, got = {};
+    const text = el => el ? el.textContent.replace(/\s+/g, " ").trim() : "";
+    const full = el => { const c = el.cloneNode(true); c.querySelectorAll(".sf, .sf1, .sf2").forEach(x => x.remove()); return text(c); };
+    w.eval(`window.__b6 = {api: apiJson, view, vouchers: data.vouchers, docked: data.docked, look: LK.q, ver: data.commander_version};
+      apiJson = async (u, o) => {
+        const s = String(u);
+        if (!s.startsWith("api/commander/")) return __b6.api(u, o);
+        return {
+          profile: {profile: {commander: "Tester", ts: "2026-10-12T08:00:00Z", squadron: null, power: {name: "Sample Power", rank: 10, merits: 57501, cycle: 1240, login: 310},
+                              ranks: [], reputation: {}, assets: {}, fleet: [], career: []}},
+          missions: {missions: [
+            {id: 1, name: "Engage and destroy Raiders Pirates", faction: "Hub Independents", system: "Wolf Prime", station: "Sample City", target: "Raiders",
+             commodity: null, count: 18, delivered: null, reward: 9000000, expiry: null, wing: false, passengers: false, redirected: false, massacre: true, kills: 7},
+            {id: 2, name: "Engage and destroy Raiders Pirates", faction: "Hub Union", system: "Sample Hub", station: "Hub Port", target: "Raiders",
+             commodity: null, count: 20, delivered: null, reward: 9000000, expiry: null, wing: true, passengers: false, redirected: true, massacre: true, kills: 4},
+            {id: 3, name: "Source 72 Units of Agronomic Treatment", faction: "Sample Jet", system: "Sample", station: "Sample Survey", target: null,
+             commodity: "Agronomic Treatment", commodity_id: "agronomictreatment", count: 72, delivered: 30, reward: 2198027, expiry: null, wing: false,
+             passengers: false, redirected: false, collect: true, massacre: false, kills: null}],
+            community_goals: [{id: 836, title: "Opening Sample Campaign", system: "Sample Reach", station: "Sample Glow", expiry: null, complete: false,
+                               contribution: 7408, contributors: 1395, tier: 2, top_tier: 5, band: 25, top_rank: false}]},
+        }[s.slice("api/commander/".length)] || {};
+      };
+      CM.data = {}; CM.key = {}; CM.error = {}; CM.loading = {}; data.commander_version = 9001;`);
+    const body = () => d.getElementById("cmdrBody");
+    const rows = () => [...body().querySelectorAll("table.cmtable tbody tr")].map(t => [...t.cells].map(full).join(" | "));
+    const tab = async name => { d.querySelector(`[name=cmdrTab][value="${name}"]`).click(); await settle(400); };
+    try {
+      d.querySelector('[data-view="cmdr"]').click(); await settle(400);
+      await tab("profile");
+      got.pledged = text(body().querySelector(".hwyttl")).replace(/ as of .*/, "");
+      await tab("missions");
+      got.missions = [text(body().querySelector(".hwyttl")), rows()];
+      // the Collect mission's 🔍: Materials → Cargo's Buy for the 42 t still wanted
+      body().querySelector("[data-missionbuy]").click(); await settle(800);
+      got.buy = [w.eval("view"), w.eval(`JSON.stringify([LK.q.commodity, LK.q.label, LK.q.mode, LK.q.tons, LK.q.from])`), !d.getElementById("cargoLook").hidden];
+      // the Unsold tile: the vouchers line while you hold some; docked at their faction's station, said so
+      w.eval(`data.vouchers = {total: 2400000, bounties: 1800000, bonds: 600000, factions: [{name: "Hub Independents", bounties: 1800000, bonds: 0, total: 1800000},
+                {name: "Sample Power", bounties: 0, bonds: 600000, total: 600000}]};
+              data.docked = {station: "Hub Port", system: "Sample Hub", faction: "Hub Independents", has_factors: true}; render();`);
+      got.tile = [text(d.getElementById("vouchersLine")), d.getElementById("tUnsold").contains(d.getElementById("vouchersLine"))];
+      w.eval(`data.vouchers = null; render();`);
+      got.gone = !d.getElementById("vouchersLine");
+    } finally {
+      w.eval(`apiJson = __b6.api; data.vouchers = __b6.vouchers; data.docked = __b6.docked; data.commander_version = __b6.ver; LK.q = __b6.look;
+        CM.data = {}; CM.key = {}; CM.tab = "profile"; store.set("cmdrTab", "profile"); renderLook();
+        if (view !== __b6.view) { const t = document.querySelector('.views [data-view="' + __b6.view + '"]'); if (t) t.click(); }
+        delete window.__b6;`);
+      await releasePayloads();
+    }
+    const want = {
+      pledged: "CMDR Tester · pledged to Sample Power, rank 10, 57,501 merits · 1,240 this cycle, 310 this login",
+      missions: ["3 missions · 1 community goal", [
+        "Engage and destroy Raiders Pirates | Hub Independents | Wolf Prime · Sample City | Raiders 7/18 counted | 9.0M cr | no limit",
+        "Engage and destroy Raiders Pirates wing redirected | Hub Union | Sample Hub · Hub Port | Raiders ✓ done | 9.0M cr | no limit",
+        "Source 72 Units of Agronomic Treatment | Sample Jet | Sample · Sample Survey | Agronomic Treatment 30/72 🔍 | 2.2M cr | no limit",
+        "Opening Sample Campaign community goal |  | Sample Reach · Sample Glow | tier 2 of 5 · yours 7,408 (top 25 %) |  | no limit"]],
+      buy: ["mat", JSON.stringify(["agronomictreatment", "Agronomic Treatment", "buy", 42, "here"]), true],
+      tile: ["⚖ vouchers 2.4M (bounties 1.8M · bonds 600k) · Hub Independents controls this station: its 1.8M here", true],
+      gone: true};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const good = !bad.length && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| r10_batch6_cmdr_vouchers |", good ? "kills counted, ✓ done, a CG row, Collect's 🔍 into Buy, merits this cycle and login, the vouchers line" :
+      JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]]))), errors.slice(before));
+  }
   origin_guard: { if (skip("origin_guard")) break origin_guard;
   const post = origin => fetch(base + "api/radius", {method: "POST", body: "{}",
     headers: Object.assign({"Content-Type": "application/json"}, origin ? {Origin: origin} : {})}).then(r => r.status);

@@ -2,6 +2,31 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Round 10 suggestions, batch 6: massacre kills counted, the vouchers you hold, Collect's Buy, merits and Community Goals
+Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the gameplay ones that read past journals, under
+one journal re-read (PARSER_VERSION 73). Each rule was first checked against the author's journals (read only, 2024-10
+to 2026-07); docs/JOURNAL_REFERENCE.md has what they showed.
+- **S8** CMDR → Missions counts a massacre mission's kills from your Bounty lines: "7/18 counted" (a wing mission's
+  titled "your own kills only"), one mission per giving faction, its oldest unfinished first, when the victim is of
+  the target faction and you are in the target system; FactionKillBond lines do not count; the game's redirect shows
+  "✓ done" whatever the count. The author's journals hold three massacre missions, none finished, so the rule is the
+  community's and the figure says "counted". A Bounty is folded into the missions only while one is held, so a kill
+  never moves the missions' fresh() mark otherwise.
+- **S9** The Unsold tile has a line while you hold bounty vouchers or combat bonds: "⚖ vouchers 2.4M (bounties 1.8M ·
+  bonds 600k)", per faction in its hover and details, from your journals since your last death or redemption. Docked:
+  "<faction> controls this station: its 1.8M here", else "Interstellar Factors here (25 % cut)". As the author's 20
+  RedeemVoucher lines showed: a death loses them all, a redemption pays each faction it names and a blank-named entry
+  the rest; a combat bond's redemption names one faction a line. A dock keeps `has_factors` (`facilitator`) and the
+  station's `faction`. Card only: no speech, and not in the docked "sell your data" line or the approach warning.
+- **S15** A Collect mission (Mission_Collect…, not an on-foot one or a Delivery) gets a 🔍 in CMDR → Missions that opens
+  Materials → Cargo's Buy for the count less what its CargoDepot says was handed in.
+- **S19** The pledged line adds the merits gained this Powerplay cycle (from Thursday 07:00 UTC, a constant: no journal
+  line marks it) and this login, from PowerplayMerits' MeritsGained: "· 1,240 this cycle, 310 this login". The
+  Community Goals you joined are rows of the Missions table while they run (tier of the top one, your contribution and
+  the top share you are in, time left): each CommunityGoal line replaces the list, CommunityGoalReward and
+  CommunityGoalDiscard drop one, and one past its Expiry goes even while the game still lists it. CommunityGoal, written
+  at login and every few minutes, joins LOGIN_SNAPSHOTS (not play). No voice and no Sessions column.
+
 ## 2026-11-06 · Round 10 suggestions, batch 5: fewer database commits, a faster verify, nets for the in-step rules
 Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the reliability and developer-loop ones:
 - **S10** (its "now" part; WAL waits for what the log shows) A sphere's landing stores the systems with no bodies to

@@ -813,7 +813,8 @@ class Profile(unittest.TestCase):
         self.assertEqual(p["assets"], {"wealth": 9000000000, "ships": 4, "fleet": 100 + 9000000 + 150000000 + 32000, "modules": 5103953 + 35400})
         self.assertEqual([s["id"] for s in p["fleet"]], [7, 5, 3, 6])                    # the one you fly, then by value
         self.assertEqual(p["reputation"], {"Federation": -40.0, "Empire": 76.5, "Alliance": 12.2})
-        self.assertEqual(p["power"], {"name": "Aisling Duval", "rank": 3, "merits": 4600})   # merits gained since the login
+        # merits gained since the login; this login's 100 (S19), none this cycle (the 2026-10-12 line is weeks ago)
+        self.assertEqual(p["power"], {"name": "Aisling Duval", "rank": 3, "merits": 4600, "cycle": None, "login": 100})
         self.assertEqual([(c["label"], c["value"], c["kind"]) for c in p["career"]], [
             ("Time played", 7200000, "time"), ("Systems visited", 12345, "n"), ("Distance jumped", 987654, "ly"), ("Bounties claimed", 40, "n"),
             ("Insurance claims", 3, "n"), ("Spent on ships", 500000000, "cr")])          # a zero is left out
@@ -829,7 +830,8 @@ class Profile(unittest.TestCase):
             ev(T("09:01:00"), "PowerplayRank", Power="Edmund Mahon", Rank=1),
             ev(T("09:02:00"), "LeftSquadron", SquadronName="Sample Wing")])
         p = state.commander_profile()["profile"]
-        self.assertEqual((p["power"], p["squadron"]), ({"name": "Edmund Mahon", "rank": 1, "merits": None}, None))
+        # a defection starts the gains again: the old power's 100 this login are not the new one's
+        self.assertEqual((p["power"], p["squadron"]), ({"name": "Edmund Mahon", "rank": 1, "merits": None, "cycle": None, "login": None}, None))
         _, state = setup(self, self.EVENTS + [ev(T("09:00:00"), "PowerplayLeave", Power="Aisling Duval")])
         self.assertIsNone(state.commander_profile()["profile"]["power"])
 
@@ -983,3 +985,241 @@ class Server(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---- round 10's suggestions, batch 6 (S8, S9, S15, S19): lines shaped as the game writes them (checked against the
+# author's journals, 2024-10 to 2026-07), with made-up names and figures ----
+
+def lines(*raw):
+    return [json.loads(x) for x in raw]
+
+
+def jump(ts, system, address):
+    return ev(ts, "FSDJump", StarSystem=system, SystemAddress=address, StarPos=[1.0, 2.0, 3.0], JumpDist=10.0)
+
+
+def massacre(ts, mid, faction, target, kills, system, wing=False):
+    return json.loads(
+        f'{{ "timestamp":"{ts}", "event":"MissionAccepted", "Faction":"{faction}", "Name":"Mission_Massacre{"Wing" if wing else ""}_Legal_Military", '
+        f'"LocalisedName":"Engage and destroy {target} Pirates", "TargetType":"$MissionUtil_FactionTag_Pirate;", "TargetType_Localised":"Pirates", '
+        f'"TargetFaction":"{target}", "KillCount":{kills}, "DestinationSystem":"{system}", "DestinationStation":"Sample City", '
+        f'"Expiry":"2026-10-19T08:00:00Z", "Wing":{"true" if wing else "false"}, "Influence":"++", "Reputation":"++", "Reward":16310365, "MissionID":{mid} }}')
+
+
+def bounty(ts, victim, *rewards):
+    rw = ", ".join(f'{{ "Faction":"{f}", "Reward":{r} }}' for f, r in rewards)
+    return json.loads(
+        f'{{ "timestamp":"{ts}", "event":"Bounty", "Rewards":[ {rw} ], "PilotName":"$npc_name_decorate:#name=Eve Sample;", '
+        f'"PilotName_Localised":"Eve Sample", "Target":"viper_mkiv", "Target_Localised":"Viper Mk IV", '
+        f'"TotalReward":{sum(r for _, r in rewards)}, "VictimFaction":"{victim}" }}')
+
+
+class MassacreKills(unittest.TestCase):
+    """S8: a Bounty counts for one massacre mission per giving faction, its oldest unfinished first, when the victim's
+    faction is the target and you are in the target system; the game's redirect says done whatever the count."""
+
+    def test_one_mission_per_giving_faction_oldest_first(self):
+        j, state = setup(self, [
+            LOGIN, jump(T("08:01:00"), "Sample Hub", 11),
+            massacre(T("08:02:00"), 1, "Hub Independents", "Raiders of Wolf", 2, "Wolf Prime"),
+            massacre(T("08:02:10"), 2, "Hub Independents", "Raiders of Wolf", 3, "Wolf Prime"),   # the same faction's second
+            massacre(T("08:02:20"), 3, "Hub Union", "Raiders of Wolf", 3, "Wolf Prime"),
+            massacre(T("08:02:30"), 4, "Hub Union", "Wolf Gang", 3, "Wolf Prime"),                # another target
+            bounty(T("08:05:00"), "Raiders of Wolf", ("Hub Independents", 50000)),               # not in the target system
+            jump(T("08:10:00"), "Wolf Prime", 22),
+            bounty(T("08:11:00"), "Raiders of Wolf", ("Hub Independents", 50000), ("Wolf Council", 20000)),
+            bounty(T("08:12:00"), "Raiders of Wolf", ("Hub Independents", 50000)),
+            bounty(T("08:13:00"), "Raiders of Wolf", ("Hub Independents", 50000)),
+            ev(T("08:13:30"), "FactionKillBond", Reward=24496, AwardingFaction="Hub Union", VictimFaction="Raiders of Wolf"),   # a bond: not counted
+            bounty(T("08:14:00"), "Wolf Gang", ("Wolf Council", 9000))])
+        got = {m["id"]: (m["kills"], m["count"]) for m in state.commander_missions(now=NOW)["missions"]}
+        # 1 is counted out after two; the third kill goes to 2, Hub Independents' next; Hub Union's 3 took each of three
+        self.assertEqual(got, {1: (2, 2), 2: (1, 3), 3: (3, 3), 4: (1, 3)})
+        self.assertTrue(all(m["massacre"] for m in state.commander_missions(now=NOW)["missions"]))
+
+    def test_the_redirect_is_done_and_the_next_takes_the_kills(self):
+        j, state = setup(self, [
+            LOGIN, jump(T("08:01:00"), "Wolf Prime", 22),
+            massacre(T("08:02:00"), 1, "Hub Independents", "Raiders of Wolf", 20, "Wolf Prime"),
+            massacre(T("08:02:10"), 2, "Hub Independents", "Raiders of Wolf", 20, "Wolf Prime", wing=True),
+            bounty(T("08:05:00"), "Raiders of Wolf", ("Hub Independents", 50000)),
+            # the game's own word: redirected (at the kill's second, as the author's assassinations were), whatever was counted
+            json.loads('{ "timestamp":"2026-10-12T08:06:00Z", "event":"MissionRedirected", "MissionID":1, "Name":"Mission_Massacre_Legal_Military", '
+                       '"LocalisedName":"Engage and destroy Raiders of Wolf Pirates", "NewDestinationStation":"Hub Port", '
+                       '"NewDestinationSystem":"Sample Hub", "OldDestinationStation":"", "OldDestinationSystem":"Wolf Prime" }'),
+            bounty(T("08:07:00"), "Raiders of Wolf", ("Hub Independents", 50000))])
+        m = {r["id"]: r for r in state.commander_missions(now=NOW)["missions"]}
+        self.assertEqual((m[1]["kills"], m[1]["redirected"], m[1]["system"], m[1]["target_system"]), (1, True, "Sample Hub", "Wolf Prime"))
+        self.assertEqual((m[2]["kills"], m[2]["wing"]), (1, True))   # the wing mission: your own kill, after the redirect
+
+    def test_a_kill_with_no_massacre_held_leaves_the_missions_alone(self):
+        """Without a massacre mission the Bounty is not folded into the missions: their fresh() mark stays where the
+        mission lines put it (a mission line read after it, older, still counts)."""
+        j, state = setup(self, [LOGIN, bounty(T("09:00:00"), "Raiders of Wolf", ("Hub Independents", 50000)),
+                                ev(T("08:30:00"), "MissionAccepted", MissionID=5, Name="Mission_Courier", LocalisedName="A job")])
+        self.assertEqual([m["name"] for m in state.commander_missions(now=NOW)["missions"]], ["A job"])
+        self.assertIsNone(state.commander_missions(now=NOW)["missions"][0]["kills"])
+
+    def test_old_rows_and_other_missions(self):
+        """A row kept before PARSER 73 has none of the new fields: missions() fills them; a mission with no KillCount is
+        no massacre."""
+        self.assertEqual({k: C.missions({"1": {"id": 1, "name": "x", "expiry": None}}, now=NOW)[0][k] for k in ("collect", "massacre", "kills")},
+                         {"collect": False, "massacre": False, "kills": None})
+        self.assertFalse(C._mission({"Name": "Mission_Massacre", "TargetFaction": "X"})["massacre"])
+        self.assertTrue(C._mission({"Name": "Mission_MassacreWing", "TargetFaction": "X", "KillCount": 4})["massacre"])
+
+
+class CollectMissions(unittest.TestCase):
+    """S15: a Collect mission (the author's Mission_Collect_RankEmp) is marked for CMDR -> Missions' 🔍 into Buy; its
+    CargoDepot says what was handed in."""
+
+    def test_collect_marked_and_delivered(self):
+        j, state = setup(self, lines(
+            '{ "timestamp":"2026-10-12T08:02:51Z", "event":"MissionAccepted", "Faction":"Sample Jet Incorporated", "Name":"Mission_Collect_RankEmp", '
+            '"LocalisedName":"Source 72 Units of Agronomic Treatment for the Imperial Navy", "Commodity":"$AgronomicTreatment_Name;", '
+            '"Commodity_Localised":"Agronomic Treatment", "Count":72, "DestinationSystem":"Sample", "DestinationStation":"Sample Survey", '
+            '"Expiry":"2026-10-13T03:02:15Z", "Wing":false, "Influence":"++", "Reputation":"++", "Reward":2198027, "MissionID":11 }',
+            '{ "timestamp":"2026-10-12T08:19:44Z", "event":"CargoDepot", "MissionID":11, "UpdateType":"Deliver", "CargoType":"AgronomicTreatment", '
+            '"CargoType_Localised":"Agronomic Treatment", "Count":30, "StartMarketID":0, "EndMarketID":3222056192, "ItemsCollected":0, '
+            '"ItemsDelivered":30, "TotalItemsToDeliver":72, "Progress":0.000000 }',
+            '{ "timestamp":"2026-10-12T08:20:00Z", "event":"MissionAccepted", "Faction":"F", "Name":"Mission_OnFoot_Collect_MB", '
+            '"LocalisedName":"Collect data", "Expiry":"2026-10-13T03:02:15Z", "Wing":false, "MissionID":12 }',
+            '{ "timestamp":"2026-10-12T08:21:00Z", "event":"MissionAccepted", "Faction":"F", "Name":"Mission_Delivery_Democracy", '
+            '"LocalisedName":"Deliver 81 units of Liquor", "Commodity":"$Liquor_Name;", "Commodity_Localised":"Liquor", "Count":81, '
+            '"Expiry":"2026-10-13T03:02:15Z", "Wing":false, "MissionID":13 }'))
+        m = {r["id"]: r for r in state.commander_missions(now=NOW)["missions"]}
+        self.assertEqual((m[11]["collect"], m[11]["commodity_id"], m[11]["commodity"], m[11]["count"], m[11]["delivered"]),
+                         (True, "agronomictreatment", "Agronomic Treatment", 72, 30))
+        self.assertEqual((m[12]["collect"], m[13]["collect"]), (False, False))   # on foot; a delivery
+
+
+class Vouchers(unittest.TestCase):
+    """S9: the vouchers you hold per faction, as the author's 52 Bounty, 139 FactionKillBond and 20 RedeemVoucher lines
+    showed them: a death loses them, a redemption pays each named faction and a blank one the rest."""
+
+    def fold(self, events):
+        j, state = setup(self, [LOGIN] + events)
+        return j, state, C.vouchers(j.cmdr_view["vouchers"])
+
+    def test_earned_lost_redeemed(self):
+        _, _, v = self.fold([bounty(T("08:10:00"), "Raiders of Wolf", ("Hub Independents", 40905), ("Hub Union", 25596)),
+                             ev(T("08:11:00"), "FactionKillBond", Reward=117066, AwardingFaction="Sample Power", VictimFaction="Other Power")])
+        self.assertEqual((v["total"], v["bounties"], v["bonds"]), (183567, 66501, 117066))
+        self.assertEqual([(f["name"], f["bounties"], f["bonds"]) for f in v["factions"]],
+                         [("Sample Power", 0, 117066), ("Hub Independents", 40905, 0), ("Hub Union", 25596, 0)])
+        # a death loses them all: what is paid next was earned after it
+        _, _, v = self.fold([bounty(T("08:10:00"), "Raiders of Wolf", ("Hub Independents", 808528)),
+                             json.loads('{ "timestamp":"2026-10-12T08:17:40Z", "event":"Died", "KillerName":"Pirate", "KillerShip":"viper_mkiv", "KillerRank":"Deadly" }'),
+                             bounty(T("08:40:00"), "Raiders of Wolf", ("Hub Union", 140006))])
+        self.assertEqual([(f["name"], f["total"]) for f in v["factions"]], [("Hub Union", 140006)])
+
+    def test_a_redemption_pays_the_named_and_a_blank_the_rest(self):
+        earned = [bounty(T("08:10:00"), "Raiders of Wolf", ("Hub Independents", 366500)),
+                  bounty(T("08:11:00"), "Raiders of Wolf", ("Hub Union", 408228)),
+                  bounty(T("08:12:00"), "Raiders of Wolf", ("Far Away Ltd", 84544))]
+        _, _, v = self.fold(earned + lines(
+            '{ "timestamp":"2026-10-12T09:14:15Z", "event":"RedeemVoucher", "Type":"bounty", "Amount":774728, "Factions":[ '
+            '{ "Faction":"Hub Independents", "Amount":366500 }, { "Faction":"Hub Union", "Amount":408228 } ] }'))
+        self.assertEqual([(f["name"], f["total"]) for f in v["factions"]], [("Far Away Ltd", 84544)])   # not named: still held
+        # a blank Faction (the author's: each matched a held faction's amount, or that x1.2 with a bonus): the rest is paid
+        j, _, v = self.fold(earned + lines(
+            '{ "timestamp":"2026-10-12T09:27:33Z", "event":"RedeemVoucher", "Type":"bounty", "Amount":877646, "Factions":[ '
+            '{ "Faction":"Hub Independents", "Amount":366500 }, { "Faction":"", "Amount":101452 }, { "Faction":"Hub Union", "Amount":408228 } ] }'))
+        self.assertIsNone(v)
+        self.assertIsNone(j.cmdr_view["vouchers"])
+
+    def test_combat_bonds_one_faction_a_line(self):
+        _, _, v = self.fold([ev(T("08:10:00"), "FactionKillBond", Reward=962913, AwardingFaction="Sample Power", VictimFaction="Other Power"),
+                             bounty(T("08:12:00"), "Raiders of Wolf", ("Hub Union", 600))] + lines(
+            '{ "timestamp":"2026-10-12T09:33:01Z", "event":"RedeemVoucher", "Type":"CombatBond", "Amount":877343, "Faction":"Sample Power" }',
+            '{ "timestamp":"2026-10-12T09:33:01Z", "event":"RedeemVoucher", "Type":"CombatBond", "Amount":2928982, "Faction":"PilotsFederation" }',
+            '{ "timestamp":"2026-10-12T09:33:07Z", "event":"RedeemVoucher", "Type":"CombatBond", "Amount":0, "Faction":"Sample Power" }',
+            '{ "timestamp":"2026-10-12T09:34:52Z", "event":"RedeemVoucher", "Type":"codex", "Amount":487500 }'))
+        self.assertEqual((v["bonds"], v["bounties"], [f["name"] for f in v["factions"]]), (0, 600, ["Hub Union"]))
+
+    def test_the_payload_and_the_docked_station(self):
+        """The payload carries them for the Unsold tile; a dock records Interstellar Factors ("facilitator") and the
+        station's controlling faction (StationFaction's Name), for the tile's line."""
+        j, state, _ = self.fold([bounty(T("08:10:00"), "Raiders of Wolf", ("Hub Independents", 366500))] + lines(
+            '{ "timestamp":"2026-10-12T08:44:29Z", "event":"Docked", "StationName":"Hub Port", "StationType":"Orbis", "Taxi":false, '
+            '"Multicrew":false, "StarSystem":"Sample Hub", "SystemAddress":11, "MarketID":4216418307, "StationFaction":{ "Name":"Hub Independents", '
+            '"FactionState":"Boom" }, "StationGovernment":"$government_Democracy;", "StationServices":[ "dock", "autodock", "commodities", '
+            '"contacts", "exploration", "missions", "facilitator", "voucherredemption" ], "DistFromStarLS":6.4 }'))
+        self.assertEqual(state.payload()["vouchers"]["total"], 366500)
+        self.assertEqual((j.docked["has_factors"], j.docked["faction"]), (True, "Hub Independents"))
+        self.assertIsNone(C.vouchers(None))
+
+
+class CommunityGoals(unittest.TestCase):
+    """S19: CommunityGoal lists every goal you joined (replacing the last list); a reward or discard drops one; only those
+    still running are shown, under Missions."""
+    LINE = ('{{ "timestamp":"{ts}", "event":"CommunityGoal", "CurrentGoals":[ {goals} ] }}')
+    GOAL = ('{{ "CGID":{id}, "Title":"{title}", "SystemName":"Sample Reach", "MarketName":"Sample Glow", "Expiry":"{expiry}", '
+            '"IsComplete":{done}, "CurrentTotal":5289480, "PlayerContribution":{mine}, "NumContributors":1395, "TopTier":{{ "Name":"Tier 5", '
+            '"Bonus":"" }}, "TopRankSize":10, "PlayerInTopRank":false, {tier}"PlayerPercentileBand":{band}{bonus} }}')
+
+    def goal(self, id, title, expiry, mine=7408, band=25, tier="Tier 2", done="false"):
+        return self.GOAL.format(id=id, title=title, expiry=expiry, mine=mine, band=band, done=done,
+                                tier=f'"TierReached":"{tier}", ' if tier else "", bonus=', "Bonus":155000000' if tier else "")
+
+    def test_the_list_replaces_and_the_reward_drops(self):
+        two = self.LINE.format(ts=T("08:34:16"), goals=", ".join([self.goal(836, "Opening Sample Campaign", T("16:00:00", "2026-10-15")),
+                                                                    self.goal(839, "Sample Exobiology Initiative ", T("14:00:00", "2026-10-13"),
+                                                                              mine=0, band=100, tier=None)]))
+        j, state = setup(self, [LOGIN, json.loads(two)])
+        cgs = state.commander_missions(now=NOW)["community_goals"]
+        self.assertEqual([(g["id"], g["title"], g["tier"], g["top_tier"], g["contribution"], g["band"]) for g in cgs],
+                         [(839, "Sample Exobiology Initiative", None, 5, 0, 100), (836, "Opening Sample Campaign", 2, 5, 7408, 25)])   # soonest first
+        self.assertEqual(cgs[0]["expires_in"], ts_left(T("14:00:00", "2026-10-13")))
+        j.handle(json.loads('{ "timestamp":"2026-10-12T09:29:49Z", "event":"CommunityGoalReward", "CGID":839, '
+                            '"Name":"Sample Exobiology Initiative ", "System":"Sample Reach", "Reward":110000000 }'))
+        self.assertEqual([g["id"] for g in state.commander_missions(now=NOW)["community_goals"]], [836])
+        j.handle(json.loads(self.LINE.format(ts=T("09:30:26"), goals=self.goal(848, "Sample Repairs", T("16:00:00", "2026-10-15")))))
+        self.assertEqual([g["id"] for g in state.commander_missions(now=NOW)["community_goals"]], [848])   # the list replaces
+        j.handle(ev(T("09:40:00"), "CommunityGoalDiscard", CGID=848, Name="Sample Repairs", System="Sample Reach"))
+        self.assertIsNone(j.cmdr_view["community_goals"])
+
+    def test_a_finished_goal_past_its_expiry_is_not_shown(self):
+        """The game keeps listing a finished goal (IsComplete) for days after its Expiry: only a running one is shown."""
+        line = self.LINE.format(ts=T("08:00:30"), goals=", ".join([self.goal(832, "Sample Mining Trials", T("15:00:00", "2026-10-10"), done="true"),
+                                                                     self.goal(833, "Sample Trials", T("15:00:00", "2026-10-14"), done="true")]))
+        _, state = setup(self, [LOGIN, json.loads(line)])
+        self.assertEqual([(g["id"], g["complete"]) for g in state.commander_missions(now=NOW)["community_goals"]], [(833, True)])
+
+    def test_not_play(self):
+        """Written at login and every few minutes while signed up: not play (the session's end stays)."""
+        j, _ = setup(self, [LOGIN, ev(T("08:10:00"), "Bounty", TotalReward=5),
+                            json.loads(self.LINE.format(ts=T("12:00:00"), goals=self.goal(836, "X", T("16:00:00", "2026-10-15"))))])
+        self.assertEqual(j.last_play_ts, T("08:10:00"))
+        self.assertIn("CommunityGoal", ed_outrider.LOGIN_EVENTS)
+
+
+def ts_left(ts):
+    return ed_outrider.ts_seconds(ts) - NOW
+
+
+class MeritGains(unittest.TestCase):
+    """S19: the merits gained this Powerplay cycle (since Thursday 07:00 UTC, PP_CYCLE_TICK) and this login."""
+
+    def merits(self, ts, gained, total):
+        return json.loads(f'{{ "timestamp":"{ts}", "event":"PowerplayMerits", "Power":"Sample Power", "MeritsGained":{gained}, "TotalMerits":{total} }}')
+
+    def test_the_cycle_and_the_login(self):
+        # 2026-10-15 is a Thursday: its 07:00 UTC starts a cycle
+        thu = "2026-10-15"
+        j, state = setup(self, [
+            ev(T("06:00:00", thu), "LoadGame", Commander="Tester"),
+            json.loads('{ "timestamp":"2026-10-15T06:00:05Z", "event":"Powerplay", "Power":"Sample Power", "Rank":10, "Merits":57397, "TimePledged":105627 }'),
+            self.merits(T("06:30:00", thu), 26, 57423),     # the last cycle's
+            self.merits(T("07:10:00", thu), 26, 57449),
+            ev(T("08:00:00", thu), "LoadGame", Commander="Tester"),
+            json.loads('{ "timestamp":"2026-10-15T08:00:05Z", "event":"Powerplay", "Power":"Sample Power", "Rank":10, "Merits":57449, "TimePledged":105700 }'),
+            self.merits(T("08:30:00", thu), 52, 57501)])
+        now = ed_outrider.ts_seconds(T("09:00:00", thu))
+        p = C.profile(j.commander, power=j.cmdr_view["powerplay"], now=now)
+        self.assertEqual(p["power"], {"name": "Sample Power", "rank": 10, "merits": 57501, "cycle": 78, "login": 52})
+        # a week on, the cycle's count is no more; a new login's none yet
+        later = C.profile(j.commander, power=j.cmdr_view["powerplay"], now=now + 7 * 86400)
+        self.assertEqual((later["power"]["cycle"], later["power"]["login"]), (None, 52))
+        self.assertEqual(C.iso_ts(C.pp_cycle_start(ed_outrider.ts_seconds("2026-10-15T06:59:59Z"))), "2026-10-08T07:00:00Z")
+        self.assertEqual(C.iso_ts(C.pp_cycle_start(ed_outrider.ts_seconds("2026-10-15T07:00:00Z"))), "2026-10-15T07:00:00Z")

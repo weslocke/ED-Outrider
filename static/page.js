@@ -4388,17 +4388,39 @@ function unsoldLevel(u) {
   const x = rebuy ? u.total / rebuy : 0;
   return u.total >= g || (ru && x >= ru) ? "urgent" : u.total >= w || (rw && x >= rw) ? "warn" : "ok";
 }
+// Round 10's S9: the bounty vouchers and combat bonds you hold (the payload's vouchers: outrider.commander.vouchers), a
+// line in the Unsold tile while there are any (never in the docked "sell your data" line or the approach warning);
+// docked, where they can be handed in: the station's own faction's, else Interstellar Factors' (a cut). Pure
+function vouchersLine(v, dk) {
+  if (!v || !(v.total > 0)) return "";
+  const kinds = [v.bounties ? `bounties ${credits(v.bounties)}` : "", v.bonds ? `bonds ${credits(v.bonds)}` : ""].filter(Boolean);
+  const title = "Bounty vouchers and combat bonds you hold: from your journals since your last death or redemption (a death loses them)" +
+    (v.factions || []).map(f => `\n${f.name || "(not named)"}: ${f.total.toLocaleString("en-US")} cr`).join("");
+  const own = dk && dk.faction ? (v.factions || []).find(f => f.name === dk.faction) : null;
+  const here = own ? ` · <span class="ok" title="the faction that controls this station takes its own vouchers at Contacts">${esc(own.name)} controls this station: its ${credits(own.total)} here</span>`
+    : dk && dk.has_factors ? ` · <span class="unk" title="Interstellar Factors pays vouchers the station's Contacts will not take, less its cut">Interstellar Factors here (25 % cut)</span>` : "";
+  return `<div class="ln" id="vouchersLine" title="${esc(title)}">⚖ vouchers <b>${credits(v.total)}</b> <span class="unk">(${kinds.join(" · ")})</span>${here}</div>`;
+}
+// ...and in the tile's hover card, per faction (round 10's S9). Pure
+function vouchersPopHtml(v) {
+  if (!v || !(v.total > 0)) return "";
+  const cr = n => Math.round(n).toLocaleString("en-US") + " cr";
+  return `<div class="sec"><div class="lbl">⚖ Vouchers · from your journals since your last death or redemption</div><ul>` +
+    (v.factions || []).map(f => `<li><span class="bn">${esc(f.name || "(not named)")}${f.bounties && f.bonds ? ` (bounties ${credits(f.bounties)} · bonds ${credits(f.bonds)})` : f.bonds ? " (bonds)" : ""}</span><b>${cr(f.total)}</b></li>`).join("") +
+    `</ul></div>`;
+}
 function renderUnsold() {
   const el = document.getElementById("unsold"), u = data.unsold, tile = document.getElementById("tUnsold"), fl = document.getElementById("firstsLine");
   tile.className = "tile " + (unsoldLevel(u) || "");
-  if (!u) { el.innerHTML = `<div class="val"><span class="unk">estimating…</span></div>`; fl.innerHTML = ""; return; }
-  if (u.error) { el.innerHTML = `<div class="val"><span class="unk">unavailable</span></div>`; fl.innerHTML = esc(u.error).slice(0, 80); return; }
+  const vl = vouchersLine(data.vouchers, data.docked);
+  if (!u) { el.innerHTML = `<div class="val"><span class="unk">estimating…</span></div>` + vl; fl.innerHTML = ""; return; }
+  if (u.error) { el.innerHTML = `<div class="val"><span class="unk">unavailable</span></div>` + vl; fl.innerHTML = esc(u.error).slice(0, 80); return; }
   const f = u.firsts;
   const rebuy = riskRebuy(), ss = data.since_sale;
   el.innerHTML = `<div class="val">${credits(u.total)} cr${rebuy ? ` <span class="unk" title="what the data on board is worth, in rebuys of your ship (${credits(rebuy)} cr)">= ${(u.total / rebuy).toFixed(u.total / rebuy < 10 ? 1 : 0)}× rebuy</span>` : ""}</div>` +
     `<div class="ln">🗺 <b>${credits(u.carto.estimated_payout ?? u.carto.estimated_value)}</b> · 🧬 <b>${credits(u.bio.estimated_value)}</b></div>` +
     (ss ? `<div class="ln" title="since your last sale to Universal Cartographics (${esc(ss.ts.slice(0, 10))})"><b>${ss.days}</b> d · <b>${Math.round(ss.ly).toLocaleString()}</b> ly since you last sold</div>` : "") +
-    sellersLine();
+    sellersLine() + vl;
   fl.innerHTML = (!f || !(f.systems || f.planets || f.mapped) ? "no unsold firsts" :
     `🏁 <b>${f.systems}</b> system${f.systems === 1 ? "" : "s"} · <b>${f.planets}</b> planet${f.planets === 1 ? "" : "s"} · <b>${f.mapped}</b> mapped unsold`) +
     firstsSeenLine(data.firsts_watch);
@@ -4464,6 +4486,7 @@ function unsoldHtml(u) {
         `<li><span class="bn">${k}: ${sellerTxt(g.fresh || g.nearest) || "none known"}</span></li>` +
         (g.station && g.station !== (g.fresh || g.nearest) ? `<li><span class="bn">&nbsp;&nbsp;nearest station: ${sellerTxt(g.station)}</span></li>` : "")).join("") +
       `</ul></div>` : "") +
+    vouchersPopHtml(data.vouchers) +
     `<div class="adv ${lvl}">${advice}</div>` +
     `<div class="sec unk">first-discovery and mapping bonuses included · belts and rings not counted · updated ${u.computed}</div>`;
 }
@@ -13217,6 +13240,12 @@ const cmBuild = x => x.links && x.links.edsy && x.links.coriolis
   : ` <span class="cmlinks unk" title="no build on record for this ship yet: board it once to record its build">no build</span>`;
 const cmTile = (k, v, title = "") => v == null || v === "" ? "" : `<span class="cmfig"${title ? ` title="${esc(title)}"` : ""}><span class="unk">${k}</span><b>${v}</b></span>`;
 
+// round 10's S19: the merits gained this Powerplay cycle (since Thursday 07:00 UTC) and this login, each only when
+// some were (outrider.commander.power_gains). Pure
+const cmMeritGains = pw => {
+  const parts = [pw && pw.cycle ? `${cmNum(pw.cycle)} this cycle` : "", pw && pw.login ? `${cmNum(pw.login)} this login` : ""].filter(Boolean);
+  return parts.length ? ` <span class="unk" title="merits gained, from your journals' PowerplayMerits lines: this cycle runs from Thursday 07:00 UTC">· ${parts.join(", ")}</span>` : "";
+};
 // your fleet carrier as the Carrier tile has it (State.carrier_summary): its balance and weeks of upkeep, or its
 // decommissioning in red. Pure.
 function cmdrCarrierHtml(c) {
@@ -13252,7 +13281,7 @@ function cmdrProfileHtml(d) {
     " plus exploration and exobiology sales since, as the Commander tile. Other spending and income (market, repairs, missions) is not tracked." : "";
   const fin = car && !car.decommission && car.finance;
   return `<div class="hwyttl">CMDR ${esc(p.commander || "?")}${p.squadron ? ` <span class="unk">· ${esc(p.squadron)}</span>` : ""}` +
-    `${p.power ? ` <span class="unk">· pledged to ${esc(p.power.name)}${p.power.rank != null ? `, rank ${cmNum(p.power.rank)}` : ""}${p.power.merits != null ? `, ${cmNum(p.power.merits)} merits` : ""}</span>` : ""}` +
+    `${p.power ? ` <span class="unk">· pledged to ${esc(p.power.name)}${p.power.rank != null ? `, rank ${cmNum(p.power.rank)}` : ""}${p.power.merits != null ? `, ${cmNum(p.power.merits)} merits` : ""}</span>${cmMeritGains(p.power)}` : ""}` +
     ` ${cmAsOf(p.ts, "the login these figures are from: the game writes ranks and statistics then")}</div>` +
     `<div class="cmfigs">${cmTile("Credits", cr || `<span class="unk">unknown</span>`, crTitle)}${cm && cm.loan ? cmTile("Loan", cmCr(cm.loan)) : ""}` +
     `${cmTile("Net worth", cmCr(a.wealth), "the game's own total (Statistics: current wealth) at that login")}` +
@@ -13369,6 +13398,47 @@ const missionFindBtn = m => {
     : `find ${q.rings.join(" or ").toLowerCase()} rings within 100 ly, where ${q.name} is mined (no hotspots exist for it): replaces Search's choices`)}">🔍</button>` : "";
 };
 document.addEventListener("click", e => { const b = e.target.closest("[data-missionfind]"); if (b) missionFind(b.dataset.missionfind); });
+// Round 10's S15: a Collect mission's 🔍: Materials → Cargo's Buy for what it still wants (count − delivered tons), as
+// the Carrier tile's tritium "buy"; from a CMDR window, the main one does it
+function missionBuy(id, label, n) {
+  if (viewWindow && inMainWindow("missionBuy", id, label, n)) return;
+  const v = document.querySelector('.views [data-view="mat"]'); if (v && view !== "mat") v.click();
+  startLook({commodity: id, label: label || id, mode: "buy", tons: Math.max(1, Number(n) || 1), from: "here", key: null});
+  const el = document.getElementById("cargoLook"); if (el && el.scrollIntoView) el.scrollIntoView({block: "start"});
+}
+const missionBuyLeft = m => m.collect && m.commodity_id && m.count != null ? Math.max(0, m.count - (m.delivered || 0)) : 0;
+const missionBuyBtn = m => {
+  const n = missionBuyLeft(m);
+  return n > 0 ? ` <button type="button" class="mini" data-missionbuy="${esc(m.commodity_id)}" data-buyname="${esc(m.commodity || m.commodity_id)}" data-buytons="${n}"` +
+    ` title="${esc(`where to buy ${n.toLocaleString("en-US")} t of ${m.commodity || m.commodity_id} near you (Materials → Cargo's Buy, from Spansh)`)}">🔍</button>` : "";
+};
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-missionbuy]");
+  if (b) missionBuy(b.dataset.missionbuy, b.dataset.buyname, Number(b.dataset.buytons));
+});
+// Round 10's S8: a massacre mission's kills as counted from your journal (outrider.commander.mission_kill: one mission
+// per giving faction, the oldest first, in its target system), "✓ done" once the game redirected it whatever the count;
+// a wing mission's count is your own kills alone. Pure
+function missionKillsHtml(m) {
+  if (!m.massacre || m.kills == null) return null;
+  if (m.redirected) return `<b class="ok" title="the game sent you back to hand it in: every kill it asked for is done">✓ done</b>`;
+  const title = `kills counted from your journal: one per giving faction, the oldest mission first, in its target system` +
+    (m.wing ? `; your own kills only (your wing's are not in your journal)` : "") + `. The game's redirect says when it is done`;
+  return `<b title="${esc(title)}">${cmNum(m.kills)}/${cmNum(m.count)}</b> <span class="unk">${m.wing ? dual("counted, yours only", "yours") : "counted"}</span>`;
+}
+// Round 10's S19: a Community Goal you joined, as a Missions row while it runs: its tier of the top one, the top N %
+// of contributors you are in, your contribution. Pure
+function cgRowHtml(g, now) {
+  const left = g.expiry ? Math.round((Date.parse(g.expiry) - now) / 1000) : null, soon = left != null && left >= 0 && left <= CM_SOON_S;
+  const what = [g.complete ? `<span class="ok">✓ complete</span>` : "",
+    g.tier != null ? `tier <b>${cmNum(g.tier)}</b>${g.top_tier != null ? ` of ${cmNum(g.top_tier)}` : ""}` : g.top_tier != null ? `no tier yet of ${cmNum(g.top_tier)}` : "",
+    g.contribution ? `yours <b>${cmNum(g.contribution)}</b>${g.top_rank ? " (top rank)" : g.band != null && g.band < 100 ? ` (top ${cmNum(g.band)} %)` : ""}` : "nothing given yet"]
+    .filter(Boolean).join(" · ");
+  const where = [g.system, g.station].filter(Boolean).map(esc);
+  const exp = left == null ? `<span class="unk">no limit</span>` : `<span class="${soon ? "warnc" : ""}" title="${cmWhen(g.expiry)} UTC">${cmSpanDual(left)}</span>`;
+  return `<tr class="cmcg"><td><b>${esc(g.title || "Community Goal")}</b> <span class="unk" title="a Community Goal you signed up to: its figures as the game last wrote them${g.contributors ? ` (${cmNum(g.contributors)} commanders taking part)` : ""}">${dual("community goal", "CG", {title: false})}</span></td>` +
+    `<td class="c2hide"></td><td>${where.length > 1 ? dual(where.join(" · "), where[0]) : where.join("")}</td><td>${what}</td><td class="num"></td><td class="num">${exp}</td></tr>`;
+}
 // Missions: the time left counted here at each draw (the answer is read only when a journal line moves the version). Pure
 // but for the clock.
 function cmdrMissionsHtml(d) {
@@ -13378,18 +13448,21 @@ function cmdrMissionsHtml(d) {
     return Object.assign({}, m, {left, soon: left != null && left >= 0 && left <= CM_SOON_S, expired: left != null && left < 0});
   });
   const rows = all.map(m => {
+    const kills = missionKillsHtml(m);
     const need = [m.commodity, m.target].filter(Boolean).map(esc).join(" · ") +
-      (m.count != null ? ` <b>${m.delivered != null ? `${cmNum(m.delivered)}/` : ""}${cmNum(m.count)}</b>` : "");
+      (kills ? ` ${kills}` : m.count != null ? ` <b>${m.delivered != null ? `${cmNum(m.delivered)}/` : ""}${cmNum(m.count)}</b>` : "");
     const exp = m.left == null ? `<span class="unk">no limit</span>` : m.expired ? `<span class="short">expired</span>`
       : `<span class="${m.soon ? "warnc" : ""}" title="${cmWhen(m.expiry)} UTC">${cmSpanDual(m.left)}</span>`;
     const where = [m.system, m.station].filter(Boolean).map(esc);   // compact: the system alone, the station in its title
     return `<tr><td><b>${esc(m.name || "?")}</b>${m.wing ? ` <span class="unk">wing</span>` : ""}${m.passengers ? ` <span class="unk">${dual("passengers", "pax")}</span>` : ""}` +
       `${m.redirected ? ` <span class="ok" title="the game sent you on: usually back to hand it in">${dual("redirected", "redir.", {title: false})}</span>` : ""}</td>` +
-      `<td class="c2hide">${esc(m.faction || "")}</td><td>${where.length > 1 ? dual(where.join(" · "), where[0]) : where.join("")}</td><td>${need}${missionFindBtn(m)}</td>` +
+      `<td class="c2hide">${esc(m.faction || "")}</td><td>${where.length > 1 ? dual(where.join(" · "), where[0]) : where.join("")}</td><td>${need}${missionFindBtn(m)}${missionBuyBtn(m)}</td>` +
       `<td class="num">${cmCrS(m.reward)}</td><td class="num">${exp}</td></tr>`;
   });
-  const soon = all.filter(m => m.soon).length;
-  return `<div class="hwyttl">${rows.length ? `${rows.length} mission${rows.length === 1 ? "" : "s"}` : "No missions"}` +
+  const soon = all.filter(m => m.soon).length, cgs = d.community_goals || [], nm = rows.length;
+  rows.push(...cgs.map(g => cgRowHtml(g, now)));
+  return `<div class="hwyttl">${nm || !cgs.length ? (nm ? `${nm} mission${nm === 1 ? "" : "s"}` : "No missions") : ""}` +
+    `${cgs.length ? `${nm ? " · " : ""}${cgs.length} community goal${cgs.length === 1 ? "" : "s"}` : ""}` +
     `${soon ? ` <span class="warnc">· ${soon} expiring within half an hour</span>` : ""}</div>` +
     (rows.length ? cmTable([["Mission"], ["Faction", 0, "c2hide"], ["Where"], ["What"], ["Reward", 1], ["Expires in", 1]], rows, "cmMissions")
       : `<div class="unk">Missions you accept are listed here with where they go, what they ask and when they run out.</div>`);

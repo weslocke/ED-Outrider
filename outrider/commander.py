@@ -8,7 +8,8 @@ resources/blueprints.json.
 What the journal does not state is not shown: a stored ship appears once the game has listed it (the shipyard's
 StoredShips; ships bought, sold, swapped, sent for or renamed since are folded in), stored modules as outfitting last
 listed them (modules stored, taken, sent for or sold from storage since are folded in), suit loadouts once created or worn (deleted ones go), and a mission's progress only where the game logs
-it (cargo deliveries).
+it (cargo deliveries) or the journal's own kills count it (a massacre mission's: worded "counted", the game's redirect
+overrides it).
 """
 import json
 import os
@@ -25,7 +26,8 @@ SESSIONS_DAYS = 30  # ...of those whose login is at most this old (as History's 
 # ---- what is folded, from which events (Journals.handle_commander) ----
 
 # meta key -> the events folded into it (each fresh()-guarded on "cmdr:<key>": a line older than the newest folded is
-# ignored, as a legacy folder read late would otherwise put back a sold ship or a mission handed in)
+# ignored, as a legacy folder read late would otherwise put back a sold ship or a mission handed in). A line may feed
+# several folds (a Bounty: a massacre mission's kills and the vouchers) and a login's counts too (ACTIVITY_EVENTS)
 FOLD_EVENTS = {
     "reputation": ("Reputation",),
     "powerplay": ("Powerplay", "PowerplayJoin", "PowerplayLeave", "PowerplayDefect", "PowerplayRank", "PowerplayMerits"),
@@ -39,31 +41,43 @@ FOLD_EVENTS = {
                       "LoadoutRemoveModule", "UpgradeSuit", "UpgradeWeapon"),
     "engineers": ("EngineerProgress",),
     "missions": ("Missions", "MissionAccepted", "MissionCompleted", "MissionFailed", "MissionAbandoned", "MissionRedirected",
-                 "CargoDepot"),
+                 "CargoDepot", "Bounty"),
+    # round 10's S9: the bounty vouchers and combat bonds you hold, per faction (lost at a death)
+    "vouchers": ("Bounty", "FactionKillBond", "CapShipBond", "RedeemVoucher", "Died"),
+    # round 10's S19: the Community Goals you have joined (each CommunityGoal line lists them all)
+    "community_goals": ("CommunityGoal", "CommunityGoalDiscard", "CommunityGoalReward"),
 }
 COMMANDER_META = tuple(FOLD_EVENTS)
-FOLD_OF = {e: k for k, names in FOLD_EVENTS.items() for e in names}
+FOLD_OF = {}   # event -> the meta keys it is folded into, in FOLD_EVENTS' order
+for _key, _names in FOLD_EVENTS.items():
+    for _e in _names:
+        FOLD_OF[_e] = FOLD_OF.get(_e, ()) + (_key,)
 # fighting and mining, counted per login in play_activity (a LoadGame opens the row)
 ACTIVITY_EVENTS = ("Bounty", "FactionKillBond", "PVPKill", "CapShipBond", "Died", "Interdicted", "RedeemVoucher",
                    "MiningRefined", "ProspectedAsteroid", "AsteroidCracked", "LaunchDrone", "MarketSell")
 # read by other handlers (the login, ranks, statistics), shown here: they only move commander_version (a ship's Loadout,
 # read by others too, is folded: the hot flag)
 SHOWN_EVENTS = ("LoadGame", "Rank", "Progress", "Promotion", "Statistics")
-EVENTS = tuple(FOLD_OF) + ACTIVITY_EVENTS + SHOWN_EVENTS
-# written as the game loads, around LoadGame: not play (ed_outrider's LOGIN_EVENTS), so not where a session ended
-LOGIN_SNAPSHOTS = ("Missions", "Reputation", "EngineerProgress", "Powerplay", "SquadronStartup", "ShipLocker")
+EVENTS = tuple(dict.fromkeys(tuple(FOLD_OF) + ACTIVITY_EVENTS + SHOWN_EVENTS))
+# written as the game loads, around LoadGame: not play (ed_outrider's LOGIN_EVENTS), so not where a session ended.
+# CommunityGoal too: within two minutes of the login in 73 of the author's 78 journals that hold one, then every few
+# minutes while you are signed up to a goal, whatever you do
+LOGIN_SNAPSHOTS = ("Missions", "Reputation", "EngineerProgress", "Powerplay", "SquadronStartup", "ShipLocker", "CommunityGoal")
 # the Statistics sections the profile reads (meta statistics keeps them beside Exploration and Exobiology)
 STAT_SECTIONS = ("Bank_Account", "Exploration", "Exobiology", "Trading", "Mining", "Combat")
 
 
 def apply(key, state, ev, here=None):
     """One line folded into the meta key's state: the new state (None: nothing kept). here: {system, station, market,
-    login} where you are (the ships and modules stored or sent for here) and the login on record (Journals.commander's:
-    the Loadout written at it says whether the ship is hot)."""
+    login} where you are (the ships and modules stored or sent for here, a massacre kill's system) and the login on
+    record (Journals.commander's: the merits gained this login, and the Loadout written at it says whether the ship is
+    hot)."""
     if key == "stored_ships":
         return fleet_apply(state, ev, here)
     if key == "stored_modules":
         return modules_apply(state, ev, here)
+    if key in ("missions", "powerplay"):   # a kill's system; the login a merit is gained in
+        return _APPLY[key](state, ev, here)
     return _APPLY[key](state, ev)
 
 
@@ -73,8 +87,23 @@ def reputation_apply(state, ev):
                 ts=ev["timestamp"])
 
 
-def power_apply(state, ev):
-    """Powerplay: the login's pledge, then joining, leaving, defecting, a new rank, merits gained. None unpledged."""
+# Powerplay's weekly cycle ends Thursday 07:00 UTC (Frontier's weekly tick). No journal line marks it: none of the 59
+# Powerplay, 335 PowerplayMerits and 10 PowerplayRank lines in the author's journals (2025-11 to 2026-07) says
+# anything about a cycle, so it is a constant here: seconds after a Thursday's midnight (1970-01-01 was a Thursday)
+PP_CYCLE_TICK = 7 * 3600
+PP_CYCLE_S = 7 * 86400
+
+
+def pp_cycle_start(t):
+    """The start of the Powerplay cycle a time (epoch s) is in: the last Thursday 07:00 UTC at or before it."""
+    return (int(t) - PP_CYCLE_TICK) // PP_CYCLE_S * PP_CYCLE_S + PP_CYCLE_TICK
+
+
+def power_apply(state, ev, here=None):
+    """Powerplay: the login's pledge, then joining, leaving, defecting, a new rank, merits gained. None unpledged.
+    Round 10's S19: PowerplayMerits' MeritsGained are summed for the cycle they fall in (`merits_cycle` since
+    `cycle_start`, pp_cycle_start) and for the login on record (`merits_login` since `login_ts`: here's login); a pledge
+    to another power starts both again."""
     name, st = ev["event"], dict(state or {})
     if name == "PowerplayLeave":
         return None
@@ -83,15 +112,37 @@ def power_apply(state, ev):
         # (real journals, 2025-11-30): what the line leaves out stays, for the same power
         power = ev.get("ToPower") if name == "PowerplayDefect" else ev.get("Power")
         same = power == st.get("power")
-        st = {"power": power, "rank": ev.get("Rank", st.get("rank") if same else None),
-              "merits": ev.get("Merits", st.get("merits") if same else None)}
+        st = dict({k: st[k] for k in ("merits_cycle", "cycle_start", "merits_login", "login_ts") if same and k in st},
+                  power=power, rank=ev.get("Rank", st.get("rank") if same else None),
+                  merits=ev.get("Merits", st.get("merits") if same else None))
     elif name == "PowerplayRank" and isinstance(ev.get("Rank"), int):
         st["rank"] = ev["Rank"]
-    elif name == "PowerplayMerits" and isinstance(ev.get("TotalMerits"), int):
-        st["merits"] = ev["TotalMerits"]
+    elif name == "PowerplayMerits":
+        if isinstance(ev.get("TotalMerits"), int):
+            st["merits"] = ev["TotalMerits"]
+        gained = ev.get("MeritsGained")
+        if isinstance(gained, int) and not isinstance(gained, bool):
+            start = iso_ts(pp_cycle_start(ts_seconds(ev["timestamp"])))
+            if st.get("cycle_start") != start:
+                st.update(cycle_start=start, merits_cycle=0)
+            st["merits_cycle"] = (st.get("merits_cycle") or 0) + gained
+            login = (here or {}).get("login")
+            if st.get("login_ts") != login:
+                st.update(login_ts=login, merits_login=0)
+            st["merits_login"] = (st.get("merits_login") or 0) + gained
     if not st.get("power"):
         st["power"] = ev.get("Power")
     return dict(st, ts=ev["timestamp"]) if st.get("power") else None
+
+
+def power_gains(pp, login_ts, now=None):
+    """The merits gained this cycle and this login ({cycle, login}: None when none is on record for the cycle now or
+    for that login), from power_apply's state."""
+    now = time.time() if now is None else now
+    pp = pp or {}
+    cycle = pp.get("merits_cycle") if pp.get("cycle_start") == iso_ts(pp_cycle_start(now)) else None
+    login = pp.get("merits_login") if login_ts and pp.get("login_ts") == login_ts else None
+    return {"cycle": cycle or None, "login": login or None}
 
 
 def squadron_apply(state, ev):
@@ -544,11 +595,14 @@ MISSION_SOON_S = 1800   # an expiry within this is marked
 EXPIRES_IS_TIME = 10 ** 9   # a Missions list's Expires this large is a Unix time, not seconds left (2001 on)
 
 
-def mission_apply(state, ev):
+def mission_apply(state, ev, here=None):
     """The missions you hold, as cargo.ship_apply folds the hold: {mission id: row}. The login's Missions line says
     which are still active (one the journals never saw accepted is kept by its name alone); accept, redirect, a cargo
-    depot and the endings follow in order."""
+    depot and the endings follow in order, and a Bounty counts for the massacre missions (mission_kill; here: where you
+    are, its `system`)."""
     held, name, mid = dict(state or {}), ev["event"], ev.get("MissionID")
+    if name == "Bounty":
+        return mission_kill(held, ev, (here or {}).get("system"))
     if name == "Missions":
         active = {str(m.get("MissionID")): m for m in ev.get("Active") or [] if isinstance(m, dict) and m.get("MissionID") is not None}
         at = ts_seconds(ev["timestamp"])
@@ -577,15 +631,48 @@ def mission_apply(state, ev):
     return held
 
 
+def counts_kills(state):
+    """Whether a Bounty has a mission to count for: a massacre mission held and not yet redirected. Without one the
+    missions fold leaves the line alone (Journals.handle_commander), so a kill does not move its fresh() mark."""
+    return any(r.get("massacre") and not r.get("redirected") for r in (state or {}).values())
+
+
+def mission_kill(held, ev, system):
+    """Round 10's S8: a Bounty counted for the massacre missions you hold (held changed in place, and returned). It
+    counts for one mission per giving faction: of those whose target faction is the victim's (VictimFaction's text, as
+    TargetFaction's) and whose target system is where you are (when both are known), the oldest accepted that is not yet
+    done; a mission the game has redirected is done whatever the count. Only your own kills are in your journal: a wing
+    mission's count leaves out the wing's (the page says so). FactionKillBond lines are not counted. The rule is the
+    community's; the author's journals hold three massacre missions, none with a kill of its target nor a redirect,
+    so it is unconfirmed: the figure is worded "counted"."""
+    victim = ev.get("VictimFaction")
+    if not victim:
+        return held
+    here = (system or "").lower()
+    done = set()
+    for key, row in sorted(held.items(), key=lambda kv: (kv[1].get("accepted") or "", kv[0])):
+        if not row.get("massacre") or row.get("redirected") or row.get("faction") in done or row.get("target_faction") != victim:
+            continue
+        if here and row.get("target_system") and row["target_system"].lower() != here:
+            continue
+        if (row.get("kills") or 0) >= (row.get("count") or 0):
+            continue   # counted out: the faction's next one takes the kill
+        held[key] = dict(row, kills=(row.get("kills") or 0) + 1)
+        done.add(row.get("faction"))
+    return held
+
+
 def missions(state, now=None):
     """The missions you hold (mission_apply's), the soonest to expire first: [{id, name, faction, system, station,
     target, commodity, count, delivered, reward, expiry (ISO or None), expires_in (s; None without one), soon, expired,
-    wing, passengers, redirected, influence, reputation}]."""
+    wing, passengers, redirected, influence, reputation, mining, commodity_id, collect, massacre, kills (a massacre
+    mission's counted, else None)}]."""
     now = time.time() if now is None else now
     out = []
     for row in (state or {}).values():
         left = ts_seconds(row["expiry"]) - now if row["expiry"] else None
-        out.append(dict(row, expires_in=None if left is None else int(left), soon=left is not None and 0 <= left <= MISSION_SOON_S,
+        out.append(dict({"collect": False, "massacre": False, "kills": None}, **row,   # a row from before PARSER 73
+                        expires_in=None if left is None else int(left), soon=left is not None and 0 <= left <= MISSION_SOON_S,
                         expired=left is not None and left < 0))
     out.sort(key=lambda r: (r["expires_in"] is None, r["expires_in"] or 0, r["name"] or ""))
     return out
@@ -605,7 +692,22 @@ def _mission(e):
             # "bertrandite"): CMDR -> Missions' search for where to mine it, by the id so a translated game works too
             # (ideas from EliteMining's feature list, 2026-10-24). A mission whose MissionAccepted is in no journal read
             # has neither: no search
-            "mining": bool(re.match(r"\$?Mission_Mining", str(e.get("Name") or ""), re.I)), "commodity_id": _symbol(e.get("Commodity"))}
+            "mining": bool(re.match(r"\$?Mission_Mining", str(e.get("Name") or ""), re.I)), "commodity_id": _symbol(e.get("Commodity")),
+            # round 10's S15: a Collect mission ("Mission_Collect_RankEmp": source goods and hand them in; not an on-foot
+            # one, Mission_OnFoot_Collect..., nor a Delivery): CMDR -> Missions' 🔍 opens Materials -> Cargo's Buy
+            "collect": bool(re.match(r"\$?Mission_Collect", str(e.get("Name") or ""), re.I)),
+            # round 10's S8: a massacre mission's target (TargetFaction, in the system it was given for) and the kills
+            # counted for it (mission_kill)
+            **_massacre(e)}
+
+
+def _massacre(e):
+    """A massacre mission's fields (Mission_Massacre..., with a KillCount): its target faction and system, and the kills
+    counted so far (0); none for any other mission (kills None)."""
+    if not (re.match(r"\$?Mission_Massacre", str(e.get("Name") or ""), re.I) and isinstance(e.get("KillCount"), int)
+            and e.get("TargetFaction")):
+        return {"massacre": False, "target_faction": None, "target_system": None, "kills": None}
+    return {"massacre": True, "target_faction": e["TargetFaction"], "target_system": e.get("DestinationSystem"), "kills": 0}
 
 
 def _symbol(v):
@@ -613,6 +715,109 @@ def _symbol(v):
     if not isinstance(v, str) or not v.strip():
         return None
     return re.sub(r"_name;?$", "", re.sub(r"^\$", "", v.strip()), flags=re.I).rstrip(";").lower() or None
+
+
+# ---- Community Goals (round 10's S19) ----
+
+def cg_apply(state, ev):
+    """The Community Goals you have joined: {goals: {CGID: row}, ts}. Each CommunityGoal line lists every one you are
+    signed up to (CurrentGoals: one or two at a time in the author's 1,593 lines; a goal joined is listed seconds after
+    its CommunityGoalJoin), so it replaces the list; CommunityGoalReward and CommunityGoalDiscard drop one. A finished
+    goal stays listed, IsComplete true, for days after its Expiry (until its reward is collected): community_goals
+    shows the current ones only. None when there are none."""
+    name = ev["event"]
+    if name == "CommunityGoal":
+        goals = {str(g["CGID"]): _goal(g) for g in ev.get("CurrentGoals") or [] if isinstance(g, dict) and g.get("CGID") is not None}
+    else:
+        goals = dict((state or {}).get("goals") or {})
+        goals.pop(str(ev.get("CGID")), None)
+    return {"goals": goals, "ts": ev["timestamp"]} if goals else None
+
+
+def _goal(g):
+    top = g.get("TopTier") if isinstance(g.get("TopTier"), dict) else {}
+    tier = lambda v: int(m.group(1)) if isinstance(v, str) and (m := re.search(r"(\d+)\s*$", v)) else None
+    return {"id": g["CGID"], "title": str(g.get("Title") or "").strip() or None, "system": g.get("SystemName"),
+            "station": g.get("MarketName"), "expiry": g.get("Expiry"), "complete": bool(g.get("IsComplete")),
+            "contribution": g.get("PlayerContribution"), "contributors": g.get("NumContributors"),
+            # "Tier 2" of "Tier 5" (TierReached is missing before the first tier); the band is the top N % of
+            # contributors you are in (100: not placed yet)
+            "tier": tier(g.get("TierReached")), "top_tier": tier(top.get("Name")), "band": g.get("PlayerPercentileBand"),
+            "top_rank": bool(g.get("PlayerInTopRank"))}
+
+
+def community_goals(state, now=None):
+    """The Community Goals you are signed up to that are still running (their Expiry ahead; one with none counts), the
+    soonest to end first: [{id, title, system, station, expiry, expires_in, complete, contribution, contributors, tier,
+    top_tier, band, top_rank}]."""
+    now = time.time() if now is None else now
+    out = []
+    for g in ((state or {}).get("goals") or {}).values():
+        left = ts_seconds(g["expiry"]) - now if g.get("expiry") else None
+        if left is None or left > 0:
+            out.append(dict(g, expires_in=None if left is None else int(left)))
+    out.sort(key=lambda g: (g["expires_in"] is None, g["expires_in"] or 0, g["title"] or ""))
+    return out
+
+
+# ---- bounty vouchers and combat bonds (round 10's S9) ----
+
+def vouchers_apply(state, ev):
+    """The vouchers you hold, per faction: {bounties: {faction: cr}, bonds: {faction: cr}, ts}; None when none. Checked
+    against the author's journals (2024-10 to 2026-03: 52 Bounty, 139 FactionKillBond, 20 RedeemVoucher lines):
+    - a Bounty's Rewards[] pays each faction its Reward (one kill can pay two);
+    - a FactionKillBond (and a CapShipBond) pays its AwardingFaction a bond;
+    - Died loses them all: the next redemption paid only what was earned after the death, every time;
+    - RedeemVoucher Type "bounty" lists Factions[] {Faction, Amount}: each named faction is paid. A blank Faction ("")
+      stands for the factions it does not name: in every case it matched one held faction's amount (or that x1.2: a
+      bonus can be added, as on named ones), and each of the six bounty redemptions paid everything held, so a blank
+      clears the rest. Type "CombatBond" names one Faction per line (a second line with Amount 0 follows; a
+      "PilotsFederation" one pays a bonus nothing earned): that faction's bonds are paid. Other Types (codex, trade...)
+      are not vouchers held here. No real redemption had a BrokerPercentage (Interstellar Factors')."""
+    name = ev["event"]
+    if name == "Died":
+        return None
+    st = {k: dict((state or {}).get(k) or {}) for k in ("bounties", "bonds")}
+
+    def add(kind, faction, cr):
+        if isinstance(cr, (int, float)) and not isinstance(cr, bool) and cr > 0 and isinstance(faction, str):
+            st[kind][faction] = st[kind].get(faction, 0) + cr
+
+    if name == "Bounty":
+        if isinstance(ev.get("Rewards"), list):
+            for r in ev["Rewards"]:
+                if isinstance(r, dict):
+                    add("bounties", r.get("Faction"), r.get("Reward"))
+        else:   # a skimmer's (Frontier's manual): one Faction and Reward
+            add("bounties", ev.get("Faction"), ev.get("Reward"))
+    elif name in ("FactionKillBond", "CapShipBond"):
+        add("bonds", ev.get("AwardingFaction"), ev.get("Reward"))
+    elif name == "RedeemVoucher":
+        kind = {"bounty": "bounties", "CombatBond": "bonds"}.get(ev.get("Type"))
+        if not kind:
+            return state
+        paid = [f.get("Faction") for f in ev.get("Factions") or [] if isinstance(f, dict)] if isinstance(ev.get("Factions"), list) \
+            else [ev.get("Faction")] if isinstance(ev.get("Faction"), str) else []
+        if not paid or "" in paid:
+            st[kind] = {}   # a blank: the factions it does not name were paid too
+        for f in paid:
+            st[kind].pop(f, None)
+    if not st["bounties"] and not st["bonds"]:
+        return None
+    return dict(st, ts=ev["timestamp"])
+
+
+def vouchers(state):
+    """The vouchers held (vouchers_apply's), for the Unsold tile: {total, bounties, bonds, factions: [{name, bounties,
+    bonds, total}] the most first}; None when there are none."""
+    b, k = (state or {}).get("bounties") or {}, (state or {}).get("bonds") or {}
+    total_b, total_k = round(sum(b.values())), round(sum(k.values()))
+    if total_b + total_k <= 0:
+        return None
+    factions = [{"name": f, "bounties": round(b.get(f, 0)), "bonds": round(k.get(f, 0)), "total": round(b.get(f, 0) + k.get(f, 0))}
+                for f in sorted(set(b) | set(k))]
+    factions.sort(key=lambda x: (-x["total"], x["name"]))
+    return {"total": total_b + total_k, "bounties": total_b, "bonds": total_k, "factions": factions}
 
 
 # ---- sessions: combat and mining, per login ----
@@ -873,9 +1078,10 @@ def rank_rows(rank, progress):
     return out
 
 
-def profile(commander, stats=None, reputation=None, power=None, squadron=None, fleet=None, modules=None):
+def profile(commander, stats=None, reputation=None, power=None, squadron=None, fleet=None, modules=None, now=None):
     """The commander as the journals last said: {commander, ts (the login it is from), ranks (rank_rows), reputation
-    {Federation, Empire, Alliance, Independent: %}, power {name, rank, merits}, squadron, assets {wealth (the game's
+    {Federation, Empire, Alliance, Independent: %}, power {name, rank, merits, cycle, login (power_gains': merits
+    gained this cycle and this login, None for none)}, squadron, assets {wealth (the game's
     own total at login), fleet (your ships' value), ships, modules (stored modules' value)}, fleet (ships()'s rows:
     the one you fly first), career [{label, value, kind}]}. None before any login is on record. commander: Journals'
     meta commander (name, login_ts, rank and progress with promotions since); stats: meta statistics; the others the
@@ -898,7 +1104,8 @@ def profile(commander, stats=None, reputation=None, power=None, squadron=None, f
         "commander": c.get("name"), "ts": c["login_ts"],
         "ranks": rank_rows(c.get("rank"), c.get("progress")),
         "reputation": {k: round(rep[k], 1) for k in ("Federation", "Empire", "Alliance", "Independent") if isinstance(rep.get(k), (int, float))},
-        "power": {"name": pp.get("power"), "rank": pp.get("rank"), "merits": pp.get("merits")} if pp.get("power") else None,
+        "power": dict({"name": pp.get("power"), "rank": pp.get("rank"), "merits": pp.get("merits")},
+                      **power_gains(pp, c.get("login_ts"), now)) if pp.get("power") else None,
         "squadron": (squadron or {}).get("name"),
         "assets": {"wealth": bank.get("Current_Wealth"), "ships": len(ships_), "fleet": sum(s["value"] or 0 for s in ships_) or None,
                    "modules": sum(m["value"] or 0 for m in stored) or None},
@@ -909,4 +1116,4 @@ def profile(commander, stats=None, reputation=None, power=None, squadron=None, f
 
 _APPLY = {"reputation": reputation_apply, "powerplay": power_apply, "squadron": squadron_apply,
           "ship_locker": locker_apply, "suit_loadouts": suit_apply,
-          "engineers": engineer_apply, "missions": mission_apply}
+          "engineers": engineer_apply, "missions": mission_apply, "vouchers": vouchers_apply, "community_goals": cg_apply}
