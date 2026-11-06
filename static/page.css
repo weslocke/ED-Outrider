@@ -791,6 +791,7 @@ table .sub2 { margin-top: 2px; font-weight: 400; font-size: 12px; }
 
 .cxnew { color: var(--accent); font-weight: 700; cursor: help; }
 .cxnew.cxgal { color: var(--good); }   /* ✪: new to your codex anywhere */
+.nb.bio .cxn { color: var(--accent); font-weight: 700; } .nb.bio .cxn.cxgal { color: var(--good); }   /* Nearby's sure ✦ / ✪ (S20) */
 .nb.cxtype { color: var(--accent); cursor: help; } .nb.cxtype.cxgal { color: var(--good); }   /* a body type new to your codex */
 .cxnew .cxcol { font-weight: 600; }   /* the new colour after the mark: ✪ Cobalt */
 /* Now is read at a glance, often on a tablet with no hover: spell the ✦ out there */
@@ -1185,7 +1186,7 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 .smap-legend { flex: 1 1 240px; min-width: 0; font-size: clamp(15px, 1.7vw, 22px); line-height: 1.35; }
 .smap-legend .lg-title { font-weight: 600; margin-bottom: .4em; }
 /* the legend's species picture under the mouse (the author, 2026-11-02) */
-.smap-legend .sppic { cursor: help; }
+.smap-legend .sppic, #hereRows [data-sppic], .bodypanel [data-sppic], #bodyPanel [data-sppic] { cursor: help; }   /* a species' picture on hover */
 .sppictip { position: fixed; z-index: 60; max-width: 280px; padding: 4px; background: var(--panel); border: 1px solid var(--line);
   border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, .45); pointer-events: none; font-size: 12px; }
 .sppictip img { display: block; max-width: 270px; max-height: 200px; border-radius: 5px; }

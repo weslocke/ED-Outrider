@@ -7800,13 +7800,52 @@ def _bio_body(r, star, ctx):
 
 def bio_guess(r, star=None, genera=None, ctx=None):
     """What a body's bio signals could be: (upper-bound credits, genus groups) or (None, [])."""
+    return _bio_guess(r, star, genera, ctx)[:2]
+
+
+def _bio_guess(r, star=None, genera=None, ctx=None):
+    """bio_guess and the rules' candidates it priced (summarise's codex marks want every genus possible, not the
+    `signals` most valuable): (upper-bound credits, genus groups, candidates)."""
     if not outrider.bio or r.get("type") != "Planet":
-        return None, []
+        return None, [], []
     cands = outrider.bio.predict(_bio_body(r, star, ctx), ctx)
     if not cands and not genera:
-        return None, []
+        return None, [], []
     val, groups = outrider.bio.potential(cands, signals=r.get("bio") or None, genera=genera)
-    return (val if any(g.get("value") for g in groups) else None), groups
+    return (val if any(g.get("value") for g in groups) else None), groups, cands
+
+
+def codex_body_cands(r, known, groups, cands):
+    """Round 10's S20: what Nearby's ✦/✪ judges for one bio body, codex-free (State.row keeps it beside the row, the
+    payload judges it against your codex as it is then): {body, n, groups}. With the genera known (your DSS, Spansh's
+    list) those groups, n None; before them every genus the rules allow and n the signal count. Each group slimmed to
+    what codex_sure_group reads. None when no genus names a species."""
+    possible = groups if known else outrider.bio.by_genus(cands)
+    slim = [{"genus": g["genus"], "best": g.get("best"), "species": [{"name": c["name"]} for c in g.get("species") or [] if c.get("name")]}
+            for g in possible]
+    if not any(g["species"] for g in slim):
+        return None
+    return {"body": r.get("name"), "n": None if known else (r.get("bio") or 0), "groups": slim}
+
+
+def codex_sure_bodies(cands, known):
+    """Round 10's S20, the "sure" rule (answer 9): the bodies of codex_body_cands that surely hold a species new to
+    `known` (codex_species' sets), each as "A 3: Bacterium Aurasus / Bacterium Cerbrus" (the sure genera, each by every
+    species it could be). With the genera known, any genus codex_sure_group calls sure. Before them, only when the
+    genera that are not sure are fewer than the signals, so at least one signal must be a sure one; never when the
+    rules allow fewer genera than the signals (a genus they do not know is there)."""
+    out = []
+    for c in cands or []:
+        groups = c["groups"]
+        sure = [g for g in groups if g["species"] and codex_sure_group(g, known)]
+        if not sure:
+            continue
+        n = c["n"]
+        if n is not None and (len(groups) < n or len(groups) - len(sure) >= n):
+            continue
+        names = [" / ".join(x["name"] for x in g["species"][:4]) for g in sure]
+        out.append(f"{c['body']}: " + (", " if n is None else " or ").join(names))
+    return out
 
 
 def species_history(db):
@@ -8042,16 +8081,21 @@ def summarise(records, body_count, star=None, ctx=None, genera=None):
         "bio_potential": None, "bio_bodies_guessed": 0,
         "ringed": None, "detail": None,
     }
-    pot, n = 0, 0
+    pot, n, cx = 0, 0, []
     for r in records:
         known = genera.get(r["name"]) or r.get("genera") or None
         if r.get("bio") or known:
-            val, groups = bio_guess(r, star, known, ctx)
+            val, groups, cands = _bio_guess(r, star, known, ctx)
             if val:
                 pot += val
                 n += 1
+                c = codex_body_cands(r, known, groups, cands)
+                if c:
+                    cx.append(c)
     if n:
         s["bio_potential"], s["bio_bodies_guessed"] = pot, n
+    if cx:   # S20: never sent as it is (State.set_row keeps it aside); the payload judges it against your codex
+        s["codex_cands"] = cx
     s["stale_bio"] = stale_bio_summary(records, star, ctx)   # old Spansh data: a mark only, never in the values
     s["spansh_date"], s["spansh_old"] = spansh_date(records), spansh_old(records)   # Nearby's "Spansh: pre-Odyssey" pill
     s["bio_unknown"] = sum(1 for r in planets if unknown_bio_groups(r, star, ctx)) or None   # check them in the FSS
@@ -9063,6 +9107,9 @@ class State:
         self.changed = asyncio.Event()   # set (and replaced) by bump(): long-polling pages wait on it
         self.bases = {}            # id64 -> (source, base) for systems in the current sphere
         self.systems = {}          # id64 -> row dict for the page
+        # round 10's S20: id64 -> the row's codex_cands (summarise's, kept out of the row), and the payload's judging of
+        # them: (codex key, {region: codex_species}, codex_species_all) and {id64: its codex_sure} on that key
+        self.codex_cands, self._cx_known, self._cx_marks = {}, {"key": None}, {}
         self.visited = set()
         self.status = "starting"
         self.center = None         # where the sphere is: your position, or Nearby's chosen centre (nearby_centre)
@@ -9505,7 +9552,7 @@ class State:
             "materials": self.materials_summary(), "jump_range": jr["ly"] if jr else None,
             # the range with the fuel and cargo aboard now (the fuel model), None without the Loadout's mass
             "jump_range_now": self.range_now(),
-            "systems": list(self.systems.values()),
+            "systems": self.systems_marked(),   # S20: the ✦/✪ judged against your codex as it is now
             "target": dict(with_id(self.current_target()), leaving=self.leaving_summary(pos["id64"]),
                            hop=self.target_hop(self.current_target())) if self.current_target() and pos else with_id(self.current_target()),
             "arrival": self.arrival,
@@ -14075,6 +14122,8 @@ class State:
                  "lost": st == "lost",
                  # the run's own variant code first: bio_spots has none for a run not sampled live (round 10 B7)
                  "own_pic": own_pic(r["species"], r["variant"] or codes.get((r["body_id"], r["species"])), r["variant_name"]),
+                 # the codes the picture on hover asks by (S20: Here's spans and the body panel, as the map's legend)
+                 "code": r["species"], "variant_code": r["variant"] or codes.get((r["body_id"], r["species"])),
                  "value": outrider.bio.species_value(r["species_name"]) if outrider.bio and r["species_name"] else None})
         genera = {}
         for r in self.db.execute("SELECT body_id, genus_name FROM own_genera WHERE system=?", (id64,)):
@@ -14104,6 +14153,7 @@ class State:
                                                        else None}
             if row["entry_id"]:   # a plant's entry ("Stratum Paleas - Lime"): 📷 when your codex folders have it
                 row["own_pic"] = own_pic(None, r["code"], r["name"])
+                row["code"] = r["code"]   # S20: the picture on hover asks by it
             codex.setdefault(r["body_id"], []).append(row)
         odyssey = True
         star_row = self.db.execute("SELECT star_class FROM jumps WHERE id64=? ORDER BY ts DESC LIMIT 1", (id64,)).fetchone()
@@ -15560,7 +15610,70 @@ class State:
         return s
 
     def set_row(self, id64):
-        self.systems[id64] = self.row(id64)
+        s = self.row(id64)
+        cands = s.pop("codex_cands", None)   # S20: judged by the payload against your codex as it is then
+        if cands:
+            self.codex_cands[id64] = cands
+        else:
+            self.codex_cands.pop(id64, None)
+        self._cx_marks.pop(id64, None)
+        self.systems[id64] = s
+
+    def codex_known(self):
+        """Round 10's S20: your codex's species as Nearby's ✦/✪ judge them, a function region -> codex_species' sets
+        (None: every region's, codex_species_all). Each kept while the codex is unchanged (its count and newest rowid,
+        the key codex_en keeps its rows on) and the rules are the same: one small query a call. A changed key drops
+        the rows' judgements, so a species you log clears its ✦ at the next payload."""
+        R = outrider.bio.load_rules() if outrider.bio else None
+        key = (tuple(self.db.execute("SELECT count(*), max(rowid) FROM codex").fetchone()), id(R))
+        k = self._cx_known
+        if k["key"] != key:
+            k = self._cx_known = {"key": key, "regions": {}, "all": None}
+            self._cx_marks = {}
+
+        def known(region):
+            if region is None:
+                if k["all"] is None:
+                    k["all"] = codex_species_all(self.db)
+                return k["all"]
+            if region not in k["regions"]:
+                k["regions"][region] = codex_species(self.db, region)
+            return k["regions"][region]
+        return known
+
+    @staticmethod
+    def codex_mark(region, cands, known):
+        """A row's codex_sure: {galaxy: the bodies surely holding a species in your codex nowhere (✪), region: those
+        surely holding one new in the row's region (✦; every region's codex without one)}, each codex_sure_bodies'
+        words; None when neither. Shown only (Nearby's 🧬 tag), never spoken."""
+        gal = codex_sure_bodies(cands, known(None))
+        reg = codex_sure_bodies(cands, known(region)) if region else gal
+        return {"galaxy": gal, "region": reg} if gal or reg else None
+
+    def mark_row(self, s, known):
+        """A row made and not kept (the Plotted Route pane's, the boxel's): its codex_cands judged at once."""
+        cands = s.pop("codex_cands", None)
+        m = self.codex_mark(s.get("region"), cands, known) if cands else None
+        if m:
+            s["codex_sure"] = m
+
+    def systems_marked(self):
+        """The payload's systems with S20's codex_sure set on each row with bio potential: judged again whenever your
+        codex changed (codex_known's key) or the row was rebuilt (set_row), never kept in the row as row() made it."""
+        if self.codex_cands:
+            known = self.codex_known()
+            for id64, cands in self.codex_cands.items():
+                s = self.systems.get(id64)
+                if s is None:
+                    continue
+                if id64 not in self._cx_marks:
+                    self._cx_marks[id64] = self.codex_mark(s.get("region"), cands, known)
+                m = self._cx_marks[id64]
+                if m:
+                    s["codex_sure"] = m
+                else:
+                    s.pop("codex_sure", None)
+        return list(self.systems.values())
 
     def safe_row(self, id64):
         """set_row, but one bad system must not stall the others: the traceback is printed once, the row is
@@ -15959,7 +16072,7 @@ class State:
         if retry and self.failed_dumps and self.status.startswith("ok ("):
             return await self.retry_dumps(pos)
         if not retry:
-            self.bases, self.systems = {}, {}
+            self.bases, self.systems, self.codex_cands = {}, {}, {}
             # what the local cache already holds around the new position shows at once, while the search runs (a
             # short hop is mostly cached: no blank "loading…" for it; review S6). The answer replaces it row by row.
             for row in self.near("spansh_systems", pos, r):
@@ -16002,7 +16115,7 @@ class State:
             if retry:
                 saying.cancel()
         if retry:
-            self.bases, self.systems = {}, {}
+            self.bases, self.systems, self.codex_cands = {}, {}, {}
         if spansh_failed:
             # What we already know about this neighbourhood is better than EDSM's bare list.
             cached_n = 0
@@ -18377,7 +18490,7 @@ class State:
         ids = [c["id"] for c in choices]
         which = which if which in ids else self.route_list_default(ids)
         hops, total = self.route_list_hops(which) if which else ([], 0)
-        pos, rows = self.journals.pos, []
+        pos, rows, known = self.journals.pos, [], self.codex_known()
         for h in hops:
             placed = None not in (h["x"], h["y"], h["z"])
             if h["id64"] is None or not placed:
@@ -18388,6 +18501,7 @@ class State:
             self.route_list_found[h["id64"]] = (h["name"], h["x"], h["y"], h["z"])
             try:
                 s = self.row(h["id64"], self.route_list_fallback(h))
+                self.mark_row(s, known)   # S20: Nearby's ✦/✪ in the shared row's 🧬 tag
             except (KeyError, TypeError, ValueError) as e:   # a row that cannot be made: the list still shows
                 print(f"route list: no row for {h['name']} ({type(e).__name__}: {e})", file=sys.stderr)
                 s = {"name": h["name"], "id": str(h["id64"]), "nodata": True}
@@ -18954,7 +19068,7 @@ class State:
         top = max(known, default=-1)
         end = self.boxel_end(prefix, known)
         last = end - 1 if end is not None else top + outrider.boxel.TRY_ABOVE
-        rows = []
+        rows, cx = [], self.codex_known()
         for n in range(0, last + 1):
             name = outrider.boxel.name_of(prefix, n)
             sp = spansh.get(n) or {}
@@ -18975,6 +19089,7 @@ class State:
                 id64 = visited[n][0]
                 try:
                     r["summary"] = self.row(id64, ("own", {"name": name, "x": visited[n][2], "y": visited[n][3], "z": visited[n][4], "records": []}))
+                    self.mark_row(r["summary"], cx)   # S20, as Nearby's rows
                     if n in spansh and r["summary"].get("source") == "own":   # its card never says "not in Spansh" (review 2026-10-26)
                         r["summary"].update(source="boxel", own_scans=True)
                 except (KeyError, TypeError, ValueError) as e:   # a row that cannot be made: the list still shows

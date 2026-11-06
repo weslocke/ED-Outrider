@@ -21,7 +21,10 @@ pre-Odyssey (2019-02-14): Rescan for Bio" until your own scans have every body. 
 body by body beside the list (click it again to close it); its name copies it, ☆ bookmarks it, and where auto-target
 can work (the game PC, see [Plot Route](plot-route.md)) the target button (the galaxy map's destination marker) left of the name, in a column of its own, targets it in
 the galaxy map (not on your own system's row). ⛏ N counts planetary mining
-locations on ground worth a Rhino. 🌀 N counts the notable stellar phenomena your FSS found there (life in clouds or rings; hover
+locations on ground worth a Rhino. **✦** inside the 🧬 tag says a species there is surely new to your codex in
+that region, whatever the signals turn out to be (**✪**: new to your codex anywhere); hover the tag for the bodies and
+species. Only a sure one is marked (a guess about a place you have not scanned), and it goes as soon as you log the
+species. The Plotted Route pane's rows show it too. 🌀 N counts the notable stellar phenomena your FSS found there (life in clouds or rings; hover
 for what they are), dimmed once you have been to them. ⭐ marks a rare star (a black hole, a Wolf-Rayet, a carbon,
 MS, S or O-type star, a Herbig Ae/Be star, a supergiant, a rare white dwarf, an exotic star), from Spansh's records
 too, so you see it before you go. 🏛 👾 ❔ mark Guardian sites, Thargoid sites and planetary anomalies on a system's bodies: your own scans (an anomaly shows once
@@ -63,7 +66,10 @@ A footer under the list says what each icon means, for the icons that system's l
 stays in view while the list scrolls.
 "🧬? check in the FSS" marks a landable body you have only from an AutoScan or a nav beacon, whose signals nobody
 counted, where life is possible. A finished species is one line, its codex entry with what it pays ("📖 Bacterium
-Alcyoneum - Red ✦ 8.3M"), the colour's word in that colour (Settings → Display can turn that off). The body panel lists
+Alcyoneum - Red ✦ 8.3M"), the colour's word in that colour (Settings → Display can turn that off). On a PC, a mouse over
+a species' name (one you sample, one finished, the likeliest guess) shows a picture of it, as in the surface map's
+legend: one of your own at random, else Canonn's; the body's hover card gives way meanwhile. The body panel's Bio rows
+do the same. The body panel lists
 why each other genus is not expected ("pressure too low"). **👥** beside a genus is a species other commanders reported
 to Spansh on that body, with the colour they reported ("👥 Bacterium Vesicula - Mulberry 1.0M"): a fact, not a guess
 (asked once a day for the system you are in when its bodies have life; a genus you have analysed shows yours instead).
@@ -102,7 +108,10 @@ map when auto-target can work on this PC, else copies its name (the card says wh
 <td width="50%" valign="top">
 <b>History</b> — sessions (jumps, light-years, discoveries, mapping, samples, what you sold, and ✗ for a
 death: its hover says when and whether the ship was lost), an all-time row, "since your last sale" and the game's
-career statistics. Below: every trip from sale to sale with what it paid
+career statistics. **📋** on the "since your last sale" row copies the trip so far in Markdown, ready for Reddit or
+Discord: days, jumps and light-years, systems, the farthest from Sol, first discoveries, mapping, footfalls, species,
+new codex entries, the unsold data aboard and up to three of Your records set since the sale (a line with nothing in
+it is left out). Below: every trip from sale to sale with what it paid
 against Outrider's estimate, the exobiology ×5 checked against the prediction, credits per hour and per jump,
 what each death cost, and your 25 most valuable finds.
 <br><br><img src="../images/history.png" alt="History">

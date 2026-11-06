@@ -160,6 +160,15 @@ upstream project's choices, not rules of the game.
   wrong one. Shown on the page, never spoken. Your codex is your journals' codex lines plus every type you have
   scanned in a region (not off a nav beacon): the game logs a type only the first time you scan one there, and a
   commander's codex is often older than the journals kept, so a type scanned without a line was logged before.
+- **Nearby's bio ✦ / ✪ only when sure, shown only** (round 10's S20, 2026-11-06). Inside a row's 🧬 tag, ✦ (✪: in
+  your codex nowhere) says a species there would surely be new to your codex, by `codex_sure_group` (the author's
+  answer 9: Nearby is a guess about a place you have not scanned, so only a certain flag is honest; Here keeps its
+  looser `codex_new_group`): with the genera known, a genus whose every possible species is unlogged; before them, only
+  when the genera that are not sure are fewer than the signals, never when the rules allow fewer genera than signals.
+  The row keeps only what is codex-free (`summarise`'s `codex_cands`, set aside by `set_row`, never sent); the payload
+  judges it against your codex as it is then (`State.systems_marked`, on the codex's count and newest rowid, as
+  `codex_en`), since rows are rebuilt only for dirty systems: a species you log clears the mark at the next payload.
+  Shown on the page, never spoken.
 - **Geology ✦ marks a set, and only what EDDN showed** (S22, 2026-10-12, `outrider/codex_geo.py`). A volcanism does not
   name one feature: of 284 geology entries EDDN carried on 81 scanned bodies, each volcanism logged one of two to four
   (rocky magma: the sulphur dioxide fumarole or gas vent, the silicate magma lava spout, on 2 of 6 bodies the silicate

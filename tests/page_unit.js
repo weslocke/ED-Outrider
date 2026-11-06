@@ -439,6 +439,45 @@ t("cmMeritGains: the pledged line's merits this cycle and this login, each only 
   eq(`[cmMeritGains({cycle: 1240, login: 310}), cmMeritGains({cycle: 1240, login: null}), cmMeritGains({cycle: null, login: null}), cmMeritGains(null)]
       .map(h => h.replace(/<[^>]+>/g, "").trim())`, ["· 1,240 this cycle, 310 this login", "· 1,240 this cycle", "", ""]);
 });
+t("tripSummaryMd: the trip since your last sale in Markdown, lists only, a line with nothing dropped, the records set since (S17)", () => {
+  const ss = {since: "2026-10-01T12:00:00Z", days: 12.3, jumps: 340, ly: 12345.6, systems: 330, max_sol: 23456, firsts: 12, bodies_first: 80,
+              mapped: 40, footfalls: 1, samples: 9, codex_new: 5};
+  const u = {total: 123400000, carto: {estimated_payout: 100000000}, bio: {estimated_value: 23400000}};
+  const recs = [{label: "Hottest body", text: "4,512 K", body: "Testa A 1", system: "Testa", ts: "2026-10-05T00:00:00Z"},
+                {label: "Largest star", text: "12.3 solar radii", body: "Old A", system: "Old", ts: "2026-09-01T00:00:00Z"},   // before the trip
+                {label: "Farthest from Sol", text: "23,456 ly", body: null, system: "Far Out", ts: "2026-10-09T00:00:00Z"},
+                {label: "Densest", text: "9.1 g/cm³", body: "Testa B", system: "Testa", ts: "2026-10-03T00:00:00Z"},
+                {label: "Fastest spin", text: "0.1 h", body: "Testa C", system: "Testa", ts: "2026-10-02T00:00:00Z"}];
+  eq(`tripSummaryMd(${JSON.stringify(ss)}, ${JSON.stringify(u)}, ${JSON.stringify(recs)})`, [
+    "**Trip since 2026-10-01** · 12.3 days",
+    "- 340 jumps, 12,346 ly",
+    "- 330 systems visited",
+    "- Farthest from Sol: 23,456 ly",
+    "- First discovered: 12 systems, 80 bodies",
+    "- 40 bodies mapped",
+    "- Set foot on 1 body",
+    "- 9 species sampled",
+    "- 5 new codex entries",
+    "- Unsold aboard: 123.4M cr (cartography 100.0M · exobiology 23.4M)",
+    "- Records set: Farthest from Sol: 23,456 ly (**Far Out**); Hottest body: 4,512 K (**Testa A 1**); Densest: 9.1 g/cm³ (**Testa B**)"].join("\n"));
+  // the zeroes left out, nothing aboard, no records: the heading and what there is
+  eq(`tripSummaryMd(${JSON.stringify({since: "2026-10-01T12:00:00Z", days: 0, jumps: 1, ly: 20, systems: 1, max_sol: 50, firsts: 0, bodies_first: 2,
+                                      mapped: 0, footfalls: 0, samples: 0, codex_new: 0})}, {total: 0}, [])`,
+     ["**Trip since 2026-10-01**", "- 1 jump, 20 ly", "- 1 system visited", "- Farthest from Sol: 50 ly", "- First discovered: 2 bodies"].join("\n"));
+  eq(`[tripSummaryMd(null, null, null), tripSummaryMd({since: null}, null, null)]`, ["", ""]);
+});
+t("codexSureMark / codexSureTitle: Nearby's sure ✦/✪ inside the 🧬 tag, its bodies and species in the tag's title (S20)", () => {
+  const row = c => ({id: "1", bio_potential: 2000000, bio_bodies_guessed: 1, region: "Inner Orion Spur", notable: {}, codex_sure: c});
+  const tag = c => html(`notable(${JSON.stringify(row(c))})`).querySelector(".nb.bio");
+  const gal = tag({galaxy: ["1: Bacterium Aurasus"], region: ["1: Bacterium Aurasus"]});
+  assert.deepStrictEqual([words(gal), gal.querySelector(".cxn").className, gal.title.split("\n").slice(1)],
+    ["🧬≤2.0M ✪", "cxn cxgal", ["✪ surely new to your codex anywhere: 1: Bacterium Aurasus"]]);
+  const reg = tag({galaxy: [], region: ["1: Bacterium Aurasus or Stratum Tectonicas", "2: Concha Biconcavis"]});
+  assert.deepStrictEqual([words(reg), reg.querySelector(".cxn").className, reg.title.split("\n").slice(1)],
+    ["🧬≤2.0M ✦", "cxn", ["✦ surely new to your codex in Inner Orion Spur: 1: Bacterium Aurasus or Stratum Tectonicas; 2: Concha Biconcavis"]]);
+  const none = tag(undefined);
+  assert.deepStrictEqual([words(none), none.querySelector(".cxn"), none.title.split("\n").length], ["🧬≤2.0M", null, 1]);
+});
 // round 10's S23 (b): the alert rows' lists in step. A call's argument text, its parentheses balanced (strings and
 // templates skipped), from the "(" at `at`; and a call's first argument
 function callText(src, at) {

@@ -3611,6 +3611,82 @@ const releasePayloads = async () => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| surface species pictures |", good ? "the legend's names as Here's (colour, 📷), a picture under the mouse" : JSON.stringify(got), errors.slice(before));
   }
+  // round 10's S20: the same picture on hover over Here's species (a run's, a finished one's codex line) and the body
+  // panel's Bio rows, as the map's legend; the body's pop-up gives way while it shows; never on a touch screen
+  s20_species_hover_here_panel: { if (skip("s20_species_hover_here_panel")) break s20_species_hover_here_panel;
+    const w = dom.window, d = w.document, before = errors.length;
+    holdPayloads();
+    w.eval(`(() => {
+      window.__s20 = {api: apiJson, asked: [], hd: hereData, hk: hereKey, panel: document.getElementById("bodyPanel").innerHTML, mm: window.matchMedia};
+      apiJson = async (url, ...rest) => { if (!String(url).startsWith("api/species/picture")) return __s20.api(url, ...rest);
+        __s20.asked.push(String(url)); return {name: "Tubus Compagibus - Green", image: {url: "https://c/tubus.jpg", cmdr: "Someone"}}; };
+      const tubus = {genus: "Tubus", species: "Tubus Compagibus", variant: "Tubus Compagibus - Green", samples: 3, done: true, lost: false,
+                     code: "$Codex_Ent_Tubus_04_Name;", variant_code: "$Codex_Ent_Tubus_04_F_Name;", value: 7774700};
+      const bact = {genus: "Bacterium", species: "Bacterium Aurasus", variant: null, samples: 1, done: false, lost: false,
+                    code: "$Codex_Ent_Bacterial_01_Name;", variant_code: null, value: 1000000};
+      const body = {name: "H 1", body_id: 1, type: "Planet", subtype: "Rocky body", genera: ["Tubus", "Bacterium"], bio: 2, geo: 0,
+        dist_ls: 1200, gravity: 0.1, atmosphere: "Thin Carbon dioxide", value_max: 0, organics: [tubus, bact], curiosities: [], bio_guess: [],
+        codex: [{name: "Tubus Compagibus - Green", new: false, voucher: null, entry_id: 2311004, code: "$Codex_Ent_Tubus_04_F_Name;"}],
+        value_parts: {bio_factor: 1}, mining: 0, mining_odds: null, mined: []};
+      hereData = Object.assign({id64: "79", name: "Hover Test", leaving: null, phenomena: []}, __s20.hd && !__s20.hd.error ? __s20.hd : {},
+        {bodies: [body], tree: null});
+      renderHere(); })()`);
+    const got = {}, tip = d.getElementById("spPicTip"), pop = d.getElementById("pop");
+    const ev = (el, type) => el.dispatchEvent(new w.MouseEvent(type, {bubbles: true, clientX: 10, clientY: 10}));
+    const attrs = el => [el.dataset.sppic, el.dataset.spvar, el.dataset.spname];
+    const here = [...d.querySelectorAll("#hereRows [data-sppic]")];
+    got.here = here.map(attrs);
+    ev(d.querySelector('#hereRows tr[data-body="H 1"] td.name'), "mousemove"); got.popFirst = pop.style.display;
+    ev(here[0], "mousemove"); got.popGone = pop.style.display;   // over the species: the body's card gives way
+    ev(here[0], "mouseover"); await sleep(60);
+    got.tip = [tip.hidden, tip.querySelector("img") && tip.querySelector("img").getAttribute("src")];
+    ev(here[0], "mouseout"); got.out = tip.hidden;
+    w.eval(`renderBodyInto(document.getElementById("bodyPanel"), {full_name: "Hover Test H 1", row: hereData.bodies[0], own: null, spansh: null, rings: []}, "H 1", "closeBody()")`);
+    const panel = [...d.querySelectorAll("#bodyPanel [data-sppic]")];
+    got.panel = panel.map(el => el.dataset.spname);
+    ev(panel[1], "mouseover"); await sleep(60); got.panelTip = tip.hidden; ev(panel[1], "mouseout");
+    // a touch screen (no hover): no picture
+    w.eval(`window.matchMedia = q => ({matches: q === "(hover: none)"})`);
+    ev(here[1], "mouseover"); await sleep(30); got.touch = tip.hidden;
+    got.asked = w.eval("__s20.asked.map(u => decodeURIComponent(u.split('?')[1]))");
+    w.eval(`(() => { window.matchMedia = __s20.mm; apiJson = __s20.api; hereData = __s20.hd; hereKey = __s20.hk; if (hereData) renderHere();
+      document.getElementById("bodyPanel").innerHTML = __s20.panel; hidePop(); spPicHide(); })()`);
+    await releasePayloads();
+    const want = {here: [["$Codex_Ent_Tubus_04_Name;", "$Codex_Ent_Tubus_04_F_Name;", "Tubus Compagibus - Green"],
+                         ["$Codex_Ent_Bacterial_01_Name;", "", "Bacterium Aurasus"]],
+                  popFirst: "block", popGone: "none", tip: [false, "https://c/tubus.jpg"], out: true,
+                  panel: ["Tubus Compagibus - Green", "Bacterium Aurasus", "Tubus Compagibus - Green"], panelTip: false, touch: true,
+                  asked: ["species=$Codex_Ent_Tubus_04_Name;&variant=$Codex_Ent_Tubus_04_F_Name;&name=Tubus Compagibus - Green&avoid=",
+                          "species=$Codex_Ent_Bacterial_01_Name;&variant=&name=Bacterium Aurasus&avoid="]};
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| S20 species hover in Here and the panel |", good ? "Here's species and the panel's Bio rows show the picture, the body's card gives way, none on touch" : JSON.stringify(got), errors.slice(before));
+  }
+  // round 10's S17: History's "Since your last sale" row has a 📋 that copies the trip in Markdown, with the records set
+  // since it began (History loads them beforehand: the copy happens inside the click)
+  s17_trip_copy: { if (skip("s17_trip_copy")) break s17_trip_copy;
+    const w = dom.window, before = errors.length;
+    holdPayloads();
+    const got = JSON.parse(w.eval(`(() => {
+      const h = histData, rec = REC.d, real = copyText, copied = [];
+      copyText = (t, what) => copied.push([t, what]);
+      REC.d = {records: [{label: "Hottest body", text: "4,512 K", body: "Testa A 1", system: "Testa", id64: "5", ts: "2026-10-05T00:00:00Z"},
+                         {label: "Largest star", text: "9 solar radii", body: "Old A", system: "Old", id64: "6", ts: "2026-09-05T00:00:00Z"}], bodies: 2};
+      histData = {sessions: [], all_time: null, ledger: {trips: [], since_last_sale: {since: "2026-10-01T12:00:00Z", days: 3, jumps: 2, ly: 40,
+        max_sol: 100, systems: 2, firsts: 1, bodies_first: 3, mapped: 0, footfalls: 0, samples: 0, codex_new: 0, sold: 0}}};
+      renderHistory();
+      const b = document.querySelector("#histAll tr.sincesale #tripCopyMd"); if (b) b.click();
+      copyText = real; REC.d = rec; histData = h; if (h) renderHistory();
+      return JSON.stringify({button: !!b, copied});
+    })()`));
+    await releasePayloads();
+    const [text, what] = got.copied[0] || ["", ""];
+    const good = got.button && got.copied.length === 1 && what === "the trip summary"
+      && text.startsWith("**Trip since 2026-10-01** · 3 days\n- 2 jumps, 40 ly\n- 2 systems visited\n- Farthest from Sol: 100 ly\n- First discovered: 1 system, 3 bodies")
+      && text.endsWith("- Records set: Hottest body: 4,512 K (**Testa A 1**)") && !/mapped|Largest star/.test(text) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| S17 trip copy |", good ? "📋 on Since your last sale copies the trip in Markdown, records since it began" : JSON.stringify(got), errors.slice(before));
+  }
   // a species finished on this body stays (the author, 2026-11-02): its three samples as small × in its own colour,
   // with no colony ring, and its legend row "✓ done" after the runs under way, in the same colour as its dots
   surface_done_species: { if (skip("surface_done_species")) break surface_done_species;

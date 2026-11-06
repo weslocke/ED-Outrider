@@ -2,6 +2,22 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Round 10 suggestions, batch 8: the trip in Markdown, species pictures in Here, Nearby's sure ✦/✪
+Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), page and payload only: no journal re-read.
+- **S17** History's "Since your last sale" row has a 📋 (one only, answer 8): the trip so far in Markdown for Reddit or
+  Discord, "**Trip since 2026-10-01** · 12.3 days" then a list (no tables, as the system's 📋): jumps and light-years,
+  systems visited, farthest from Sol, first discoveries, bodies mapped, footfalls, species sampled, new codex entries,
+  the unsold data aboard and up to three of Your records set since the sale (answer 7); a line with nothing in it is
+  left out. History loads the records beforehand, so the copy happens inside the click (the fallback copy needs it).
+- **S20** On a PC, a mouse over a species in Here (a run's, a finished one's codex line, the likeliest guess) or in the
+  body panel's Bio rows shows its picture, as the surface map's legend does (your own, else Canonn's); the body's hover
+  card gives way meanwhile; never on a touch screen. Here's runs now carry their species and colour codes for it.
+- **S20** Nearby's 🧬 tag gains ✦ when a species there is surely new to your codex in that region, ✪ when new anywhere,
+  the bodies and species named in its title; the "sure" rule (answer 9): with the genera known, a genus whose every
+  species is unlogged; before the DSS, only when the genera that are not sure are fewer than the signals. Judged at each
+  payload against your codex as it is then (on its count and newest rowid), never kept in the row, so logging the
+  species clears it at once; the Plotted Route pane's and the boxel's rows get it too. Shown only, never spoken.
+
 ## 2026-11-06 · Round 10 suggestions, batch 7: the mining recap, wanted and the nearest Interstellar Factors, the wrong suit
 Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the gameplay ones made of live moments: no
 journal re-read. Plain words under alert rows, no new speech keys (the author's answer 1). The author's journals (read

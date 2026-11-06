@@ -255,13 +255,24 @@ function codexTypesTag(s) {
   return `<span class="nb cxtype${gal ? " cxgal" : ""}" title="new to your codex${s.region ? ` in ${esc(s.region)}` : ""}: ${kinds.map(x =>
     esc(`${x.t.name} (${fresh.filter(y => y.t.id === x.t.id).map(y => y.t.body).join(", ")})${x.st === "galaxy" ? ", anywhere" : ""}`)).join("; ")}">${gal ? "✪" : "✦"}${kinds.length > 1 ? kinds.length : ""}</span>`;
 }
+// round 10's S20: Nearby's ✦/✪ inside the 🧬 tag, the server's codex_sure (State.systems_marked): a species surely new to
+// your codex, in the system's region (✦) or anywhere (✪), whatever the signals turn out to be ("sure", answer 9: a
+// guess about a place you have not scanned); its bodies and species in the tag's title. Shown only, never spoken
+const codexSureMark = s => { const c = s.codex_sure;
+  return !c ? "" : (c.galaxy || []).length ? ` <span class="cxn cxgal">✪</span>` : (c.region || []).length ? ` <span class="cxn">✦</span>` : ""; };
+function codexSureTitle(s) {
+  const c = s.codex_sure; if (!c) return "";
+  const gal = c.galaxy || [], reg = c.region || [];
+  return (gal.length ? `&#10;✪ surely new to your codex anywhere: ${esc(gal.join("; "))}` : "") +
+    (reg.length && reg.join() !== gal.join() ? `&#10;✦ surely new to your codex in ${esc(s.region || "this region")}: ${esc(reg.join("; "))}` : "");
+}
 function notable(s) {
   const n = s.notable || {};
   const names = {ELW: "Earth-like", WW: "water world", AW: "ammonia world", T: "terraformable"};
   const gg = s.ggg || [];
   return ["ELW", "WW", "AW", "T"].filter(k => n[k]).map(k =>
     `<span class="nb ${k}" title="${names[k]}${n[k] > 1 ? "s" : ""}">${k}${n[k] > 1 ? "×" + n[k] : ""}</span>`).join("") +
-    (s.bio_potential ? `<span class="nb bio" title="exobiology: up to this much across ${s.bio_bodies_guessed} bod${s.bio_bodies_guessed === 1 ? "y" : "ies"}, from spawn rules">🧬≤${credits(s.bio_potential)}</span>` : "") +
+    (s.bio_potential ? `<span class="nb bio" title="exobiology: up to this much across ${s.bio_bodies_guessed} bod${s.bio_bodies_guessed === 1 ? "y" : "ies"}, from spawn rules${codexSureTitle(s)}">🧬≤${credits(s.bio_potential)}${codexSureMark(s)}</span>` : "") +
     (gg.length ? gggIcon(false, `potential green gas giant${gg.length > 1 ? "s" : ""} (the community's ladder model, from your scans or Spansh's): ` +
       gg.map(x => `${x.body} (${x.chance})`).join(", "), gg.length) : "") + (s.ggg_green ? gggIcon(true, "a green gas giant your codex confirms", s.ggg_green) : "") +
     codexTypesTag(s) + phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + poiTag(s.pois) + (s.spansh_old ? "" : oldDataTag(s.stale_bio)) + bioUnknownTag(s.bio_unknown) +
@@ -1930,8 +1941,8 @@ const surfWhere = it => `${surfDist(it.dist)} · ${String(Math.round(it.brg) % 3
 // a species' name in the map's legend as Here writes it (the author, 2026-11-02): its colour as the game names it
 // ("Bacterium Aurasus - Green", the colour's word in it: colourName) and 📷 for a picture of it in your codex folders;
 // a mouse over the name shows a picture of it (spPicTip)
-const spLegendName = b => `<b class="sppic" data-sppic="${esc(b.code || "")}" data-spvar="${esc(b.variant_code || "")}"` +
-  ` data-spname="${esc(b.variant || b.species)}">${colourName(b.variant || b.species)}</b>${clCam(b.own_pic)}`;
+const spPicData = (code, variant, name) => name ? ` data-sppic="${esc(code || "")}" data-spvar="${esc(variant || "")}" data-spname="${esc(name)}"` : "";
+const spLegendName = b => `<b class="sppic"${spPicData(b.code, b.variant_code, b.variant || b.species)}>${colourName(b.variant || b.species)}</b>${clCam(b.own_pic)}`;
 function surfaceLegend(s, L, cfg) {
   const by = k => L.items.filter(it => it.kind === k).sort((a, b) => a.dist - b.dist), rows = [];
   // the same colours as the map, which counts the tagged species too (review: the legend's swatch was another species')
@@ -2061,7 +2072,9 @@ async function spPicTip(el) {
   if (seq === SPT.seq && SPT.key === key && el.isConnected) spPicDraw(tip, el, d);
 }
 const spPicHide = () => { SPT.key = null; SPT.seq++; document.getElementById("spPicTip").hidden = true; };
-for (const id of ["nowMapLegend", "ovMapLegend"]) {
+// round 10's S20: Here's species and the body panel's Bio rows (Here's and Search's) carry the same data-sppic; the
+// body's own pop-up gives way while the picture shows (the page-wide mousemove below)
+for (const id of ["nowMapLegend", "ovMapLegend", "hereRows", "bodyPanel", "sBodyPanel"]) {
   const el = document.getElementById(id);
   el.addEventListener("mouseover", e => { const n = e.target.closest("[data-sppic]"); if (n && mouseHover() && !n.contains(e.relatedTarget)) spPicTip(n); });
   el.addEventListener("mouseout", e => { const n = e.target.closest("[data-sppic]"); if (n && !n.contains(e.relatedTarget)) spPicHide(); });
@@ -5485,6 +5498,35 @@ function systemSummaryMd(h) {
   out.push(`- Worth: ${credits(h.value_now || 0)} cr on board, ${credits(maxOf(h) || 0)} cr at most`);
   return out.join("\n");
 }
+// round 10's S17: 📋 on History's "Since your last sale" row: the trip so far in Markdown for Reddit or Discord, lists
+// only as the system's 📋 (Reddit's Markdown: no tables), a line with nothing in it left out. ss: the ledger's
+// since_last_sale; u: the payload's unsold (what is aboard now); records: Your records, the ones set since the trip
+// began, newest first, three at most (History loads them beforehand: the copy stays inside the click)
+function tripSummaryMd(ss, u, records) {
+  if (!ss || !ss.since) return "";
+  const num = n => Math.round(n).toLocaleString("en-US"), pl = (n, one, many) => `${num(n)} ${n === 1 ? one : many}`;
+  const out = [`**Trip since ${ss.since.slice(0, 10)}**${ss.days ? ` · ${ss.days} day${ss.days === 1 ? "" : "s"}` : ""}`];
+  const line = (n, text) => { if (n) out.push(`- ${text}`); };
+  line(ss.jumps, `${pl(ss.jumps, "jump", "jumps")}${ss.ly ? `, ${num(ss.ly)} ly` : ""}`);
+  line(ss.systems, pl(ss.systems, "system visited", "systems visited"));
+  line(ss.max_sol, `Farthest from Sol: ${num(ss.max_sol)} ly`);
+  line(ss.firsts || ss.bodies_first, `First discovered: ${[ss.firsts && pl(ss.firsts, "system", "systems"),
+    ss.bodies_first && pl(ss.bodies_first, "body", "bodies")].filter(Boolean).join(", ")}`);
+  line(ss.mapped, pl(ss.mapped, "body mapped", "bodies mapped"));
+  line(ss.footfalls, `Set foot on ${pl(ss.footfalls, "body", "bodies")}`);
+  line(ss.samples, `${pl(ss.samples, "species", "species")} sampled`);
+  line(ss.codex_new, pl(ss.codex_new, "new codex entry", "new codex entries"));
+  const ok = u && !u.error ? u : {}, carto = (ok.carto || {}).estimated_payout, bio = (ok.bio || {}).estimated_value;
+  line(ok.total, `Unsold aboard: ${credits(ok.total || 0)} cr${carto && bio ? ` (cartography ${credits(carto)} · exobiology ${credits(bio)})` : ""}`);
+  const set = (records || []).filter(r => r && r.ts && r.ts > ss.since).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 3);
+  line(set.length, `Records set: ${set.map(r => `${r.label}: ${r.text}${r.body || r.system ? ` (**${r.body || r.system}**)` : ""}`).join("; ")}`);
+  return out.join("\n");
+}
+document.addEventListener("click", e => {
+  if (!e.target.closest("#tripCopyMd")) return;
+  const L = (histData && !histData.error && histData.ledger) || {};
+  copyText(tripSummaryMd(L.since_last_sale, data && data.unsold, (REC.d && REC.d.records) || []), "the trip summary");
+});
 function renderHere() {
   const h = hereData, head = document.getElementById("hereHead"), lv = document.getElementById("hereLeaving");
   if (!h) {   // another system on its way: nothing of the last one stays on screen, or clickable (the sweep of 2026-10-09)
@@ -5556,10 +5598,10 @@ function renderHere() {
     if (hb.minSig && b.bio && b.bio < hb.minSig) bio.push(`<span class="unk" title="fewer than ${hb.minSig} signals: left out (Settings, Display)">${b.bio} sig</span>`);
     const guessTxt = x => !x || !x.best ? "" : x.seen
       // your codex entry on this body names it (a composition scan, the ship's too: the author, 2026-10-23): no guess
-      ? ` <span class="sp seen" title="your codex entry on this body: ${esc(x.variant || x.best)} (a composition scan)">📖 ${dual(colourName(x.variant || x.best), esc(x.best.split(" ").slice(1).join(" ")), {title: false})}` +
+      ? ` <span class="sp seen" title="your codex entry on this body: ${esc(x.variant || x.best)} (a composition scan)"${spPicData("", "", x.variant || x.best)}>📖 ${dual(colourName(x.variant || x.best), esc(x.best.split(" ").slice(1).join(" ")), {title: false})}` +
         // its codex line is merged into the row: its marks with it (💰 a voucher, ✦ new: review 2026-10-23 M3)
         `${(c => c ? (c.voucher ? " 💰" : c.new ? " ✦" : "") + clCam(c.own_pic) : "")(b.codex.find(c => c.name === x.variant))} <span class="unk">${credits(x.value * f)}</span></span>`
-      : ` <span class="unk" title="likeliest by value: ${esc(x.species.join(" / ") + historyTip(x))}">(${esc(x.best.split(" ").slice(1).join(" "))}? ${credits(x.value * f)})</span>` + codexMark(x, h.region);
+      : ` <span class="unk" title="likeliest by value: ${esc(x.species.join(" / ") + historyTip(x))}"${spPicData("", "", x.best)}>(${esc(x.best.split(" ").slice(1).join(" "))}? ${credits(x.value * f)})</span>` + codexMark(x, h.region);
     // S23: the species commanders' uploads reported to Spansh here, with the colour they reported: facts, beside the guess
     const rep = b.reported || [], repShown = new Set();
     const repTxt = g => rep.filter(x => g === null ? !repShown.has(x) : x.genus === g).map(x => { repShown.add(x);
@@ -5576,12 +5618,13 @@ function renderHere() {
       if (o && o.done && !o.lost) {
         const c = codexOf(o), name = c ? c.name : o.variant || o.species || g;
         if (c) merged.add(c);
-        bio.push(`<span class="sp done" title="${c ? `codex: ${esc(name)} · analysed` : `${esc(name)}: analysed (no codex entry on this body)`}${colonyM(g) ? ` · samples ${colonyM(g)} m apart` : ""}">` +
+        bio.push(`<span class="sp done" title="${c ? `codex: ${esc(name)} · analysed` : `${esc(name)}: analysed (no codex entry on this body)`}${colonyM(g) ? ` · samples ${colonyM(g)} m apart` : ""}"` +
+                 `${spPicData(o.code, o.variant_code || (c && c.code), name !== g ? name : "")}>` +
                  `${c ? "📖" : "✓"} ${dual(colourName(name), esc(g), {title: false})}${c ? (c.voucher ? " 💰" : c.new ? " ✦" : "") : ""}${clCam(o.own_pic || (c && c.own_pic))}` +
                  `${o.value ? ` <span class="unk">${credits(o.value * f)}</span>` : ""}</span>`);
         continue;
       }
-      bio.push(o ? `<span class="sp ${o.lost ? "lost" : o.done ? "done" : "part"}" title="${esc(o.species || "")}${o.variant ? " · " + esc(o.variant) : ""}${o.lost ? " · lost with the ship, sample again" : ""}${colonyM(g) ? ` · samples ${colonyM(g)} m apart` : ""}">${esc(g)} ${o.lost ? "lost ✗" : `${o.samples}/3${o.done ? " ✓" : ""}`}${!o.lost && o.value ? ` <span class="unk">${credits(o.value * f)}</span>` : ""}${clCam(o.own_pic)}</span>` +
+      bio.push(o ? `<span class="sp ${o.lost ? "lost" : o.done ? "done" : "part"}" title="${esc(o.species || "")}${o.variant ? " · " + esc(o.variant) : ""}${o.lost ? " · lost with the ship, sample again" : ""}${colonyM(g) ? ` · samples ${colonyM(g)} m apart` : ""}"${spPicData(o.code, o.variant_code, o.variant || o.species)}>${esc(g)} ${o.lost ? "lost ✗" : `${o.samples}/3${o.done ? " ✓" : ""}`}${!o.lost && o.value ? ` <span class="unk">${credits(o.value * f)}</span>` : ""}${clCam(o.own_pic)}</span>` +
                    // a run under way prices the species you logged (known from its first sample), like the pop-up and
                    // the panel; the predictor's guess is only for a lost run or one whose species has no price
                    (o.lost || (!o.done && !o.value) ? guessTxt(guessOf(g)) : "") + repTxt(g)
@@ -6178,7 +6221,7 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
     for (const g of bioGenera(row)) {
       const o = (row.organics || []).find(o => o.genus === g), x = (row.bio_guess || []).find(x => x.genus === g);
       const priced = o && !o.lost && o.value;   // the species is known from its first sample on
-      lines.push(`<li><span>${esc(g)}${colonyTxt(g)}${o ? ` · ${esc(o.species || "")}${o.variant ? " (" + esc(o.variant) + ")" : ""} ${o.lost ? "lost with the ship ✗" : `${o.samples}/3${o.done ? " ✓" : ""}`}` : x ? ` · could be ${esc(x.species.join(" / "))}${x.best && (x.variants || []).length ? ` <span class="unk" title="expected colour variant of the likeliest species">(${esc(x.variants.join(" or "))})</span>` : ""}` : ""}</span>` +
+      lines.push(`<li><span>${esc(g)}${colonyTxt(g)}${o ? ` · <span${spPicData(o.code, o.variant_code, o.variant || o.species)}>${esc(o.species || "")}${o.variant ? " (" + esc(o.variant) + ")" : ""}</span> ${o.lost ? "lost with the ship ✗" : `${o.samples}/3${o.done ? " ✓" : ""}`}` : x ? ` · could be ${esc(x.species.join(" / "))}${x.best && (x.variants || []).length ? ` <span class="unk" title="expected colour variant of the likeliest species">(${esc(x.variants.join(" or "))})</span>` : ""}` : ""}</span>` +
                  `<b>${priced ? credits(o.value * f) : x && x.value ? "≤" + credits(x.value * f) : ""}</b></li>`);
     }
     const unk = bioUnknown(row);   // signals no genus above accounts for, and what they could be
@@ -6186,7 +6229,7 @@ function renderBodyInto(panel, d, bodyName, closeJs, sys = null) {
       lines.push(`<li><span class="unk">${unk.label}${unk.opt ? `: ${optLabel(unk.n, unk.opt, f)}; the DSS tells which` : ""}</span></li>`);
       lines.push(...unk.list.map(x => `<li><span>${esc(x.genus)} possible: ${esc(x.species.join(" / "))}${codexMark(x)}</span><b>≤${credits((x.value || 0) * f)}</b></li>`));
     }
-    for (const c of row.codex || []) lines.push(`<li><span>📖 ${esc(c.name)}${bioforgeLink(c.entry_id)}</span><b>${c.voucher ? "voucher " + c.voucher.toLocaleString() + " cr" : c.new ? "new to your codex" : ""}</b></li>`);
+    for (const c of row.codex || []) lines.push(`<li><span>📖 <span${c.entry_id ? spPicData("", c.code, c.name) : ""}>${esc(c.name)}</span>${bioforgeLink(c.entry_id)}</span><b>${c.voucher ? "voucher " + c.voucher.toLocaleString() + " cr" : c.new ? "new to your codex" : ""}</b></li>`);
     // why the other genera are not expected here: the rule of each that came closest to passing (BioScan's log)
     const ro = row.ruled_out || [];
     const why = ro.length ? `<details class="ruledout"><summary class="unk">Why not the other ${ro.length} genera</summary><ul>` +
@@ -8038,8 +8081,11 @@ function renderHistory() {
       <td class="num">${a.firsts.toLocaleString()}</td><td class="num hide-sm c2hide">${a.bodies_first.toLocaleString()}</td><td class="num">${a.mapped.toLocaleString()}</td>
       <td class="num hide-sm">${a.footfalls.toLocaleString()}</td><td class="num">${a.samples.toLocaleString()}</td>${soldCell(a.sold)}<td class="num hide-sm c2hide">${a.codex_new.toLocaleString()}</td></tr>`;
   const L = h.ledger || {}, ss = L.since_last_sale, car = L.career;
+  // S17: the trip 📋's records, at hand before the click (asked when they moved; after a failure, a minute later)
+  if (ss && ss.since && !(REC.failed && Date.now() - REC.failed < 60000)) loadRecords(true);
   if (ss && ss.since) document.getElementById("histAll").insertAdjacentHTML("beforeend",
-    `<tr class="alltime sincesale" title="everything since your last sale to Universal Cartographics"><td><b>${dual("Since your last sale", "Since sale")}</b> <span class="unk">${ss.days} d<span class="c1hide"> · ${esc(ss.since.slice(0, 10))}</span></span>${diedHtml(ss)}</td>
+    `<tr class="alltime sincesale" title="everything since your last sale to Universal Cartographics"><td><b>${dual("Since your last sale", "Since sale")}</b> <span class="unk">${ss.days} d<span class="c1hide"> · ${esc(ss.since.slice(0, 10))}</span></span>${diedHtml(ss)}` +
+      ` <button type="button" class="mini" id="tripCopyMd" title="copy a short summary of this trip in Markdown, for Reddit or Discord">📋</button></td>
       <td class="num">${ss.jumps.toLocaleString()}</td><td class="num">${Math.round(ss.ly).toLocaleString()}</td><td class="num hide-sm c2hide">${ss.max_sol.toLocaleString()}</td>
       <td class="num">${ss.firsts}</td><td class="num hide-sm c2hide">${ss.bodies_first}</td><td class="num">${ss.mapped}</td>
       <td class="num hide-sm">${ss.footfalls}</td><td class="num">${ss.samples}</td>${soldCell(ss.sold, "since your last sale to Universal Cartographics: what Vista Genomics paid")}<td class="num hide-sm c2hide">${ss.codex_new}</td></tr>`);
@@ -10511,6 +10557,8 @@ document.addEventListener("mousemove", e => {
   if (e.target === mapCanvas) return;  // the map draws its own hover
   if (e.target.closest && e.target.closest("#pop")) return;   // inside the card (only the tablet's takes the pointer)
   lastPointer = {x: e.clientX, y: e.clientY};
+  // a species' picture (S20: Here's species inside a body's row): the body's pop-up gives way to it
+  if (e.target.closest && e.target.closest("[data-sppic]") && mouseHover()) return popId !== null && hidePop();
   const td = e.target.closest("[data-minepop], [data-rescanpop], [data-pop], [data-bm], [data-unsold], [data-bodypop], [data-sbodypop]");
   td ? showPop(td, e.clientX, e.clientY) : popId !== null && hidePop();
 });
@@ -10518,7 +10566,8 @@ function refreshPop() {
   // render() has just rebuilt the DOM: re-resolve whatever the pointer is over.
   if (popId === null || popId === "map" || !lastPointer) return;
   const el = document.elementFromPoint(lastPointer.x, lastPointer.y);
-  const td = el && el.closest && el.closest("[data-minepop], [data-rescanpop], [data-pop], [data-bm], [data-unsold], [data-bodypop], [data-sbodypop]");
+  const td = el && el.closest && !(el.closest("[data-sppic]") && mouseHover()) &&
+    el.closest("[data-minepop], [data-rescanpop], [data-pop], [data-bm], [data-unsold], [data-bodypop], [data-sbodypop]");
   td ? showPop(td, lastPointer.x, lastPointer.y) : hidePop();
 }
 document.addEventListener("mouseleave", hidePop);
