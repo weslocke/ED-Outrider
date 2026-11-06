@@ -75,6 +75,24 @@ class TickGuards(unittest.TestCase):
         self.assertEqual(ed_outrider.meta_get(self.db, "probe"), 2)
         self.assertIn("carrier_trip_follow", self.state.tail_error)
 
+    def test_a_slow_commit_is_said_once(self):
+        """Round 10's S10: a tick's commit that waited over COMMIT_SLOW_S is said in the log (the database busy), once
+        per start; a quick one says nothing."""
+        clock = iter([0.0, 0.1, 10.0, 10.3, 20.0, 21.0])   # 0.1 s, then 0.3 s, then 1 s
+
+        def tick():
+            out = io.StringIO()
+            with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", []), contextlib.redirect_stderr(out), \
+                    unittest.mock.patch.object(self.state, "maybe_unsold", lambda: None):
+                self.state.tick({})
+            return out.getvalue()
+        self.state.commit_clock = lambda: next(clock)
+        said = [tick() for _ in range(3)]
+        self.assertNotIn("waited", said[0])
+        self.assertIn("waited 0.30 s", said[1])
+        self.assertIn("the database file was busy", said[1])
+        self.assertNotIn("waited", said[2])
+
     def test_watch_survives_an_error_out_of_tick(self):
         """S4-S5: an error raised by tick() itself (its own handler failing) ended watch(), silently."""
         calls = []

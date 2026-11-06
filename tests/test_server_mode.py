@@ -659,6 +659,19 @@ class StartUp(unittest.TestCase):
                                                      "outrider-other-20261004-120000Z.zip.part"])
         self.assertEqual(ed_outrider.sweep_backup_leftovers("/nonexistent/backups"), [])
 
+    def test_a_killed_copys_journal_files_swept(self):
+        """Round 10's S10: SQLite's companions of the backup's copy (-journal, -wal, -shm), left when the backup was
+        killed while writing it, were never removed; another database's stay."""
+        with tempfile.TemporaryDirectory() as d:
+            ours = [".db-outrider-ed_outrider-20261004-120000Z.sqlite" + x for x in ("", "-journal", "-wal", "-shm")]
+            theirs = [".db-outrider-other-20261004-120000Z.sqlite-journal", ".db-outrider-ed_outrider-20261004-120000Z.sqlite-x"]
+            for name in ours + theirs:
+                open(os.path.join(d, name), "w").close()
+            with contextlib.redirect_stdout(io.StringIO()):
+                removed = ed_outrider.sweep_backup_leftovers(d, "/somewhere/ed_outrider.sqlite")
+            self.assertEqual(sorted(removed), sorted(ours))
+            self.assertEqual(sorted(os.listdir(d)), sorted(theirs))
+
 
 class CertifiWeekly(unittest.TestCase):
     """The launchers upgrade certifi once a week (the author, 2026-10-14): pip never upgrades an installed certifi that

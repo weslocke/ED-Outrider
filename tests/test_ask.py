@@ -816,3 +816,46 @@ class KnownQuestions(unittest.TestCase):
         said = ask.known_questions()
         for label in ask.LABELS.values():
             self.assertIn(label, said)
+
+
+class PhraseCorpus(unittest.TestCase):
+    """Round 10's S23 (d): the voice's phrase corpus, tests/fixtures/ask_phrases.json (positives, questions that ask
+    nothing, the clashes past reviews found), each a subTest; and every spoken "Ask {member} for X" line names an X the
+    voice answers (one said "a bloody station", which asked nothing)."""
+
+    def test_the_corpus(self):
+        with open(os.path.join(os.path.dirname(__file__), "fixtures", "ask_phrases.json"), encoding="utf-8") as f:
+            corpus = json.load(f)
+        ph = ask.load_phrases()
+        cases = [(t, c) for t, c in corpus["positives"]] + [(t, None) for t in corpus["negatives"]] \
+            + [(t, c) for t, c, _why in corpus["clashes"]]
+        self.assertGreater(len(cases), 60)
+        for c in {c for _, c in cases} - {None}:
+            self.assertIn(c, ask.COMMANDS)
+        for text, want in cases:
+            with self.subTest(text=text):
+                self.assertEqual(ask.match(text, ph), want)
+
+    def test_every_ask_for_line_routes(self):
+        root = os.path.join(os.path.dirname(ed_outrider.__file__), "resources")
+        files = [os.path.join(root, "speech.json")] + sorted(
+            os.path.join(root, "personalities", n) for n in os.listdir(os.path.join(root, "personalities")) if n.endswith(".json"))
+        said = []
+
+        def walk(x):
+            if isinstance(x, str):
+                said.extend(re.findall(r"\bAsk \{\w+\} for ([^.!?]+)", x, re.I))
+            elif isinstance(x, dict):
+                for v in x.values():
+                    walk(v)
+            elif isinstance(x, list):
+                for v in x:
+                    walk(v)
+        for path in files:
+            with open(path, encoding="utf-8") as f:
+                walk(json.load(f))
+        self.assertGreaterEqual(len(said), 3)
+        ph = ask.load_phrases()
+        for x in said:
+            with self.subTest(asked=x):
+                self.assertIsNotNone(ask.match(x, ph))

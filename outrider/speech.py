@@ -738,7 +738,7 @@ ROW_KEYS = {
     "autotarget": ("autotarget_nothing",), "wrongtarget": ("wrong_target",),
     "find": ("find_body", "find_bio", "mapped_before", "sample_clear"), "jumponium": ("jumponium",),
     "sampling": ("bio_done_last", "bio_done_more", "bio_tag_near", "left_body"), "approach": ("high_g",),
-    "bodybrief": ("body_brief",), "docking": ("docking_granted", "docking_denied"), "sell": ("docked_sell", "sold", "undocked_unsold"), "saleleft": ("sale_left",),
+    "bodybrief": ("body_brief",), "docking": ("docking_granted", "docking_denied"), "sell": ("docked_sell", "sold", "undocked_unsold", "unsold_urgent"), "saleleft": ("sale_left",),
     "unsold": ("unsold_warn", "unsold_urgent"), "firstsseen": ("firsts_seen",), "hull": ("hull", "heat", "interdicted"),
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),

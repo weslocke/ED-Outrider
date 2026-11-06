@@ -12,20 +12,8 @@ if (!optsFile) {
 }
 const repo = path.resolve(__dirname, "..");
 const mods = process.argv[3] || path.join(repo, "node_modules");
-const {JSDOM} = require(path.resolve(mods, "jsdom"));
-const pageJs = fs.readFileSync(path.join(repo, "static", "page.js"), "utf8");
-const html = fs.readFileSync(path.join(repo, "static", "page.html"), "utf8")
-  .replace(/<script src="static\/page\.js[^"]*"><\/script>/, () => `<script>${pageJs}</script>`)
-  .replace("/*SEARCH_OPTIONS*/null", () => fs.readFileSync(optsFile, "utf8").trim());
-const errors = [];
-const dom = new JSDOM(html, {url: "http://127.0.0.1:9/", runScripts: "dangerously", pretendToBeVisual: true,
-  beforeParse(w) {
-    w.fetch = () => new Promise(() => {});   // no server: nothing ever answers
-    w.HTMLCanvasElement.prototype.getContext = () => null;
-    w.scrollBy = () => {};
-    w.addEventListener("error", e => errors.push(`${e.message} (page.js line ${e.lineno})`));
-  }});
-const w = dom.window;
+const {loadPage} = require("./page_load.js");   // the page from disk in jsdom: shared with tests/page_consts.js
+const {w, errors, pageJs} = loadPage(fs.readFileSync(optsFile, "utf8"), mods);
 let ok = 0, failed = 0;
 const t = (name, fn) => {
   try { fn(); ok++; console.log("OK |", name); }
@@ -322,6 +310,63 @@ t("cmShipsHtml: a session's Ship, start → end from three ships (#23)", () =>
 t("settingsUnsaved: a fresh page has nothing unsaved (round 10's S1), and Done would close Settings", () => {
   eq(`settingsUnsaved().map(x => x.key)`, []);
   eq(`[settingsHold(), Object.keys(UNSAVED_SECS)]`, [false, ["honk", "autotarget", "screenshots", "uploads", "server"]]);
+});
+// round 10's S23 (b): the alert rows' lists in step. A call's argument text, its parentheses balanced (strings and
+// templates skipped), from the "(" at `at`; and a call's first argument
+function callText(src, at) {
+  let depth = 0, q = null;
+  for (let i = at; i < src.length; i++) {
+    const c = src[i];
+    if (q) { if (c === "\\") i++; else if (c === q) q = null; continue; }
+    if (c === '"' || c === "'" || c === "`") q = c;
+    else if (c === "/" && src[i + 1] === "/") i = src.indexOf("\n", i);
+    else if (c === "(") depth++;
+    else if (c === ")" && !--depth) return src.slice(at, i + 1);
+  }
+  return "";
+}
+function firstArg(call) {
+  let depth = 0, q = null;
+  for (let i = 1; i < call.length; i++) {
+    const c = call[i];
+    if (q) { if (c === "\\") i++; else if (c === q) q = null; continue; }
+    if (c === '"' || c === "'" || c === "`") q = c;
+    else if ("([{".includes(c)) depth++;
+    else if (")]}".includes(c) && !depth--) return call.slice(1, i);
+    else if (c === "," && !depth) return call.slice(1, i);
+  }
+  return call.slice(1);
+}
+t("alert rows in step: ALERTS, ALERT_NAMES, ALERT_SHORT, ROW_WORDS; each row under a heading; each line() an alertOut says is in its ROW_KEYS", () => {
+  const val = src => JSON.parse(JSON.stringify(ev(src)));   // node's own arrays and objects (deepStrictEqual checks the realm)
+  const rows = val("ALERTS.map(a => a[0])"), sorted = xs => [...xs].sort();
+  assert.strictEqual(new Set(rows).size, rows.length, "a row twice in ALERTS");
+  assert.deepStrictEqual(sorted(val("Object.keys(ALERT_NAMES)")), sorted(rows), "ALERT_NAMES");
+  assert.deepStrictEqual(sorted(val("Object.keys(ROW_WORDS)")), sorted(rows), "ROW_WORDS");
+  // the tally's names: every row's own, plus the kinds with no row (signals, asked for)
+  for (const r of rows) assert.strictEqual(ev(`ALERT_SHORT[${JSON.stringify(r)}]`), ev(`ALERT_NAMES[${JSON.stringify(r)}]`), `ALERT_SHORT ${r}`);
+  // a heading starts each group at its first row: the first row has one, and every heading is at a row
+  const groups = val("Object.keys(ALERT_GROUPS)");
+  assert.ok(groups.includes(rows[0]), `${rows[0]} sits under no ALERT_GROUPS heading`);
+  assert.deepStrictEqual(groups.filter(g => !rows.includes(g)), [], "an ALERT_GROUPS heading at no row");
+  const keys = val("ROW_KEYS");
+  assert.deepStrictEqual(Object.keys(keys).filter(k => !rows.includes(k)), [], "a ROW_KEYS row not in ALERTS");
+  // each line("key") said inside an alertOut("row", ...) is one of ROW_KEYS[row] (its keys in the line's first argument,
+  // a comparison's word left out: line(lvl === "urgent" ? "unsold_urgent" : "unsold_warn")); a row may say plain words
+  const wrong = [];
+  let calls = 0;
+  for (const m of pageJs.matchAll(/\balertOut\(\s*"(\w+)"/g)) {
+    calls++;
+    const call = callText(pageJs, m.index + "alertOut".length);
+    assert.ok(rows.includes(m[1]), `alertOut("${m[1]}"): not a row of ALERTS`);
+    for (const l of call.matchAll(/\bline\(/g)) {
+      const arg = firstArg(callText(call, l.index + "line".length)).replace(/[=!]==?\s*"\w+"/g, "");
+      for (const [, k] of arg.matchAll(/"(\w+)"/g))
+        if (!(keys[m[1]] || []).includes(k)) wrong.push(`${m[1]}: ${k} (page.js line ${pageJs.slice(0, m.index).split("\n").length})`);
+    }
+  }
+  assert.ok(calls > 60, `only ${calls} alertOut("row", ...) calls found: the reading of page.js broke`);
+  assert.deepStrictEqual(wrong, [], "said by a row whose ROW_KEYS lacks it");
 });
 (async () => {
   for (const [name, fn] of later) {

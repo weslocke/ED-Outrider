@@ -9,6 +9,7 @@ import unittest
 import unittest.mock
 
 from support import _HwSession, hwy_jump, hwy_ts, types_ns  # also puts the repository root on sys.path
+from page_consts import consts  # noqa: E402
 import ed_outrider  # noqa: E402
 import outrider.riches as riches  # noqa: E402
 
@@ -608,20 +609,15 @@ class SurveyKinds(unittest.TestCase):
     jump = hwy_jump
 
     def test_page_table_in_step(self):
-        """page.js SURVEY holds every kind, one line each, with the table's glyph, name, what, a, work and left; each
-        kind's alert is a row of the page's alerts table."""
-        import os
-        import re
-        with open(os.path.join(os.path.dirname(__file__), "..", "static", "page.js"), encoding="utf-8") as f:
-            page = f.read()
-        block = page[page.index("const SURVEY = {"):page.index("const surveyOf")]
-        self.assertEqual(re.findall(r"^  (\w+): \{glyph", block, re.M), list(riches.SURVEY_KINDS))
-        js = lambda v: "null" if v is None else '"' + v + '"'
+        """page.js SURVEY holds every kind, in the table's order, with its glyph, name, what, a, work and left (read
+        through tests/page_consts.py); each kind's alert is a row of the page's alerts table."""
+        survey, alerts = consts("SURVEY", "ALERTS")
+        self.assertEqual(list(survey), list(riches.SURVEY_KINDS))
         for key, k in riches.SURVEY_KINDS.items():
-            want = (f'  {key}: {{glyph: "{k.glyph}", name: "{k.name}", what: "{k.what}", a: "{k.a}", work: {js(k.work)}, '
-                    f'left: [{", ".join(js(x) for x in k.left)}]')
-            self.assertIn(want, block, key)
-            self.assertIn(f'["{k.alert}", "', page[page.index("const ALERTS"):], key)
+            got = {f: survey[key].get(f) for f in ("glyph", "name", "what", "a", "work", "left")}
+            self.assertEqual(got, {"glyph": k.glyph, "name": k.name, "what": k.what, "a": k.a, "work": k.work,
+                                   "left": list(k.left)}, key)
+            self.assertIn(k.alert, [a[0] for a in alerts], key)
             self.assertTrue(hasattr(ed_outrider, k.url), k.url)
         self.assertEqual([riches.left_words(k, n) for k, n in (("riches", 1), ("elw", 2), ("exo", 3), ("trade", 1))],
                          ["1 body to do here", "2 bodies to do here", "3 species to sample here", "1 trade to make here"])

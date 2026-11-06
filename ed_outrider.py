@@ -432,6 +432,7 @@ NAVROUTE_LATE_S = 60
 CARRIER_RETRY_S = 600      # s: a carrier system Spansh could not place is looked up again after this
 RUN_ID = int(time.time())  # identifies this server process to the page
 STARTED = time.monotonic() # when this process started: a restart in Docker waits RESTART_MIN_UPTIME_S from here
+COMMIT_SLOW_S = 0.25      # s: a tick's commit that waited longer is said in the log, once per start (round 10's S10)
 
 # 3D map: how far out it can look, and how many Spansh pages (of 500 systems) it will fetch.
 # Spansh returns at most 10,000 systems per search; near the bubble each page is several MB.
@@ -2378,6 +2379,15 @@ DELETE FROM meta WHERE key IN ('ship', 'carrier', 'squadron_carrier', 'fuel_hist
                                'last_session', 'cargo', 'game_load', 'commanders_seen');
 DELETE FROM meta WHERE key LIKE 'legacy:%' OR key IN ('pos', 'prev', 'jump_range', 'state_ts');
 """
+# Round 10's S23: every table the schema makes is in exactly one of RESET_JOURNAL_DATA's DELETE FROMs (journal-derived,
+# rebuilt by a re-read; meta is there by its keys) and this set (kept through a re-read: a cache, your own marks, what
+# the live game alone says). tests/test_in_step.py fails on a new table in neither or in both.
+LIVE_ONLY_TABLES = frozenset({
+    "arrival_verdicts", "bio_spots", "bio_tags", "bookmarks", "carrier_counts", "carrier_markets", "edsm_log",
+    "firsts_watch", "geo_tags", "highway_route", "mining_hotspot_drops", "mining_locations", "riches_bodies",
+    "riches_route", "riches_species", "route_systems", "sale_estimates", "sample_points", "screenshots",
+    "spansh_reported", "spansh_systems", "star_classes", "surface_pins", "surface_rigs", "surface_sites", "trade_stops",
+    "upload_queue"})
 
 
 def filter_message(old, new):
@@ -8283,11 +8293,14 @@ class Spansh:
     def cached(self, id64):
         return cached_base(self.db, id64)
 
-    def store(self, id64, updated_at, base):
+    def store(self, id64, updated_at, base, commit=True):
+        """`commit=False`: the caller commits (round 10's S10: a sphere's landing loop, one commit for all its systems
+        instead of one each; never across an await, where a failed tick's rollback would take the row)."""
         self.db.execute("INSERT OR REPLACE INTO spansh_systems (id64, updated_at, summary, fetched_ts, x, y, z)"
                         " VALUES (?, ?, ?, ?, ?, ?, ?)",
                         (id64, updated_at, json.dumps(base), time.time(), base["x"], base["y"], base["z"]))
-        self.db.commit()
+        if commit:
+            self.db.commit()
 
     async def lookup(self, id64, interactive=True):
         """The full Spansh record for one system, or None if Spansh has never heard of it."""
@@ -9095,6 +9108,8 @@ class State:
         self._surface_told = False   # whether the page was last told the surface map shows (a flip either way wakes it)
         self._follow_up_seen = set()   # tick follow-up errors already printed (each traceback once)
         self._tick_seen = set()   # S18: a failed tick's errors already printed, until a tick really writes again
+        self.commit_clock = time.monotonic   # round 10's S10: times the tick's commit (tests give a fake one)
+        self._commit_slow_said = False       # S10: the slow-commit line, once per start
         self._db_write_said = None   # S18: the db_write card's kind while it shows (its free space is not redone each tick)
         self._rig_leash = {}
         self._suit_low = set()   # S9-S7: the suit's low bits at the last look (a rise is said once)
@@ -15856,8 +15871,9 @@ class State:
                 if cached and not cached.get("no_dump") and len(cached.get("records") or []) >= len(base["records"]):
                     base = cached
             else:
-                self.spansh.store(id64, s.get("updated_at"), base)
+                self.spansh.store(id64, s.get("updated_at"), base, commit=False)   # S10: one commit after the loop
             self.bases[id64] = ("spansh", base)
+        self.db.commit()   # the loop has no await: its rows go in one transaction
 
         # Systems you've been to that Spansh doesn't have (e.g. your own fresh discoveries), and systems from your own
         # route plots that nobody has reported. "unasked": the search failed, or a dense region's answer stopped short
@@ -22008,8 +22024,10 @@ class State:
             # S9-S13: the carrier's upkeep counted down under the warning, committed with the tick's lines (bug check #21:
             # its own commit kept "said" while a rollback dropped what was said)
             self.pre_commit_step("check_upkeep", self.check_upkeep)
+            t0 = self.commit_clock()
             self.db.commit()
             committed = True
+            self.commit_waited(self.commit_clock() - t0)
             # after the commit: its moments (scoop ended, FSS closed early) are live only and it consumes what
             # raised them, so a rollback of this tick must not take them away (the retry could not raise them again)
             # each follow-up on its own: one that keeps raising (a bug, stored state of an unexpected shape) must not
@@ -22074,6 +22092,15 @@ class State:
                 route_mtimes.update(mtimes_before)
             self.tail_error = f"{type(e).__name__}: {e}"
             self.bump()
+
+    def commit_waited(self, waited):
+        """Round 10's S10: a tick's commit that waited over COMMIT_SLOW_S said in the log, once per start: the database
+        file was busy (a backup reading it, another program, a slow or network disk). What it shows decides whether
+        the journal mode should change (WAL); nothing else is done about it."""
+        if waited > COMMIT_SLOW_S and not self._commit_slow_said:
+            self._commit_slow_said = True
+            print(f"database: saving a tick's journal lines waited {waited:.2f} s: the database file was busy (a backup "
+                  "reading it, another program using it, or a slow disk); said once per start", file=sys.stderr)
 
     def db_write_notice(self, e):
         """S18: a database error that means the disk will not take writes (SQLITE_FULL, READONLY, IOERR: db_write_kind)
@@ -26066,16 +26093,18 @@ BACKUP_SHUTDOWN_WAIT = 300   # s a backup running at shutdown (the quit backup) 
 
 def sweep_backup_leftovers(folder, db_path=None):
     """At start (no backup runs yet): remove what a backup killed part way left behind (a .zip.part and its .db-*.sqlite
-    copy), which rotation never touches (review R14). Only this database's (db_path): a backups folder shared with an
-    instance run with another --db may hold its backup in progress right now (the sweep of 2026-10-09). Returns the
-    names removed."""
+    copy with its -journal / -wal / -shm), which rotation never touches (review R14). Only this database's (db_path): a
+    backups folder shared with an instance run with another --db may hold its backup in progress right now (the sweep of
+    2026-10-09). Returns the names removed."""
     removed = []
     try:
         names = os.listdir(folder)
     except OSError:
         return removed
     stem = re.escape(os.path.splitext(os.path.basename(db_path or DB_PATH))[0])
-    mine = re.compile(rf"^(outrider-{stem}-\d{{8}}-\d{{6}}Z{_TAG_RE}\.zip\.part|\.db-outrider-{stem}-\d{{8}}-\d{{6}}Z.*\.sqlite)$")
+    # (the copy's -journal, -wal or -shm too: SQLite's companions of a copy killed while it was written, round 10's S10)
+    mine = re.compile(rf"^(outrider-{stem}-\d{{8}}-\d{{6}}Z{_TAG_RE}\.zip\.part"
+                      rf"|\.db-outrider-{stem}-\d{{8}}-\d{{6}}Z.*\.sqlite(-journal|-wal|-shm)?)$")
     for name in names:
         if mine.match(name):
             try:

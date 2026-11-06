@@ -164,7 +164,7 @@ class StateTests(unittest.TestCase):
         async def nothing(pos, r):
             return []
         self.state.spansh = types.SimpleNamespace(sphere=down, edsm_sphere=nothing, cached=lambda i: (None, None),
-                                                  store=lambda *a: None)
+                                                  store=lambda *a, **k: None)
         self.j.handle({"event": "FSDJump", "timestamp": "2026-10-12T00:00:00Z", "StarSystem": "Here", "SystemAddress": 1,
                        "StarPos": [0, 0, 0]})
         err = io.StringIO()

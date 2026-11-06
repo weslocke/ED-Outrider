@@ -36,7 +36,7 @@ class NearbyAround(unittest.TestCase):
             self.asked.append((pos["name"], r))
             return [{"id64": 500 + i, "name": f"Near {pos['name']} {i}", "x": pos["x"] + i, "y": 0.0, "z": 0.0,
                      "distance": float(i), "bodies": []} for i in (1, 2)]
-        self.spansh = types.SimpleNamespace(sphere=sphere, cached=lambda i: (None, None), store=lambda *a: None,
+        self.spansh = types.SimpleNamespace(sphere=sphere, cached=lambda i: (None, None), store=lambda *a, **k: None,
                                             full_records=None)
         self.state = ed_outrider.State(self.db, self.j, self.spansh, 25)
 

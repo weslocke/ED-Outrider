@@ -13,6 +13,7 @@ import sqlite3
 from support import (  # also puts the repository root on sys.path
     _FakeResponse, guard_status, make_controls, org, scan, user_docs,
 )
+from page_consts import consts  # noqa: E402
 import outrider.bio  # noqa: E402
 import ed_outrider  # noqa: E402
 import outrider.unsold  # noqa: E402
@@ -1006,13 +1007,9 @@ class Batch7Data(unittest.TestCase):
         self.assertIsNone(self.state.last_session())
 
     def test_browser_defaults(self):   # P20: allow-list, size cap, atomic write, inlined into the page
-        import asyncio, re, tempfile
+        import asyncio, tempfile
         from aiohttp.test_utils import TestClient, TestServer
-        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        with open(os.path.join(here, "static", "page.js"), encoding="utf-8") as f:
-            js = f.read()
-        page_keys = re.findall(r'"(\w+)"', js[js.index("const SETTINGS_KEYS = ["):js.index("];", js.index("const SETTINGS_KEYS = ["))])
-        self.assertEqual(page_keys, list(ed_outrider.BROWSER_SETTINGS))       # the page and the server share one list
+        self.assertEqual(consts("SETTINGS_KEYS"), list(ed_outrider.BROWSER_SETTINGS))       # the page and the server share one list
         for per_device in ("view", "overview", "hereModes", "bodySecs", "search", "speakMode", "speechEngine", "browserVoice"):
             self.assertNotIn(per_device, ed_outrider.BROWSER_SETTINGS)
         ok, why = ed_outrider.check_browser_defaults({"version": 1, "settings": {"view": "map"}})

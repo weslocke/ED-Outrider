@@ -13,6 +13,7 @@ import unittest.mock
 from support import (  # also puts the repository root on sys.path
     scan, voice_honk, voice_jump, voice_moments, voice_organic, voice_planet, voice_sampling_body, user_docs,
 )
+from page_consts import consts  # noqa: E402
 import outrider.bio  # noqa: E402
 import ed_outrider  # noqa: E402
 import outrider.unsold  # noqa: E402
@@ -348,7 +349,7 @@ class Speech(unittest.TestCase):
         import re
         used = set(re.findall(r'line\("(\w+)"', js)) | set(re.findall(r'"(unsold_\w+)"', js))
         # the keys a voice answer names for its line (S9-S34's copilot `line`), the page's SERVER_LINE_KEYS
-        used |= set(re.findall(r'"(\w+)"', js[js.index("const SERVER_LINE_KEYS"):].split("\n", 1)[0]))
+        used |= set(consts("SERVER_LINE_KEYS"))
         # every key is spoken by the page (RESERVED would list any with lines written ahead of their trigger); the
         # chatter's by their names (the monologues, the last word) and the topics' asks and answers from the server's list
         chatter = set(outrider.speech.CHATTER_KEYS)
@@ -1293,11 +1294,10 @@ class BatchAAudio(unittest.TestCase):
         with open(os.path.join(root, "ed_outrider.py"), encoding="utf-8") as f:
             py = f.read()
         names = set(outrider.tts.load_sounds()["sounds"])
-        alerts = js[js.index("const ALERTS = "):js.index("const UNSPOKEN")]
-        used = set(re.findall(r', "(\w+)"\]', alerts))                    # the alerts table's sound column
+        alerts, lead = consts("ALERTS", "SOUND_LEAD")
+        used = {a[2] for a in alerts if a[2]}                              # the alerts table's sound column
         used |= set(re.findall(r'\bsound: "(\w+)"', js))                     # alertOut(..., {sound: "upbeat"})
-        lead = re.search(r"const SOUND_LEAD = \{([^}]*)\}", js).group(1)
-        used |= set(re.findall(r"(\w+):", lead))
+        used |= set(lead)
         used |= set(re.findall(r'"(thud|fanfare|upbeat)"', py))              # the target and arrival sounds
         tries = set(re.findall(r'data-try="(\w+)"', html))                   # the ▶ buttons
         self.assertTrue(used, "no sound names found in page.js")
@@ -1990,10 +1990,7 @@ class Speakers(unittest.TestCase):
 class LabInThePage(unittest.TestCase):
     def test_audition_keys_in_step(self):
         """The voice lab's Audition (page.js AUDITION_KEYS, 2026-10-11) is outrider.speech.AUDITION."""
-        import re
-        with open(os.path.join(os.path.dirname(ed_outrider.STATIC_DIR), "static", "page.js"), encoding="utf-8") as f:
-            m = re.search(r"const AUDITION_KEYS = \[([^\]]*)\]", f.read())
-        self.assertEqual(tuple(re.findall(r'"(\w+)"', m.group(1))), outrider.speech.AUDITION)
+        self.assertEqual(tuple(consts("AUDITION_KEYS")), outrider.speech.AUDITION)
         self.assertFalse(os.path.exists(os.path.join(os.path.dirname(ed_outrider.STATIC_DIR), "voice_lab.py")))   # retired
 
 

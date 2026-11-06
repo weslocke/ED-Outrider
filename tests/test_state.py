@@ -2221,7 +2221,7 @@ class BatchBState(unittest.TestCase):
         async def dump(id64, updated, base):
             return base
         self.state.spansh = types.SimpleNamespace(sphere=sphere, edsm_sphere=fail, cached=lambda i: (None, None),
-                                                  store=lambda *a: None, full_records=dump)
+                                                  store=lambda *a, **k: None, full_records=dump)
         real = self.state.row
 
         def row(id64):
@@ -3258,6 +3258,27 @@ class FableServer(unittest.TestCase):
             asyncio.run(self.state._refresh(self.j.pos))
         self.assertEqual((self.state.bases[7][0], self.state.systems[7]["in_spansh"]), ("spansh", True))
         self.assertEqual(self.state.bases[8][0], "edsm")   # an EDSM record stays EDSM's
+
+    def test_a_landing_is_one_commit(self):
+        """Round 10's S10: the sphere's systems with no bodies to fetch were stored with a commit each (a landing in a
+        dense region: hundreds of commits in a row); now one for the whole loop."""
+        import asyncio
+
+        class FakeSpansh(ed_outrider.Spansh):
+            async def sphere(self, pos, r):
+                return [{"id64": 100 + i, "name": f"S{i}", "x": 1, "y": i * 0.1, "z": 0, "updated_at": "u1",
+                         "body_count": 0, "bodies": []} for i in range(30)]
+        self.state.spansh, self.state.center = FakeSpansh(self.db), self.j.pos
+        self.db.commit()
+        sql = []
+        self.db.set_trace_callback(sql.append)
+        try:
+            asyncio.run(self.state._refresh(self.j.pos))
+        finally:
+            self.db.set_trace_callback(None)
+        self.assertEqual(self.db.execute("SELECT count(*) FROM spansh_systems").fetchone()[0], 30)
+        self.assertEqual(sum(1 for q in sql if q.strip().upper() == "COMMIT"), 1)
+        self.assertFalse(self.db.in_transaction)
 
     def test_failed_refetch_keeps_the_cached_dump(self):   # F28
         import asyncio

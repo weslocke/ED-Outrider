@@ -9,6 +9,7 @@ import unittest
 import unittest.mock
 
 from support import ed_outrider  # also puts the repository root on sys.path
+from page_consts import consts
 
 import outrider  # noqa: E402
 import outrider.auth  # noqa: E402
@@ -82,12 +83,9 @@ class Tablet(unittest.TestCase):
         Now) and in exactly one TB.groups list (its group lights up), and TABLET_VIEWS is the nav's order."""
         with open(os.path.join(ed_outrider.STATIC_DIR, "page.html"), encoding="utf-8") as f:
             html = f.read()
-        with open(os.path.join(ed_outrider.STATIC_DIR, "page.js"), encoding="utf-8") as f:
-            js = f.read()
         nav = re.search(r'<nav id="tabNav".*?</nav>', html, re.S).group(0)
         pages = re.findall(r'<button type="button" class="tb-page" data-view="(\w+)"', nav)
-        views = re.findall(r'"(\w+)"', re.search(r"const TABLET_VIEWS = \[(.*?)\];", js).group(1))
-        groups = {g: re.findall(r'"(\w+)"', v) for g, v in re.findall(r'(\w+): \[([^\]]*)\]', re.search(r"groups: \{(.*?)\}", js).group(1))}
+        views, groups = consts("TABLET_VIEWS", "TB.groups")
         self.assertEqual(len(pages), 13)
         self.assertEqual(views, pages)
         for p in pages:
@@ -442,9 +440,7 @@ class Tablet(unittest.TestCase):
                 self.assertTrue("--tb-fill: transparent" in css or
                                 f':root[data-theme="{t}"]:not(.tb-noemblem) .tb-navfill {{ background: transparent;' in css, t)
                 self.assertIn(emblems[t], credits)
-        with open(os.path.join(ed_outrider.STATIC_DIR, "page.js"), encoding="utf-8") as f:   # the page offers the setting for these
-            listed = re.search(r"const TB_EMBLEMS = \[([^\]]*)\]", f.read()).group(1)
-        self.assertEqual(set(re.findall(r'"(\w+)"', listed)), set(emblems))
+        self.assertEqual(set(consts("TB_EMBLEMS")), set(emblems))   # the page offers the setting for these
         for words in ("CC BY-SA 4.0", "Warner Bros", "Lucasfilm", "public domain", "with permission of Frontier Developments plc"):
             self.assertIn(words, credits)
         with open(os.path.join(ed_outrider.STATIC_DIR, "page.html"), encoding="utf-8") as f:
@@ -473,12 +469,8 @@ class Tablet(unittest.TestCase):
         (scripts/build_ship_images.py renders them from Elite Dangerous Almanac's illustrations), small (never the 1-2 MB
         SVGs), credited with Frontier's notice and Almanac's terms, served as images."""
         folder = os.path.join(ed_outrider.STATIC_DIR, "ships")
-        with open(os.path.join(ed_outrider.STATIC_DIR, "page.js"), encoding="utf-8") as f:
-            table = re.search(r"const SHIP_NAMES = \{(.*?)\};", f.read(), re.S).group(1)
-        names = set(re.findall(r"(\w+): \"", table))
+        names, later = (set(x) for x in consts("SHIP_NAMES", "SHIP_NO_PICTURE"))
         self.assertGreaterEqual(len(names), 48)
-        with open(os.path.join(ed_outrider.STATIC_DIR, "page.js"), encoding="utf-8") as f:
-            later = set(re.findall(r'"(\w+)"', re.search(r"const SHIP_NO_PICTURE = new Set\(\[(.*?)\]\)", f.read()).group(1)))
         self.assertLessEqual(later, names)
         names -= later   # no illustration to render yet (the Anaconda Mk II, 2026-10-20)
         pictures = {f[:-len(".webp")] for f in os.listdir(folder) if f.endswith(".webp")}
@@ -515,9 +507,9 @@ class Tablet(unittest.TestCase):
         credited with Frontier's notice, Almanac's MIT notice and the commit, served as SVG, not page code (PAGE_FILES)."""
         commit = "5da3bfca20aba4bb39332628e220ea2acb5dbcd9"   # a newer copy: here and in CREDITS.txt
         folder = os.path.join(ed_outrider.STATIC_DIR, "icons", "elite")
+        markers = consts("MARKERS")
         with open(os.path.join(ed_outrider.STATIC_DIR, "page.js"), encoding="utf-8") as f:
-            js = f.read()
-        markers = re.findall(r'"([a-z-]+)"', re.search(r"^const MARKERS = \[(.*?)\];", js, re.M).group(1))
+            js = f.read()   # where each marker is drawn
         self.assertEqual(sorted(markers), ["destination", "engineer", "fleet-carrier", "mission", "squadron-carrier", "titan", "waypoint"])
         self.assertEqual(sorted(os.listdir(folder)), sorted([f"{m}.svg" for m in markers] + ["CREDITS.txt"]))
         with open(os.path.join(ed_outrider.STATIC_DIR, "page.css"), encoding="utf-8") as f:

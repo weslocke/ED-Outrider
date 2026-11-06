@@ -12326,7 +12326,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   scoop: ["tank_full"], scoopstop: ["scoop_stopped"], supercharge: ["supercharged"], refuelshort: ["fuel_short"], lastscoop: ["fuel_last_scoop"],
   autotarget: ["autotarget_nothing"], wrongtarget: ["wrong_target"], find: ["find_body", "find_bio", "mapped_before", "sample_clear"],
   jumponium: ["jumponium"], sampling: ["bio_done_last", "bio_done_more", "bio_tag_near", "left_body"], approach: ["high_g"],
-  bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
+  bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold", "unsold_urgent"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], upkeep: ["upkeep_low"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
   curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"],

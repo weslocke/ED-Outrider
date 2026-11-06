@@ -11,7 +11,9 @@
 #
 # Needs: pip install -r requirements.txt -r requirements-dev.txt, and npm install (jsdom) in the repo root.
 # Environment: PYTHON (default .venv/bin/python if present, else python3), NODE_MODULES (default ./node_modules),
-# PORT (default: a free one picked at random), VERBOSE=1 (print every smoke line and the server log).
+# PORT (default: a free one picked at random), VERBOSE=1 (print every smoke line and the server log), VERIFY_SERIAL=1
+# (the smoke test after the rest, as with fewer than 4 cores; otherwise it runs in the background beside the unit tests
+# and is reported in its place, after them).
 # ED_JOURNALS is ignored: the scratch server always reads the fixture journals (--journals).
 #
 # Safe by construction: it never reads or writes your own data/ (ed_outrider.sqlite, ...) or ed_outrider.toml, never uses
@@ -58,8 +60,13 @@ if [ -n "${PORT:-}" ]; then
 fi
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/outrider-verify.XXXXXX") || exit 1
-PID=""
+PID=""         # the scratch server, started by this shell itself: never orphaned, whatever stops the run
+SMOKE_JOB=""   # the smoke test running in the background (round 10's S7)
 cleanup() {
+  if [ -n "$SMOKE_JOB" ] && kill -0 "$SMOKE_JOB" 2>/dev/null; then
+    kill "$SMOKE_JOB" 2>/dev/null
+    if [ -s "$TMP/smoke.node" ]; then kill "$(cat "$TMP/smoke.node")" 2>/dev/null; fi
+  fi
   if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
     kill "$PID" 2>/dev/null
     for _ in $(seq 1 50); do kill -0 "$PID" 2>/dev/null || break; sleep 0.2; done
@@ -67,55 +74,23 @@ cleanup() {
   fi
   rm -rf "$TMP"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+# Ctrl-C or a kill ends the run (the EXIT trap cleans up), never going on to the next step without its server
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
-if [ -z "$PARTIAL" ]; then
-step "unit tests ($PY)"
-# ResourceWarnings shown (they are raised in finalizers, so -W error would not fail the run): any in the log fails it
-if "$PY" -W always::ResourceWarning -m unittest discover tests 2>"$TMP/unit.log"; then tail -3 "$TMP/unit.log"; else tail -40 "$TMP/unit.log"; FAIL=1; fi
-if grep -q "ResourceWarning" "$TMP/unit.log"; then
-  echo "the tests leak resources (close every database and file a test opens):"; grep -m 10 -A1 "ResourceWarning" "$TMP/unit.log"; FAIL=1
-fi
+# The smoke test in the background beside the unit tests, lint and page unit tests (round 10's S7), unless the machine
+# has fewer than 4 cores, VERIFY_SERIAL=1 or a partial --smoke run: then after them, as before. Either way its section
+# is printed in the same place, after the page unit tests.
+SMOKE_BG=""
+if [ -z "$PARTIAL" ] && [ "${VERIFY_SERIAL:-}" != 1 ] && [ "$(nproc 2>/dev/null || echo 1)" -ge 4 ]; then SMOKE_BG=1; fi
+SMOKE_SKIP=""   # why the smoke test cannot run, said in its section
 
-step "pyflakes (any warning fails)"
-if "$PY" -m pyflakes --version >/dev/null 2>&1; then
-  if "$PY" -m pyflakes ed_outrider.py outrider/*.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
-elif command -v pyflakes >/dev/null 2>&1; then
-  if pyflakes ed_outrider.py outrider/*.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
-else
-  echo "pyflakes not installed (pip install -r requirements-dev.txt)"; FAIL=1
-fi
-fi
-
-step "node --check static/page.js"
-if ! command -v node >/dev/null 2>&1; then echo "node not found (Node.js 22 or newer is needed)"; FAIL=1
-elif node --check static/page.js; then echo "ok"; else FAIL=1; fi
-
-step "page unit tests (page.js's own functions, jsdom from disk, no server)"
-if ! command -v node >/dev/null 2>&1; then
-  echo "skipped: no node"
-elif [ ! -d "$MODS/jsdom" ]; then
-  echo "jsdom not found in $MODS: run npm install (or set NODE_MODULES)"; FAIL=1
-elif ! "$PY" -c 'import json, ed_outrider; print(json.dumps(dict(ed_outrider.SEARCH_OPTIONS, mining=[])))' >"$TMP/search_options.json"; then
-  echo "could not write the search options for it"; FAIL=1
-# a fixed locale: numbers are formatted by toLocaleString
-elif LC_ALL=en_US.UTF-8 node tests/page_unit.js "$TMP/search_options.json" "$MODS" >"$TMP/page_unit.log" 2>&1; then
-  tail -1 "$TMP/page_unit.log"
-else
-  grep -v "^OK" "$TMP/page_unit.log" | head -30; FAIL=1
-fi
-
-step "page smoke test on a scratch server"
-if ! command -v node >/dev/null 2>&1; then
-  echo "skipped: no node"
-elif [ ! -d "$MODS/jsdom" ]; then
-  echo "jsdom not found in $MODS: run npm install (or set NODE_MODULES)"; FAIL=1
-else
-  PORT=${PORT:-$("$PY" - <<'EOF'
-import socket
-s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()
-EOF
-)}
+# The scratch server, started by this shell (so $PID is the trap's to stop); SMOKE_SKIP says why it cannot be.
+start_server() {
+  if ! command -v node >/dev/null 2>&1; then SMOKE_SKIP="skipped: no node"; return; fi
+  if [ ! -d "$MODS/jsdom" ]; then SMOKE_SKIP="jsdom not found in $MODS: run npm install (or set NODE_MODULES)"; FAIL=1; return; fi
+  PORT=${PORT:-$("$PY" -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')}
   if [ "$PORT" = 8025 ]; then echo "refusing port 8025 (the default port of a real Outrider)"; exit 1; fi
   mkdir -p "$TMP/journals" "$TMP/backups"
   cp tests/fixtures/journals/* "$TMP/journals/"
@@ -194,7 +169,13 @@ outrider.tts.PRONOUNCE.own = os.path.join(os.path.dirname(sys.argv[sys.argv.inde
 ed_outrider.main(sys.argv[1:])
 EOF
   PID=$!
-  up=0
+}
+
+# Waits for the scratch server, then runs the smoke test; everything it learns goes into files (it may run in a
+# background subshell, whose variables never come back): smoke.up (1 once the server was ready), smoke.log, smoke.rc
+# (the smoke test's exit code), smoke.node (its PID, for the cleanup trap).
+smoke_job() {
+  local up=0
   for _ in $(seq 1 60); do
     if ! kill -0 "$PID" 2>/dev/null; then break; fi
     # ready = the real page is served: while it starts, a starting page answers on the port (S9) and /api/starting
@@ -202,25 +183,81 @@ EOF
     if "$PY" -c "import json,urllib.request,sys; sys.exit(json.load(urllib.request.urlopen('http://127.0.0.1:$PORT/api/starting', timeout=2)).get('phase') != 'ready')" 2>/dev/null; then up=1; break; fi
     sleep 1
   done
-  if [ "$up" != 1 ]; then
-    echo "scratch server did not start:"; tail -30 "$TMP/server.log"; FAIL=1
-  else
-    sleep 2
-    node tests/page_smoke.js "$PORT" "$MODS" >"$TMP/smoke.log" 2>&1
-    smoke_rc=$?
-    if [ -n "${VERBOSE:-}" ]; then cat "$TMP/smoke.log"; else grep -v '^OK' "$TMP/smoke.log"; fi
-    ok=$(grep -c '^OK' "$TMP/smoke.log"); bad=$(grep -c '^FAIL' "$TMP/smoke.log")
-    echo "smoke: $ok OK, $bad FAIL ($(grep -m1 '^ran ' "$TMP/smoke.log" | sed 's/^ran //'))"
-    if [ "$bad" != 0 ] || [ "$ok" = 0 ] || [ "$smoke_rc" != 0 ]; then FAIL=1; fi
-    if [ -n "${VERBOSE:-}" ]; then echo "--- server log"; cat "$TMP/server.log"; fi
-    # SIGTERM (docker stop, systemd) stops it as Ctrl-C does: its cleanup runs and it exits 0
-    kill -TERM "$PID" 2>/dev/null; wait "$PID"; rc=$?; PID=""
-    if [ "$rc" != 0 ] || ! grep -q "stopped cleanly" "$TMP/server.log"; then
-      echo "the scratch server did not stop cleanly on SIGTERM (exit $rc):"; tail -15 "$TMP/server.log"; FAIL=1
-    fi
-    if grep -q "Traceback" "$TMP/server.log"; then
-      echo "server log has a traceback:"; grep -n -A12 "Traceback" "$TMP/server.log" | head -40; FAIL=1
-    fi
+  echo "$up" >"$TMP/smoke.up"
+  if [ "$up" != 1 ]; then return; fi
+  sleep 2
+  node tests/page_smoke.js "$PORT" "$MODS" >"$TMP/smoke.log" 2>&1 &
+  echo $! >"$TMP/smoke.node"
+  wait $!
+  echo $? >"$TMP/smoke.rc"
+}
+
+if [ -n "$SMOKE_BG" ]; then
+  start_server
+  if [ -n "$PID" ]; then smoke_job & SMOKE_JOB=$!; fi
+fi
+
+if [ -z "$PARTIAL" ]; then
+step "unit tests ($PY)"
+# ResourceWarnings shown (they are raised in finalizers, so -W error would not fail the run): any in the log fails it
+if "$PY" -W always::ResourceWarning -m unittest discover tests 2>"$TMP/unit.log"; then tail -3 "$TMP/unit.log"; else tail -40 "$TMP/unit.log"; FAIL=1; fi
+if grep -q "ResourceWarning" "$TMP/unit.log"; then
+  echo "the tests leak resources (close every database and file a test opens):"; grep -m 10 -A1 "ResourceWarning" "$TMP/unit.log"; FAIL=1
+fi
+
+step "pyflakes (any warning fails)"
+if "$PY" -m pyflakes --version >/dev/null 2>&1; then
+  if "$PY" -m pyflakes ed_outrider.py outrider/*.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
+elif command -v pyflakes >/dev/null 2>&1; then
+  if pyflakes ed_outrider.py outrider/*.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
+else
+  echo "pyflakes not installed (pip install -r requirements-dev.txt)"; FAIL=1
+fi
+fi
+
+step "node --check static/page.js"
+if ! command -v node >/dev/null 2>&1; then echo "node not found (Node.js 22 or newer is needed)"; FAIL=1
+elif node --check static/page.js; then echo "ok"; else FAIL=1; fi
+
+step "page unit tests (page.js's own functions, jsdom from disk, no server)"
+if ! command -v node >/dev/null 2>&1; then
+  echo "skipped: no node"
+elif [ ! -d "$MODS/jsdom" ]; then
+  echo "jsdom not found in $MODS: run npm install (or set NODE_MODULES)"; FAIL=1
+elif ! "$PY" -c 'import json, ed_outrider; print(json.dumps(dict(ed_outrider.SEARCH_OPTIONS, mining=[])))' >"$TMP/search_options.json"; then
+  echo "could not write the search options for it"; FAIL=1
+# a fixed locale: numbers are formatted by toLocaleString
+elif LC_ALL=en_US.UTF-8 node tests/page_unit.js "$TMP/search_options.json" "$MODS" >"$TMP/page_unit.log" 2>&1; then
+  tail -1 "$TMP/page_unit.log"
+else
+  grep -v "^OK" "$TMP/page_unit.log" | head -30; FAIL=1
+fi
+
+step "page smoke test on a scratch server"
+if [ -n "$SMOKE_BG" ]; then
+  if [ -n "$SMOKE_JOB" ]; then wait "$SMOKE_JOB"; SMOKE_JOB=""; fi
+else
+  start_server
+  if [ -n "$PID" ]; then smoke_job; fi
+fi
+if [ -n "$SMOKE_SKIP" ]; then
+  echo "$SMOKE_SKIP"
+elif [ "$(cat "$TMP/smoke.up" 2>/dev/null)" != 1 ]; then
+  echo "scratch server did not start:"; tail -30 "$TMP/server.log"; FAIL=1
+else
+  smoke_rc=$(cat "$TMP/smoke.rc" 2>/dev/null || echo "none")   # the exit code, through its file
+  if [ -n "${VERBOSE:-}" ]; then cat "$TMP/smoke.log"; else grep -v '^OK' "$TMP/smoke.log"; fi
+  ok=$(grep -c '^OK' "$TMP/smoke.log"); bad=$(grep -c '^FAIL' "$TMP/smoke.log")
+  echo "smoke: $ok OK, $bad FAIL ($(grep -m1 '^ran ' "$TMP/smoke.log" | sed 's/^ran //'))"
+  if [ "$bad" != 0 ] || [ "$ok" = 0 ] || [ "$smoke_rc" != 0 ]; then FAIL=1; fi
+  if [ -n "${VERBOSE:-}" ]; then echo "--- server log"; cat "$TMP/server.log"; fi
+  # SIGTERM (docker stop, systemd) stops it as Ctrl-C does: its cleanup runs and it exits 0
+  kill -TERM "$PID" 2>/dev/null; wait "$PID"; rc=$?; PID=""
+  if [ "$rc" != 0 ] || ! grep -q "stopped cleanly" "$TMP/server.log"; then
+    echo "the scratch server did not stop cleanly on SIGTERM (exit $rc):"; tail -15 "$TMP/server.log"; FAIL=1
+  fi
+  if grep -q "Traceback" "$TMP/server.log"; then
+    echo "server log has a traceback:"; grep -n -A12 "Traceback" "$TMP/server.log" | head -40; FAIL=1
   fi
 fi
 

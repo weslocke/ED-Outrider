@@ -27,7 +27,7 @@ rules that keep the journal data, the page and the voice consistent. See also `J
 | File | What it holds |
 |---|---|
 | `outrider/__init__.py` | `ROOT` (the repository), `RESOURCES_DIR` (`resources/`), `DATA_DIR` (`data/`): every default path starts from these; `read_toml(path)`, a TOML file read as the server reads its config (a BOM dropped: the launchers' overlay step, the MCP bridge, the overlay window, honk's and target's CLIs). Modules with a CLI run as `python3 -m outrider.<name>` from the repository root |
-| `ed_outrider.py` | Almost everything: config (`settings_from`, `config_text`), the schema (`SCHEMA`, `RESET_JOURNAL_DATA`, `open_db`), the journal reader (`class Journals`), Spansh/EDSM (`class Spansh`), the live state and every summary the page shows (`class State`), Search (`class Searcher`), backups (`write_backup`: the zip, the journal archive and the rotation, for `State.make_backup` and for `backup_before_reread`: a `-pre-reread` zip before every journal re-read, whatever `backup_every_days` says, S4; run() opens with `open_db(reset=False)`, asks `reread_due`, commits, works out `journals_gone(db, dirs)` on the loop's thread (a stored journal is gone only when neither at its path nor under its name, its time, in the folders the re-read reads: issue #16, a folder reached by another path), runs `backup_before_reread(None, ...)` on a worker (a stop meanwhile says what happens next: `reread_stop_words`), then `reset_journal_data` (tests/test_starting.py covers that path); open_db's `before_reset` is only the one-step open tests/test_backups.py uses; `db_lock`/`db_in_use`: `<db>.lock`, held by run() for its whole run, `restore_backup` refuses while another process holds it; `restore_command`: the restore command per install (launcher, .bat, Docker's stop/run/up), `State.backup_list` for GET `/api/backups`, Settings → Server → Backups, S44), Restart (S10: `restart_plan` (how this
+| `ed_outrider.py` | Almost everything: config (`settings_from`, `config_text`), the schema (`SCHEMA`, `RESET_JOURNAL_DATA`, `LIVE_ONLY_TABLES`, `open_db`), the journal reader (`class Journals`), Spansh/EDSM (`class Spansh`), the live state and every summary the page shows (`class State`), Search (`class Searcher`), backups (`write_backup`: the zip, the journal archive and the rotation, for `State.make_backup` and for `backup_before_reread`: a `-pre-reread` zip before every journal re-read, whatever `backup_every_days` says, S4; run() opens with `open_db(reset=False)`, asks `reread_due`, commits, works out `journals_gone(db, dirs)` on the loop's thread (a stored journal is gone only when neither at its path nor under its name, its time, in the folders the re-read reads: issue #16, a folder reached by another path), runs `backup_before_reread(None, ...)` on a worker (a stop meanwhile says what happens next: `reread_stop_words`), then `reset_journal_data` (tests/test_starting.py covers that path); open_db's `before_reset` is only the one-step open tests/test_backups.py uses; `db_lock`/`db_in_use`: `<db>.lock`, held by run() for its whole run, `restore_backup` refuses while another process holds it; `restore_command`: the restore command per install (launcher, .bat, Docker's stop/run/up), `State.backup_list` for GET `/api/backups`, Settings → Server → Backups, S44), Restart (S10: `restart_plan` (how this
 process starts again: "launcher" (exec `OUTRIDER_LAUNCHER`, which launch_outrider.sh exports), "python" (exec
 ed_outrider.py), "bat" / "docker" (exit `RESTART_EXIT` 75); never when argv[0] is not ed_outrider.py itself, so a test or
 verify.sh's `python -` cannot), `restart_argv` (no `--rescan`), `restart_process` (its `execv` injected in tests);
@@ -153,7 +153,7 @@ the draws until that part of the script has run); Settings → Voice → Persona
 | `ed_outrider.toml.example` | Every config key, commented. The real `ed_outrider.toml` is git-ignored |
 | `data/` | The player's own files, git-ignored as a whole: `ed_outrider.sqlite` (default `db`), `browser_defaults.json` (beside the database), `speech_banned.json`, `backups/` (default `backup_dir`), `piper-voices/` (with `voices.json`, Piper's catalogue cached a week), `fonts/` (the player's own theme fonts, served at `/userfonts/`), `pronounce.json` (the player's own pronunciations, over the shipped table), `codex_images.json` (the daily copy of Canonn's picture links), `outrider.log` (Outrider's own log, beside the database, and `outrider.log.1`), `ed_outrider.sqlite.lock` (held by a running Outrider: `db_lock`), `personalities/` (the player's own personality files, `outrider.speech.personality_dirs`; in every backup zip as `personalities/<name>`, `backup_extras`). Created on first start |
 | `docs/` | These notes; `docs/guide/` the user guide (the README links each page); `docs/images/` its screenshots (how they are taken: the author's private notes, `project/screenshots/`) |
-| `tests/test_*.py`, `tests/support.py` | Unit tests, a file per module or feature (`test_<module>`: `test_mining`, `test_target_help`…; 76 files), among them (`test_state`, `test_values`, `test_spansh`, `test_speech`, `test_devices`, `test_fuel`, `test_highway`, `test_config`, `test_pages`, `test_tablet` (themes, emblems, fonts, contrast), `test_rail`, `test_ask`, `test_mcp`, `test_auth`, `test_settings`, `test_server_mode` (server mode, Docker packaging, the launchers), `test_docs` (every doc link and anchor; `user_docs()` in support.py is the README and the guide as one text, for tests of what the docs say), `test_cargo`, `test_checklist`, `test_dock`, `test_eddn`, `test_edsm`, `test_riches`, `test_sweep` (the bug sweep's fixes), `test_uploads`, `test_inara` (Inara's events, batching, answers, keys), `test_health` (the lookups' health, its trace on a
+| `tests/test_*.py`, `tests/support.py` | Unit tests, a file per module or feature (`test_<module>`: `test_mining`, `test_target_help`…; 83 files), among them (`test_state`, `test_values`, `test_spansh`, `test_speech`, `test_devices`, `test_fuel`, `test_highway`, `test_config`, `test_pages`, `test_tablet` (themes, emblems, fonts, contrast), `test_rail`, `test_ask`, `test_mcp`, `test_auth`, `test_settings`, `test_server_mode` (server mode, Docker packaging, the launchers), `test_docs` (every doc link and anchor; `user_docs()` in support.py is the README and the guide as one text, for tests of what the docs say), `test_cargo`, `test_checklist`, `test_dock`, `test_eddn`, `test_edsm`, `test_riches`, `test_sweep` (the bug sweep's fixes), `test_uploads`, `test_inara` (Inara's events, batching, answers, keys), `test_health` (the lookups' health, its trace on a
 local server, the short form, the banner's card), `test_readclient` (EDSM's and Inara's account reads, the shared gate, the
 key Checks: never the key in an answer or the log; verify.sh's offline block), `test_backfill` (S47: the rebuild, the strict
 answers, the Check, Preview, guard and Send through the route, the sender's report, Stop and Go on; fakes only),
@@ -179,7 +179,9 @@ places to sell, Now's at-risk line's `sell`), `test_squadron_carrier` (the reade
 unittest, in-memory SQLite). `support.py` holds the shared fixtures and fakes (`FakeGame`, `_fake_evdev`, `_HwSession`, `scan`, `T`...) and the helpers test classes share; import from it, never import a test class into another file (it would run twice). One file runs alone as `python3 -m unittest tests.test_highway` |
 | `tests/page_smoke.js` | Loads the page in jsdom from a running server, opens every view, drives many page functions; each check a labelled block (`skip`, `SMOKE_ONLY`, `--list`) |
 | `tests/test_localised.py` | A game in another language (review round 10): the fixture journals (plus a codex entry) read twice, the second time with every `*_Localised` value at any depth in fullwidth letters (`wide`), and the results (system_detail, leaving_summary, body_bio, the codex-seen species, the runs under way, the stored names) compared whole once mapped back (`narrow`). A new reader of journal words: match on the codes, and this test says when it does not |
-| `tests/page_unit.js` | page.js's pure functions (formatting, parsing, small rules) in about a second, no server: page.html and page.js from disk into jsdom; `t(name, fn)` with `node:assert`, `eq(src, want)` evaluates in the page |
+| `tests/page_unit.js` | page.js's pure functions (formatting, parsing, small rules) in about a second, no server: page.html and page.js from disk into jsdom (`tests/page_load.js`, shared with `page_consts.js`); `t(name, fn)` with `node:assert`, `eq(src, want)` evaluates in the page |
+| `tests/page_consts.py`, `tests/page_consts.js` | page.js's constants for the Python tests (round 10's S23): `consts(*names)`, one node run per test process (`NAMES`), cached; skipped without node or jsdom |
+| `tests/test_in_step.py`, `tests/fixtures/ask_phrases.json` | The in-step nets of round 10's S23: every table reset or live-only; the voice's phrase corpus (run by `test_ask.PhraseCorpus`) |
 | `tests/fixtures/journals/` | Synthetic sample journals, `Status.json` and `NavRoute.json` (made-up commander and systems) |
 | `scripts/verify.sh` | Runs everything below in one go against a throwaway server |
 | `scripts/python_check.py` | Whether a Python can install Piper (issue #13: onnxruntime has no Python 3.15 build): `PIPER_PYTHONS` (3.11 to 3.14, 64-bit; move its top when onnxruntime publishes a newer one, the launchers' lists are tested against it), `why_not`, `has_venv` (Debian's missing ensurepip), `notice`; `--ok` (exit 0 when it suits) picks the launchers' Python (Windows `py -3.14` … `-3.11`, then `py -3`; Linux `python3`, then `python3.14` … `python3.11`), plain prints the notice before the setup; install_requirements names the reason when piper-tts fails |
@@ -325,13 +327,30 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
 - **One command:** `scripts/verify.sh`. It runs the unit tests (a ResourceWarning, such as a database a test never
   closes, fails the run: `self.addCleanup(db.close)`), pyflakes (any warning fails), `node
   --check static/page.js`, `tests/page_unit.js` (page.js's own functions, about a second: page.html with page.js
-  inlined, loaded from disk into jsdom with the search options verify writes from `SEARCH_OPTIONS`, fetch never
-  answering, `LC_ALL=en_US.UTF-8`), then starts a scratch server on a free port with a fresh database built from
-  `tests/fixtures/journals`, a temporary config and no network, waits until GET `/api/starting` says "ready" (the
-  starting page answers before that, S9), runs `tests/page_smoke.js`, and stops the server by its PID. Its service
-  folder (S70) is a scratch one and systemctl is never run. All of it happens in a `mktemp` folder that is deleted afterwards. `VERBOSE=1` prints
+  inlined, loaded from disk into jsdom by `tests/page_load.js` with the search options verify writes from
+  `SEARCH_OPTIONS`, fetch never answering, `LC_ALL=en_US.UTF-8`), and the page smoke test: a scratch server on a free
+  port with a fresh database built from `tests/fixtures/journals`, a temporary config and no network, a wait until GET
+  `/api/starting` says "ready" (the starting page answers before that, S9), `tests/page_smoke.js`, and the server
+  stopped by its PID. Round 10's S7: the scratch server is started first, by the script's own shell (its PID stays in
+  the cleanup trap: Ctrl-C or a kill ends the run and stops it, no server left behind), and the wait and the smoke test
+  run in the background (`smoke_job`, into the mktemp folder: `smoke.up`, `smoke.log`, its exit code in `smoke.rc`)
+  while the unit tests, pyflakes, `node --check` and page_unit run in the foreground as before; the smoke section is
+  then printed in its old place, after page_unit, with the same result lines. With fewer than 4 cores, `VERIFY_SERIAL=1`
+  or a `--smoke` partial run it all runs one after the other, as before. Its service folder (S70) is a scratch one and
+  systemctl is never run. All of it happens in a `mktemp` folder that is deleted afterwards. `VERBOSE=1` prints
   every smoke line and the server log. Before anything runs it refuses a `PORT` something already listens on and, for
   a full run, a Python without pyflakes or jsonschema (requirements-dev.txt): neither can end in PASS.
+- **The in-step nets** (round 10's S23), for the rules that keep lists in step: `tests/test_in_step.py` (every table is
+  in `RESET_JOURNAL_DATA` or `LIVE_ONLY_TABLES`, exactly one); `tests/test_ask.py`'s `PhraseCorpus` (the voice's phrase
+  corpus `tests/fixtures/ask_phrases.json`: questions and their command, questions that ask nothing, the clashes past
+  reviews found, each a subTest; add a new phrase or clash there; and every spoken "Ask {member} for X" line names an X
+  the voice answers); page_unit's "alert rows in step" block (ALERTS, ALERT_NAMES, ALERT_SHORT and ROW_WORDS hold the
+  same rows, the first row under an ALERT_GROUPS heading and every heading at a row, every `line("key")` inside an
+  `alertOut("row", …)` one of `ROW_KEYS[row]`; a row may say plain words); and `tests/page_consts.py`: a Python test
+  reads a page.js constant with `consts("ROW_KEYS")` (or several: a tuple), never by slicing page.js's text with a
+  regex (one node run per test process, `tests/page_consts.js` with page_unit's loader; a Set comes back as a list, a
+  function as its name; an undefined name fails the test, no node or jsdom skips it). Add a constant a test reads to
+  its `NAMES`.
 - **A partial smoke run while working:** `scripts/verify.sh --smoke here,bio` (labels, or their starts) runs only
   those blocks of `tests/page_smoke.js` against its scratch server (about 10 s), with no unit tests or lint, and ends
   "SMOKE PASS (partial …; not a verify PASS)" and exits 3 (0 is a full PASS only): a commit still needs the full run (a full run clears an exported
@@ -397,7 +416,9 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
   carrier's history, per journal line) with meta `ship_cargo` and `cargo_dock` are journal-derived, as are the CMDR
   tab's `play_activity` and its meta keys (`outrider.commander.COMMANDER_META`), the Earnings' `mining_sales` with
   meta `mined_stock`, `mined_carrier`, `mined_died` and `sale_dock`, the mining stints (`mining_stints`), the
-  `stations` you docked at (by market) and meta `squadron_carrier`. Say which kind a new table is in its schema comment.
+  `stations` you docked at (by market) and meta `squadron_carrier`. Say which kind a new table is in its schema comment,
+  and list it either in `RESET_JOURNAL_DATA` or in `LIVE_ONLY_TABLES` (round 10's S23: `tests/test_in_step.py` fails
+  on a table in neither or in both).
 - **Out-of-order and replayed lines.** Legacy folders are imported late and a re-read replays everything:
   guard current-state updates with `self.fresh(key, ts, ...)`, and anything that should only happen during
   live play (spoken moments about losses, positions, sales in progress) with `live_event(ts)`.
@@ -433,7 +454,12 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
   traceback once per (type, message) (`_tick_seen`), and a disk that will not take writes (SQLITE_FULL, READONLY,
   IOERR: `db_write_kind`) gets the `db_write` card in words (`db_write_words`: the database's folder and its free
   space; Server settings' button); both are cleared only by a tick that really wrote (`db.total_changes` moved), never
-  by an idle one (round 10's S18). `watch()` survives an
+  by an idle one (round 10's S18). The tick's commit is timed (`commit_clock`, `commit_waited`): one that waited over
+  `COMMIT_SLOW_S` (250 ms) says so in the log once per start, the database busy (round 10's S10: whether the journal
+  mode should become WAL is decided from what it shows). A sphere's landing stores its systems with
+  `Spansh.store(..., commit=False)` and commits once after its loop (never across an await: a failed tick's rollback
+  would take an uncommitted row). `sweep_backup_leftovers` also removes the backup copy's `-journal`, `-wal` and
+  `-shm`. `watch()` survives an
   error out of `tick()` itself (notice `tick_failed`), and every long-lived task is started through
   `State.watch_task(task, name)`: one that ends with an error prints it and raises a `task_died:<name>` notice (a new
   watcher or sender gets the same, and a name in `TASK_NAMES`). Full review 2026-10-23, fix batch 1. Every task the

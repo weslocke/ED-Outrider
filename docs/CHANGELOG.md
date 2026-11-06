@@ -2,6 +2,30 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Round 10 suggestions, batch 5: fewer database commits, a faster verify, nets for the in-step rules
+Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the reliability and developer-loop ones:
+- **S10** (its "now" part; WAL waits for what the log shows) A sphere's landing stores the systems with no bodies to
+  fetch in one transaction, one commit after its loop (`Spansh.store(..., commit=False)`), instead of a commit per
+  system; the dump fetches still commit each, as they run between awaits. A tick whose commit waited over 250 ms says
+  so in the log, once per start ("saving a tick's journal lines waited 0.31 s: the database file was busy …").
+  `sweep_backup_leftovers` also removes the `-journal`, `-wal` and `-shm` files a backup killed while writing its copy
+  left beside it.
+- **S7** (step 1) `scripts/verify.sh` starts the scratch server first, from its own shell (Ctrl-C or a kill now ends
+  the run and stops the server: no server left listening), and runs the smoke test in the background, into files
+  (its exit code through `smoke.rc`), while the unit tests, pyflakes, `node --check` and page_unit run as before; the
+  smoke section prints in its old place with the same result lines. A full run went from 248 s to 177 s on a 32-core
+  PC (three runs in a row, all PASS). Serial as before with fewer than 4 cores, `VERIFY_SERIAL=1` or `--smoke`.
+- **S23** Nets for the in-step rules: `LIVE_ONLY_TABLES` beside `RESET_JOURNAL_DATA`, and `tests/test_in_step.py`
+  fails on a table in neither or both; the voice's phrase corpus `tests/fixtures/ask_phrases.json` (questions, ones
+  that ask nothing, the clashes past reviews found) run as subTests, and every "Ask {member} for X" line must name an
+  X the voice answers (one said "Ask the Navigator for a bloody station", which asked nothing: now "for the nearest
+  station before you lose the bloody lot"); page_unit's "alert rows in step" block (ALERTS, ALERT_NAMES, ALERT_SHORT,
+  ROW_WORDS, ALERT_GROUPS, and each `line()` an `alertOut(row)` says in `ROW_KEYS[row]`: the sell row's
+  `unsold_urgent`, said on undocking after a part sale, was missing from its `ROW_KEYS`, page.js and
+  `outrider.speech`); `tests/page_consts.py` reads page.js's constants through jsdom (page_unit's loader, now
+  `tests/page_load.js`) in place of the regex slices in test_crew, test_tablet, test_speech, test_pages, test_riches,
+  test_bookmarks and test_config.
+
 ## 2026-11-06 · Round 10 suggestions, batch 4: the tablet's address, journal folders checked and found, a first start that opens the page
 Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the setup ones:
 - **S5** Settings → Server says under `[server] host` how a tablet or phone gets to Outrider: on this PC only, "set

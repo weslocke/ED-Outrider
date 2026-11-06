@@ -12,6 +12,7 @@ import unittest.mock
 from support import (  # also puts the repository root on sys.path
     B, scan, shape, types_ns,
 )
+from page_consts import consts  # noqa: E402
 import outrider.materials  # noqa: E402
 import outrider.log  # noqa: E402
 import ed_outrider  # noqa: E402
@@ -521,17 +522,12 @@ class ReviewBatchF(unittest.TestCase):
     def test_highway_form_is_a_shared_setting(self):
         # the Highway tab's last plot options (H2): per browser, exported, and accepted as a server copy; an object, so
         # the page reads a value of another shape as unset; the per-device folds (hwyDoneOpen) stay out
-        import re
         self.assertIn("highway", ed_outrider.BROWSER_SETTINGS)
         self.assertNotIn("hwyDoneOpen", ed_outrider.BROWSER_SETTINGS)
         doc, err = ed_outrider.check_browser_defaults({"version": 1, "settings": {"highway": {"plotter": "neutron", "injections": True}}})
         self.assertIsNone(err)
         self.assertEqual(doc["settings"]["highway"]["plotter"], "neutron")
-        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        with open(os.path.join(here, "static", "page.js"), encoding="utf-8") as f:
-            js = f.read()
-        shapes = js[js.index("const SETTING_SHAPES = {"):js.index("};", js.index("const SETTING_SHAPES = {"))]
-        self.assertTrue(re.search(r"\bhighway: isObj\b", shapes))
+        self.assertEqual(consts("SETTING_SHAPES").get("highway"), "isObj")
 
     def test_tiles_collapsed_is_a_shared_setting(self):
         # the header tiles folded into one line: per browser, exported, and accepted as a server copy for new browsers
@@ -606,11 +602,7 @@ class ShipNames(unittest.TestCase):
         """page.js' SHIP_NAMES: the journal's ship symbols -> the names the game shows. The Lynx Highliner read
         "MediumTransport01" in the ship list (the author, in game, 2026-10-14): the newer ships' symbols are not their
         names."""
-        import re
-        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        with open(os.path.join(here, "static", "page.js"), encoding="utf-8") as f:
-            table = re.search(r"const SHIP_NAMES = \{(.*?)\};", f.read(), re.S).group(1)
-        names = dict(re.findall(r'(\w+): "([^"]+)"', table))
+        names = consts("SHIP_NAMES")
         for symbol, name in (("mediumtransport01", "Lynx Highliner"), ("lakonminer", "Type-11 Prospector"),
                              ("smallcombat01_nx", "Kestrel Mk II"), ("explorer_nx", "Caspian Explorer"),
                              ("panthermkii", "Panther Clipper Mk II"), ("python_nx", "Python Mk II"),

@@ -3,11 +3,11 @@ server, where an id64 above 2^53 stays exact, and adds what is new: a system alr
 import asyncio
 import io
 import json
-import re
 import unittest
 import unittest.mock
 
 from support import ed_outrider
+from page_consts import consts
 
 BIG = 2 ** 60 + 1   # above 2^53: a JavaScript number would round it
 
@@ -189,11 +189,7 @@ class Requests(Base):
         self.assertEqual(self.client(go), (200, {"added": 10000, "already": 0, "bad": 0, "problems": []}))
 
     def test_the_page_limit_matches_the_servers(self):
-        import os
-        with open(os.path.join(os.path.dirname(ed_outrider.__file__), "static", "page.js"), encoding="utf-8") as f:
-            js = f.read()
-        m = re.search(r"const BM_IMPORT_MAX = (\d+) \* (\d+) \* (\d+);", js)
-        self.assertEqual(int(m[1]) * int(m[2]) * int(m[3]), ed_outrider.BOOKMARK_IMPORT_BYTES)
+        self.assertEqual(consts("BM_IMPORT_MAX"), ed_outrider.BOOKMARK_IMPORT_BYTES)
 
 
 if __name__ == "__main__":

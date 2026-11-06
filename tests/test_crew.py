@@ -13,6 +13,7 @@ import types
 import unittest
 
 from support import ed_outrider
+from page_consts import consts
 
 import outrider.speech  # noqa: E402
 import outrider.tts  # noqa: E402
@@ -66,17 +67,14 @@ class CrewTable(unittest.TestCase):
     def test_rows_in_step_with_the_page(self):
         """Every alert row of Settings -> Alerts (page.js ALERTS) belongs to exactly one role, and no role names a row the
         page lacks; the XO and Tactical have none of their own (the XO speaks what no row is, Tactical the danger lines)."""
-        with open(PAGE_JS, encoding="utf-8") as f:
-            js = f.read()
-        block = js[js.index("const ALERTS = ["):js.index("// never spoken, and why")]
-        page_rows = re.findall(r'\["(\w+)", "', block)
+        page_rows = [a[0] for a in consts("ALERTS")]
         self.assertEqual(len(page_rows), len(set(page_rows)))
         table_rows = [row for _, _, _, rows in outrider.speech.CREW_ROLES for row in rows]
         self.assertEqual(sorted(table_rows), sorted(page_rows))        # each once, none missing, none extra
         self.assertEqual(outrider.speech.CREW_IDS, ("xo", "navigator", "science", "exobiologist", "engineer",
                                                     "quartermaster", "comms", "tactical", "mining"))
         self.assertEqual([r["rows"] for r in outrider.speech.crew_roles_info() if r["id"] in ("xo", "tactical")], [[], []])
-        self.assertIn("const DANGER = new Set(", js)                  # Tactical's lines: the page's danger keys
+        self.assertTrue(consts("DANGER"))                             # Tactical's lines: the page's danger keys
 
     def test_default_rows(self):
         """The approved defaults (the author, 2026-10-13): the Navigator keeps every route line, trade too; low fuel with
@@ -116,24 +114,16 @@ class CrewSettingsPage(unittest.TestCase):
     def setUpClass(cls):
         with open(PAGE_JS, encoding="utf-8") as f:
             cls.js = f.read()
-        block = cls.js[cls.js.index("const ALERTS = ["):cls.js.index("// never spoken, and why")]
-        cls.rows = re.findall(r'\["(\w+)", "', block)
-
-    def table(self, name):
-        """A page.js object literal of words or lists, {key: value}."""
-        start = self.js.index(f"const {name} = {{")
-        text = self.js[start:self.js.index("};", start)]
-        return {k: (re.findall(r'"(\w+)"', v) if v.startswith("[") else v.strip('"'))
-                for k, v in re.findall(r'(\w+): ("[^"]*"|\[[^\]]*\])', text)}
+        cls.rows = [a[0] for a in consts("ALERTS")]
 
     def test_row_words_and_keys_in_step(self):
         """Every alert row has its words for "Speaks for"; every row's speech keys are real keys (outrider.speech.KEYS) of
         a real row; every danger key (DANGER) is in the row whose alertOut says it, so the Alerts table's "spoken by
         Tactical (danger)" and Tactical's ▶ follow the lines."""
-        words, keys = self.table("ROW_WORDS"), self.table("ROW_KEYS")
+        words, keys = consts("ROW_WORDS", "ROW_KEYS")
         self.assertEqual(sorted(words), sorted(self.rows))
         self.assertTrue(set(keys) <= set(self.rows), set(keys) - set(self.rows))
-        danger = re.findall(r'"(\w+)"', self.js[self.js.index("const DANGER = new Set("):].split(")", 1)[0])
+        danger = consts("DANGER")
         # (rig_leash: a danger tag with plain words, no lines of its own)
         self.assertEqual([k for ks in keys.values() for k in ks if k not in outrider.speech.KEYS and k not in danger], [])
         self.assertIn("fuel_low", danger)
@@ -542,14 +532,9 @@ class CrewLines(unittest.TestCase):
 
     def test_row_keys_and_danger_in_step_with_the_page(self):
         """outrider.speech.ROW_KEYS and DANGER (who says a key, for the checks) are page.js ROW_KEYS and DANGER."""
-        with open(PAGE_JS, encoding="utf-8") as f:
-            js = f.read()
-        start = js.index("const ROW_KEYS = {")
-        text = js[start:js.index("};", start)]
-        page = {k: tuple(re.findall(r'"(\w+)"', v)) for k, v in re.findall(r'(\w+): (\[[^\]]*\])', text)}
-        self.assertEqual(page, outrider.speech.ROW_KEYS)
-        danger = tuple(re.findall(r'"(\w+)"', js[js.index("const DANGER = new Set("):].split(")", 1)[0]))
-        self.assertEqual(danger, outrider.speech.DANGER)
+        page_keys, danger = consts("ROW_KEYS", "DANGER")
+        self.assertEqual({k: tuple(v) for k, v in page_keys.items()}, outrider.speech.ROW_KEYS)
+        self.assertEqual(tuple(danger), outrider.speech.DANGER)
 
     def test_checks(self):
         """A line naming the member who says its alert (the row's, Tactical for a danger line, the XO for speech on) is a
