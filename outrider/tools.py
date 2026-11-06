@@ -216,7 +216,7 @@ async def nearest_scoopable(get, args, rows):
       {"need": {"type": "array", "items": {"type": "string", "enum": list(dock.SERVICES)},
                 "description": "services every place must have (UC: Universal Cartographics, Vista: Vista Genomics; "
                                "Trader: a material trader of any kind, Raw / Manufactured / Encoded: a material trader of "
-                               "that kind, at stations only)"},
+                               "that kind, at stations only; Factors: Interstellar Factors, where bounties and fines are paid off)"},
        "kind": {"type": "string", "enum": ["any", "station", "carrier"], "description": "stations, carriers or both (default)"},
        "age_days": {"type": "integer", "description": "leave out reports older than this (default 30)"}})
 async def nearest_dock(get, args, rows):

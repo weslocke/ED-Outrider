@@ -257,6 +257,74 @@ class Stints(unittest.TestCase):
         self.assertEqual(s["places"], [{"id64": "9", "system": "Sys", "body": "4 B Ring", "tons": 3},
                                        {"id64": "9", "system": "Sys", "body": "A 1", "tons": 1}])
 
+    def recaps(self):
+        return [(m["ring"], m["tons"], m["seconds"], m["motherlodes"], m["stints"], m["top"], m["how"], m["system"])
+                for m in self.j.moments if m["kind"] == "mining_recap"]
+
+    def jump(self, s, system=9, name="Sys", ts=None):
+        self.j.handle({"event": "FSDJump", "timestamp": ts or self.at(s), "StarSystem": name, "SystemAddress": system,
+                       "StarPos": [system, 0, 0]})
+
+    def dock(self, s, ts=None):
+        self.j.handle({"event": "Docked", "timestamp": ts or self.at(s), "StationName": "Hub", "StationType": "Coriolis",
+                       "MarketID": 5, "StarSystem": "Sys", "SystemAddress": 9, "Taxi": False, "Multicrew": False})
+
+    def test_the_recap_on_leaving_or_docking(self):
+        """Round 10's S21: a recap as you dock or jump away after mining, never at a ring exit (the author's answer 17):
+        the ring of the latest stint, its stints since you arrived (or since the last recap), MINING_RECAP_MIN_T tons at
+        least; none after a death, in a ship with no mining kit, or for a line read late."""
+        self.jump(-50)
+        self.j.handle({"event": "Loadout", "timestamp": self.at(1), "Ship": "python", "ShipID": 7, "ShipName": "Digger",
+                       "ShipIdent": "DG", "CargoCapacity": 128, "MaxJumpRange": 20.0, "Modules": [{"Slot": "Slot01", "Item": "int_refinery_size4_class5"}]})
+        self.drop(2)
+        self.prospect(10, lode="Opal", water=12.0)
+        for i in range(18):
+            self.refine(100 + i * 50, "platinum")   # the last at 950
+        self.leave(1000)
+        self.drop(1100)
+        self.prospect(1110, lode="Opal", water=12.0)
+        for i in range(4):
+            self.refine(1200 + i * 100, "opal")      # the last at 1500
+        self.leave(1600)
+        self.assertEqual(self.recaps(), [])          # leaving the ring: not yet
+        self.dock(1700)
+        self.assertEqual(self.recaps(), [("4 B Ring", 22, 948 + 400, 2, 2, ["platinum", "Platinum", 18], "dock", "9")])
+        self.jump(1800, system=10, name="Next")       # nothing mined since the recap
+        self.assertEqual(len(self.recaps()), 1)
+        # back, under MINING_RECAP_MIN_T, then jumping straight out of the ring: none
+        self.jump(2000)
+        self.drop(2100)
+        for i in range(5):
+            self.refine(2110 + i, "platinum")
+        self.jump(2200, system=10, name="Next")
+        self.assertEqual(len(self.recaps()), 1)
+        # a death ends a stint with nothing said, even when you dock in that system after the respawn
+        self.jump(3000)
+        self.drop(3100)
+        for i in range(25):
+            self.refine(3110 + i, "platinum")
+        self.j.handle({"event": "Died", "timestamp": self.at(3200)})
+        self.dock(3300)
+        self.assertEqual(len(self.recaps()), 1)
+        # mined since the death and jumped away from the ring: the recap counts from it
+        self.drop(3400)
+        for i in range(20):
+            self.refine(3410 + i, "platinum")
+        self.jump(3500, system=10, name="Next")
+        self.assertEqual(self.recaps()[-1][:2] + self.recaps()[-1][6:], ("4 B Ring", 20, "jump", "9"))
+        # an old line (a re-read): nothing
+        self.jump(0, ts="2020-01-01T00:00:00Z")
+        self.assertEqual(len(self.recaps()), 2)
+
+    def test_no_recap_in_a_ship_without_mining_kit(self):
+        self.jump(-50)   # the Loadout of setUp has no mining kit
+        self.drop(0)
+        for i in range(30):
+            self.refine(10 + i, "platinum")
+        self.leave(100)
+        self.dock(200)
+        self.assertEqual(self.recaps(), [])
+
     def test_back_in_the_ring_after_a_long_break(self):
         """Over MINING_RELOG_GAP_S away (logged out for the night in the ring): a new stint, still the hotspot you
         dropped on; logging in elsewhere ends it at its last ton."""

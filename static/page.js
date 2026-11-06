@@ -1396,7 +1396,16 @@ function renderOnBody() {
   if (b.geo) bits.push(`<span class="sp geo">🪨 ${b.geo} geo</span>`);
   const x5 = b.value_parts && b.value_parts.bio_factor === 5;
   el.innerHTML = samplingHtml() + `${onOrOver(ob)} <b>${esc(ob.body)}</b> <span class="unk">(${esc(howOnBody(ob))})</span>: ` + (bits.join(" ") || `<span class="unk">no bio or geo signals known</span>`) +
-    (x5 && (b.genera.length || b.bio) ? ` · <span class="ok" title="nobody had set foot here when you scanned it: exobiology pays ×5">first footfall ×5</span>` : "");
+    (x5 && (b.genera.length || b.bio) ? ` · <span class="ok" title="nobody had set foot here when you scanned it: exobiology pays ×5">first footfall ×5</span>` : "") +
+    wrongSuitMark(ob, b);
+}
+// round 10's S4: the strip's ⚠ while you are on foot in a suit with no Genetic Sampler and the body has sampling left
+// (a genus not finished, or signals not yet identified); quiet by the spoken warning's rules (on_body's suit_quiet: a
+// settlement approached on this body, an on-foot mission held)
+function wrongSuitMark(ob, b) {
+  if (!ob || ob.how !== "on foot" || ob.sampler !== false || ob.suit_quiet || !b) return "";
+  const left = bioGenera(b).some(g => { const o = (b.organics || []).find(o => o.genus === g); return !o || !o.done; }) || !!bioUnknown(b);
+  return left ? ` · <span class="warnc" title="only the Artemis suit carries a Genetic Sampler">⚠ ${esc(ob.suit)} suit: no Genetic Sampler</span>` : "";
 }
 // ---- route strip: the route plotted in the game (NavRoute.json) from here, hop by hop; "In-Game Route:" (the author,
 // 2026-10-12): Outrider's own route is the "Next:" line, and the two differ until 🎯 targets its next stop ----
@@ -2755,7 +2764,7 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["signal_poi", "a Titan, a Guardian beacon, a generation ship, a listening post", "find"],
   ["curious", "rare planet classes, odd orbits, ringed landables: once per system", "chime"],
   ["codex", "a new entry in your codex", "chime"],
-  ["sampling", "leaving a body with biology unsampled, a species completed, near a tagged plant", "alert"],
+  ["sampling", "leaving a body with biology unsampled, a species completed, near a tagged plant, on foot without the Genetic Sampler", "alert"],
   ["bodybrief", "what a body's biological signals could be (the FSS already said they are there)", null],
   ["pins", "a pin set, then at 10 km, 1 km and 100 m, and on arrival", null],
   ["fuel", "fuel low where you cannot scoop, or a top-up worth taking before scoopable stars run out", "alert"],
@@ -2779,13 +2788,14 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["suit", "on foot on a planet, your suit's oxygen or health running low with data aboard", "danger"],
   ["approach", "approaching a high-gravity landable body with a lot of unsold data aboard", "alert"],
   ["loss", "what was lost with your ship, and the nearest system to rescan", "danger"],
+  ["wanted", "a bounty on you in this system, and the nearest Interstellar Factors to pay it off", "danger"],
   ["carrier", "your carrier departing and arriving", "chime"],
   ["upkeep", "your carrier's upkeep, counted down from its last stats, drops under 4 weeks", "alert"],
   ["game", "loading into the game and quitting it", null],
   ["chat", "other players' messages read aloud (channels in Settings → Voice → Chat), never an NPC's", null],
   ["uploads", "EDDN, EDSM or Inara failing for 15 minutes, and sending again", null],
   ["uploadheld", "an upload stopped until you act: a key refused or not saved, a kind of EDDN message refused", null],
-  ["ring", "a body just scanned has a ring of a type ticked above; dropping at a hotspot you mined before, your record there", "find"],
+  ["ring", "a scanned ring of a type ticked above; your record at a hotspot you mined before; a recap as you leave or dock", "find"],
   ["limpets", "no limpets as you undock a mining ship; while mining, limpets low, the hold nearly full and full, then where to sell", "alert"],
   ["prospect", "a prospected rock with your threshold of the minerals ticked above, and motherlodes", null],
   ["rigs", "the co-pilot button's rig confirmations, and what a rig collected", null],
@@ -2806,7 +2816,7 @@ const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arri
   riches: "Road to Riches, worlds, sweeps", trade: "Trade route", carriertrip: "Carrier trip", autotarget: "Auto-target",
   wrongtarget: "Not the next stop targeted", docking: "Docking pad and refusals", sell: "Selling", saleleft: "Data left after a sale",
   unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction", suit: "Suit oxygen or health low", approach: "High gravity",
-  loss: "Ship lost", carrier: "Carrier", upkeep: "Carrier upkeep low", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing", uploadheld: "Upload on hold",
+  loss: "Ship lost", wanted: "Wanted", carrier: "Carrier", upkeep: "Carrier upkeep low", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing", uploadheld: "Upload on hold",
   ring: "Rings to mine", limpets: "Limpets and the hold", prospect: "Prospector call-out",
   rigs: "Mining rigs", rigleash: "Rig too far", rigsout: "Rigs still out"};
 // a row's fine print, in the hover of its line (and found by Find a setting): what the line leaves out
@@ -2817,7 +2827,7 @@ const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, 
   find: "A body someone else has mapped is not named, but said once per system (\"already mapped, still worth mapping\").",
   mapped: "\"A 2 mapped efficiently, 3.4M. Next: biology on C 2.\" Switched on in Voice → What the voice says → Say when a planet is mapped.",
   jumponium: "Premium or standard injections you could make 2 or fewer of. Said with the FSS debrief, or alone when the FSS never completes. Off until you tick it.",
-  sampling: "Untouched genera count only on a body you landed on. The plant: within 100 m of one you tagged, where the next sample would count.",
+  sampling: "Untouched genera count only on a body you landed on. The plant: within 100 m of one you tagged, where the next sample would count. The suit: stepping out in one other than the Artemis on a body you scanned with sampling left, once a visit; quiet where you approached a settlement on that body, and while you hold an on-foot mission.",
   fuel: "The levels are under Risk and warnings → Fuel alerts.",
   lastscoop: "Any route Outrider follows: the game's plotted route, the Highway, a survey route's legs. Once per stretch, never while scooping.",
   refuelshort: "Once per system. At a refuel stop the route's line shows how much to scoop instead.",
@@ -2828,18 +2838,19 @@ const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, 
   carriertrip: "Plot Route → Carrier: said once its cooldown should be over. The leg itself is said with its arrival.",
   autotarget: "After a supercharge when auto-target is on, ▶ test now, Target next, a 🎯, the co-pilot button's tap.",
   wrongtarget: "The Highway, a survey or trade route: once per target, after the galaxy map closes. Never off the route, nor for a later stop of the route (the line shows it as stops ahead).",
-  docking: "The pad is said every time and shown big on Now and in the overlay. A refusal is explained: no pad free, ship too big, access restricted, hostile, your offences, a fighter out.",
+  docking: "The pad is said every time and shown big on Now and in the overlay. A refusal is explained: no pad free, ship too big, access restricted, hostile, your offences (with the nearest Interstellar Factors), a fighter out.",
   saleleft: "Universal Cartographics sells 50 systems a page: said once the pages stop and the estimate has caught up.",
   unsold: "The levels are under Risk and warnings → Unsold data on board.",
   firstsseen: "The firsts watch: a card and a notification each time, spoken at most once in 30 minutes.",
   suit: "What a death would lose and how far your ship is. Once each time it runs low; quiet in a station or with nothing aboard. Read from Status.json as Frontier documents it: not yet tried in a live game.",
   approach: "The gravity and unsold levels are under Risk and warnings → Approach warning (unsold over the amber level or the rebuy multiple).",
   loss: "Samples that died with you count too.",
+  wanted: "Bounties only, never fines: once per faction each time you are in a system. The Interstellar Factors named is the nearest in another system when Spansh knows one (else one here), stations only. A docking refusal for your offences names it too, under Docking.",
   chat: "Off until switched on in Settings → Voice → Chat (squadron, wing and direct ticked there).",
   uploads: "A card at the top of the page too. Never spoken.",
   upkeep: "The card at the top of the page comes either way; this adds the notification and the line, once per reading of the carrier's stats. Counted down from them a week at a time: an estimate (the market moves the balance too). Off until you tick it.",
   uploadheld: "The card at the top of the page comes either way (it goes once the hold ends); this adds the notification and the line. Off until you tick it.",
-  ring: "Settings → Mining's ring types, pristine ones only if ticked there. Once per body and visit; bodies scanned together in one line. Nothing until a type is ticked. Dropping out of supercruise at a hotspot in a mining ship: your stints there before, your best ship's tons an hour, your hit rate (against the call-out's minerals) and when you were last there; nothing at a hotspot new to you.",
+  ring: "Settings → Mining's ring types, pristine ones only if ticked there. Once per body and visit; bodies scanned together in one line. Nothing until a type is ticked. Dropping out of supercruise at a hotspot in a mining ship: your stints there before, your best ship's tons an hour, your hit rate (against the call-out's minerals) and when you were last there; nothing at a hotspot new to you. The recap: the ring you mined since arriving, 20 tons at least, as you jump away or dock (never at each ring exit, nor after a death); docked in that system, the best price within 100 ly for what you refined most, unless Hold full already named where to sell.",
   limpets: "The undocking check only when ticked above. Each warning once a stint.",
   prospect: "Only a rock not mined before; duds stay silent.",
   rigs: "Placed, picked up, six out.",
@@ -3431,7 +3442,7 @@ const allFilled = (text, all) => [...text.matchAll(/\{(\w+)\}/g)].every(m => all
 // Danger lines: a joke at 20% hull costs clarity, so with "Danger alerts always down to business" ticked (the
 // default) these come only from the business lists and never swear, whatever personalities are ticked.
 // (ship_lost too: a debrief after a rebuy is no time for a joke; it also jumps the queue like the others)
-const DANGER = new Set(["hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop", "carrier_departs", "ship_lost", "rig_leash", "suit_low"]);
+const DANGER = new Set(["hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop", "carrier_departs", "ship_lost", "rig_leash", "suit_low", "wanted"]);
 const speechDangerBusiness = () => !!(store.get("speechDangerBusiness", null) ?? (data && data.defaults && data.defaults.speech_danger_business) ?? true);
 // "One personality per system": the personality is drawn at game start and at each arrival and says every line
 // until the next one, so a character (and its own voice) holds through a system. In memory only: a reload draws
@@ -3906,6 +3917,72 @@ async function holdFullSell(m, ask = null) {
   }
   alertOut("limpets", best ? `Sell ${name}: ${best.station}, ${best.system}` : `Unload ${name}: your carrier`, shown.join(" · "),
            {tag: "hold_full_sell", say: said.join(" ")});
+  if (best) holdSellSaid = posId();   // S21: the recap's follow-up does not say a price again in this system
+}
+// ---- round 10's S21: a mining recap as you leave the system or dock (the server's mining_recap moment: the ring's
+// stints since you arrived, MINING_RECAP_MIN_T tons at least), under the ring row, in plain words: "4 B Ring: 86 tons in
+// an hour and ten, 74 an hour, 3 motherlodes." Docked (still in the system), one follow-up: the best price within 100 ly
+// for the mineral you refined most, unless the hold-full line said where to sell in this system; nothing if Spansh is
+// slow (RECAP_SELL_WAIT_MS) or off, or once you have left the system ----
+const RECAP_SELL_WAIT_MS = 15000;
+let holdSellSaid = null;   // the system (posId) the hold-full line last named a place to sell in
+// "45 minutes", "an hour", "an hour and ten", "2 hours and five", "an hour and 35"
+function recapDuration(secs) {
+  const mins = Math.max(1, Math.round((secs || 0) / 60));
+  if (mins < 60) return mins === 1 ? "a minute" : `${mins} minutes`;
+  const h = Math.floor(mins / 60), m = mins % 60, hs = h === 1 ? "an hour" : `${h} hours`;
+  return m ? `${hs} and ${m <= 12 ? nspCount(m) : m}` : hs;
+}
+function miningRecapText(m) {
+  const rate = m.seconds >= 60 ? Math.round(m.tons * 3600 / m.seconds) : null, n = m.motherlodes || 0;
+  const lodes = n ? (n === 1 ? "a motherlode" : `${n} motherlodes`) : "";
+  const h = Math.floor((m.seconds || 0) / 3600), min = Math.round(((m.seconds || 0) % 3600) / 60);
+  return {title: `⛏ ${m.ring}: ${m.tons} t in ${h ? `${h} h ${String(min).padStart(2, "0")}` : `${Math.max(1, min)} min`}`,
+          body: [rate != null && `${rate} t/h`, lodes, `${m.stints} stint${m.stints === 1 ? "" : "s"}`].filter(Boolean).join(" · "),
+          say: `${m.ring}: ${m.tons} tons in ${recapDuration(m.seconds)}` + (rate != null ? `, ${rate} an hour` : "") + (lodes ? `, ${lodes}` : "") + "."};
+}
+async function miningRecapOut(m, ask = null) {
+  const t = miningRecapText(m);
+  alertOut("ring", t.title, t.body, {tag: "mining_recap", say: t.say});
+  if (m.how !== "dock" || !Array.isArray(m.top) || (holdSellSaid != null && String(holdSellSaid) === m.system)) return;
+  const [id, name, tons] = m.top;
+  ask = ask || ((within, sort, carriers) => holdSellAsk(id, tons, within, sort, carriers));
+  const rows = await Promise.race([ask(100, "price", false), new Promise(r => setTimeout(() => r(null), RECAP_SELL_WAIT_MS))]);
+  const best = (rows || [])[0];
+  if (!best || String(posId()) !== m.system) return;   // nothing known, Spansh slow or off, or you have left
+  const at = `${best.station} in ${best.system}${best.distance != null ? `, ${Math.round(best.distance).toLocaleString()} light-years` : ""}`;
+  alertOut("ring", `Sell ${name}: ${best.station}, ${best.system}`,
+           `best within 100 ly${best.distance != null ? ` · ${Math.round(best.distance).toLocaleString()} ly` : ""} · ${credits(best.price)} cr/t`,
+           {tag: "mining_recap_sell", say: `Best price for ${name} within 100 light-years: ${at}, ${credits(best.price)} credits a ton.`});
+}
+// ---- round 10's S22: a bounty on you (the server's wanted moment: CommitCrime with a Bounty, once per system stay and
+// faction), a danger line (Tactical's with the crew), with where to pay it off: the nearest Interstellar Factors (GET
+// api/nearest?need=factors, stations only), in another system when one is known (the station here may be refusing you).
+// The line waits WANTED_ASK_MS at most for it. A docking refusal for your offences names the same place ----
+const WANTED_ASK_MS = 6000;
+async function factorsAsk() {
+  try {
+    const r = await apiJson(`api/nearest?${new URLSearchParams({need: "factors", carriers: "0", cached: "1"})}`);
+    return r && !r.error ? r.rows || [] : null;
+  } catch { return null; }
+}
+// the place to name of the finder's rows (nearest first): the nearest in another system, else the nearest here
+const factorsPick = rows => (rows || []).find(r => !r.here) || (rows || [])[0] || null;
+async function factorsNearest(ask = factorsAsk) {
+  return factorsPick(await Promise.race([ask(), new Promise(r => setTimeout(() => r(null), WANTED_ASK_MS))]));
+}
+const factorsShown = f => `nearest Interstellar Factors: ${f.name}, ${f.system}${f.here ? " (here)" : f.ly != null ? ` · ${Math.round(f.ly).toLocaleString()} ly` : ""}`;
+const factorsSaid = f => `Nearest Interstellar Factors: ${f.name} in ${f.system}` +
+  (f.here ? ", here in the system." : f.ly != null ? `, ${Math.round(f.ly).toLocaleString()} light-years.` : ".");
+async function wantedOut(m, ask) {
+  const f = await factorsNearest(ask), who = m.faction || "a faction here", bounty = credits(m.bounty);
+  alertOut("wanted", `⚖ Wanted: ${bounty} cr bounty`, [`${who}${m.crime ? ` (${m.crime})` : ""}`, f && factorsShown(f)].filter(Boolean).join(" · "),
+           {tag: "wanted", say: `${who} has put a ${bounty} credit bounty on you.` + (f ? " " + factorsSaid(f) : "")});
+}
+async function dockDeniedOut(m, ask) {
+  const f = m.reason === "Offences" ? await factorsNearest(ask) : null;
+  alertOut("docking", "🛬 Docking denied", `${m.station ? m.station + ": " : ""}${m.words}${f ? " · " + factorsShown(f) : ""}`, {tag: "docking",
+           say: () => line("docking_denied", {reason: m.words, station: m.station || "the station"}, `Docking denied: ${m.words}.`) + (f ? " " + factorsSaid(f) : "")});
 }
 // A ring's hotspot minerals by the best sell price within 100 ly (ideas from EliteMining's feature list, 2026-10-24):
 // asked when a body panel opens on a body with hotspots (Here's or Search's), once per mineral and system for 30
@@ -4072,6 +4149,14 @@ function leavingSaid(l) {
 }
 // leaving a body: runs under way always; the DSS's untouched genera (over your bio threshold, or unpriced) only
 // when you touched down or sampled there this visit
+// round 10's S4: "Maverick suit on A 3: no Genetic Sampler. Two genera left to sample." (plain words, no personality)
+function wrongSuitText(m) {
+  const n = m.left || 0, u = m.unidentified || 0;
+  const what = n ? `${nspCount(n)} ${n === 1 ? "genus" : "genera"} left to sample` : `${nspCount(u)} bio signal${u === 1 ? "" : "s"} still to identify`;
+  const suit = `${m.suit} suit on ${m.body}`;
+  return {title: `⚠ ${suit[0].toUpperCase()}${suit.slice(1)}: no Genetic Sampler`, body: what,
+          say: `${suit[0].toUpperCase()}${suit.slice(1)}: no Genetic Sampler. ${what[0].toUpperCase()}${what.slice(1)}.`};
+}
 function leftBodyText(m) {
   const parts = Object.entries(m.partial || {}).map(([g, n]) => `${g} ${n} of 3`);
   if (m.touched) {
@@ -11126,8 +11211,13 @@ function onData() {
         alertOut("pins", m.what === "arrived" ? `📍 Arrived at ${m.name}` : `📍 ${m.name}: ${surfDist(m.dist)}`,
                  m.what === "arrived" ? (m.next ? `next: ${m.next.name}, ${surfDist(m.next.dist)}` : "") : pinTurnWords(m), {tag: "pins", say: pinSpoken(m)});
       else if (m.kind === "docking" && m.what === "denied" && m.words)   // #3: only the reasons that are not obvious
-        alertOut("docking", "🛬 Docking denied", `${m.station ? m.station + ": " : ""}${m.words}`, {tag: "docking",
-                 say: () => line("docking_denied", {reason: m.words, station: m.station || "the station"}, `Docking denied: ${m.words}.`)});
+        dockDeniedOut(m);   // your offences: with the nearest Interstellar Factors (S22)
+      else if (m.kind === "wanted" && m.bounty) wantedOut(m);   // S22: a bounty on you here
+      else if (m.kind === "mining_recap" && m.tons) miningRecapOut(m);   // S21: leaving the system or docking after mining
+      else if (m.kind === "wrong_suit" && m.body) {   // S4: on foot without the Genetic Sampler, with sampling left
+        const t = wrongSuitText(m);
+        alertOut("sampling", t.title, t.body, {tag: "wrong_suit", say: t.say});
+      }
       else if (m.kind === "highway" && m.text)   // the Neutron Highway's arrival line, detour, back on it, complete: plain words for now
         alertOut("highway", m.text.replace(/\.$/, ""), "", {tag: "highway", say: m.text});
       else if (m.kind === "autotarget" && m.what === "nothing")   // the co-pilot button's press with no route system to target
@@ -12339,7 +12429,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   trade: "trade routes", highway: "the Highway", refuelshort: "fuel short of a refuel", lastscoop: "last scoop", autotarget: "auto-target",
   wrongtarget: "wrong target", find: "valuable bodies", jumponium: "jumponium", sampling: "sampling", approach: "high-g approaches",
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
-  hull: "hull, heat, interdiction", suit: "the suit running low", carrier: "your carrier", upkeep: "carrier upkeep", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
+  hull: "hull, heat, interdiction", suit: "the suit running low", carrier: "your carrier", upkeep: "carrier upkeep", wanted: "a bounty on you", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
   rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", uploads: "uploads", uploadheld: "uploads on hold"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
@@ -12353,7 +12443,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], upkeep: ["upkeep_low"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
   curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"],
-  uploadheld: ["upload_held"]};
+  uploadheld: ["upload_held"], wanted: ["wanted"]};
 const XO_SPEAKS = "voice answers, the status report, the co-pilot, the hush and speech on";
 const crewOn = () => !!(data && data.crew && data.crew.on);
 const crewDangerOn = () => !!(data && data.crew && data.crew.danger !== false);

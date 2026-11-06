@@ -272,6 +272,77 @@ later.push(["Hold full: the price answer is not said once you have left the ring
   ev(`alertOut = __ao; data = __d; MW.start = null`);
   assert.deepStrictEqual([gone, still], [0, 1]);
 }]);
+// round 10's batch 7: S21's mining recap, S22's wanted line and S4's wrong suit (plain words; alertOut stubbed)
+const B7_STUB = `window.__ao = alertOut; window.__said = []; window.__d = data; linePlain = true;
+  alertOut = (kind, title, body, o) => (__said.push([kind, title, body, o.tag, typeof o.say === "function" ? o.say() : o.say]), true)`;
+const B7_UNSTUB = `alertOut = __ao; data = __d; linePlain = false; holdSellSaid = null`;
+t("S21: the recap's words: tons, the time spoken, the rate, motherlodes", () => {
+  eq(`[recapDuration(45 * 60), recapDuration(3600), recapDuration(70 * 60), recapDuration(125 * 60), recapDuration(95 * 60), recapDuration(20)]`,
+     ["45 minutes", "an hour", "an hour and ten", "2 hours and five", "an hour and 35", "a minute"]);
+  eq(`miningRecapText({ring: "4 B Ring", tons: 86, seconds: 4200, motherlodes: 3, stints: 2})`,
+     {title: "⛏ 4 B Ring: 86 t in 1 h 10", body: "74 t/h · 3 motherlodes · 2 stints",
+      say: "4 B Ring: 86 tons in an hour and ten, 74 an hour, 3 motherlodes."});
+  eq(`miningRecapText({ring: "A Ring", tons: 30, seconds: 1800, motherlodes: 0, stints: 1}).say`, "A Ring: 30 tons in 30 minutes, 60 an hour.");
+});
+later.push(["S21: the recap's one best-price follow-up: docked, still in the system, not said by Hold full, Spansh in time", async () => {
+  ev(B7_STUB);
+  const rows = `[{station: "Hub", system: "Sys", price: 182000, distance: 34.4, carrier: false}]`;
+  const run = async (m, here, ask = `async () => ${rows}`) => {
+    ev(`__said.length = 0; data = Object.assign({}, __d || {}, {position: {id64: ${here}}})`);
+    await ev(`miningRecapOut(${JSON.stringify(Object.assign({ring: "4 B Ring", tons: 86, seconds: 4200, motherlodes: 3, stints: 2,
+      top: ["platinum", "Platinum", 80], how: "dock", system: "9"}, m))}, ${ask})`);
+    return JSON.parse(ev(`JSON.stringify(__said.map(x => [x[0], x[3], x[4]]))`));
+  };
+  const docked = await run({}, 9);
+  const jumped = await run({how: "jump"}, 9);                                   // a jump: never, whatever the position says
+  const left = await run({}, 10);                                                // the answer came after you left
+  const off = await run({}, 9, `async () => null`);                              // Spansh off or failing
+  ev(`holdSellSaid = "9"`);
+  const sold = await run({}, 9);                                                 // Hold full named a place here
+  ev(B7_UNSTUB);
+  const recap = ["ring", "mining_recap", "4 B Ring: 86 tons in an hour and ten, 74 an hour, 3 motherlodes."];
+  assert.deepStrictEqual(docked, [recap, ["ring", "mining_recap_sell", "Best price for Platinum within 100 light-years: Hub in Sys, 34 light-years, 182k credits a ton."]]);
+  assert.deepStrictEqual([jumped, left, off, sold], [[recap], [recap], [recap], [recap]]);
+}]);
+t("S21: Hold full's place to sell is remembered for the system", () => {
+  assert.ok(/if \(best\) holdSellSaid = posId\(\)/.test(pageJs), "holdFullSell sets holdSellSaid");
+});
+later.push(["S22: wanted: the bounty as danger, the nearest Interstellar Factors in another system first; 'your offences' names it", async () => {
+  ev(B7_STUB);
+  const m = {kind: "wanted", system: "9", system_name: "Sys", faction: "Brewer Corporation", bounty: 500, crime: "blocking a landing pad"};
+  const rows = `[{name: "Here Port", system: "Sys", here: true, ly: 0}, {name: "Far Hub", system: "Next", here: false, ly: 12.4}]`;
+  await ev(`wantedOut(${JSON.stringify(m)}, async () => ${rows})`);
+  await ev(`wantedOut(${JSON.stringify(m)}, async () => [{name: "Here Port", system: "Sys", here: true, ly: 0}])`);
+  await ev(`wantedOut(${JSON.stringify(m)}, async () => null)`);
+  const deny = {kind: "docking", what: "denied", reason: "Offences", words: "refused for your offences here", station: "Hub"};
+  await ev(`dockDeniedOut(${JSON.stringify(deny)}, async () => ${rows})`);
+  await ev(`dockDeniedOut(${JSON.stringify(Object.assign({}, deny, {reason: "NoSpace", words: "no pad free"}))}, async () => { throw new Error("not asked"); })`);
+  const said = JSON.parse(ev(`JSON.stringify(__said)`));
+  ev(B7_UNSTUB);
+  assert.deepStrictEqual(said[0], ["wanted", "⚖ Wanted: 500 cr bounty", "Brewer Corporation (blocking a landing pad) · nearest Interstellar Factors: Far Hub, Next · 12 ly",
+    "wanted", "Brewer Corporation has put a 500 credit bounty on you. Nearest Interstellar Factors: Far Hub in Next, 12 light-years."]);
+  assert.strictEqual(said[1][4], "Brewer Corporation has put a 500 credit bounty on you. Nearest Interstellar Factors: Here Port in Sys, here in the system.");
+  assert.strictEqual(said[2][4], "Brewer Corporation has put a 500 credit bounty on you.");
+  assert.deepStrictEqual(said[3].slice(0, 3), ["docking", "🛬 Docking denied", "Hub: refused for your offences here · nearest Interstellar Factors: Far Hub, Next · 12 ly"]);
+  assert.ok(said[3][4].endsWith("Nearest Interstellar Factors: Far Hub in Next, 12 light-years."), said[3][4]);
+  assert.strictEqual(said[4][2], "Hub: no pad free");
+  assert.ok(ev(`DANGER.has("wanted") && speechPrio("wanted", "wanted") === 0 && ALERT_GROUPS.hull === "Danger and risk"`));
+  const rowsAll = JSON.parse(ev(`JSON.stringify(ALERTS.map(a => a[0]))`));
+  assert.ok(rowsAll.indexOf("wanted") > rowsAll.indexOf("hull") && rowsAll.indexOf("wanted") < rowsAll.indexOf("carrier"), "under Danger and risk");
+}]);
+t("S4: the wrong suit's words, and the on-foot strip's ⚠ only on foot with work left", () => {
+  eq(`wrongSuitText({suit: "Maverick", body: "A 3", left: 2, unidentified: 0})`,
+     {title: "⚠ Maverick suit on A 3: no Genetic Sampler", body: "two genera left to sample",
+      say: "Maverick suit on A 3: no Genetic Sampler. Two genera left to sample."});
+  eq(`wrongSuitText({suit: "flight", body: "B 1", left: 0, unidentified: 1}).say`, "Flight suit on B 1: no Genetic Sampler. One bio signal still to identify.");
+  const ob = {how: "on foot", suit: "Maverick", sampler: false, suit_quiet: false};
+  const b = {genera: ["Bacterium", "Stratum"], organics: [{genus: "Bacterium", samples: 3, done: true}], bio: 2};
+  const mark = (o, body) => ev(`wrongSuitMark(${JSON.stringify(o)}, ${JSON.stringify(body)})`);
+  assert.ok(/⚠ Maverick suit: no Genetic Sampler/.test(mark(ob, b)));
+  const done = {genera: ["Bacterium"], organics: [{genus: "Bacterium", samples: 3, done: true}], bio: 1};
+  assert.deepStrictEqual([mark(ob, done), mark(Object.assign({}, ob, {sampler: true}), b), mark(Object.assign({}, ob, {how: "in the SRV"}), b),
+                          mark(Object.assign({}, ob, {suit_quiet: true}), b)], ["", "", "", ""]);
+});
 // the Plotted Route pane (#22): Nearby's row template with the pane's own cells (a row the server's State.route_list made)
 t("sysRowHtml: a route pane row has its # cell, Dist along the route and From you; Nearby's has neither", () => {
   const row = ROUTE_ROW;

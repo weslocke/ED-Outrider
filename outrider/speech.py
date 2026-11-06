@@ -719,7 +719,7 @@ CREW_ROLES = (
     ("exobiologist", "Exobiologist", "Exobiologist", ("exo", "find", "sampling")),
     ("engineer", "Chief Engineer", "Engineer", ("fuel", "scoop", "scoopstop", "jumponium", "hull", "suit")),
     ("quartermaster", "Quartermaster", "Quartermaster", ("sell", "saleleft", "unsold", "carrier", "upkeep", "carriertrip", "loss")),
-    ("comms", "Comms Officer", "Comms", ("uploads", "uploadheld", "firstsseen", "game", "docking", "chat")),
+    ("comms", "Comms Officer", "Comms", ("uploads", "uploadheld", "firstsseen", "game", "docking", "chat", "wanted")),
     ("tactical", "Tactical", "Tactical", ()),
     ("mining", "Mining Officer", "Mining Officer", ("rigs", "rigleash", "rigsout", "ring", "limpets", "prospect")),
 )
@@ -728,7 +728,8 @@ CREW_SHORT = {r[0]: r[2] for r in CREW_ROLES}
 CREW_ROW_ROLE = {row: r[0] for r in CREW_ROLES for row in r[3]}   # an alert row -> its role by default
 # The speech keys each alert row says (page.js ROW_KEYS) and the danger keys (page.js DANGER: Tactical's while the
 # Danger switch is on), so the checks know who says a line on the default table; tests/test_crew.py keeps both in step
-# with the page. (rig_leash: a danger tag with plain words, no lines of its own.)
+# with the page. (rig_leash and wanted: danger tags with plain words, no lines of their own; round 10's S22 says the bounty
+# on you by Tactical while the Danger switch is on, by Comms otherwise.)
 ROW_KEYS = {
     "arrival": ("arrival_undiscovered", "arrival_discovered", "region", "streak_new", "streak_known"),
     "game": ("game_start", "welcome_back", "game_exit", "session_recap"), "jump": ("fsd_charge",), "brief": ("arrival_brief", "old_data"),
@@ -743,10 +744,10 @@ ROW_KEYS = {
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
     "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none", "limpets_low", "hold_nearly_full", "hold_full"), "prospect": ("prospect_hit", "motherlode"),
-    "uploadheld": ("upload_held",), "suit": ("suit_low",), "upkeep": ("upkeep_low",),
+    "uploadheld": ("upload_held",), "suit": ("suit_low",), "upkeep": ("upkeep_low",), "wanted": ("wanted",),
 }
 DANGER = ("hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop",
-          "carrier_departs", "ship_lost", "rig_leash", "suit_low")
+          "carrier_departs", "ship_lost", "rig_leash", "suit_low", "wanted")
 # The crew placeholders (crew batch 3, the author's idea of 2026-10-13): a line may name another crew member, one
 # placeholder per role ("...ask {engineer} whether the tank can take that stretch"). Filled with the member's name when
 # Settings gives it one (the name in every position: "Mira", never "the Mira"), else these words, with a capital at a

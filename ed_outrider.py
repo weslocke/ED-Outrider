@@ -1790,10 +1790,50 @@ MINING_FILL = ("ProspectedAsteroid", "MiningRefined", "AsteroidCracked", "Launch
 MINING_CLOSE = ("SupercruiseEntry", "FSDJump", "CarrierJump", "Docked", "Died")
 MINING_RELOG_GAP_S = 15 * 60   # back in the same ring after longer than this: a new stint (its hotspot kept)
 MINING_EVENTS = frozenset(MINING_FILL + MINING_CLOSE + ("SupercruiseExit", "Location"))
+# Round 10's S21: a mining recap ("86 tons in an hour and ten...") when you leave the system or dock, never at each ring
+# exit (the author's answer 17: hopping between hotspots would recap each time). It covers the ring of your latest stint
+# since you arrived in the system (or since the last recap there), at least this many tons. The author's journals
+# (48 stints with refining, 23 system stays of 45 t and more): 22 stints ended with a jump straight out of the ring (no
+# SupercruiseEntry), 17 with a SupercruiseEntry and a dock in the same system, 3 with a hop to another ring
+MINING_RECAP_MIN_T = 20
+MINING_RECAP_ON = ("FSDJump", "CarrierJump", "Docked")
+# Round 10's S4 and S22, live moments only (Journals.handle_foot): the suit you wear (SuitLoadout, read for the CMDR
+# tab's suit loadouts too, comes 2 to 10 s after every Disembark in the author's journals; SwitchSuitLoadout changes it
+# in a ship's locker), a settlement approached (a body with one is settlement business: no wrong-suit warning), and a
+# crime committed (a bounty on you: the `wanted` moment)
+FOOT_EVENTS = ("SwitchSuitLoadout", "ApproachSettlement", "CommitCrime")
+SUIT_EVENTS = ("SuitLoadout", "SwitchSuitLoadout")
+SUIT_PAIR_S = 45   # s: a Disembark and its suit line this close are one step out (2-10 s in the author's journals, once 36)
+# a suit's journal symbol (SuitName: "utilitysuit_class1") by its prefix, in the words the page speaks: the localised
+# name is the game language's. Only the Artemis (explorationsuit_*) carries a Genetic Sampler
+SUIT_WORDS = {"explorationsuit": "Artemis", "utilitysuit": "Maverick", "tacticalsuit": "Dominator", "flightsuit": "flight"}
+# a CommitCrime's CrimeType in words (the author's journals: dockingMajorTresspass, dockingMajorBlockingLandingPad and
+# their Minor forms, dumpingNearStation, dumpingDangerous, fireInNoFireZone, collidedAtSpeedInNoFireZone,
+# recklessWeaponsDischarge); others split at their capitals
+CRIME_WORDS = {"dockingMajorTresspass": "trespass at a station", "dockingMinorTresspass": "trespass at a station",
+               "dockingMajorBlockingLandingPad": "blocking a landing pad", "dockingMinorBlockingLandingPad": "blocking a landing pad",
+               "dockingMajorBlockingAirlock": "blocking the station's entrance", "dockingMinorBlockingAirlock": "blocking the station's entrance",
+               "fireInNoFireZone": "firing in a no-fire zone", "recklessWeaponsDischarge": "reckless weapons discharge",
+               "collidedAtSpeedInNoFireZone": "a collision in a no-fire zone", "assault": "assault", "murder": "murder",
+               "piracy": "piracy", "interdiction": "an interdiction", "illegalCargo": "illegal cargo"}
+
+
+def suit_words(symbol):
+    """A suit's journal symbol in the page's words: "utilitysuit_class1" -> "Maverick" (SUIT_WORDS), else "unknown"."""
+    k = str(symbol or "").lower()
+    return next((w for p, w in SUIT_WORDS.items() if k.startswith(p)), "unknown")
+
+
+def crime_words(kind):
+    """A CommitCrime's CrimeType in words (CRIME_WORDS, else split at its capitals: "passengerWanted" -> "passenger
+    wanted"); "" for none."""
+    k = str(kind or "")
+    return CRIME_WORDS.get(k) or re.sub(r"(?<=[a-z])(?=[A-Z])", " ", k).lower()
 # a hotspot's Destination name ("$SAA_RingHotspot:#type=$Alexandrite_name;;"): its mineral
 RING_HOTSPOT = re.compile(r"RingHotspot:#type=\$(\w+?)_name", re.I)
 _OTHER_EVENTS = (POSITION_EVENTS + STAR_CLASS_EVENTS + SCAN_EVENTS + DATA_EVENTS + SHIP_EVENTS + CMDR_EVENTS + MATERIAL_EVENTS
                  + BODY_EVENTS + SRV_EVENTS + CARGO_ONLY + DOCKING_EVENTS + CHAT_EVENTS + ("Loadout", "Shutdown", "Fileheader")
+                 + FOOT_EVENTS
                  + ("Screenshot",))   # the game's F10 / Alt+F10 shots: converted live (outrider/screenshots.py)
 # The Commander view (outrider/commander.py): Journals.handle_commander folds these into the meta keys of
 # outrider.commander.COMMANDER_META and the play_activity table, and each one bumps Journals.commander_version (the page's
@@ -3363,7 +3403,11 @@ class Journals:
               "last_all_found",   # read by note_jumponium as "the FSS is done here"
               "last_honk",        # read by the FSSAllBodiesFound line ("all found by the honk")
               "jump_class",       # the StartJump's star class, taken by the FSDJump that follows
-              "sc_login")         # a SquadronStartup not yet followed by its carrier's line (handle_squadron_carrier)
+              "sc_login",         # a SquadronStartup not yet followed by its carrier's line (handle_squadron_carrier)
+              # round 10's S4: the suit worn (read by the Disembark's check), a live Disembark waiting for its suit line,
+              # the bodies warned of this visit and those with a settlement approached; S22: the (system, faction)
+              # bounties said this stay; S21: the latest mining recap (or death) a recap counts from
+              "suit_worn", "foot_pending", "suit_said", "settlements", "wanted_said", "recap_mark")
     """Incremental reader: each file is read from where the last pass stopped."""
 
     def __init__(self, db):
@@ -3401,6 +3445,12 @@ class Journals:
         self.body_touched = set()  # (system, body_id) touched down, disembarked or sampled on since arriving there
         self.approached = set()    # (system, body_id) briefed on approach this game session (once each)
         self.rings_said = set()    # (system, body_id) whose rings were announced this visit (Settings → Mining)
+        # round 10's S4 (handle_foot): the suit you wear ({suit: SuitName, ts}), a live Disembark on a planet waiting for
+        # its SuitLoadout ({system, body_id, ts}), the bodies warned of this visit and the bodies whose settlement you
+        # approached this visit ((system, body_id) each); S22: (system, faction) bounties said this system stay
+        self.suit_worn, self.foot_pending, self.suit_said, self.settlements = None, None, set(), set()
+        self.wanted_said = set()
+        self.recap_mark = None     # S21: ts of the latest mining recap or death: a recap counts the stints after it
         # the FSS's signal finds waiting for their body's Scan ((system, body name) -> ts: the game writes FSSBodySignals
         # a second before it), and the bodies checked for possible new codex entries this visit (codex_signals)
         self.fss_signals_pending, self.codex_said = {}, set()
@@ -4306,6 +4356,10 @@ class Journals:
             self.handle_docking(name, ev, ts)
             if name in DOCKING_EVENTS:
                 return
+        if name in SUIT_EVENTS or name in FOOT_EVENTS:
+            self.handle_foot(name, ev, ts)
+            if name in FOOT_EVENTS:
+                return
         if name in COMMANDER_EVENTS:
             self.handle_commander(name, ev, ts, mined)
             if name in COMMANDER_ONLY:
@@ -4618,6 +4672,7 @@ class Journals:
         if name in ("FSDJump", "CarrierJump", "Location") and current and not relog:
             self.rings_said.clear()   # a new visit: each ringed body is news again
             self.codex_said.clear()
+            self.suit_said.clear(); self.settlements.clear(); self.wanted_said.clear()   # S4, S22: once per visit, stay
             self.fss_signals_pending.clear()
             self.highway_arrival(id64, ev.get("StarSystem"), ts)
             self.riches_arrival(id64, ev.get("StarSystem"), ts)
@@ -4732,6 +4787,58 @@ class Journals:
             meta_set(self.db, "docking", None)
             self.moment("docking", ts, what="clear")
 
+    def handle_foot(self, name, ev, ts):
+        """Round 10's S4 and S22. The suit you wear (SuitLoadout, SwitchSuitLoadout: the newest line's), checked against
+        a live Disembark waiting for it (suit_check); a live ApproachSettlement marks its body as settlement business for
+        this visit; a live CommitCrime with a Bounty (fines are not counted: the author's answer 19) is a `wanted` moment,
+        once per system stay and faction. The author's journals: 17 CommitCrime lines, 3 with a Bounty (500 cr each, a
+        docking violation), the others a Fine; each names its `Faction` and `CrimeType`, never the system."""
+        if name in SUIT_EVENTS:
+            suit = ev.get("SuitName")
+            if isinstance(suit, str) and suit and ts >= (self.suit_worn or {}).get("ts", ""):
+                self.suit_worn = {"suit": suit.lower(), "ts": ts}
+                self.suit_check(ts)
+            return
+        if not live_event(ts):
+            return
+        if name == "ApproachSettlement":
+            if ev.get("SystemAddress") is not None and ev.get("BodyID") is not None:
+                self.settlements.add((ev["SystemAddress"], ev["BodyID"]))
+            return
+        if name != "CommitCrime":
+            return
+        bounty, pos = ev.get("Bounty"), self.pos
+        if not isinstance(bounty, (int, float)) or isinstance(bounty, bool) or bounty <= 0 or not pos:
+            return
+        faction = str(ev.get("Faction") or "").strip()
+        key = (pos["id64"], faction)
+        if key in self.wanted_said:
+            return
+        self.wanted_said.add(key)
+        self.moment("wanted", ts, system=str(pos["id64"]), system_name=pos.get("name") or "", faction=faction,
+                    bounty=int(bounty), crime=crime_words(ev.get("CrimeType")))
+
+    def suit_check(self, ts):
+        """Round 10's S4: a live Disembark on a planet and its suit line (either order, within SUIT_PAIR_S) make a
+        `wrong_suit` moment when the suit is not the Artemis (explorationsuit_*: the only one with a Genetic Sampler),
+        once per body and visit. Quiet (the author, 2026-11-06) where a settlement on that body was approached this
+        visit, and while an on-foot mission is held: then another suit is the right one. moment_extra drops it unless
+        the body has sampling left."""
+        p, s = self.foot_pending, self.suit_worn
+        if not p or not s or abs(ts_seconds(s["ts"]) - ts_seconds(p["ts"])) > SUIT_PAIR_S:
+            return
+        self.foot_pending = None
+        key = (p["system"], p["body_id"])
+        if s["suit"].startswith("explorationsuit") or key in self.suit_said or key in self.settlements \
+                or self.on_foot_mission():
+            return
+        self.suit_said.add(key)
+        self.moment("wrong_suit", max(ts, p["ts"]), system=p["system"], body_id=p["body_id"], suit=suit_words(s["suit"]))
+
+    def on_foot_mission(self):
+        """Whether an on-foot mission (Mission_OnFoot_...) is among the missions held (the CMDR tab's fold)."""
+        return any(r.get("on_foot") for r in (self.cmdr_view.get("missions") or {}).values())
+
     def ship_items(self):
         """The module items of the ship flown now (lower case), from its latest Loadout kept whole in fleet_loadouts;
         [] when that is not known."""
@@ -4802,6 +4909,7 @@ class Journals:
             self.moment("left_body", ts, system=system, body_id=body, body_name=ev.get("Body") or "",
                         touched=key in self.body_touched)
             self.body_touched.discard(key)
+            self.suit_said.discard(key); self.settlements.discard(key)   # S4: the next visit is a new one
 
     def session_key(self):
         """The game session the line being read belongs to: its journal's name without the part number
@@ -5617,6 +5725,10 @@ class Journals:
             if row:
                 self.mining_close(row, ts)
                 row = None
+            if name == "Died":
+                self.recap_mark = ts   # S21: no recap of what a death ended (a dock after the respawn says nothing of it)
+            elif name in MINING_RECAP_ON:
+                self.mining_recap(name, ts)
             if not ring:
                 return
             system = ev.get("SystemAddress")
@@ -5686,6 +5798,36 @@ class Journals:
             self.db.execute("UPDATE mining_stints SET open=0, end_ts=? WHERE start_ts=?",
                             (min(ts, row["last_ts"] or ts) if row["last_ts"] else ts, row["start_ts"]))
         self.mining_version += 1
+
+    def mining_recap(self, name, ts):
+        """Round 10's S21: leaving the system (a jump) or docking after mining in it, a live `mining_recap` moment: the
+        ring of your latest stint here, its stints since you arrived in the system (or since the last recap or death),
+        their tons, time and motherlodes, and the mineral you refined most (the page's "best price" follow-up). Nothing
+        below MINING_RECAP_MIN_T tons, in a ship with no mining kit, or for a line read late (a re-read, a catch-up). Read
+        before the jump moves you: `pos` is still the system you mined in."""
+        pos = self.pos
+        if not live_event(ts) or not pos or not self.mining_ship():
+            return
+        since = max(pos.get("ts") or "", self.recap_mark or "")
+        rows = self.db.execute("SELECT * FROM mining_stints WHERE system=? AND open=0 AND start_ts >= ? AND start_ts <= ? "
+                               "ORDER BY start_ts", (pos["id64"], since, ts)).fetchall()
+        if not rows:
+            return
+        ring = rows[-1]["ring"]
+        rows = [r for r in rows if r["ring"] == ring]
+        refined = collections.Counter()
+        for r in rows:
+            refined.update(json.loads(r["refined"] or "{}"))
+        tons = sum(refined.values())
+        if tons < MINING_RECAP_MIN_T:
+            return
+        self.recap_mark = ts
+        cid, top = refined.most_common(1)[0]
+        seconds = sum(max(0, ts_seconds(r["end_ts"] or r["last_ts"] or r["start_ts"]) - ts_seconds(r["start_ts"])) for r in rows)
+        self.moment("mining_recap", ts, system=str(pos["id64"]), system_name=pos.get("name") or "",
+                    ring=short_name(pos.get("name") or "", ring or ""), tons=tons, seconds=round(seconds),
+                    motherlodes=sum(r["motherlodes"] or 0 for r in rows), stints=len(rows),
+                    top=[cid, self.mineral_name(cid), refined[cid]], how="dock" if name == "Docked" else "jump")
 
     def note_station(self, name, ev, ts):
         """A station's name by its market (the stations table): where you docked, and the station a shipyard or outfitting
@@ -6265,6 +6407,9 @@ class Journals:
                 return
             self.db.execute("INSERT OR IGNORE INTO own_footfall VALUES (?, ?, ?)", (system, ev["BodyID"], ts))
             self.body_touched.add((system, ev["BodyID"]))
+            if live_event(ts) and not ev.get("Taxi") and not ev.get("Multicrew"):   # S4: which suit, from its suit line
+                self.foot_pending = {"system": system, "body_id": ev["BodyID"], "ts": ts}
+                self.suit_check(ts)
         elif name == "FSSDiscoveryScan":
             self.last_honk = {"id64": system, "ts": ts, "bodies": ev.get("BodyCount"), "progress": ev.get("Progress")}
             self.honk_seen = self.last_honk
@@ -10676,8 +10821,17 @@ class State:
         # launch says which ("SRV Rhino" -> "Rhino"; None when it is not known, the page then says "the SRV")
         label = (self.journals.vehicle or {}).get("label") if how == "in the SRV" else None
         vehicle = re.sub(r"^SRV ", "", label) if isinstance(label, str) and label.strip() else None
-        return {"body": short_name(pos["name"], st["body"]), "full": st["body"], "how": how, "vehicle": vehicle,
-                "system": str(pos["id64"])}
+        out = {"body": short_name(pos["name"], st["body"]), "full": st["body"], "how": how, "vehicle": vehicle,
+               "system": str(pos["id64"])}
+        sw = self.journals.suit_worn
+        if how == "on foot" and sw:
+            # round 10's S4: the strip's ⚠ when the suit has no Genetic Sampler (the page shows it only with sampling left
+            # on the body), quiet by the wrong-suit warning's rules: a settlement approached on a body not yet left
+            # (LeaveBody forgets it), an on-foot mission held
+            j = self.journals
+            out.update(suit=suit_words(sw["suit"]), sampler=sw["suit"].startswith("explorationsuit"),
+                       suit_quiet=j.on_foot_mission() or any(sy == pos["id64"] for sy, _ in j.settlements))
+        return out
 
     def near_body(self):
         """In your ship over a body below NEAR_BODY_ALT m (orbital cruise or flying, not landed): the on-body strip shows
@@ -11380,7 +11534,7 @@ class State:
 
     # the moments whose facts moments_summary adds (the page words them against your thresholds)
     MOMENT_EXTRA = ("fss_done", "fss_unfinished", "left_body", "bio_done", "approach", "arrival_brief", "game_exit", "loss",
-                    "mapped", "codex_signals")
+                    "mapped", "codex_signals", "wrong_suit")
 
     def moment_extra(self, m):
         """The facts a moment is spoken from, or None to leave it out (a body nobody scanned). Worked out once
@@ -11407,6 +11561,13 @@ class State:
                 if kind == "bio_done":
                     v = outrider.bio.species_value(m.get("species")) if outrider.bio else None
                     extra["value"] = v * bb["factor"] if v else None
+        elif kind == "wrong_suit":   # round 10's S4: only on a body you scanned that has sampling left
+            bb = self.body_bio(sid, m["body_id"])
+            left = bb and len(bb["partial"]) + len(bb["untouched"])
+            if not bb or not (left or bb["unidentified"]):
+                extra = None
+            else:
+                extra.update(bb, left=left)
         elif kind == "approach":
             extra.update(self.approach_facts(sid, m["body_id"], m.get("body_name")))
         elif kind == "codex_signals":
@@ -12501,7 +12662,8 @@ class State:
 
     async def nearest_dock(self, q):
         """GET /api/nearest: the nearest places to dock (outrider/dock.py). q: stations, carriers ("0"/"1"), need
-        (uc,vista,repair,refuel,shipyard,outfitting; trader (a material trader), raw, manufactured, encoded), age (days), permit ("1": keep permit systems), pad (auto, L, M,
+        (uc,vista,repair,refuel,shipyard,outfitting; trader (a material trader), raw, manufactured, encoded; factors: Interstellar
+        Factors, round 10's S22), age (days), permit ("1": keep permit systems), pad (auto, L, M,
         any), cached ("1": no new fetch of the DSSA list; the AI's tools and the voice ask that way), around (S49: another
         system to look around, search_origin's: destination, carrier, next_stop or an id64; a typed name is found by GET
         /api/find first, so this stays read-only; the distances are from there, each row's `from_you` from you, and no

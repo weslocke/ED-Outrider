@@ -42,7 +42,7 @@ the game too, for a few seconds each:
   spoken once per target, no notification by default; see [Plot Route](plot-route.md))
 - **docking** (its own row, **Docking pad and refusals**, spoken by Comms): the pad the station gave you, said every time, even while
   hushed ("Pad 34."), 5 seconds after the grant so it doesn't talk over the station's own voice (**Settings → Voice → Say your landing pad … s after docking is granted**, 0 to 20: `[speech] pad_delay`, for a chattier station), and why it refused when that isn't obvious: no pad free, ship too big, access restricted, hostile,
-  your offences, a fighter still out (too far away is not said). No notification by default. The pad also shows large on
+  your offences (with the nearest Interstellar Factors, as for **Wanted** below), a fighter still out (too far away is not said). No notification by default. The pad also shows large on
   Now and in the overlay (where the Surface radar goes). At a starport or carrier the pad's place follows: "Pad 34. At the back, up on
   your right." The words assume you come through the slot with the **green lights on your right**, and the first docking
   of each game session (then every fourth) says so: "With the green lights on your right, it's at the back, up on your
@@ -54,9 +54,21 @@ the game too, for a few seconds each:
 - a sale that left data aboard (Universal Cartographics sells 50 systems a page; at Vista Genomics, the species
   you kept back), said 90 seconds after the last page
 - hull damage, heat damage, interdiction, and unsold data past a threshold
+- **wanted** (its own row, **Wanted**, under Danger and risk): a bounty put on you in this system, said as a danger line
+  (by Tactical with the crew on, else Comms) with where to pay it off: "Brewer Corporation has put a 500 credit bounty
+  on you. Nearest Interstellar Factors: Hamilton Port in Wolf 359, 12 light-years." The nearest in another system when
+  Spansh knows one (the station here may be the one shooting at you), else one here; the line waits a few seconds at
+  most for Spansh and is said without it otherwise. Bounties only, never fines; once per faction each time you are in
+  a system
 - on foot on a planet, your suit's oxygen or health running low while data is aboard: what a death would lose and how
   far your ship is ("Suit oxygen low. 412M aboard; the ship is 640 metres away."), once each time it runs low; quiet in a
   station or with nothing aboard (read from Status.json as Frontier documents it: not yet tried in a live game)
+- **the wrong suit** (under **Exobiology unfinished**): stepping out on a body you scanned that still has biology to
+  sample, in a suit other than the Artemis (the only one with a Genetic Sampler): "Maverick suit on A 3: no Genetic
+  Sampler. Two genera left to sample." Once a visit to the body. Quiet where you approached a settlement on that body
+  (settlement business wants another suit), while you hold an on-foot mission, in a taxi or multicrew, and on a body
+  with nothing left or never scanned. On foot, the strip under the header shows "⚠ Maverick suit: no Genetic Sampler"
+  while there is sampling left
 - someone else's scans of a system holding your unsold first discoveries reached Spansh (the firsts watch, see
   [My firsts](views.md)): a card and a notification each time, "👁 Someone else scanned your unsold Drojau LL-O
   b26-3: 3 bodies reached Spansh 12 days after you (your scan 15 days ago) · 14.2M cr at stake", and spoken at most
@@ -89,6 +101,11 @@ the game too, for a few seconds each:
   Mining Officer says it: "⛏ Alexandrite hotspot · you, 3 stints · 38 t/h · 41 % hits · last here 1 h 20 min ago"
   (your best ship's tons an hour, the hit rate against the call-out's minerals). Nothing at a hotspot new to you. Under
   **Rings to mine** in Settings → Mining
+- **a mining recap**: when you jump away or dock after mining in a system (never at each ring exit, so hopping between
+  hotspots says nothing), the ring you mined since arriving, 20 tons at least: "4 B Ring: 86 tons in an hour and ten,
+  74 an hour, 3 motherlodes." Docked in that system, one more line: the best price within 100 ly for what you refined
+  most, unless **hold full** already named where to sell there (nothing if Spansh is slow or can't be reached). None
+  after a death, or in a ship with no mining kit. Under **Rings to mine** in Settings → Mining
 - **while mining in a ring** (a mining ship, in normal space): Now and the overlay's system strip show the mining line
   (the ring and hotspot, tons an hour, the hold and what it holds, limpets, minutes to full; under 10 limpets, how many
   more your materials could make: "limpets 4 (+12 by synthesis)"; with minerals ticked for the call-out, this stint's

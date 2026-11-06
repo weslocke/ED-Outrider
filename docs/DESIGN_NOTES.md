@@ -241,6 +241,34 @@ upstream project's choices, not rules of the game.
   2026-10-20) is the place it refined the most tons in, the others in a "+N" hover: each mining line's place is set as
   the line is read (the SRV's body, else the open stint's ring, else the system), so it follows the session's own
   counts, and a line older than what is known (a legacy folder read late) has none rather than a guess.
+- **The mining recap, the wrong suit and a bounty on you** (round 10's S21, S4 and S22, 2026-11-06). All three are
+  live moments in plain words under alert rows (no speech keys, the author's answer 1: lines can follow for one that
+  proves itself), never said for a line read late.
+  - **S21's recap** waits for leaving the system (`FSDJump`, `CarrierJump`) or docking, not each ring exit (answer 17:
+    hopping between hotspots would recap each time). It covers the ring of the latest stint in the system since the
+    arrival or the last recap there (one ring per system in all of the author's 23 stays), `MINING_RECAP_MIN_T` (20 t)
+    at least; a death sets the mark, so what it ended is never recapped; a ship with no mining kit says nothing. Under
+    the `ring` row. The one "best price" follow-up is asked only docked (a jump has left the system the distances
+    would be from), never when Hold full named where to sell in that system (`holdSellSaid`), and dropped if the answer
+    takes over 15 s or comes after you left.
+  - **S4's wrong suit** is a different thing from D2b (dropped by the author: an Artemis-only gate on the overlay's
+    radar, which hid a tool from everyone not wearing that suit). This hides nothing: one line under `sampling`, once a
+    body visit, when a live `Disembark` (not taxi, not multicrew) pairs with a suit other than `explorationsuit_*` and
+    the body you scanned has sampling left (`moment_extra` drops it otherwise, and on a body never scanned). The
+    author's two quiet rules (2026-11-06, Odyssey missions): an `ApproachSettlement` on that body this visit (settlement
+    business), and an on-foot mission held (`Mission_OnFoot_…` among the missions the CMDR tab keeps); in either case
+    another suit is the right one. The suggestion's "re-embark to change at the ship's locker" is left out: a suit
+    probably cannot be changed aboard on a planet. The on-foot strip's ⚠ follows the same rules and shows only on foot
+    with work left. The pairing takes either order within `SUIT_PAIR_S` (45 s: the author's journals always put the
+    `SuitLoadout` 2-10 s after, once 36 s).
+  - **S22's wanted** is bounties only, not fines (the author's answer 19; 14 of the 17 real lines were fines), once per system stay and faction, said as a danger line (`DANGER`: Tactical's with the
+    crew, answer 18; the row's member when the crew's Danger switch is off is Comms, as the docking refusals are; the
+    Tactical role keeps no row of its own). The nearest Interstellar Factors (Spansh's "Interstellar Factors Contact",
+    the game's `facilitator`: `outrider/dock.py`'s `Factors`, `/api/nearest?need=factors`) is named in another
+    system when one is known: the station here may be the one shooting. The line waits 6 s at most for it. The
+    "Offences" docking refusal names the same place; "Hostile" does not (a hostile reputation is no bounty to pay).
+    Status.json's `LegalState` stays out until it has been seen live. The finder's own Must have boxes are unchanged
+    (no Factors box: the alert asks for it).
 - **Boxels: what can and cannot be known** (2026-10-11, `outrider/boxel.py`). A procedural name's boxel, its centre and
   any of its systems' id64 are computed from a known system's position (checked: 2,763 of 2,763 of the author's
   standard-sector systems), so auto-target checks a never-visited system by id64. A boxel's size (how many systems)
@@ -1955,6 +1983,10 @@ confirmed while playing. Treat reports about them as likely real.
 - `CarrierBuy`, `CarrierDecommission` and `CarrierCancelDecommission`: written to Frontier's journal manual, never seen
   in the author's journals (the carrier was bought before them).
 - Status.json Flags2 on-foot-in-station bits (3, 13, 14) counting as docked.
+- Round 10's batch 7 (2026-11-06): the mining recap and its best-price follow-up (shaped on the author's 48 stints),
+  the wanted line with the nearest Interstellar Factors (three real bounties, none since Outrider read them; no
+  "Offences" refusal seen) and the wrong-suit warning (the author's journals hold only the Artemis and the flight suit:
+  no real line has made it fire).
 - The suit warning (S9-S7): Status.json Flags2's LowOxygen and LowHealth bits (6, 7) on foot on a planet (bit 4), from
   Frontier's journal manual only.
 - The commander filter (S9-S4) with a real second commander's journals in the folder: written to Frontier's journal

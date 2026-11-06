@@ -615,6 +615,9 @@ def mission_apply(state, ev, here=None):
                 # "Expires":1745159181 on its login lists, where every other mission's counts down from ~86400)
                 row["expiry"] = iso_ts(exp if exp >= EXPIRES_IS_TIME else at + exp)
             row["passengers"] = row["passengers"] or bool(m.get("PassengerMission"))
+            # round 10's S4: whether it is an on-foot one, from the list's own Name (the symbol: a row accepted before
+            # rows kept it is set at the next login, with no re-read)
+            row["on_foot"] = _on_foot(m.get("Name")) or bool(row.get("on_foot"))
         return held
     if mid is None:
         return held
@@ -666,12 +669,12 @@ def missions(state, now=None):
     """The missions you hold (mission_apply's), the soonest to expire first: [{id, name, faction, system, station,
     target, commodity, count, delivered, reward, expiry (ISO or None), expires_in (s; None without one), soon, expired,
     wing, passengers, redirected, influence, reputation, mining, commodity_id, collect, massacre, kills (a massacre
-    mission's counted, else None)}]."""
+    mission's counted, else None), on_foot}]."""
     now = time.time() if now is None else now
     out = []
     for row in (state or {}).values():
         left = ts_seconds(row["expiry"]) - now if row["expiry"] else None
-        out.append(dict({"collect": False, "massacre": False, "kills": None}, **row,   # a row from before PARSER 73
+        out.append(dict({"collect": False, "massacre": False, "kills": None, "on_foot": False}, **row,   # a row from before PARSER 73
                         expires_in=None if left is None else int(left), soon=left is not None and 0 <= left <= MISSION_SOON_S,
                         expired=left is not None and left < 0))
     out.sort(key=lambda r: (r["expires_in"] is None, r["expires_in"] or 0, r["name"] or ""))
@@ -696,9 +699,16 @@ def _mission(e):
             # round 10's S15: a Collect mission ("Mission_Collect_RankEmp": source goods and hand them in; not an on-foot
             # one, Mission_OnFoot_Collect..., nor a Delivery): CMDR -> Missions' 🔍 opens Materials -> Cargo's Buy
             "collect": bool(re.match(r"\$?Mission_Collect", str(e.get("Name") or ""), re.I)),
+            # round 10's S4: an on-foot mission (Mission_OnFoot_...): the wrong-suit warning keeps quiet while one is held
+            "on_foot": _on_foot(e.get("Name")),
             # round 10's S8: a massacre mission's target (TargetFaction, in the system it was given for) and the kills
             # counted for it (mission_kill)
             **_massacre(e)}
+
+
+def _on_foot(name):
+    """Whether a mission's Name symbol is an on-foot (Odyssey) one: "Mission_OnFoot_Collect_name"."""
+    return bool(re.match(r"\$?Mission_OnFoot", str(name or ""), re.I))
 
 
 def _massacre(e):

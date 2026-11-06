@@ -38,7 +38,10 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
 | `ScanOrganic` | Sample runs: `Log` starts (and abandons any other run), `Sample`, `Analyse` completes. `Body` is the body id. It carries no position: a sample point is the live Status.json's within 90 s (`note_sample_point`), kept with the line's `Variant` (the variant's codex code, as a biology `CodexEntry`'s `Name`: `bio_spots.variant`). The game writes a biology `CodexEntry` in the same second just before a first `Log`: that is where you stand, not a plant. |
 | `CodexEntry` | Codex entries, "new to your codex", vouchers (one with no `BodyID`, a phenomenon in space, is no body's), a green gas giant confirmed: its entry is its type's `EntryID` + 1 (class I 1200501, green 1200502) and its `BodyID` is the main star's (4 of 4 in a capture of every player's EDDN traffic, 2026-10-25), and it is written **in the same second as the giant's own Scan** (4 of 4 in the same capture: the in-depth review of 2026-10-25; once the entry named a water-life giant over an ammonia-life one), so `outrider.ggg.match_green` finds the giant by that scan's time first (own_bodies first_ts, fss_ts: your first FSS scan's, kept when an AutoScan came before it and the mapping's rescan after; ts), else the entry's own body (an older journal), then by that class: the only giant of it, else the ones the model flags, else all of them (any giant when none has the class), "one of N" when several remain. A biology one (`Category` `$Codex_Category_Biology;`, `Name` `$Codex_Ent_<Genus>_<NN>_<variant>_Name;`, the species being `$Codex_Ent_<Genus>_<NN>_Name;`) is written each time the composition scanner reads a plant. Its `Name` is the variant's code, and the variant part is what sets the colour: the star class (`$Codex_Ent_Tussocks_01_F_Name;`) or a material (`$Codex_Ent_Bacterial_10_Polonium_Name;`), which `outrider.checklist.variant_colour` reads against the species' colour tables, so the colour is known in English whatever the game's language (kept as `bio_tags.variant`, and a ScanOrganic's `Variant` as `own_organic.variant`; the codex folders and the Exo-Biology checklist read it). The bark mound is "Bark Mounds" in the game and "Bark Mound" in the rules (its genus has the plural): `bio.species_by_name` knows both. It carries `Latitude`/`Longitude` on foot only (21 of the author's 23), so from the ship or SRV the position is Status.json's at that moment (`bio_tags`, BioScan's waypoints). A geology one (`SubCategory` `$Codex_SubCategory_Geology_and_Anomalies;`, `Category` Biology all the same) carried `Latitude`/`Longitude` in all 26 of the author's; kept in `geo_tags` (Status.json's when missing, as for a plant) so a screenshot can name the formation it shows. A star or planet type (`$Codex_Category_StellarBodies;`) is logged once per region, the first time you scan one there: its `Name_Localised` is ambiguous for planets ("Terraformable", "Non Terraformable", "Standard gas giant" for many entries), so key on `EntryID` (`outrider/codex_bodies.py`); a planet's `BodyID` is not that planet's (usually the star you are near). Its "Ter" entries are the solid bodies with an atmosphere, thin ones too. The type is logged only the first time (109 of the author's 111 such lines say new), so a type you have scanned in a region counts as logged there even with no line in the journals kept; a nav beacon's read (`ScanType` `NavBeacon` or `NavBeaconDetail`, `NAV_BEACON_SCANS`) never does (review 2026-10-23 S6-B1: only NavBeaconDetail was left out). |
 | `Screenshot` | F10 / Alt+F10 (HighRes) in the game: `Filename` `\ED_Pictures\Screenshot_0002.bmp` (or `HighResScreenShot_<date>_<time>.bmp`), `Width`, `Height`, `System`, `Body`, and from a ship on (or low over) a surface `Latitude`, `Longitude`, `Heading` (no `Altitude` seen); **on foot only the `Body`** (the author's three shots of a bacterium, 2026-10-25), so the position is the live Status.json's over that body within 90 s (`note_screenshot`, as `note_bio_tag`). The size is the render resolution, not the screen's (3072x1728 at a 2560x1440 screen with supersampling, a HighRes 4x: 12288x6912, 255 MB of BMP). The line is written ~2 s **before** the file exists (a HighRes one then takes a moment more to write), so the converter waits for the file and for its size to settle (`outrider.screenshots.wait_ready`). Names are reused once the folder is emptied: the line's time, not the name, tells two apart (`match_backlog`). Steam's F12 screenshots write no line. Live only (`note_screenshot`: never a catch-up or re-read, but a line under five minutes old, `SHUTDOWN_LIVE_S`, counts as live, so a re-read or a restart replays the latest ones; `State.shot_known` drops a shot converted, waiting or converting already). |
-| `Disembark` | Footfall on a planet (`OnPlanet`). |
+| `Disembark` | Footfall on a planet (`OnPlanet`). A live one (not `Taxi`, not `Multicrew`) waits for its suit line: the wrong-suit warning (round 10's S4, `Journals.suit_check`). |
+| `SuitLoadout`, `SwitchSuitLoadout` | The suit you wear (`SuitName`: `explorationsuit_class*` is the Artemis, the only suit with a Genetic Sampler; `utilitysuit_*` the Maverick, `tacticalsuit_*` the Dominator, `flightsuit` the plain flight suit). `SuitLoadout` comes 2-10 s after every `Disembark` (S4); the CMDR tab's suit loadouts fold it too. |
+| `ApproachSettlement` | `SystemAddress`, `BodyID`, `BodyName`, `Name`, `MarketID`, `StationServices`, `Latitude`/`Longitude`: a settlement approached on that body, live, quiets the wrong-suit warning for the visit (S4). Uploaded to EDDN and Inara on its own path. |
+| `CommitCrime` | `CrimeType`, `Faction`, and `Bounty` or `Fine` (credits). A live one with a `Bounty` is the `wanted` moment, once per system stay and faction (round 10's S22); fines are not said. It names no system: where you are (`pos`). |
 | `ApproachBody`, `LeaveBody`, `Touchdown` | Approach briefing, leaving a body mid-run, the body you are at; your ship's landing spot. |
 | `LaunchSRV`, `LaunchVessel`, `DockSRV`, `SRVDestroyed`, `SupercruiseExit`, `SupercruiseEntry`, `Liftoff` | Which body your SRV is out on and which SRV (`SRVType` `mev_rhino` is the Rhino); the ship marker; rigs lost with the Rhino. The Nomad launches with `LaunchVessel` (`VesselType` `lander01`, `VesselType_Localised` "Nomad") but docks with `DockSRV`, and Status.json reports it as an SRV (bit 26). `LaunchVessel` must keep the body you are on, as `LaunchSRV` does (PARSER_VERSION 37). |
 | `MiningRefined` | 1 t of a commodity refined, by the ship's refinery (asteroids) or the SRV's: every one adds to the mined stock (meta `mined_stock`, `Journals.note_mined`); the SRV's alone are "Mined previously" (`own_mined`) and the Rhino's collections. Its `Type` is the symbol (`$painite_name;`), the market events' the plain id (`painite`): `outrider.cargo.cid` makes them one key. |
@@ -347,6 +350,44 @@ checked 2026-11-06 for round 10's S8, S9, S15 and S19)
   `System`); a finished one stays listed (`IsComplete` true) for days past its `Expiry`; after a
   `CommunityGoalReward` (`CGID`, `Reward`) the next list leaves it out. No `CommunityGoalDiscard` in the author's
   journals (Frontier's manual: `CGID`).
+
+**Suits, settlements, crimes and mining stints** (the author's journals, 2023-05 to 2026-07, 262 files, read only, checked
+2026-11-06 for round 10's S4, S21 and S22)
+- **Disembark and SuitLoadout:** 1,732 `Disembark`, 1,732 `SuitLoadout`, 1,732 `Embark`, 1 `SwitchSuitLoadout`. The
+  `SuitLoadout` comes **after** its `Disembark`, never before: 1,722 directly after one, 2-10 s later (2 s 328 times,
+  3 s 991, 4 s 338, 5-10 s 65, once 36 s); the other 10 after a login's `Location` (on foot at the login), a `Liftoff`
+  and three snapshots. 1,729 of the 1,732 disembarks have their suit line within the next 40 lines; none had one in
+  the 10 s before. Hence `SUIT_PAIR_S` 45 and a pairing that takes either order. `Embark` writes no suit line.
+- **Disembark's flags:** `OnPlanet` 1,713, `SRV` true 1,676 (out of the SRV, not the ship), `OnStation` 6, `Taxi` 0,
+  `Multicrew` 0. A disembark with neither (`OnPlanet` and `OnStation` false, `Body` the star) was at a fleet carrier.
+- **Suit names:** `explorationsuit_class1` 1,730 times, `flightsuit` 4 (at stations and a carrier, never on a
+  planet). No Maverick or Dominator in these journals, so the warning's wording of them is from Frontier's names, and
+  no real line has made it fire. `SuitName_Localised` is the game language's ("Artemis Suit"): the page's words come
+  from the symbol (`SUIT_WORDS`).
+- **ApproachSettlement:** 111 lines, every one with `SystemAddress`, `BodyID` and `BodyName` (and `Latitude` /
+  `Longitude`); construction sites too ("Planetary Construction Site: ..."). Its `StationServices` lists
+  Interstellar Factors as `facilitator`.
+- **On-foot missions:** none in these journals (`Mission_OnFoot_...` never appears; the accepted ones are Courier
+  152, AltruismCredits 17, Collect 5, PassengerBulk 3, Massacre 3, Delivery 2, Assassinate 1). The rule matches the
+  `Name` symbol, which the login's `Missions` list carries too (`Mission_Courier_War_name`): rows kept before the
+  `on_foot` flag get it at the next login, without a re-read.
+- **CommitCrime:** 17 lines, each `{CrimeType, Faction, Fine}` (14) or `{CrimeType, Faction, Bounty}` (3), never both,
+  never a system. The bounties: `dockingMajorTresspass` and `dockingMajorBlockingLandingPad` (500 cr each), each
+  20-30 s after the same faction's `Minor` fine; the police attacked at once (`UnderAttack`, `HullDamage`). One came at
+  the same second as a `DockingDenied` with `Reason` `Hostile` ("Criminals have no docking privileges"); no
+  `Offences` refusal is in these journals (`Reason` counts: NoSpace 50, Distance 16, RestrictedAccess 4, TooLarge 2,
+  Hostile 1). Fines: blocking a pad, dumping near a station, dumping dangerous cargo, firing or colliding in a no-fire
+  zone, reckless weapons discharge.
+- **Mining stints and where they end:** 48 ring stints with refining, in 23 system stays (45 to 541 t a stay, one ring
+  each). 22 ended with a hyperspace jump straight out of the ring (`StartJump` then `FSDJump`, no `SupercruiseEntry`:
+  19 then docked after a drop the journal marks `BodyType` `Star`, a carrier's, 3 jumped on), 20 with a
+  `SupercruiseEntry` (17 then docked in the same system: 7 after a `Star` drop, 6 at a `Planet` drop, 4 at a
+  `Station`; 3 hopped to another ring), 6 at the end of a session. So the recap (S21) is made at `FSDJump`
+  (read before the jump moves `pos`: the system mined in) and at `Docked`; a `StartJump` is no leaving (7 of 3,661
+  hyperspace `StartJump`s were followed by another `StartJump`, 2 by a `Shutdown`).
+- **Replayed** (every journal through `Journals.handle` on an in-memory database, each line taken as live, 2026-11-06):
+  47 mining recaps (a stay with several docks gets one per dock, each counting from the last), the 3
+  `wanted` moments, no `wrong_suit` (every disembark in the Artemis), no line skipped.
 
 **Other**
 - `Shutdown` is written only on a clean quit; a crash writes nothing, so the last event is where a session

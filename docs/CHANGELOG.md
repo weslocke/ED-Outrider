@@ -2,6 +2,29 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Round 10 suggestions, batch 7: the mining recap, wanted and the nearest Interstellar Factors, the wrong suit
+Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the gameplay ones made of live moments: no
+journal re-read. Plain words under alert rows, no new speech keys (the author's answer 1). The author's journals (read
+only, 262 files) were checked first; docs/JOURNAL_REFERENCE.md has what they showed.
+- **S21** Jumping away or docking after mining in a system: a recap of the ring you mined since arriving, 20 t at least
+  (`MINING_RECAP_MIN_T`), under Rings to mine: "4 B Ring: 86 tons in an hour and ten, 74 an hour, 3 motherlodes."
+  Never at each ring exit (answer 17), never after a death (it sets the mark), in a ship with no mining kit or for a
+  line read late; a second dock in the system counts only what was mined since the last recap. Docked, one follow-up:
+  the best price within 100 ly for what you refined most, unless Hold full named where to sell in that system, dropped
+  if Spansh takes over 15 s, fails, or answers after you left.
+- **S22** A bounty put on you (CommitCrime with a `Bounty`; fines never, answer 19) is a danger line on a new alert row,
+  **Wanted** (Danger and risk; Tactical with the crew, answer 18, else Comms), once per system stay and faction:
+  "Brewer Corporation has put a 500 credit bounty on you. Nearest Interstellar Factors: …", the nearest in another
+  system when one is known. Interstellar Factors joins `outrider/dock.py`'s service tables (Spansh's "Interstellar
+  Factors Contact", the game's `facilitator`: `Factors`) and `/api/nearest`'s needs (`need=factors`, the AI tool's
+  too). The "your offences" docking refusal names the same place. Status.json's LegalState stays out.
+- **S4** Stepping out on a body you scanned with sampling left, in a suit other than the Artemis: "Maverick suit on A 3:
+  no Genetic Sampler. Two genera left to sample." under Exobiology unfinished, once a body visit, from a live
+  Disembark (not taxi or multicrew) and its SuitLoadout (either order within 45 s: the real journals put it 2-10 s
+  after). Quiet where you approached a settlement on that body this visit and while an on-foot mission is held (the
+  author's rules); a mission row now keeps `on_foot` (set from the login's Missions list for rows kept before). On
+  foot, the on-body strip shows "⚠ Maverick suit: no Genetic Sampler" while the body has work left.
+
 ## 2026-11-06 · Round 10 suggestions, batch 6: massacre kills counted, the vouchers you hold, Collect's Buy, merits and Community Goals
 Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the gameplay ones that read past journals, under
 one journal re-read (PARSER_VERSION 73). Each rule was first checked against the author's journals (read only, 2024-10

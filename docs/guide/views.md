@@ -74,7 +74,10 @@ The guess itself stays the likeliest by value, until you know better: a composit
 on-body strip already shows its bio card. While you sample, the strip says what the run pays from the first sample on
 ("🧬 Bacterium Aurasus · 1.0M (×5: 5.0M) · sample 1/3 · 500 m to go": the species' value, and with the first-footfall
 bonus). The distance counts down on foot, in the SRV or Nomad, and in your ship flying low to the next spot (measured
-from the point under the ship), and "Clear to sample" is said as soon as you are far enough, before you land. A star's panel says its kind in words ("main sequence", "white dwarf (hydrogen-rich)"), a biology codex entry links to
+from the point under the ship), and "Clear to sample" is said as soon as you are far enough, before you land. On foot
+in a suit with no Genetic Sampler (any but the Artemis) on a body with sampling left, the strip ends with "⚠ Maverick
+suit: no Genetic Sampler" (not where you approached a settlement on the body, nor while you hold an on-foot mission;
+see [the wrong suit](voice-and-alerts.md#-alerts)). A star's panel says its kind in words ("main sequence", "white dwarf (hydrogen-rich)"), a biology codex entry links to
 Canonn's Bioforge (where it grows, and in what conditions), and **⬇ CSV** in the heading saves the system's bodies
 and values as a spreadsheet; **📋** beside it copies a short summary in Markdown, ready to paste into Reddit or
 Discord (your firsts, notable worlds, green gas giants, curiosities, the life sampled and still to sample, ring hotspots,

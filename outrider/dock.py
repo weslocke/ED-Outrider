@@ -26,13 +26,16 @@ SEARCH_LY = 10000            # how far the station search reaches
 SEARCH_SIZE = 50             # stations and carriers each, nearest first
 DEFAULT_AGE_DAYS = 30
 FAR_LS = 5000
-# "Trader": any material trader; "Raw", "Manufactured", "Encoded": a trader of that kind (S54)
-SERVICES = ("UC", "Vista", "Repair", "Refuel", "Shipyard", "Outfitting", "Trader", "Raw", "Manufactured", "Encoded")
+# "Trader": any material trader; "Raw", "Manufactured", "Encoded": a trader of that kind (S54). "Factors": Interstellar
+# Factors (round 10's S22: where a bounty on you is paid off; Spansh's "Interstellar Factors Contact", the game's
+# "facilitator"), asked for by the wanted alert and the "your offences" docking refusal; not one of the finder's boxes
+SERVICES = ("UC", "Vista", "Repair", "Refuel", "Shipyard", "Outfitting", "Trader", "Raw", "Manufactured", "Encoded", "Factors")
 SPANSH_SERVICES = {"Universal Cartographics": "UC", "Vista Genomics": "Vista", "Repair": "Repair", "Refuel": "Refuel",
-                   "Shipyard": "Shipyard", "Outfitting": "Outfitting", "Material Trader": "Trader"}
+                   "Shipyard": "Shipyard", "Outfitting": "Outfitting", "Material Trader": "Trader",
+                   "Interstellar Factors Contact": "Factors"}
 # a Docked line's StationServices (the game's ids) -> the finder's names; repair and refuel are optional on a carrier too
 GAME_SERVICES = {"exploration": "UC", "vistagenomics": "Vista", "repair": "Repair", "refuel": "Refuel",
-                 "shipyard": "Shipyard", "outfitting": "Outfitting"}
+                 "shipyard": "Shipyard", "outfitting": "Outfitting", "facilitator": "Factors"}
 # A material trader's kind is Spansh's `material_trader` field, spelled as here, and its station search filters on it
 # (scripts/trader_probe.py, 2026-10-12: tests/fixtures/spansh_traders.json). 7 of the galaxy's 1,639 traders (Colonia's
 # outposts, a megaship) list the service with no kind: they are a "Trader" of no kind, never one guessed from the
@@ -275,7 +278,7 @@ def spoken(result, need=(), kind=None):
     # all, so it stays (review 2026-10-08 #4: every place in your system was skipped)
     rows = [r for r in result["rows"] if not (r.get("here") and r.get("own"))]
     trader = trader_need(need)
-    what = " and ".join({"UC": "Universal Cartographics", "Vista": "Vista Genomics"}.get(n, n.lower()) for n in need
+    what = " and ".join({"UC": "Universal Cartographics", "Vista": "Vista Genomics", "Factors": "Interstellar Factors"}.get(n, n.lower()) for n in need
                         if n != "Trader" and n not in TRADER_KINDS)
     place = trader_words(trader) if trader else kind or "place to dock"
     if not rows:
