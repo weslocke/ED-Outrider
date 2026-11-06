@@ -751,6 +751,18 @@ class Server(unittest.TestCase):
         self.assertEqual({yellow()["file"] for _ in range(20)}, {"good.png"})
         self.assertEqual(self.st.checklist_picture(sid, "Yellow", "good.png")[0]["image"]["file"], "good.png")   # the only one
 
+    def test_the_legends_hover_shows_your_own_with_the_switch_off(self):
+        """Review round 10 B8: the surface map legend's 📷 does not follow [screenshots] codex_show (the checklists'
+        switch), but its hover did: "your own picture" marked, Canonn's shown."""
+        self.assertFalse(self.st.shots_cfg.get("codex_show"))
+        folder = os.path.join(self.out, "Biology", "Bacterium", "Bacterium Bullaris", "Yellow")
+        os.makedirs(folder)
+        Image.new("RGB", (10, 10)).save(os.path.join(folder, "a.png"))
+        self.st._codex_images = {"bacterium bullaris - yellow": ["https://c/y.jpg", "Someone"]}
+        got = self.st.species_picture("$Codex_Ent_Bacterial_10_Name;", "$Codex_Ent_Bacterial_10_Polonium_Name;", "Bacterium Bullaris - Yellow")
+        self.assertEqual((got["image"].get("own"), got["image"].get("file")), (True, "a.png"))
+        self.assertIsNone(self.st.codex_own("bio", "Bacterium", "Bacterium Bullaris", "Yellow"))   # the checklists: still off
+
     def test_here_marks_a_species_you_have_a_picture_of(self):
         """The author, 2026-10-26: Here's bio column says when your codex folders already hold a picture of that
         species' colour (no second shot needed): a sampled species (its colour from the sample's variant code) and a

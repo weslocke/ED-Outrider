@@ -2,6 +2,29 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Review round 10, batch 1: the surface map, the route pane, uploads, the browser's voice
+Fable review round 10 (project/done/reviews/review-2026-11-06), the bugs that stand alone:
+- **B1** The surface map's finished species keeps its own three samples: the game writes the third Sample and the
+  Analyse in the same second, so `ts < done_ts` lost the third, and LIMIT 3 took an abandoned earlier run's spot in its
+  place. `bio_spots.n` (new column, live-only) numbers each spot 1 to 3 (the Analyse's none); `State.run_spots` takes
+  the run's own from its Log through its Analyse, the latest of each number (older rows as before).
+- **B4** A long carrier trip in the Plotted Route pane no longer stalls the server: `route_list_hops("carrier")` walks
+  only the `ROUTE_LIST_MAX` legs shown and takes Spansh's id-search position before `locate()` (whose Boxel-cache tail
+  parses the whole cache per leg: seconds per refetch with a big cache).
+- **B5** A journal folder written with a trailing slash (or `\`) no longer splits the uploads session: Status.json's
+  body and position reached a session no journal line used, so EDDN's codexentry went without BodyName and
+  scanorganic without its position. `outrider.uploads.folder_key` and `status()` key by the normalised folder.
+- **B6** An unnamed ship (Loadout's ShipName " ") is named by its type at the source (`self.ship`), and
+  `Journals.ship_name` serves the three readers: a login on foot's session ship and the Game loaded greeting ("flying
+  Caspian Explorer", not "flying  ").
+- **B8** The surface map legend's hover shows your own picture whatever Settings' "Show your own pictures on the
+  Bio/Geo checklists" says (that switch is the checklists'; the legend's 📷 never followed it): `codex_own(always=True)`.
+- **B9** Sell all's hint says "nearest buyers" under Closest (Spansh is asked for the nearest ones then).
+- **B10** The lost-contact line in the browser's voice is logged "said" only once the browser speaks it; refused before
+  a click it is "not said" and the pill asks for the click (`LOST_FATE_MS`: no answer at all by then).
+- **B11** The guide names the route pane's column "Along", as the page does.
+- **B12** The route pane's "asking Spansh: N of N…" starts afresh with each fetch, not at the last one's count.
+
 ## 2026-11-05 · The Sessions' Ship: a death's ship, an unnamed ship by its type
 - Checked on a re-read of the author's own journals (2026-09-30: logged in in an unnamed Caspian, swapped to
   "Rhinocart", died and mined in it). A death keeps the ship you died in too, so a session with a death and no kill

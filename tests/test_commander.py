@@ -667,6 +667,19 @@ class Sessions(unittest.TestCase):
             ev(T("08:10:00"), "Bounty", Target="anaconda", TotalReward=5)])
         self.assertEqual(state.commander_sessions(now=NOW)["sessions"][0]["ship"], "explorer_nx")
 
+    def test_an_unnamed_ship_then_a_login_on_foot(self):
+        """Round 10 B6: the reader's ship kept the Loadout's ShipName " ", so a later login on foot wrote " " as the
+        session's ship (which the Loadout fix-up for '' then never repaired) and greeted you "flying  "."""
+        j, state = setup(self, [
+            ev(T("07:00:00"), "LoadGame", Commander="Tester", Ship="Explorer_NX", Ship_Localised="Caspian Explorer", ShipName=""),
+            ev(T("07:00:05"), "Loadout", Ship="explorer_nx", ShipName=" ", ShipID=39, MaxJumpRange=20,
+               FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[]),
+            ev(T("07:30:00"), "Shutdown"),
+            ev(T("08:00:00"), "LoadGame", Commander="Tester", Ship="ExplorationSuit_Class1", Ship_Localised="Artemis Suit"),
+            ev(T("08:10:00"), "MarketSell", Type="gold", Count=1, TotalSale=5, MarketID=1)])
+        self.assertEqual(j.db.execute("SELECT ship FROM play_activity WHERE login_ts=?", (T("08:00:00"),)).fetchone()[0], "explorer_nx")
+        self.assertEqual([m["ship"] for m in j.moments if m["kind"] == "game_start"], ["Caspian Explorer", "explorer_nx"])
+
     def test_the_ship_a_session_ended_in(self):
         """#23: three ships or more show the first and the last (the author); back in the first, the first is the last,
         and a line read out of order counts at its place."""

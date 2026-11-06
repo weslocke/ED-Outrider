@@ -2171,6 +2171,21 @@ class SurfaceRigs(unittest.TestCase):
         bio = self.state.surface_bio(self.state.surface_here())
         self.assertEqual([(b["species"], b.get("done", False)) for b in bio], [("Codex_Ent_Stratum_07_Name", False)])
 
+    def test_a_finished_run_in_the_analyses_second(self):
+        """Review round 10 B1: the game writes the third Sample and the Analyse in the same second; `ts < done_ts` lost
+        the third spot, and LIMIT 3 filled it with an abandoned earlier run's spot of the same species."""
+        def scan(s, kind):
+            self.ev(s, {"event": "ScanOrganic", "ScanType": kind, "Genus": "$Codex_Ent_Stratum_Genus_Name;", "Genus_Localised": "Stratum",
+                        "Species": "$Codex_Ent_Stratum_07_Name;", "Species_Localised": "Stratum Tectonicas",
+                        "SystemAddress": self.SYS, "Body": self.BODY})
+        for s, north, kind in ((1, 1000, "Log"), (3, 1200, "Sample"),                       # abandoned
+                               (10, 0, "Log"), (20, 200, "Sample"), (30, 400, "Sample"), (30, 400, "Analyse")):
+            self.status(s, north, 0, flags=0, flags2=1)
+            scan(s, kind)
+        self.status(40, 600, 0, flags=0, flags2=1)
+        done = [b for b in self.state.surface_bio(self.state.surface_here()) if b.get("done")]
+        self.assertEqual([(p["n"], p["dist"]) for p in done[0]["points"]], [(1, 600), (2, 400), (3, 200)])
+
     def test_a_species_picture_for_the_legend(self):
         """The surface map legend's hover (the author, 2026-11-02): one of your own pictures of that species' colour first
         (another than the one shown), else Canonn's (that colour's, else the species', else its genus'), found by the
@@ -2185,9 +2200,9 @@ class SurfaceRigs(unittest.TestCase):
         self.assertEqual(pic(None, None, "Nothing Known - Red"), {"name": "Nothing Known - Red", "image": None})
         asked = []
         own = {"url": "api/codex_picture?x", "own": True, "file": "b.png"}
-        with unittest.mock.patch.object(self.state, "codex_own", lambda *a: asked.append(a) or own):
+        with unittest.mock.patch.object(self.state, "codex_own", lambda *a, **k: asked.append((a, k)) or own):
             self.assertEqual(pic("$Codex_Ent_Bacterial_01_Name;", None, "Bacterium Aurasus - Green", "a.png")["image"], own)
-        self.assertEqual(asked, [("bio", "Bacterium", "Bacterium Aurasus", "Green", "a.png")])
+        self.assertEqual(asked, [(("bio", "Bacterium", "Bacterium Aurasus", "Green", "a.png"), {"always": True})])
 
     def test_site_tags_keep_their_order_while_you_mine(self):
         """R29: the page numbers U1, U2... in the server's order: mining more at the first site must not move it."""

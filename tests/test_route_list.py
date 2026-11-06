@@ -119,6 +119,21 @@ class Hops(Base):
         rows = self.state.route_list("carrier")["rows"]
         self.assertEqual([r.get("nodata", False) for r in rows], [False, True])
 
+    def test_a_long_carrier_trip_looks_up_only_the_legs_shown(self):
+        """Review round 10 B4: every leg ahead went through locate() (whose Boxel-cache tail parses the whole cache) on
+        each refetch, though only ROUTE_LIST_MAX are shown; Spansh's id search's position comes first now."""
+        legs = [{"system": f"S{i}", "id64": 1000 + i, "ly": 100.0} for i in range(60)]
+        ed_outrider.meta_set(self.db, "carrier_trip", {"id": "t", "at": 0, "legs": legs})
+        asked, real = [], self.state.locate
+        self.state.locate = lambda id64: asked.append(id64) or real(id64)
+        hops, total = self.state.route_list_hops("carrier")
+        self.assertEqual((len(hops), total, len(asked), hops[-1]["along"]), (ed_outrider.ROUTE_LIST_MAX, 59, ed_outrider.ROUTE_LIST_MAX, 2400.0))
+        for i in range(1, 60):                                                 # the id search placed them
+            self.state.route_spansh[1000 + i] = (time.time(), True, {"x": i, "y": 0, "z": 0})
+        asked.clear()
+        hops, _ = self.state.route_list_hops("carrier")
+        self.assertEqual((asked, hops[0]["x"]), ([], 1))
+
 
 class Rows(Base):
     def test_nearbys_row_with_what_is_known(self):
@@ -191,6 +206,22 @@ class Fetch(Base):
         self.assertGreater(self.state.route_list_seq, 0)
         self.fetch()   # all answered and cached for their updated_at: nothing more is asked
         self.assertEqual((len(self.searches), len(self.dumps)), (1, 4))
+
+    def test_a_new_fetch_starts_its_count_afresh(self):
+        """Review round 10 B12: during a new fetch's id search the pane said the last fetch's "asking Spansh: 4 of 4"."""
+        self.game_route(8)
+        self.fetch()
+        self.assertEqual(self.state.route_list_progress, (4, 4))
+        self.game_route(12)   # re-plotted further: S9..S12 never asked
+
+        async def started():
+            self.state.maybe_route_list_fetch("game")
+            seen = self.state.route_list("game")["asking"]   # the search not answered yet
+            await self.state.route_list_task
+            return seen
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(asyncio.run(started()), [0, 0])
+        self.state.route_list_task = None
 
     def test_a_newer_spansh_record_is_fetched_again(self):
         self.game_route(3)

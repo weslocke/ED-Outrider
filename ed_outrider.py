@@ -2110,10 +2110,11 @@ CREATE TABLE IF NOT EXISTS sample_points (
 -- author, 2026-10-25: a shot taken just after the Analyse found nothing). Live only, like sample_points.
 -- name: the variant's ("Bacterium Bullaris - Yellow"), kept here because an abandoned run's own_organic row goes;
 -- variant: its codex code ("$Codex_Ent_Bacterial_10_Polonium_Name;"), the colour in any game language (NULL before
--- 2026-10-26: the name's colour then).
+-- 2026-10-26: the name's colour then); n: which sample of its run (1 the Log, 2, 3; NULL for the Analyse's own spot,
+-- and before 2026-11-06), so a finished run's three spots are told from an abandoned run's (review round 10 B1).
 CREATE TABLE IF NOT EXISTS bio_spots (
     system INTEGER, body_id INTEGER, species TEXT, genus TEXT, lat REAL, lon REAL, ts TEXT, name TEXT,
-    variant TEXT,
+    variant TEXT, n INTEGER,
     PRIMARY KEY (system, body_id, species, ts));
 INSERT OR IGNORE INTO bio_spots (system, body_id, species, genus, lat, lon, ts)
     SELECT system, body_id, species, genus, lat, lon, ts FROM sample_points;
@@ -4248,7 +4249,8 @@ class Journals:
                     self.fuel_hist = []
                     meta_set(self.db, "fuel_hist", [])
                     self.fresh("fuel_hist", ts)
-                self.ship = {"name": ev.get("ShipName") or ev.get("Ship"), "type": ev.get("Ship"),
+                # an unnamed ship's Loadout can say ShipName " ": its type then, which the page names (#23)
+                self.ship = {"name": str(ev.get("ShipName") or "").strip() or ev.get("Ship"), "type": ev.get("Ship"),
                              "ship_id": ev.get("ShipID"), "fid": (self.commander or {}).get("fid"),   # whose (round 9)
                              "fuel_main": cap.get("Main"), "fuel_reserve": cap.get("Reserve"),
                              "max_range": ev["MaxJumpRange"], "fsd_size": int(size.group(1)) if size else None,
@@ -4975,9 +4977,11 @@ class Journals:
         if kind != "Analyse":
             self.db.execute("INSERT OR REPLACE INTO sample_points VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                             (system, body, species, genus, n, st["lat"], st["lon"], ts))
-        # every sample's spot, the Analyse's too (review 2026-10-25: a shot where the run completed named nothing)
-        self.db.execute("INSERT OR IGNORE INTO bio_spots (system, body_id, species, genus, lat, lon, ts, name, variant)"
-                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (system, body, species, genus, st["lat"], st["lon"], ts, name, variant))
+        # every sample's spot, the Analyse's too (review 2026-10-25: a shot where the run completed named nothing); the
+        # third Sample and the Analyse are written in the same second, so the Analyse's row is then the third's
+        self.db.execute("INSERT OR IGNORE INTO bio_spots (system, body_id, species, genus, lat, lon, ts, name, variant, n)"
+                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (system, body, species, genus, st["lat"], st["lon"], ts, name,
+                                                                   variant, None if kind == "Analyse" else n))
 
     def note_bio_tag(self, ev, system, ts):
         """A biology CodexEntry (the composition scanner, or a first Log) is a waypoint for that species on that body
@@ -5151,11 +5155,17 @@ class Journals:
                 # only when the last ship read was this commander's (review round 9: another commander's in a shared
                 # folder, or a legacy folder read late); else none until this session's Loadout (handle_ship) names it
                 mine = (self.ship or {}).get("fid") in (None, ev.get("FID"))
-                ship = (self.ship or {}).get("name") or "" if mine else ""
+                ship = self.ship_name() if mine else ""
             self.db.execute("INSERT OR IGNORE INTO play_activity (login_ts, commander, ship) VALUES (?, ?, ?)",
                             (ts, ev.get("Commander"), ship))
         elif name in outrider.commander.ACTIVITY_EVENTS:
             self.note_activity(ev, ts, mined)
+
+    def ship_name(self):
+        """The ship you fly, as the last Loadout named it: its own name, else its type ("explorer_nx", which the page
+        names); "" when none was read. A name kept from before the Loadout stripped it (" ") counts as none (#23)."""
+        s = self.ship or {}
+        return str(s.get("name") or "").strip() or s.get("type") or ""
 
     def note_activity(self, ev, ts, mined=None):
         """A fighting or mining line: into the counts of the login it follows (play_activity, its login the latest at
@@ -5173,7 +5183,7 @@ class Journals:
         # (an unnamed ship's Loadout can say ShipName " ": its type then, the page names it)
         s = self.ship or {}
         mine = (s.get("ts") or "") <= ts and s.get("fid") in (None, (self.commander or {}).get("fid"))
-        ship = (str(s.get("name") or "").strip() or s.get("type")) if mine else None
+        ship = self.ship_name() or None if mine else None
         if outrider.commander.activity_apply(acts, ev, srv, mined, place, ship):
             self.db.execute("UPDATE play_activity SET combat=?, mining=? WHERE login_ts=?",
                             (acts["combat"] and json.dumps(acts["combat"]), acts["mining"] and json.dumps(acts["mining"]),
@@ -5260,7 +5270,7 @@ class Journals:
             self.regions_said = set()   # ... and each region crossing its line
             ship = ev.get("ShipName") or ev.get("Ship_Localised") or ev.get("Ship") or ""
             if not_a_ship(ev.get("Ship")):   # logged in on foot, in the SRV or a shuttle: your ship is still yours
-                ship = (self.ship or {}).get("name") or ""
+                ship = self.ship_name()
             # how long since the last session ended (its last event, the Shutdown or wherever a crash stopped it):
             # over AWAY_MIN_S the page greets you with what is at stake; a relog or mode switch gets the plain line
             since = max([t for t in (self.last_play_ts, c.get("shutdown_ts")) if t and t < ts], default=None)
@@ -9962,12 +9972,27 @@ class State:
                         "distance": round(d, 1) if d is not None else None})
         return sorted(out, key=lambda x: (x["distance"] is None, x["distance"] or 0, x["system"] or "", x["body"]))
 
+    def run_spots(self, system, body_id, species, done_ts):
+        """A finished run's sample spots [(n, lat, lon)], 1 to 3, from bio_spots: those numbered (n) from the run's own
+        Log through its Analyse, the latest of each number. The third Sample and the Analyse share a second (review
+        round 10 B1: `ts <` lost the third, and LIMIT 3 took an abandoned run's spot instead); spots kept before their
+        number was (2026-11-06) are the last three before the Analyse, as then. [] for a run not sampled live."""
+        q = "SELECT n, lat, lon, ts FROM bio_spots WHERE system=? AND body_id=? AND species=? AND "
+        args = (system, body_id, species)
+        log = self.db.execute(q + "n=1 AND ts <= ? ORDER BY ts DESC LIMIT 1", args + (done_ts,)).fetchone()
+        if log:
+            by_n = {r["n"]: (r["n"], r["lat"], r["lon"])
+                    for r in self.db.execute(q + "n BETWEEN 1 AND 3 AND ts BETWEEN ? AND ? ORDER BY ts", args + (log["ts"], done_ts))}
+            return [by_n[n] for n in sorted(by_n)]
+        old = self.db.execute(q + "n IS NULL AND ts < ? ORDER BY ts DESC LIMIT 3", args + (done_ts,)).fetchall()
+        return [(len(old) - i, r["lat"], r["lon"]) for i, r in enumerate(old)][::-1]
+
     def surface_bio(self, h):
         """The sample points of unfinished runs on this body, per species, with the colony distance: the run in
         progress is `current`, any other still in progress (journals read out of order) is drawn faint. Points of a
         run that is gone (abandoned, died with you) are not shown. Then each species finished here, `done` (the author,
         2026-11-02: it stays on the map, ticked, its three samples where they were taken): the spots its run's samples
-        were taken at (bio_spots, the last three before its Analyse; none for a run sampled while not playing live)."""
+        were taken at (run_spots: its own three; none for a run sampled while not playing live)."""
         run = self.db.execute("SELECT system, body_id, species FROM own_organic WHERE done_ts IS NULL ORDER BY ts DESC LIMIT 1").fetchone()
         cur = (run["system"], run["body_id"], run["species"]) if run else None
         out = {}
@@ -9994,14 +10019,12 @@ class State:
                                  " AND done_ts IS NOT NULL ORDER BY done_ts", (h["system"], h["body_id"])):
             if o["species"] in out:
                 continue   # a new run of a species done here before: the run's own points
-            spots = self.db.execute("SELECT lat, lon FROM bio_spots WHERE system=? AND body_id=? AND species=? AND ts < ?"
-                                    " ORDER BY ts DESC LIMIT 3", (h["system"], h["body_id"], o["species"], o["done_ts"])).fetchall()
             done.append({"species": o["species_name"] or o["species"], "genus": o["genus_name"], "code": o["species"],
                          "variant": o["variant_name"], "variant_code": o["variant"], "samples": 3, "current": False,
                          "done": True, "need": None, "clear": None,
-                         "points": [{"n": len(spots) - i, "lat": p["lat"], "lon": p["lon"],
-                                     "dist": round(surface_m(h["lat"], h["lon"], p["lat"], p["lon"], h["radius"]))}
-                                    for i, p in enumerate(spots)][::-1]})
+                         "points": [{"n": n, "lat": lat, "lon": lon,
+                                     "dist": round(surface_m(h["lat"], h["lon"], lat, lon, h["radius"]))}
+                                    for n, lat, lon in self.run_spots(h["system"], h["body_id"], o["species"], o["done_ts"])]})
         # the legend's 📷 (the author, 2026-11-02: as Here's): a picture of that species' colour in your codex folders
         runs = sorted(out.values(), key=lambda s: not s["current"]) + done
         if runs:
@@ -13237,12 +13260,13 @@ class State:
 
     CODEX_VIEW_PX = 960   # a codex picture as a checklist panel shows it (the panel's width, 260 px high at most)
 
-    def codex_own(self, kind, group, entry, colour="", avoid=None):
+    def codex_own(self, kind, group, entry, colour="", avoid=None, always=False):
         """[screenshots] codex_show: one of your own pictures of a checklist entry, picked at random from its codex
         folder (outrider.screenshots.codex_dir: a species' colour, "" for one with none; a formation), as the checklist's
         image ({url, full, own, file}), another than `avoid` (the one shown) when there are two or more; None when it
-        is off or the folder has none (Canonn's then)."""
-        if not self.shots_cfg.get("codex_show"):
+        is off or the folder has none (Canonn's then). always: whatever the switch (the surface map legend, whose 📷
+        does not follow it: review round 10 B8)."""
+        if not always and not self.shots_cfg.get("codex_show"):
             return None
         S = outrider.screenshots
         root = self.shots_folders()[1]
@@ -13333,7 +13357,9 @@ class State:
         if not sp:
             return {"name": name, "image": None}
         title = f"{sp['name']} - {colour}" if colour else sp["name"]
-        own = self.codex_own("bio", sp.get("genus"), sp["name"], colour, avoid)
+        # your own whatever [screenshots] codex_show says (that switch is the checklists'): the legend's 📷 says you have
+        # one, so its hover shows it, not Canonn's (review round 10 B8)
+        own = self.codex_own("bio", sp.get("genus"), sp["name"], colour, avoid, always=True)
         if own:
             return {"name": title, "image": own}
         have = self.codex_images()
@@ -17932,13 +17958,19 @@ class State:
         elif which == "carrier":
             t = meta_get(self.db, "carrier_trip") or {}
             legs, at = t.get("legs") or [], t.get("at") or 0
+            ahead = legs[at + 1:] if not t.get("done_ts") else []
             prev = {}   # the carrier's legs are its own: "along" is by their ly, not from you
-            for k, leg in enumerate(legs[at + 1:] if not t.get("done_ts") else []):
-                place = self.locate(leg["id64"]) if leg.get("id64") is not None else None
+            # only the legs shown, Spansh's id search's position first: locate() of a deep-space leg it does not know
+            # falls through to the Boxel cache, parsed whole each time (review round 10 B4: seconds per refetch)
+            for k, leg in enumerate(ahead[:ROUTE_LIST_MAX]):
                 hit = self.route_spansh.get(leg.get("id64"))
                 rec = hit[2] if hit and len(hit) > 2 and hit[2] else {}
-                p = {"x": place[1], "y": place[2], "z": place[3]} if place else {k_: rec.get(k_) for k_ in "xyz"}
+                p = {k_: rec.get(k_) for k_ in "xyz"}
+                if None in p.values() and leg.get("id64") is not None:
+                    place = self.locate(leg["id64"])
+                    p = {"x": place[1], "y": place[2], "z": place[3]} if place else p
                 add(leg.get("id64"), leg.get("system"), p, k + 1, ly=leg.get("ly") or 0)
+            return hops, len(ahead)
         return hops[:ROUTE_LIST_MAX], len(hops)
 
     def route_list_fallback(self, h):
@@ -18029,6 +18061,7 @@ class State:
         ask, dump = self.route_list_needs(hops)
         if not dump and (not ask or time.time() < self.route_list_retry_at):
             return
+        self.route_list_progress = (0, 0)   # "asking Spansh…" until the dumps are counted, not the last fetch's (round 10 B12)
         self.route_list_task = asyncio.get_running_loop().create_task(self.fetch_route_list(which, ask))
 
     async def fetch_route_list(self, which, ask):

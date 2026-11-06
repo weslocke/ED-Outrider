@@ -348,7 +348,7 @@ upstream project's choices, not rules of the game.
   ahead on a route, in a pane under Nearby's list (🛣 Show route in its heading, only while a route exists). Every route
   Outrider knows, picked by a switch (the game's, the Highway's, the survey slot's, a carrier trip's; the game's first,
   as the ship flies it). Nearby's own row template (`sysRowHtml`), so its columns, badges, 🎯 and click work alike;
-  `#` and Dist along the route are the pane's own. **The next 24** (`ROUTE_LIST_MAX`, the strip's chips' number),
+  `#` and Along (ly along the route) are the pane's own. **The next 24** (`ROUTE_LIST_MAX`, the strip's chips' number),
   moving on with each jump: a Highway route of 400 jumps would be 400 dumps, and the whole route is Plot Route's.
   **Spansh is asked only while the pane is fetched** (GET `/api/route/list`, as `/api/boxel`): one id search, then a dump
   only for a system Spansh has whose cache is older than its record; nothing for one it has not, nothing inside the

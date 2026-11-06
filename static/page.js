@@ -7133,7 +7133,8 @@ function renderHoldLook(el, a) {
           `<button type="button" class="mini primary" data-lk="plot" data-name="${esc(r.system)}">Plot route here</button></div></td></tr>`;
         return row;
       }).join("") + `</tbody></table>`;
-    h += `<div class="hint">Ranked from Spansh's best buyers of your ${a.asked.length === 1 ? "largest line" : `${a.asked.length} largest lines`} ` +
+    // Closest asks Spansh for the nearest buyers, not the best-paying ones (review round 10 B9)
+    h += `<div class="hint">Ranked from Spansh's ${a.sort === "near" ? "nearest" : "best"} buyers of your ${a.asked.length === 1 ? "largest line" : `${a.asked.length} largest lines`} ` +
       `(${esc(a.asked.join(", "))}), measured from you${a.where ? ` (${esc(a.where)})` : ""}${a.partial ? `; ${a.partial} of those searches failed` : ""}. ` +
       `Prices and demand as players last reported them, for the hold as it was when asked.</div>`;
   }
@@ -15541,6 +15542,7 @@ async function prepareLostLine() {
 }
 // -> what was played: "piper", "sound" or "" (speech off, another window speaks, or the audio not allowed yet).
 // Its fate goes in the dialog's Spoken lines like any line, so a silent one says why.
+const LOST_FATE_MS = 10000;   // the lost-contact line in the browser's voice: no start, end or error by then
 async function sayLost() {
   const entry = logSpeech({kind: "connection", words: LOST_TEXT});
   if (!(speechOn && speakerHere())) { toast(LOST_TEXT); setFate(entry, `silent: ${hushReason()}`); return ""; }
@@ -15553,8 +15555,19 @@ async function sayLost() {
     const u = new SpeechSynthesisUtterance(spokenText(LOST_TEXT)), bv = chosenBrowserVoice();
     u.rate = Math.min(2, Math.max(0.5, speechSpeed())); u.volume = outVolume();
     if (bv) { u.voice = bv; u.lang = bv.lang; }
+    // "said" only once the browser speaks it: refused before a click (Chromium, Edge) or failing, it was not (review
+    // round 10 B10: the log said "said" whatever happened); no answer at all in LOST_FATE_MS: whatever it is doing then
+    entry.engine = "browser voice" + (bv ? `: ${bv.name}` : "");
+    u.onstart = u.onend = () => setFate(entry, "said");
+    u.onerror = ev => { const why = ev && ev.error;
+      if (why === "not-allowed") { browserRefused = true; drawAudioPill(); }
+      setFate(entry, why === "not-allowed" ? "not said: the browser has not allowed its voice yet (click the page)"
+        : `not said: the browser voice failed (${why || "?"})`); };
     speechSynthesis.speak(u);
-    addCaption(LOST_TEXT); entry.engine = "browser voice" + (bv ? `: ${bv.name}` : ""); setFate(entry, "said");
+    setTimeout(() => { if (entry.fate) return;
+      const on = typeof speechSynthesis !== "undefined" && speechSynthesis && speechSynthesis.speaking;
+      setFate(entry, on ? "said" : "not said: the browser did not speak it (no voice?)"); }, LOST_FATE_MS);
+    addCaption(LOST_TEXT);
     return "browser";
   }
   const ctx = await runningAudio();   // paused audio starts again if this page has had a click since it loaded

@@ -406,6 +406,13 @@ def position(path_or_name, offset):
     return (os.path.basename(path_or_name), int(offset))
 
 
+def folder_key(path):
+    """The journal folder a file is in, as the hub keys its sessions: the same spelling as status()'s folder, whatever
+    the config wrote (review round 10 B5: "…/Elite Dangerous/" kept Status.json's body and position in a session of
+    its own, so EDDN's codexentry and scanorganic went without them)."""
+    return os.path.normpath(os.path.dirname(path))
+
+
 class UploadHub:
     """Every live-folder line goes through line(). builders: {service: fn(ev, session) -> [(schema, message)]}: what a
     line uploads to that service (the EDDN and EDSM parts add theirs). enabled(service) -> bool says which are on now
@@ -479,7 +486,7 @@ class UploadHub:
         """Feed a session the lines of `path` before byte `upto` (state only): a file met part way through. A
         continuation file is primed from the file it goes on from first (who and where you are were said there)."""
         if session is None:   # the folder's own session (a catch-up brings its own)
-            session = self.sessions.setdefault(os.path.dirname(path), Session())
+            session = self.sessions.setdefault(folder_key(path), Session())
             self.primed.add(path)
         prev = continued_from(path) if depth < 20 else None
         if prev:
@@ -550,7 +557,7 @@ class UploadHub:
         """One journal line (bytes) at `offset` of `path`. mode: "catchup" (the start-up scan: state only) or "live"
         (the running tail: may queue). Returns the number of messages queued. Database errors propagate."""
         b = os.path.basename(path)
-        here = os.path.dirname(path)
+        here = folder_key(path)
         self.dir = self.file_dir.setdefault(b, here)
         if path not in self.primed:
             if self.dir == here:
@@ -608,7 +615,7 @@ class UploadHub:
                     data = f.read(end)
             except OSError:
                 continue
-            session.dir = os.path.dirname(p)
+            session.dir = folder_key(p)
             at = 0
             for raw in data.split(b"\n"):
                 here, at = at, at + len(raw) + 1
@@ -699,7 +706,7 @@ class UploadHub:
         round 9: it went into the session of whichever folder's line came last)."""
         st = st or {}
         live = bool(st.get("live"))
-        s = self.sessions.setdefault(d, Session()) if d is not None else self.session
+        s = self.sessions.setdefault(os.path.normpath(d), Session()) if d is not None else self.session
         s.status_body = st.get("body") if live else None
         s.status_pos = (st.get("lat"), st.get("lon"), st.get("body"), st.get("ts")) \
             if live and st.get("lat") is not None and st.get("lon") is not None and st.get("body") else None

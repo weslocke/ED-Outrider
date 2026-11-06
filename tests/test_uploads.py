@@ -1129,6 +1129,21 @@ class StatusForEddn(unittest.TestCase):
         hub.status({"live": False, "body": "X 1", "lat": 1.5, "lon": -2.5})   # not live: nothing
         self.assertEqual((hub.session.status_body, hub.session.status_pos), (None, None))
 
+    def test_a_folder_written_with_a_trailing_slash(self):
+        """Review round 10 B5: status() keyed the session by the config's spelling ("…/Elite Dangerous/"), the journal
+        lines by the file's folder ("…/Elite Dangerous"): two sessions, and the lines' never had the body or position."""
+        import tempfile
+        d = tempfile.mkdtemp()
+        self.addCleanup(lambda: __import__("shutil").rmtree(d, ignore_errors=True))
+        path = os.path.join(d + os.sep, "Journal.2026-10-08T100000.01.log")
+        line = b'{ "timestamp":"2026-10-08T10:00:00Z", "event":"Fileheader", "part":1, "gameversion":"4.0", "build":"r1" }\n'
+        with open(path, "wb") as f:
+            f.write(line)
+        hub = U.UploadHub(None, {}, enabled=lambda s: False)
+        hub.status({"live": True, "body": "X 1", "lat": 1.5, "lon": -2.5, "ts": "2026-10-08T10:00:00Z"}, d + os.sep)
+        hub.line(path, 0, line.rstrip(b"\n"), "catchup")
+        self.assertEqual((len(hub.sessions), hub.session.status_body), (1, "X 1"))
+
     def test_each_folders_reading_goes_to_its_own_session(self):
         """Review round 9: with two live folders, folder A's Status.json went into the session of the folder whose line
         came last (B), so B's next codex entry named A's body. Each reading goes to its folder's session, and the tick

@@ -2403,6 +2403,10 @@ const releasePayloads = async () => {
       look.querySelector("tr.lookrow").click();
       got.detail = [...look.querySelectorAll(".lookdetail .dline")].slice(0, 2).map(x => x.textContent);
       got.hint = /best buyers of your 4 largest lines/.test(look.querySelector(".hint").textContent);
+      // review round 10 B9: under Closest the candidates are Spansh's nearest buyers, and the hint says so
+      w.eval(`apiJson("x").then(a => renderHoldLook(document.getElementById("cargoLook"), Object.assign(a, {sort: "near"})))`);
+      await sleep(20);
+      got.nearHint = /nearest buyers of your 4 largest lines/.test(look.querySelector(".hint").textContent);
       look.querySelector('[data-lk="close"]').click();
       got.closed = look.hidden;
     } finally {
@@ -2411,7 +2415,7 @@ const releasePayloads = async () => {
     const want = {one: false, two: true, asked: ["api/cargo/hold"], head: "Sell the hold: 4 lines, 98 t (20 t Limpet: limpets left out)✕",
       row: ["▸ Jung BaseHIP 11402", "92.4 ly≈ 3 jumps", "7,000 ls⚠ far from the star", "3/4 lines85 t of 98 t", "23.7M crprofit +16.5M", "25 h old"],
       detail: ["TakesPlatinum 64 t × 302,844 cr · Painite 20 t × 211,587 cr · Gold 1 t × 49,178 cr (demand 1 of your 10 t)", "Doesn't buySilver"],
-      hint: true, closed: true};
+      hint: true, nearHint: true, closed: true};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodSA = !bad.length && errors.length === before;
     allOk = allOk && goodSA;
@@ -2908,6 +2912,13 @@ const releasePayloads = async () => {
       takeHush({mode: "30m", left: 1800});
       data.tts = {engine: "piper", voice: "x", available: true}; await prepareLostLine();
       const lost = [await sayLost(), lostSpoke, lostLine.key, spoken.pop()];
+      const tick = () => new Promise(r => setTimeout(r, 5));
+      await tick(); lost.push(speechLog[speechLog.length - 1].fate);   // said once the browser spoke it (round 10 B10)
+      const realSS = window.speechSynthesis;   // refused before a click: not said, and the pill asks for the click
+      window.speechSynthesis = Object.assign({}, realSS, {speak(u) { setTimeout(() => u.onerror({error: "not-allowed"}), 0); }});
+      await sayLost(); await tick();
+      lost.push(speechLog[speechLog.length - 1].fate, browserRefused);
+      window.speechSynthesis = realSS; browserRefused = false; drawAudioPill();
       speak = realSpeak; [speechOn, isSpeaker] = f; lostLine.key = lostKey; data.tts = null; hushState = hushWas;
       store.set("browserVoice", "gone"); drawBrowserVoice();
       const gone = [sel.value, document.getElementById("browserVoiceHint").textContent];
@@ -2920,7 +2931,8 @@ const releasePayloads = async () => {
                crewPlay: true, piperAgain: [true, false, false, true, true]},
       spoken: [["Chosen check.", "Libby", "en-GB"], ["Copilot check.", "Libby", "en-GB"], ["No Piper check.", "Libby", "en-GB"]],
       engines: ["browser voice (chosen): Libby", "browser voice (chosen): Libby", null, "browser voice: Libby"],
-      lost: ["browser", [], null, ["Lost contact with Outrider. No alerts until it is back.", "Libby", "en-GB"]],
+      lost: ["browser", [], null, ["Lost contact with Outrider. No alerts until it is back.", "Libby", "en-GB"], "said",
+             "not said: the browser has not allowed its voice yet (click the page)", true],
       gone: ["", "the voice chosen before is not in this browser: its default speaks"]};
     const goodBV = JSON.stringify(got) === JSON.stringify(want) && JSON.stringify(asked) === JSON.stringify(["api/say/play"]) && errors.length === before;
     allOk = allOk && goodBV;

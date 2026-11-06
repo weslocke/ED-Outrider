@@ -328,7 +328,7 @@ game writes the file again.
 **🛣 Show route** in Nearby's heading (the Overview's bar on the Overview; there while you have a route) opens the **Plotted route** pane under the list:
 the next 24 systems on the route, with Nearby's columns (status, main star, bodies, notable, value, known), so you see
 what is out there before you go. **#** is the jump number from you (a Highway row counts the jumps it stands for; a
-survey route or a carrier trip numbers its stops), **Dist** the light years along the route, **From you** straight.
+survey route or a carrier trip numbers its stops), **Along** the light years along the route, **From you** straight.
 With more than one route (the game's, the Highway's, a survey or trade route, a carrier trip) a switch at the top picks
 which; the game's comes first. Outrider asks Spansh about these systems only while the pane is open ("asking Spansh: 3
 of 12…"), and once per system: flying that stretch again asks nothing. Drag the bar between the list and the pane to
