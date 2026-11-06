@@ -145,5 +145,63 @@ class JournalFixes(unittest.TestCase):
         self.assertEqual(out.count("(not JSON)"), 1)
         self.assertIn("journal line skipped (ValueError: an odd timestamp)", out)
 
+
+class OnePassPrefilter(unittest.TestCase):
+    """Round 10's S3: the reader's prefilter finds a line's event name once and looks it up in a set (WANTED_NAMES,
+    UNSOLD_NAMES), in place of a substring search per WANTED entry. A speed change only: this guard checks the new
+    filter keeps and drops exactly the lines the old expressions did, over the sample journals, every WANTED name in
+    both spacings, the POI tokens, the stellar phenomena and odd lines. It passes before and after the change."""
+
+    @staticmethod
+    def old_wanted(line):   # the expressions read_file used before S3, kept here as the reference
+        return (any(w in line for w in ed_outrider.WANTED) or b"Fixed_Event_Life" in line
+                or any(w in line for w in ed_outrider.POI_BYTES))
+
+    @staticmethod
+    def old_unsold(line):
+        return any(w in line for w in ed_outrider.UNSOLD_BYTES)
+
+    def lines(self):
+        fixtures = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "journals")
+        out = []
+        for name in sorted(os.listdir(fixtures)):
+            with open(os.path.join(fixtures, name), "rb") as f:
+                out.extend(f.read().split(b"\n"))
+        self.assertGreater(len(out), 50)
+        names = [w[len(b'"event":"'):-1].decode() for w in ed_outrider.WANTED] + [
+            "Music", "ReceiveText", "FSSSignalDiscovered", "SupercruiseDestinationDrop", "Scanned", "ScanBaryCentre", "Scan2", "Sca"]
+        for n in names:
+            out.append(b'{ "timestamp":"2026-11-06T00:00:00Z", "event":"%s", "x":1 }' % n.encode())   # the game's spacing
+            out.append(b'{ "timestamp":"2026-11-06T00:00:00Z", "event": "%s", "x":1 }' % n.encode())  # another spacing
+            out.append(b'{"timestamp":"2026-11-06T00:00:00Z","event":"%s","x":1}' % n.encode())
+        for tok in ed_outrider.POI_BYTES:   # FSS signals let through by their contents, whatever the event
+            out.append(b'{ "timestamp":"2026-11-06T00:00:00Z", "event":"FSSSignalDiscovered", "SignalName":"x", ' + tok + b' }')
+        out += [b'{ "timestamp":"2026-11-06T00:00:00Z", "event":"FSSSignalDiscovered", "SignalName":"$Fixed_Event_Life_Cloud;" }',
+                b'{ "timestamp":"2026-11-06T00:00:00Z", "event":"SupercruiseDestinationDrop", "Type":"$Fixed_Event_Life_Ring;" }',
+                b'{ "timestamp":"2026-11-06T00:00:00Z", "event":"ReceiveText", "Message":"\\"event\\":\\"FSDJump\\"" }',
+                b'', b'garbage', b'{"event":"FSDJump", "Star', b'{"event":"FSDJu', b'{"event":"', b'"event":"Scan"',
+                b'{ "timestamp":"2026-11-06T00:00:00Z", "x":"y", "event":"Scan" }',   # not the second key
+                b'{"event":"" }', b'\xff\xfe"event":"Died"']
+        return out
+
+    def test_the_new_filter_keeps_the_same_lines(self):
+        kept = unsold = 0
+        for line in self.lines():
+            with self.subTest(line=line[:120]):
+                self.assertEqual(ed_outrider.line_wanted(line), self.old_wanted(line))
+                self.assertEqual(ed_outrider.event_name(line) in ed_outrider.UNSOLD_NAMES, self.old_unsold(line))
+                kept += self.old_wanted(line)
+                unsold += self.old_unsold(line)
+        self.assertGreater(kept, 300)   # the guard compares real matches, not only refusals
+        self.assertGreater(unsold, 30)
+
+    def test_the_sets_come_from_the_lists(self):
+        """WANTED stays the one list to edit: the names set is made from it (and UNSOLD_BYTES')."""
+        self.assertEqual({b'"event":"%s"' % n for n in ed_outrider.WANTED_NAMES}, set(ed_outrider.WANTED))
+        self.assertEqual({b'"event":"%s"' % n for n in ed_outrider.UNSOLD_NAMES}, set(ed_outrider.UNSOLD_BYTES))
+        self.assertEqual([ed_outrider.event_name(b'{ "event":"FSDJump" }'), ed_outrider.event_name(b'{ "event": "FSDJump" }'),
+                          ed_outrider.event_name(b'{ "event":"FSDJ')], [b"FSDJump", None, None])
+
+
 if __name__ == "__main__":
     unittest.main()

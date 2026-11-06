@@ -71,6 +71,11 @@ also run 24/7 on a home server in Docker.
 
 ## 🚀 Getting started
 
+Get Outrider:
+- **Windows:** download **Source code (zip)** from the [latest release](https://github.com/weslocke/ED-Outrider/releases/latest)
+  and extract it into a folder of its own. No Git needed.
+- **Linux:** `git clone https://github.com/weslocke/ED-Outrider.git` (an update is then a `git pull`).
+
 ```bash
 ./launch_outrider.sh   # Linux, Python 3.11 or newer
 ```
@@ -78,11 +83,13 @@ also run 24/7 on a home server in Docker.
 On **Windows**, install [Python](https://www.python.org/downloads/) 3.11 or newer (3.14 at most for the natural
 voice) and double-click
 **`launch_outrider.bat`**. Then open **<http://127.0.0.1:8025/>** and go fly. The first run sets up a Python
-environment; after that it starts at once. On a home server, a Docker image runs it around the clock (the game-PC
+environment; after that it starts at once. The window it opens **is** Outrider: leave it open (minimised) while you
+play, as closing it stops the page. On a home server, a Docker image runs it around the clock (the game-PC
 automation is off there).
 
-Everything about installing, the optional parts, Docker, other devices and backups is in
-**[Install and run](docs/guide/install.md)**.
+Something went wrong on the first start? **[If the first start fails](docs/guide/install.md#if-the-first-start-fails)**
+lists the launchers' messages and what to do about each. Everything about installing, the optional parts, Docker,
+other devices and backups is in **[Install and run](docs/guide/install.md)**.
 
 > [!WARNING]
 > Keep Outrider on your home network: never expose it to the internet. Use a VPN to reach it away from home.

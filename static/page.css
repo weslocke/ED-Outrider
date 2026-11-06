@@ -1106,6 +1106,9 @@ body.nowmode header, body.nowmode main { display: none; }
 #alertDialog .setsec { border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; margin: 0 0 10px; background: var(--bg); }
 #alertDialog .setsec > summary { cursor: pointer; padding: 9px 0; font-size: 14px; font-weight: 600; color: var(--accent); list-style-position: inside; }
 #alertDialog .setsec > summary .sum-note { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: 6px; }
+/* S1: a section with an edit not saved yet: the heading's mark and, after a Done or Esc, the note under it */
+#alertDialog .setsec > summary .unsaved { font-weight: 600; font-size: 12px; color: var(--warn); margin-left: 4px; }
+#alertDialog .setsec > .unsavednote { margin: 4px 0 6px; }
 #alertDialog .setsec[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 #alertDialog .setsec[open] { padding-bottom: 10px; }
 #alertDialog .setsec > label.mod:first-of-type { border-top: 0; }

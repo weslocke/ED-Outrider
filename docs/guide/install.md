@@ -4,11 +4,19 @@
 
 ## 🚀 Getting started
 
+Get Outrider:
+- **Windows:** download **Source code (zip)** from the [latest release](https://github.com/weslocke/ED-Outrider/releases/latest)
+  (under Assets) and extract it into a folder of its own, say `Documents\ED-Outrider`. No Git needed; an update is a
+  new ZIP ([Updating](#updating)).
+- **Linux:** `git clone https://github.com/weslocke/ED-Outrider.git && cd ED-Outrider` (an update is a `git pull`).
+
 ```bash
 ./launch_outrider.sh   # Python 3.11 or newer
 ```
 
-Open **<http://127.0.0.1:8025/>** and go fly.
+Open **<http://127.0.0.1:8025/>** and go fly. The window the launcher runs in **is** Outrider (its banner says so):
+closing it stops the page, so leave it open, minimised, while you play. Problems on the first start:
+[If the first start fails](#if-the-first-start-fails).
 
 `launch_outrider.sh` sets Outrider up the first time (a virtual environment in `.venv` with `requirements.txt`),
 installs again only when `requirements.txt` has changed (after a `git pull`), the environment is broken or the
@@ -28,7 +36,7 @@ are **experimental on Windows** (they press keys the Windows way, untested again
 co-pilot button is Linux only for now. Windows is less tested than Linux: if something goes wrong, an issue on GitHub
 is welcome.
 
-**Windows: certificate errors.** Older Outriders on some Windows PCs failed every lookup with `CERTIFICATE_VERIFY_FAILED
+<a id="windows-certificate-errors"></a>**Windows: certificate errors.** Older Outriders on some Windows PCs failed every lookup with `CERTIFICATE_VERIFY_FAILED
 … certificate has expired` (Spansh, EDSM, GitHub): Windows only fetches a new or renewed root certificate when
 something asks it to (a browser does, Python does not), so a site on a newer root could not be verified. Outrider now
 also trusts Mozilla's list of roots (the `certifi` package in `requirements.txt`, installed by the launcher), so this
@@ -89,6 +97,26 @@ and the tablet's control rail to press only while the game is the window in fron
 
 Start Outrider with the `.venv`'s Python (`.venv/bin/python ed_outrider.py`, as above): plain `python3 ed_outrider.py` finds Piper and evdev in a `.venv` in the Outrider folder, but aiohttp must then be installed for that `python3` too.
 Your own files (the database, backups, downloaded voices, banned lines, your own pronunciations) all go in `data/`.
+
+### If the first start fails
+
+The launchers and Outrider say what went wrong in their window (and Outrider in `data/outrider.log`). The usual ones:
+
+| What it says | What to do |
+|---|---|
+| `Python not found. Install Python 3.11 or newer from https://www.python.org/downloads/ (tick "Add python.exe to PATH") …` (Linux: `Python not found (python3) …`) | Install Python 3.11 to 3.14, 64-bit, from python.org. On Windows tick **Add python.exe to PATH** in its installer, then double-click the launcher again. `PYTHON=` names one by hand. |
+| `ED Outrider needs Python 3.11 or newer, and found: …` | The same: a newer Python (`PYTHON=` if the old one comes first). |
+| `Could not create .venv. On Debian or Ubuntu: sudo apt install python3-venv` (Windows: `Could not create .venv with …`) | Linux: install your distribution's venv package. Windows: repair Python with its installer (Modify, keep pip ticked). |
+| A block ending `ED Outrider runs, but speaks with the browser's own voice. For Piper's natural voices: install Python 3.14 (64-bit) …` | Not an error: Outrider starts. For the natural voice do as it says (that Python, delete `.venv`, start again). |
+| `OPTIONAL packages not installed: ED Outrider starts without them` | Not an error either: each line says what is off and why; fix that, then start with `OUTRIDER_REINSTALL=1` once. |
+| `port 8025 is already in use: is ED Outrider already running? …` | Another Outrider runs already (another window, or [Start with your computer](#start-with-your-computer)): open <http://127.0.0.1:8025/>. Or start this one with `--port 8026`. |
+| `cannot listen on …: … (is [server] host this machine's address or name? …)` | `[server] host` in `ed_outrider.toml` is not this PC's address: `127.0.0.1` (this PC only) or `0.0.0.0` (every device). |
+| `No Elite Dangerous journal folder found. Set Settings -> Server -> [journals] live …`, or the page's card `No journals in … yet` | Point `[journals] live` at the folder holding `Journal.*.log` (the card's button opens it); see the tip above. |
+| The Data tile says `couldn't verify spansh.co.uk's certificate` | Check the PC's date and time, then update Outrider ([certificate errors](#windows-certificate-errors) above). |
+| The page says `Outrider has not answered for 20 s` | Outrider stopped: the last lines in its window (or `data/outrider.log`) say why. |
+| The page shows `NOT CONNECTED` and says "Lost contact with Outrider" after its black window was closed | That window **was** Outrider, as its banner says (`This window IS Outrider: closing it stops the page.`): start the launcher again and leave its window open (minimise it). |
+
+Still stuck? An [issue on GitHub](https://github.com/weslocke/ED-Outrider/issues) with the window's last lines helps.
 
 ### Updating
 

@@ -2304,3 +2304,52 @@ class SurfaceRigs(unittest.TestCase):
                 clock[0] += 1
                 state.watch_surface(clock[0])
         return [m["text"] for m in j.moments if m["kind"] in ("rig", "rig_leash")], db
+
+
+class RigWarnOneValue(unittest.TestCase):
+    """Round 10's S14: Settings -> Surface map's "a rig far away at" writes [defaults] rig_warn into the config file
+    and the running Outrider uses it at once (LIVE_CONFIG): the spoken leash warning (RIG_WARN) and the payload's
+    defaults, which every window's map follows. Before, the field was the browser's own and the voice kept the file's."""
+
+    def setUp(self):
+        import tempfile
+        import types
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.path = os.path.join(tmp.name, "ed_outrider.toml")
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ed_outrider.toml.example"),
+                  encoding="utf-8") as f:
+            text = f.read()
+        with open(self.path, "w", encoding="utf-8") as f:
+            f.write(text)
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.state = ed_outrider.State(self.db, ed_outrider.Journals(self.db), types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        self.state.config_path = self.path
+        keep = ed_outrider.RIG_WARN
+        self.addCleanup(lambda: setattr(ed_outrider, "RIG_WARN", keep))
+
+    def post(self, body):
+        import asyncio
+        from aiohttp.test_utils import TestClient, TestServer
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                r = await c.post("/api/config", json=body)
+                return r.status, await r.json()
+        return asyncio.run(go())
+
+    def test_saved_and_used_at_once(self):
+        import tomllib
+        self.assertIn(("defaults", "rig_warn"), ed_outrider.State.LIVE_CONFIG)
+        status, answer = self.post({"defaults": {"rig_warn": 2500}})
+        self.assertEqual((status, answer["live"], answer["restart"]), (200, ["defaults.rig_warn"], False))
+        self.assertEqual(ed_outrider.RIG_WARN, 2500)
+        self.assertEqual(self.state.payload()["defaults"]["rig_warn"], 2500)
+        with open(self.path, encoding="utf-8") as f:
+            self.assertEqual(tomllib.loads(f.read())["defaults"]["rig_warn"], 2500)
+        # out of the leash's range: refused in words, nothing changed
+        status, answer = self.post({"defaults": {"rig_warn": 9000}})
+        self.assertEqual(status, 400)
+        self.assertIn("rig_warn", answer["error"])
+        self.assertEqual(ed_outrider.RIG_WARN, 2500)

@@ -507,6 +507,12 @@ upstream project's choices, not rules of the game.
 - **The surface map's altitude in a browser is capped at the server's** (`[defaults] surface_alt`, review F24): the
   server sends positions only below its own altitude, so a browser set higher would show a frozen map. A lower one
   hides sooner, as before. Climbing past the altitude wakes the page once, so the map goes away on time.
+- **`[defaults] rig_warn` is the one server-wide `[defaults]` key** (round 10's S14): every other `[defaults]` key is
+  what a new browser starts with, and each browser then keeps its own. The far-rig distance is also the spoken leash
+  warning's, which the server says for every window, so a browser's own value made the map and the voice disagree.
+  Settings → Surface map's field writes the config file (POST `/api/config`, as the pad delay does), `LIVE_CONFIG`
+  applies it at once (the `RIG_WARN` global), and every page follows the payload's `defaults.rig_warn`; a browser's
+  old `surfaceCfg.warn` is no longer read.
 - **A HullDamage line with no `Fighter` key is the SRV's or the Nomad's,** not the ship's (review F25): every ship
   line in the author's journals carries `"Fighter": false`, and the vehicle lines never do.
 - **The journal archive in backups is never pruned;** database zips rotate. `--restore` leaves `speech.json`,

@@ -2,6 +2,37 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Round 10 suggestions, batch 3: unsaved settings, one far-rig distance, a lighter tick, first-start help
+Round 10's suggestions (project/PLAN-review10-suggestions-2026-11-06.md), the small ones that stand alone:
+- **S16** Settings → Risk and warnings: "Or as a multiple of your ship's rebuy" sits right under "Unsold data on
+  board", the amounts it is an alternative to. The Materials tab keeps its name and gets a hover title naming the
+  hold, the carrier's cargo, Sell / Buy and Sell all (PC and tablet).
+- **S14** One far-rig distance: Settings → Surface map's "a rig far away at" writes `[defaults] rig_warn` into the
+  config file (as the pad delay does) and is applied at once (`LIVE_CONFIG`, the `RIG_WARN` global), so the spoken
+  leash warning and every window's map agree; the map follows the payload's value, and a browser's own old value is
+  no longer read. Out of 100 to 4,900 m it is refused in words. DESIGN_NOTES: the one server-wide `[defaults]` key.
+- **S24** Nearby's rows are built only while its table shows (Nearby or Overview, `nearRowsShown`): a payload a second
+  in flight redrew every row on every other view too. The header's counts still update.
+- **S1** Settings keeps you from leaving an edit unsaved: in Auto honk, Auto-target, Screenshots, Server and the
+  Uploads' EDSM name and keys, each field is compared with its saved value (`settingsUnsaved`, `UNSAVED_SECS`); the
+  section's heading says "· not saved", and Done or Esc keeps Settings open on it once with "Not saved yet: Save keeps
+  it · Discard". A second Done closes and keeps the typed values pending, still marked (the author's choice). The
+  guard is in the Done click and the dialog's `cancel`, never in `tabClose`.
+- **S3** The journal reader's prefilter finds each line's event name once and looks it up in a set (`event_name`,
+  `line_wanted`, `WANTED_NAMES` and `UNSOLD_NAMES`, made from `WANTED` and `UNSOLD_BYTES`, which stay the lists to
+  edit): about 35 times faster on the sample journals (56 to 1,900 MB/s here), the same lines kept, no re-read.
+  `OnePassPrefilter` compares it with the old expressions over the fixtures, every WANTED name in both spacings, the
+  POI tokens and odd lines.
+- **S18** A failing tick prints its traceback once per error, not every second, until a tick really writes again; a
+  disk that will not take writes (SQLite's FULL, READONLY or IOERR) gets a card in words naming the database's folder
+  and its free space, with a button to Server settings (`db_write`). Both are cleared only by a tick that wrote
+  (`total_changes` moved), so an idle tick cannot make the card flicker.
+- **S6** Getting the files and a first start that fails: the README and install.md say how to get Outrider (Windows:
+  the latest release's Source code zip, no Git; Linux: `git clone`), install.md has "If the first start fails" with
+  the launchers' and Outrider's own messages and what to do about each (a test checks every quote is still said), and
+  both launchers' banners say "This window IS Outrider: closing it stops the page." (the .bat still CRLF; not under
+  the start-with-your-computer service).
+
 ## 2026-11-06 · Review round 10, batch 2: a game in another language
 - **B2** Your sample runs and the DSS's genera keep the rules' English genus and species names, from the game's codes
   (`bio_names_en`, `genus_en`; the journal's words only for a code the rules do not know): in a non-English game a run

@@ -848,7 +848,8 @@ if __name__ == "__main__":
 
 class LauncherBanner(unittest.TestCase):
     """launch_outrider.sh opens every start and restart with a blank line and a header naming the version (the
-    author, 2026-10-14). Only its banner() function is run: never the launcher itself (it installs and starts)."""
+    author, 2026-10-14), and that the window is Outrider (round 10's S6), but under the service, which has no window.
+    Only its banner() function is run: never the launcher itself (it installs and starts)."""
 
     def test_the_header(self):
         import shutil
@@ -862,10 +863,29 @@ class LauncherBanner(unittest.TestCase):
         fn = re.search(r"^banner\(\) \{\n.*?^\}\n", text, re.S | re.M)
         self.assertIsNotNone(fn, "banner() in launch_outrider.sh")
         self.assertRegex(text[fn.end():], r"^banner\n", "called at once, before the setup's own lines")
-        out = subprocess.run([bash, "-c", fn.group(0) + "banner"], cwd=root, capture_output=True, text=True, timeout=10).stdout
+        env = {k: v for k, v in os.environ.items() if k != "OUTRIDER_SERVICE"}
+        out = subprocess.run([bash, "-c", fn.group(0) + "banner"], cwd=root, capture_output=True, text=True, timeout=10,
+                             env=env).stdout
         bar = "=" * 70   # past the address's end (the author)
-        self.assertEqual(out.split("\n"), ["", bar, f"#      ED Outrider v{outrider.__version__}", "#",
-                                           "#                       https://github.com/weslocke/ED-Outrider", bar, ""])
+        head = ["", bar, f"#      ED Outrider v{outrider.__version__}", "#", "#                       https://github.com/weslocke/ED-Outrider"]
+        self.assertEqual(out.split("\n"), head + ["#", "#      This window IS Outrider: closing it stops the page.", bar, ""])
+        out = subprocess.run([bash, "-c", fn.group(0) + "banner"], cwd=root, capture_output=True, text=True, timeout=10,
+                             env=dict(env, OUTRIDER_SERVICE="systemd")).stdout
+        self.assertEqual(out.split("\n"), head + [bar, ""])
+
+    def test_the_windows_banner(self):
+        """S6: launch_outrider.bat says the same before anything else, its lines plain for cmd's echo (no > & | to
+        redirect or chain) and the file still CRLF throughout."""
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "launch_outrider.bat"), "rb") as f:
+            raw = f.read()
+        self.assertEqual(raw.count(b"\n"), raw.count(b"\r\n"))
+        lines = raw.decode("ascii").split("\r\n")
+        at = lines.index("echo #      This window IS Outrider: closing it stops the page.")
+        self.assertLess(at, lines.index('set "CALLER=%CD%"'))   # at once, before the setup's own lines
+        banner = lines[lines.index("setlocal") + 1:lines.index("echo " + "=" * 70, at) + 1]
+        self.assertTrue(all(x.startswith(("echo", "rem ")) for x in banner), banner)
+        self.assertFalse([x for x in banner if x.startswith("echo") and re.search(r"[<>&|^]", x)], banner)
 
 
 class PiperPython(unittest.TestCase):

@@ -17,7 +17,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
 <header>
   <div class="topbar">
     <h1>ED Outrider</h1>
-    <span class="views"><button data-view="overview">Overview</button><button data-view="near">Nearby</button><button data-view="here">Here</button><button data-view="bio" title="exobiology and geology: your sample runs, the Exo-Biology checklist and the Geology one">Bio/Geo</button><button data-view="bm" id="bmViewBtn">Bookmarks</button><button data-view="search">Search</button><button data-view="map">Map</button><button data-view="hwy" title="plot a route with Spansh (the Neutron Highway, or a Road to Riches) and follow it as you fly">Plot Route</button><button data-view="hist">History</button><button data-view="log">Log</button><button data-view="mat">Materials</button><button data-view="cmdr" title="your ranks, credits and fleet, what you own, what engineering takes, the missions you hold, your combat and mining sessions, what exploration, exobiology and mining earned you">CMDR</button><button data-view="firsts">My firsts</button><button data-view="now" title="big text for a second monitor (or open the page with ?mode=now)">Now</button><button id="nowPop" title="open Now in a window of its own, to drag to another monitor (it stays on Now)">↗</button></span><button type="button" id="viewWinBack" class="viewback" hidden title="back to this window's own view"></button>
+    <span class="views"><button data-view="overview">Overview</button><button data-view="near">Nearby</button><button data-view="here">Here</button><button data-view="bio" title="exobiology and geology: your sample runs, the Exo-Biology checklist and the Geology one">Bio/Geo</button><button data-view="bm" id="bmViewBtn">Bookmarks</button><button data-view="search">Search</button><button data-view="map">Map</button><button data-view="hwy" title="plot a route with Spansh (the Neutron Highway, or a Road to Riches) and follow it as you fly">Plot Route</button><button data-view="hist">History</button><button data-view="log">Log</button><button data-view="mat" title="materials and cargo: your engineering materials and syntheses, the ship's hold and your carrier's cargo, with Sell / Buy lookups and Sell all">Materials</button><button data-view="cmdr" title="your ranks, credits and fleet, what you own, what engineering takes, the missions you hold, your combat and mining sessions, what exploration, exobiology and mining earned you">CMDR</button><button data-view="firsts">My firsts</button><button data-view="now" title="big text for a second monitor (or open the page with ?mode=now)">Now</button><button id="nowPop" title="open Now in a window of its own, to drag to another monitor (it stays on Now)">↗</button></span><button type="button" id="viewWinBack" class="viewback" hidden title="back to this window's own view"></button>
     <span class="icons"><button type="button" id="audioPill" class="audiopill" hidden title="the browser holds back Outrider's voice and sounds until you click on the page: click here">🔇 Click Here To Allow Audio</button><button type="button" id="updPill" class="updpill" hidden title="a newer Outrider is out: click for what's new and how to update">⬆ Update</button><span id="linkPill" class="linkpill" role="status" title="the page's link to Outrider"></span><span id="ovPill" class="linkpill ovpill pcOnly" role="status" hidden></span><button id="sound" class="icon" title="sounds">🔊</button><button id="speechBtn" class="icon" title="spoken alerts">🗣</button><span class="hushwrap"><button id="hushBtn" class="icon hushbtn" title="hush the voice for a while (danger lines still speak)" aria-haspopup="true">▾</button><span id="hushLbl" class="hushlbl" hidden></span>
       <span id="hushMenu" class="hushmenu" hidden><b>Hush the voice</b><button type="button" data-hush="10m">10 minutes</button><button type="button" data-hush="30m">30 minutes</button><button type="button" data-hush="jump">until the next jump</button><button type="button" data-hush="off">cancel the hush</button><span class="unk">hull, heat, interdiction and fuel still speak, and what you ask for</span></span></span><button id="alertsBtn" class="icon" title="settings: alerts, voice, thresholds, the server">⚙</button><span id="lastSaidLine" class="lastsaid" hidden><button type="button" id="lastSaidBtn" class="icon" title="say it again">▶</button><span id="lastSaidText"></span></span></span>
   </div>
@@ -560,7 +560,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
   <div class="tb-pages" data-pages="records">
     <button type="button" class="tb-page" data-view="hist">History</button>
     <button type="button" class="tb-page" data-view="log">Log</button>
-    <button type="button" class="tb-page" data-view="mat">Materials</button>
+    <button type="button" class="tb-page" data-view="mat" title="materials and cargo: your engineering materials and syntheses, the ship's hold and your carrier's cargo, with Sell / Buy lookups and Sell all">Materials</button>
     <button type="button" class="tb-page" data-view="cmdr">CMDR</button>
     <button type="button" class="tb-page" data-view="firsts">My firsts</button>
   </div>
@@ -805,10 +805,6 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <span class="hint">supercruise time from the arrival star on a rough community curve (about 40 s at 2,000 ls, 6 min at 100,000 ls); started samples and first-discovery Earth-likes, water worlds, ammonia worlds and terraformables are never marked</span></label>
     </details>
     <details class="setsec" data-sec-key="risk" data-chip="Risk & warnings"><summary>Risk and warnings <span class="sum-note">unsold data, rebuy, gravity, modules, fuel, streaks</span></summary>
-      <label class="mod">…or as a multiple of your ship's rebuy: amber at
-        <input type="number" id="rebuyWarn" min="0" step="1" style="width:5em">× , red at
-        <input type="number" id="rebuyUrgent" min="0" step="1" style="width:5em">× your rebuy <span class="reset" data-reset="rebuy">reset</span>
-        <span class="hint">blank = off; either rule can turn the header amber or red (a cheap ship carrying a fortune is the risk). Not for a ship whose hull has no credit value (bought with Arx): its rebuy covers the modules only, so no "× rebuy" is shown for it</span></label>
       <label data-find="defaults.high_gravity" class="mod">Approach warning: a landable body of
         <input type="number" id="highG" min="0" step="0.1" style="width:5em"> g or more<span class="reset" data-reset="highG">reset</span>
         <span class="hint">said when you drop into orbital cruise there with unsold data over the amber level or the rebuy multiple below ("2.6 g, 480 million aboard, 3.2 rebuys"); the approach alert above switches it off</span></label>
@@ -823,6 +819,10 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <input type="number" id="unsoldWarn" min="0" step="10000000" style="width:10em"> cr<span class="reset" data-reset="unsoldWarn">reset</span>, red "go sell" at
         <input type="number" id="unsoldUrgent" min="0" step="10000000" style="width:10em"> cr<span class="reset" data-reset="unsoldUrgent">reset</span>
         <span class="hint">compared with the header total: cartographics after any NPC crew cut plus the exobiology estimate; crossing a level also sends a notification. Blank = default.</span></label>
+      <label class="mod">Or as a multiple of your ship's rebuy: amber at
+        <input type="number" id="rebuyWarn" min="0" step="1" style="width:5em">× , red at
+        <input type="number" id="rebuyUrgent" min="0" step="1" style="width:5em">× your rebuy <span class="reset" data-reset="rebuy">reset</span>
+        <span class="hint">blank = off; either rule can turn the header amber or red (a cheap ship carrying a fortune is the risk). Not for a ship whose hull has no credit value (bought with Arx): its rebuy covers the modules only, so no "× rebuy" is shown for it</span></label>
       <label class="mod">Discovery streak: say so at
         <input type="number" id="streakKnown" min="0" max="99" step="1" style="width:4.5em"> fully known systems in a row, and at
         <input type="number" id="streakNew" min="0" max="99" step="1" style="width:4.5em"> undiscovered ones in a row<span class="reset" data-reset="streak">reset</span>
@@ -833,10 +833,11 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <input type="number" id="surfAlt" min="10" step="100" style="width:6em"> m, never narrower than
         <input type="number" id="surfMin" min="50" step="100" style="width:6em"> m across, rig spacing ring
         <input type="number" id="surfSpacing" min="0" step="1" style="width:5em"> m, a rig far away at
-        <input type="number" id="surfWarn" min="100" max="4900" step="100" style="width:6em"> m<span class="reset" data-reset="surfaceCfg">reset</span>
+        <input type="number" id="surfWarn" min="100" max="4900" step="100" style="width:6em" aria-label="metres from the Rhino"> m<span class="reset" data-reset="surfaceCfg">reset</span>
         <span class="hint">the map shows while you are on the ground, or flying below the altitude (it hides again 100 m higher). The rig ring is an estimate
-          (rigs closer than about 50 m may not deploy; 0 = no ring). A rig past the far distance turns red on the map and in the legend; the spoken
-          warning for it uses the config file's <code>rig_warn</code>, since the server says it for every window. Blank = the config file's value.</span></label>
+          (rigs closer than about 50 m may not deploy; 0 = no ring). A rig past the far distance turns red on the map and in the legend, and is said;
+          that distance is saved in the config file (<code>rig_warn</code>) for every window. Blank = the config file's value; reset leaves the far distance as it is.</span>
+        <span id="surfWarnMsg" class="hint" role="status"></span></label>
       <label data-find="defaults.surface_map_strip" class="mod"><input type="checkbox" id="surfStrip"> Also a small copy of the surface map in the on-body strip (under the header), with a one-line legend</label>
     </details>
     <details class="setsec" data-sec-key="mining" data-chip="Mining"><summary>Mining <span class="sum-note">rings to watch for</span></summary>

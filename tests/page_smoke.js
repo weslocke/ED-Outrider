@@ -616,10 +616,12 @@ const releasePayloads = async () => {
       const savedRec = REC.d, nid = data.systems[0] && data.systems[0].id;
       REC.d = {records: [{label: "Biggest planet", text: "77,691 km", body: "4", system: "Bx AB-C d1-0", id64: "9001"},
                          {label: "Hottest star", text: "9,000 K", body: "A", system: "N", id64: String(nid)}]};
+      const vRec = view; view = "near";   // Nearby's rows are built only while they show (round 10's S24)
       drawBoxel(); render();
       out.bxRec = (document.querySelector('#boxelTable tr[data-id="9001"] .rec') || {}).title || "";
       out.bxNone = !document.querySelector('#boxelTable tr[data-id="9002"] .rec');
       out.nearRec = !!(nid && document.querySelector(\`#rows tr[data-id="\${nid}"] .rec\`));
+      view = vRec; render();
       // the system's hover card says which (the author, 2026-10-26)
       showPop(document.querySelector('#boxelTable td.bodies[data-pop][data-id="9001"]'), 10, 10);
       out.cardRec = document.getElementById("pop").textContent.includes("Your record") && document.getElementById("pop").textContent.includes("Biggest planet (4)77,691 km");
@@ -3759,7 +3761,9 @@ const releasePayloads = async () => {
       o.stored = store.get("surfaceCfg", null); o.exported = settingsDoc().settings.surfaceCfg;
       o.shared = SETTINGS_KEYS.includes("surfaceCfg");
       applySettings({version: 1, settings: {surfaceCfg: {alt: 800, warn: 2000}}}); showSurfCfg();
-      o.imported = {cfg: surfaceCfg(), input: document.getElementById("surfAlt").value, strip: document.getElementById("surfStrip").checked};
+      // an imported far-rig distance is not used: the config file's is (round 10's S14)
+      o.imported = {cfg: surfaceCfg(), input: document.getElementById("surfAlt").value, strip: document.getElementById("surfStrip").checked,
+                    serverWarn: data.defaults.rig_warn};
       document.querySelector('[data-reset="surfaceCfg"]').click();
       o.reset = store.get("surfaceCfg", null);
       if (cfg0 === null) localStorage.removeItem("surfaceCfg"); else localStorage.setItem("surfaceCfg", cfg0);
@@ -3777,7 +3781,7 @@ const releasePayloads = async () => {
       ship: /Ship 409 m · 158°/.test(got.ship), site: /U1 Gold 11 t unmarked · L3/.test(got.site || ""), loc: /L3 242 m/.test(got.loc || ""),
       strip: /1 Water 10 t/.test(got.strip || "") && /ship 409 m 158°/.test(got.strip || "") && got.nowMapOffNow,
       settings: got.placeholder === "50" && got.stored && got.stored.alt === 1500 && got.stored.strip === true && got.exported && got.exported.alt === 1500 &&
-        got.shared && got.imported.cfg.alt === 800 && got.imported.cfg.warn === 2000 && got.imported.input === "800" && got.imported.strip === false &&
+        got.shared && got.imported.cfg.alt === 800 && got.imported.cfg.warn === got.imported.serverWarn && got.imported.serverWarn !== 2000 && got.imported.input === "800" && got.imported.strip === false &&
         got.reset && Object.keys(got.reset).length === 0};
     const goodM2 = Object.values(want).every(Boolean) && errors.length === before;
     allOk = allOk && goodM2;
@@ -11801,15 +11805,16 @@ const releasePayloads = async () => {
     // a page switch asked by voice: never "no window speaks"
     await step("asked", () => w.eval(`askLogFacts({source: "tablet", ms: 5, matched: "fixed", command: "show_page", spoken: false}).join(" · ")`));
     // a Surface map value typed out of range is stored and shown as the map uses it
-    await step("surf", () => w.eval(`(() => { const saved = store.get("surfaceCfg", null), el = document.getElementById("surfWarn");
+    // (the far-rig distance is the config file's since round 10's S14: the map's minimum width stands in for it here)
+    await step("surf", () => w.eval(`(() => { const saved = store.get("surfaceCfg", null), el = document.getElementById("surfMin");
       el.value = "8000"; el.dispatchEvent(new Event("change"));
-      const out = [store.get("surfaceCfg", {}).warn, el.value]; store.set("surfaceCfg", saved); showSurfCfg(); return out; })()`));
+      const out = [store.get("surfaceCfg", {}).min, el.value]; store.set("surfaceCfg", saved); showSurfCfg(); return out; })()`));
     // the lost-contact lines are made again for a new speaker of the same voice
     await step("lost", () => w.eval(`lostLineKey({voice: "v", speaker: 3}, 1) !== lostLineKey({voice: "v", speaker: 40}, 1)`));
     const want = {badge: [true, false], trip: [true, true, false], carrierName: true, reached: true, heard: true, ringMoved: 2,
       pad: [true, false], star: [false, false], bxnear: false, matScroll: true, lookPlot: "Sol", restart: true, plain: true,
       said: [true, true], keep: "25", speakers: [0, 2], lab: ["b8B", true], asked: "tablet · 5 ms · a page switch, not said",
-      surf: [4900, "4900"], lost: true};
+      surf: [6000, "6000"], lost: true};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const good = !bad.length && errors.length === before;
     allOk = allOk && good;
@@ -11837,6 +11842,122 @@ const releasePayloads = async () => {
     const goodC = got === "[true,true,3,true]" && errors.length === before;
     allOk = allOk && goodC;
     console.log(goodC ? "OK" : "FAIL", "| server_settings_commander_choose |", goodC ? "Choose… drawn with several commanders, opens the list; none with one" : got, errors.slice(before));
+  }
+  // Round 10's S16: the rebuy multiple sits right under the unsold amounts it is an alternative to, and the Materials
+  // tab says (on hover) that it holds the cargo too, on the PC and the tablet
+  r10_s16_labels: { if (skip("r10_s16_labels")) break r10_s16_labels;
+    const d = dom.window.document, before = errors.length;
+    const rows = [...d.querySelectorAll('#alertDialog details[data-sec-key="risk"] > label')];
+    const unsold = rows.findIndex(l => l.querySelector("#unsoldWarn")), rebuy = rows.findIndex(l => l.querySelector("#rebuyWarn"));
+    const titles = [...d.querySelectorAll('[data-view="mat"]')].map(b => b.title);
+    const got = {order: rebuy === unsold + 1, words: /^Or as a multiple of your ship's rebuy/.test(rows[rebuy].textContent.trim()),
+      titles: titles.length === 2 && titles.every(t => /hold/.test(t) && /carrier's cargo/.test(t) && /Sell \/ Buy/.test(t) && /Sell all/.test(t)),
+      label: [...d.querySelectorAll('[data-view="mat"]')].every(b => b.textContent.trim().startsWith("Materials"))};
+    const good = Object.values(got).every(Boolean) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| r10_s16_labels |", good ? "rebuy multiple under Unsold data, Materials titled on both tabs" : JSON.stringify(got), errors.slice(before));
+  }
+  // Round 10's S14: the far-rig distance is one value, the config file's [defaults] rig_warn: the field POSTs it
+  // (applied at once: the next payload carries it), the map follows it whatever a browser stored before, and a value
+  // out of the leash's range is refused in words without a POST
+  r10_s14_rig_warn: { if (skip("r10_s14_rig_warn")) break r10_s14_rig_warn;
+    const w = dom.window, d = w.document, before = errors.length, got = {};
+    const el = d.getElementById("surfWarn"), msg = d.getElementById("surfWarnMsg");
+    const server = async () => (await (await fetch(base + "api/nearby")).json()).defaults.rig_warn;
+    const keep = w.localStorage.getItem("surfaceCfg");
+    w.eval(`drawRigWarn()`);
+    got.drawn = [el.value, await server()];
+    el.value = "2500"; el.dispatchEvent(new w.Event("change"));
+    await settle(2000);
+    got.saved = [/^Saved in the config file \(\[defaults\] rig_warn\)/.test(msg.textContent), w.eval(`data.defaults.rig_warn`), await server(), el.value];
+    w.eval(`store.set("surfaceCfg", {warn: 1000, alt: 900})`);   // a browser's own value from before: not used
+    got.map = w.eval(`[surfaceCfg().warn, surfaceCfg().alt]`);
+    const posts = [];
+    const realFetch = w.fetch;
+    w.fetch = (u, o) => { if (o && o.method === "POST") posts.push(String(u)); return realFetch(u, o); };
+    el.value = "8000"; el.dispatchEvent(new w.Event("change"));
+    await settle(800);
+    got.refused = [posts.length, msg.textContent, el.value];
+    w.fetch = realFetch;
+    el.value = "3500"; el.dispatchEvent(new w.Event("change"));   // the scratch server's own value back
+    await settle(2000);
+    got.back = [await server(), w.eval(`surfaceCfg().warn`)];
+    if (keep === null) w.localStorage.removeItem("surfaceCfg"); else w.localStorage.setItem("surfaceCfg", keep);
+    w.eval(`showSurfCfg(); drawRigWarn()`);
+    const want = {drawn: ["3500", 3500], saved: [true, 2500, 2500, "2500"], map: [2500, 900], refused: [0, "a distance from 100 to 4900 m", "2500"],
+      back: [3500, 3500]};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const good = !bad.length && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| r10_s14_rig_warn |", good ? "saved in the config, used at once, the map follows it, out of range refused" :
+      JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]]))), errors.slice(before));
+  }
+  // Round 10's S24: Nearby's rows are built only while its table shows: on Now two renders leave the rows' nodes as
+  // they were, and going back to Nearby builds them afresh
+  r10_s24_rows_hidden: { if (skip("r10_s24_rows_hidden")) break r10_s24_rows_hidden;
+    const w = dom.window, before = errors.length;
+    holdPayloads();
+    const got = w.eval(`(() => { const v0 = view, rows = document.getElementById("rows");
+      view = "near"; render();
+      const first = rows.firstElementChild;
+      view = "now"; render(); render();
+      const kept = !!first && rows.firstElementChild === first && document.getElementById("nearWrap").hidden;
+      view = "near"; render();
+      const fresh = rows.firstElementChild !== first && !!rows.firstElementChild;
+      view = v0; render();
+      return [kept, fresh, document.getElementById("subKnown").textContent === String(data.systems.length)]; })()`);
+    await releasePayloads();
+    const good = JSON.stringify(got) === "[true,true,true]" && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| r10_s24_rows_hidden |", good ? "rows kept on Now, rebuilt on Nearby, header counts current" : JSON.stringify(got), errors.slice(before));
+  }
+  // Round 10's S1: Settings keeps you from leaving an edit unsaved: the section's heading says "· not saved", Esc (and
+  // Done) keeps Settings open once with the note, Discard puts the saved value back; a second Done closes, the typed
+  // value still pending and marked when Settings opens again. The Uploads keys are guarded too.
+  r10_s1_unsaved_settings: { if (skip("r10_s1_unsaved_settings")) break r10_s1_unsaved_settings;
+    const w = dom.window, d = w.document, before = errors.length, got = {};
+    const dlg = d.getElementById("alertDialog"), srvSec = d.getElementById("serverSettings");
+    const mark = sec => !!sec.querySelector(":scope > summary .unsaved"), note = sec => (sec.querySelector(":scope > .unsavednote") || {}).textContent || "";
+    const done = () => d.querySelector("#alertDialog .sethead [data-close]").click();
+    w.eval(`tabClose(document.getElementById("alertDialog")); document.getElementById("alertsBtn").click()`);
+    srvSec.open = true;
+    await settle(2000);
+    // what blocks before left typed and unsaved (they run in one page) is put back first: this block starts clean
+    const pre = w.eval(`settingsUnsaved().map(x => x.key + ": " + x.fields.map(f => f.id || f.className).join("/")).join("; ")`);
+    w.eval(`Object.keys(UNSAVED_SECS).forEach(discardUnsaved); drawSettingsUnsaved()`);
+    const field = [...d.querySelectorAll("#serverSettingsBody input[data-key]")].find(el => !el.dataset.secret && el.type !== "checkbox");
+    const orig = field && field.value;
+    got.clean = [!!field, mark(srvSec), w.eval(`settingsUnsaved().length`)];
+    field.value = orig + "9"; field.dispatchEvent(new w.Event("input", {bubbles: true}));
+    got.typed = [mark(srvSec), w.eval(`settingsUnsaved().map(x => x.key).join()`)];
+    const esc = new w.Event("cancel", {cancelable: true}); dlg.dispatchEvent(esc);
+    got.esc = [esc.defaultPrevented, dlg.open, /^Not saved yet: Save keeps it · Discard$/.test(note(srvSec).trim()), srvSec.open];
+    srvSec.querySelector('[data-unsaved="discard"]').click();
+    await settle(300);
+    got.discard = [field.value === orig, mark(srvSec), note(srvSec)];
+    field.value = orig + "9"; field.dispatchEvent(new w.Event("input", {bubbles: true}));
+    done();
+    got.done1 = [dlg.open, !!note(srvSec)];
+    done();
+    got.done2 = [dlg.open, field.value === orig + "9"];
+    d.getElementById("alertsBtn").click(); await settle(500);
+    got.reopened = [mark(srvSec), !note(srvSec)];
+    // the Uploads keys: a typed key is unsaved too
+    const key = d.querySelector("#uploadsBox .edsmKey, #uploadsBox .inaraKey");
+    if (key) { key.value = "abc"; key.dispatchEvent(new w.Event("input", {bubbles: true})); }
+    got.uploads = !key ? "no account row" : [w.eval(`settingsUnsaved().map(x => x.key).join()`), mark(d.querySelector('details[data-sec-key="uploads"]'))];
+    w.eval(`discardUnsaved("uploads"); discardUnsaved("server"); drawSettingsUnsaved()`);
+    got.end = [w.eval(`settingsUnsaved().length`), mark(srvSec)];
+    done();
+    got.closed = !dlg.open;
+    srvSec.open = false;
+    const want = {clean: [true, false, 0], typed: [true, "server"], esc: [true, true, true, true], discard: [true, false, ""],
+      done1: [true, true], done2: [false, true], reopened: [true, true], uploads: ["uploads,server", true], end: [0, false], closed: true};
+    const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
+    const good = !bad.length && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| r10_s1_unsaved_settings |", good ? `marked, Esc and Done held once with the note, Discard, a second Done closes and keeps it pending, Uploads keys${pre ? ` (left unsaved before it: ${pre})` : ""}` :
+      JSON.stringify(Object.fromEntries(bad.map(k => [k, got[k]]))), errors.slice(before));
   }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
   origin_guard: { if (skip("origin_guard")) break origin_guard;

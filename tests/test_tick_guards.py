@@ -154,5 +154,91 @@ class TickGuards(unittest.TestCase):
         self.assertGreaterEqual(len(calls), 3)
 
 
+class DiskWontWrite(unittest.TestCase):
+    """Round 10's S18: a database the disk will not take writes for (full, read-only) failed every tick with a
+    traceback a second and a bare "OperationalError" on the page. Now the traceback is printed once and a card says
+    what is wrong in words, with the database's folder and its free space; both are cleared only by a tick that really
+    wrote, so an idle tick (nothing to write, so nothing fails) cannot make the card flicker."""
+
+    def setUp(self):
+        import os
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.folder = tmp.name
+        path = os.path.join(tmp.name, "ed_outrider.sqlite")
+        self.db = ed_outrider.open_db(path)
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        self.state.db_path = path
+        self.size = 0   # what each tick's "journal line" writes (0: an idle tick)
+
+    def write(self):
+        if self.size:
+            ed_outrider.meta_set(self.db, "probe", "x" * self.size)
+            self.size += 1   # a new value each tick: a real write each time
+
+    def tick(self):
+        err = io.StringIO()
+        with unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", []), contextlib.redirect_stderr(err), \
+                unittest.mock.patch.object(self.state, "maybe_unsold", lambda: None), \
+                unittest.mock.patch.object(self.state, "journals_reachable", self.write):
+            self.state.tick({})
+        return err.getvalue()
+
+    def card(self):
+        return next((n for n in self.state.notices.active() if n["key"] == "db_write"), None)
+
+    def test_a_full_disk_one_traceback_and_a_card(self):
+        self.size = 200000
+        self.assertEqual(self.tick(), "")   # room enough: it writes
+        pages = self.db.execute("PRAGMA page_count").fetchone()[0]
+        self.db.execute(f"PRAGMA max_page_count = {pages}")   # SQLite's own SQLITE_FULL from here on
+        self.size = 400000
+        out = "".join(self.tick() for _ in range(3))
+        self.assertEqual(out.count("Traceback"), 1, out)
+        self.assertIn("database or disk is full", out)
+        card = self.card()
+        self.assertIsNotNone(card)
+        self.assertEqual((card["level"], card["action"]), ("bad", "open:server"))
+        self.assertIn("is full", card["text"])
+        self.assertIn(self.folder, card["text"])
+        self.assertIn("MB free", card["text"])
+        self.assertIn("OperationalError", self.state.tail_error)
+        # an idle tick writes nothing: the card stays
+        size, self.size = self.size, 0
+        self.tick()
+        self.assertIsNotNone(self.card())
+        # room again and a tick that writes: the card goes, and a new failure prints its traceback again
+        self.db.execute("PRAGMA max_page_count = 1073741823")
+        self.size = size
+        self.assertEqual(self.tick(), "")
+        self.assertIsNone(self.card())
+        self.db.execute(f"PRAGMA max_page_count = {self.db.execute('PRAGMA page_count').fetchone()[0]}")
+        self.size = 900000
+        self.assertEqual(self.tick().count("Traceback"), 1)
+
+    def test_a_read_only_database(self):
+        self.size = 10
+        self.db.execute("PRAGMA query_only = 1")   # SQLite's own SQLITE_READONLY
+        out = self.tick() + self.tick()
+        self.assertEqual(out.count("Traceback"), 1, out)
+        self.assertIn("read-only", self.card()["text"])
+        self.db.execute("PRAGMA query_only = 0")
+        self.tick()
+        self.assertIsNone(self.card())
+
+    def test_another_error_gets_no_card(self):
+        self.assertEqual([ed_outrider.db_write_kind(e) for e in (
+            sqlite3_error("database is locked"), sqlite3_error("disk I/O error"), RuntimeError("disk is full"))],
+            [None, "ioerr", None])
+
+
+def sqlite3_error(msg):
+    import sqlite3
+    return sqlite3.OperationalError(msg)   # no sqlite_errorcode: matched by its message
+
+
 if __name__ == "__main__":
     unittest.main()

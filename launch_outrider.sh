@@ -32,6 +32,11 @@ banner() {
     echo "#      ED Outrider v${version:-?}"
     echo "#"
     echo "#                       https://github.com/weslocke/ED-Outrider"
+    # round 10's S6: the window is Outrider (not under the start-with-your-computer service, which has no window)
+    if [ -z "${OUTRIDER_SERVICE:-}" ]; then
+        echo "#"
+        echo "#      This window IS Outrider: closing it stops the page."
+    fi
     echo "$bar"
 }
 banner

@@ -1673,12 +1673,14 @@ const SURF_NEAR = 3000;   // m: markers within this are fitted into the map; far
 // each Surface map setting's range: the map clamps to it, and Settings stores the clamped value (complete review
 // 2026-10-30: a typed 8000 showed while 4900 was used)
 const SURF_RANGES = {alt: [10, 100000], spacing: [0, 1000], min: [50, 6000], warn: [100, 4900]};
+// The far-rig distance is the server's alone ([defaults] rig_warn, round 10's S14): the spoken leash warning uses it, so
+// a browser's own value (an old surfaceCfg.warn) is no longer read, and the map and the voice always agree
 const surfaceCfg = () => {
   const c = store.get("surfaceCfg", {}) || {}, d = (data && data.defaults) || {};
-  const num = (k, dk, def) => { const raw = c[k] ?? d[dk] ?? def, v = Number(raw), [lo, hi] = SURF_RANGES[k];
+  const num = (k, dk, def, own = true) => { const raw = (own ? c[k] : undefined) ?? d[dk] ?? def, v = Number(raw), [lo, hi] = SURF_RANGES[k];
     return raw !== null && raw !== "" && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def; };
   return {alt: num("alt", "surface_alt", 1000), spacing: num("spacing", "rig_spacing", 50),
-          min: num("min", "surface_map_min", 500), warn: num("warn", "rig_warn", 3500),
+          min: num("min", "surface_map_min", 500), warn: num("warn", "rig_warn", 3500, false),
           strip: typeof c.strip === "boolean" ? c.strip : !!d.surface_map_strip};
 };
 // shown below your surface altitude, hidden 100 m above it, unchanged between (no flicker); always on the ground,
@@ -4498,6 +4500,8 @@ function sysRowHtml(s, c) {
     <td>${star(s)}</td><td class="bodies" data-pop data-id="${esc(s.id)}">${bodies(s)}${nb ? `<div class="sf3 sub2 notable">${nb}</div>` : ""}</td>
     <td class="notable c3hide">${nb}</td><td class="num hide-sm" title="${valueTitle(s)}">${valueCell(s)}</td><td class="num hide-sm c2hide">${known}</td></tr>`;
 }
+// whether Nearby's table (#rows) is on screen: render() builds its rows only then (S24)
+const nearRowsShown = () => view === "near" || view === "overview";
 function render() {
   recordsWanted();   // the lists' 🏆
   if (boxelPinDrawn !== pinnedSystem || boxelRecDrawn !== REC.ver) drawBoxel();   // a pin cleared elsewhere (a tab switch),
@@ -4526,7 +4530,7 @@ function render() {
   refocus("here", fkHere);
   applyAppMode();
   placeOverview();
-  document.getElementById("nearWrap").hidden = !(view === "near" || view === "overview");
+  document.getElementById("nearWrap").hidden = !nearRowsShown();
   document.getElementById("overView").hidden = view !== "overview";
   document.getElementById("bmView").hidden = view !== "bm";
   document.getElementById("bmTable").hidden = view !== "bm";
@@ -4653,9 +4657,13 @@ function render() {
   const distTh = document.getElementById("nearDistTh"), distTitle = elsewhere ? `ly from ${na.name} (the system Nearby is around)` : "ly from you";
   if (distTh.title !== distTitle) distTh.title = distTitle;
   const rowCtx = {jr, elsewhere, prev, scoopNext, bms, aimCol};
-  document.getElementById("rows").innerHTML = rows.map(s => sysRowHtml(s, rowCtx)).join("") ||
-    `<tr><td colspan="11" class="unk">${emptyMessage(rows)}</td></tr>`;
-  refocus("rows", fkRows);
+  // Nearby's rows only while its table shows (round 10's S24): a payload a second while you fly redrew them on every
+  // other view too; the header's counts above still update, and opening Nearby (or Overview) renders them afresh
+  if (nearRowsShown()) {
+    document.getElementById("rows").innerHTML = rows.map(s => sysRowHtml(s, rowCtx)).join("") ||
+      `<tr><td colspan="11" class="unk">${emptyMessage(rows)}</td></tr>`;
+    refocus("rows", fkRows);
+  }
   renderBoxelMode();
   renderRoutePane();
   document.getElementById("updateLine").hidden = !data.restart_needed;
@@ -9207,6 +9215,7 @@ function drawAtSet() {
   if (ecEl.textContent !== ecText) ecEl.textContent = ecText;
   hEl("atTest").disabled = !a.available || !!a.running || !!(a.test && ["counting", "running"].includes(a.test.state));
   hEl("atTestMsg").textContent = hwyRun && hwyRun.kind === "test" ? hwyRun.msg : "";
+  unsavedRedraw();   // a save's new sequence: its fields compare equal again (S1)
 }
 for (const id of Object.values(AT_FIELDS)) hEl(id).addEventListener("input", e => { e.target.dataset.dirty = "1"; });
 for (const id of ["atEntry", "atMapWait", "atSearchWait", "atKeyDelay", "atStepPause", "atRouteTarget", "atDryRun"]) hEl(id).addEventListener("change", e => { e.target.dataset.dirty = "1"; });
@@ -10749,6 +10758,7 @@ function onData() {
   loadOwnSounds();   // your own sound files, decoded before an alert needs one
   prepareLostLine();   // "lost contact", made in your voice while Outrider can still make it
   drawTts();
+  drawRigWarn();   // Settings -> Surface map's far-rig distance: the server's (S14)
   drawAudioPill();
   const sv = data.speech && data.speech.version;
   if (sv && sv !== speechLib.version && sv !== speechLibWanted) { speechLibWanted = sv; loadSpeechLib(); }
@@ -13909,6 +13919,7 @@ function renderUploads() {
     const row = [...box.querySelectorAll(".inaraacc")].find(r => r.dataset.cmdr === cmdr);
     if (row && key) row.querySelector(".inaraKey").value = key;
   }
+  unsavedRedraw();
 }
 async function setUpload(service, on, confirmed) {
   try {
@@ -14353,9 +14364,10 @@ modWarnEl.onchange = () => {
   store.set("moduleWarn", modWarnEl.value.trim() === "" || !isFinite(v) || v <= 0 || v > 100 ? null : Math.round(v)); showModWarn(); if (data) render();
 };
 showModWarn();
-// the surface map's settings (one object, surfaceCfg; blank = the config file's [defaults])
+// the surface map's settings (one object, surfaceCfg; blank = the config file's [defaults]); the far-rig distance is
+// the config file's own, below
 const surfEls = {alt: document.getElementById("surfAlt"), spacing: document.getElementById("surfSpacing"),
-                 min: document.getElementById("surfMin"), warn: document.getElementById("surfWarn")};
+                 min: document.getElementById("surfMin")};
 const surfStripEl = document.getElementById("surfStrip");
 const showSurfCfg = () => { const c = store.get("surfaceCfg", {}) || {}, now = surfaceCfg();
   for (const [k, el] of Object.entries(surfEls)) { el.value = c[k] ?? ""; el.placeholder = now[k]; }
@@ -14371,6 +14383,26 @@ for (const [k, el] of Object.entries(surfEls)) {
 }
 surfStripEl.onchange = () => { store.set("surfaceCfg", {...(store.get("surfaceCfg", {}) || {}), strip: surfStripEl.checked}); if (data) render(); };
 showSurfCfg();
+// A rig far away at (round 10's S14): [defaults] rig_warn, written into the config file as the pad delay is and applied
+// at once (LIVE_CONFIG): the spoken leash warning and every window's map use the one value, which the payload carries
+const rigWarnEl = document.getElementById("surfWarn");
+function drawRigWarn() { if (document.activeElement !== rigWarnEl) rigWarnEl.value = surfaceCfg().warn; }
+rigWarnEl.onchange = async () => {
+  const v = Number(rigWarnEl.value), [lo, hi] = SURF_RANGES.warn, m = document.getElementById("surfWarnMsg");
+  if (rigWarnEl.value.trim() === "" || !isFinite(v) || v < lo || v > hi) {
+    m.textContent = `a distance from ${lo} to ${hi} m`; m.className = "hint warnc"; rigWarnEl.blur(); drawRigWarn(); return;
+  }
+  const w = Math.round(v);
+  let r;
+  try { r = await apiJson("api/config", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({defaults: {rig_warn: w}})}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  r = r || {error: "?"};
+  if (!r.error && data) data.defaults = {...(data.defaults || {}), rig_warn: w};
+  m.textContent = r.error ? `Not saved: ${r.error}` : "Saved in the config file ([defaults] rig_warn): every window's map and the spoken warning use it";
+  m.className = r.error ? "hint warnc" : "hint";
+  rigWarnEl.blur(); drawRigWarn(); if (data) render();
+};
+drawRigWarn();
 window.addEventListener("resize", () => { if (data) renderSurface(); });
 // the discovery streak's spoken thresholds and the suggested order's "skip?" floor (blank = the default)
 const streakEls = {known: document.getElementById("streakKnown"), new: document.getElementById("streakNew")};
@@ -14551,7 +14583,7 @@ alertChips.addEventListener("click", e => { const b = e.target.closest("[data-se
 document.getElementById("alertsBtn").onclick = () => {
   sfClear();
   setSecsRestore();
-  drawSpeechStyles(); fillThresholds(); alertDialog.showModal(); drawSpeechLog(); loadAskLog();
+  drawSpeechStyles(); fillThresholds(); unsavedReset(); alertDialog.showModal(); drawSpeechLog(); loadAskLog(); drawSettingsUnsaved();
   const last = store.get("alertSection", ""), li = alertSections.findIndex(s => s.dataset.chip === last);
   if (li > 0) showAlertSection(li, false);   // a number stored before (a position) names no section: ignored
 };
@@ -14777,6 +14809,7 @@ async function loadServerSettings() {
   const focus = srvFocus && document.getElementById(srvFocus);
   srvFocus = srvWant = null;
   if (focus) { focus.classList.add("srvfocus"); focus.focus(); }
+  unsavedRedraw();
 }
 // a field's value as it is sent (and compared with what it was when drawn: only changes are saved)
 function srvValue(el) {
@@ -14840,6 +14873,7 @@ async function loadHonkCfg() {
     if (el.type === "checkbox") el.checked = !!v; else el.value = v ?? "";
     el.dataset.orig = hcNow(el);
   }
+  unsavedRedraw();
 }
 HC_FIELDS().forEach(el => el.addEventListener(el.type === "checkbox" ? "change" : "input", () => { el.dataset.dirty = "1"; }));
 async function saveHonkCfg() {
@@ -14886,6 +14920,7 @@ async function loadShotCfg() {
   shotCropRead();
   shotSizeBoxes();
   shotMoveShown();
+  unsavedRedraw();
 }
 // the medium / small ticks: a size field above 0 is ticked; ticking one fills its size (1920, 1080), unticking empties it
 function shotSizeBoxes() {
@@ -15000,6 +15035,110 @@ document.getElementById("shotSave").onclick = saveShotCfg;
 // "moved to": its folder shows only while that is picked
 const shotMoveShown = () => { document.getElementById("shotMoveTo").hidden = document.querySelector('#shotSettings .scfg[data-key="original"]').value !== "move"; };
 document.querySelector('#shotSettings .scfg[data-key="original"]').addEventListener("change", shotMoveShown);
+// ---- Unsaved edits in Settings (round 10's S1): the sections saved by a button of their own (Auto honk, Auto-target,
+// Screenshots, Server, and the Uploads accounts) kept what you typed but did not use it, and looked saved when Settings
+// opened again. Each field is compared with its saved value (not with `dirty`, which a change put back still has): a
+// dirty section's heading says "· not saved", and Done or Esc keeps Settings open on it once, with the note "Not saved
+// yet: Save keeps it · Discard"; a second Done or Esc closes, the typed values still pending (the author, 2026-11-06),
+// and marked when Settings opens again.
+// The guard is in the Done click and the dialog's cancel, not in tabClose, which closes it whatever (and tests call).
+const UNSAVED_SECS = {
+  honk: () => HC_FIELDS().filter(el => el.dataset.orig !== undefined && hcNow(el) !== el.dataset.orig),
+  autotarget: () => {
+    const seq = data && data.autotarget && data.autotarget.sequence;
+    if (!seq) return [];
+    return Object.entries(AT_FIELDS).map(([k, id]) => [k, hEl(id)])
+      .filter(([k, el]) => el.type === "checkbox" ? el.checked !== !!seq[k] : el.value !== atText(k, seq[k])).map(([, el]) => el);
+  },
+  screenshots: () => SC_FIELDS().filter(el => el.dataset.orig !== undefined && scNow(el) !== el.dataset.orig),
+  uploads: () => [...document.querySelectorAll("#uploadsBox .edsmName")].filter(el => el.value !== el.defaultValue)
+    .concat([...document.querySelectorAll("#uploadsBox .edsmKey, #uploadsBox .inaraKey")].filter(el => el.value !== "")),
+  server: () => {
+    const box = document.getElementById("serverSettingsBody"), ch = srvChanges();
+    return [...box.querySelectorAll("[data-key]")].filter(el => ch[el.dataset.sec] && el.dataset.key in ch[el.dataset.sec]);
+  },
+};
+// the sections with an unsaved field, in Settings' order: [{key, sec (its <details>), fields}]
+function settingsUnsaved() {
+  return setSecs.filter(d => UNSAVED_SECS[d.dataset.secKey])
+    .map(d => ({key: d.dataset.secKey, sec: d, fields: UNSAVED_SECS[d.dataset.secKey]()})).filter(x => x.fields.length);
+}
+let setUnsavedWarned = false;   // the note was shown since Settings opened: the next Done or Esc closes
+// after a section loads or saves (hoisted: called from the loaders above), only while Settings is open
+function unsavedRedraw() { if (alertDialog.open) drawSettingsUnsaved(); }
+// the headings' "· not saved" and the note, as the fields are now (a note whose section is clean again goes)
+function drawSettingsUnsaved() {
+  const dirty = new Set(settingsUnsaved().map(x => x.key));
+  if (!dirty.size) setUnsavedWarned = false;   // saved or discarded: a new edit is warned about again
+  for (const d of setSecs) {
+    if (!UNSAVED_SECS[d.dataset.secKey]) continue;
+    const sum = d.querySelector(":scope > summary"), mark = sum.querySelector(".unsaved"), on = dirty.has(d.dataset.secKey);
+    if (on && !mark) sum.insertAdjacentHTML("beforeend", ` <span class="unsaved" title="a change here is not saved yet: its Save button keeps it">· not saved</span>`);
+    else if (!on && mark) mark.remove();
+    if (!on) d.querySelectorAll(":scope > .unsavednote").forEach(n => n.remove());
+  }
+  return dirty;
+}
+// Done or Esc: true (stay open) the first time while something is unsaved, Settings opened on the first such section
+function settingsHold() {
+  const u = settingsUnsaved();
+  drawSettingsUnsaved();
+  if (!u.length || setUnsavedWarned) return false;
+  setUnsavedWarned = true;
+  const first = u[0].sec;
+  first.open = true;
+  if (!first.querySelector(":scope > .unsavednote"))
+    first.querySelector(":scope > summary").insertAdjacentHTML("afterend", `<div class="unsavednote hint warnc" role="status">Not saved yet: ` +
+      `<button type="button" class="try" data-unsaved="save">Save</button> keeps it · <button type="button" class="try" data-unsaved="discard">Discard</button></div>`);
+  const i = alertSections.indexOf(first);
+  if (i >= 0) showAlertSection(i, false); else first.scrollIntoView({block: "start"});
+  return true;
+}
+// Save: the section's own save; Discard: every field back to its saved value
+const UNSAVED_SAVE = {honk: saveHonkCfg, autotarget: atSave, screenshots: saveShotCfg, server: saveServerConfig,
+  uploads: async () => {
+    const rows = new Set(UNSAVED_SECS.uploads().map(el => el.closest(".edsmacc, .inaraacc")));
+    for (const row of rows) row.querySelector(".edsmSave, .inaraSave").click();
+  }};
+function discardUnsaved(key) {
+  if (key === "honk" || key === "screenshots") {
+    for (const el of UNSAVED_SECS[key]()) { if (el.type === "checkbox") el.checked = el.dataset.orig === "true"; else el.value = el.dataset.orig; }
+    (key === "honk" ? HC_FIELDS() : SC_FIELDS()).forEach(el => { el.dataset.dirty = ""; });
+    if (key === "screenshots") { shotCropRead(); shotSizeBoxes(); shotMoveShown(); }
+  } else if (key === "autotarget") {
+    const seq = data && data.autotarget && data.autotarget.sequence;
+    for (const [k, id] of Object.entries(AT_FIELDS)) {
+      const el = hEl(id); el.dataset.dirty = "";
+      if (seq) { if (el.type === "checkbox") el.checked = !!seq[k]; else el.value = atText(k, seq[k]); }
+    }
+  } else if (key === "uploads") {
+    document.querySelectorAll("#uploadsBox .edsmName").forEach(el => { el.value = el.defaultValue; });
+    document.querySelectorAll("#uploadsBox .edsmKey, #uploadsBox .inaraKey").forEach(el => { el.value = ""; });
+  } else if (key === "server") {
+    const box = document.getElementById("serverSettingsBody");
+    box.querySelectorAll("[data-key]").forEach(el => {
+      if (el.dataset.secret) el.value = "";
+      else if (el.dataset.kind === "bool") el.checked = el.dataset.orig === "true";
+      else el.value = el.dataset.orig;
+    });
+    box.querySelectorAll("[data-clear]").forEach(el => { el.checked = false; });
+  }
+}
+alertDialog.addEventListener("click", async e => {
+  const b = e.target.closest("[data-unsaved]");
+  if (!b) return;
+  const sec = b.closest("details.setsec"), key = sec && sec.dataset.secKey;
+  if (!key) return;
+  if (b.dataset.unsaved === "discard") discardUnsaved(key);
+  else await UNSAVED_SAVE[key]();
+  drawSettingsUnsaved();
+});
+// the marks follow every edit, and a save (each save function's fields compare equal again once it has answered)
+for (const t of ["input", "change"]) alertDialog.addEventListener(t, () => { if (alertDialog.open) drawSettingsUnsaved(); });
+alertDialog.addEventListener("cancel", e => { if (settingsHold()) e.preventDefault(); });
+// a fresh Settings: no note, and the next Done or Esc warns again (at close, and at open: a close event comes later)
+function unsavedReset() { setUnsavedWarned = false; alertDialog.querySelectorAll(".unsavednote").forEach(n => n.remove()); }
+alertDialog.addEventListener("close", unsavedReset);
 // ---- the folder picker (📁 beside a folder field, the author's, 2026-10-25): a browser cannot hand a page a folder's
 // path, so the game PC lists its own (GET api/folders, names only); Use this folder fills the field, Save keeps it
 const FP = {field: null, path: "", sep: "/"};
@@ -15778,7 +15917,11 @@ const tabGroupOf = v => Object.keys(TB.groups).find(g => TB.groups[g].includes(v
 const tabShow = d => { if (!d.open) { if (d.showModal) d.showModal(); else d.setAttribute("open", ""); } };
 const tabClose = d => { if (d.close) d.close(); else d.removeAttribute("open"); };
 // a dialog's ✕ or Done: a plain button (type="button": Enter in one of its fields must not "press" it), closing it here
-document.addEventListener("click", e => { const b = e.target.closest("dialog [data-close]"); if (b) tabClose(b.closest("dialog")); });
+document.addEventListener("click", e => {
+  const b = e.target.closest("dialog [data-close]"), dlg = b && b.closest("dialog");
+  if (!b || (dlg === alertDialog && settingsHold())) return;   // S1: Settings' Done with an edit not saved stays open once
+  tabClose(dlg);
+});
 function tabSetup() {
   for (const id of ["tabHead", "tabNav", "tabMain", "tabRail", "tabFoot"]) document.getElementById(id).hidden = false;
   document.getElementById("tabMain").append(document.querySelector("header"), document.getElementById("nowView"), document.querySelector("main"));

@@ -319,6 +319,10 @@ t("cmShipsHtml: a session's Ship, start → end from three ships (#23)", () =>
      ["Left and Leaving", "Aside", "Aside, Federal Corvette", "",
       'Aside → Virtute <span class="unk" title="in the order first flown:\nAside\nVirtute\n&lt;b&gt;">+1</span>',
       'Aside → Aside <span class="unk" title="in the order first flown:\nAside\nVirtute\nKrait Mk II">+2</span>']));
+t("settingsUnsaved: a fresh page has nothing unsaved (round 10's S1), and Done would close Settings", () => {
+  eq(`settingsUnsaved().map(x => x.key)`, []);
+  eq(`[settingsHold(), Object.keys(UNSAVED_SECS)]`, [false, ["honk", "autotarget", "screenshots", "uploads", "server"]]);
+});
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); ok++; console.log("OK |", name); }

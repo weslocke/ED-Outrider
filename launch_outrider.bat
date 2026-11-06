@@ -11,6 +11,14 @@ rem Auto honk, auto-target and the control rail are experimental on Windows; the
 rem now; everything else works. The Linux and macOS launcher is launch_outrider.sh.
 rem Kept with Windows line endings (.gitattributes): cmd can misread labels in a file with Unix ones.
 setlocal
+rem the banner (round 10's S6): a double-clicked window looks like a stray console, and closing it stops Outrider
+echo.
+echo ======================================================================
+echo #      ED Outrider
+echo #
+echo #      This window IS Outrider: closing it stops the page.
+echo #      Leave it open while you play; it can be minimised.
+echo ======================================================================
 rem relative paths in the arguments are the caller's: Outrider runs from the folder this was started in
 set "CALLER=%CD%"
 cd /d "%~dp0"

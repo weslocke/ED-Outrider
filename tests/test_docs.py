@@ -207,6 +207,46 @@ class Wording(unittest.TestCase):
         """Complete review 2026-10-30: the Search hint said "passed within 25 ly" whatever the Nearby radius."""
         self.assertNotIn("passed within 25 ly", self.read("static", "page.html"))
 
+    def test_first_start_fails_quotes_the_real_messages(self):
+        """Round 10's S6: install.md's "If the first start fails" quotes what the launchers and Outrider say, so each
+        quote must still be said (a reworded message would leave the table pointing at words nobody sees); the README
+        links to it and says how to get the files on each system."""
+        install = self.read("docs", "guide", "install.md")
+        table = install[install.index("### If the first start fails"):install.index("### Updating")]
+        quotes = (  # (the guide's quote, the file that says it, its words there)
+            ('Python not found. Install Python 3.11 or newer from https://www.python.org/downloads/ (tick "Add python.exe to PATH")',
+             "launch_outrider.bat", 'echo Python not found. Install Python 3.11 or newer from https://www.python.org/downloads/ (tick "Add python.exe to'),
+            ("Python not found (python3)", "launch_outrider.sh", 'PY="${PY:-python3}"'),
+            ("Python not found (python3)", "launch_outrider.sh", "Python not found ($PY)"),
+            ("ED Outrider needs Python 3.11 or newer, and found:", "launch_outrider.bat", "ED Outrider needs Python 3.11 or newer, and found:"),
+            ("Could not create .venv. On Debian or Ubuntu: sudo apt install python3-venv", "launch_outrider.sh",
+             "Could not create $VENV. On Debian or Ubuntu: sudo apt install python3-venv"),
+            ("Could not create .venv with", "launch_outrider.bat", "Could not create %VENV% with"),
+            ("ED Outrider runs, but speaks with the browser's own voice. For Piper's natural voices: install", "scripts/python_check.py",
+             "ED Outrider runs, but speaks with the browser's own voice. For Piper's natural voices: install"),
+            ("OPTIONAL packages not installed: ED Outrider starts without them", "scripts/install_requirements.py",
+             "OPTIONAL packages not installed: ED Outrider starts without them"),
+            ("is already in use: is ED Outrider already running?", "ed_outrider.py", "is already in use: is ED Outrider already running?"),
+            ("(is [server] host this machine's address or name?", "ed_outrider.py", "(is [server] host this machine\\'s address or name?"),
+            ("No Elite Dangerous journal folder found. Set Settings -> Server -> [journals] live", "ed_outrider.py",
+             "No Elite Dangerous journal folder found. Set Settings -> Server -> [journals] live"),
+            ("No journals in … yet", "ed_outrider.py", "No journals in {"),
+            ("couldn't verify spansh.co.uk's certificate", "outrider/tls.py", "couldn't verify"),
+            ("Outrider has not answered for 20 s", "static/starting.html", "Outrider has not answered for ${"),
+            ("NOT CONNECTED", "static/page.js", "NOT CONNECTED since"),
+            ("Lost contact with Outrider", "static/page.js", '"Lost contact with Outrider."'),
+            ("This window IS Outrider", "launch_outrider.sh", "This window IS Outrider: closing it stops the page."),
+        )
+        for quote, path, said in quotes:
+            with self.subTest(quote=quote):
+                self.assertIn(quote, table)
+                self.assertIn(said, self.read(*path.split("/")).replace("\r\n", "\n"))
+        readme = self.read("README.md")
+        self.assertIn("](docs/guide/install.md#if-the-first-start-fails)", readme)
+        self.assertIn("releases/latest", readme)
+        self.assertIn("Source code (zip)", readme)
+        self.assertIn("git clone https://github.com/weslocke/ED-Outrider.git", readme)
+
 
 
 if __name__ == "__main__":

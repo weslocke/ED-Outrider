@@ -1775,6 +1775,30 @@ STATION_EVENTS = ("Docked", "Location", "StoredModules", "StoredShips")   # Jour
 WANTED = tuple(f'"event":"{e}"'.encode() for e in dict.fromkeys(_OTHER_EVENTS + outrider.commander.EVENTS))
 # the journal events the unsold estimate reads (outrider.unsold.INTERESTING): only these make it run again (S6-S1)
 UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTING if outrider.unsold else ()))
+# The reader's prefilter in one pass (round 10's S3): each line's event name found once and looked up in a set, in place
+# of a substring search per WANTED entry (143 of them, each over the whole line). The sets are made from the two lists
+# above, which stay the ones to edit; the matching is the same, byte for byte (tests/test_journal_fixes.py's guard)
+EVENT_KEY = b'"event":"'
+WANTED_NAMES = frozenset(w[len(EVENT_KEY):-1] for w in WANTED)
+UNSOLD_NAMES = frozenset(w[len(EVENT_KEY):-1] for w in UNSOLD_BYTES)
+
+
+def event_name(line):
+    """A journal line's event name as bytes (b"FSDJump"), from its first `"event":"` (the game's own spacing: the old
+    substring tests matched only that too), or None without one or with its closing quote missing (a line cut short)."""
+    i = line.find(EVENT_KEY)
+    if i < 0:
+        return None
+    i += len(EVENT_KEY)
+    j = line.find(b'"', i)
+    return line[i:j] if j >= 0 else None
+
+
+def line_wanted(line, name=...):
+    """Whether the reader parses this line: a WANTED event, or one of the FSS signals let through by their contents
+    (stellar phenomena: Fixed_Event_Life; points of interest: POI_BYTES). `name`: event_name(line), when known."""
+    name = event_name(line) if name is ... else name
+    return name in WANTED_NAMES or b"Fixed_Event_Life" in line or any(w in line for w in POI_BYTES)
 
 # Bump when the journal parser learns new events: forces a one-off re-read of every journal.
 # 27: sale pages keyed by journal position (same-second 'Sell all' pages were dropped before); logins.
@@ -4119,13 +4143,14 @@ class Journals:
                     print(f"uploads: a line was skipped ({type(e).__name__}: {e})", file=sys.stderr)
             elif self.uploads is not None and self.upload_mode:
                 self.uploads.forget()   # not following now: switched on again, it reads the file from its top
-            if not self.unsold_touched and any(w in line for w in UNSOLD_BYTES):
+            name = event_name(line)
+            if not self.unsold_touched and name in UNSOLD_NAMES:
                 # a line the unsold estimate reads (S6-S1: any line re-ran it); any commander's: the estimate reads them
                 # all (bug check #14)
                 self.unsold_touched = True
             if not mine:
                 continue   # S9-S4: another commander's file (its uploads above go with that commander's own accounts)
-            if any(w in line for w in WANTED) or b"Fixed_Event_Life" in line or any(w in line for w in POI_BYTES):
+            if line_wanted(line, name):
                 # where the line is (the file's name, so a twin copy in another folder gives the same key):
                 # tells apart sale pages written in the same second (sale_events)
                 self.line_source = f"{b}:{at}"
@@ -8535,6 +8560,34 @@ def backup_extras(speech_path, config_path, pronounce_path):
 BACKUP_FREE_FACTOR = 1.2   # free space a backup needs: the database's size times this (its copy, then the zip)
 
 
+# S18: SQLite's primary result codes for a disk that will not take writes (an error's sqlite_errorcode is the extended
+# code, whose low byte is the primary one), with their messages for an error that carries no code
+DB_WRITE_CODES = {13: "full", 8: "readonly", 10: "ioerr"}   # SQLITE_FULL, SQLITE_READONLY, SQLITE_IOERR
+DB_WRITE_MESSAGES = (("disk is full", "full"), ("readonly database", "readonly"), ("disk i/o error", "ioerr"))
+
+
+def db_write_kind(e):
+    """"full", "readonly" or "ioerr" for a database error that means its disk will not take writes, else None."""
+    if not isinstance(e, sqlite3.Error):
+        return None
+    code = getattr(e, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        return DB_WRITE_CODES.get(code & 0xFF)
+    msg = str(e).lower()
+    return next((kind for words, kind in DB_WRITE_MESSAGES if words in msg), None)
+
+
+def db_write_words(kind, folder, free):
+    """The db_write card's words: what is wrong, where (the database's folder) and the free space there."""
+    where = f"{folder}{f', {free / 1e6:,.0f} MB free' if free is not None else ''}" if folder else "its folder"
+    return {"full": f"The disk Outrider's database is on is full ({where}): nothing new is saved. Free some space there; "
+                    "Outrider keeps trying.",
+            "readonly": f"Outrider cannot write its database: it or its folder is read-only ({where}). Check the file's "
+                        "permissions, or whether the disk was mounted read-only; Outrider keeps trying.",
+            "ioerr": f"A disk error stopped Outrider writing its database ({where}): check that disk. Outrider keeps "
+                     "trying."}[kind]
+
+
 def folder_size(path):
     """Bytes under `path` (0 when it is not there)."""
     total = 0
@@ -8962,6 +9015,8 @@ class State:
         self._surface_sent = None
         self._surface_told = False   # whether the page was last told the surface map shows (a flip either way wakes it)
         self._follow_up_seen = set()   # tick follow-up errors already printed (each traceback once)
+        self._tick_seen = set()   # S18: a failed tick's errors already printed, until a tick really writes again
+        self._db_write_said = None   # S18: the db_write card's kind while it shows (its free space is not redone each tick)
         self._rig_leash = {}
         self._suit_low = set()   # S9-S7: the suit's low bits at the last look (a rise is said once)
         self._kb_layout = ...    # S7-S1: the keyboard layout, read once when the Auto-target box first asks
@@ -9364,8 +9419,10 @@ class State:
                 "restart": n > len(live), "live": live}, 200
 
     # config keys config_save also applies at once: Settings -> Voice's Keep loaded and Load them at start (crew batch 2)
-    # and the auto-target's sequence ([highway] autotarget_*): tuned by trial and error, so the next run uses it (2026-10-22)
-    LIVE_CONFIG = {("speech", "voices_loaded"), ("speech", "voices_preload"), ("speech", "pad_delay")} | \
+    # and the auto-target's sequence ([highway] autotarget_*): tuned by trial and error, so the next run uses it (2026-10-22);
+    # the far-rig distance ([defaults] rig_warn, Settings -> Surface map: round 10's S14), the one [defaults] key the
+    # server itself uses (the spoken leash warning) and every window's map follows
+    LIVE_CONFIG = {("speech", "voices_loaded"), ("speech", "voices_preload"), ("speech", "pad_delay"), ("defaults", "rig_warn")} | \
         {("highway", "autotarget_" + k) for k in outrider.target.DEFAULTS} | \
         {("autohonk", "delay"), ("autohonk", "skip_honked")} | \
         {("screenshots", k) for k in outrider.screenshots.DEFAULTS}   # read for every shot (Settings -> Screenshots)
@@ -9375,8 +9432,12 @@ class State:
         settings `st`: the voices kept loaded beside the main one (the loaded ones over the new number set aside now) and
         whether they load at start (used at the next start; the payload's voice_memory says it at once), and how long
         after a docking grant the pad is said (pad_delay: the next grant), and the auto-target's sequence (the next
-        run). The keys applied, as "section.key"."""
+        run), and the far-rig distance (RIG_WARN: the leash's next reading, and the payload's defaults). The keys applied,
+        as "section.key"."""
+        global RIG_WARN
         done = sorted({f"{s}.{k}" for s, k in keys if (s, k) in self.LIVE_CONFIG})
+        if "defaults.rig_warn" in done:
+            RIG_WARN = st["rig_warn"]
         for k in [d.split(".", 1)[1] for d in done if d.startswith("screenshots.")]:
             self.shots_cfg[k] = st["screenshots"][k]
         if "speech.pad_delay" in done:
@@ -21770,8 +21831,12 @@ class State:
             await asyncio.sleep(POLL_SECONDS)
 
     def tick(self, route_mtimes):
-        """One pass of watch(): read what is new, commit, then the follow-up work."""
+        """One pass of watch(): read what is new, commit, then the follow-up work. A failure is rolled back and tried
+        again next tick: its traceback printed once (round 10's S18: a full disk printed one every second), and a disk
+        that cannot be written (full, read-only, failing) said on a card in words (db_write_notice). Both are cleared
+        only by a tick that really wrote (total_changes moved): an idle tick writes nothing, so it proves nothing."""
         cp, committed = self.journals.checkpoint(), False
+        changes_before = self.db.total_changes
         # a NavRoute.json read inside a tick that is rolled back must be read again (its rows went with it)
         mtimes_before = dict(route_mtimes)
         # the error shown is this tick's: a row that failed to build sets it again below, and stays visible
@@ -21893,11 +21958,20 @@ class State:
             if self.tail_error != last_error or self.journals.moment_seq != seq_before or self.journals.chat_seq != chat_before \
                     or self.journals.docking_hold is not hold_before or self.journals.docking_seq != dock_seq:
                 self.bump()
+            if self.db.total_changes != changes_before:   # written and committed: the disk takes writes again
+                self._tick_seen.clear()
+                self._db_write_said = None
+                if self.notices.clear("db_write"):
+                    self.bump()
         except Exception as e:
             # Never let one bad line, a locked database or a malformed NavRoute stop the
             # tailing for good: report it on the page and try again next tick.
-            import traceback
-            traceback.print_exc()
+            key = (type(e).__name__, str(e))
+            if key not in self._tick_seen:   # once, not every second while it lasts (S18)
+                self._tick_seen.add(key)
+                import traceback
+                traceback.print_exc()
+            self.db_write_notice(e)
             # the sales of a committed tick are not read again: keep them for note_sale_estimates on the retry
             sales = self.journals.new_sales if committed else []
             try:
@@ -21913,6 +21987,19 @@ class State:
                 route_mtimes.clear()
                 route_mtimes.update(mtimes_before)
             self.tail_error = f"{type(e).__name__}: {e}"
+            self.bump()
+
+    def db_write_notice(self, e):
+        """S18: a database error that means the disk will not take writes (SQLITE_FULL, READONLY, IOERR: db_write_kind)
+        put on a card in words, naming the database's folder and its free space, its button opening Server settings
+        (where the database's path is). Cleared by tick() once a tick writes again."""
+        kind = db_write_kind(e)
+        if kind is None or kind == self._db_write_said:   # shown already: a free space that moves a MB is no new card
+            return
+        self._db_write_said = kind
+        folder = os.path.dirname(os.path.abspath(self.db_path)) if self.db_path else None
+        text = db_write_words(kind, folder, disk_free(folder) if folder else None)
+        if self.notices.set("db_write", text, "bad", "open:server"):
             self.bump()
 
     # ---- [server] password: sessions for devices on the network (outrider/auth.py) ----

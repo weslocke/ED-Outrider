@@ -608,8 +608,9 @@ rigs lost at 5 km, on leaving the body, or with the Rhino destroyed, a death or 
 placing and picking up rigs, and what a deposit holds. A rig that collected anything is kept as a saved site
 for your next visit and listed under Materials' **Mining sites**.
 
-The map's sizes and the leash distance are in ⚙ Settings → Surface map; the spoken leash warning
-always uses the config file's `rig_warn`.
+The map's sizes and the leash distance are in ⚙ Settings → Surface map. The sizes are each browser's own; the leash
+distance ("a rig far away at") is one value for every window and the spoken warning: it is saved in the config file
+(`[defaults] rig_warn`) and used at once.
 
 <a id="-commander"></a>
 ## 🧑‍🚀 CMDR
