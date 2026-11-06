@@ -1808,7 +1808,8 @@ UNSOLD_BYTES = tuple(f'"event":{k}'.encode() for k in (outrider.unsold.INTERESTI
 # 66: your squadron's carrier is kept (meta squadron_carrier), no longer thrown away: where it was at your last login
 # 70: each kill and mining line keeps the ship you were in (play_activity's ships): a swap after the login moves the
 #     Sessions' Ship (#23)
-# 71: ... with when each was first and last flown: the Sessions' Ship names the first and the last of three or more
+# 71: ... with when each was first and last flown: the Sessions' Ship names the first and the last of three or more;
+#     a death keeps its ship too, and an unnamed ship (Loadout's ShipName " ") is kept by its type
 PARSER_VERSION = 71
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
@@ -1835,7 +1836,7 @@ PARSER_VERSION = 71
 # Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
-    71: "CMDR → Sessions names the ship a session started and ended in when you flew three ships or more in it",
+    71: "CMDR → Sessions names the ship a session started and ended in when you flew three ships or more in it, the ship you died in, and an unnamed ship by its type",
     70: "each kill and mining run keeps the ship you were in, so CMDR → Sessions names the ship you swapped to, not the one you logged in with",
     69: "the stations you have docked at are kept by their market, so CMDR's stored modules and ships name the station they are at",
     68: "each sample keeps its variant's code, so the Exo-Biology checklist finds its colour in any game language",
@@ -4205,8 +4206,9 @@ class Journals:
             if not_a_ship(ev.get("Ship")):
                 return   # an Apex shuttle's: not your ship (it wiped the fuel model and replaced ship, range, hull)
             # a login on foot with no ship of its own yet (handle_commander): this session's ship, from its Loadout
+            # (an unnamed ship's Loadout can say ShipName " ": its type then, the page names it)
             self.db.execute("UPDATE play_activity SET ship=? WHERE ship='' AND login_ts=(SELECT max(login_ts) FROM "
-                            "play_activity WHERE login_ts <= ?)", (ev.get("ShipName") or ev.get("Ship"), ts))
+                            "play_activity WHERE login_ts <= ?)", (str(ev.get("ShipName") or "").strip() or ev.get("Ship"), ts))
             self.note_modules(ev, ts)
             self.note_fleet(ev, ts)
             if ev.get("HullHealth") is not None and ts >= (self.hull or {}).get("ts", ""):
@@ -5168,8 +5170,10 @@ class Journals:
         place = self.mining_place(ts, srv) if ev.get("event") in outrider.commander._MINING else None
         # the ship you were in: the latest Loadout's, not the login's (a swap after logging in, #23); none when it is
         # another commander's (a shared folder) or newer than the line (a legacy folder read late)
+        # (an unnamed ship's Loadout can say ShipName " ": its type then, the page names it)
         s = self.ship or {}
-        ship = s.get("name") if (s.get("ts") or "") <= ts and s.get("fid") in (None, (self.commander or {}).get("fid")) else None
+        mine = (s.get("ts") or "") <= ts and s.get("fid") in (None, (self.commander or {}).get("fid"))
+        ship = (str(s.get("name") or "").strip() or s.get("type")) if mine else None
         if outrider.commander.activity_apply(acts, ev, srv, mined, place, ship):
             self.db.execute("UPDATE play_activity SET combat=?, mining=? WHERE login_ts=?",
                             (acts["combat"] and json.dumps(acts["combat"]), acts["mining"] and json.dumps(acts["mining"]),

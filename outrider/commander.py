@@ -665,7 +665,7 @@ def activity_apply(acts, ev, srv=False, mined=None, place=None, ship=None):
     the sale's "sold", in the login the sale was made in, which may have no mining line of its own. place: where a
     mining line happened ({id64, system, body}: the ring, the SRV's body; Journals.mining_place), its tons and lines
     kept per place (the Sessions table's Where, the author 2026-10-20). ship: the ship you were in (the reader's
-    latest Loadout), kept per kill or mining line with when it was first and last flown (`ships`): a swap after the
+    latest Loadout), kept per kill, death or mining line with when it was first and last flown (`ships`): a swap after the
     login moves the Sessions' Ship (#23)."""
     name, ts = ev["event"], ev["timestamp"]
     if name in _KILLS + ("Died", "Interdicted", "RedeemVoucher"):
@@ -689,6 +689,7 @@ def activity_apply(acts, ev, srv=False, mined=None, place=None, ship=None):
         elif name == "Died":
             c["n"] += 1
             c["deaths"] += 1
+            _ship_line(c, ship, ts)   # the ship you died in: a session with a death alone names it too
         elif name == "Interdicted":
             c["interdicted"] += 1
         else:
@@ -739,8 +740,8 @@ def activity_apply(acts, ev, srv=False, mined=None, place=None, ship=None):
 
 def session(row):
     """A play_activity row as the Sessions tab lists it, None without fighting or mining: {start (the login), end (its
-    last such line), commander, ship (the login's), combat: {ships (flown in its kills, in the order first flown; []
-    when not known: the login's ship stands in), ship_last (the latest kill's), kills, bounties, bonds, by_ship, deaths, interdicted, redeemed, seconds,
+    last such line), commander, ship (the login's), combat: {ships (flown in its kills and deaths, in the order first flown; []
+    when not known: the login's ship stands in), ship_last (the latest line's), kills, bounties, bonds, by_ship, deaths, interdicted, redeemed, seconds,
     per_hour} or None, mining: {ships, ship_last (as combat's, by mining lines), tons, refined: {name: t} (the ship's), srv_tons, srv_refined (the SRV's
     refinery), prospected, content: {High, Medium, Low}, motherlodes, cracked, prospectors, collectors, sold, seconds,
     per_hour (the ship's), srv_seconds} or None}. A login with nothing mined but ore sold that was mined before (sold

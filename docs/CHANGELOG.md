@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-05 · The Sessions' Ship: a death's ship, an unnamed ship by its type
+- Checked on a re-read of the author's own journals (2026-09-30: logged in in an unnamed Caspian, swapped to
+  "Rhinocart", died and mined in it). A death keeps the ship you died in too, so a session with a death and no kill
+  names it, not the login's. An unnamed ship's Loadout can say ShipName " ": it was kept as a blank name (the Ship
+  cell empty, and the on-foot login's ship filled in blank); it is kept by its type now, which the page names.
+  Still PARSER_VERSION 71 (70 and 71 were never pushed).
+
 ## 2026-11-05 · Three ships or more in a session: the first and the last
 - The Sessions' Ship lists one or two ships; three or more show the one the session started in and the one it ended
   in, "Aside → Virtute", with "+N" for the others, all of them named in its hover in the order first flown (the

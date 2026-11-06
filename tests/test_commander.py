@@ -643,6 +643,30 @@ class Sessions(unittest.TestCase):
                          ("Left and Leaving", ["Aside", "federation_corvette"], "federation_corvette", ["federation_corvette"],
                           "federation_corvette"))   # in the order first flown
 
+    def test_an_unnamed_ship_and_a_death(self):
+        """#23, the author's journals (2026-09-30): an unnamed ship's Loadout says ShipName " " (it was kept as a blank
+        name), and a death in the ship swapped to named the login's (a session with a death alone)."""
+        def loadout(at, name, ship_id):
+            return ev(at, "Loadout", Ship="explorer_nx", ShipName=name, ShipID=ship_id, MaxJumpRange=20, FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[])
+        _, state = setup(self, [
+            ev(T("02:39:55"), "LoadGame", Commander="Tester", Ship="Explorer_NX", Ship_Localised="Caspian Explorer", ShipName="", ShipID=39),
+            loadout(T("02:40:02"), " ", 39),
+            ev(T("02:40:30"), "MiningRefined", Type="$water_name;"),
+            ev(T("02:41:43"), "ShipyardSwap", ShipType="explorer_nx", ShipID=50, StoreOldShip="explorer_nx", StoreShipID=39),
+            loadout(T("02:41:45"), "Rhinocart", 50),
+            ev(T("02:52:49"), "Died")])
+        s = state.commander_sessions(now=NOW)["sessions"][0]
+        self.assertEqual((s["combat"]["ships"], s["combat"]["kills"], s["mining"]["ships"]), (["Rhinocart"], 0, ["explorer_nx"]))
+
+    def test_an_unnamed_ship_fills_a_login_on_foot(self):
+        """The on-foot login's ship from the session's Loadout: an unnamed one by its type, not " "."""
+        _, state = setup(self, [
+            ev(T("08:00:00"), "LoadGame", Commander="Tester", Ship="ExplorationSuit_Class1"),
+            ev(T("08:00:05"), "Loadout", Ship="explorer_nx", ShipName=" ", ShipID=39, MaxJumpRange=20,
+               FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[]),
+            ev(T("08:10:00"), "Bounty", Target="anaconda", TotalReward=5)])
+        self.assertEqual(state.commander_sessions(now=NOW)["sessions"][0]["ship"], "explorer_nx")
+
     def test_the_ship_a_session_ended_in(self):
         """#23: three ships or more show the first and the last (the author); back in the first, the first is the last,
         and a line read out of order counts at its place."""
