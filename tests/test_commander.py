@@ -4,6 +4,7 @@ Journals.handle on a scratch database."""
 import asyncio
 import json
 import os
+import shutil
 import tempfile
 import types
 import unittest
@@ -682,8 +683,9 @@ class Sessions(unittest.TestCase):
 
     def test_kills_on_foot(self):
         """#23 (Kurbo26): 49 kills in a ground combat zone were credited to the ship parked in orbit. Out of the ship
-        (a dropship's Disembark too) a kill is "On foot"; back aboard (Embark) the ship's again; a login on foot is on
-        foot; and an Outrider restart mid-fight keeps it (SAVED)."""
+        (an Apex shuttle's Disembark too; a Frontline dropship's DropshipDeploy: the test below) a kill is "On foot";
+        back aboard (Embark) the ship's again; a login on foot is on foot; and an Outrider restart mid-fight keeps it
+        (SAVED)."""
         loadout = ev(T("08:00:01"), "Loadout", Ship="federation_corvette", ShipName="Virtute", ShipID=3, MaxJumpRange=20,
                      FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[])
         j, state = setup(self, [
@@ -704,6 +706,30 @@ class Sessions(unittest.TestCase):
         j2, state2 = setup(self, [loadout, ev(T("09:00:00"), "LoadGame", Commander="Tester", Ship="TacticalSuit_Class1"),
                                    ev(T("09:05:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B")])
         self.assertEqual(state2.commander_sessions(now=NOW)["sessions"][0]["combat"]["ships"], ["On foot"])
+
+    def test_kills_after_a_dropship_deploy(self):
+        """#23 (Kurbo26, second report): a Frontline ground combat zone. Out of the ship at the station (Disembark),
+        aboard the dropship (Embark, Taxi), then DropshipDeploy on the planet, never a Disembark: the kills are "On
+        foot", not the ship parked at the station. Read from a journal file, so the reader's prefilter keeps the line."""
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        write(d, "Journal.2026-11-06T012600.01.log", [
+            ev(T("08:00:00"), "LoadGame", Commander="Tester", Ship="federation_corvette", ShipName="Virtute"),
+            ev(T("08:00:01"), "Loadout", Ship="federation_corvette", ShipName="Virtute", ShipID=3, MaxJumpRange=20,
+               FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[]),
+            ev(T("08:02:00"), "Disembark", SRV=False, Taxi=False, Multicrew=False, ID=3, OnStation=True, OnPlanet=False,
+               StarSystem="Sol", SystemAddress=1, Body="Sol", BodyID=0, StationName="Port", StationType="Coriolis", MarketID=9),
+            ev(T("08:03:00"), "BookDropship", Retreat=False, Cost=0, DestinationSystem="Sol", DestinationLocation="Port"),
+            ev(T("08:04:00"), "Embark", SRV=False, Taxi=True, Multicrew=False, OnStation=True, OnPlanet=False,
+               StarSystem="Sol", SystemAddress=1, Body="Sol", BodyID=0),
+            ev(T("08:09:00"), "DropshipDeploy", StarSystem="Sol", SystemAddress=1, Body="Earth", BodyID=3,
+               OnStation=False, OnPlanet=True),
+            ev(T("08:10:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B"),
+            ev(T("08:11:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B")])
+        j, state = setup(self)
+        j.scan_dir(d)
+        c = state.commander_sessions(now=NOW)["sessions"][0]["combat"]
+        self.assertEqual((c["kills"], c["ships"]), (2, ["On foot"]))
 
     def test_the_ship_a_session_ended_in(self):
         """#23: three ships or more show the first and the last (the author); back in the first, the first is the last,

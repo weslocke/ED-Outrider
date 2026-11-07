@@ -1801,7 +1801,8 @@ MINING_RECAP_ON = ("FSDJump", "CarrierJump", "Docked")
 # tab's suit loadouts too, comes 2 to 10 s after every Disembark in the author's journals; SwitchSuitLoadout changes it
 # in a ship's locker), a settlement approached (a body with one is settlement business: no wrong-suit warning), and a
 # crime committed (a bounty on you: the `wanted` moment)
-FOOT_EVENTS = ("SwitchSuitLoadout", "ApproachSettlement", "CommitCrime", "Embark")   # Embark: back aboard (#23)
+FOOT_EVENTS = ("SwitchSuitLoadout", "ApproachSettlement", "CommitCrime", "Embark", "DropshipDeploy")   # Embark: back
+# aboard; DropshipDeploy: out of a Frontline dropship at a ground combat zone, which writes no Disembark (#23)
 SUIT_EVENTS = ("SuitLoadout", "SwitchSuitLoadout")
 SUIT_PAIR_S = 45   # s: a Disembark and its suit line this close are one step out (2-10 s in the author's journals, once 36)
 # a suit's journal symbol (SuitName: "utilitysuit_class1") by its prefix, in the words the page speaks: the localised
@@ -1935,7 +1936,7 @@ def line_wanted(line, name=...):
 #     and combat bonds you hold (meta vouchers, S9), a Collect mission marked (S15), Powerplay merits per cycle and
 #     login and the Community Goals you joined (meta community_goals, S19)
 # 74: a kill or death made on foot is the Sessions' "On foot", not the ship's (on_foot from Disembark / Embark; #23)
-PARSER_VERSION = 74
+PARSER_VERSION = 75
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1962,6 +1963,7 @@ PARSER_VERSION = 74
 # Every bump adds its line here too (a test checks PARSER_VERSION has one).
 PARSER_CHANGES = {
     74: "kills on foot (a ground combat zone) show as On foot in CMDR → Sessions, not as the ship you left",
+    75: "kills in a ground combat zone reached by a Frontline dropship show as On foot too (the dropship writes no Disembark)",
     73: "CMDR → Missions counts your kills for massacre missions, lists your Community Goals and finds where to buy what a Collect mission wants; the Unsold tile shows the bounty vouchers and combat bonds you hold; the pledged line says the merits you earned this cycle and this login",
     72: "a game in another language: your sample runs and scanned genera are priced and matched by the game's codes, so bio values and new codex marks are right",
     71: "CMDR → Sessions names the ship a session started and ended in when you flew three ships or more in it, the ship you died in, and an unnamed ship by its type",
@@ -4372,7 +4374,7 @@ class Journals:
             self.note_loading(name, ev, ts)
             if name == "Fileheader":
                 return
-        if name in ("Disembark", "Embark", "LoadGame"):
+        if name in ("Disembark", "DropshipDeploy", "Embark", "LoadGame"):
             self.track_foot(name, ev, ts)
         if name in SALE_DOCK_EVENTS:
             self.note_sale_dock(name, ev, ts)
@@ -5431,14 +5433,15 @@ class Journals:
             self.note_activity(ev, ts, mined)
 
     def track_foot(self, name, ev, ts):
-        """Whether you are on foot (self.on_foot: {ts}, or None aboard): a Disembark (from the ship, the SRV or a
-        dropship to a ground combat zone) puts you on foot, an Embark (a ship, the SRV, a taxi) takes you off it, and a
-        login says which by the ship it names (a suit: on foot). Kept through a restart (SAVED): the reader resumes
+        """Whether you are on foot (self.on_foot: {ts}, or None aboard): a Disembark (from the ship, the SRV or an Apex
+        shuttle) or a DropshipDeploy (a Frontline dropship drops you at a ground combat zone: Embark with Taxi, then
+        DropshipDeploy, never a Disembark; Kurbo26's journal) puts you on foot, an Embark (a ship, the SRV, a taxi or
+        dropship) takes you off it, and a login says which by the ship it names (a suit: on foot). Kept through a restart (SAVED): the reader resumes
         mid-file and never sees the Disembark again. Issue #23 (Kurbo26): 49 kills in a ground combat zone were
         credited to the ship parked in orbit."""
         if not self.fresh("on_foot", ts, (self.on_foot or {}).get("ts")):
             return
-        if name == "Disembark":
+        if name in ("Disembark", "DropshipDeploy"):
             v = {"ts": ts}
         elif name == "Embark":
             v = None

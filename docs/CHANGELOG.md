@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-06 · Kills after a Frontline dropship are "On foot" too (#23)
+- Kurbo26 (#23, after the on-foot fix): still credited to the ship. A Frontline dropship writes no Disembark: out of
+  the ship at the station (Disembark), aboard the dropship (Embark, Taxi), then `DropshipDeploy` on the planet, which
+  the reader's prefilter dropped. It is read now (`FOOT_EVENTS`) and puts you on foot in `track_foot` as a Disembark
+  does. The last entry's "a dropship's Disembark" was wrong. PARSER_VERSION 75: one journal re-read.
+
 ## 2026-11-06 · Kills on foot are "On foot" in Sessions (#23)
 - Kurbo26 (#23, after the ship fix): 49 kills in a ground combat zone were credited to the Corvette parked in orbit.
   The reader now knows when you are on foot (`Journals.on_foot`, `track_foot`): a Disembark (a dropship's to a
