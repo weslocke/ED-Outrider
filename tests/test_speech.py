@@ -621,6 +621,18 @@ class Batch6Voice(unittest.TestCase):
                        "PlayerControlled": True, "OnPlanet": True})
         self.assertIn((1, 4), self.j.body_touched)
 
+    def test_species_complete_priced_in_another_language(self):
+        """Review round 11 D: a German game's Analyse says "Bakterium Acies": the line keeps the game's words, but its
+        value comes from the rules' English name (by the code), not from the localised one, which priced nothing."""
+        self.sampling_body()
+        for t, kind in (("00:04:00", "Log"), ("00:05:00", "Sample"), ("00:06:00", "Sample"), ("00:06:00", "Analyse")):
+            self.j.handle({"event": "ScanOrganic", "timestamp": f"2026-01-01T{t}Z", "ScanType": kind, "SystemAddress": 1, "Body": 4,
+                           "Genus": "$Codex_Ent_Bacterial_Genus_Name;", "Genus_Localised": "Bakterien",
+                           "Species": "$Codex_Ent_Bacterial_04_Name;", "Species_Localised": "Bakterium Acies"})
+        done = self.moments("bio_done")
+        self.assertEqual(done[0]["species"], "Bakterium Acies")                                     # said as the game says it
+        self.assertEqual(done[0]["value"], outrider.bio.species_value("Bacterium Acies") * 5)       # first footfall x5
+
     def test_approach_once_per_body_per_session(self):   # P13: ApproachBody only, once per body until the next login
         self.sampling_body()
         for ts in ("2026-01-01T00:03:00Z", "2026-01-01T00:04:00Z"):

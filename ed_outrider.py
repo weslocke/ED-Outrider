@@ -1954,7 +1954,10 @@ def line_wanted(line, name=...):
 #     and combat bonds you hold (meta vouchers, S9), a Collect mission marked (S15), Powerplay merits per cycle and
 #     login and the Community Goals you joined (meta community_goals, S19)
 # 74: a kill or death made on foot is the Sessions' "On foot", not the ship's (on_foot from Disembark / Embark; #23)
-PARSER_VERSION = 75
+# 76: review round 11: on_foot cleared by a Resurrect and set by a Location's OnFoot (C: a ship's kills after an on-foot
+#     death were "On foot"); combat bonds held by the faction's bare name (E: a Thargoid bond's "$faction_..." symbol was
+#     never paid off), and a combat bond counted for massacre missions (I: conflict-zone and Thargoid ones)
+PARSER_VERSION = 76
 # 54: ore you mined keeps counting as mined through your carrier (meta mined_carrier: moved there and back, then sold;
 #     the author, 2026-10-14: about half of his mining income went through it)
 # 53: a Vista Genomics sale keeps what each species paid and its name (bio_sales.bio_data: the Earnings' species, exact);
@@ -1982,6 +1985,8 @@ PARSER_VERSION = 75
 PARSER_CHANGES = {
     74: "kills on foot (a ground combat zone) show as On foot in CMDR → Sessions, not as the ship you left",
     75: "kills in a ground combat zone reached by a Frontline dropship show as On foot too (the dropship writes no Disembark)",
+    76: "after a death on foot your ship's kills are your ship's again in CMDR → Sessions, Thargoid combat bonds are named "
+        "and paid off when you hand them in, and massacre missions in conflict zones and against Thargoids count your kills",
     73: "CMDR → Missions counts your kills for massacre missions, lists your Community Goals and finds where to buy what a Collect mission wants; the Unsold tile shows the bounty vouchers and combat bonds you hold; the pledged line says the merits you earned this cycle and this login",
     72: "a game in another language: your sample runs and scanned genera are priced and matched by the game's codes, so bio values and new codex marks are right",
     71: "CMDR → Sessions names the ship a session started and ended in when you flew three ships or more in it, the ship you died in, and an unnamed ship by its type",
@@ -3513,6 +3518,9 @@ class Journals:
         self.all_found_seen = None
         self.docking_seq = 0       # bumped by each docking grant written (meta docking): tick() wakes the page on it
         self.pins_seq = 0          # bumped by each pickup pin written or added to (note_pickup_pin): the payload's pins.v
+        # bumped each time body_last moves (track_srv): the payload's body_seq, in the page's Here key and the overlay's
+        # detail key, so the suggested order starts from where you are without waiting for a scan (review round 11 A)
+        self.body_last_seq = 0
         self.moment_seq = 0
         self.last_heat = None      # seconds of the latest heat moment (HeatDamage within HEAT_QUIET adds none)
         # in memory only (a restart forgets them, which errs on the quiet side):
@@ -4146,6 +4154,7 @@ class Journals:
         self.carrier_version += 1
         self.commander_version += 1
         self.data_seq += 1   # rolled-back rows: whatever was cached from them goes
+        self.body_last_seq += 1   # body_last read back: the order's start may have gone back with it
         # a rolled-back tick's offsets went back: a file it read must be stat'd (and read) again, settled or not
         self.settled.clear()
         self.sizes.clear()
@@ -4413,7 +4422,7 @@ class Journals:
             self.note_loading(name, ev, ts)
             if name == "Fileheader":
                 return
-        if name in ("Disembark", "DropshipDeploy", "Embark", "LoadGame"):
+        if name in ("Disembark", "DropshipDeploy", "Embark", "LoadGame", "Resurrect", "Location"):
             self.track_foot(name, ev, ts)
         if name in SALE_DOCK_EVENTS:
             self.note_sale_dock(name, ev, ts)
@@ -5037,6 +5046,9 @@ class Journals:
         if here and ts >= (self.body_last or {}).get("ts", "") and (name in ("ApproachBody", "Touchdown") or (
                 name in ("SupercruiseExit", "Location") and ev.get("BodyType") in ("Planet", "Star"))):
             self.body_last = dict(here, name=ev.get("Body") or ev.get("BodyName") or "", ts=ts)
+            # Here and the overlay ask for the order again (round 11 A); every move, the same body's too: its ts decides
+            # whether it is this visit's (at_body), and these lines come a few times per body at most
+            self.body_last_seq += 1
             meta_set(self.db, "body_last", self.body_last)
         if ts >= (self.body_here or {}).get("ts", "") and name != "SupercruiseEntry" and \
                 (at or {}) != {k: v for k, v in (self.body_here or {}).items() if k in ("system", "body_id")}:
@@ -5513,7 +5525,7 @@ class Journals:
             here = {"system": d.get("system") or (self.pos or {}).get("name"), "station": d.get("station"), "market": d.get("market_id"),
                     "login": (self.commander or {}).get("login_ts")}
         for key in keys:   # a line may feed several folds (a Bounty: the massacre missions and the vouchers)
-            if key == "missions" and name == "Bounty" and not outrider.commander.counts_kills(self.cmdr_view.get(key)):
+            if key == "missions" and name in outrider.commander.KILL_LINES and not outrider.commander.counts_kills(self.cmdr_view.get(key)):
                 continue   # no massacre mission to count it for: the missions' mark stays where the mission lines put it
             if self.fresh("cmdr:" + key, ts):
                 self.cmdr_view[key] = outrider.commander.apply(key, self.cmdr_view.get(key), ev, here)
@@ -5534,14 +5546,17 @@ class Journals:
         """Whether you are on foot (self.on_foot: {ts}, or None aboard): a Disembark (from the ship, the SRV or an Apex
         shuttle) or a DropshipDeploy (a Frontline dropship drops you at a ground combat zone: Embark with Taxi, then
         DropshipDeploy, never a Disembark; Kurbo26's journal) puts you on foot, an Embark (a ship, the SRV, a taxi or
-        dropship) takes you off it, and a login says which by the ship it names (a suit: on foot). Kept through a restart (SAVED): the reader resumes
-        mid-file and never sees the Disembark again. Issue #23 (Kurbo26): 49 kills in a ground combat zone were
-        credited to the ship parked in orbit."""
+        dropship) takes you off it, and a login says which by the ship it names (a suit: on foot). After a death
+        (review round 11 C: an on-foot death left it set, so the ship's later kills were "On foot"): a Resurrect, any
+        option, puts you back in a ship (a rebuy, the recovered one), and the Location written after it, as at a login,
+        says which by Odyssey's OnFoot (true on foot, the key left out aboard): a respawn on foot keeps you on foot.
+        Kept through a restart (SAVED): the reader resumes mid-file and never sees the Disembark again. Issue #23
+        (Kurbo26): 49 kills in a ground combat zone were credited to the ship parked in orbit."""
         if not self.fresh("on_foot", ts, (self.on_foot or {}).get("ts")):
             return
-        if name in ("Disembark", "DropshipDeploy"):
+        if name in ("Disembark", "DropshipDeploy") or (name == "Location" and ev.get("OnFoot")):
             v = {"ts": ts}
-        elif name == "Embark":
+        elif name in ("Embark", "Resurrect", "Location"):
             v = None
         else:   # LoadGame: a suit is on foot; a ship or a taxi (adder_taxi) is aboard
             v = {"ts": ts} if "suit" in str(ev.get("Ship") or "").lower() else None
@@ -6406,19 +6421,22 @@ class Journals:
                 samples, done = 3, ts
             # ship_id: the ship flown at this sample (on foot or in the SRV, the one you came in): the run's last, the
             # Analyse that completes it, is the run's ship
+            names_en = bio_names_en(species, ev.get("Genus"), ev.get("Species_Localised"), ev.get("Genus_Localised"))
             self.db.execute(
                 """INSERT OR REPLACE INTO own_organic (system, body_id, species, genus_name, species_name, variant_name,
                                                      samples, done_ts, ts, ship_id, variant)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (system, body, species, *bio_names_en(species, ev.get("Genus"), ev.get("Species_Localised"), ev.get("Genus_Localised")),
+                (system, body, species, *names_en,
                  ev.get("Variant_Localised"), samples, done, ts, self.ship_at(ts),
                  ev.get("Variant")))   # the variant's code: its colour in any game language (complete review 2026-10-30)
             self.note_sample_point(system, body, species, ev.get("Genus"), kind, samples, ts,
                                    ev.get("Variant_Localised") or ev.get("Species_Localised"), ev.get("Variant"))
             self.body_touched.add((system, body))
             if kind == "Analyse":   # "Stratum Tectonicas complete, 19.2 million; two left here" (priced by State)
-                self.moment("bio_done", ts, system=system, body_id=body,
-                            species=ev.get("Species_Localised") or "", genus=ev.get("Genus_Localised") or "")
+                # species: the game's words, shown and spoken; species_en: the rules' name, what prices it in any game
+                # language (review round 11 D: a German "Bakterium Acies" was said with no value)
+                self.moment("bio_done", ts, system=system, body_id=body, species=ev.get("Species_Localised") or "",
+                            species_en=names_en[1] or "", genus=ev.get("Genus_Localised") or "")
             self.mark(system)
             return
         if name == "CodexEntry":
@@ -9724,6 +9742,8 @@ class State:
                            hop=self.target_hop(self.current_target())) if self.current_target() and pos else with_id(self.current_target()),
             "arrival": self.arrival,
             "scan_version": self.scan_version, "history_version": self.history_version, "left_seq": self.left_seq,
+            # the body the suggested order starts from moved (an approach, a drop at a star): Here's key (review round 11 A)
+            "body_seq": self.journals.body_last_seq,
             "cargo_version": f"{self.journals.cargo_version}.{self.counts_version}",   # the Materials tab's Cargo
             # read: moves with every journal line consumed (the Log tails on it; journal is to the second)
             "freshness": {"journal": self.journals.last_event_ts, "read": sum(self.journals.offsets.values()),
@@ -10550,13 +10570,22 @@ class State:
         """A finished run's sample spots [(n, lat, lon)], 1 to 3, from bio_spots: those numbered (n) from the run's own
         Log through its Analyse, the latest of each number. The third Sample and the Analyse share a second (review
         round 10 B1: `ts <` lost the third, and LIMIT 3 took an abandoned run's spot instead); spots kept before their
-        number was (2026-11-06) are the last three before the Analyse, as then. [] for a run not sampled live."""
+        number was (2026-11-06) are the last three before the Analyse, as then. A run whose Log was not seen live (read in
+        a catch-up, or before a restart) and whose later samples were (review round 11 H: they were all dropped): its
+        samples 2 and 3 since the run before it ended (that run's Analyse: an unnumbered spot before the Analyse's
+        second). [] for a run not sampled live."""
         q = "SELECT n, lat, lon, ts FROM bio_spots WHERE system=? AND body_id=? AND species=? AND "
         args = (system, body_id, species)
         log = self.db.execute(q + "n=1 AND ts <= ? ORDER BY ts DESC LIMIT 1", args + (done_ts,)).fetchone()
         if log:
             by_n = {r["n"]: (r["n"], r["lat"], r["lon"])
                     for r in self.db.execute(q + "n BETWEEN 1 AND 3 AND ts BETWEEN ? AND ? ORDER BY ts", args + (log["ts"], done_ts))}
+            return [by_n[n] for n in sorted(by_n)]
+        before = self.db.execute("SELECT max(ts) FROM bio_spots WHERE system=? AND body_id=? AND species=? AND n IS NULL AND ts < ?",
+                                 args + (done_ts,)).fetchone()[0] or ""
+        by_n = {r["n"]: (r["n"], r["lat"], r["lon"])
+                for r in self.db.execute(q + "n IN (2, 3) AND ts > ? AND ts <= ? ORDER BY ts", args + (before, done_ts))}
+        if by_n:
             return [by_n[n] for n in sorted(by_n)]
         old = self.db.execute(q + "n IS NULL AND ts < ? ORDER BY ts DESC LIMIT 3", args + (done_ts,)).fetchall()
         return [(len(old) - i, r["lat"], r["lon"]) for i, r in enumerate(old)][::-1]
@@ -11026,7 +11055,8 @@ class State:
                 "value": v * (5 if f and f["was_footfalled"] == 0 else 1) if v else None}
 
     def on_body(self):
-        """The body you are landed on, driving on or walking on (Status.json), else None."""
+        """The body you are landed on, driving on or walking on (Status.json), else None. `docked`: docked at a planetary
+        port, or on foot inside it (the on-body strip still names the body; Now and its panel keep the system's layout)."""
         st, pos = self.journals.status_json or {}, self.journals.pos
         if not st.get("live") or not st.get("body") or not pos:
             return None
@@ -11039,7 +11069,10 @@ class State:
         label = (self.journals.vehicle or {}).get("label") if how == "in the SRV" else None
         vehicle = re.sub(r"^SRV ", "", label) if isinstance(label, str) and label.strip() else None
         out = {"body": short_name(pos["name"], st["body"]), "full": st["body"], "how": how, "vehicle": vehicle,
-               "system": str(pos["id64"])}
+               "system": str(pos["id64"]),
+               # docked at a planetary port (the ship's Landed flag is set there too) or on foot in its hangar or
+               # concourse: Now keeps the system's layout, not the map-up body one (review round 11 B)
+               "docked": bool(flags & FLAG_DOCKED or flags2 & ON_FOOT_DOCKED)}
         sw = self.journals.suit_worn
         if how == "on foot" and sw:
             # round 10's S4: the strip's ⚠ when the suit has no Genetic Sampler (the page shows it only with sampling left
@@ -11133,7 +11166,8 @@ class State:
         """system_detail for the overlay's panels, kept until your scans or what is known of the system change (the
         window asks once a second). The Spansh record itself is part of the key (by identity: a refresh or the full dump
         after the search's brief one replaces it, often with the same status; review 2026-10-20 L11)."""
-        key = (id64, self.scan_version, (self.systems.get(id64) or {}).get("status"), self.records_version)
+        key = (id64, self.scan_version, (self.systems.get(id64) or {}).get("status"), self.records_version,
+               self.journals.body_last_seq)   # where the suggested order starts (at_body): review round 11 A
         base = self.bases.get(id64)
         cached = getattr(self, "_overlay_detail", None)
         if cached and cached[0] == key and cached[2] is base:
@@ -11178,6 +11212,7 @@ class State:
         detail = self.overlay_detail(pos["id64"])
         bodies = {b.get("name"): b for b in (detail or {}).get("bodies") or []}
         ob = self.on_body() or self.near_body()
+        ob = None if ob and ob.get("docked") else ob   # docked at a planetary port: the system's Next (round 11 B, page.js nowOb)
         dest = self.destination()
         # a body of this system by its id, as the page's Now view finds it: a targeted station or mining site is none
         dest = dest and next((b for b in bodies.values() if b.get("body_id") == dest["body_id"]), None)
@@ -11776,7 +11811,7 @@ class State:
             else:
                 extra.update(bb)
                 if kind == "bio_done":
-                    v = outrider.bio.species_value(m.get("species")) if outrider.bio else None
+                    v = outrider.bio.species_value(m.get("species_en") or m.get("species")) if outrider.bio else None
                     extra["value"] = v * bb["factor"] if v else None
         elif kind == "wrong_suit":   # round 10's S4: only on a body you scanned that has sampling left
             bb = self.body_bio(sid, m["body_id"])

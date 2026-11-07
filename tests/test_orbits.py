@@ -219,6 +219,29 @@ class ServerPlaces(unittest.TestCase):
         self.assertIsNone(self.state.leaving_summary(self.id64)["at_body"])                # back: a new visit, no body yet
         self.assertIn("'body_last'", ed_outrider.RESET_JOURNAL_DATA)                       # rebuilt by a re-read
 
+    def test_an_approach_moves_the_start_without_a_scan(self):
+        """Review round 11 A: every body scanned, then an approach (no Scan, so scan_version stays): the overlay's cached
+        detail and the page's Here key (the payload's body_seq) must follow it, or Next, the schematic and the overlay
+        keep measuring the order from the arrival star until the next scan."""
+        a2 = next(x["BodyID"] for x in self.lines if x.get("BodyName") == f"{self.NAME} A 2")
+        self.assertIsNone(self.state.overlay_detail(self.id64)["leaving"]["at_body"])
+        seq, scans = self.state.payload()["body_seq"], self.state.scan_version
+        self.j.handle({"event": "ApproachBody", "timestamp": "2026-11-07T03:10:00Z", "StarSystem": self.NAME,
+                       "SystemAddress": self.id64, "Body": f"{self.NAME} A 2", "BodyID": a2})
+        self.assertEqual(self.state.scan_version, scans)                                   # no scan: the old key stood still
+        self.assertGreater(self.state.payload()["body_seq"], seq)                          # the page's Here key moves
+        self.assertEqual(self.state.overlay_detail(self.id64)["leaving"]["at_body"]["body"], "A 2")
+        # the same body again in a later visit (its ts decides at_body): the key moves again
+        self.j.handle({"event": "FSDJump", "timestamp": "2026-11-07T04:00:00Z", "StarSystem": self.NAME,
+                       "SystemAddress": self.id64, "StarPos": [0, 0, 0]})
+        self.state.scan_version += 1   # what the arrival's tick does (apply_own_changes)
+        self.assertIsNone(self.state.overlay_detail(self.id64)["leaving"]["at_body"])
+        seq = self.state.payload()["body_seq"]
+        self.j.handle({"event": "ApproachBody", "timestamp": "2026-11-07T04:10:00Z", "StarSystem": self.NAME,
+                       "SystemAddress": self.id64, "Body": f"{self.NAME} A 2", "BodyID": a2})
+        self.assertGreater(self.state.payload()["body_seq"], seq)
+        self.assertEqual(self.state.overlay_detail(self.id64)["leaving"]["at_body"]["body"], "A 2")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6303,6 +6303,14 @@ const releasePayloads = async () => {
         bio_guess: [{genus: "Stratum", best: "Stratum Tectonicas", species: ["Stratum Tectonicas"], value: 19010800}]});
       obData = {region: 18, bodies: [body(false)]}; renderNow(); o.genus = nowSlot("next");
       obData = {region: 18, bodies: [body(true)]}; renderNow(); o.done = nowSlot("next");
+      // round 11 G: a species whose samples died with the ship is to do again, not "nothing left on this body"
+      const lostBody = body(true);
+      lostBody.organics[0] = Object.assign({}, lostBody.organics[0], {lost: true, value: 1e6});
+      obData = {region: 18, bodies: [lostBody]}; renderNow(); o.lost = nowSlot("next");
+      // round 11 B: docked at a planetary port (Docked|Landed): the system's layout (Route, Boxel, session), no map
+      data.on_body = Object.assign({}, data.on_body, {how: "landed", vehicle: null, docked: true}); renderNow();
+      o.docked = [document.getElementById("nowView").classList.contains("mapon") || !document.getElementById("nowMap").hidden,
+                  nowSlot("title"), ["route", "boxel", "session"].filter(k => !slots().includes(k))];
       return JSON.stringify(o); })()`));
     w.eval(`(() => { const s = ${saved}; data = s.data; hereData = s.hereData; obData = s.obData; obKey = s.obKey; view = s.view;
       captions.length = 0; captions.push(...s.caps); lastAlert = s.lastAlert; render(); })()`);
@@ -6323,7 +6331,8 @@ const releasePayloads = async () => {
       aboard: /^⚠ 440\.7M aboard · .*5 d unsold · sell \(UC \+ Vista\): Smojooe AR-E b25-8 30 ly$/, caps: ["Line 3."],
       fuel: "⛽ 22% · 4 jumps", other: /^Target 9 · Icy body · 0\.10 g · 40 ls/, same: null,
       genus: /^Next Stratum 0\/3 likely Tectonicas 19\.0M Bacterium 2\/3 Volu · Stratum 0\/3/,
-      done: /^Next ✓ nothing left on this body your ship \d+ m · \d{3}° Bacterium 3\/3 ✓/};
+      done: /^Next ✓ nothing left on this body your ship \d+ m · \d{3}° Bacterium 3\/3 ✓/,
+      lost: /^Next Bacterium lost ✗ sample again · 1\.0M Bacterium lost ✗/, docked: [false, "Smojooe ZC-D c12-22", []]};
     const test = (v, x) => x instanceof RegExp ? x.test(v || "") : JSON.stringify(v) === JSON.stringify(x);
     const bad = [...Object.keys(want).filter(k => !test(got[k], want[k])), ...Object.keys(wantMap).filter(k => !test(map[k], wantMap[k])).map(k => "map." + k)];
     const good = !bad.length && errors.length === before;
@@ -7980,6 +7989,9 @@ const releasePayloads = async () => {
         renderChecklist();
         const btn = id => document.querySelector('#clGrid tr[data-cl="' + id + '"] [data-clfind]');
         o.grid = [!!btn("ves") && btn("ves").textContent, !!btn("acies")];
+        // a payload already on its way when the block began (holdPayloads holds only those asked after it) can replace
+        // data, and with it aimReady's game_pc and auto-target: set again before the rows' 🎯 are drawn (a full run's flake)
+        data.game_pc = true; data.autotarget = Object.assign({}, data.autotarget, {available: true, missing: []});
         btn("ves").click();
         await new Promise(r => setTimeout(r, 50));
         const side = document.getElementById("clSide");

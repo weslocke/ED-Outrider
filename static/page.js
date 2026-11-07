@@ -1418,6 +1418,10 @@ function checklistHtml(l) {
 let obKey = null, obData = null;
 // the body you are on, or flying low over in your ship (near_body: its card before you pick where to land)
 const obNow = () => data && (data.on_body || data.near_body);
+// Now's map-up body layout: on or low over a body, but not docked at a planetary port or on foot inside it (review
+// round 11 B: the Jump, Route, Boxel and session rows went, and an empty map came up; the overlay's Now panel the same)
+const nowOb = () => { const ob = obNow(); return ob && !ob.docked ? ob : null; };
+const dockedOnBody = () => !!(data && data.on_body && data.on_body.docked);
 async function loadOnBody() {
   const ob = obNow();
   if (!ob) { if (obData) { obData = null; obKey = null; } renderOnBody(); return; }
@@ -1608,7 +1612,7 @@ function padMapSvg(m) {
 // 2026-11-07: project/now-tidy). Each part in a fixed place: the title; one headline card, the most important thing by
 // priority (the pad, a refusal, the arrival verdict, else Next); a passing alert; the target; the status rows (a label
 // column, each value in the same place every time, a small detail line under it); the small foot. On a body or flying
-// low over it (obNow: the surface map's case) the body is the title, Next is the job on it and only warnings stay, so
+// low over it (nowOb: the surface map's case, not docked at a port) the body is the title, Next is the job on it and only warnings stay, so
 // the map has the room. Every fact is a .part in a wrapping row (nowParts): a value breaks only between parts. Each
 // place carries data-slot (the tests read Now by it, never by line order) ----
 const NOW_SEP = `<span class="sep" aria-hidden="true"> · </span>`;
@@ -1663,7 +1667,7 @@ function renderNow() {
   drawNowBar();
   const el = document.getElementById("nowBody"), p = data.position;
   if (!p) { el.innerHTML = `<div class="now-sys" data-slot="title">${esc(noJumpText())}</div>`; el._liveKey = null; renderSurface(); return; }
-  const ob = obNow(), c = nowSystem();
+  const ob = nowOb(), c = nowSystem();
   const out = [ob ? `<div class="now-title" data-slot="title"><span class="now-sys">${esc(nowBodyName(ob, p.name))}</span>` +
                     ` <span class="now-of">${esc(p.name)}</span> <span class="now-how">${esc(howOnBody(ob))}</span></div>`
                   : `<div class="now-sys" data-slot="title">${esc(p.name)}</div>`];
@@ -1690,10 +1694,13 @@ function nowHeadline(ob, c) {
     return `<div class="now-card ${a.undiscovered ? "yes" : "no"}" data-slot="verdict">${a.undiscovered ? "🏁 Undiscovered — first discovery is yours" : "Already discovered"}</div>`;
   return ob ? nowBodyNext(ob) : nowSystemNext(c);
 }
-// "then:": the stop after Next in the suggested order (i: its place), its leg time and how many more come after it
-function nowThen(plan, i) {
+// "then:": the stop after Next in the suggested order (i: its place), its leg time and how many more come after it;
+// after the last stop, what the system still needs (l: its leaving summary): the honk, the bodies the FSS has not found
+// (review round 11 F: "nothing else worth the trip" with the FSS unfinished), else nothing
+function nowThen(plan, i, l) {
   const it = plan[i];
-  if (!it) return plan.length ? ["then: nothing else worth the trip"] : [];
+  if (!it) return !plan.length ? [] : !l || !l.honked ? ["then: honk"]
+    : l.unscanned > 0 ? [`then: ${nBodies(l.unscanned)} to find in the FSS`] : ["then: nothing else worth the trip"];
   const more = plan.length - i - 1;
   return [`then: ${it.kind === "map" ? "map" : "bio on"} <b>${esc(it.body)}</b>`, legTime(it), more > 0 ? `${more} more after` : ""];
 }
@@ -1704,9 +1711,9 @@ function nowSystemNext(c) {
   if (a) return nowNextCard({what: `📍 <b>${esc(a.name)}</b>`, right: nowParts([`<b>${esc(surfDist(a.dist))}</b>`, esc(pinTurnWords(a))]), cls: "pin",
                              then: nowParts([found])});
   if (w && w.rescan) return nowNextCard({what: `Rescan <b title="${esc(w.rescan.bodies.map(b => b.name).join(", "))}">${rescanCount(w.rescan)}</b> in the FSS`,
-    right: w.rescan.value ? nowParts([{c: "now-pay", h: credits(w.rescan.value)}]) : "", then: nowParts([...nowThen(plan, 0), found])});
+    right: w.rescan.value ? nowParts([{c: "now-pay", h: credits(w.rescan.value)}]) : "", then: nowParts([...nowThen(plan, 0, l), found])});
   if (plan.length) {
-    const it = plan[0], t = legTime(it), then = nowParts([...nowThen(plan, 1), found]);
+    const it = plan[0], t = legTime(it), then = nowParts([...nowThen(plan, 1, l), found]);
     const mark = c.destIsNext ? `<span title="the body you have targeted">➜</span> ` : "";
     const leg = t ? `<span title="supercruise ${esc(legFrom(it))} (${legLs(it)})">${t} away</span>` : "";
     const skip = it.skip ? `<span class="unk skipq" title="under your ${credits(skipFloor())} cr per minute of the detour to it">skip?</span>` : "";
@@ -1864,9 +1871,13 @@ function nowBodyNext(ob) {
       detail: nowParts([pays && `<span class="pays" title="what the run pays once its three samples are analysed${sm.factor > 1 ? ", with the ×5 first footfall bonus" : ""}">pays ${esc(pays)}</span>`,
                         tagText(sm).replace(/^ · /, ""), pinPart])});
   }
-  const todo = b ? bioGenera(b).filter(g => !(b.organics || []).some(o => o.genus === g)) : [];
+  // to do: a genus not started, or one whose samples were lost with the ship (review round 11 G: the game pays it again)
+  const todo = b ? bioGenera(b).filter(g => { const o = (b.organics || []).find(o => o.genus === g); return !o || o.lost; }) : [];
   if (todo.length) {
-    const g = todo[0], x = (b.bio_guess || []).find(q => q.genus === g);
+    const g = todo[0], x = (b.bio_guess || []).find(q => q.genus === g), lost = (b.organics || []).find(o => o.genus === g);
+    if (lost) return nowNextCard({what: `${esc(g)} lost ✗`, cls: "one", detail: nowParts([...chips, pinPart]),
+      right: nowParts([`<span class="unk" title="lost with the ship: sample it again">sample again</span>`,
+                       lost.value ? credits(lost.value * bioFactor(b)) : ""])});
     return nowNextCard({what: `${esc(g)} 0/3`, cls: "one", detail: nowParts([...chips, pinPart]),
       right: x && x.best ? nowParts([`<span class="unk">likely</span> ${esc(x.best.split(" ").slice(1).join(" "))} ${credits((x.value || 0) * bioFactor(b))}`]) : ""});
   }
@@ -2641,7 +2652,7 @@ let ovMapRevealed = null;   // the body whose row the Overview's map last brough
 function renderSurface() {
   const s = data && data.surface, show = surfaceShows(s), cfg = surfaceCfg();
   const box = document.getElementById("nowMap"), strip = document.getElementById("obMap"), nv = document.getElementById("nowView");
-  const onNow = show && view === "now";
+  const onNow = show && view === "now" && !dockedOnBody();   // docked at a port: nothing to find (as the overlay's radar)
   box.hidden = !onNow;
   nv.classList.toggle("mapon", onNow);
   nv.classList.toggle("mapsplit", onNow && nowMapSplit(nowArea().vw, nowArea().vh));
@@ -5656,13 +5667,18 @@ function pinSystem(id) {
 }
 function unpinSystem() { pinnedSystem = null; forgetOtherHere(); if (selectedBody) closeBody(); render(); renderHere(); drawBoxel(); paneTop("hereMain"); }
 let hereRefreshError = null;
+// Here's key: only your own scans change this view, except while Spansh's body details are still arriving
+// ("partial"): then ask again every few seconds until they have. A screenshot converted counts too (the author,
+// 2026-10-25: Here's 📷 said 2 after the third), and so does the body the suggested order starts from (body_seq: an
+// approach or a drop at a star moves it without a scan; review round 11 A: Next and the schematic kept the old start)
+function hereKeyOf(id) {
+  const partial = hereData && hereData.partial && hereData.id64 === id ? `|p${Math.floor(Date.now() / 4000)}` : "";
+  const start = String(id) === posId() ? data.body_seq || 0 : 0;   // only the system you are in has a start of yours
+  return `${id}|${data.scan_version}|${start}|${(data.screenshots || {}).n || 0}${partial}`;
+}
 async function loadHere() {
   const id = shownSystem(); if (!id) return;
-  // Only your own scans change this view, except while Spansh's body details are still arriving
-  // ("partial"): then ask again every few seconds until they have.
-  const partial = hereData && hereData.partial && hereData.id64 === id ? `|p${Math.floor(Date.now() / 4000)}` : "";
-  // a screenshot converted counts too (the author, 2026-10-25: Here's 📷 said 2 after the third)
-  const key = `${id}|${data.scan_version}|${(data.screenshots || {}).n || 0}${partial}`;
+  const key = hereKeyOf(id);
   if (key === hereKey) return;
   hereKey = key;
   recordsSoon();   // Your records again (🏆 on a body that holds one), after the burst of scans that moved the key
@@ -16566,7 +16582,8 @@ function tabDim(on) { document.documentElement.classList.toggle("tb-dim", !!on);
 // the map hidden), only if you are still on Now and chose no page meanwhile. A pinned system belongs to the page it was
 // pinned in: Now shows where you are.
 function tabAutoView() {
-  const shown = surfaceShows(data.surface) || !!(data.docking && data.docking.pad != null);
+  // docked at a planetary port Now has no map (round 11 B): the pad brings Now up, docking ends it as anywhere else
+  const shown = (surfaceShows(data.surface) && !dockedOnBody()) || !!(data.docking && data.docking.pad != null);
   if (shown && !TB.mapWas) {
     TB.beforeMap = view !== "now" ? view : null;
     if (view !== "now") { pinnedSystem = null; forgetOtherHere(); view = "now"; saveView(); }

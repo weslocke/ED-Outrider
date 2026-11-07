@@ -1422,6 +1422,22 @@ class Server(unittest.TestCase):
         st["destination"] = {"System": 77, "Body": 9, "Name": "Test Sector AB-C d1-2 A 3"}
         self.assertEqual((info()["destination"], info()["destination_ls"]), ("A 3", 900))
 
+    def test_now_keeps_the_system_docked_at_a_planetary_port(self):
+        """Review round 11 B: docked at a planetary port Status.json says Docked|Landed (and on foot inside it,
+        OnFootInStation): the Now panel keeps the system's Next, not the body card; landed in the wild it shows the body."""
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Test Sector AB-C d1-2",
+                                    "SystemAddress": 77, "StarPos": [0, 0, 0]})
+        self.state.system_detail = lambda id64: DETAIL if id64 == 77 else None
+        ship, landed, docked = ed_outrider.FLAG_IN_MAIN_SHIP, ed_outrider.FLAG_LANDED, ed_outrider.FLAG_DOCKED
+        st = {"live": True, "flags": ship | landed | docked, "gui_focus": 0, "body": "Test Sector AB-C d1-2 A 3"}
+        self.state.journals.status_json = st
+        info = lambda: self.state.overlay_now_info(self.state.journals.pos, 1010)
+        self.assertEqual((info()["on_body"], self.state.on_body()["docked"]), (None, True))
+        st.update(flags=0, flags2=1 | (1 << 3))                                    # on foot in its concourse
+        self.assertIsNone(info()["on_body"])
+        st.update(flags=ship | landed, flags2=0)                                   # landed in the wild
+        self.assertEqual((info()["on_body"]["body"], info()["on_body"]["docked"]), ("A 3", False))
+
     def test_now_never_names_the_previous_target(self):
         """Review 2026-10-20 L10: while a new target's lookup ran, Now (its overlay panel and the page's line) named the
         previous target with its verdict; the Target panel already showed the new one as checking."""

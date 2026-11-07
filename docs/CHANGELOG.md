@@ -2,6 +2,42 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-07 · Review round 11 fixes
+The nine bugs the round 11 review confirmed (project/done/reviews/review-2026-11-07/FIXES.md). PARSER_VERSION 76: one
+journal re-read (C, E and I change what the CMDR tab's Sessions, vouchers and missions store).
+- **A, the suggested order follows you without a scan:** flying to a body (ApproachBody, Touchdown, a drop at a star)
+  moved where the order starts (`at_body`) but nothing told the page or the overlay, so Now's Next, Here's schematic
+  and the overlay kept measuring legs, "skip?" and per-minute figures from the arrival star until the next scan.
+  `Journals.body_last_seq` moves with `body_last` (and at `reload()`); the payload's `body_seq` is in Here's key
+  (`hereKeyOf`, the system you are in only) and the counter in `overlay_detail`'s key. Here asks once per move, not per
+  tick.
+- **B, docked at a planetary port:** Status.json's Landed flag is set there too, so Now switched to the on-body layout
+  and dropped the Jump, Route, Boxel, Here, streak and session rows for an empty map. `on_body()` carries `docked`
+  (Docked, or on foot inside: `ON_FOOT_DOCKED`); Now's layout (`nowOb`) and the overlay's Now panel keep the system's
+  then, Now shows no map (as the overlay's radar) and the tablet does not switch to Now for it. The on-body strip still
+  names the body.
+- **C, kills after a death on foot:** a death on foot and a respawn in the ship left "on foot" set, so the ship's later
+  kills, death and mining were "On foot" in CMDR → Sessions until the next Embark or login. A `Resurrect` (any option)
+  clears it, and a `Location`'s `OnFoot` sets or clears it (a respawn on foot stays on foot), through `track_foot` with
+  its `fresh()` mark.
+- **D, the species-complete line in another language:** a German "Bakterium Acies" was shown and said with no value.
+  The `bio_done` moment carries the rules' English name (`species_en`, from the code) and is priced by it; the game's
+  words are still what is shown and said.
+- **E, Thargoid combat bonds:** a Thargoid kill's bond names the Pilots' Federation by its symbol
+  ("$faction_PilotsFederation;"), its redemption "PilotsFederation": the Unsold tile showed the raw symbol and the
+  bonds were never paid off. Vouchers are held by the bare name (`commander.faction_name`), a redemption pays the
+  faction whose `faction_key` matches, and the tile names it in the game's words ("Pilots' Federation").
+- **F, "then: nothing else worth the trip" with the FSS unfinished:** after the last stop Now's "then:" says "then:
+  honk" or "then: 5 bodies to find in the FSS" while the system still has them (`nowThen` takes the leaving summary).
+- **G, a species lost in a death:** on the body, a species whose samples died with the ship counted as finished, so
+  Next said "nothing left on this body". It is to do again: "Bacterium lost ✗ · sample again" with its value.
+- **H, a finished run's spots when its Log was not seen live:** `run_spots` found no Log spot and fell back to the
+  unnumbered spots (none, or an earlier run's Analyse). It now takes the run's samples 2 and 3 since the previous run
+  of the species ended.
+- **I, massacre missions in conflict zones and against Thargoids:** those kills write a `FactionKillBond` and no
+  `Bounty`, so the row stayed "0/30 counted". A bond now counts as a `Bounty` does (`commander.KILL_LINES`, the target
+  faction compared by `faction_key`); a Bounty and a bond at the same second count once.
+
 ## 2026-11-07 · Now, easier to read at a glance
 project/PLAN-now-tidy-2026-11-07.md, from the author's tablet screenshot and the two mock-ups he approved
 (project/now-tidy: Q1 the same layout on the desktop's Now, Q2 the captions only as many as fit, Q3 the "then:" line).

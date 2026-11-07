@@ -2186,6 +2186,27 @@ class SurfaceRigs(unittest.TestCase):
         done = [b for b in self.state.surface_bio(self.state.surface_here()) if b.get("done")]
         self.assertEqual([(p["n"], p["dist"]) for p in done[0]["points"]], [(1, 600), (2, 400), (3, 200)])
 
+    def test_a_finished_run_whose_log_was_not_seen_live(self):
+        """Review round 11 H: the Log read with no reading of its moment (a catch-up, or Outrider started after it), the
+        samples 2 and 3 live: the finished species keeps them (with no n=1 row it fell back to the unnumbered spots before
+        the Analyse: none, or an earlier run's). An earlier finished run's spots of the species stay its own."""
+        def scan(s, kind):
+            self.ev(s, {"event": "ScanOrganic", "ScanType": kind, "Genus": "$Codex_Ent_Stratum_Genus_Name;", "Genus_Localised": "Stratum",
+                        "Species": "$Codex_Ent_Stratum_07_Name;", "Species_Localised": "Stratum Tectonicas",
+                        "SystemAddress": self.SYS, "Body": self.BODY})
+        self.status(-200, 0, 0, flags=0, flags2=1)
+        scan(1, "Log")                                                       # the reading is 201 s old: no spot
+        for s, north, kind in ((3, 1200, "Sample"), (5, 1400, "Sample"), (7, 1400, "Analyse")):   # an earlier run, its Analyse apart
+            self.status(s, north, 0, flags=0, flags2=1)
+            scan(s, kind)
+        scan(120, "Log")                                                     # this run's Log: the reading is 113 s old, no spot
+        for s, north, kind in ((130, 200, "Sample"), (140, 400, "Sample"), (140, 400, "Analyse")):
+            self.status(s, north, 0, flags=0, flags2=1)
+            scan(s, kind)
+        self.status(150, 600, 0, flags=0, flags2=1)
+        done = [b for b in self.state.surface_bio(self.state.surface_here()) if b.get("done")]
+        self.assertEqual([(p["n"], p["dist"]) for p in done[0]["points"]], [(2, 400), (3, 200)])
+
     def test_a_species_picture_for_the_legend(self):
         """The surface map legend's hover (the author, 2026-11-02): one of your own pictures of that species' colour first
         (another than the one shown), else Canonn's (that colour's, else the species', else its genus'), found by the

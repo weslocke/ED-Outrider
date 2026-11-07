@@ -96,6 +96,24 @@ t("orderPlan: the shared cases, as the overlay's order_plan", () => {
     assert.deepStrictEqual(JSON.parse(got), [c.want, c.want_sec, c.want_approx], c.name);
   }
 });
+t("hereKeyOf: an approach (body_seq) asks Here again in the system you are in, not in another (review round 11 A)", () => {
+  const got = JSON.parse(ev(`(() => {
+    const d0 = data, h0 = hereData;
+    data = Object.assign({}, d0 || {}, {position: {id: "7", id64: 7, name: "Here"}, scan_version: 3, body_seq: 1, screenshots: {n: 0}}); hereData = null;
+    try {
+      const before = [hereKeyOf("7"), hereKeyOf("9")];
+      data.body_seq = 2;   // ApproachBody: no scan, scan_version stays
+      const after = [hereKeyOf("7"), hereKeyOf("9")];
+      return JSON.stringify({here: before[0] !== after[0], other: before[1] === after[1]});
+    } finally { data = d0; hereData = h0; } })()`));
+  assert.deepStrictEqual(got, {here: true, other: true});
+});
+t("nowThen: after the last stop, the honk and the FSS still to do before 'nothing else' (review round 11 F)", () => {
+  eq(`(() => { const plan = [{kind: "bio", body: "1 e"}];
+    return [nowThen(plan, 1, {honked: true, unscanned: 5}), nowThen(plan, 1, {honked: true, unscanned: 1}), nowThen(plan, 1, {honked: false}),
+            nowThen(plan, 1, {honked: true, unscanned: 0}), nowThen([], 0, {honked: false})]; })()`,
+     [["then: 5 bodies to find in the FSS"], ["then: 1 body to find in the FSS"], ["then: honk"], ["then: nothing else worth the trip"], []]);
+});
 t("planItems: from the body you are at, skip? from the detour, ≈ legs, the order kept unless 10% or 30 s better", () => {
   const out = JSON.parse(ev(`(() => {
     planMemo.clear();

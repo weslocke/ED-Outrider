@@ -707,6 +707,35 @@ class Sessions(unittest.TestCase):
                                    ev(T("09:05:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B")])
         self.assertEqual(state2.commander_sessions(now=NOW)["sessions"][0]["combat"]["ships"], ["On foot"])
 
+    def test_kills_after_a_death_on_foot(self):
+        """Review round 11 C: a death on foot, then a respawn in the recovered ship (Resurrect, then the Location written
+        aboard: no OnFoot key) and ship combat in the same login: the ship's kills are the ship's, not "On foot"; a respawn
+        on foot (Location OnFoot true) stays on foot. The same from a re-read: the reader only replays the lines."""
+        loadout = ev(T("08:00:01"), "Loadout", Ship="federation_corvette", ShipName="Virtute", ShipID=3, MaxJumpRange=20,
+                     FuelCapacity={"Main": 32, "Reserve": 0.6}, Modules=[])
+        died = lambda at: [ev(T(at), "Died", KillerName="Sample Guard", KillerShip="assaultsuitai_class1"),
+                           ev(T(at[:-2] + "30"), "Resurrect", Option="recover", Cost=0, Bankrupt=False)]
+        j, state = setup(self, [
+            ev(T("08:00:00"), "LoadGame", Commander="Tester", Ship="federation_corvette", ShipName="Virtute"), loadout,
+            ev(T("08:05:00"), "Disembark", SRV=False, Taxi=False, Multicrew=False, OnPlanet=True, SystemAddress=1, BodyID=2),
+            ev(T("08:10:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B"),
+            *died("08:12:00"),
+            ev(T("08:12:40"), "Location", StarSystem="Sol", SystemAddress=1, Docked=True, StationName="Port", Taxi=False, Multicrew=False),
+            ev(T("08:40:00"), "Bounty", Target="anaconda", TotalReward=5, VictimFaction="Pirates")])
+        c = state.commander_sessions(now=NOW)["sessions"][0]["combat"]
+        self.assertEqual((c["kills"], c["ships"], c["ship_last"]), (2, ["On foot", "Virtute"], "Virtute"))
+        self.assertIsNone(j.on_foot)
+        # a Resurrect alone clears it (whatever follows); a Location on foot sets it again
+        j2, state2 = setup(self, [
+            ev(T("09:00:00"), "LoadGame", Commander="Tester", Ship="federation_corvette", ShipName="Virtute"), loadout,
+            ev(T("09:05:00"), "Disembark", SRV=False, Taxi=False, Multicrew=False, OnPlanet=True, SystemAddress=1, BodyID=2),
+            *died("09:12:00")])
+        self.assertIsNone(j2.on_foot)
+        j2.handle(ev(T("09:12:40"), "Location", StarSystem="Sol", SystemAddress=1, Docked=True, StationName="Port", OnFoot=True))
+        j2.handle(ev(T("09:20:00"), "FactionKillBond", Reward=5000, AwardingFaction="A", VictimFaction="B"))
+        self.assertEqual(j2.on_foot, {"ts": T("09:12:40")})
+        self.assertEqual(state2.commander_sessions(now=NOW)["sessions"][0]["combat"]["ships"], ["On foot"])
+
     def test_kills_after_a_dropship_deploy(self):
         """#23 (Kurbo26, second report): a Frontline ground combat zone. Out of the ship at the station (Disembark),
         aboard the dropship (Embark, Taxi), then DropshipDeploy on the planet, never a Disembark: the kills are "On
@@ -1081,12 +1110,35 @@ class MassacreKills(unittest.TestCase):
             bounty(T("08:11:00"), "Raiders of Wolf", ("Hub Independents", 50000), ("Wolf Council", 20000)),
             bounty(T("08:12:00"), "Raiders of Wolf", ("Hub Independents", 50000)),
             bounty(T("08:13:00"), "Raiders of Wolf", ("Hub Independents", 50000)),
-            ev(T("08:13:30"), "FactionKillBond", Reward=24496, AwardingFaction="Hub Union", VictimFaction="Raiders of Wolf"),   # a bond: not counted
+            # a bond counts as a Bounty does (round 11 I): Hub Union's 3 is counted out, Hub Independents' 2 takes it
+            ev(T("08:13:30"), "FactionKillBond", Reward=24496, AwardingFaction="Hub Union", VictimFaction="Raiders of Wolf"),
             bounty(T("08:14:00"), "Wolf Gang", ("Wolf Council", 9000))])
         got = {m["id"]: (m["kills"], m["count"]) for m in state.commander_missions(now=NOW)["missions"]}
         # 1 is counted out after two; the third kill goes to 2, Hub Independents' next; Hub Union's 3 took each of three
-        self.assertEqual(got, {1: (2, 2), 2: (1, 3), 3: (3, 3), 4: (1, 3)})
+        self.assertEqual(got, {1: (2, 2), 2: (2, 3), 3: (3, 3), 4: (1, 3)})
         self.assertTrue(all(m["massacre"] for m in state.commander_missions(now=NOW)["missions"]))
+
+    def test_conflict_zone_and_thargoid_massacres_count_bonds(self):
+        """Review round 11 I: a conflict zone's kill (and a Thargoid's) writes a FactionKillBond and no Bounty, so a
+        "Mission_Massacre_Conflict_War" (the author's) showed "0/30 counted" whatever was killed. A bond for the target
+        faction counts; a Thargoid mission's target matches the bond's symbol; a Bounty and a bond at the same second
+        (one kill, should the game write both) count once; with no massacre held a bond leaves the missions alone."""
+        war = lambda ts, mid, target, n, system: dict(massacre(ts, mid, "Hub Union", target, n, system),
+                                                      Name="Mission_Massacre_Conflict_War", LocalisedName=f"Kill {target} ships")
+        bond = lambda ts, victim, **kw: ev(T(ts), "FactionKillBond", Reward=40000, AwardingFaction="Hub Union", VictimFaction=victim, **kw)
+        j, state = setup(self, [
+            LOGIN, jump(T("08:01:00"), "Wolf Prime", 22),
+            war(T("08:02:00"), 1, "Raiders of Wolf", 30, "Wolf Prime"),
+            war(T("08:02:10"), 2, "$faction_Thargoid;", 5, "Wolf Prime"),
+            bond("08:05:00", "Raiders of Wolf"), bond("08:06:00", "Raiders of Wolf"), bond("08:07:00", "Hub Union"),
+            bond("08:08:00", "$faction_Thargoid;", VictimFaction_Localised="Thargoids"),
+            bounty(T("08:09:00"), "Raiders of Wolf", ("Hub Union", 5000)), bond("08:09:00", "Raiders of Wolf")])
+        got = {m["id"]: (m["kills"], m["count"]) for m in state.commander_missions(now=NOW)["missions"]}
+        self.assertEqual(got, {1: (3, 30), 2: (1, 5)})
+        # no massacre held: a bond is not folded into the missions (their fresh() mark stays the mission lines')
+        j, state = setup(self, [LOGIN, bond("09:00:00", "Raiders of Wolf"),
+                                ev(T("08:30:00"), "MissionAccepted", MissionID=5, Name="Mission_Courier", LocalisedName="A job")])
+        self.assertEqual([m["name"] for m in state.commander_missions(now=NOW)["missions"]], ["A job"])
 
     def test_the_redirect_is_done_and_the_next_takes_the_kills(self):
         j, state = setup(self, [
@@ -1187,6 +1239,25 @@ class Vouchers(unittest.TestCase):
             '{ "timestamp":"2026-10-12T09:33:07Z", "event":"RedeemVoucher", "Type":"CombatBond", "Amount":0, "Faction":"Sample Power" }',
             '{ "timestamp":"2026-10-12T09:34:52Z", "event":"RedeemVoucher", "Type":"codex", "Amount":487500 }'))
         self.assertEqual((v["bonds"], v["bounties"], [f["name"] for f in v["factions"]]), (0, 600, ["Hub Union"]))
+
+    def test_thargoid_bonds_by_their_symbol(self):
+        """Review round 11 E: a Thargoid kill's bond names the Pilots' Federation by its symbol, its redemption by its
+        bare name ("PilotsFederation"): the bonds were never paid off and the hover said "$faction_PilotsFederation;".
+        Shown in the game's words; paid by either spelling."""
+        axe = lambda ts, **kw: ev(T(ts), "FactionKillBond", Reward=80000, AwardingFaction="$faction_PilotsFederation;",
+                                  VictimFaction="$faction_Thargoid;", VictimFaction_Localised="Thargoids", **kw)
+        _, _, v = self.fold([axe("08:10:00", AwardingFaction_Localised="Pilots' Federation"), axe("08:11:00"),
+                             bounty(T("08:12:00"), "Raiders of Wolf", ("Hub Union", 600))])
+        self.assertEqual([(f["name"], f["bonds"]) for f in v["factions"]], [("Pilots' Federation", 160000), ("Hub Union", 0)])
+        j, _, v = self.fold([axe("08:10:00"), bounty(T("08:12:00"), "Raiders of Wolf", ("Hub Union", 600))] + lines(
+            '{ "timestamp":"2026-10-12T09:33:01Z", "event":"RedeemVoucher", "Type":"CombatBond", "Amount":80000, "Faction":"PilotsFederation" }'))
+        self.assertEqual((v["bonds"], [f["name"] for f in v["factions"]]), (0, ["Hub Union"]))
+        self.assertEqual(j.cmdr_view["vouchers"]["names"], {})                    # the name goes with its bonds
+        _, _, v = self.fold([axe("08:10:00")] + lines(   # a redemption in the game's words pays them as well
+            '{ "timestamp":"2026-10-12T09:33:01Z", "event":"RedeemVoucher", "Type":"CombatBond", "Amount":80000, "Faction":"Pilots\' Federation" }'))
+        self.assertIsNone(v)
+        _, _, v = self.fold([axe("08:10:00")])                                     # no localised name: spaced, never the symbol
+        self.assertEqual(v["factions"][0]["name"], "Pilots Federation")
 
     def test_the_payload_and_the_docked_station(self):
         """The payload carries them for the Unsold tile; a dock records Interstellar Factors ("facilitator") and the

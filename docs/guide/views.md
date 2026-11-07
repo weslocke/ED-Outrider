@@ -270,7 +270,8 @@ has a fixed place, and a value never breaks in the middle (a line wraps only bet
    whether the system was undiscovered; otherwise **Next**: what to do here ("Bio on 1 e" with "up to 64.6M 👣×5" on
    the right, "Map 3 a", "Honk", "3 bodies to find in the FSS", "✓ nothing worth staying for"), its facts under it
    (signals, gravity, atmosphere, the supercruise time, "≈" when about), and the stop after it in the suggested order
-   ("then: map 3 a · ~45 s · 2 more after", or "then: nothing else worth the trip") with what you found here.
+   ("then: map 3 a · ~45 s · 2 more after"; after the last stop "then: honk" or "then: 5 bodies to find in the FSS"
+   while the system still has them, else "then: nothing else worth the trip") with what you found here.
 3. **A passing alert**, for fifteen seconds, in its own small card under the headline.
 4. **Target:** the body you have targeted when it is not Next, on one line ("1 d · Rocky body · 0.13 g · Ammonia ·
    902 ls, ~30 s · 4 bio, under your threshold"), its likely genera and their values smaller under it.
@@ -323,10 +324,12 @@ target is looked up it says "checking…", never the previous target's verdict. 
 - On a planet, the **surface map** appears (see below) and Now makes room for it: the body is the title ("ZC-D c12-22
   8", the system small beside it, and how you are there: "in the Rhino", "on foot", "landed", "flying low"), Next is
   the job on this body (the sample run under way, "Bacterium Volu 2/3 · 142 of 500 m from the nearest sample · keep
-  going" or "✓ clear to sample", else the next genus not started, the pin you fly to, or "✓ nothing left on this body"
-  with where your ship is), and only warnings stay: the data aboard at your amber level (or a high-g approach's
-  stakes) and low fuel, each on one line, a sample run on another body, the wrong suit, another body of this system
-  targeted, and the newest caption. Route, Boxel, Here, the streak and the session come back when you leave the body.
+  going" or "✓ clear to sample", else the next genus not started or one whose samples died with your ship ("Bacterium
+  lost ✗ · sample again"), the pin you fly to, or "✓ nothing left on this body" with where your ship is), and only
+  warnings stay: the data aboard at your amber level (or a high-g approach's stakes) and low fuel, each on one line, a
+  sample run on another body, the wrong suit, another body of this system targeted, and the newest caption. Route,
+  Boxel, Here, the streak and the session come back when you leave the body. Docked at a planetary port (or on foot
+  inside it) Now keeps the system's layout, with no map.
 
 The **header** shows the galactic region, ranks, fuel, hull, any core module under your level (`module_warn`,
 80%; as of the last Loadout or repair, since the journal logs nothing in between), your carrier's jump countdown
@@ -721,7 +724,8 @@ above the list:
   types that yield it (Search's choices are replaced). A Collect mission's 🔍 opens Materials → Cargo's **Buy** for what
   it still wants (the count less what you handed in). A massacre mission shows your kills as **counted** from your
   journal ("7/18 counted"): a kill counts for one mission of each giving faction (its oldest first), when the victim is
-  of the target faction and you are in the target system; a wing mission counts your own kills only. It is Outrider's
+  of the target faction and you are in the target system; a kill paid with a combat bond counts too (a conflict zone's
+  massacre, a Thargoid one); a wing mission counts your own kills only. It is Outrider's
   count, not the game's: once the game sends you back to hand it in, the row says **✓ done** whatever the count. A
   mission whose acceptance is in no journal Outrider has read has none of these.
   The **Community Goals** you have signed up to are listed under them while they run: their system and station, the

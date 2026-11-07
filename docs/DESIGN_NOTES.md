@@ -90,9 +90,12 @@ upstream project's choices, not rules of the game.
   fold into the CMDR tab's own meta keys, journal-derived, with no voice (the CMDR tab has none by design) and no new
   panel: a massacre mission's kills go in the Missions table's What ("7/18 counted": Outrider's count, not the game's,
   so worded "counted"; the game's `MissionRedirected` makes it "✓ done" whatever the count; one mission per giving
-  faction, the oldest first, in the target system, `FactionKillBond`s left out: the community's rule, unconfirmed by the
-  author's journals, which hold no finished massacre mission; a wing mission's count is titled "your own kills only").
-  A `Bounty` is folded into the missions only while a massacre mission is held (`commander.counts_kills`), so a kill
+  faction, the oldest first, in the target system: the community's rule, unconfirmed by the author's journals, which
+  hold no finished massacre mission; a wing mission's count is titled "your own kills only"). `FactionKillBond`s were
+  left out at first; review round 11 (I) counts them as a `Bounty` (`commander.KILL_LINES`): a conflict zone's and a
+  Thargoid's kills write a bond and no `Bounty`, so their massacre missions never moved off "0/N counted". A kill
+  writes one or the other; a `Bounty` and a bond at the same second are counted once in case the game writes both.
+  A kill line is folded into the missions only while a massacre mission is held (`commander.counts_kills`), so a kill
   never moves the missions' `fresh()` mark otherwise. The vouchers (bounties and bonds per faction) are a line in the
   Unsold tile while above 0 and in its details, never in the docked "sell your data" line or the approach warning
   (half of that line's 1,011 phrasings say "data"); docked, the line names the station's controlling faction when you
@@ -590,7 +593,9 @@ upstream project's choices, not rules of the game.
   approximate one. "skip?" and the per-minute figure come from each stop's detour: the order's time with it less its
   time without it (one figure for a body's map and bio together; started samples and specials are never "skip?").
   **Always from where you are** (the author: "here's what to do next, and what to do after that", not a path fixed from
-  the start): the order is worked out again whenever your body or the work changes, but the order shown (the stops
+  the start): the order is worked out again whenever your body or the work changes (a move of `body_last` bumps
+  `Journals.body_last_seq`, the payload's `body_seq`, in Here's key and the overlay's detail key: review round 11 A, an
+  approach with no scan left Next, the schematic and the overlay measuring from the star), but the order shown (the stops
   still to do in their old order, a new stop at its cheapest place, timed from where you are now) is replaced only when
   the new one saves at least 10% of that time or 30 s (either; `PLAN_KEEP_SHARE`, `PLAN_KEEP_S`), so the numbers do not
   shuffle for nothing. The memory is per window (`planMemo`, the overlay's `PLAN_MEMO`), per system, and forgotten when

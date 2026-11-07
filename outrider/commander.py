@@ -41,7 +41,7 @@ FOLD_EVENTS = {
                       "LoadoutRemoveModule", "UpgradeSuit", "UpgradeWeapon"),
     "engineers": ("EngineerProgress",),
     "missions": ("Missions", "MissionAccepted", "MissionCompleted", "MissionFailed", "MissionAbandoned", "MissionRedirected",
-                 "CargoDepot", "Bounty"),
+                 "CargoDepot", "Bounty", "FactionKillBond"),
     # round 10's S9: the bounty vouchers and combat bonds you hold, per faction (lost at a death)
     "vouchers": ("Bounty", "FactionKillBond", "CapShipBond", "RedeemVoucher", "Died"),
     # round 10's S19: the Community Goals you have joined (each CommunityGoal line lists them all)
@@ -601,7 +601,7 @@ def mission_apply(state, ev, here=None):
     depot and the endings follow in order, and a Bounty counts for the massacre missions (mission_kill; here: where you
     are, its `system`)."""
     held, name, mid = dict(state or {}), ev["event"], ev.get("MissionID")
-    if name == "Bounty":
+    if name in KILL_LINES:
         return mission_kill(held, ev, (here or {}).get("system"))
     if name == "Missions":
         active = {str(m.get("MissionID")): m for m in ev.get("Active") or [] if isinstance(m, dict) and m.get("MissionID") is not None}
@@ -634,33 +634,48 @@ def mission_apply(state, ev, here=None):
     return held
 
 
+# the kill lines a massacre mission counts: a Bounty, or a combat bond (a conflict zone's kill and a Thargoid's write a
+# FactionKillBond and no Bounty: review round 11 I)
+KILL_LINES = ("Bounty", "FactionKillBond")
+
+
 def counts_kills(state):
-    """Whether a Bounty has a mission to count for: a massacre mission held and not yet redirected. Without one the
-    missions fold leaves the line alone (Journals.handle_commander), so a kill does not move its fresh() mark."""
+    """Whether a kill line (KILL_LINES) has a mission to count for: a massacre mission held and not yet redirected.
+    Without one the missions fold leaves the line alone (Journals.handle_commander), so a kill does not move its fresh()
+    mark."""
     return any(r.get("massacre") and not r.get("redirected") for r in (state or {}).values())
 
 
 def mission_kill(held, ev, system):
-    """Round 10's S8: a Bounty counted for the massacre missions you hold (held changed in place, and returned). It
-    counts for one mission per giving faction: of those whose target faction is the victim's (VictimFaction's text, as
-    TargetFaction's) and whose target system is where you are (when both are known), the oldest accepted that is not yet
-    done; a mission the game has redirected is done whatever the count. Only your own kills are in your journal: a wing
-    mission's count leaves out the wing's (the page says so). FactionKillBond lines are not counted. The rule is the
-    community's; the author's journals hold three massacre missions, none with a kill of its target nor a redirect,
-    so it is unconfirmed: the figure is worded "counted"."""
-    victim = ev.get("VictimFaction")
+    """Round 10's S8: a kill line (a Bounty or a FactionKillBond) counted for the massacre missions you hold (held
+    changed in place, and returned). It counts for one mission per giving faction: of those whose target faction is the
+    victim's (VictimFaction as TargetFaction, compared by faction_key: a Thargoid mission's may be a symbol) and whose
+    target system is where you are (when both are known), the oldest accepted that is not yet done; a mission the game
+    has redirected is done whatever the count. Only your own kills are in your journal: a wing mission's count leaves
+    out the wing's (the page says so). A combat bond counts as a Bounty does (review round 11 I: a conflict zone's
+    massacre, "Mission_Massacre_Conflict_War", and a Thargoid one, get bonds only, and showed "0/30 counted"); a kill
+    writes one or the other, and should the game ever write both for one kill (a wanted ship in a conflict zone), the
+    second line at the same second, of the other kind, is not counted again (`kill_line`). The rule is the community's;
+    the author's journals hold three massacre missions, none with a kill of its target nor a redirect, so it is
+    unconfirmed: the figure is worded "counted"."""
+    victim = faction_key(ev.get("VictimFaction"))
     if not victim:
         return held
     here = (system or "").lower()
     done = set()
+    ts, kind = ev.get("timestamp"), ev.get("event")
     for key, row in sorted(held.items(), key=lambda kv: (kv[1].get("accepted") or "", kv[0])):
-        if not row.get("massacre") or row.get("redirected") or row.get("faction") in done or row.get("target_faction") != victim:
+        if not row.get("massacre") or row.get("redirected") or row.get("faction") in done or faction_key(row.get("target_faction")) != victim:
             continue
         if here and row.get("target_system") and row["target_system"].lower() != here:
             continue
+        last = row.get("kill_line") or {}
+        if last.get("ts") == ts and last.get("event") != kind:
+            done.add(row.get("faction"))
+            continue   # the same kill's other line: counted already
         if (row.get("kills") or 0) >= (row.get("count") or 0):
             continue   # counted out: the faction's next one takes the kill
-        held[key] = dict(row, kills=(row.get("kills") or 0) + 1)
+        held[key] = dict(row, kills=(row.get("kills") or 0) + 1, kill_line={"ts": ts, "event": kind})
         done.add(row.get("faction"))
     return held
 
@@ -781,27 +796,34 @@ def vouchers_apply(state, ev):
     - RedeemVoucher Type "bounty" lists Factions[] {Faction, Amount}: each named faction is paid. A blank Faction ("")
       stands for the factions it does not name: in every case it matched one held faction's amount (or that x1.2: a
       bonus can be added, as on named ones), and each of the six bounty redemptions paid everything held, so a blank
-      clears the rest. Type "CombatBond" names one Faction per line (a second line with Amount 0 follows; a
-      "PilotsFederation" one pays a bonus nothing earned): that faction's bonds are paid. Other Types (codex, trade...)
-      are not vouchers held here. No real redemption had a BrokerPercentage (Interstellar Factors')."""
+      clears the rest. Type "CombatBond" names one Faction per line (a second line with Amount 0 follows; in a
+      Powerplay zone a "PilotsFederation" one pays a bonus nothing earned): that faction's bonds are paid. Other Types
+      (codex, trade...) are not vouchers held here. No real redemption had a BrokerPercentage (Interstellar Factors').
+    A faction is held by its bare name (faction_name): a Thargoid kill's bond names the Pilots' Federation by its
+    symbol, "$faction_PilotsFederation;", its redemption "PilotsFederation" (review round 11 E: the bonds were never
+    paid off), so a redemption pays the held faction whose faction_key is its own; `names` keeps the game's words for
+    one held by a symbol ({bare name: "Pilots' Federation"}, else the name spaced out), for the tile."""
     name = ev["event"]
     if name == "Died":
         return None
-    st = {k: dict((state or {}).get(k) or {}) for k in ("bounties", "bonds")}
+    st = {k: dict((state or {}).get(k) or {}) for k in ("bounties", "bonds", "names")}
 
-    def add(kind, faction, cr):
+    def add(kind, faction, cr, shown=None):
         if isinstance(cr, (int, float)) and not isinstance(cr, bool) and cr > 0 and isinstance(faction, str):
-            st[kind][faction] = st[kind].get(faction, 0) + cr
+            bare = faction_name(faction)
+            st[kind][bare] = st[kind].get(bare, 0) + cr
+            if bare != faction.strip():   # a symbol: the game's words (kept from an earlier line), else its name spaced out
+                st["names"][bare] = shown.strip() if isinstance(shown, str) and shown.strip() else st["names"].get(bare) or _spaced(bare)
 
     if name == "Bounty":
         if isinstance(ev.get("Rewards"), list):
             for r in ev["Rewards"]:
                 if isinstance(r, dict):
-                    add("bounties", r.get("Faction"), r.get("Reward"))
+                    add("bounties", r.get("Faction"), r.get("Reward"), r.get("Faction_Localised"))
         else:   # a skimmer's (Frontier's manual): one Faction and Reward
-            add("bounties", ev.get("Faction"), ev.get("Reward"))
+            add("bounties", ev.get("Faction"), ev.get("Reward"), ev.get("Faction_Localised"))
     elif name in ("FactionKillBond", "CapShipBond"):
-        add("bonds", ev.get("AwardingFaction"), ev.get("Reward"))
+        add("bonds", ev.get("AwardingFaction"), ev.get("Reward"), ev.get("AwardingFaction_Localised"))
     elif name == "RedeemVoucher":
         kind = {"bounty": "bounties", "CombatBond": "bonds"}.get(ev.get("Type"))
         if not kind:
@@ -810,21 +832,45 @@ def vouchers_apply(state, ev):
             else [ev.get("Faction")] if isinstance(ev.get("Faction"), str) else []
         if not paid or "" in paid:
             st[kind] = {}   # a blank: the factions it does not name were paid too
-        for f in paid:
-            st[kind].pop(f, None)
+        keys = {faction_key(f) for f in paid if isinstance(f, str)}
+        st[kind] = {f: cr for f, cr in st[kind].items() if faction_key(f) not in keys}
+    held = set(st["bounties"]) | set(st["bonds"])
+    st["names"] = {f: n for f, n in st["names"].items() if f in held}
     if not st["bounties"] and not st["bonds"]:
         return None
     return dict(st, ts=ev["timestamp"])
 
 
+def faction_name(v):
+    """A faction as the journal names it, bare: a symbol's name ("$faction_PilotsFederation;" -> "PilotsFederation"),
+    any other name as it is."""
+    v = str(v or "").strip()
+    m = re.match(r"^\$faction_(.*?);?$", v, re.I)
+    return m.group(1) if m else v
+
+
+def _spaced(name):
+    """A symbol's name in words: "PilotsFederation" -> "Pilots Federation"."""
+    return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)
+
+
+def faction_key(v):
+    """What tells two spellings of a faction apart, or not: the bare name lower-cased with only its letters and digits
+    ("$faction_PilotsFederation;", "PilotsFederation" and "Pilots' Federation" are one)."""
+    return re.sub(r"[^0-9a-z]", "", faction_name(v).lower())
+
+
 def vouchers(state):
     """The vouchers held (vouchers_apply's), for the Unsold tile: {total, bounties, bonds, factions: [{name, bounties,
-    bonds, total}] the most first}; None when there are none."""
+    bonds, total}] the most first}; None when there are none. A faction held by its symbol is named in the game's
+    words (`names`), never as the raw symbol."""
     b, k = (state or {}).get("bounties") or {}, (state or {}).get("bonds") or {}
+    names = (state or {}).get("names") or {}
     total_b, total_k = round(sum(b.values())), round(sum(k.values()))
     if total_b + total_k <= 0:
         return None
-    factions = [{"name": f, "bounties": round(b.get(f, 0)), "bonds": round(k.get(f, 0)), "total": round(b.get(f, 0) + k.get(f, 0))}
+    shown = lambda f: names.get(f) or (_spaced(faction_name(f)) if f.startswith("$") else f)   # "$...;": a fold before round 11
+    factions = [{"name": shown(f), "bounties": round(b.get(f, 0)), "bonds": round(k.get(f, 0)), "total": round(b.get(f, 0) + k.get(f, 0))}
                 for f in sorted(set(b) | set(k))]
     factions.sort(key=lambda x: (-x["total"], x["name"]))
     return {"total": total_b + total_k, "bounties": total_b, "bonds": total_k, "factions": factions}
