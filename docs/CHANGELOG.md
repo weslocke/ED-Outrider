@@ -2,6 +2,36 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-07 · Pins at Guardian and Thargoid pickups
+Part 2 of project/PLAN-system-order-2026-11-06.md (the author's answers Q4, Q5: on by default, cargo pickups count too;
+silent). No journal re-read: the pins are live-only; `surface_pins` gains two columns by the usual migration.
+- **The server (`Journals.note_pickup_pin`, from `handle()`):** a live pickup on a body drops a pin where you stand,
+  from Status.json's position within 90 s of the line (`PICKUP_PIN_FIX_S`), on foot on a planet, in the SRV or landed
+  (Status.json's flags) or hovering under 1 km (`PICKUP_PIN_HOVER_M`); never higher or in space (an AX fight's drops), never from the start-up import or a line over
+  `SHUTDOWN_LIVE_S` old. Which pickups (`pickup_kind`): MaterialCollected `guardian_*` and the obelisks' `ancient*`
+  data (Guardian), `tg_*` and `unknown*` (Thargoid: the Sensor Fragment is `unknownenergysource`); CollectCargo by
+  `PICKUP_CARGO`: the Guardian relic, orb, casket, tablet, totem, urn and key, the Thargoid Sensor, Probe and Link
+  (`unknownartifact`, `2`, `3`), biological matter, resin, technology samples, the spire sites' membrane scrap and
+  mineral, and Meta-Alloys.
+- **One pin per site:** a pickup within 2 km (`PICKUP_PIN_M`, `surface_m` on the body's radius) of an earlier pickup
+  pin of the same kind on the body adds to it: `pickups` + 1, and the name "Guardian site (pickup) ×3" while it is still
+  the automatic one (a name you gave it is kept). Names "Guardian site (pickup)" / "Thargoid site (pickup)".
+- **Silent:** the pin is made reached (you are on it), so `pin_watch` neither sets it nor says an arrival; no speech key.
+  `Journals.pins_seq` moves the payload's `pins.v`, so every window's lists ask again.
+- **`surface_pins`:** new columns `source` ("guardian", "thargoid"; NULL for your own pins) and `pickups`, added to an
+  older database by `open_db`'s column migration. Still live-only.
+- **Setting:** `[defaults] pickup_pins` (true), in `LIVE_CONFIG` (applied at once); Settings → Surface map's tick
+  (`#surfPickupPins`, `data-find="defaults.pickup_pins"`) writes it; the payload's `defaults.pickup_pins`; the example
+  config.
+- **Docs:** views.md (Pins), settings.md, JOURNAL_REFERENCE (MaterialCollected, CollectCargo), DESIGN_NOTES (the choices,
+  and not yet tried in game), AGENT_GUIDE.
+- **Tests:** test_pins `PickupPins` (a pickup on foot makes one reached pin with its source, silent, pins.v moved; a second
+  within 2 km adds to it, a renamed one keeps its name, a Thargoid one beside it is its own; over 2 km a second pin; the
+  SRV and landed; none in space or flying; none from an old line, the import, a stale or not-live position, or a pickup
+  of something else; none with the setting off; the symbols), `PickupPinsMigration` (an old table gets both columns,
+  its pins kept), `PickupPinsSetting` (default on, the config text and example, the data-find home, POST /api/config
+  applied at once); test_state's registry knows `pins_seq`.
+
 ## 2026-11-07 · The stint's best rock
 Part 3 of project/PLAN-system-order-2026-11-06.md (the author's answers Q6, Q7). No journal re-read: nothing stored
 changes shape.

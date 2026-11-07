@@ -10944,6 +10944,7 @@ function onData() {
   prepareLostLine();   // "lost contact", made in your voice while Outrider can still make it
   drawTts();
   drawRigWarn();   // Settings -> Surface map's far-rig distance: the server's (S14)
+  drawPickupPins();   // and its pickup pins tick (2026-11-07)
   drawAudioPill();
   const sv = data.speech && data.speech.version;
   if (sv && sv !== speechLib.version && sv !== speechLibWanted) { speechLibWanted = sv; loadSpeechLib(); }
@@ -14643,6 +14644,22 @@ rigWarnEl.onchange = async () => {
   rigWarnEl.blur(); drawRigWarn(); if (data) render();
 };
 drawRigWarn();
+// Pins at Guardian and Thargoid pickups (2026-11-07): [defaults] pickup_pins, the server's alone (it makes the pins),
+// written into the config file as the far-rig distance is and applied at once (LIVE_CONFIG); on unless the file says not
+const pickupPinsEl = document.getElementById("surfPickupPins");
+function drawPickupPins() { pickupPinsEl.checked = ((data && data.defaults) || {}).pickup_pins !== false; }
+pickupPinsEl.onchange = async () => {
+  const on = pickupPinsEl.checked, m = document.getElementById("surfPickupMsg");
+  let r;
+  try { r = await apiJson("api/config", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({defaults: {pickup_pins: on}})}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  r = r || {error: "?"};
+  if (!r.error && data) data.defaults = {...(data.defaults || {}), pickup_pins: on};
+  m.textContent = r.error ? `Not saved: ${r.error}` : "Saved in the config file ([defaults] pickup_pins)";
+  m.className = r.error ? "hint warnc" : "hint";
+  drawPickupPins();
+};
+drawPickupPins();
 window.addEventListener("resize", () => { if (data) renderSurface(); });
 // the discovery streak's spoken thresholds and the suggested order's "skip?" floor (blank = the default)
 const streakEls = {known: document.getElementById("streakKnown"), new: document.getElementById("streakNew")};

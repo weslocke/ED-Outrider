@@ -839,6 +839,11 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
           that distance is saved in the config file (<code>rig_warn</code>) for every window. Blank = the config file's value; reset leaves the far distance as it is.</span>
         <span id="surfWarnMsg" class="hint" role="status"></span></label>
       <label data-find="defaults.surface_map_strip" class="mod"><input type="checkbox" id="surfStrip"> Also a small copy of the surface map in the on-body strip (under the header), with a one-line legend</label>
+      <label data-find="defaults.pickup_pins" class="mod"><input type="checkbox" id="surfPickupPins"> Pin Guardian and Thargoid sites where you pick something up
+        <span class="hint">on foot, in the SRV or landed: a relic, an orb, a Sensor, a Guardian or Thargoid material drops a 📍 "Guardian site (pickup)" or
+          "Thargoid site (pickup)" where you stand, one per site (a pickup within 2 km adds to it), never spoken. Saved in the config file
+          (<code>pickup_pins</code>) for every window.</span>
+        <span id="surfPickupMsg" class="hint" role="status"></span></label>
     </details>
     <details class="setsec" data-sec-key="mining" data-chip="Mining"><summary>Mining <span class="sum-note">rings to watch for</span></summary>
       <div class="mod inlineopts" id="miningRings">Say when a scanned body has a ring of these types:

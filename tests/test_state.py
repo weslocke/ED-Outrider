@@ -3481,6 +3481,7 @@ class JournalsRegistry(unittest.TestCase):
                      "failed tick (review 8); the retry sets the same",
         "all_found_seen": "auto honk's FSSAllBodiesFound wait, as honk_seen",
         "docking_seq": "a counter the docking grants bump (the page's cue): a retry only bumps it more",
+        "pins_seq": "a counter the pickup pins bump (the payload's pins.v): a retry only bumps it more",
     }
     # attribute -> why it is not the reader's state at all (set from outside, or a tool)
     NOT_READER_STATE = {

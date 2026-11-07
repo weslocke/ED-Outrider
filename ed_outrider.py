@@ -303,6 +303,21 @@ CARRIER_TYPES = {"fleet": (25000, 25000), "squadron": (60000, 15000)}   # capaci
 PIN_NAME_MAX = 40         # characters of a surface pin's name (#16)
 PIN_ARRIVE_M = {"ground": 50, "ship": 250}   # m: arrived at a pin, on foot or in the SRV / in the ship
 PIN_BANDS = (10000, 1000, 100)   # m: the active pin's distance said as you pass each (after "set", before "arrived")
+# Pins at Guardian and Thargoid pickups (2026-11-07, plan PLAN-system-order part 2): a live pickup on a body drops a pin
+# where you stand, one per site ([defaults] pickup_pins, on by default; silent: no voice line)
+PICKUP_PINS = True
+PICKUP_PIN_M = 2000       # m: a pickup this close to an earlier pickup pin of the same kind on the body adds to that pin
+PICKUP_PIN_HOVER_M = 1000  # m: the ship under this over the surface counts as at the site (sensors scooped hovering)
+PICKUP_PIN_FIX_S = 90     # s: the Status.json reading paired with the pickup (Status.json is rewritten only on a change)
+PICKUP_PIN_NAMES = {"guardian": "Guardian site (pickup)", "thargoid": "Thargoid site (pickup)"}
+# CollectCargo's Type (lowercase): the Guardian relics and the Thargoid items found at their surface sites (cargo.py's
+# names: Thargoid Sensor unknownartifact, Probe unknownartifact2, Link unknownartifact3; Protective Membrane Scrap
+# unknownsack and Impure Spire Mineral unknownmineral at the spire sites; Meta-Alloys from the barnacles)
+PICKUP_CARGO = {**{c: "guardian" for c in ("ancientcasket", "ancientorb", "ancientrelic", "ancienttablet", "ancienttotem",
+                                           "ancienturn", "ancientkey")},
+                **{c: "thargoid" for c in ("unknownartifact", "unknownartifact2", "unknownartifact3", "unknownbiologicalmatter",
+                                           "unknownresin", "unknowntechnologysamples", "unknownsack", "unknownmineral",
+                                           "metaalloys")}}
 CARRIER_COOLDOWN_S = 300   # s after a carrier jump before the next can be booked (a busy system's servers take longer)
 CARRIER_LEG_S = 20 * 60    # s a leg takes: the 15-minute countdown and the cooldown (the plan's estimate)
 RICHES_METHOD = "POST"      # form fields (checked against the live API 2026-10-06; scripts/riches_probe.py checks it again)
@@ -1359,6 +1374,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         "surface_map_strip": flag("defaults", df, "surface_map_strip", SURFACE_MAP_STRIP),
         # under the 5 km at which the game destroys a rig, or the warning would come too late
         "rig_warn": min(RIG_LOST_M - 100.0, max(100.0, num("defaults", df, "rig_warn", float, RIG_WARN))),
+        "pickup_pins": flag("defaults", df, "pickup_pins", PICKUP_PINS),
         "voice": num("defaults", df, "voice", _config_str, None) or VOICE,
         "voice_fallback": num("defaults", df, "voice_fallback", _config_str, None) or VOICE_FALLBACK,
         "speech_styles": [str(x) for x in (styles if styles is not None else SPEECH_STYLES)],
@@ -1511,6 +1527,7 @@ rig_spacing = {n(st["rig_spacing"])}   # m: the ring round a Rhino mining rig (a
 surface_map_min = {n(st["surface_map_min"])}   # m: the surface map never shows less than this across
 surface_map_strip = {"true" if st["surface_map_strip"] else "false"}   # also a small copy of the map in the on-body strip
 rig_warn = {n(st["rig_warn"])}   # m: say so when a mining rig is this far from the Rhino (again at 4,500; the game destroys it at 5,000)
+pickup_pins = {"true" if st["pickup_pins"] else "false"}   # a Guardian or Thargoid pickup on a body drops a pin where you stand (one per site)
 voice = {q(st["voice"])}          # spoken alerts: Piper voice (downloaded into data/piper-voices/ on first use; one picked on the page wins)
 voice_fallback = {q(st["voice_fallback"])}  # used while the voice above is missing
 speech_styles = [{", ".join(q(x) for x in st["speech_styles"])}]   # spoken alerts' personalities: any of the styles in the speech file
@@ -2286,10 +2303,13 @@ CREATE TABLE IF NOT EXISTS surface_rigs (
 -- surface_sites: a collection with no rig marked near it (an unmarked site), kept so a good spot is not lost.
 -- surface_pins (#16, the author 2026-10-17): named points on a body (its system and full name), kept until deleted:
 -- body bookmarks with fly-to guidance. Live-only: never in RESET_JOURNAL_DATA. ord: their order on the body;
--- reached_ts: arrived at (dimmed, reset by hand)
+-- reached_ts: arrived at (dimmed, reset by hand). source (2026-11-07): NULL for your own pins, "guardian" or "thargoid"
+-- for one a live pickup on the body dropped (Journals.note_pickup_pin), pickups: how many pickups it holds (added by
+-- the migration below on an older database: open_db adds a column the table lacks)
 CREATE TABLE IF NOT EXISTS surface_pins (
     id INTEGER PRIMARY KEY, system INTEGER NOT NULL, body TEXT NOT NULL, sysname TEXT, name TEXT NOT NULL,
-    lat REAL NOT NULL, lon REAL NOT NULL, ord INTEGER NOT NULL DEFAULT 0, reached_ts TEXT, created_ts TEXT);
+    lat REAL NOT NULL, lon REAL NOT NULL, ord INTEGER NOT NULL DEFAULT 0, reached_ts TEXT, created_ts TEXT,
+    source TEXT, pickups INTEGER);
 CREATE TABLE IF NOT EXISTS surface_sites (
     id INTEGER PRIMARY KEY, system INTEGER, body_id INTEGER, body TEXT, lat REAL, lon REAL, minerals TEXT,
     tons INTEGER NOT NULL DEFAULT 0, first_ts TEXT, last_ts TEXT);
@@ -3488,6 +3508,7 @@ class Journals:
         self.honk_seen = None
         self.all_found_seen = None
         self.docking_seq = 0       # bumped by each docking grant written (meta docking): tick() wakes the page on it
+        self.pins_seq = 0          # bumped by each pickup pin written or added to (note_pickup_pin): the payload's pins.v
         self.moment_seq = 0
         self.last_heat = None      # seconds of the latest heat moment (HeatDamage within HEAT_QUIET adds none)
         # in memory only (a restart forgets them, which errs on the quiet side):
@@ -4418,6 +4439,8 @@ class Journals:
         if name in ("FSSSignalDiscovered", "SupercruiseDestinationDrop"):
             self.handle_phenomenon(name, ev, ts)
             return
+        if name in ("MaterialCollected", "CollectCargo"):   # a Guardian or Thargoid pickup on a body: a pin (live only)
+            self.note_pickup_pin(name, ev, ts)
         if name in CARGO_EVENTS:
             self.handle_cargo(name, ev, ts)
             if name in CARGO_ONLY:
@@ -5348,6 +5371,58 @@ class Journals:
                                "body": ev.get("Body") or None, "lat": lat, "lon": lon,
                                "heading": heading, "width": ev.get("Width"), "height": ev.get("Height"),
                                "cmdr": (self.commander or {}).get("name")})
+
+    @staticmethod
+    def pickup_kind(name, ev):
+        """Which site a pickup line comes from: "guardian", "thargoid" or None. MaterialCollected: guardian_* and the
+        obelisks' ancient* data are Guardian, tg_* and unknown* (Sensor Fragment is unknownenergysource) Thargoid;
+        CollectCargo: the relics and items of PICKUP_CARGO."""
+        if name == "MaterialCollected":
+            m = str(ev.get("Name") or "").lower()
+            return "guardian" if m.startswith(("guardian_", "ancient")) else "thargoid" if m.startswith(("tg_", "unknown")) else None
+        return PICKUP_CARGO.get(re.sub(r"^\$|_name;$|;$", "", str(ev.get("Type") or "").lower()))
+
+    def note_pickup_pin(self, name, ev, ts):
+        """A Guardian or Thargoid pickup on a body (plan 2026-11-06 part 2: a site leaves no line of its own, its pickups
+        do) drops a pin where you stand, from the live Status.json over that body within PICKUP_PIN_FIX_S of the line,
+        on foot, in the SRV, landed, or in the ship hovering under PICKUP_PIN_HOVER_M (scooping a site's sensors and
+        probes; never in space or orbital cruise: an AX fight's drops). One pin per site: a pickup within
+        PICKUP_PIN_M of an earlier pickup pin of the same kind on the body adds to it (its count, and its name while it
+        is still the automatic one). Live only: a catch-up, a re-read or an old line makes none. Silent: the pin is
+        made reached (you are at it), so the pin guidance neither sets it nor says an arrival."""
+        kind = self.pickup_kind(name, ev)
+        if not kind or not PICKUP_PINS or getattr(self, "importing", False) or not live_event(ts):
+            return
+        st, pos = self.status_json or {}, self.pos or {}
+        if not st.get("live") or st.get("lat") is None or st.get("lon") is None or not st.get("body") \
+                or not st.get("planet_radius") or pos.get("id64") is None:
+            return
+        try:
+            if abs(ts_seconds(ts) - ts_seconds(st["ts"])) > PICKUP_PIN_FIX_S:
+                return
+        except (TypeError, ValueError):
+            return
+        flags, flags2 = st.get("flags") or 0, st.get("flags2") or 0
+        alt = st.get("alt")
+        hover = not flags & FLAG_SUPERCRUISE and isinstance(alt, (int, float)) and 0 <= alt < PICKUP_PIN_HOVER_M
+        if not (flags & (FLAG_IN_SRV | FLAG_LANDED) or flags2 & FLAG2_ON_FOOT_PLANET or hover):
+            return   # in the ship high over the body, in orbital cruise, or in space
+        system, body, lat, lon = pos["id64"], st["body"], st["lat"], st["lon"]
+        near = [(surface_m(lat, lon, p["lat"], p["lon"], st["planet_radius"]), p) for p in self.db.execute(
+            "SELECT * FROM surface_pins WHERE system=? AND body=? AND source=?", (system, body, kind))]
+        near = min((x for x in near if x[0] <= PICKUP_PIN_M), key=lambda x: x[0], default=None)
+        if near:
+            p = near[1]
+            n = (p["pickups"] or 1) + 1
+            auto = p["name"] in (PICKUP_PIN_NAMES[kind], f"{PICKUP_PIN_NAMES[kind]} ×{n - 1}")
+            self.db.execute("UPDATE surface_pins SET pickups=?, name=? WHERE id=?",
+                            (n, f"{PICKUP_PIN_NAMES[kind]} ×{n}" if auto else p["name"], p["id"]))
+        else:
+            o = self.db.execute("SELECT max(ord) FROM surface_pins WHERE system=? AND body=?", (system, body)).fetchone()[0]
+            self.db.execute("INSERT INTO surface_pins (system, body, sysname, name, lat, lon, ord, reached_ts, created_ts, "
+                            "source, pickups) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                            (system, body, pos.get("name"), PICKUP_PIN_NAMES[kind], lat, lon, (o or 0) + 1, ts, ts, kind))
+        self.pins_seq += 1
 
     def handle_phenomenon(self, name, ev, ts):
         """Notable stellar phenomena: found by the FSS, reached by dropping out of supercruise at one."""
@@ -9664,7 +9739,7 @@ class State:
                          "speak_codex_signals": SPEAK_CODEX_SIGNALS,
                          "speak_mapped": SPEAK_MAPPED, "codex_interesting": CODEX_INTERESTING,
                          "surface_alt": SURFACE_ALT, "rig_spacing": RIG_SPACING, "surface_map_min": SURFACE_MAP_MIN,
-                         "surface_map_strip": SURFACE_MAP_STRIP, "rig_warn": RIG_WARN},
+                         "surface_map_strip": SURFACE_MAP_STRIP, "rig_warn": RIG_WARN, "pickup_pins": PICKUP_PINS},
             "bio_rules": self.bio_colours_info(),   # with `colours` and the Retry's `colours_job` (S7)
             "fuel": self.fuel_summary(),
             "ship": self.journals.ship,
@@ -9809,7 +9884,8 @@ class State:
     # and the auto-target's sequence ([highway] autotarget_*): tuned by trial and error, so the next run uses it (2026-10-22);
     # the far-rig distance ([defaults] rig_warn, Settings -> Surface map: round 10's S14), the one [defaults] key the
     # server itself uses (the spoken leash warning) and every window's map follows
-    LIVE_CONFIG = {("speech", "voices_loaded"), ("speech", "voices_preload"), ("speech", "pad_delay"), ("defaults", "rig_warn")} | \
+    LIVE_CONFIG = {("speech", "voices_loaded"), ("speech", "voices_preload"), ("speech", "pad_delay"), ("defaults", "rig_warn"),
+                   ("defaults", "pickup_pins")} | \
         {("highway", "autotarget_" + k) for k in outrider.target.DEFAULTS} | \
         {("autohonk", "delay"), ("autohonk", "skip_honked")} | \
         {("screenshots", k) for k in outrider.screenshots.DEFAULTS}   # read for every shot (Settings -> Screenshots)
@@ -9821,10 +9897,12 @@ class State:
         after a docking grant the pad is said (pad_delay: the next grant), and the auto-target's sequence (the next
         run), and the far-rig distance (RIG_WARN: the leash's next reading, and the payload's defaults). The keys applied,
         as "section.key"."""
-        global RIG_WARN
+        global RIG_WARN, PICKUP_PINS
         done = sorted({f"{s}.{k}" for s, k in keys if (s, k) in self.LIVE_CONFIG})
         if "defaults.rig_warn" in done:
             RIG_WARN = st["rig_warn"]
+        if "defaults.pickup_pins" in done:   # Settings -> Surface map's tick (2026-11-07): the next pickup
+            PICKUP_PINS = st["pickup_pins"]
         for k in [d.split(".", 1)[1] for d in done if d.startswith("screenshots.")]:
             self.shots_cfg[k] = st["screenshots"][k]
         if "speech.pad_delay" in done:
@@ -20792,7 +20870,8 @@ class State:
         """The payload's pins: counts per body of this system (short names: the 📍 in Here and Overview), and on a body
         with a position (from orbit down), its pins with where each is, the active one marked."""
         pos, h = self.journals.pos, self.surface_here()
-        out = {"counts": {}, "here": None, "v": self.pins_version}   # v: any pin changed, in any system (review L13)
+        # v: any pin changed, in any system (review L13), a pickup pin too (2026-11-07)
+        out = {"counts": {}, "here": None, "v": self.pins_version + self.journals.pins_seq}
         if pos:
             for r in self.db.execute("SELECT body, count(*) AS n FROM surface_pins WHERE system=? GROUP BY body", (pos["id64"],)):
                 out["counts"][short_name(pos.get("name") or "", r["body"])] = r["n"]
@@ -26054,7 +26133,7 @@ async def run(args, st):
     global SPEAK_MAPPED, CODEX_INTERESTING
     global SPEECH_DANGER_BUSINESS, HIGH_GRAVITY, MODULE_WARN, BACKUP_KEEP, BACKUP_EVERY_DAYS
     global SPANSH_CONCURRENCY, MAP_MAX_RADIUS, MAP_MAX_PAGES
-    global SURFACE_ALT, RIG_SPACING, SURFACE_MAP_MIN, SURFACE_MAP_STRIP, RIG_WARN
+    global SURFACE_ALT, RIG_SPACING, SURFACE_MAP_MIN, SURFACE_MAP_STRIP, RIG_WARN, PICKUP_PINS
     # the notices banner (S5a): what this start finds wrong is said in the terminal as before and shown on every page
     notices = startup_notices(st, args.config)
     LIVE_DIRS = unique_dirs(d for d in st["live"] if os.path.isdir(d))
@@ -26063,7 +26142,7 @@ async def run(args, st):
     BODY_HIGHLIGHT, BIO_HIGHLIGHT, MAX_INCLUDE_BONUS = st["body_highlight"], st["bio_highlight"], st["max_include_bonus"]
     HIGH_GRAVITY, MODULE_WARN = st["high_gravity"], st["module_warn"]
     SURFACE_ALT, RIG_SPACING, SURFACE_MAP_MIN = st["surface_alt"], st["rig_spacing"], st["surface_map_min"]
-    SURFACE_MAP_STRIP, RIG_WARN = st["surface_map_strip"], st["rig_warn"]
+    SURFACE_MAP_STRIP, RIG_WARN, PICKUP_PINS = st["surface_map_strip"], st["rig_warn"], st["pickup_pins"]
     RADIUS_CHOICES = tuple(st["radius_choices"])
     VOICE, VOICE_FALLBACK = st["voice"], st["voice_fallback"]
     SPEECH_STYLES, SPEECH_PROFANITY, SPEECH_NAMES = tuple(st["speech_styles"]), st["speech_profanity"], st["speech_names"]

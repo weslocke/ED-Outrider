@@ -603,6 +603,13 @@ back to.
   way; the status report starts with it. Reached pins are dimmed, with ↺ to undo.
 - **Finding them again:** a 📍 beside a body with pins in Here and Overview, and every pin in **Bookmarks** (with
   Plot route to its system).
+- **Pins at Guardian and Thargoid sites:** picking something up at one on foot, in the SRV, landed or hovering low (a Guardian relic,
+  orb, casket, tablet, totem or urn, a Guardian material or obelisk data; a Thargoid Sensor, Probe or Link, Thargoid
+  materials such as a Sensor Fragment, Meta-Alloys) drops a pin where you stand: "Guardian site (pickup)" or "Thargoid
+  site (pickup)". One per site: another pickup within 2 km adds to it ("Guardian site (pickup) ×3"). It is made reached
+  (you are there), so nothing is said; ↺ makes it the target for a later visit, and you can rename or delete it like any
+  pin. Only what you pick up while playing counts (re-reading your journals makes none), never in space. A tick in ⚙
+  Settings → Surface map turns it off.
 
 **Screenshots.** With [screenshot converting](automation.md#-screenshots) on, a 📷 beside a body in Here (with a count
 past one) says you photographed it, its hover card shows the newest three; its panel's **📷 Screenshots** lists them with a small picture, the time and what

@@ -1713,6 +1713,29 @@ upstream project's choices, not rules of the game.
   guidance changes (State.pin_watch: a distance step and a 10° turn), so it moves from orbit, above the map's 1,000 m.
   In the ship arrival is counted through the air (the ground distance with Status.json's altitude): flying over a pin
   high up never reaches it (complete review 2026-10-30: "arrived" at 30 km, and the next pin took over).
+- **Pins at Guardian and Thargoid pickups** (2026-11-07, project PLAN-system-order-2026-11-06 part 2; the author: on by
+  default, cargo pickups count too, silent). A site on the surface writes no line of its own, only the pickups do, so a
+  live pickup on a body (`Journals.note_pickup_pin`) is the site. The choices:
+  - **On the ground, or hovering over it:** on foot on a planet, in the SRV or landed (Status.json's flags), or in the
+    ship under 1 km above the surface (`PICKUP_PIN_HOVER_M`: sensors and probes are often scooped hovering; review of
+    the batch, 2026-11-07); never higher, in orbital cruise or in space (an AX fight's drops are Thargoid materials
+    too).
+  - **The position** is Status.json's within 90 s of the line (`PICKUP_PIN_FIX_S`), the window every other journal
+    event without a position uses: Status.json is rewritten only when something in it changes, so a player standing
+    still at a terminal can leave a reading older than "a few seconds".
+  - **One pin per site and kind:** a pickup within 2 km (`PICKUP_PIN_M`, along the ground on the body's radius) of an
+    earlier pickup pin of the same kind adds to it; the pin keeps its first spot. The count is a column (`pickups`)
+    and shows in the name ("Guardian site (pickup) ×3") only while the name is still the automatic one: a name you gave
+    it is never changed.
+  - **Silent by being reached:** a pickup pin is made reached (you are standing on it), so the pin guidance neither
+    sets it as the target nor says an arrival; ↺ makes it a target like any other. A pin you set yourself on the body
+    stays the target.
+  - **Live only:** the start-up import (a catch-up or a re-read) and any line over `SHUTDOWN_LIVE_S` old make none, so
+    a re-read never doubles them; `surface_pins` stays live-only (`source` tells these from yours, NULL for yours).
+  - **Which pickups:** MaterialCollected by name prefix (`guardian_`, `ancient` for the obelisks' data; `tg_`,
+    `unknown`); CollectCargo by a fixed list (`PICKUP_CARGO`): a prefix would take the space salvage
+    (`usscargoancientartefact`) and the Unclassified Relic (`ancientrelictg`), whose origin is unclear, so both are
+    left out. Meta-Alloys count as Thargoid (the barnacles), on the ground only like the rest.
 - **Known sites from Canonn, in the Pins section** (the pins follow-up, the author 2026-10-26; project
   PLAN-canonn-sites-2026-10-26): Guardian sites and geology, Canonn only (the author: not your own ApproachSettlement
   lines, which would need a re-read). Canonn's CAPIv2 sites API (api.canonn.tech, with Guardian, Thargoid and crash-site
@@ -2004,6 +2027,8 @@ confirmed while playing. Treat reports about them as likely real.
 - The commander filter (S9-S4) with a real second commander's journals in the folder: written to Frontier's journal
   format (Commander and LoadGame carry the FID), tested on synthetic files only; the commander chooser (Discussion
   #18: a pick's restart and re-read), and two live folders written at once (each its own upload session).
+- Pins at Guardian and Thargoid pickups (2026-11-07): the pickup lines' names and Status.json's flags at a real site,
+  on foot and in the SRV; built from the journal manual's events and the game's symbols only.
 - Surface pins' guidance from orbital cruise down and their arrival distances; carrier trips' following (the leg on
   the booked jump's departure, the cooldown estimate); chat read aloud from real squadron traffic (the pace, mentions).
 - Space chatter's places and blockers (`outrider.chatter.where`): the on-foot-on-planet and SRV bits, GuiFocus

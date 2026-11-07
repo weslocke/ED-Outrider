@@ -111,6 +111,8 @@
 # surface_map_strip = false      # also a small copy of the surface map in the on-body strip
 # rig_warn = 3500                # m: say so when a mining rig is this far from your Rhino (again at 4,500 m); the
 #                                    # game destroys a rig 5,000 m from its Rhino
+# pickup_pins = true             # a Guardian or Thargoid pickup on a body (on foot, in the SRV or landed) drops a pin
+#                                    # where you stand, one per site (Settings -> Surface map); never spoken
 # voice = "en_GB-cori-medium"   # spoken alerts (🗣 in the page): the Piper voice, downloaded
 #                               # into data/piper-voices/ on first use; needs `pip install piper-tts`
 #                               # (see outrider/tts.py), otherwise the browser's own speech is used;
