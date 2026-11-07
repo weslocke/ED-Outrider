@@ -2084,6 +2084,36 @@
     "Fuck yeah. {what}."
    ]
   },
+  "prospect_best": {
+   "good_ol_boy": [
+    "{what}. Best one yet this stint, partner.",
+    "Dadgum, {what}. Best rock so far.",
+    "{what}. That's the cream of the crop, buddy.",
+    "Well, lookee here. {what}. Best of the stint.",
+    "{what}, {name}. Ain't seen better all stint.",
+    "Hot diggity, {what}. New best, pal.",
+    "{what}. Best rock yet, and that's a fact, friend.",
+    "Dang, {what}. Tops 'em all so far.",
+    "{what}. Grandpa'd call that the pick of the litter.",
+    "Best yet this stint, partner. {what}.",
+    "{what}. That one takes the blue ribbon, buddy.",
+    "Butter my biscuit, {what}. Best one so far."
+   ],
+   "good_ol_boy_profane": [
+    "{what}. Best damn rock this stint, partner.",
+    "Hot damn, {what}. Best yet.",
+    "{what}. Hell, that beats 'em all, buddy.",
+    "Well, I'll be damned. {what}. Best of the stint.",
+    "{what}, {name}. Best damn one so far.",
+    "Holy hell, pal. {what}. New best.",
+    "{what}. Damn finest rock all stint.",
+    "Shit, {what}. Best yet, friend.",
+    "{what}. That's the damn blue ribbon, partner.",
+    "Hot damn and hallelujah, buddy. {what}. Best so far.",
+    "{what}. Hell, nothing's topped that this stint.",
+    "Damn, {name}. {what}. Best one yet."
+   ]
+  },
   "motherlode": {
    "good_ol_boy": [
     "Motherlode, partner! {mineral} core. Get them charges ready.",

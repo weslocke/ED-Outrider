@@ -2,6 +2,30 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-07 · The stint's best rock
+Part 3 of project/PLAN-system-order-2026-11-06.md (the author's answers Q6, Q7). No journal re-read: nothing stored
+changes shape.
+- **The server:** each live `prospect` moment carries `best` (`prospect_best`): the highest share of each mineral among
+  the untouched rocks (Remaining 100) prospected before it in the same stint, from `mining_stints.prospects`; None for
+  the first. Every mineral seen, not only this rock's, so the combined call-out can be judged.
+- **The page (`prospectOut`, `prospectVsBest`):** a call-out hit richer in its mineral than every untouched rock before
+  it this stint is said with the new key `prospect_best` ("Platinum, 38 percent, the best yet this stint") under its
+  own row, **Best rock this stint** (`prospectbest`, Mining group: `ALERTS`, `ALERT_NAMES`, `ALERT_DETAILS`,
+  `MINING_ALERTS`, `ROW_WORDS`, both `ROW_KEYS`, the Mining Officer's `CREW_ROLES`; not notified by default, as the
+  call-out). Combined: the best yet only when the total tops the ticked minerals' bests added up (no rock before can
+  have held more). A hit below the best keeps `prospect_hit`, its card adding "your best this stint: 42 %". The first
+  rock says nothing extra; duds and rocks mined before stay silent. The row's voice off: the plain `prospect_hit`.
+  `prospectHit` names the mineral it judged (`mineral`).
+- **The lines:** `prospect_best` in `speech.json` (16 a list; in test_crew's short table at 15), KEYS, SAMPLES and 12
+  a list in every shipped personality file, each in its own voice.
+- **The mining recap (S21):** the moment's `best` [id, name, %] (the best untouched rock in the mineral refined most,
+  else the richest share of any; None with none untouched) and the card's "best rock: Platinum 38 %", never spoken.
+- **Guide:** voice-and-alerts.md, the call-out's new row, the recap's card and the Mining Officer's list.
+- **Tests:** test_mining (`best` from earlier untouched rocks only, per mineral, a new stint afresh; the recap's best
+  rock, its fallback and None), page_unit (`prospectVsBest` single and combined; `prospectOut`: the best yet under its
+  row, a hit below it on the card only, the first rock plain, duds and mined rocks silent, the row off; the recap's
+  card and voice), page_smoke (Mining's table holds the new row).
+
 ## 2026-11-06 · Kills after a Frontline dropship are "On foot" too (#23)
 - Kurbo26 (#23, after the on-foot fix): still credited to the ship. A Frontline dropship writes no Disembark: out of
   the ship at the station (Disembark), aboard the dropship (Embark, Taxi), then `DropshipDeploy` on the planet, which

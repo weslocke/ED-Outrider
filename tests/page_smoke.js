@@ -9747,7 +9747,7 @@ const releasePayloads = async () => {
         // Mining's table styled as Alerts' (review 2026-10-23 L2): the fine print's hover cue, the group's colour
         miningStyled: (() => { const el = document.querySelector("#miningAlertOpts .adesc[title]"), th = document.querySelector("#miningAlertOpts tr.agroup th");
           return !!el && getComputedStyle(el).cursor === "help" && !!th && getComputedStyle(th).fontWeight === "600"; })(),
-        mining: ["ring", "limpets", "prospect", "rigs", "rigleash", "rigsout"].every(k => document.querySelector('#miningAlertOpts [data-alert="' + k + '"]') && !document.querySelector('#alertOpts [data-alert="' + k + '"]'))});
+        mining: ["ring", "limpets", "prospect", "prospectbest", "rigs", "rigleash", "rigsout"].every(k => document.querySelector('#miningAlertOpts [data-alert="' + k + '"]') && !document.querySelector('#alertOpts [data-alert="' + k + '"]'))});
     })()`));
     const want = {heads: true, first: true, named: true, fuel: ["Fuel", true, true], short: true, oneLine: true, mining: true, miningStyled: true};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
@@ -11016,7 +11016,7 @@ const releasePayloads = async () => {
       limpetsOff: [], limpetBox: false,
       limpetsOn: [[["No limpets aboard. Turn back for some before we head out.", "limpets"]], JSON.stringify({limpetWarn: true}), "No limpets aboard"],
       limpetsSynth: [[["No limpets aboard, but you can synthesise 12.", "limpets"]], "you can synthesise 12 (Limpet Basic: iron and nickel)"],
-      tables: ["ring,limpets,prospect,rigs,rigleash,rigsout", false, true, 6],
+      tables: ["ring,limpets,prospect,prospectbest,rigs,rigleash,rigsout", false, true, 7],
       pNone: [], pLode: [["Motherlode: Void Opal.", "prospect"]],
       pCfg: JSON.stringify({limpetWarn: true, minerals: ["platinum", "gold"], pct: 30, pcts: {}, combined: false, motherlode: true, rawHigh: false, limpetsLow: 5}),
       pHits: [[["Platinum, 34 percent.", "prospect"]], [], [], []],

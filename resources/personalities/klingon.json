@@ -2073,6 +2073,36 @@
     "Hell, look at that! {what}!"
    ]
   },
+  "prospect_best": {
+   "klingon": [
+    "{what}! The best prey of this hunt!",
+    "Ha! {what}! No rock this stint was richer!",
+    "{what}! The finest yet, {name}!",
+    "A new best! {what}! Strike!",
+    "{what}! This rock shames all the others!",
+    "The greatest prize of the hunt so far! {what}!",
+    "{what}! Best of the stint! Take it with honour!",
+    "Ha ha! {what}! The best yet!",
+    "{what}! None before it was worthy of this one!",
+    "{name}! {what}! The best rock of this hunt!",
+    "{what}! A trophy above all the others!",
+    "Best yet! {what}! Fire!"
+   ],
+   "klingon_profane": [
+    "{what}! Best damn rock of the hunt!",
+    "Hell yes! {what}! The best yet!",
+    "{what}! Burn this bastard, {name}! Best of the stint!",
+    "Damn! {what}! No rock this stint was richer!",
+    "{what}! Bloody magnificent! The best yet!",
+    "Shit! {what}! The finest prey so far!",
+    "{what}! Best of the damn hunt!",
+    "Hell, {name}! {what}! A new best!",
+    "{what}! The other rocks were damn gravel next to this!",
+    "Damn it, {what}! Best yet! Rip into it!",
+    "{what}! Best of the stint! Gut the bastard!",
+    "Bloody hell! {what}! The best yet!"
+   ]
+  },
   "motherlode": {
    "klingon": [
     "Motherlode! {mineral}! Ready the charges!",

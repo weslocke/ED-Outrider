@@ -2811,6 +2811,7 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["ring", "a scanned ring of a type ticked above; your record at a hotspot you mined before; a recap as you leave or dock", "find"],
   ["limpets", "no limpets as you undock a mining ship; while mining, limpets low, the hold nearly full and full, then where to sell", "alert"],
   ["prospect", "a prospected rock with your threshold of the minerals ticked above, and motherlodes", null],
+  ["prospectbest", "a call-out rock richer in its mineral than any untouched one before it this stint: said as the best yet", null],
   ["rigs", "the co-pilot button's rig confirmations, and what a rig collected", null],
   ["rigleash", "past your rig warning distance, again at 4.5 km (the game destroys a rig at 5 km)", "danger"],
   ["rigsout", "docking the Rhino with rigs still out, and which are probably full", null]];
@@ -2831,7 +2832,7 @@ const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arri
   unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction", suit: "Suit oxygen or health low", approach: "High gravity",
   loss: "Ship lost", wanted: "Wanted", carrier: "Carrier", upkeep: "Carrier upkeep low", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing", uploadheld: "Upload on hold",
   ring: "Rings to mine", limpets: "Limpets and the hold", prospect: "Prospector call-out",
-  rigs: "Mining rigs", rigleash: "Rig too far", rigsout: "Rigs still out"};
+  prospectbest: "Best rock this stint", rigs: "Mining rigs", rigleash: "Rig too far", rigsout: "Rigs still out"};
 // a row's fine print, in the hover of its line (and found by Find a setting): what the line leaves out
 const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, a thud if it is visited or fully scanned. Never spoken: the arrival is.",
   arrival: "The streak lengths are under Risk and warnings. The region is said only when the arrival briefing, which opens with it, is not. The sound plays only to correct a targeting call that was wrong.",
@@ -2866,6 +2867,7 @@ const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, 
   ring: "Settings → Mining's ring types, pristine ones only if ticked there. Once per body and visit; bodies scanned together in one line. Nothing until a type is ticked. Dropping out of supercruise at a hotspot in a mining ship: your stints there before, your best ship's tons an hour, your hit rate (against the call-out's minerals) and when you were last there; nothing at a hotspot new to you. The recap: the ring you mined since arriving, 20 tons at least, as you jump away or dock (never at each ring exit, nor after a death); docked in that system, the best price within 100 ly for what you refined most, unless Hold full already named where to sell.",
   limpets: "The undocking check only when ticked above. Each warning once a stint.",
   prospect: "Only a rock not mined before; duds stay silent.",
+  prospectbest: "Against the rocks before it in this stint not mined before, in the same mineral (combined: when the total beats them all). The first rock says nothing extra; a hit below your best keeps its plain line, the card adding your best. Off: the best rock gets the plain call-out.",
   rigs: "Placed, picked up, six out.",
   rigsout: "Outrider's own record: a rig picked up without a tap still counts until you mark it on the surface map."};
 // a heading over each group of rows, at its first row (Settings → Alerts and the tablet's list)
@@ -2876,7 +2878,7 @@ const ALERT_GROUPS = {discovery: "Jumps and arrivals", fss: "Exploring a system"
 const alertCfgBase = () => Object.assign({enabled: false}, Object.fromEntries(ALERTS.map(([k]) => [k, true])),
   // a notification on every jump (or scoop, or FSS) would be noise: these are spoken by default, not notified
   {jump: false, honk: false, brief: false, fss: false, mapped: false, scoop: false, scoopstop: false, supercharge: false, highway: false, autotarget: false, wrongtarget: false,
-   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false, limpets: false, prospect: false, uploadheld: false, upkeep: false});
+   docking: false, sampling: false, approach: false, bodybrief: false, jumponium: false, rigs: false, rigsout: false, chat: false, pins: false, ring: false, limpets: false, prospect: false, prospectbest: false, uploadheld: false, upkeep: false});
 const alertCfg = Object.assign(alertCfgBase(), store.get("alerts", {}));
 // off until you tick them (the whole row): the jumponium call-out, an upload on hold (its card is there anyway)
 const OFF_KINDS = {jumponium: false, uploadheld: false, upkeep: false};
@@ -3688,8 +3690,8 @@ const PROSPECT_MORE = [["lepidolite", "Lepidolite"], ["uraninite", "Uraninite"],
 const PROSPECT_NAMES = Object.fromEntries([...PROSPECT_MAIN, ...PROSPECT_MORE]);
 // a prospected rock against the call-out (mats {id: %}): null when not worth it, else {what (spoken), total}. Combined:
 // the ticked minerals' sum at least the shared threshold ("Combined 52 percent: Platinum 31, Gold 21"); else any ticked
-// one at least its own threshold (cfg.pcts, else the shared one), the richest of those said ("Platinum, 34 percent").
-// Names: the moment's, else the list's
+// one at least its own threshold (cfg.pcts, else the shared one), the richest of those said ("Platinum, 34 percent"),
+// its id as `mineral`. Names: the moment's, else the list's
 function prospectHit(mats, cfg = miningCfg(), names = {}) {
   if (!cfg.minerals.length || !mats) return null;
   const name = k => names[k] || PROSPECT_NAMES[k] || k;
@@ -3702,14 +3704,29 @@ function prospectHit(mats, cfg = miningCfg(), names = {}) {
       : `Combined ${Math.round(total)} percent: ${got.map(([k, v]) => `${name(k)} ${Math.round(v)}`).join(", ")}`};
   }
   const over = got.find(([k, v]) => v >= prospectPct(k, cfg));
-  return over ? {total: over[1], what: `${name(over[0])}, ${Math.round(over[1])} percent`} : null;
+  return over ? {total: over[1], mineral: over[0], what: `${name(over[0])}, ${Math.round(over[1])} percent`} : null;
+}
+// the stint's best rock (plan 2026-11-06, part 3): a hit (prospectHit) against the untouched rocks before it this stint
+// (the moment's `best`, {id: %}): null when none had its mineral (the first rock: nothing extra), else {beat, pct}: pct
+// the best before it. Combined: the ticked minerals' bests added up (no rock before can have had more), beaten only
+// above that sum; pct only when a single ticked mineral was ever seen (else no earlier rock's total is known: null)
+function prospectVsBest(hit, best, cfg = miningCfg()) {
+  if (!hit || !best || typeof best !== "object") return null;
+  if (cfg.combined) {
+    const had = cfg.minerals.filter(k => best[k] > 0);
+    if (!had.length) return null;
+    const top = had.reduce((n, k) => n + best[k], 0);
+    return had.length === 1 ? {beat: hit.total > top, pct: top} : hit.total > top ? {beat: true, pct: null} : null;
+  }
+  const b = best[hit.mineral];
+  return b > 0 ? {beat: hit.total > b, pct: b} : null;
 }
 // a mineral's own threshold (Settings → Mining), else the shared one
 const prospectPct = (k, cfg = miningCfg()) => cfg.pcts[k] ?? cfg.pct;
 const miningSet = patch => store.set("mining", Object.assign({}, store.get("mining", {}) || {}, patch));
 // the alerts that are mining's, ring and Rhino: their switches sit in Settings → Mining's own table, not Settings → Alerts
 // (the author, 2026-10-18; the Rhino's moved there too 2026-10-23); every other part (sounds, crew, the tally) treats them as alerts
-const MINING_ALERTS = new Set(["ring", "limpets", "prospect", "rigs", "rigleash", "rigsout"]);
+const MINING_ALERTS = new Set(["ring", "limpets", "prospect", "prospectbest", "rigs", "rigleash", "rigsout"]);
 const RESERVE_WORDS = {PristineResources: "Pristine", MajorResources: "Major", CommonResources: "Common", LowResources: "Low", DepletedResources: "Depleted"};
 const miningRings = () => { const v = store.get("miningRings", {}) || {};
   return {types: Array.isArray(v.types) ? RING_KINDS.filter(t => v.types.includes(t)) : [], pristine: !!v.pristine}; };
@@ -3936,7 +3953,8 @@ async function holdFullSell(m, ask = null) {
 // stints since you arrived, MINING_RECAP_MIN_T tons at least), under the ring row, in plain words: "4 B Ring: 86 tons in
 // an hour and ten, 74 an hour, 3 motherlodes." Docked (still in the system), one follow-up: the best price within 100 ly
 // for the mineral you refined most, unless the hold-full line said where to sell in this system; nothing if Spansh is
-// slow (RECAP_SELL_WAIT_MS) or off, or once you have left the system ----
+// slow (RECAP_SELL_WAIT_MS) or off, or once you have left the system. The card (never the voice) adds the best untouched
+// rock prospected (the moment's `best` [id, name, %], plan 2026-11-06 part 3): "best rock: Platinum 38 %" ----
 const RECAP_SELL_WAIT_MS = 15000;
 let holdSellSaid = null;   // the system (posId) the hold-full line last named a place to sell in
 // "45 minutes", "an hour", "an hour and ten", "2 hours and five", "an hour and 35"
@@ -3951,7 +3969,8 @@ function miningRecapText(m) {
   const lodes = n ? (n === 1 ? "a motherlode" : `${n} motherlodes`) : "";
   const h = Math.floor((m.seconds || 0) / 3600), min = Math.round(((m.seconds || 0) % 3600) / 60);
   return {title: `⛏ ${m.ring}: ${m.tons} t in ${h ? `${h} h ${String(min).padStart(2, "0")}` : `${Math.max(1, min)} min`}`,
-          body: [rate != null && `${rate} t/h`, lodes, `${m.stints} stint${m.stints === 1 ? "" : "s"}`].filter(Boolean).join(" · "),
+          body: [rate != null && `${rate} t/h`, lodes, `${m.stints} stint${m.stints === 1 ? "" : "s"}`,
+                 Array.isArray(m.best) && m.best[2] > 0 && `best rock: ${m.best[1] || m.best[0]} ${Math.round(m.best[2])} %`].filter(Boolean).join(" · "),
           say: `${m.ring}: ${m.tons} tons in ${recapDuration(m.seconds)}` + (rate != null ? `, ${rate} an hour` : "") + (lodes ? `, ${lodes}` : "") + "."};
 }
 async function miningRecapOut(m, ask = null) {
@@ -4089,7 +4108,9 @@ function ringPricesLine(b, sys, html = false) {
 }
 // mining C: a prospected rock said when worth it (prospectHit), a motherlode always (its own box), a rock already mined
 // never; High material content (engineering materials) only when its box is ticked. A newer call-out replaces one still
-// waiting (the tag). Duds say nothing
+// waiting (the tag). Duds say nothing. A hit richer than the stint's untouched rocks before it (prospectVsBest) is "the
+// best yet" under its own row, prospectbest (ticked to speak; else the plain call-out); one below them keeps its plain
+// line, the card adding "your best this stint: 38 %"
 function prospectOut(m) {
   if (!m.untouched) return;
   const cfg = miningCfg();
@@ -4101,8 +4122,14 @@ function prospectOut(m) {
   }
   const hit = prospectHit(m.materials, cfg, m.names || {});
   if (hit) {
-    alertOut("prospect", `⛏ ${hit.what}`, "a prospected rock over your threshold (Settings → Mining)", {tag: "prospect",
-             say: () => line("prospect_hit", {what: hit.what}, `${hit.what}.`)});
+    const vs = prospectVsBest(hit, m.best, cfg);
+    if (vs && vs.beat && alertSpeak.prospectbest)
+      alertOut("prospectbest", `⛏ ${hit.what}: the best yet this stint`, `${vs.pct != null ? `your best before it: ${Math.round(vs.pct)} %` : "richer than every rock before it"} (Settings → Mining)`,
+               {tag: "prospect", say: () => line("prospect_best", {what: hit.what}, `${hit.what}, the best yet this stint.`)});
+    else
+      alertOut("prospect", `⛏ ${hit.what}`, "a prospected rock over your threshold (Settings → Mining)"
+               + (vs && !vs.beat ? ` · your best this stint: ${Math.round(vs.pct)} %` : ""), {tag: "prospect",
+               say: () => line("prospect_hit", {what: hit.what}, `${hit.what}.`)});
   } else if (cfg.rawHigh && m.content === "High")
     alertOut("prospect", "⛏ High material content", "engineering materials", {tag: "prospect", say: "High material content."});
 }
@@ -12481,7 +12508,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
   hull: "hull, heat, interdiction", suit: "the suit running low", carrier: "your carrier", upkeep: "carrier upkeep", wanted: "a bounty on you", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
-  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", uploads: "uploads", uploadheld: "uploads on hold"};
+  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", prospectbest: "the stint's best rock", uploads: "uploads", uploadheld: "uploads on hold"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
 const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "region", "streak_new", "streak_known"],
   game: ["game_start", "welcome_back", "game_exit", "session_recap"], jump: ["fsd_charge"], brief: ["arrival_brief", "old_data"],
@@ -12493,7 +12520,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], upkeep: ["upkeep_low"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
   curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"],
-  uploadheld: ["upload_held"], wanted: ["wanted"]};
+  prospectbest: ["prospect_best"], uploadheld: ["upload_held"], wanted: ["wanted"]};
 const XO_SPEAKS = "voice answers, the status report, the co-pilot, the hush and speech on";
 const crewOn = () => !!(data && data.crew && data.crew.on);
 const crewDangerOn = () => !!(data && data.crew && data.crew.danger !== false);

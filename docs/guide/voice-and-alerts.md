@@ -97,13 +97,20 @@ the game too, for a few seconds each:
   52 percent: Platinum 31, Gold 21": tick Platinum, Palladium, Gold, Silver and Osmium with 50 for a rock half precious
   metals); a **motherlode** always (its own box). Duds and rocks mined before stay silent, and "Material content:
   High" (engineering materials, not the commodity) only when ticked. None ticked: only motherlodes
+- **the stint's best rock** (its own row, **Best rock this stint**, under the call-out): a rock the call-out says that
+  is richer in its mineral than every untouched rock prospected before it this stint is said as the best yet
+  ("Platinum, 38 percent, the best yet this stint"; combined, when its total beats what any rock before it could have
+  held). A rock below your best keeps its plain line, and its card adds "your best this stint: 42 %" (never spoken).
+  The first rock of a stint says nothing extra, and rocks mined before never count. With the row's voice off, the best
+  rock gets the plain call-out
 - **your record at a hotspot**: dropping out of supercruise at a hotspot you have mined before (a mining ship), the
   Mining Officer says it: "⛏ Alexandrite hotspot · you, 3 stints · 38 t/h · 41 % hits · last here 1 h 20 min ago"
   (your best ship's tons an hour, the hit rate against the call-out's minerals). Nothing at a hotspot new to you. Under
   **Rings to mine** in Settings → Mining
 - **a mining recap**: when you jump away or dock after mining in a system (never at each ring exit, so hopping between
   hotspots says nothing), the ring you mined since arriving, 20 tons at least: "4 B Ring: 86 tons in an hour and ten,
-  74 an hour, 3 motherlodes." Docked in that system, one more line: the best price within 100 ly for what you refined
+  74 an hour, 3 motherlodes." Its card adds the best untouched rock prospected, in the mineral you refined most ("best
+  rock: Platinum 38 %"; never spoken). Docked in that system, one more line: the best price within 100 ly for what you refined
   most, unless **hold full** already named where to sell there (nothing if Spansh is slow or can't be reached). None
   after a death, or in a ship with no mining kit. Under **Rings to mine** in Settings → Mining
 - **while mining in a ring** (a mining ship, in normal space): Now and the overlay's system strip show the mining line
@@ -297,7 +304,7 @@ the sentence ends:
 | Quartermaster | sales, unsold data, your carrier, its upkeep and its trips, losses |
 | Comms Officer | the game's start and exit, someone scanning your firsts, an upload on hold, docking pads and refusals, other players' chat (read aloud, below) |
 | Tactical | every danger line (while Danger lines always in Tactical's voice is on) |
-| Mining Officer | the Rhino's rigs, rings to mine, limpets and the hold (nearly full, full, where to sell), the prospector call-out and motherlodes |
+| Mining Officer | the Rhino's rigs, rings to mine, limpets and the hold (nearly full, full, where to sell), the prospector call-out and motherlodes, the stint's best rock |
 
 - **The table.** A row per crew member: an optional **Name** (shown in Settings and the voice lab, and said when another
   crew member mentions it: see Crew lines below), its

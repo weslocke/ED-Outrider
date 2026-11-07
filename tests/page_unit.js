@@ -74,7 +74,7 @@ t("dual: both forms, the short one titled; one form when they agree", () => {
 });
 t("prospectHit: a mineral's own threshold, combined", () => {
   const cfg = `{minerals: ["Painite", "Platinum"], combined: false, pct: 20, pcts: {Platinum: 30}}`;
-  eq(`prospectHit({Painite: 25.4, Gold: 50}, ${cfg})`, {total: 25.4, what: "Painite, 25 percent"});
+  eq(`prospectHit({Painite: 25.4, Gold: 50}, ${cfg})`, {total: 25.4, mineral: "Painite", what: "Painite, 25 percent"});
   eq(`prospectHit({Platinum: 25}, ${cfg})`, null);   // under its own 30
   eq(`prospectHit({Gold: 50}, ${cfg})`, null);        // not ticked
   eq(`prospectHit({Painite: 20, Platinum: 15}, {minerals: ["Painite", "Platinum"], combined: true, pct: 30, pcts: {}})`,
@@ -283,6 +283,43 @@ t("S21: the recap's words: tons, the time spoken, the rate, motherlodes", () => 
      {title: "⛏ 4 B Ring: 86 t in 1 h 10", body: "74 t/h · 3 motherlodes · 2 stints",
       say: "4 B Ring: 86 tons in an hour and ten, 74 an hour, 3 motherlodes."});
   eq(`miningRecapText({ring: "A Ring", tons: 30, seconds: 1800, motherlodes: 0, stints: 1}).say`, "A Ring: 30 tons in 30 minutes, 60 an hour.");
+});
+t("Plan 2026-11-06 part 3: the recap's card names the best rock, the voice does not", () => {
+  const m = `{ring: "4 B Ring", tons: 86, seconds: 4200, motherlodes: 0, stints: 1, best: ["platinum", "Platinum", 38.4]}`;
+  eq(`[miningRecapText(${m}).body, miningRecapText(${m}).say, miningRecapText({...${m}, best: null}).body]`,
+     ["74 t/h · 1 stint · best rock: Platinum 38 %", "4 B Ring: 86 tons in an hour and ten, 74 an hour.", "74 t/h · 1 stint"]);
+});
+t("Plan 2026-11-06 part 3: a hit against the stint's best rock (prospectVsBest)", () => {
+  const one = `{minerals: ["platinum", "gold"], pct: 30, pcts: {}, combined: false}`, comb = `{minerals: ["platinum", "gold"], pct: 30, pcts: {}, combined: true}`;
+  eq(`[prospectVsBest({total: 38, mineral: "platinum"}, null, ${one}), prospectVsBest({total: 38, mineral: "platinum"}, {gold: 50}, ${one}),
+       prospectVsBest({total: 38, mineral: "platinum"}, {platinum: 31.5}, ${one}), prospectVsBest({total: 31.5, mineral: "platinum"}, {platinum: 31.5}, ${one}),
+       prospectVsBest({total: 30, mineral: "platinum"}, {platinum: 42}, ${one})]`,
+     [null, null, {beat: true, pct: 31.5}, {beat: false, pct: 31.5}, {beat: false, pct: 42}]);
+  // combined: beaten only above the ticked minerals' bests added up; "your best" only when one of them was ever seen
+  eq(`[prospectVsBest({total: 61}, {platinum: 40, gold: 20}, ${comb}), prospectVsBest({total: 55}, {platinum: 40, gold: 20}, ${comb}),
+       prospectVsBest({total: 45}, {platinum: 40, water: 90}, ${comb}), prospectVsBest({total: 35}, {platinum: 40}, ${comb}),
+       prospectVsBest({total: 50}, {water: 90}, ${comb})]`,
+     [{beat: true, pct: null}, null, {beat: true, pct: 40}, {beat: false, pct: 40}, null]);
+  eq(`prospectHit({platinum: 34.2, gold: 3}, ${one}).mineral`, "platinum");
+});
+t("Plan 2026-11-06 part 3: the best yet said under its own row; below it, the card only; the first rock, plain", () => {
+  ev(B7_STUB + `; window.__ms = localStorage.getItem("mining"); window.__pb = alertSpeak.prospectbest;
+    miningSet({minerals: ["platinum"], pct: 30, combined: false}); alertSpeak.prospectbest = true`);
+  const out = (mats, best, extra = {}) => { ev(`__said.length = 0; prospectOut(${JSON.stringify(Object.assign({kind: "prospect", materials: mats,
+    names: {platinum: "Platinum"}, untouched: true, content: "Low", best}, extra))})`); return JSON.parse(ev(`JSON.stringify(__said.map(x => [x[0], x[1], x[2], x[4]]))`)); };
+  const plain = "a prospected rock over your threshold (Settings → Mining)";
+  const got = {first: out({platinum: 34.2}, null), best: out({platinum: 38.4}, {platinum: 31, gold: 50}), below: out({platinum: 34}, {platinum: 41.6}),
+               dud: out({platinum: 10}, {platinum: 5}), mined: out({platinum: 60}, {platinum: 31}, {untouched: false})};
+  ev("alertSpeak.prospectbest = false");
+  got.off = out({platinum: 38.4}, {platinum: 31});
+  ev(`alertSpeak.prospectbest = __pb; if (__ms === null) localStorage.removeItem("mining"); else localStorage.setItem("mining", __ms); ` + B7_UNSTUB);
+  assert.deepStrictEqual(got, {
+    first: [["prospect", "⛏ Platinum, 34 percent", plain, "Platinum, 34 percent."]],
+    best: [["prospectbest", "⛏ Platinum, 38 percent: the best yet this stint", "your best before it: 31 % (Settings → Mining)",
+            "Platinum, 38 percent, the best yet this stint."]],
+    below: [["prospect", "⛏ Platinum, 34 percent", plain + " · your best this stint: 42 %", "Platinum, 34 percent."]],
+    dud: [], mined: [],
+    off: [["prospect", "⛏ Platinum, 38 percent", plain, "Platinum, 38 percent."]]});
 });
 later.push(["S21: the recap's one best-price follow-up: docked, still in the system, not said by Hold full, Spansh in time", async () => {
   ev(B7_STUB);

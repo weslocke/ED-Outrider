@@ -2064,6 +2064,36 @@
     "Keep your damn hands off, everybody. {what}."
    ]
   },
+  "prospect_best": {
+   "scoundrel": [
+    "{what}. Best rock this stint. Lovely money.",
+    "{what}, {name}. Best one yet.",
+    "Ooh. {what}. Richest rock so far.",
+    "{what}. That's the stint's payday.",
+    "Best yet, {name}. {what}. Dig in.",
+    "{what}. Beats every rock before it. Now that's money talking.",
+    "Now that's more like it. {what}. Best this stint.",
+    "{what}. Best of the stint. Nobody touches it but us.",
+    "Biggest payday yet. {what}.",
+    "{what}. Top rock so far. I can smell the credits.",
+    "Hey, {name}. {what}. New best.",
+    "{what}. Best one yet. That's retirement money in stone form."
+   ],
+   "scoundrel_profane": [
+    "{what}. Best damn rock this stint. Ours.",
+    "Hell yes. {what}. Best one this whole damn stint.",
+    "{what}, {name}. Best of the stint. Cut the bastard open.",
+    "Shit, look at that. {what}. Richest one so far.",
+    "{what}. Best yet. Now that's a rock worth a damn.",
+    "Holy crap. {what}. New best.",
+    "{what}. Best bloody payday this stint.",
+    "Damn, {name}. {what}. Tops the lot.",
+    "{what}. Best of the stint. Fucking beautiful.",
+    "That's the best shit all stint. {what}.",
+    "{what}. Best one yet. Hands off, everybody, it's ours.",
+    "Hot damn, {what}. Biggest score this stint."
+   ]
+  },
   "motherlode": {
    "scoundrel": [
     "Motherlode, {name}. {mineral} core. Get the charges out.",

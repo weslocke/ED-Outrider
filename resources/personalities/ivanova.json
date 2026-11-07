@@ -2059,6 +2059,36 @@
     "Get your ass cutting, {name}. {what}."
    ]
   },
+  "prospect_best": {
+   "ivanova": [
+    "{what}. Best yet this stint.",
+    "{what}. Finally, something better than the rest.",
+    "Best rock so far, {name}. {what}.",
+    "{what}. Top of the stint. Do not waste it.",
+    "Hm. {what}. Best one yet.",
+    "{what}. Beats every rock before it.",
+    "New best. {what}. Mine it.",
+    "{what}. Even my grandmother would call this the best so far.",
+    "{what}, {name}. Best of the stint. Enjoy it while it lasts.",
+    "Best reading this stint: {what}.",
+    "{what}. The ring finally shows us something good.",
+    "{what}. Best yet. It will not get better, so mine it."
+   ],
+   "ivanova_profane": [
+    "{what}. Best damn rock of this whole stint.",
+    "Hell. {what}. Best one yet.",
+    "{what}. Finally, the best of this bloody stint.",
+    "Best bastard so far, {name}. {what}.",
+    "{what}. Top of the stint. Don't fuck it up.",
+    "Chyort. {what}. Best yet.",
+    "{what}. Beats every crap rock before it, damn it.",
+    "Damn. {what}. New best. Cut it.",
+    "{what}, {name}. Best of the stint. For fuck's sake, mine it.",
+    "{what}. Best bloody reading yet.",
+    "{what}. Hell, the ring finally coughs up something. Best yet.",
+    "Fuck yes. {what}. Best this stint."
+   ]
+  },
   "motherlode": {
    "ivanova": [
     "Motherlode, {name}. {mineral}. Get the charges.",

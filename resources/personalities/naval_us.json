@@ -2059,6 +2059,36 @@
     "{name}, {what}. Mine the hell out of it."
    ]
   },
+  "prospect_best": {
+   "naval_us": [
+    "{what}. Best of the stint, {name}. Recommend we stay.",
+    "Prospector reports {what}. Highest reading this stint.",
+    "{what}, {name}. Best yet so far.",
+    "New best for the stint: {what}.",
+    "{what}. Tops every rock this stint.",
+    "Contact, {name}. {what}. Best this stint.",
+    "{what}. Best yet. Recommend we work it.",
+    "Limpet reports {what}. Highest so far.",
+    "{what}. Logged as the best of the stint.",
+    "Survey in: {what}. Best of the stint.",
+    "{what}. Best target of the stint, {name}.",
+    "Mining target: {what}. New best."
+   ],
+   "naval_us_profane": [
+    "{what}. Best damn rock on the log this stint.",
+    "Hell yes. {what}. Best yet.",
+    "{what}. Damn, that's the stint's best, {name}.",
+    "Prospector says {what}. Best damn reading so far.",
+    "{what}. Hell of a rock. New best.",
+    "Now we're talking. {what}. Best of the stint.",
+    "{what}. Damn finest target yet.",
+    "Hot damn. {what}. Best this stint.",
+    "{what}. Hell, nothing's topped that, {name}.",
+    "Survey's in, and it's the best damn one: {what}.",
+    "{what}. Best yet. Burn the damn thing.",
+    "Limpet reports {what}. Damn right, best of the stint."
+   ]
+  },
   "motherlode": {
    "naval_us": [
     "Motherlode detected. {mineral} core. Break out the charges.",

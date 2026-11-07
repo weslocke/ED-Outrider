@@ -579,7 +579,7 @@ class CrewLines(unittest.TestCase):
         short = {"mapped_before": 12, "bio_tag_near": 15, "autotarget_nothing": 15, "wrong_target": 15,
                  "docking_granted": 15, "docking_denied": 15, "ring_found_many": 30,   # several ringed bodies at once: rarer
                  # mining's short warnings and call-outs (2026-10-18): 15 a list
-                 "limpets_none": 15, "prospect_hit": 15, "motherlode": 15, "limpets_low": 15, "hold_nearly_full": 15,
+                 "limpets_none": 15, "prospect_hit": 15, "prospect_best": 15, "motherlode": 15, "limpets_low": 15, "hold_nearly_full": 15,
                  "hold_full": 15, "old_data": 15,   # old_data (#11): a clause after the briefing
                  # the review's suggestions (2026-10-24): rare lines, about 15 a list
                  "upload_held": 12, "suit_low": 12, "upkeep_low": 12, "bookmarked": 12}

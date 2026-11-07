@@ -2077,6 +2077,36 @@
     "Here's a good one, damn it. {what}."
    ]
   },
+  "prospect_best": {
+   "naval_rn": [
+    "{what}. Best of the stint, {name}.",
+    "Prospector reports {what}. Highest this stint.",
+    "{what}, {name}. Best yet.",
+    "New stint best: {what}. Recommend we work it.",
+    "{what}. Tops every asteroid so far.",
+    "Best reading this stint: {what}. Recommend we work it.",
+    "{what}. Best of the watch so far.",
+    "Bravo Zulu. {what}. Best yet this stint.",
+    "{what}. Richest asteroid this stint, {name}.",
+    "Survey in. {what}. Best so far.",
+    "{what}. Logged as the stint's best.",
+    "Target asteroid: {what}. Best yet. Lasers on it."
+   ],
+   "naval_rn_profane": [
+    "{what}. Best bloody rock this stint.",
+    "{what}. Damn fine, {name}. Best yet.",
+    "Bloody marvellous. {what}. Best of the stint.",
+    "{what}. Damn best reading so far.",
+    "Well, damn. {what}. New stint best.",
+    "{what}. Best bloody one yet. Get the laser on it.",
+    "Damn good, {name}. {what}. Tops the lot.",
+    "{what}. Bloody best of the watch.",
+    "Prospector's outdone itself, damn it. {what}. Best yet.",
+    "{what}. Hell of a rock. Best this stint.",
+    "Bloody lovely. {what}. Nothing better so far.",
+    "{what}. Damn, that's the one. Best yet."
+   ]
+  },
   "motherlode": {
    "naval_rn": [
     "Motherlode, {name}. {mineral} core.",

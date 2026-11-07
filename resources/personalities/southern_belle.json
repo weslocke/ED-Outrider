@@ -2078,6 +2078,36 @@
     "Goddamn, honey. {what}. Somebody send out a collector."
    ]
   },
+  "prospect_best": {
+   "southern_belle": [
+    "{what}, sugar. Best one yet this stint.",
+    "Ooh, {what}. Our best rock so far, darlin'.",
+    "{what}. Nothing's topped it this stint, honey.",
+    "Lord have mercy, {what}. The best yet.",
+    "{what}, {name}. Prettiest rock all stint.",
+    "Well, look here. {what}. Best of the stint.",
+    "{what}. Sweeter than all the others, sugar.",
+    "Mm hm. {what}. Best yet, honey.",
+    "{what}. Grandmama'd call that the belle of the ball.",
+    "Darlin', {what}. Our best so far.",
+    "{what}. Best rock this stint, sweetie. Fire away.",
+    "Heavens, {what}. That beats every one before it."
+   ],
+   "southern_belle_profane": [
+    "Hot damn. {what}. Best one yet, sugar.",
+    "{what}. Hell, that's our best this stint, darlin'.",
+    "Damn fine, honey. {what}. Best so far.",
+    "Well, shit. {what}. Best of the stint.",
+    "{what}, {name}. Best damn rock all stint.",
+    "Holy shit, sugar. {what}. Our best yet.",
+    "{what}. Damn, that beats every one before it, sweetie.",
+    "Hell yes, darlin'. {what}. New best.",
+    "{what}. Prettiest damn rock this stint, honey.",
+    "Lord have mercy, damn. {what}. Best yet.",
+    "{what}. Don't you let our best damn rock get away, sugar.",
+    "{what}. Fuck yes, darlin'. Best so far."
+   ]
+  },
   "motherlode": {
    "southern_belle": [
     "{mineral} motherlode, sugar. Time for the charges.",

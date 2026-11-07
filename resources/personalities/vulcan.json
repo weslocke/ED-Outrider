@@ -1078,6 +1078,22 @@
     "{what}. Satisfactory."
    ]
   },
+  "prospect_best": {
+   "vulcan": [
+    "{what}. The highest yield this stint.",
+    "{what}. This exceeds every prior asteroid this stint.",
+    "Prospector reports {what}. A new maximum for this stint.",
+    "{name}, {what}. The best result so far.",
+    "{what}. Superior to all previous readings this stint.",
+    "Analysis complete. {what}. The optimal asteroid to date.",
+    "{what}. Statistically, the best rock of this stint.",
+    "Fascinating. {what}. The best yet.",
+    "{what}, {name}. It is logical to mine the best asteroid found.",
+    "New maximum: {what}.",
+    "{what}. No earlier asteroid this stint compares.",
+    "{what}. The finest composition recorded this stint. Proceed."
+   ]
+  },
   "motherlode": {
    "vulcan": [
     "Motherlode detected. {mineral}.",

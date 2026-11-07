@@ -316,6 +316,54 @@ class Stints(unittest.TestCase):
         self.jump(0, ts="2020-01-01T00:00:00Z")
         self.assertEqual(len(self.recaps()), 2)
 
+    def test_the_stints_best_rock(self):
+        """Plan 2026-11-06, part 3: each prospect moment carries `best`, the highest share of each mineral among the
+        untouched rocks before it in this stint (a rock already mined never counts, nor the rock itself, nor another
+        stint's); None for the first."""
+        self.drop(0)
+        self.prospect(10, platinum=20.0, gold=5.0)
+        self.prospect(20, remaining=60.0, platinum=50.0)   # mined before: not a best
+        self.prospect(30, platinum=31.5)
+        self.prospect(40, platinum=25.0, painite=8.0)
+        self.leave(50)
+        self.drop(100)                                     # a new stint starts afresh
+        self.prospect(110, gold=12.0)
+        self.assertEqual([m["best"] for m in self.j.moments if m["kind"] == "prospect"],
+                         [None, {"platinum": 20.0, "gold": 5.0}, {"platinum": 20.0, "gold": 5.0},
+                          {"platinum": 31.5, "gold": 5.0}, None])
+        self.assertEqual(ed_outrider.prospect_best([[{"water": 3}, 0], "junk", [{"water": 9.5}, 1]]), {"water": 9.5})
+        self.assertIsNone(ed_outrider.prospect_best([[{"water": 3}, 0]]))
+
+    def test_the_recap_names_the_best_rock(self):
+        """Plan 2026-11-06, part 3 (Q7): the recap's `best` is the best untouched rock in the mineral refined most,
+        else the richest share of any; None when no rock prospected was untouched."""
+        self.jump(-50)
+        self.j.handle({"event": "Loadout", "timestamp": self.at(1), "Ship": "python", "ShipID": 7, "ShipName": "Digger",
+                       "ShipIdent": "DG", "CargoCapacity": 128, "MaxJumpRange": 20.0, "Modules": [{"Slot": "Slot01", "Item": "int_refinery_size4_class5"}]})
+        best = lambda: [m["best"] for m in self.j.moments if m["kind"] == "mining_recap"]   # noqa: E731
+        self.drop(2)
+        self.prospect(10, platinum=31.5, gold=40.0)
+        self.prospect(20, remaining=50.0, platinum=60.0)
+        for i in range(20):
+            self.refine(100 + i, "platinum")
+        self.leave(200)
+        self.dock(300)
+        self.assertEqual(best(), [["platinum", "Platinum", 31.5]])
+        self.jump(400, system=10, name="Next")
+        self.jump(450)                                     # back (the ring is in system 9)
+        self.drop(500)
+        self.prospect(510, gold=22.0)                      # no untouched platinum: the richest of any
+        for i in range(20):
+            self.refine(600 + i, "platinum")
+        self.jump(700, system=10, name="Next")
+        self.jump(750)
+        self.drop(800)
+        self.prospect(810, remaining=40.0, platinum=60.0)  # only rocks mined before: none
+        for i in range(20):
+            self.refine(900 + i, "platinum")
+        self.jump(1000, system=10, name="Next")
+        self.assertEqual(best()[1:], [["gold", "Gold", 22.0], None])
+
     def test_no_recap_in_a_ship_without_mining_kit(self):
         self.jump(-50)   # the Loadout of setUp has no mining kit
         self.drop(0)

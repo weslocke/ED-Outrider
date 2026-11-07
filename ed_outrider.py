@@ -2789,6 +2789,20 @@ def prospect_content(v):
     return m.group(1) if m else None
 
 
+def prospect_best(prospects):
+    """The stint's best rock (plan 2026-11-06, part 3): the highest share of each mineral among the untouched rocks
+    (Remaining 100) of `prospects` ([[{mineral: %}, untouched]], as mining_stints keeps them), {mineral: %}; None when
+    no rock is untouched. Every mineral, not only the newest rock's: the page's combined call-out adds them up."""
+    best = {}
+    for p in prospects or []:
+        if not (isinstance(p, list) and len(p) == 2 and p[1] and isinstance(p[0], dict)):
+            continue
+        for k, v in p[0].items():
+            if isinstance(v, (int, float)) and v > best.get(k, 0):
+                best[k] = v
+    return best or None
+
+
 def spansh_reserve(v):
     """Spansh's reserveLevel ("Pristine", or the journal's "PristineResources") as RESERVE_LEVELS words; None when
     it is missing or unknown."""
@@ -5772,7 +5786,8 @@ class Journals:
         closing the one before; prospects, refined tons, cracked cores and launched limpets fill the open one; leaving
         (MINING_CLOSE, or a Location elsewhere) ends it, and one with no mining in it is dropped. A live drop also keeps
         the hotspot it was aimed at (mining_hotspot_drops, from Status.json's Destination). Live prospects are moments
-        too (kind "prospect": the page's call-out, mining C)."""
+        too (kind "prospect": the page's call-out, mining C), with `best`: the stint's best untouched rock before this
+        one, per mineral (prospect_best; None for the first), for the page's "the best yet this stint"."""
         db = self.db
         row = db.execute("SELECT * FROM mining_stints WHERE open = 1 ORDER BY start_ts DESC LIMIT 1").fetchone()
         if row and ts < row["start_ts"]:
@@ -5821,13 +5836,14 @@ class Journals:
             mats = {outrider.cargo.cid(m.get("Name")): round(float(m.get("Proportion") or 0), 1)
                     for m in ev.get("Materials") or [] if isinstance(m, dict) and m.get("Name")}
             untouched = (ev.get("Remaining") or 0) >= 100
-            fields["prospects"] = json.dumps(json.loads(row["prospects"] or "[]") + [[mats, int(untouched)]])
+            earlier = json.loads(row["prospects"] or "[]")
+            fields["prospects"] = json.dumps(earlier + [[mats, int(untouched)]])
             if ev.get("MotherlodeMaterial"):
                 fields["motherlodes"] = (row["motherlodes"] or 0) + 1
             if live_event(ts):
                 lode = ev.get("MotherlodeMaterial")
                 self.moment("prospect", ts, materials=mats, names={k: self.mineral_name(k) for k in mats}, untouched=untouched,
-                            content=prospect_content(ev.get("Content")),
+                            content=prospect_content(ev.get("Content")), best=prospect_best(earlier),
                             motherlode=outrider.cargo.cid(lode) if lode else None,
                             motherlode_name=MINERAL_NAMES.get(lode, ev.get("MotherlodeMaterial_Localised") or lode) if lode else None)
         elif name == "MiningRefined":
@@ -5864,7 +5880,9 @@ class Journals:
     def mining_recap(self, name, ts):
         """Round 10's S21: leaving the system (a jump) or docking after mining in it, a live `mining_recap` moment: the
         ring of your latest stint here, its stints since you arrived in the system (or since the last recap or death),
-        their tons, time and motherlodes, and the mineral you refined most (the page's "best price" follow-up). Nothing
+        their tons, time and motherlodes, the mineral you refined most (the page's "best price" follow-up) and `best`, the
+        best untouched rock among them [id, name, %] (in that mineral, else the richest share of any; None when no rock
+        prospected was untouched: the card's "best rock: Platinum 38 %", never spoken). Nothing
         below MINING_RECAP_MIN_T tons, in a ship with no mining kit, or for a line read late (a re-read, a catch-up). Read
         before the jump moves you: `pos` is still the system you mined in."""
         pos = self.pos
@@ -5886,10 +5904,13 @@ class Journals:
         self.recap_mark = ts
         cid, top = refined.most_common(1)[0]
         seconds = sum(max(0, ts_seconds(r["end_ts"] or r["last_ts"] or r["start_ts"]) - ts_seconds(r["start_ts"])) for r in rows)
+        rocks = prospect_best([p for r in rows for p in json.loads(r["prospects"] or "[]")])
+        bk = (cid if cid in rocks else max(rocks, key=rocks.get)) if rocks else None
         self.moment("mining_recap", ts, system=str(pos["id64"]), system_name=pos.get("name") or "",
                     ring=short_name(pos.get("name") or "", ring or ""), tons=tons, seconds=round(seconds),
                     motherlodes=sum(r["motherlodes"] or 0 for r in rows), stints=len(rows),
-                    top=[cid, self.mineral_name(cid), refined[cid]], how="dock" if name == "Docked" else "jump")
+                    top=[cid, self.mineral_name(cid), refined[cid]], how="dock" if name == "Docked" else "jump",
+                    best=[bk, self.mineral_name(bk), rocks[bk]] if bk else None)
 
     def note_station(self, name, ev, ts):
         """A station's name by its market (the stations table): where you docked, and the station a shipyard or outfitting
