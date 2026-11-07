@@ -580,12 +580,51 @@ upstream project's choices, not rules of the game.
   at most once in 30 minutes (`FIRSTS_SEEN_SAY_S`, decided on the server so every window and a reload agree): a first
   run through hundreds of never-checked systems can find several in a row. The words say their scans reached Spansh,
   never "stolen": someone else's scans do not take a first discovery until they sell before you.
-- **The suggested order is not a route planner:** a fixed supercruise time curve; its first stop is said ("Next: …") only
-  in the mapped call-out and the status report. Here's schematic numbers its stops and draws a path between them (S30):
-  each leg's time is the curve over the difference of the two bodies' distances to the arrival star, which is what the
-  journal gives, not the distance between them. The first stop you pick there (one body, meta `plan_first`, live-only)
-  applies only in the system you are in and is forgotten after a jump (the arrival elsewhere drops it, so a return to
-  that system later does not bring it back; a re-read's older arrivals do not drop it).
+- **The suggested order by where the bodies are (2026-11-07):** the stops (a body; its map before its bio, together)
+  are ordered by nearest neighbour on supercruise time, then 2-opt on the total, from where you are: the first stop you
+  picked, else the body you are at or were last at in the system this visit (`at_body`, from `Journals.body_last`:
+  ApproachBody, Touchdown, a SupercruiseExit or a login at a planet or star, kept after you leave it), else the arrival
+  star. Each leg is the supercruise curve (`scSeconds`) over the distance between the two bodies where they are now
+  (`outrider/orbits.py`, the positions sent as each item's `pos`); a leg with an end that has no position (a scan with
+  no MeanAnomaly) falls back to the difference of their distances to the arrival star, a lower bound, and is "≈" like an
+  approximate one. "skip?" and the per-minute figure come from each stop's detour: the order's time with it less its
+  time without it (one figure for a body's map and bio together; started samples and specials are never "skip?").
+  **Always from where you are** (the author: "here's what to do next, and what to do after that", not a path fixed from
+  the start): the order is worked out again whenever your body or the work changes, but the order shown (the stops
+  still to do in their old order, a new stop at its cheapest place, timed from where you are now) is replaced only when
+  the new one saves at least 10% of that time or 30 s (either; `PLAN_KEEP_SHARE`, `PLAN_KEEP_S`), so the numbers do not
+  shuffle for nothing. The memory is per window (`planMemo`, the overlay's `PLAN_MEMO`), per system, and forgotten when
+  another first stop is picked or ↺ order is pressed. The time spent mapping or on foot is not counted. Its first stop
+  is said ("Next: …") only in the mapped call-out and the status report. Here's schematic numbers its stops and draws
+  the path from where you are with each leg's time (S30). The first stop you pick there (one body, meta `plan_first`,
+  live-only) applies only in the system you are in and is forgotten after a jump (the arrival elsewhere drops it, so a
+  return to that system later does not bring it back; a re-read's older arrivals do not drop it).
+- **Where the bodies are: the convention found by reading the game's navigation panel** (2026-11-07, 199 readings in
+  nine systems; the research is in project/done/research/). The journal gives every body's orbit (Scan:
+  SemiMajorAxis, Eccentricity, OrbitalInclination, Periapsis, AscendingNode, MeanAnomaly, OrbitalPeriod and the
+  Parents chain; ScanBaryCentre: a barycentre's). What no document says, and what the readings settled:
+  - the MeanAnomaly is the scan's moment: advance it by 2π · elapsed / OrbitalPeriod, then **negate it** (the game's
+    orbits run the other way from the textbook), solve Kepler, and turn the point in the orbit's plane into space by
+    the textbook rotation of Ω, i and ω (a single star's planets to the last digit the panel shows; moons to 0.01 ls);
+  - **the frame rule:** a child's offset is turned by its parent's Rz(Ω)·Rx(i)·Rz(ω), one level only, when the parent
+    is a star with an orbit or a barycentre whose members are all planets; a barycentre of stars turns nothing, nor
+    does a planet. Distances within one family never depend on it, which is why every reading within a star's family
+    matched from the start;
+  - a barycentre's parent is the next entry of a child's Parents chain; the root (barycentre 0, or a star with no
+    orbit) is the origin.
+  Accuracy: within a family (a star's or a planet pair's planets and moons) exact (median 0.1%); across families where
+  every pair's barycentre orbits the root about 2%; where a pair of stars orbits another barycentre (four stars or more)
+  up to about 14% (the frame of planets orbiting a pair of stars was not solved).
+- **Approximate places:** a body whose chain crosses a barycentre of stars that is not the root (the nested multi-star
+  case above), or a node with no orbit known (a barycentre with no ScanBaryCentre, a parent never scanned: its children
+  are placed at its own parent, never at the origin), is `approx`, and any leg to or from it shows "≈". A leg within one
+  family of such a system is shown "≈" too, though it is exact: one flag per body keeps it simple, and a route only
+  needs the long legs right. 14% of a 30,000 ls leg does not change an order.
+- **DistanceFromArrivalLS is no check of positions:** once an angle is involved it is not the true distance (in WK-G
+  b24-4 it is up to 6 ls off for the moons the panel matches exactly), and for planets of the root it is just the orbit's
+  radius, which any angle reproduces. A random-angle control scored the same against it, which is why the research of
+  2026-10-25 first concluded that positions could not be worked out. Positions are checked against panel readings only
+  (`tests/test_orbits.py`).
 - **Discovery streak lines are limited to two kinds,** no records or milestones.
 - **The approach warning fires on ApproachBody only** and reuses the unsold amber level rather than a new setting.
 - **"Leaving a body unfinished" only nags** if you landed or sampled there this visit.
@@ -845,7 +884,8 @@ upstream project's choices, not rules of the game.
   `high_gravity` and `codex_interesting`. Now leaves out what only the page knows (the skip floor, the high-g approach
   stakes, captions).
 - **The overlay copies some of the page's rules in Python:** Now's suggested order (`overlay.plan_items`; the page's
-  `worthLeavingFor` + `planItems`, with the first stop you picked: `first` / `planFirstFor`; the stop numbers
+  `worthLeavingFor` + `planItems`, with the first stop you picked: `first` / `planFirstFor`; the order itself
+  `order_plan` ... `plan_keep` / `orderPlan` ... `planKeep`, one shared case in `tests/fixtures/plan_order_cases.json`; the stop numbers
   `stop_glyph` / `stopGlyph`), the supercruise time (`overlay.sc_seconds`, `SC_KNEE`; the page's `scSeconds`),
   the session figures (`overlay.session_bits`; the page's `sessionLine`), and the rebuy the risk figures use
   (`risk_rebuy` in ed_outrider.py; the page's `riskRebuy`). Two copies of one rule: a change to either is made to both.
@@ -1979,6 +2019,9 @@ upstream project's choices, not rules of the game.
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
 confirmed while playing. Treat reports about them as likely real.
 
+- The suggested order by where the bodies are (2026-11-07): the positions match the navigation panel's readings,
+  but the order itself, its re-planning from the body you are at (`at_body`), the keep rule and the "≈" legs on Here,
+  Now, the schematic and the overlay were tested on fixtures only.
 - Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the
   prospector call-out, the ⛏ line and its warnings' timing (limpets low, hold nearly full, hold full with where to
   sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone); each

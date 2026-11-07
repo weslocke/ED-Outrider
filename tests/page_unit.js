@@ -85,6 +85,56 @@ t("scSeconds: the supercruise estimate's ends", () => {
   eq(`[scSeconds(null), scSeconds(-1), scSeconds(1), Math.round(scSeconds(2000)), Math.round(scSeconds(100000))]`, [null, null, 15, 37, 360]);
   assert.ok(ev(`scSeconds(500) < scSeconds(5000) && scSeconds(5000) < scSeconds(50000)`));
 });
+// The suggested order by where the bodies are (2026-11-07): the shared case runs here and in tests/test_plan_order.py
+// against outrider/overlay.py's twin, so the page and the overlay cannot give two orders.
+t("orderPlan: the shared cases, as the overlay's order_plan", () => {
+  const cases = JSON.parse(fs.readFileSync(path.join(repo, "tests", "fixtures", "plan_order_cases.json"), "utf8"));
+  assert.ok(cases.length >= 8);
+  for (const c of cases) {
+    const got = ev(`(() => { const r = orderPlan(${JSON.stringify(c.items)}, ${JSON.stringify(c.start)}, ${JSON.stringify(c.first)}, ${JSON.stringify(c.prev)});
+      return JSON.stringify([r.items.map(it => [it.kind, it.body]), r.items.map(it => it.sec == null ? null : Math.round(it.sec * 1000) / 1000), r.items.map(it => it.legApprox)]); })()`);
+    assert.deepStrictEqual(JSON.parse(got), [c.want, c.want_sec, c.want_approx], c.name);
+  }
+});
+t("planItems: from the body you are at, skip? from the detour, ≈ legs, the order kept unless 10% or 30 s better", () => {
+  const out = JSON.parse(ev(`(() => {
+    planMemo.clear();
+    const L = (extra = {}) => Object.assign({id64: "4242", honked: true, unscanned: 0, rescan: null, unmapped_valuable: [], bio_pending: [],
+      arrival: {body: "A", pos: [0, 0, 0], approx: false, dist_ls: 0}, at_body: null,
+      unmapped: [{body: "A 1", subtype: "Water world", increment: 900000, special: true, dist_ls: 1000, pos: [1000, 0, 0], approx: false},
+                 {body: "A 2", subtype: "Rocky body", increment: 600000, dist_ls: 1010, pos: [-1010, 0, 0], approx: true},
+                 {body: "A 3", subtype: "Rocky body", increment: 600000, dist_ls: 1050, pos: [1050, 30, 0], approx: false}]}, extra);
+    const o = {};
+    localStorage.setItem("skipFloor", "1500000");
+    let p = planItems(L());
+    o.order = p.map(it => it.body + (it.skip ? "?" : ""));            // A 2 across the star: last, the only skip (its detour)
+    o.legs = p.map(legTime);
+    o.cost = planCost(p[2]).replace(/<[^>]+>/g, "");
+    p = planItems(L({at_body: {body: "A 2", pos: [-1010, 0, 0], approx: true, dist_ls: 1010}}));   // you went to A 2 first
+    o.fromA2 = p.map(it => it.body);                                     // the old order from there is far worse: replaced
+    o.firstLeg = [p[0].sec, legTime(p[0])];                              // at the body: no leg, no time shown
+    planMemo.clear();
+    const at3 = L({at_body: {body: "A 3", pos: [1050, 30, 0], approx: false, dist_ls: 1050}});
+    o.from3 = planItems(at3).map(it => it.body);
+    // A 4 beside A 2: the last two either way round cost about the same, so the order shown stays as it was
+    const with4 = l => Object.assign(l, {unmapped: [...l.unmapped, {body: "A 4", subtype: "Rocky body", increment: 600000, dist_ls: 1001, pos: [-1000, 40, 0]}]});
+    planMemo.clear();
+    const fresh = planItems(with4(L({at_body: at3.at_body}))).map(it => it.body), swapped = [...fresh.slice(0, 2), fresh[3], fresh[2]];
+    planMemo.set("4242", {first: null, bodies: swapped});
+    o.kept = [planItems(with4(L({at_body: at3.at_body}))).map(it => it.body), swapped];
+    planMemo.set("4242", {first: "A 2", bodies: swapped});              // another first stop picked: no memory of it
+    o.notKept = planItems(with4(L({at_body: at3.at_body}))).map(it => it.body).join() === fresh.join();
+    localStorage.removeItem("skipFloor"); planMemo.clear();
+    return JSON.stringify(o); })()`));
+  assert.deepStrictEqual(out.order, ["A 1", "A 3", "A 2?"]);
+  assert.deepStrictEqual(out.legs, ["~30 s", "~15 s", "≈35 s"]);
+  assert.match(out.cost, /≈35 s · 968k\/min skip\?/);   // 600k over its 37 s detour, under the 1.5M floor
+  assert.deepStrictEqual(out.fromA2, ["A 2", "A 1", "A 3"]);
+  assert.deepStrictEqual(out.firstLeg, [0, ""]);
+  assert.deepStrictEqual(out.from3, ["A 3", "A 1", "A 2"]);
+  assert.deepStrictEqual(out.kept[0], out.kept[1]);
+  assert.ok(out.notKept);
+});
 t("hotspotAgo: whole minutes, then hours, never 60 min (review 8)", () => {
   const ago = sec => ev(`hotspotAgo(new Date(Date.now() - ${sec} * 1000).toISOString())`);
   eq(`[${[30, 3590, 3600, 7150, 7190, 10795].map(x => `hotspotAgo(new Date(Date.now() - ${x * 1000}).toISOString())`).join(", ")}]`,

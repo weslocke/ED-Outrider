@@ -47,8 +47,11 @@ details (here or in Search) add **Best nearby**: each hotspot mineral's best sel
 highest first, so you know which hotspot to drop into; asked once in half an hour (and again after a jump: the
 distances are from where you are), then shown in the Rings hover too
 ("from you" for a system you are not in). When the lookup fails it says so, and asks again a few minutes later.
-The to-do line ticks itself off as you honk, map and sample, in a suggested order with supercruise time and
-credits per minute ("~2 min · 450k/min"; "skip?" when not worth the trip). Bio nobody has set foot on is
+The to-do line ticks itself off as you honk, map and sample, in a suggested order: the shortest supercruise from
+where you are, body to body by where each body is on its orbit now, worked out again as you go (a new order only
+when it saves at least a tenth of the time left or 30 s, so the numbers do not shuffle for nothing). Each stop has its
+supercruise time from the one before and what it pays per minute of the time it adds ("~2 min · 450k/min"; "≈" when
+the distance is about; "skip?" when not worth the trip). Bio nobody has set foot on is
 valued with the ×5 first-footfall bonus, except in a populated system: Vista Genomics never pays it there. A bio line's
 ✪ (✦: this region only) says a species that could be there is new to your codex; hover it for which. Before the DSS
 the table and the body's hover mark each possible genus the same way. 🔭 beside a body is a curiosity (hover it for
@@ -154,9 +157,10 @@ with their planets left to right, moons underneath, barycentres boxed, each scan
 in the body panel: class colours, bands, oceans, clouds, atmosphere, rings). <i>Split</i> (on the Here tab, on by
 default) keeps the schematic under the list or tree. In the system you are in, the suggested order's stops are
 numbered on the bodies (①②③, two on a body with both mapping and bio; a stop not worth the trip greyed), with a faint
-path between them and rough supercruise times (from each body's distance to the arrival star, not a route). Tap a
-number to go there first: Now, the voice, the to-do line and the overlay follow; <i>↺ order</i> puts the suggested
-order back.
+path between them from where you are (the body you are at or were last at, else the arrival star) and the supercruise
+time of each leg, from body to body where the bodies are now ("≈" when about: from one star's family to another's in
+a multi-star system, or an orbit your scans do not give). Tap a number to go there first: Now, the voice, the to-do
+line and the overlay follow; <i>↺ order</i> puts the suggested order back.
 <br><br><img src="../images/schematic.png" alt="The system schematic">
 </td>
 </tr>

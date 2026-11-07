@@ -285,6 +285,9 @@ DETAIL_PLAN = {"name": "Test Sector AB-C d1-2", "leaving": LEAVING_PLAN, "bodies
 
 
 class NumberedStops(unittest.TestCase):
+    def setUp(self):
+        O.PLAN_MEMO.clear()   # the order last shown per system: each test from a clean slate
+
     """S30 (overlay): the system panel numbers the suggested order's stops as Here's schematic does."""
 
     def test_glyphs(self):
@@ -294,14 +297,14 @@ class NumberedStops(unittest.TestCase):
         rows, left, under = O.system_rows(DETAIL_PLAN, 500_000, 10_000_000)
         got = [(r["name"], r["stops"], r["status"], r["value"]) for r in rows]
         self.assertEqual(got, [("B 2", [1], "TO LAND", 2_000_000),                  # nearest, new to your codex
-                               ("A 3", [2, 3], "MAP + LAND", 21_400_000),           # two stops: bio, then the map
+                               ("A 3", [2, 3], "MAP + LAND", 21_400_000),           # two stops: the map, then the bio
                                ("B 1", [4], "Bacterium 1/3", 19_000_000),
                                ("D 1", [], "TO MAP", 2_000_000),                    # not yours: by its value, unnumbered
                                ("C 1", [], "MAPPED", None)])                         # done: unnumbered, below
         self.assertEqual(under, 1)                                                  # A 2's 1.7k of mapping
         # golden parity with plan_items (the page's planItems): the numbers run 1..n in its order
         plan = O.plan_items(LEAVING_PLAN, 500_000, 10_000_000)
-        self.assertEqual([(it["kind"], it["body"]) for it in plan], [("bio", "B 2"), ("bio", "A 3"), ("map", "A 3"), ("bio", "B 1")])
+        self.assertEqual([(it["kind"], it["body"]) for it in plan], [("bio", "B 2"), ("map", "A 3"), ("bio", "A 3"), ("bio", "B 1")])
         self.assertEqual([n for r in rows for n in r["stops"]], list(range(1, len(plan) + 1)))
         rows, _, under = O.system_rows(DETAIL_PLAN, 500_000, 10_000_000, codex=False)   # codex finds not counted
         self.assertEqual([(r["name"], r["stops"]) for r in rows if r["stops"]], [("A 3", [1, 2]), ("B 1", [3])])
@@ -323,14 +326,15 @@ class NumberedStops(unittest.TestCase):
 
     def test_first_stop(self):
         plan = O.plan_items(LEAVING_PLAN, 500_000, 10_000_000, first="A 3")
-        self.assertEqual([(it["body"], it["first"]) for it in plan], [("A 3", True), ("A 3", True), ("B 2", False), ("B 1", False)])
+        # the rest from the first stop: B 1 (300 ls on from A 3) before B 2 (560 ls back)
+        self.assertEqual([(it["body"], it["first"]) for it in plan], [("A 3", True), ("A 3", True), ("B 1", False), ("B 2", False)])
         self.assertEqual([it["body"] for it in O.plan_items(LEAVING_PLAN, 500_000, 10_000_000, first="A 2")],   # not in the list
                          ["B 2", "A 3", "A 3", "B 1"])
         rows, _, _ = O.system_rows(DETAIL_PLAN, 500_000, 10_000_000, first="B 1")
-        self.assertEqual([(r["name"], r["stops"]) for r in rows if r["stops"]], [("B 1", [1]), ("B 2", [2]), ("A 3", [3, 4])])
+        self.assertEqual([(r["name"], r["stops"]) for r in rows if r["stops"]], [("B 1", [1]), ("A 3", [2, 3]), ("B 2", [4])])
         p = O.system_panel(DETAIL_PLAN, O.palette(), first="B 1")
         lines = texts(p)
-        self.assertEqual(lines[1:5], ["Bacterium 1/3 19.0M", "① B 1 Icy", "TO LAND 2.0M", "② B 2 Rocky"])   # (the right column first)
+        self.assertEqual(lines[1:5], ["Bacterium 1/3 19.0M", "① B 1 Icy", "MAP + LAND 21.4M", "②③ A 3 WW T"])   # (the right column first)
         self.assertEqual(colour_of(p, "①"), O.palette()["accent"])
         info = dict(NowPanel.INFO, leaving=LEAVING_PLAN, plan_first="B 1")
         self.assertIn("Next: bio on B 1: Bacterium 1/3, Stratum", texts(O.now_panel(info, O.palette())))
@@ -714,6 +718,9 @@ LEAVING = {"honked": True, "unscanned": 0, "body_count": 6, "scanned": 6, "bio_p
 
 
 class NowPanel(unittest.TestCase):
+    def setUp(self):
+        O.PLAN_MEMO.clear()   # the order last shown per system: each test from a clean slate
+
     def test_supercruise_times_as_the_page(self):
         self.assertEqual([O.sc_seconds(x) for x in (None, -1, "far")], [None, None, None])
         self.assertEqual(O.sc_seconds(50), 15)                                   # never under 15 s
@@ -729,7 +736,9 @@ class NowPanel(unittest.TestCase):
         self.assertEqual([it["body"] for it in O.plan_items(LEAVING, 500_000, 10_000_000, codex=False)], ["A 3", "B 1", "B 4"])
         self.assertEqual(O.plan_items(None, 500_000, 10_000_000), [])
         b1 = plan[2]
-        self.assertAlmostEqual(b1["per_min"], 19_000_000 / (O.sc_seconds(900) / 60))
+        # per minute of its detour: B 1 is the last stop with a distance (B 4 has none), so 300 ls on from A 3
+        self.assertAlmostEqual(b1["per_min"], 19_000_000 / (O.sc_seconds(300) / 60))
+        self.assertEqual((b1["sec"], b1["leg_approx"], plan[3]["sec"], plan[3]["detour"]), (O.sc_seconds(300), True, None, None))
         head, detail = O.plan_parts(b1, high_gravity=2.0)
         self.assertEqual("".join(t for t, _ in head), "bio on B 1: Bacterium 1/3, Stratum")
         self.assertIn(("2.4 g", "warn"), detail)                                # at your high-gravity level
@@ -761,7 +770,8 @@ class NowPanel(unittest.TestCase):
         self.assertTrue(risk(16).endswith("· 12.0× rebuy · 2wk2d since sold"))                 # would wrap: short
         self.assertTrue(risk(0.9).endswith("12.0× rebuy"))                                     # under a day: nothing
         self.assertEqual(lines[4:6], ["4.5M here", "Next: bio on B 2: Fonticulua"])
-        self.assertTrue(lines[6].strip().startswith("up to 2.0M ✦ · ~15 s · 8.0M/min · 3 more"))
+        # ≈: no positions here, the distances to the arrival star stand in; per minute of B 2's detour (15 + 27.4 - 28.0 s)
+        self.assertTrue(lines[6].strip().startswith("up to 2.0M ✦ · ≈15 s · 8.3M/min · 3 more"))
         self.assertEqual(lines[-2:], ["This session 1 h 46 · 28 jumps · 6,541 ly · 12 new systems", "1 sample"])   # wrapped, not cut
         quiet = O.now_panel(dict(self.INFO, unsold={"total": 1_000_000}, fuel={"live": True, "pct": 80}, target=None,
                                  this_session=None, last_session={"jumps": 3}), pal)
@@ -850,7 +860,7 @@ class NowPanel(unittest.TestCase):
                                                             "value": 4.1e6}}
         self.assertEqual(line(leaving=lost), "Next: rescan 2 lost scans in the FSS (4.1M)")
         heading = texts(O.now_panel(dict(self.INFO, destination="A 3", destination_ls=600), pal))
-        self.assertIn("➜ A 3 · ~30 s · worth it · 1.9M/min", heading)
+        self.assertIn("➜ A 3 · ~30 s · worth it · 2.8M/min", heading)   # the time from the arrival star; per minute of its detour
         self.assertIn("➜ A 2 · nothing to do here", texts(O.now_panel(dict(self.INFO, destination="A 2"), pal)))
         self.assertIn("Next: ➜ bio on B 2: Fonticulua", texts(O.now_panel(dict(self.INFO, destination="B 2"), pal)))   # it is Next
         # complete review 2026-10-30: under a rescan the Next row is the rescan, so the target keeps its own line
@@ -1089,6 +1099,7 @@ class AlertsPanel(unittest.TestCase):
 
 class Server(unittest.TestCase):
     def setUp(self):
+        O.PLAN_MEMO.clear()
         self.db = ed_outrider.open_db(":memory:")
         self.addCleanup(self.db.close)
         self.state = ed_outrider.State(self.db, ed_outrider.Journals(self.db), types.SimpleNamespace(cached=lambda i: (None, None)), 25)
@@ -1253,7 +1264,7 @@ class Server(unittest.TestCase):
         ok, kept, elsewhere, bad, no_id, long = asyncio.run(go())
         self.assertEqual((ok, kept, elsewhere, bad, no_id, long), (200, {"id64": "77", "body": "B 1"}, 409, 400, 400, 400))
         self.assertEqual(self.state.payload()["plan_first"], {"id64": "77", "body": "B 1"})
-        self.assertEqual(panel("system")[2:5], ["① B 1 Icy", "TO LAND 2.0M", "② B 2 Rocky"])
+        self.assertEqual(panel("system")[2:5], ["① B 1 Icy", "MAP + LAND 21.4M", "②③ A 3 WW T"])   # the rest from B 1
         self.assertTrue(any(t.startswith("Next: bio on B 1") for t in panel("now")))
         self.assertTrue(self.state.set_plan_first(77, None))                         # ↺ order: the suggested order again
         self.assertIsNone(self.state.plan_first())

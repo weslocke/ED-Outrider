@@ -148,7 +148,7 @@ browser starts with.
 | Max with bonuses | on | Whether Here's Max column counts first-discovery, mapping and footfall bonuses. |
 | Codex finds count | on | A body whose likeliest species is new to your codex in this region (✦) is worth stopping for, whatever its value. On an Exomastery route, the arrival line adds the species new to your codex there ("two would be new to your codex: the best, Frutexa Flammasis") and Next counts them ("3 species to sample there, 2 new ✦"). |
 | Discovery streak | 10 / 5 | Known or undiscovered systems in a row for a spoken line (0 turns it off). |
-| Suggested order | 100k/min | Supercruise credits per minute under which Here marks "skip?". |
+| Suggested order | 100k/min | Credits per minute of the supercruise a stop adds to the order (its detour) under which Here marks "skip?". |
 | Fuel alerts under N jumps | off | Warns once when jumps left at your pace fall under N; also sets the top-up level. |
 | Core modules | 80% | A core module under this shows under hull and is said in the status report. |
 | Surface map | 1,000 m / 500 m / 50 m / 3,500 m | Altitude it shows below, narrowest view, rig spacing ring (0 = none), rig leash warning. |

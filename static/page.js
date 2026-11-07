@@ -1211,9 +1211,9 @@ function leavingText(l) {
   return `Leaving with unfinished work: ${bits.join(" · ")}`;
 }
 // ---- the suggested order in a system (Here's to-do list, Now's Next) ----
-// Supercruise time from the arrival star on a fixed community curve: about 7.5·ln(d) − 20 s up to 2,000 ls, then
-// roughly linear to 6 minutes at 100,000 ls; never under 15 s, and never shorter for a farther body. Only a rough
-// guide (it ignores where you are now and the time spent mapping or on foot): "suggested order", not a route.
+// Supercruise time for a distance on a fixed community curve: about 7.5·ln(d) − 20 s up to 2,000 ls, then roughly
+// linear to 6 minutes at 100,000 ls; never under 15 s, and never shorter for a farther body. The order's legs use it
+// body to body (planLeg); it leaves out the time spent mapping or on foot.
 const SC_KNEE = 7.5 * Math.log(2000) - 20;   // ~37 s at 2,000 ls
 const scSeconds = ls => ls == null || !isFinite(ls) || ls < 0 ? null
   : ls <= 2000 ? Math.max(15, 7.5 * Math.log(Math.max(ls, 1)) - 20) : SC_KNEE + (ls - 2000) * (360 - SC_KNEE) / 98000;
@@ -1236,28 +1236,121 @@ const onOrOver = ob => ob.how === "flying low" ? "Over" : "On";
 const planFirstFor = l => { const pf = data && data.plan_first; return pf && l && l.id64 && pf.id64 === String(l.id64) ? pf.body : null; };
 // a stop's number in the suggested order: ① to ⑳, then (21) (the overlay's stop_glyph)
 const stopGlyph = n => n >= 1 && n <= 20 ? String.fromCodePoint(0x245F + n) : `(${n})`;
-// the map and bio items worth doing by your thresholds, nearest to the arrival star first, value per minute of
-// supercruise breaking ties, a body with no distance last (in the server's order); the first stop you picked leads
-// (its items get `first`).
-// The overlay's Now panel has a Python copy (outrider/overlay.py plan_items): change both together.
+// ---- the suggested order: stops by where the bodies are now (the server's pos, outrider/orbits.py) ----
+// A leg between two stops is timed on their distance apart (scSeconds); a leg with an end that has no position (an old
+// scan, no MeanAnomaly) falls back to the difference of their distances to the arrival star, a lower bound. Either is
+// "about" (≈, approx) when an end's place is approximate (across star families in a multi-star system) or a fallback.
+// The overlay has a Python copy of every function here (outrider/overlay.py plan_leg ... order_plan): change both,
+// and the shared case (tests/fixtures/plan_order_cases.json) runs in both.
+const PLAN_KEEP_SHARE = 0.1, PLAN_KEEP_S = 30;   // a new order replaces the one shown only when it saves this much
+const PLAN_UNKNOWN_S = 1e6, PLAN_EPS = 1e-9;     // a leg with no distance at all: last; ties within PLAN_EPS keep order
+function planLeg(a, b) {
+  if (a.body != null && a.body === b.body) return {ls: 0, sec: 0, approx: false};   // map and bio on one body
+  const both = !!(a.pos && b.pos);
+  let ls = null;
+  if (both) { const dx = a.pos[0] - b.pos[0], dy = a.pos[1] - b.pos[1], dz = a.pos[2] - b.pos[2]; ls = Math.sqrt(dx * dx + dy * dy + dz * dz); }
+  else if (a.dist != null && b.dist != null) ls = Math.abs(a.dist - b.dist);
+  return {ls, sec: ls == null ? null : scSeconds(ls), approx: !both || !!a.approx || !!b.approx};
+}
+const planCostOf = (a, b) => planLeg(a, b).sec ?? PLAN_UNKNOWN_S;
+const planTotal = (start, seq) => seq.reduce((t, s, i) => t + planCostOf(i ? seq[i - 1] : start, s), 0);
+// nearest neighbour from the start (the first stop you picked first), then 2-opt on the total; the start stays put
+function planRoute(start, stops, first) {
+  const rest = stops.slice(), seq = [];
+  const fi = first == null ? -1 : rest.findIndex(s => s.body === first);
+  let cur = start;
+  if (fi >= 0) { cur = rest.splice(fi, 1)[0]; seq.push(cur); }
+  while (rest.length) {
+    let bi = 0, bc = planCostOf(cur, rest[0]);
+    for (let i = 1; i < rest.length; i++) { const c = planCostOf(cur, rest[i]); if (c < bc - PLAN_EPS) { bi = i; bc = c; } }
+    cur = rest.splice(bi, 1)[0]; seq.push(cur);
+  }
+  const path = [start, ...seq], fixed = fi >= 0 ? 2 : 1, n = path.length;
+  for (let pass = 0, better = true; better && pass < 100; pass++) {
+    better = false;
+    for (let i = fixed; i < n - 1; i++) for (let j = i + 1; j < n; j++) {
+      const was = planCostOf(path[i - 1], path[i]) + (j + 1 < n ? planCostOf(path[j], path[j + 1]) : 0);
+      const now = planCostOf(path[i - 1], path[j]) + (j + 1 < n ? planCostOf(path[i], path[j + 1]) : 0);
+      if (now < was - PLAN_EPS) { const seg = path.slice(i, j + 1).reverse(); path.splice(i, seg.length, ...seg); better = true; }
+    }
+  }
+  return path.slice(1);
+}
+// "Always from where you are": the previous order's stops still to do, in their order (a new stop at its cheapest
+// place, the first stop you picked first), timed from where you are now. The fresh order replaces it only when it saves
+// PLAN_KEEP_SHARE of that time or PLAN_KEEP_S seconds, so the numbers do not shuffle for nothing.
+function planKeep(start, fresh, stops, first, prev) {
+  if (!prev || !prev.length) return fresh;
+  const by = new Map(stops.map(s => [s.body, s]));
+  let old = prev.filter(b => by.has(b)).map(b => by.get(b));
+  const fs = first == null ? null : by.get(first);
+  if (fs) old = [fs, ...old.filter(s => s !== fs)];
+  const lead = fs ? 1 : 0;
+  for (const s of stops) {
+    if (old.includes(s)) continue;
+    let bi = old.length, bc = Infinity;
+    for (let i = lead; i <= old.length; i++) {
+      const a = i ? old[i - 1] : start, b = old[i];
+      const c = planCostOf(a, s) + (b ? planCostOf(s, b) - planCostOf(a, b) : 0);
+      if (c < bc - PLAN_EPS) { bi = i; bc = c; }
+    }
+    old.splice(bi, 0, s);
+  }
+  const was = planTotal(start, old), saved = was - planTotal(start, fresh);
+  return saved > PLAN_EPS && (saved >= PLAN_KEEP_SHARE * was || saved >= PLAN_KEEP_S) ? fresh : old;
+}
+// items: [{kind, body, pos, approx, dist, value, keep}] in the server's order; start: {body, pos, approx, dist}.
+// Returns the items in order, each with its leg from the stop before (sec, ls, legApprox: 0 s for the second item on a
+// body) and its stop's detour (the total with the stop less the total without it) and value per minute of that.
+function orderPlan(items, start, first = null, prev = null) {
+  const stops = [];
+  for (const it of items) {
+    let s = stops.find(x => x.body === it.body);
+    if (!s) stops.push(s = {body: it.body, pos: it.pos || null, approx: !!it.approx, dist: it.dist ?? null, items: []});
+    s.items.push(it);
+  }
+  for (const s of stops) s.items.sort((a, b) => (a.kind !== "map") - (b.kind !== "map"));   // stable: map first
+  const seq = planKeep(start, planRoute(start, stops, first), stops, first, prev);
+  const out = [];
+  seq.forEach((s, i) => {
+    const before = i ? seq[i - 1] : start, after = seq[i + 1], leg = planLeg(before, s);
+    // a stop with no distance has no detour; one with no distance after it counts as the last (the two unknowns cancel)
+    const detour = leg.sec == null ? null : leg.sec + (after ? planCostOf(s, after) - planCostOf(before, after) : 0);
+    const vals = s.items.map(it => it.value).filter(v => v != null), value = vals.length ? vals.reduce((a, b) => a + b, 0) : null;
+    const perMin = detour != null && detour > PLAN_EPS && value ? value / (detour / 60) : null;
+    s.items.forEach((it, k) => out.push(Object.assign(it, k ? {sec: 0, ls: 0, legApprox: false} : {sec: leg.sec, ls: leg.ls, legApprox: leg.approx},
+                                                       {detour, perMin, from: k ? s.body : before.body ?? null})));
+  });
+  return {items: out, bodies: seq.map(s => s.body)};
+}
+// where the order starts: the body you are at or were last at here (the server's at_body), else the arrival star
+const planStart = l => { const a = l && (l.at_body || l.arrival);
+  return a ? {body: a.body ?? null, pos: a.pos || null, approx: !!a.approx, dist: a.dist_ls ?? (l.at_body ? null : 0)} : {body: null, pos: null, approx: false, dist: 0}; };
+const planMemo = new Map();   // system id64 -> {first, bodies}: the order last shown there (planKeep)
+// the map and bio items worth doing by your thresholds in the suggested order (orderPlan), from where you are; the
+// first stop you picked leads (its items get `first`). A stop under your credits per minute of its detour is "skip?"
+// (started samples and specials never). The overlay's Now panel has a Python copy (outrider/overlay.py plan_items).
 function planItems(l) {
   const w = worthLeavingFor(l);
   if (!w) return [];
-  const items = [...w.maps.map(u => ({kind: "map", body: u.body, dist: u.dist_ls, value: u.increment, keep: u.special, u})),
-                 ...w.bio_pending.map(b => ({kind: "bio", body: b.body, dist: b.dist_ls, value: b.potential == null ? null : pendingWorth(b),
+  const items = [...w.maps.map(u => ({kind: "map", body: u.body, dist: u.dist_ls, pos: u.pos || null, approx: !!u.approx, value: u.increment, keep: u.special, u})),
+                 ...w.bio_pending.map(b => ({kind: "bio", body: b.body, dist: b.dist_ls, pos: b.pos || null, approx: !!b.approx,
+                                             value: b.potential == null ? null : pendingWorth(b),
                                              keep: !!Object.keys(b.partial || {}).length || (codexNewCounts() && !!b.codex_new), b}))];
-  for (const it of items) {
-    it.sec = scSeconds(it.dist);
-    it.perMin = it.sec && it.value ? it.value / (it.sec / 60) : null;
-    it.skip = !it.keep && it.perMin != null && it.perMin < skipFloor();   // started samples and specials never
+  const first = planFirstFor(l), key = l.id64 != null ? String(l.id64) : null, memo = key ? planMemo.get(key) : null;
+  const {items: order, bodies} = orderPlan(items, planStart(l), first, memo && memo.first === first ? memo.bodies : null);
+  if (key) { if (planMemo.size > 20 && !planMemo.has(key)) planMemo.clear(); planMemo.set(key, {first, bodies}); }
+  const keep = new Set(order.filter(it => it.keep).map(it => it.body));
+  for (const it of order) {
+    it.skip = !keep.has(it.body) && it.perMin != null && it.perMin < skipFloor();
+    if (first) it.first = it.body === first;
   }
-  const order = items.map((it, i) => [it, i]).sort(([a, i], [b, j]) => (a.dist == null) - (b.dist == null) || (a.dist || 0) - (b.dist || 0)
-    || (b.perMin ?? -1) - (a.perMin ?? -1) || i - j).map(([it]) => it);
-  const first = planFirstFor(l);
-  if (!first) return order;
-  for (const it of order) it.first = it.body === first;
-  return [...order.filter(it => it.first), ...order.filter(it => !it.first)];
+  return order;
 }
+// a leg's supercruise time as the order shows it: "~35 s", "≈35 s" when about (an approximate place or no position);
+// "" for none (the second item on a body, or no distance)
+const legTime = it => it.sec ? (it.legApprox ? scText(it.sec).replace(/^~/, "≈") : scText(it.sec)) : "";
+const legLs = it => it.ls == null ? "" : `${it.legApprox ? "≈" : ""}${Math.round(it.ls).toLocaleString("en-US")} ls`;
 // A body's mapped value as the "Next" lines give it (the author's choice, review Q5): the whole value once mapped,
 // without and with your first-discovery / first-mapped bonuses; one number when no bonus applies. Screen "771k/2.2M",
 // spoken "771 thousand, 2.2 million with bonuses" (spokenText reads the k and M). "" when unknown.
@@ -1282,8 +1375,12 @@ function planText(it, totals = false) {
     (b.codex_galaxy || b.codex_new ? ` <span class="cxnew${b.codex_galaxy ? " cxgal" : ""}" title="${b.codex_galaxy ? "new to your codex anywhere" : "new to your codex in this region"}` +
       `${(b.codex_names || []).length ? `: ${esc(andList(b.codex_names))} (if ${b.codex_names.length > 1 ? "they are" : "it is"} there)` : ""}">${b.codex_galaxy ? "✪" : "✦"}</span>` : "") + g + atm;
 }
-const planCost = it => it.sec == null ? "" : ` <span class="unk" title="supercruise from the arrival star (${Math.round(it.dist).toLocaleString("en-US")} ls), and what it pays per minute of that">· ${scText(it.sec)}${it.perMin ? ` · ${credits(it.perMin)}/min` : ""}</span>` +
-  (it.skip ? ` <span class="unk skipq" title="under your ${credits(skipFloor())} cr per minute of supercruise">skip?</span>` : "");
+// a stop's leg and what it pays per minute of its detour (the order's time with the stop less its time without it)
+const legFrom = it => it.from ? `from ${it.from}` : "from the arrival star";
+const planCost = it => { const t = legTime(it), pm = it.perMin ? `${credits(it.perMin)}/min` : "";
+  return (t || pm ? ` <span class="unk" title="${esc([t ? `supercruise ${legFrom(it)} (${legLs(it)}${it.legApprox ? ", about" : ""})` : "",
+    pm ? `what the stop pays per minute of its detour (${scText(it.detour)})` : ""].filter(Boolean).join("; "))}">· ${[t, pm].filter(Boolean).join(" · ")}</span>` : "") +
+  (it.skip ? ` <span class="unk skipq" title="under your ${credits(skipFloor())} cr per minute of the detour to it">skip?</span>` : ""); };
 // The honk's body count against the bodies Spansh has on record (l.base_known, in Here's data only): whether the FSS
 // is worth it in a known system. A count only, never "first discovery": the Scan's WasDiscovered decides that, and
 // Spansh is a snapshot. "" when either side is unknown.
@@ -1302,7 +1399,7 @@ function checklistHtml(l) {
   const items = [item(l.honked, l.honked ? "honked" : "honk (FSS discovery scan)"),
     item(!l.unscanned && l.honked, (l.unscanned ? `${l.unscanned} bod${l.unscanned === 1 ? "y" : "ies"} left to find in the FSS` : l.all_found ? "all bodies found" : "bodies found") + spanshNoteHtml(l))];
   const plan = planItems(l);
-  if (plan.length > 1) items.push(`<li class="unk" title="nearest to the arrival star first, then the best value per minute of supercruise; a rough guide, not a route">${plan[0].first ? "your first stop, then the suggested order:" : "suggested order:"}${plan[0].first ? planResetHtml(l) : ""}</li>`);
+  if (plan.length > 1) items.push(`<li class="unk" title="the shortest supercruise from where you are, body to body by where they are now (≈: about); worked out again as you go">${plan[0].first ? "your first stop, then the suggested order:" : "suggested order:"}${plan[0].first ? planResetHtml(l) : ""}</li>`);
   // numbered as on the schematic (S30), when there is an order to number
   plan.forEach((it, i) => items.push(item(false, (plan.length > 1 ? `<span class="stopn">${stopGlyph(i + 1)}</span> ` : "") + planText(it) + planCost(it))));
   // the two reasons apart: another commander mapped it, or it is small (review 2026-10-23 S5-B4: an Earth-like someone
@@ -1549,7 +1646,7 @@ function renderNow() {
     const dest = hd && data.destination ? hd.bodies.find(b => b.body_id === data.destination.body_id) : null;
     const destIsNext = !!(dest && !(w && w.rescan) && plan.length && plan[0].body === dest.name);   // under a rescan: its own line
     lines.push(`<div class="now-line">${w && w.rescan ? `<span class="warnc">Next: ${rescanHtml(w.rescan)}${plan.length ? ` <span class="unk">· ${plan.length} more</span>` : ""}</span>`
-      : plan.length ? `<span class="warnc">Next: ${destIsNext ? `<span title="the body you have targeted">➜</span> ` : ""}${planText(plan[0], true)}${plan[0].sec != null ? ` <span class="unk">${scText(plan[0].sec)}</span>` : ""}` +
+      : plan.length ? `<span class="warnc">Next: ${destIsNext ? `<span title="the body you have targeted">➜</span> ` : ""}${planText(plan[0], true)}${legTime(plan[0]) ? ` <span class="unk" title="supercruise ${esc(legFrom(plan[0]))} (${legLs(plan[0])})">${legTime(plan[0])}</span>` : ""}` +
       `${plan.length > 1 ? ` <span class="unk">· ${plan.length - 1} more</span>` : ""}</span>`
       : !hd ? `<span class="unk">checking…</span>`
       : !l || !l.honked ? `<span class="warnc">Next: honk</span> <span class="unk">(FSS discovery scan)</span>`
@@ -4377,7 +4474,7 @@ function statusReportText() {
   const rs = hd && hd.leaving ? worthLeavingFor(hd.leaving).rescan : null;
   if (rs) parts.push(`Next: ${rescanSaid(rs)}`);   // S9-S1: the rescan trip's reason first
   else if (plan.length) { const it = plan[0];
-    parts.push(`Next: ${it.kind === "map" ? `map ${it.body}` : `biology on ${it.body}`}${nextValue(it, true) ? `, ${nextValue(it, true)}` : ""}${it.sec != null ? `, ${spokenTime(it.sec)}` : ""}`); }
+    parts.push(`Next: ${it.kind === "map" ? `map ${it.body}` : `biology on ${it.body}`}${nextValue(it, true) ? `, ${nextValue(it, true)}` : ""}${it.sec ? `, ${spokenTime(it.sec)}` : ""}`); }
   const u = data && data.unsold, rebuy = riskRebuy();
   if (u && !u.error && u.total > 0) parts.push(`${credits(u.total)} aboard${rebuy ? `, ${(u.total / rebuy).toFixed(1)} rebuys` : ""}`);
   const hz = data && !hw ? horizon() : null;   // mid-route the next stop is the Highway's
@@ -5948,19 +6045,19 @@ function schemPlan(h) {
   schemStops.clear();
   schemPlanNow.forEach((it, i) => { if (!schemStops.has(it.body)) schemStops.set(it.body, []); schemStops.get(it.body).push({n: i + 1, it}); });
 }
-const planResetHtml = l => ` <button type="button" class="mini" data-planfirst="" data-plansys="${esc(l.id64)}" title="back to the suggested order: nearest to the arrival star first">↺ order</button>`;
+const planResetHtml = l => ` <button type="button" class="mini" data-planfirst="" data-plansys="${esc(l.id64)}" title="back to the suggested order: the shortest supercruise from where you are">↺ order</button>`;
 const stopTitle = (n, it) => `stop ${n}: ${it.kind === "map" ? "map" : "bio"}` +
-  (it.sec != null ? ` · ${scText(it.sec)} of supercruise from the arrival star (rough)` : "") + (it.perMin ? ` · ${credits(it.perMin)}/min` : "") +
-  (it.skip ? ` · under your ${credits(skipFloor())} cr per minute of supercruise` : "") +
+  (legTime(it) ? ` · ${legTime(it)} of supercruise ${legFrom(it)} (${legLs(it)}, body to body)` : "") + (it.perMin ? ` · ${credits(it.perMin)}/min of its detour` : "") +
+  (it.skip ? ` · under your ${credits(skipFloor())} cr per minute of the detour to it` : "") +
   (it.first ? "\nyour first stop: ↺ order puts the suggested order back" : "\ntap: make this body the first stop");
 function stopsHtml(b) {
   const st = schemStops.get(b.name);
   return st ? `<span class="stops">${st.map(({n, it}) => `<span class="sstop${it.skip ? " skip" : ""}${it.first ? " first" : ""}" data-firststop="${esc(b.name)}" title="${esc(stopTitle(n, it))}">${stopGlyph(n)}</span>`).join("")}</span>` : "";
 }
-// The faint path between the stops in their order, from the arrival star, each leg with a rough supercruise time: from
-// the two bodies' distances to the arrival star (scSeconds of the difference), not a route, which the journal cannot
-// give. Drawn over the laid-out schematic, below its bodies; again when its box changes size (jsdom lays nothing out:
-// every point is 0, 0 there).
+// The faint path between the stops in their order, from where the order starts (the body you are at or were last at,
+// else the arrival star), each leg with its supercruise time body to body (the plan's legs: ≈ when about). Drawn over
+// the laid-out schematic, below its bodies; again when its box changes size (jsdom lays nothing out: every point is
+// 0, 0 there).
 function drawSchemPath(sEl) {
   const old = sEl.querySelector("svg.spath"); if (old) old.remove();
   const h = hereData; if (!schemPlanNow.length || !h || !h.bodies || sEl.hidden) return;
@@ -5968,20 +6065,17 @@ function drawSchemPath(sEl) {
   const at = name => { const el = discs.find(d => d.dataset.body === name), w = el && el.querySelector(".discwrap"); if (!w) return null;
     const r = w.getBoundingClientRect(); return [r.left + r.width / 2 - box.left - sEl.clientLeft + sEl.scrollLeft, r.top + r.height / 2 - box.top - sEl.clientTop + sEl.scrollTop]; };
   const star = h.bodies.find(b => b.type === "Star" && b.dist_ls === 0) || h.bodies.find(b => b.type === "Star");
-  const by = Object.fromEntries(h.bodies.map(b => [b.name, b]));
+  const from = (h.leaving && h.leaving.at_body && h.leaving.at_body.body) || (star && star.name);
   const pts = [], labels = [];
-  let prev = star ? {p: at(star.name), d: 0} : null;
+  let prev = from ? {name: from, p: at(from)} : null;
   if (prev && !prev.p) prev = null;
   for (const it of schemPlanNow) {
-    if (prev && prev.name === it.body) continue;   // map and bio on one body: no leg between them
+    if (prev && prev.name === it.body) continue;   // map and bio on one body (or the body you are at): no leg
     const p = at(it.body); if (!p) continue;
-    const d = it.dist ?? (by[it.body] || {}).dist_ls;
-    if (prev) {
-      const sec = prev.d != null && d != null ? scSeconds(Math.abs(d - prev.d)) : null;
-      if (sec != null) labels.push(`<text x="${((prev.p[0] + p[0]) / 2).toFixed(1)}" y="${((prev.p[1] + p[1]) / 2 - 3).toFixed(1)}">${scText(sec)}</text>`);
-    }
+    if (prev && legTime(it))
+      labels.push(`<text x="${((prev.p[0] + p[0]) / 2).toFixed(1)}" y="${((prev.p[1] + p[1]) / 2 - 3).toFixed(1)}">${legTime(it)}</text>`);
     pts.push(...(prev && !pts.length ? [prev.p] : []), p);
-    prev = {name: it.body, p, d};
+    prev = {name: it.body, p};
   }
   if (pts.length < 2) return;
   const W = Math.max(sEl.scrollWidth, 1), H = Math.max(sEl.scrollHeight, 1);
@@ -6045,8 +6139,8 @@ function schematicHtml(h) {
     return `<div class="srowS"><div class="splanets">${col(n, 1)}</div></div>`;
   };
   const n = schemPlanNow.length, first = n && schemPlanNow[0].first;
-  const head = n > 1 ? `<div class="splan unk" title="rough: from distances to the arrival star, not a route">${first ? "your first stop, then " : ""}` +
-    `the suggested order ${stopGlyph(1)}–${stopGlyph(n)} · the times are rough supercruise from the arrival star · tap a number to go there first` +
+  const head = n > 1 ? `<div class="splan unk" title="from where you are (the body you are at or were last at, else the arrival star), body to body by where the bodies are now; ≈: about (a star family to another in a multi-star system, or an orbit not known); worked out again as you go">${first ? "your first stop, then " : ""}` +
+    `the suggested order ${stopGlyph(1)}–${stopGlyph(n)} · the times are supercruise from body to body · tap a number to go there first` +
     `${first ? planResetHtml(h.leaving) : ""}</div>` : "";
   return h.tree.length ? head + h.tree.map(top).join("") : `<div class="unk">No bodies known here.</div>`;
 }

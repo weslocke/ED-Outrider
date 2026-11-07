@@ -211,6 +211,7 @@ import outrider.commander  # the Commander view: the commander, inventory, engin
 import outrider.earnings   # the Commander view's Earnings: what exploration, exobiology and mining paid (pure, + its SQL)
 import outrider.readclient  # EDSM's and Inara's account reads (G3): the key checks, EDSM's flight log
 import outrider.records     # My firsts' Your records: the most extreme bodies among your own scans
+import outrider.orbits      # where a system's bodies are now, from your scans' orbits: the suggested order's legs
 import outrider.sights      # catalogued sights: EDAstro's Galactic Encyclopedia Catalog, fetched once a day
 import outrider.screenshots  # the game's screenshots converted as they are taken (Pillow, optional)
 import outrider.backfill   # filling a gap in EDSM's flight log (S47): the events rebuilt from the journals (pure)
@@ -2436,7 +2437,7 @@ DELETE FROM own_systems; DELETE FROM own_bodies; DELETE FROM own_signals; DELETE
 DELETE FROM own_firsts; DELETE FROM own_mapped; DELETE FROM own_footfall; DELETE FROM sales; DELETE FROM deaths;
 DELETE FROM own_genera; DELETE FROM own_organic; DELETE FROM codex; DELETE FROM bio_sales;
 DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM phenomena_sites; DELETE FROM poi; DELETE FROM sale_events; DELETE FROM logins;
-DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here', 'on_foot');
+DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here', 'body_last', 'on_foot');
 DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population; DELETE FROM stations;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
 DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_carrier', 'mined_died', 'sale_dock');
@@ -3446,6 +3447,9 @@ class Journals:
         ("vehicle", "vehicle", None),
         ("on_foot", "on_foot", None),             # {ts}: out of the ship, SRV and taxi since (track_foot; #23: on-foot kills)
         ("body_here", "body_here", None),
+        # the body you were last at in a system ({system, body_id, name, ts}: ApproachBody, Touchdown, a SupercruiseExit
+        # or a login at a planet or star), kept after you leave it: where the suggested order starts (State.at_body)
+        ("body_last", "body_last", None),
         ("ship_marker", "ship_marker", None),
         # cargo (outrider/cargo.py): the ship's hold folded as it is read; the market you are docked at, for a
         # CargoTransfer (it names no carrier). Kept here, not taken from self.docked: a re-read replays the docks in
@@ -5029,6 +5033,11 @@ class Journals:
             srv = None
         else:   # LeaveBody, FSDJump, CarrierJump, LoadGame, Died
             at = srv = None
+        # where the suggested order starts: the body you are at or were last at, a star you dropped at too
+        if here and ts >= (self.body_last or {}).get("ts", "") and (name in ("ApproachBody", "Touchdown") or (
+                name in ("SupercruiseExit", "Location") and ev.get("BodyType") in ("Planet", "Star"))):
+            self.body_last = dict(here, name=ev.get("Body") or ev.get("BodyName") or "", ts=ts)
+            meta_set(self.db, "body_last", self.body_last)
         if ts >= (self.body_here or {}).get("ts", "") and name != "SupercruiseEntry" and \
                 (at or {}) != {k: v for k, v in (self.body_here or {}).items() if k in ("system", "body_id")}:
             self.body_here = dict(at, name=ev.get("Body") or ev.get("BodyName") or "", ts=ts) if at else None
@@ -14086,7 +14095,23 @@ class State:
             if len(self._leaving) >= LEAVING_CACHE_MAX:
                 self._leaving.clear()
             hit = self._leaving[id64] = (key, self._leaving_summary(id64, where))
-        return copy.deepcopy(hit[1])
+        out = copy.deepcopy(hit[1])
+        if out is not None:
+            places = out.pop("_places", {})
+            out["at_body"] = self.at_body(id64, places)
+        return out
+
+    def at_body(self, id64, places):
+        """Where the suggested order starts in the system you are in: the body you are at or were last at there this
+        visit (Journals.body_last: ApproachBody, Touchdown, a SupercruiseExit or a login at a planet or star),
+        {body, pos, approx, dist_ls} (pos None when its orbit is not known), or None: another system, or no body yet
+        (the order starts at the arrival star)."""
+        bl, pos = self.journals.body_last, self.journals.pos
+        if not bl or not pos or pos.get("id64") != id64 or bl.get("system") != id64 or (bl.get("ts") or "") < (pos.get("ts") or ""):
+            return None
+        place = places.get(bl.get("body_id")) or places.get(str(bl.get("body_id"))) or {}
+        return {"body": place.get("body") or short_name(pos.get("name"), bl.get("name") or ""), "pos": place.get("pos"),
+                "approx": bool(place.get("approx")), "dist_ls": place.get("dist_ls")}
 
     def _leaving_summary(self, id64, where):
         sysrow = self.db.execute("SELECT body_count, all_found FROM own_systems WHERE id64=?", (id64,)).fetchone()
@@ -14100,6 +14125,9 @@ class State:
         count = sysrow["body_count"] if sysrow else None
         ctx = bio_context(where[0], bodies.values(), where[1], where[2], where[3], star, count)
         name_of = lambda bid: short_name(where[0], bodies[bid]["name"])
+        places = self.body_places(id64, where[0], bodies)
+        # where each body is now (the suggested order's legs, body to body); approx: about, across star families
+        place = lambda bid: {"pos": places[bid]["pos"], "approx": places[bid]["approx"]}
         unscanned = (count - len(bodies)) if count else None
         judge = pickup_judge(self.db, where[0])
         mapped = {r[0] for r in self.db.execute("SELECT body_id, ts, first_ts FROM own_mapped WHERE system=?", (id64,))
@@ -14180,7 +14208,7 @@ class State:
                 bio_pending.append({"body": name_of(bid), "signals": n_left, "genera": None, "partial": partial, "potential": val,
                                     "codex_new": codex_new(bid, groups), "codex_galaxy": codex_galaxy(bid, groups),
                                     "codex_names": codex_names(bid, groups, known_all if codex_galaxy(bid, groups) else known_codex),
-                                    **codex_said(bid, groups, possible), "dist_ls": rec.get("dist_ls"), **extra(bid, rec)})
+                                    **codex_said(bid, groups, possible), "dist_ls": rec.get("dist_ls"), **place(bid), **extra(bid, rec)})
             elif left or partial:
                 left_val, left_groups = bio_guess(rec, star, sorted(left), ctx) if left else (None, [])
                 left_groups = with_codex_species(left_groups, seen_codex.get(bid))
@@ -14189,7 +14217,7 @@ class State:
                                     "partial": partial, "potential": left_val, "codex_new": codex_new(bid, left_groups),
                                     "codex_galaxy": codex_galaxy(bid, left_groups),
                                     "codex_names": codex_names(bid, left_groups, known_all if codex_galaxy(bid, left_groups) else known_codex),
-                                    **codex_said(bid, left_groups), "dist_ls": rec.get("dist_ls"), **extra(bid, rec)})
+                                    **codex_said(bid, left_groups), "dist_ls": rec.get("dist_ls"), **place(bid), **extra(bid, rec)})
         unmapped, unmapped_all = [], []
         for bid, rec in bodies.items():
             if bid in mapped or rec.get("type") != "Planet":
@@ -14214,16 +14242,42 @@ class State:
                 total_bonus = outrider.unsold.body_value(mine, True, False, True)
             unmapped_all.append({"body": name_of(bid), "subtype": rec["subtype"], "terraformable": bool(rec.get("terraformable")),
                                  "increment": inc, "value_mapped": total, "value_mapped_bonus": total_bonus,
-                                 "special": special, "dist_ls": rec.get("dist_ls"),
+                                 "special": special, "dist_ls": rec.get("dist_ls"), **place(bid),
                                  # someone else mapped it (your scan says): no alert points it out (the author, 2026-10-09)
                                  "mapped_before": rec.get("was_mapped") is True})   # the suggested order (by increment)
         unmapped_all.sort(key=lambda u: -(u["increment"] or 0))
         rescan = self.rescan_left(id64, where[0])
-        # id64: the system, as a string (S30: the first stop you picked applies to its own system only)
+        main = next((bid for bid, rec in bodies.items() if rec.get("main")), None)
+        # id64: the system, as a string (S30: the first stop you picked applies to its own system only); arrival: the
+        # arrival star's place, where the suggested order starts with no body of yours yet (at_body)
         return {"id64": str(id64), "body_count": count, "scanned": len(bodies), "unscanned": unscanned,
                 "honked": bool(sysrow), "all_found": bool(sysrow and sysrow["all_found"]),
                 "bio_pending": bio_pending, "unmapped_valuable": unmapped, "unmapped": unmapped_all, "rescan": rescan,
-                "clean": not unscanned and not bio_pending and not unmapped and not rescan}
+                "clean": not unscanned and not bio_pending and not unmapped and not rescan,
+                "arrival": dict(places[main], dist_ls=0) if main is not None else None, "_places": places}
+
+    def body_places(self, id64, where_name, bodies):
+        """Each of your scanned bodies' place now, from the orbits in your scans (outrider.orbits): {body_id: {body,
+        pos: [x, y, z] ls to 0.1 or None, approx, dist_ls}}. The suggested order's legs are timed on these."""
+        scans = []
+        for r in self.db.execute("SELECT raw FROM own_bodies WHERE system=? AND raw IS NOT NULL", (id64,)):
+            try:
+                scans.append(json.loads(r["raw"]))
+            except (TypeError, ValueError):
+                pass
+        bary = {}
+        for r in self.db.execute("SELECT body_id, record, ts FROM own_barycentres WHERE system=?", (id64,)):
+            try:
+                bary[r["body_id"]] = dict(json.loads(r["record"]), timestamp=r["ts"])
+            except (TypeError, ValueError):
+                pass
+        try:
+            pos, approx = outrider.orbits.positions(scans, bary, time.time())
+        except (TypeError, ValueError, KeyError, AttributeError, ZeroDivisionError):   # a malformed scan: no places
+            pos, approx = {}, set()
+        return {bid: {"body": short_name(where_name, rec["name"]),
+                      "pos": [round(v, 1) for v in pos[bid]] if bid in pos else None,
+                      "approx": bid in approx, "dist_ls": rec.get("dist_ls")} for bid, rec in bodies.items()}
 
     def rescan_left(self, id64, name):
         """S9-S1: the first discoveries here whose scan died with a ship and is not picked up again (firsts_recovery's

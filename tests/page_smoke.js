@@ -975,7 +975,8 @@ const releasePayloads = async () => {
       localStorage.setItem("streakCfg", JSON.stringify({known: 0}));
       run(arr(9005, "complete", {new: 0, known: 10}, false));
       localStorage.removeItem("streakCfg");
-      // the suggested order: nearest first, value per minute breaking ties, no distance last, a muted skip?
+      // the suggested order: nearest first (no positions here: the distances to the arrival star stand in), the
+      // server's order breaking ties, no distance last, a muted skip? (per minute of its detour)
       const l = {body_count: 4, scanned: 4, unscanned: 0, honked: true, all_found: true, unmapped_valuable: [], clean: false,
         unmapped: [{body: "A 9", subtype: "High metal content world", increment: 510000, special: false, dist_ls: 90000},
                    {body: "A 1", subtype: "High metal content world", increment: 800000, special: false, dist_ls: 500},
@@ -1024,7 +1025,7 @@ const releasePayloads = async () => {
       empty: "no known unvisited star within 25 ly — any unvisited star on the map within 25 ly is unreported",
       normal: "nearest known unvisited: S3 4.8 ly · K ⛽ — unvisited stars closer than this aren't reported to Spansh or EDSM",
       cut: "nearest known unvisited: S6 9.2 ly (the list is complete only to 7.5 ly) — any unvisited star on the map within 7.5 ly is unreported",
-      asking: null, dots: 3, strip: "1/3 new", order: ["A 3", "A 1", "A 9?", "B 2"], mono: true, suggested: true, perMin: true,
+      asking: null, dots: 3, strip: "1/3 new", order: ["A 1", "A 3", "A 9?", "B 2"], mono: true, suggested: true, perMin: true,
       bOk: "backed up 3 h ago · 7 kept · journals to 2026-09-28 back up now", bBad: true, bLate: true,
       doc: true, res: {applied: 1, skipped: ["view", "bogus"]}, after: ["7", null, '"map"'], bad: "not an ED Outrider settings file",
       fromServer: [2.5, "near"], localWins: 1.8,
@@ -8702,8 +8703,8 @@ const releasePayloads = async () => {
     await releasePayloads();
   }
   // S30: numbered stops on Here's schematic (two on a body with mapping and bio, a stop under your cr/min level tinted),
-  // the faint path from the arrival star with rough leg times, the checklist numbered alike; a tap on a number makes
-  // that body the first stop (posted: one order for every window, Now and the voice), "↺ order" puts it back; a first
+  // the faint path from the arrival star with each leg's time, the checklist numbered alike; a tap on a number makes
+  // that body the first stop, the rest ordered from it (posted: one order for every window, Now and the voice), "↺ order" puts it back; a first
   // stop of another system changes nothing. The posts are stubbed
   s30_schematic_stops: { if (skip("s30_schematic_stops")) break s30_schematic_stops;
     await ensureHere();   // its own Here data when it runs alone
@@ -8738,7 +8739,8 @@ const releasePayloads = async () => {
       o.want = [[P[0], "①"], [P[1], "②"], [P[1], "③"], [P[2], "④?"]];
       const svg = sEl.querySelector("svg.spath");
       o.path = svg && [svg.querySelector("polyline").getAttribute("points").split(" ").length, [...svg.querySelectorAll("text")].map(t => t.textContent)];
-      o.wantPath = [4, [scText(scSeconds(420)), scText(scSeconds(560)), scText(scSeconds(89020))]];
+      // no positions in this fixture: each leg is the difference of the distances to the arrival star, so "≈"
+      o.wantPath = [4, [scText(scSeconds(420)), scText(scSeconds(560)), scText(scSeconds(89020))].map(t => t.replace(/^~/, "≈"))];
       o.head = sEl.querySelector(".splan").textContent;
       o.noReset = !sEl.querySelector("[data-planfirst]");
       o.list = document.getElementById("hereLeaving").querySelectorAll(".stopn").length;
@@ -8767,7 +8769,7 @@ const releasePayloads = async () => {
     w.fetch = realFetch;
     got.posted = posted.map(([same, b]) => [same, b === null ? null : b === got.want[3][0]]);
     const want = {stops: got.want, path: got.wantPath, noReset: true, list: 4, legend: [true, true], noOpen: true,
-                  firstStops: "②③④①!", firstOf: true, reset: true, spoken: true, elsewhere: true, back: "①②③④", posted: [[true, true], [true, null]]};
+                  firstStops: "④②③①!", firstOf: true, reset: true, spoken: true, elsewhere: true, back: "①②③④", posted: [[true, true], [true, null]]};
     const good = !got.noHere && Object.keys(want).every(k => JSON.stringify(got[k]) === JSON.stringify(want[k])) &&
       /the suggested order ①–④/.test(got.head) && errors.length === before;
     allOk = allOk && good;

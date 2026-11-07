@@ -1226,31 +1226,172 @@ def boxel_parts(bx):
                    (" · " + (boxel_known_words(bx) if bx.get("spansh") else "to try"), "muted")]
 
 
-def plan_items(leaving, highlight, bio_min, codex=True, first=None):
+# ---- the suggested order: stops by where the bodies are now (page.js planLeg ... orderPlan: change both together;
+# tests/fixtures/plan_order_cases.json runs in both) ----
+PLAN_KEEP_SHARE, PLAN_KEEP_S = 0.1, 30   # a new order replaces the one shown only when it saves this much
+PLAN_UNKNOWN_S, PLAN_EPS = 1e6, 1e-9     # a leg with no distance at all: last; ties within PLAN_EPS keep order
+PLAN_MEMO = {}                           # system id64 -> {first, bodies}: the order last shown there (plan_keep)
+
+
+def plan_leg(a, b):
+    """A leg between two stops (page.js planLeg): {ls, sec, approx}. Body to body when both have a position, else the
+    difference of their distances to the arrival star (a lower bound, approx); 0 s on one body."""
+    if a.get("body") is not None and a.get("body") == b.get("body"):
+        return {"ls": 0, "sec": 0, "approx": False}
+    both = bool(a.get("pos") and b.get("pos"))
+    ls = None
+    if both:
+        dx, dy, dz = (a["pos"][k] - b["pos"][k] for k in range(3))
+        ls = math.sqrt(dx * dx + dy * dy + dz * dz)
+    elif a.get("dist") is not None and b.get("dist") is not None:
+        ls = abs(a["dist"] - b["dist"])
+    return {"ls": ls, "sec": None if ls is None else sc_seconds(ls), "approx": not both or bool(a.get("approx")) or bool(b.get("approx"))}
+
+
+def plan_cost(a, b):
+    sec = plan_leg(a, b)["sec"]
+    return PLAN_UNKNOWN_S if sec is None else sec
+
+
+def plan_total(start, seq):
+    return sum(plan_cost(seq[i - 1] if i else start, s) for i, s in enumerate(seq))
+
+
+def plan_route(start, stops, first):
+    """Nearest neighbour from the start (the first stop you picked first), then 2-opt on the total (page.js planRoute)."""
+    rest, seq = list(stops), []
+    fi = next((i for i, s in enumerate(rest) if s["body"] == first), -1) if first is not None else -1
+    cur = start
+    if fi >= 0:
+        cur = rest.pop(fi)
+        seq.append(cur)
+    while rest:
+        bi, bc = 0, plan_cost(cur, rest[0])
+        for i in range(1, len(rest)):
+            c = plan_cost(cur, rest[i])
+            if c < bc - PLAN_EPS:
+                bi, bc = i, c
+        cur = rest.pop(bi)
+        seq.append(cur)
+    path, fixed = [start] + seq, 2 if fi >= 0 else 1
+    n, better, passes = len(path), True, 0
+    while better and passes < 100:
+        better, passes = False, passes + 1
+        for i in range(fixed, n - 1):
+            for j in range(i + 1, n):
+                was = plan_cost(path[i - 1], path[i]) + (plan_cost(path[j], path[j + 1]) if j + 1 < n else 0)
+                now = plan_cost(path[i - 1], path[j]) + (plan_cost(path[i], path[j + 1]) if j + 1 < n else 0)
+                if now < was - PLAN_EPS:
+                    path[i:j + 1] = path[i:j + 1][::-1]
+                    better = True
+    return path[1:]
+
+
+def plan_keep(start, fresh, stops, first, prev):
+    """"Always from where you are" (page.js planKeep): the previous order's stops still to do, in their order (a new stop
+    at its cheapest place, the first stop you picked first), replaced by the fresh order only when that saves
+    PLAN_KEEP_SHARE of their time from where you are or PLAN_KEEP_S seconds."""
+    if not prev:
+        return fresh
+    by = {s["body"]: s for s in stops}
+    old = [by[b] for b in prev if b in by]
+    fs = by.get(first) if first is not None else None
+    if fs is not None:
+        old = [fs] + [s for s in old if s is not fs]
+    lead = 1 if fs is not None else 0
+    for s in stops:
+        if any(s is o for o in old):
+            continue
+        bi, bc = len(old), math.inf
+        for i in range(lead, len(old) + 1):
+            a, b = (old[i - 1] if i else start), (old[i] if i < len(old) else None)
+            c = plan_cost(a, s) + (plan_cost(s, b) - plan_cost(a, b) if b is not None else 0)
+            if c < bc - PLAN_EPS:
+                bi, bc = i, c
+        old.insert(bi, s)
+    was = plan_total(start, old)
+    saved = was - plan_total(start, fresh)
+    return fresh if saved > PLAN_EPS and (saved >= PLAN_KEEP_SHARE * was or saved >= PLAN_KEEP_S) else old
+
+
+def order_plan(items, start, first=None, prev=None):
+    """items: [{kind, body, pos, approx, dist, value}] in the server's order; start: {body, pos, approx, dist} (page.js
+    orderPlan). -> (the items in order, each with its leg from the stop before (sec, ls, leg_approx; 0 for the second
+    item on a body), its stop's detour (the total with it less the total without it) and per_min of that; the bodies'
+    order)."""
+    stops = []
+    for it in items:
+        s = next((x for x in stops if x["body"] == it["body"]), None)
+        if s is None:
+            s = {"body": it["body"], "pos": it.get("pos"), "approx": bool(it.get("approx")), "dist": it.get("dist"), "items": []}
+            stops.append(s)
+        s["items"].append(it)
+    for s in stops:
+        s["items"].sort(key=lambda it: it["kind"] != "map")   # stable: map first
+    seq = plan_keep(start, plan_route(start, stops, first), stops, first, prev)
+    out = []
+    for i, s in enumerate(seq):
+        before, after = (seq[i - 1] if i else start), (seq[i + 1] if i + 1 < len(seq) else None)
+        leg = plan_leg(before, s)
+        # a stop with no distance has no detour; one with no distance after it counts as the last (the unknowns cancel)
+        detour = None if leg["sec"] is None else \
+            leg["sec"] + (plan_cost(s, after) - plan_cost(before, after) if after is not None else 0)
+        vals = [it["value"] for it in s["items"] if it.get("value") is not None]
+        value = sum(vals) if vals else None
+        per_min = value / (detour / 60) if detour is not None and detour > PLAN_EPS and value else None
+        for k, it in enumerate(s["items"]):
+            it.update({"sec": 0, "ls": 0, "leg_approx": False} if k else {"sec": leg["sec"], "ls": leg["ls"], "leg_approx": leg["approx"]})
+            it.update(detour=detour, per_min=per_min, frm=s["body"] if k else before.get("body"))
+            out.append(it)
+    return out, [s["body"] for s in seq]
+
+
+def plan_start(leaving):
+    """Where the order starts (page.js planStart): the body you are at or were last at here (at_body), else the
+    arrival star."""
+    a = (leaving or {}).get("at_body") or (leaving or {}).get("arrival")
+    if not a:
+        return {"body": None, "pos": None, "approx": False, "dist": 0}
+    dist = a.get("dist_ls")
+    return {"body": a.get("body"), "pos": a.get("pos"), "approx": bool(a.get("approx")),
+            "dist": dist if dist is not None else (None if leaving.get("at_body") else 0)}
+
+
+def plan_items(leaving, highlight, bio_min, codex=True, first=None, memo=PLAN_MEMO):
     """Now's suggested order (page.js worthLeavingFor + planItems) with the config's levels: the mapping over the
-    highlight level (or special) and the bio over bio_min (or started, unpriced, or new to your codex), nearest to the
-    arrival star first, then the best value per minute of supercruise. [{kind, body, dist, value, sec, per_min, u|b}].
-    first: the body you made the first stop (S30, State.plan_first_body): its items lead, `first` True; a body not in
-    the list changes nothing."""
+    highlight level (or special) and the bio over bio_min (or started, unpriced, or new to your codex), ordered by
+    order_plan from where you are. [{kind, body, dist, pos, value, sec, ls, leg_approx, detour, per_min, u|b}].
+    first: the body you made the first stop (S30, State.plan_first_body): it leads, its items `first` True; a body not in
+    the list changes nothing. memo: the orders last shown per system (plan_keep), None for none."""
     if not leaving:
         return []
     bio = [b for b in leaving.get("bio_pending") or [] if b.get("partial") or b.get("potential") is None
            or b["potential"] >= bio_min or (codex and b.get("codex_new"))]
     maps = [u for u in leaving.get("unmapped") or [] if not u.get("mapped_before")
             and (u.get("special") or (u.get("increment") is not None and u["increment"] >= highlight))]
-    items = [{"kind": "map", "body": u.get("body"), "dist": u.get("dist_ls"), "value": u.get("increment"), "u": u} for u in maps]
-    items += [{"kind": "bio", "body": b.get("body"), "dist": b.get("dist_ls"),
+    items = [{"kind": "map", "body": u.get("body"), "dist": u.get("dist_ls"), "pos": u.get("pos"), "approx": bool(u.get("approx")),
+              "value": u.get("increment"), "u": u} for u in maps]
+    items += [{"kind": "bio", "body": b.get("body"), "dist": b.get("dist_ls"), "pos": b.get("pos"), "approx": bool(b.get("approx")),
                "value": None if b.get("potential") is None else b["potential"] * (b.get("factor") or 1), "b": b} for b in bio]
-    for it in items:
-        it["sec"] = sc_seconds(it["dist"])
-        it["per_min"] = it["value"] / (it["sec"] / 60) if it["sec"] and it["value"] else None
-    items = sorted(items, key=lambda it: (it["dist"] is None, it["dist"] or 0,
-                                          -(it["per_min"] if it["per_min"] is not None else -1)))
+    key = str(leaving["id64"]) if leaving.get("id64") is not None and memo is not None else None
+    m = memo.get(key) if key else None
+    items, bodies = order_plan(items, plan_start(leaving), first, m["bodies"] if m and m["first"] == first else None)
+    if key:
+        if len(memo) > 20 and key not in memo:
+            memo.clear()
+        memo[key] = {"first": first, "bodies": bodies}
     if first:
         for it in items:
             it["first"] = it["body"] == first
-        items.sort(key=lambda it: not it["first"])   # stable: the rest keep their order
     return items
+
+
+def leg_text(it):
+    """A leg's time as the order shows it (page.js legTime): "~35 s", "≈35 s" when about; "" for none."""
+    if not it.get("sec"):
+        return ""
+    t = sc_text(it["sec"])
+    return "≈" + t[1:] if it.get("leg_approx") else t
 
 
 def map_totals(u):
@@ -1291,8 +1432,9 @@ def plan_parts(it, high_gravity=2.0):
             detail += [(" · " if detail else "", "muted"), (f"{g:.1f} g", "warn" if g >= high_gravity else "text")]
         if b.get("atmosphere") and b["atmosphere"] != "None":
             detail.append((f" · {b['atmosphere']}", "muted"))
-    if it.get("sec") is not None:
-        detail.append(((" · " if detail else "") + sc_text(it["sec"]) + (f" · {credits(it['per_min'])}/min" if it.get("per_min") else ""), "muted"))
+    leg = leg_text(it)
+    if leg or it.get("per_min"):
+        detail.append(((" · " if detail else "") + " · ".join(x for x in (leg, f"{credits(it['per_min'])}/min" if it.get("per_min") else "") if x), "muted"))
     return head, detail
 
 

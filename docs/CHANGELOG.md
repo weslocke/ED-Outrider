@@ -2,6 +2,43 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-07 · The suggested order by where the bodies are
+Part 1 of project/PLAN-system-order-2026-11-06.md (the author's answers Q1-Q3; "always from where you are"). No journal
+re-read: the raw scans and the barycentres are stored already (`PARSER_VERSION` unchanged).
+- **Positions (`outrider/orbits.py`, new, pure):** `kepler`, `offset` (the mean anomaly advanced from the scan's time and
+  negated: the game's orbits run the other way; the textbook Ω/i/ω rotation), `turn` (the frame rule: a star's children
+  and a planet pair's turned by its Rz(Ω)·Rx(i)·Rz(ω), one level), `positions(scans, barycentres, at)` with the
+  approximate ones (a chain through a barycentre of stars that is not the root; a node with no orbit known, its
+  children placed at its own parent). Found and checked on 199 navigation panel readings in nine systems.
+- **The server (`State.body_places`, `leaving_summary`):** each map and bio item gets `pos` [x, y, z] ls (0.1) and
+  `approx`; the summary `arrival` (the arrival star's place) and `at_body` (`State.at_body`: the body you are at or were
+  last at in the system you are in this visit, `Journals.body_last` from ApproachBody, Touchdown, a SupercruiseExit or
+  a login at a planet or star, kept after LeaveBody; meta `body_last`, cleared by `RESET_JOURNAL_DATA`). Cached with the
+  summary; `at_body` added to each copy.
+- **The order (page.js `planLeg` ... `orderPlan`, `planItems`; the overlay's `plan_leg` ... `order_plan`, `plan_items`):**
+  stops by body (map then bio, together), from the first stop picked, else `at_body`, else the arrival star; nearest
+  neighbour on supercruise time, then 2-opt; a leg with an end without a position falls back to the difference of the
+  distances to the arrival star. Re-planned whenever your body or the work changes, but the order shown is kept unless
+  the new one saves 10% of the time left or 30 s (`planKeep` / `plan_keep`, memory per system: `planMemo`, `PLAN_MEMO`;
+  a new first stop or ↺ order forgets it). `perMin` and "skip?" come from each stop's detour (the total with it less
+  without it; a body's map and bio as one).
+- **Shown:** each item's leg from the stop before ("~35 s", "≈35 s" when about: `legTime`, `leg_text`), none for the
+  second item on a body or the body you are at; the titles say from which body and how far. Here's to-do list, Now's
+  Next, the status report, the schematic's path (from where you are, the plan's legs) and its titles, the overlay's
+  Now and system panels. Settings' "skip?" hint, the guide (views.md, voice-and-alerts.md, overlay.md).
+- **Docs:** DESIGN_NOTES (the order, the convention and the frame rule found by reading the panel, the approximate case,
+  DistanceFromArrivalLS no check; not yet tried in game), JOURNAL_REFERENCE (Scan's and ScanBaryCentre's orbit fields,
+  a Traps entry), AGENT_GUIDE (code map, tests).
+- **Tests:** test_orbits (Kepler; the mirror and the turn; four systems' scans and panel readings in
+  `tests/fixtures/orbit_readings.json`, each at its reading's time: ZC-D c12-27 and WK-G b24-4 within 1%, YC-D c12-0 and
+  YC-D c12-3 within 2%; the moons need the mirror, B's family needs the frame rule; a barycentre with no scan placed at
+  its parent and approximate; a pair of stars round another barycentre approximate; no MeanAnomaly, no position; the
+  server's `pos`/`approx`/`arrival`/`at_body` through a visit); test_plan_order (opposite sides not neighbours, moons
+  together, map and bio adjacent, the detour, the keep rule both ways, the starts, the memory, ≈ and fallback legs; the
+  shared cases); page_unit (the shared cases against `orderPlan`; `planItems` from `at_body`, skip? from the detour,
+  ≈ legs, the order kept); test_overlay's expectations moved to the new order (map before bio, the rest from the first
+  stop, per minute of the detour, ≈ fallback legs).
+
 ## 2026-11-07 · Pins at Guardian and Thargoid pickups
 Part 2 of project/PLAN-system-order-2026-11-06.md (the author's answers Q4, Q5: on by default, cargo pickups count too;
 silent). No journal re-read: the pins are live-only; `surface_pins` gains two columns by the usual migration.
