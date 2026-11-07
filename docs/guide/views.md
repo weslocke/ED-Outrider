@@ -260,49 +260,73 @@ follows your system's light mode. Each browser keeps its own choice, and the tab
   <img src="../images/themes.png" alt="The desktop page in four themes: LCARS, Elite, Minbari and Centauri" width="900">
 </p>
 
-**Now** is the cockpit view for a second monitor or a tablet, in big text: the system (and, from a docking grant until you
-touch down, **PAD 34** in very large letters under it, where it is and, at a starport or carrier, its diagram (a carrier's
-name after the galaxy map's fleet or squadron carrier marker); a
-refusal's reason for a minute), the target, fuel,
-what to do next, the body you have targeted, signals worth a detour ("Titan Cocijo · 📍 2 tourist beacons", a Titan after the galaxy map's Titan marker), any surface sites ("🏛 Guardian sites on 10 b"), any rare star here ("⭐ A black hole (main star)"), the notable stellar phenomena here ("🌀 Three notable stellar phenomena,
-all in rings · 1 of 3 visited": each drop at one counts, since the journal cannot tell which of a kind's sites it was)
-and the nearest unvisited system. Under the target, the jump's cost ("56.7 ly · 0.9 t · leaves 20 max jumps"); under the
-fuel, "scoopable: 9 of last 20" (amber as on the fuel tile), and at the last scoopable star before a dry stretch "⛽ last
-scoop before 3 dry" with how much to scoop. While you scoop, the fuel line counts down to a full tank ("38 s to full",
-at the rate it is filling now: it slows at the edge of the scoop zone). The target says how much of it is
-known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"): two databases
-with different reporters; the hover says who first reported one of its bodies to EDSM, and when (EDSM's own record, not
-the game's discovery tag), and Here's heading keeps "EDSM: since 2016" once you are there. While a new target is looked
-up it says "checking…", never the previous target's verdict.
+**Now** is the cockpit view for a second monitor or a tablet, in big text, laid out so it reads at a glance: each part
+has a fixed place, and a value never breaks in the middle (a line wraps only between its facts). Top to bottom:
 
-- **Where the next jump goes**, under the target: the route's next stop as the strip under the header says it ("🛣
-  Next: Stop 38 · 4.2 ly · 38 of 120 · refuel in 3 jumps", or the Road to Riches / Exomastery one), and a kept boxel's
-  Next (or the boxel followed, in Boxel mode): "▦ Boxel: next Smojooe KL-P d5-41 · to try" or "· known · 3 of 14
+1. **The system's name.**
+2. **The headline card:** one thing at a time, the most important first. From a docking grant until you touch down,
+   **PAD 34** in very large letters, where it is and, at a starport or carrier, its diagram (a carrier's name after the
+   galaxy map's fleet or squadron carrier marker); a refusal's reason for a minute; for twenty seconds after a jump,
+   whether the system was undiscovered; otherwise **Next**: what to do here ("Bio on 1 e" with "up to 64.6M 👣×5" on
+   the right, "Map 3 a", "Honk", "3 bodies to find in the FSS", "✓ nothing worth staying for"), its facts under it
+   (signals, gravity, atmosphere, the supercruise time, "≈" when about), and the stop after it in the suggested order
+   ("then: map 3 a · ~45 s · 2 more after", or "then: nothing else worth the trip") with what you found here.
+3. **A passing alert**, for fifteen seconds, in its own small card under the headline.
+4. **Target:** the body you have targeted when it is not Next, on one line ("1 d · Rocky body · 0.13 g · Ammonia ·
+   902 ls, ~30 s · 4 bio, under your threshold"), its likely genera and their values smaller under it.
+5. **The status rows,** each label in a column on the left and its value in the same place every time, a row only
+   when it has something: **Fuel**, **Aboard**, **Jump** (the system targeted for the next jump), **Route**, **Boxel**,
+   **Sight**, **Mining** and **Here** (this system's finds as a row of chips: signals worth a detour ("Titan Cocijo ·
+   📍 2 tourist beacons", a Titan after the galaxy map's Titan marker), surface sites ("🏛 Guardian sites on 10 b"),
+   green gas giants, a rare star ("⭐ A black hole (main star)"), the notable stellar phenomena ("🌀 Three notable
+   stellar phenomena, all in rings · 1 of 3 visited": each drop at one counts, since the journal cannot tell which of a
+   kind's sites it was) and Spansh's pre-Odyssey data).
+6. **The foot,** small: your discovery streak and the nearest unvisited system, this session, the spoken captions and
+   (on a tablet over plain http) the screen-sleep hint.
+
+Under fuel, "scoopable: 9 of last 20" (amber as on the fuel tile), and at the last scoopable star before a dry stretch
+"⛽ last scoop before 3 dry" with how much to scoop. While you scoop, the fuel row counts down to a full tank ("38 s to
+full", at the rate it is filling now: it slows at the edge of the scoop zone). The **Jump** row says how much of the
+targeted system is known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"):
+two databases with different reporters; the hover says who first reported one of its bodies to EDSM, and when (EDSM's
+own record, not the game's discovery tag), and Here's heading keeps "EDSM: since 2016" once you are there. While a new
+target is looked up it says "checking…", never the previous target's verdict. Under it, the jump's cost ("56.7 ly ·
+0.9 t · leaves 20 max jumps").
+
+- **Where the next jump goes:** the Route row, the route's next stop as the strip under the header says it ("🛣
+  Next: Stop 38 · 4.2 ly · 38 of 120 · refuel in 3 jumps", or the Road to Riches / Exomastery one), and the Boxel row,
+  a kept boxel's Next (or the boxel followed, in Boxel mode): "next Smojooe KL-P d5-41 · to try" or "· known · 3 of 14
   bodies", each with 🎯 where auto-target can work.
-- **The nearest catalogued sight**: "Nearest sight: 📜 The Ammonia Lyceum · Athaip WR-H d11-7577 · 320 ly" with 🎯,
+- **The nearest catalogued sight** (the Sight row): "Nearest sight: 📜 The Ammonia Lyceum · Athaip WR-H d11-7577 · 320 ly" with 🎯,
   from [EDAstro's Galactic Encyclopedia Catalog](https://edastro.com/gec/) (the community's curated sights: scenery,
   planetary and stellar features, green gas giants, nebulae...; its page opens from the name), within 500 ly
   (`[server] sights_range`; 0 turns it off and nothing is fetched). Here's heading names the sights of a system that
   has one, and Nearby's row has 📜. The catalogue is asked for once a day (stored again only when it changed) and never shipped.
-- An **at-risk line** shows what is aboard against your rebuy ("🗺 380M · 🧬 412M aboard · 3.2× rebuy · 4 d
-  unsold · sell (UC + Vista): Far Sys 412 ly"), only once that is over your amber level or rebuy multiple. The place
+- The **Aboard** row shows what is aboard against your rebuy ("792M 🗺 380M · 🧬 412M · 3.2× rebuy · 4 d unsold",
+  with "sell (UC + Vista): Far Sys 412 ly" under it), only once that is over your amber level or rebuy multiple. The place
   to sell is the nearest station (or your own carrier, or your squadron's) for whichever of the two holds most, with a
   large pad when your ship needs one (another player's carrier is never named: it may have moved or be closed); 🎯 targets it, and from
   250 ly 🛣 plots an exact route there at once (asking first when you follow a route); a ship bought with Arx (its hull has no credit
   value) gets no rebuy multiple. Docked where your data sells it says what
   selling here pays ("💰 sell here: 380M"); on a high-g approach it shows that approach's stakes instead.
-- **While mining in a ring** (a mining ship, in normal space): a ⛏ line with the ring and hotspot, tons an hour, the
+- **While mining in a ring** (a mining ship, in normal space): the Mining row, ⛏ with the ring and hotspot, tons an hour, the
   hold and what it holds most, limpets (under 10, how many more your materials could make: "limpets 4 (+12 by
   synthesis)"), minutes to full and, with minerals ticked for the call-out, this stint's hits ("hits 3/8")
   ([Voice and alerts](voice-and-alerts.md) has its warnings).
 - **This session** since your login: "2 h 14 · 74 jumps · 612 ly · 6 new systems · 11 mapped · 4 samples ·
   ~38.0M found" (the unsold estimate's change plus what you sold). After you quit, the last session.
-- **Captions** show the last three lines said; tap one to hear it again. A corner bar has 🗣, hush 30 min,
-  status report and ✕ back.
+- **Captions** show the last three lines said, newest first, as many as fit the height left under the rows (the newest
+  always); tap one to hear it again. A corner bar has 🗣, hush 30 min, status report and ✕ back.
 - **↗** beside the Now button opens Now in its own window, or open `http://127.0.0.1:8025/?mode=now`,
   which stays on Now even after a stray click or a reload.
 - It keeps the screen awake on localhost or HTTPS. On a tablet over plain http, set its screen timeout.
-- On a planet, the **surface map** appears under the lines (see below).
+- On a planet, the **surface map** appears (see below) and Now makes room for it: the body is the title ("ZC-D c12-22
+  8", the system small beside it, and how you are there: "in the Rhino", "on foot", "landed", "flying low"), Next is
+  the job on this body (the sample run under way, "Bacterium Volu 2/3 · 142 of 500 m from the nearest sample · keep
+  going" or "✓ clear to sample", else the next genus not started, the pin you fly to, or "✓ nothing left on this body"
+  with where your ship is), and only warnings stay: the data aboard at your amber level (or a high-g approach's
+  stakes) and low fuel, each on one line, a sample run on another body, the wrong suit, another body of this system
+  targeted, and the newest caption. Route, Boxel, Here, the streak and the session come back when you leave the body.
 
 The **header** shows the galactic region, ranks, fuel, hull, any core module under your level (`module_warn`,
 80%; as of the last Loadout or repair, since the journal logs nothing in between), your carrier's jump countdown
@@ -545,7 +569,7 @@ those tables, and the colours show at once.
 
 ## 🗺️ The surface map
 
-On a planet, Now shows a map under its lines: on the ground, in the SRV, on foot, or flying below 1,000 m
+On a planet, Now shows a map under its lines (beside them on a wide landscape screen): on the ground, in the SRV, on foot, or flying below 1,000 m
 (it hides again 100 m higher). Hiding deletes nothing. The Overview shows the same map in the lower half of its system
 pane (a body panel you open takes its place until you close it), with the body you are on brought to the top of the list
 above it; the firsts and the checklist under the system's name give it their room. A faint line under the markers is
@@ -577,7 +601,8 @@ their letters), a crosshair along your heading and quarter rings, to read a bear
   nearest one that would count and which way to turn ("tagged: 524 m, turn 90° right"), and the voice says so
   within 100 m. From the ship or SRV the scanner logs no position, so it is yours at that moment: scan as close
   to the plant as you can. A species you have finished on the body drops its tags.
-- **The legend** names each tag, nearest first. Six rig slots mirror the game's HUD: mineral (or
+- **The legend** names each tag, nearest first, in sections (Samples, Tagged, Rigs, Pins, Sites and places), each row
+  with its mark in a column on the left (the species' colour, U1, L3, H) and its details muted beside it. Six rig slots mirror the game's HUD: mineral (or
   "placed"), tons so far, distance and bearing. A solid rig is **probably full**: 8 minutes since it was
   placed or last collected from.
 - **The leash:** the game destroys a rig 5 km from its Rhino. Past 3.5 km it turns red and the voice warns,

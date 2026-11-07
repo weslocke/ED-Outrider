@@ -2,6 +2,47 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-07 · Now, easier to read at a glance
+project/PLAN-now-tidy-2026-11-07.md, from the author's tablet screenshot and the two mock-ups he approved
+(project/now-tidy: Q1 the same layout on the desktop's Now, Q2 the captions only as many as fit, Q3 the "then:" line).
+No server change, no journal re-read.
+- **The layout (page.js `renderNow`):** the system; one headline card by priority (`nowHeadline`: the pad, a refusal for
+  60 s, the arrival verdict for 20 s, else Next: what on the left, its value on the right, its facts under it, then the
+  next stop of the suggested order with its leg time and how many more, or "then: nothing else worth the trip", and
+  "43k cr found here"); a passing alert's own card; Target (the targeted body when it is not Next: one line, its
+  likely genera under it: `nowTargetHtml`, `destParts` beside `destBits`); the status rows, a label column and the
+  value always in the same place (`nowRow`: Fuel, Aboard, Jump (the system targeted: what was the "➜" line), Route,
+  Boxel, Sight, Mining, Here as chips: sites, signals, green gas giants, rare stars, phenomena, pre-Odyssey 🪦); the
+  foot (the streak and nearest unvisited, the session, the captions, the screen hint). Every fact is a `.part` in a
+  wrapping row (`nowParts`; the shared lines cut at their " · " by `splitTop`): a line breaks only between facts, and a
+  part longer than the whole line wraps at its spaces (not `nowrap`, which would run it off the screen). Fuel says
+  "scooped here" for 0 jumps since the last scoop; the Aboard row leads with the total ("632.2M 🗺 11.3M · 🧬 620.8M"),
+  the sell place under it.
+- **With the map up (`obNow()`):** the body as the title ("ZC-D c12-22 8": the sector left out of a procedural name,
+  `nowBodyName`), the system small beside it and how you are there; Next is the job on the body (`nowBodyNext`: the
+  run under way with its spacing, "142 of 500 m from the nearest sample · keep going" or "✓ clear to sample", else the
+  next genus not started, the pin, "✓ nothing left on this body" with the ship's distance; `onBodyBits` shared with the
+  strip's `renderOnBody`); then warnings only (`nowBodyRest`: the data aboard at your amber level or the high-g stakes
+  and low fuel (`fuelLow`) on one line each, a run elsewhere, the wrong suit, another body of this system targeted) and
+  the newest caption (not on the tablet, whose footer has it). Route, Boxel, Here, the streak and the session come back
+  off the body.
+- **The captions (Q2):** at the foot, newest first, only as many as fit the height left (`nowFitCaps`, the newest always).
+- **The legend (`surfaceLegend`):** small-caps headings (Samples, Tagged, Rigs, Pins, and "Sites and places" for the
+  sites, the mining locations and the ship), each row a mark column (`.lg-mk`: the colour, U1, L3, H, ◆) and its words
+  (`.lg-tx`), the details muted and kept whole; the rig cards a step smaller; the words and the clicks as before.
+- **Styles:** page.css's Now rules rewritten on size variables (`--nt` the title ... `--nc` a card) set per layout:
+  the desktop's clamps, `mapsplit`, a phone and a portrait tablet with the map; tablet.css sets the tablet's and pins
+  the foot to the bottom of the column. The theme rules (`.now-sys`, `.now-card`) apply as before.
+- **Tests (page_smoke):** Now read by `data-slot` (`nowSlot`), never by line order: batch C, S1, batch C now (the
+  at-risk parts), D voice (the target line), 23, 24, rings to mine, pre-Odyssey, header tiles. New: `now_tidy_slots`
+  (the screenshot's case from `tests/fixtures/now_tidy.json`: every slot's words, parts only, the headline's priority,
+  the passing alert, the captions' order; with the map: the body title, the on-body Next, warnings only, low fuel
+  kept, another body targeted, the next genus and nothing left, the newest caption alone) and `now_tidy_browser`
+  (Chromium through Playwright when there is one, else SKIP: at 1920x1200 and 1200x1920 on the tablet and 1920x1200
+  on the desktop's Now no part wraps inside itself and nothing runs off the side; three long captions keep the rows
+  on the screen and show fewer, the newest kept; with the map the map ends on the screen).
+- **Docs:** views.md (Now, the legend), tablet.md (Now), AGENT_GUIDE (code map).
+
 ## 2026-11-07 · The suggested order by where the bodies are
 Part 1 of project/PLAN-system-order-2026-11-06.md (the author's answers Q1-Q3; "always from where you are"). No journal
 re-read: the raw scans and the barycentres are stored already (`PARSER_VERSION` unchanged).

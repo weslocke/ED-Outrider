@@ -31,8 +31,13 @@ was clicked).
   with **Target** when auto-target works on the game PC, Copy name and **Plot route**.
 - **The maps by touch:** on the galaxy map one finger rotates, two fingers move it and a pinch zooms; on Plot Route's
   map two fingers move and pinch.
+- **Now** is laid out as on the PC ([Now](views.md)): the system, one headline card (the pad, a refusal, the arrival
+  verdict, else Next with what comes after it), the targeted body, the status rows each in its place under its label
+  (Fuel, Aboard, Jump, Route, Boxel, Sight, Mining, Here) and, at the bottom of the page, the streak, the session and as
+  many of the spoken captions as fit.
 - **On a planet** the tablet switches to Now when the surface map appears (the Now button says MAP) and back to your
-  page when it goes.
+  page when it goes. Now then gives the map the room: the body is the title, Next is the job on the body, and only
+  warnings stay (the data aboard at your amber level, low fuel); the newest caption is in the footer.
 - **Docking**: when a station or carrier gives you a pad, the tablet switches to Now (PAD 34, where it is, its
   diagram) and back to your page once you have docked, unless you chose a page meanwhile.
 - **By voice**: "show Nearby", "open Bio", "go to the map", "back to Now" switch the tablet to that page, as a tap in

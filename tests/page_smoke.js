@@ -123,6 +123,16 @@ const releasePayloads = async () => {
     c.querySelectorAll(".mk").forEach(m => m.replaceWith(`[${[...m.classList].find(k => k.startsWith("mk-")).slice(3)}]`));
     return c.textContent; };
   dom.window.markText = markText;
+  // Now's places by their data-slot (the 2026-11-07 layout: read by slot, never by line order): a slot's text with its
+  // spaces folded, null when it is not shown
+  const nowSlot = name => { const e = d.querySelector(`#nowBody [data-slot="${name}"]`); return e ? e.textContent.replace(/\s+/g, " ").trim() : null; };
+  dom.window.nowSlot = nowSlot;
+  // Now's two cases from the author's screenshots (tests/fixtures/now_tidy.json: "system", in flight; "body", in the
+  // Rhino with the map up), as a script for the page (jsdom's or a real browser's) to load into its data
+  const NOW_FX = JSON.parse(require("fs").readFileSync(require("path").join(__dirname, "fixtures", "now_tidy.json"), "utf8"));
+  const nowCaseJs = which => `(() => { const c = ${JSON.stringify(NOW_FX[which])};
+    if (c.data.this_session) c.data.this_session.start = new Date(Date.now() - 88 * 60000).toISOString();
+    Object.assign(data, c.data); if (c.hereData) hereData = c.hereData; lastAlert = null; captions.length = 0; nowHintUntil = 0; })()`;
   // a block that reads Here's system (hereData) loads it itself when no block before it did (the named blocks run
   // alone: SMOKE_ONLY), as the views loop does: Here opened and its answer waited for
   const ensureHere = async () => {
@@ -1057,13 +1067,16 @@ const releasePayloads = async () => {
       data.position = Object.assign({}, saved.position, {id64: Number(big), id: big});
       data.arrival = {seq: 1, id64: big, ts: new Date().toISOString(), undiscovered: true, name: "Big"};
       // F23: no all-clear until Here's data is for this system, honked and every body found
-      hereData = null; renderNow(); out.checking = /checking…/.test(document.getElementById("nowView").textContent);
-      out.undiscovered = /Undiscovered/.test(document.getElementById("nowView").textContent);
+      // the verdict takes the headline card for its 20 s (one thing at a time: the 2026-11-07 layout), Next after it
+      hereData = null; renderNow();
+      const verdict = /Undiscovered/.test(nowSlot("verdict")) && nowSlot("next") === null;
+      data.arrival = null; renderNow(); out.checking = /^Next checking…/.test(nowSlot("next"));
+      out.undiscovered = verdict;
       out.shown = shownSystem();
       const lv = (honked, unscanned) => ({honked, unscanned, all_found: honked && !unscanned, body_count: 5, bio_pending: [], unmapped: []});
-      const nowFor = l => { hereData = {id64: big, bodies: [], leaving: l}; renderNow(); return document.getElementById("nowView").textContent; };
-      out.now = [/Next: honk/.test(nowFor(lv(false, null))), /Next: 3 bodies to find/.test(nowFor(lv(true, 3))),
-                 /nothing worth staying for/.test(nowFor(lv(true, 0)))];
+      const nowFor = l => { hereData = {id64: big, bodies: [], leaving: l}; renderNow(); return nowSlot("next"); };
+      out.now = [/^Next Honk/.test(nowFor(lv(false, null))), /^Next 3 bodies to find in the FSS/.test(nowFor(lv(true, 3))),
+                 /^Next ✓ nothing worth staying for/.test(nowFor(lv(true, 0)))];
       hereData = hd; data.position = saved.position; data.arrival = saved.arrival; data.on_body = onBody;
       // F60, F22, F21, F3, F61
       out.credits = [credits(999600), credits(999950000), credits(999499), credits(999.6), credits(1234567)];
@@ -1528,19 +1541,19 @@ const releasePayloads = async () => {
       hereData = {id64: "77", bodies: [body("A", 0, {type: "Star", subtype: "K (Yellow-Orange) Star", main: true, scoopable: true, dist_ls: 0}),
                                        body("B 1", 7), body("C 2", 9, {dist_ls: 90000})], leaving: l};
       data.destination = {body_id: 7, name: "B 1", near: null};
-      renderNow(); o.nowOther = document.getElementById("nowView").textContent;
+      renderNow(); o.nowOther = nowSlot("target");
       data.destination = {body_id: 7, name: "B 1", near: "C 2"};
-      renderNow(); o.nowFar = document.getElementById("nowView").textContent;
+      renderNow(); o.nowFar = nowSlot("target");
       data.destination = {body_id: 9, name: "C 2", near: null};
-      renderNow(); o.nowHead = document.getElementById("nowView").textContent;
+      renderNow(); o.nowHead = [nowSlot("next"), nowSlot("target")];
       data.destination = {body_id: 0, name: "A", near: null};
-      renderNow(); o.nowStar = document.getElementById("nowView").textContent;
+      renderNow(); o.nowStar = nowSlot("target");
       // Now says where the next jump goes: the route's next stop, the kept boxel's Next (review suggestion 2026-10-12)
       const keep = {highway: data.highway, survey: data.survey, boxel: data.boxel}, q = sel => (document.querySelector(sel) || {}).textContent || "";
       data.highway = {index: 38, at: 37, total: 120, destination: "Colonia", refuel_in: 3, next: {name: "Stop 38", jumps: 1, distance: 4.23}};
       data.survey = null;
       data.boxel = {key: "k", next: {label: "Smojooe KL-P d5", name: "Smojooe KL-P d5-41", n: 41, picked: true, standard: true, spansh: true, known: {bodies: 3, count: 14}}};
-      renderNow(); o.nowRoute = q("#nowBody .now-route"); o.nowBoxel = q("#nowBody .now-boxel");
+      renderNow(); o.nowRoute = nowSlot("route"); o.nowBoxel = nowSlot("boxel");
       data.boxel.next.picked = false; data.highway = null; renderNow();
       o.nowNone = !document.querySelector("#nowBody .now-route") && !document.querySelector("#nowBody .now-boxel");
       Object.assign(data, keep);
@@ -1555,10 +1568,10 @@ const releasePayloads = async () => {
       notes: JSON.stringify(got.notes) === JSON.stringify(["2 not on Spansh", "all on Spansh, nothing hidden", "none on Spansh", "all on Spansh", ""]),
       brief: got.brief === "Known. 14 bodies. 2 of them not on Spansh." && !/Spansh/.test(got.briefOwn),
       left: got.left.includes("A 4 3 signals, not DSS'd ≤39.0M") && got.left.includes("A 6 Stratum ≤19.0M"),
-      now: /➜ B 1 · Icy body · 0\.30 g · 1,200 ls · ~\d+ s · nothing to do here/.test(got.nowOther) && !/ls · ~\d+ s · nothing/.test(got.nowFar)
-        && /Next: ➜ bio on C 2/.test(got.nowHead) && !/➜ C 2 ·/.test(got.nowHead) && /➜ A · K \(Yellow-Orange\) Star · 0 ls · ~15 s · scoopable star/.test(got.nowStar),
+      now: /^Target B 1 · Icy body · 0\.30 g · 1,200 ls, ~\d+ s · nothing to do here$/.test(got.nowOther) && /^Target B 1 · Icy body · 0\.30 g · 1,200 ls · nothing/.test(got.nowFar)
+        && /^Next ➜ Bio on C 2/.test(got.nowHead[0]) && got.nowHead[1] === null && /^Target A · K \(Yellow-Orange\) Star · 0 ls, ~15 s · scoopable star$/.test(got.nowStar),
       holds: got.holds,
-      nowNext: /Next: Stop 38.*· 4\.2 ly · 38 of 120 · refuel in 3 jumps/.test(got.nowRoute) && /Boxel: next Smojooe KL-P d5-41.*known · 3 of 14 bodies/.test(got.nowBoxel) && got.nowNone,
+      nowNext: /^Route .*Next: Stop 38.*· 4\.2 ly · 38 of 120 · refuel in 3 jumps$/.test(got.nowRoute) && /^Boxel next Smojooe KL-P d5-41.* · known · 3 of 14 bodies$/.test(got.nowBoxel) && got.nowNone,
     };
     const bad = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
     const goodS1 = !bad.length && errors.length === before;
@@ -3216,7 +3229,8 @@ const releasePayloads = async () => {
       data.unsold = {total: 792e6, carto: {estimated_payout: 380e6}, bio: {estimated_value: 412e6}, thresholds: [50e6, 250e6]};
       data.ship = Object.assign({}, data.ship, {rebuy: 247.5e6}); data.since_sale = {ts: "2026-01-01T00:00:00Z", days: 6.7, jumps: 1, ly: 1};   // 6 whole days, never rounded up
       data.docked = null; data.on_body = null; nowStakes = null;
-      const txt = r => r ? r.html.replace(/<[^>]+>/g, "") + (r.cls ? " |" : "") : null;
+      // the row's parts and its sell line, as Now joins them (the parts' order is the row's)
+      const txt = r => r ? [...r.parts, r.sell].filter(Boolean).join(" · ").replace(/<[^>]+>/g, "") + (r.cls ? " |" : "") : null;
       const sellers = data.sellers; data.sellers = null;
       out.normal = txt(nowRiskLine());
       // the review's #11: where to sell it, 🛣 from 250 ly; one name when one place does both; the service holding most
@@ -3230,11 +3244,11 @@ const releasePayloads = async () => {
       data.unsold = Object.assign({}, data.unsold, {bio: {estimated_value: 412e6}});
       const sent = [], wasFetch = window.fetch, hw = data.highway;
       window.fetch = (u, o) => { if (String(u) === "api/highway/plot") { sent.push(JSON.parse(o.body).to); return Promise.resolve(new Response('{"error": "smoke"}', {status: 200})); } return wasFetch(u, o); };
-      const click = () => { const div = document.createElement("div"); div.innerHTML = nowRiskLine().html; document.body.appendChild(div);
+      const click = () => { const div = document.createElement("div"); div.innerHTML = nowRiskLine().sell; document.body.appendChild(div);
         div.querySelector('[data-nowsellplot="go"]').click(); div.remove(); };
       data.highway = null; click();
       data.highway = {destination: "Colonia", complete: false}; click();
-      out.sellPlot = [sent.slice(), /replace your route to Colonia/.test(nowRiskLine().html)];
+      out.sellPlot = [sent.slice(), /replace your route to Colonia/.test(nowRiskLine().sell)];
       NS.ask = false; data.highway = hw; window.fetch = wasFetch; data.sellers = sellers;
       data.docked = {station: "Carrier", has_uc: true, has_vista: false};
       out.sell = txt(nowRiskLine());
@@ -3293,10 +3307,10 @@ const releasePayloads = async () => {
     await sleep(300);
     got.win = [dom2.window.eval("view"), dom2.window.location.search, d2.getElementById("nowBack").hidden, !d2.getElementById("nowView").hidden, errs2];
     dom2.window.close();
-    const want = {risk: {normal: "🗺 380.0M · 🧬 412.0M aboard · 3.2× rebuy · 6 d unsold |",
-                         sellAt: "🗺 380.0M · 🧬 412.0M aboard · 3.2× rebuy · 6 d unsold · sell (UC + Vista): Far Sys 412 ly 🛣 |",
-                         sellNear: "🗺 380.0M · 🧬 412.0M aboard · 3.2× rebuy · 6 d unsold · sell (Vista): Lab Sys 300 ly 🛣 |",
-                         sellUc: "🗺 380.0M · 🧬 100.0M aboard · 3.2× rebuy · 6 d unsold · sell (UC): Near Sys 120 ly |",
+    const want = {risk: {normal: "792.0M 🗺 380.0M · 🧬 412.0M · 3.2× rebuy · 6 d unsold |",
+                         sellAt: "792.0M 🗺 380.0M · 🧬 412.0M · 3.2× rebuy · 6 d unsold · sell (UC + Vista): Far Sys 412 ly 🛣 |",
+                         sellNear: "792.0M 🗺 380.0M · 🧬 412.0M · 3.2× rebuy · 6 d unsold · sell (Vista): Lab Sys 300 ly 🛣 |",
+                         sellUc: "792.0M 🗺 380.0M · 🧬 100.0M · 3.2× rebuy · 6 d unsold · sell (UC): Near Sys 120 ly |",
                          sellPlot: [["Lab Sys"], true], sell: "💰 sell here: 380.0M |",
                          highg: "⚠ 2.4 g · 792.0M aboard · 3.2 rebuys |", shown: true, liftoff: true, small: null},
       caps: [["Leaving A 3 unfinished: Stratum 2 of 3."], 0, ["Line 1.", "Line 2.", "Line 3."]],
@@ -4271,7 +4285,8 @@ const releasePayloads = async () => {
       const at = id => { data.destination = {body_id: id, name: "", near: null}; return statusReportText(); };
       const o = {next: at(1), other: at(3), done: at(5), none: (data.destination = null, statusReportText())};
       data.destination = {body_id: 3, name: "A 3", near: null};
-      o.now = nowDestText(hereData, hereData.leaving, planItems(hereData.leaving), hereData.bodies[2]).replace(/<[^>]+>/g, "");
+      const c = nowSystem(); c.dest = hereData.bodies[2];
+      const box = document.createElement("div"); box.innerHTML = nowTargetHtml(c); o.now = box.textContent.replace(/\\s+/g, " ").trim();
       data = d; hereData = hd0; return JSON.stringify(o); })()`));
     // S3: a 50-line pool: 50 different lines before any repeats, across a reload; a ▶ voice sample is not counted
     const st = w.localStorage.getItem("speechStyles");
@@ -4351,7 +4366,7 @@ const releasePayloads = async () => {
                other: "A 3: 2.4 g, thin ammonia, 3 bio signals, up to 19.0M, about 30 seconds, worth it. Fuel 64 percent, 8 jumps. Next: map A 1, 50.0M, about 15 seconds. 412.0M aboard, 3.2 rebuys.",
                done: "Fuel 64 percent, 8 jumps. B 2: nothing to do. Next: map A 1, 50.0M, about 15 seconds. 412.0M aboard, 3.2 rebuys.",
                none: "Fuel 64 percent, 8 jumps. Next: map A 1, 50.0M, about 15 seconds. 412.0M aboard, 3.2 rebuys. Nearest unvisited: Drojau LL-O b26-3, 6.4 light-years.",
-               now: got.status && /^➜ A 3 · .* · ~30 s · worth it/.test(got.status.now) ? got.status.now : "(heading-to line)"},
+               now: got.status && /^Target A 3 · .* · 900 ls, ~30 s · 3 bio, worth it/.test(got.status.now) ? got.status.now : "(heading-to line)"},
       bag: {stored: 30, first50: 50, fresh: true, sample: true, capped: 300}, trySample: true,
       mapped: ["A 2 mapped efficiently, 3.4M. Next: biology on C 2, up to 19.0M.", "A 2 mapped efficiently · 3.4M cr",
                "A 2 mapped, 2 probes over target, no efficiency bonus, 3.4M. Nothing else here over your levels.",
@@ -6221,6 +6236,158 @@ const releasePayloads = async () => {
     allOk = allOk && goodN;
     console.log(goodN ? "OK" : "FAIL", "| now_keeps_its_nodes |", goodN ? "the same lines are not rebuilt" : got, errors.slice(before));
   }
+  // Now, easier to read at a glance (the author's mock-ups, 2026-11-07: project/now-tidy, tests/fixtures/now_tidy.json):
+  // every place by its data-slot, every fact a .part (no loose words a line could break inside), one headline card by
+  // priority (the pad, a refusal, the arrival verdict, else Next), and with the map up the body as the title, the job on
+  // it as Next and warnings only (low fuel still shown), the newest caption alone
+  now_tidy_slots: { if (skip("now_tidy_slots")) break now_tidy_slots;
+    holdPayloads();
+    const w = dom.window, before = errors.length;
+    const saved = w.eval("JSON.stringify({data, hereData, obData, obKey, view, caps: captions.slice(), lastAlert})");
+    w.eval(nowCaseJs("system"));
+    const got = JSON.parse(w.eval(`(() => {
+      const o = {}, nb = document.getElementById("nowBody"), slots = () => [...nb.querySelectorAll("[data-slot]")].map(e => e.dataset.slot);
+      view = "now"; render();
+      o.slots = slots();
+      o.next = nowSlot("next"); o.target = nowSlot("target"); o.fuel = nowSlot("fuel"); o.aboard = nowSlot("aboard"); o.boxel = nowSlot("boxel");
+      o.streak = nowSlot("streak"); o.session = nowSlot("session");
+      o.pay = (nb.querySelector('[data-slot="next"] .now-pay') || {}).textContent;
+      // no loose words: a parts row holds only parts and separators (and a row's label)
+      o.loose = [...nb.querySelectorAll(".now-parts")].flatMap(r => [...r.childNodes].filter(n => n.nodeType === 3 ? n.textContent.trim() !== ""
+        : !n.matches(".part, .sep, .now-k"))).map(n => n.outerHTML || n.textContent);
+      o.rows = [...nb.querySelectorAll(".now-row")].map(r => [r.dataset.slot, r.querySelector(".now-k").textContent]);
+      // the headline: one card at a time, by priority
+      const ts = new Date().toISOString(), head = () => ["pad", "denied", "verdict", "next"].filter(k => nb.querySelector('[data-slot="' + k + '"]'));
+      data.arrival = {seq: 1, id64: posId(), ts, undiscovered: true, name: data.position.name};
+      data.docking = {pad: 7, station: "Port", ts, words: null}; renderNow(); o.head = [head()];
+      data.docking = {pad: null, station: "Port", ts, words: "no space"}; renderNow(); o.head.push(head());
+      data.docking = null; renderNow(); o.head.push(head());
+      data.arrival = null; renderNow(); o.head.push(head());
+      // a passing alert: its own card under the headline, the headline kept
+      lastAlert = {kind: "x", title: "Hull 40%", body: "", at: Date.now()}; renderNow(); o.alert = [head(), nowSlot("alert")]; lastAlert = null;
+      // the captions at the foot, newest first
+      captions.length = 0; for (const n of [1, 2, 3]) captions.push({words: "Line " + n + ".", shown: "Line " + n + ".", said: "Line " + n + ".", at: Date.now(), priv: false});
+      renderNow(); o.caps = [...nb.querySelectorAll('[data-slot="foot"] .now-cap')].map(c => c.dataset.words);
+      // the body's title: the sector left out of a procedural name, any other in full
+      o.names = [nowBodyName({full: "Smojooe ZC-D c12-22 8"}, "Smojooe ZC-D c12-22"), nowBodyName({body: "3 a", full: "Colonia 3 a"}, "Colonia"),
+                 nowBodyName({full: "Col 285 Sector AB-C d1-2 3 a"}, "Col 285 Sector AB-C d1-2")];
+      return JSON.stringify(o); })()`));
+    // with the map up: the body case (a highway, a boxel and the session in the data, which Now leaves for later)
+    w.eval(nowCaseJs("body"));
+    const map = JSON.parse(w.eval(`(() => {
+      const o = {}, nb = document.getElementById("nowBody"), slots = () => [...nb.querySelectorAll("[data-slot]")].map(e => e.dataset.slot);
+      data.highway = {index: 38, at: 37, total: 120, destination: "Colonia", refuel_in: 3, next: {name: "Stop 38", jumps: 1, distance: 4.23}};
+      data.boxel = {key: "k", next: {label: "Smojooe KL-P d5", name: "Smojooe KL-P d5-41", n: 41, picked: true, standard: true, spansh: false}};
+      data.this_session = {jumps: 3, ly: 60, start: new Date(Date.now() - 600000).toISOString(), found: 1e6};
+      data.streak = {new: 2, total: 5};
+      captions.length = 0; for (const n of [1, 2, 3]) captions.push({words: "Line " + n + ".", shown: "Line " + n + ".", said: "Line " + n + ".", at: Date.now(), priv: false});
+      obKey = data.on_body.system + "|" + data.scan_version; obData = null;
+      view = "now"; render();
+      o.mapon = document.getElementById("nowView").classList.contains("mapon") && !document.getElementById("nowMap").hidden;
+      o.slots = slots(); o.title = nowSlot("title"); o.next = nowSlot("next"); o.aboard = nowSlot("aboard");
+      o.caps = [...nb.querySelectorAll(".now-cap")].map(c => c.dataset.words);
+      // low fuel stays, as one compact line
+      data.fuel = Object.assign({}, data.fuel, {pct: 22, jumps_max: 4}); renderNow(); o.fuel = nowSlot("fuel");
+      data.fuel = Object.assign({}, data.fuel, {pct: 99, jumps_max: 23});
+      // another body of this system targeted: its line; the body you are on: none
+      hereData = {id64: data.position.id, bodies: [{name: "8", body_id: 31, type: "Planet", subtype: "Rocky body", dist_ls: 12, gravity: 0.2, atmosphere: "None", genera: [], bio: 0, geo: 0, organics: []},
+                                                  {name: "9", body_id: 32, type: "Planet", subtype: "Icy body", dist_ls: 40, gravity: 0.1, atmosphere: "None", genera: [], bio: 0, geo: 0, organics: []}],
+                  leaving: {honked: true, unscanned: 0, all_found: true, body_count: 2, bio_pending: [], unmapped: []}};
+      data.destination = {body_id: 32, name: "9", near: null}; renderNow(); o.other = nowSlot("target");
+      data.destination = {body_id: 31, name: "8", near: null}; renderNow(); o.same = nowSlot("target");
+      data.destination = null;
+      // no run under way: the next genus not started, then the pin, then nothing left (with where the ship is)
+      data.sampling = null;
+      const body = done => ({name: "8", genera: ["Bacterium", "Stratum"], bio: 2, geo: 0, value_parts: {bio_factor: 1},
+        organics: [{genus: "Bacterium", species: "Bacterium Volu", samples: done ? 3 : 2, done, lost: false}].concat(done ? [{genus: "Stratum", species: "Stratum Tectonicas", samples: 3, done: true, lost: false}] : []),
+        bio_guess: [{genus: "Stratum", best: "Stratum Tectonicas", species: ["Stratum Tectonicas"], value: 19010800}]});
+      obData = {region: 18, bodies: [body(false)]}; renderNow(); o.genus = nowSlot("next");
+      obData = {region: 18, bodies: [body(true)]}; renderNow(); o.done = nowSlot("next");
+      return JSON.stringify(o); })()`));
+    w.eval(`(() => { const s = ${saved}; data = s.data; hereData = s.hereData; obData = s.obData; obKey = s.obKey; view = s.view;
+      captions.length = 0; captions.push(...s.caps); lastAlert = s.lastAlert; render(); })()`);
+    const want = {
+      slots: ["title", "next", "target", "fuel", "aboard", "boxel", "foot", "streak", "session"],
+      next: "Next Bio on 1 e up to 64.6M 👣×5 3 signals, not DSS'd · 0.1 g · Ammonia · ~30 s away then: nothing else worth the trip · 43k cr found here",
+      target: "Target 1 d · Rocky body · 0.13 g · Ammonia · 902 ls, ~30 s · 4 bio, under your threshold Osseus? 12.0M · Tussock? 8.8M · Fungoida? 8.4M · Bacterium? 8.3M · max 7.5M",
+      fuel: "Fuel 99% · 23 jumps · scooped here scoopable: 20 of last 20",
+      aboard: /^Aboard 632\.2M 🗺 11\.3M · 🧬 620\.8M · .*11 d unsold sell \(UC \+ Vista\): Smojooe AR-E b25-8 37 ly/,
+      boxel: "Boxel next Smojooe VW-E c11-12 · to try",
+      streak: "10/20 new · nearest known unvisited: Smojooe UZ-H b23-8 10.8 ly",
+      session: "This session 1 h 28 · 9 jumps · 248 ly · 1 new system · 20 new bodies · 1 mapped · ~63k found",
+      pay: "up to 64.6M 👣×5", loose: [], rows: [["fuel", "Fuel"], ["aboard", "Aboard"], ["boxel", "Boxel"]],
+      head: [["pad"], ["denied"], ["verdict"], ["next"]], alert: [["next"], "Hull 40%"], caps: ["Line 3.", "Line 2.", "Line 1."],
+      names: ["ZC-D c12-22 8", "Colonia 3 a", "AB-C d1-2 3 a"]};
+    const wantMap = {mapon: true, slots: ["title", "next", "aboard", "captions"], title: "ZC-D c12-22 8 Smojooe ZC-D c12-22 in the Rhino",
+      next: "Next Bacterium Volu 2/3 142 of 500 m from the nearest sample · keep going pays 7.8M",
+      aboard: /^⚠ 440\.7M aboard · .*5 d unsold · sell \(UC \+ Vista\): Smojooe AR-E b25-8 30 ly$/, caps: ["Line 3."],
+      fuel: "⛽ 22% · 4 jumps", other: /^Target 9 · Icy body · 0\.10 g · 40 ls/, same: null,
+      genus: /^Next Stratum 0\/3 likely Tectonicas 19\.0M Bacterium 2\/3 Volu · Stratum 0\/3/,
+      done: /^Next ✓ nothing left on this body your ship \d+ m · \d{3}° Bacterium 3\/3 ✓/};
+    const test = (v, x) => x instanceof RegExp ? x.test(v || "") : JSON.stringify(v) === JSON.stringify(x);
+    const bad = [...Object.keys(want).filter(k => !test(got[k], want[k])), ...Object.keys(wantMap).filter(k => !test(map[k], wantMap[k])).map(k => "map." + k)];
+    const good = !bad.length && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| now tidy slots |", good ? "slots, parts only, one headline by priority, the map's body title, on-body Next, warnings only, newest caption"
+      : `failed ${bad.join(", ")}: ${JSON.stringify({got, map})}`, errors.slice(before));
+    await releasePayloads();
+  }
+  // The same in a real browser (Chromium through Playwright, when there is one: the layout jsdom cannot do): at
+  // 1920x1200 and 1200x1920 (a tablet at 1.5x: 1280x800 and 800x1280 CSS px) and on the desktop's Now at 1920x1200, no
+  // part breaks inside itself and nothing runs off the side; the captions take only the height left (the newest always);
+  // with the map up, the map ends on the screen
+  now_tidy_browser: { if (skip("now_tidy_browser")) break now_tidy_browser;
+    let chromium = null, exe = null;
+    try { ({chromium} = require(require("path").resolve(mods, "playwright"))); } catch { chromium = null; }
+    const fs = require("fs"), home = process.env.HOME || "", root = `${home}/.cache/ms-playwright`;
+    const found = [process.env.PLAYWRIGHT_CHROMIUM, ...(fs.existsSync(root) ? fs.readdirSync(root).filter(n => /^chromium-\d+$/.test(n)).sort().reverse()
+      .flatMap(n => [`${root}/${n}/chrome-linux64/chrome`, `${root}/${n}/chrome-linux/chrome`]) : [])].filter(p => p && fs.existsSync(p));
+    let browser = null;
+    if (chromium) for (const p of [...found, null]) {
+      try { browser = await chromium.launch(p ? {executablePath: p} : {}); exe = p || "playwright's own"; break; } catch { browser = null; }
+    }
+    if (!browser) { console.log("SKIP | now tidy browser | no Playwright Chromium here (npm install, npx playwright install chromium): the layout checks did not run"); break now_tidy_browser; }
+    const out = {};
+    try {
+      const look = async (path, which, width, height, extra = "") => {
+        const page = await browser.newPage({viewport: {width, height}, deviceScaleFactor: 1.5});
+        const perr = []; page.on("pageerror", e => perr.push(e.message));
+        await page.goto(base + path);
+        await page.waitForFunction(() => typeof data !== "undefined" && !!data, null, {timeout: 30000});
+        // no payload replaces the case meanwhile
+        await page.evaluate(() => { const f = window.fetch; window.fetch = (u, o) => /api\/nearby\?since=/.test(String(u)) ? new Promise(() => {}) : f(u, o); });
+        await page.evaluate(nowCaseJs(which));
+        const r = await page.evaluate(`(() => { ${extra}; view = "now"; render(); renderNow();
+          const nb = document.getElementById("nowBody"), nv = document.getElementById("nowView");
+          // a part that wraps is taller than the same part kept on one line
+          const wrapped = [...nb.querySelectorAll(".part")].filter(p => { const h = p.getBoundingClientRect().height; p.style.whiteSpace = "nowrap";
+            const one = p.getBoundingClientRect().height; p.style.whiteSpace = ""; return h > one + 1; }).map(p => p.textContent.trim());
+          const wide = nv.scrollWidth > nv.clientWidth + 1, area = nowArea(), rows = nb.querySelector(".now-rows");
+          const caps = [...nb.querySelectorAll(".now-cap")].filter(c => !c.hidden).length;
+          const bottom = TABLET ? nv.getBoundingClientRect().bottom : innerHeight, last = nb.lastElementChild.getBoundingClientRect().bottom;
+          const canvas = document.getElementById("nowMapCanvas").getBoundingClientRect();
+          return {wrapped, wide, caps, rowsOn: !rows || rows.getBoundingClientRect().bottom <= bottom + 1, fits: caps <= 1 || last <= bottom + 1,
+                  map: document.getElementById("nowMap").hidden ? null : canvas.height > 200 && canvas.bottom <= area.vh + 1}; })()`);
+        r.errors = perr;
+        await page.close();
+        return r;
+      };
+      // three captions, each long enough to take several lines: they cannot all fit under the rows of a 1280x800 tablet
+      const caps = n => `captions.length = 0; for (let i = 1; i <= ${n}; i++) captions.push({words: ("Caption " + i + ", a long line the co-pilot said about the system you are in and what is left to do here. ").repeat(4), shown: null, said: "", at: Date.now(), priv: false})`;
+      out.tablet = await look("tablet", "system", 1280, 800);
+      out.tall = await look("tablet", "system", 800, 1280);
+      out.desk = await look("?mode=now", "system", 1920, 1200);
+      out.tabletCaps = await look("tablet", "system", 1280, 800, caps(3));
+      out.tabletMap = await look("tablet", "body", 1280, 800);
+      out.deskMap = await look("?mode=now", "body", 1920, 1200, caps(3));
+    } finally { await browser.close(); }
+    const ok = r => r && !r.wrapped.length && !r.wide && r.rowsOn && r.fits && !r.errors.length;
+    const want = {tablet: ok(out.tablet), tall: ok(out.tall), desk: ok(out.desk), tabletCaps: ok(out.tabletCaps) && out.tabletCaps.caps >= 1 && out.tabletCaps.caps < 3,
+                  tabletMap: ok(out.tabletMap) && out.tabletMap.map === true, deskMap: ok(out.deskMap) && out.deskMap.map === true && out.deskMap.caps === 1};
+    const bad = Object.keys(want).filter(k => !want[k]);
+    allOk = allOk && !bad.length;
+    console.log(!bad.length ? "OK" : "FAIL", "| now tidy browser |", !bad.length ? `no part wraps, nothing off the side, captions and the map fit (${exe})` : `failed ${bad.join(", ")}: ${JSON.stringify(out)}`);
+  }
   // Server settings saved twice (complete review 2026-10-30): after a Save the password went back into its box and every
   // later Save sent it again; now the second Save has nothing to send
   server_settings_save_twice: { if (skip("server_settings_save_twice")) break server_settings_save_twice;
@@ -7536,8 +7703,9 @@ const releasePayloads = async () => {
       const q = sel => { const e = document.querySelector(sel); return e ? e.textContent.replace(/\\s+/g, " ").trim() : null; };
       o.nowHop = q("#nowBody .now-hop"); o.nowRate = q("#nowBody .now-rate");
       o.nowWarn = !!document.querySelector("#nowBody .now-rate .warnc");
-      o.same = [hopCostHtml(data.target.hop) === document.querySelector("#nowBody .now-hop").innerHTML,
-                scoopRateWarn(data.fuel) === document.querySelector("#nowBody .now-rate").innerHTML];
+      // the same words as the header's, as Now's parts (split between their " · ")
+      o.same = [nowParts(splitTop(hopCostHtml(data.target.hop))) === document.querySelector("#nowBody .now-hop").innerHTML,
+                nowParts([scoopRateWarn(data.fuel)]) === document.querySelector("#nowBody .now-rate").innerHTML];
       o.outOfRange = plain(hopCostHtml({ly: 75.6, fuel: 4.02, left: 0, reach: false}));
       o.noRate = scoopRateWarn({live: true}) === "";
       data = JSON.parse(d0); renderNow();
@@ -10952,7 +11120,7 @@ const releasePayloads = async () => {
       got.hDropCaught = [feed(hdrop("S2")), w.eval("lastAlert && lastAlert.body")];
       got.hDropNew = [feed(`{kind: "hotspot_drop", system: "9", ring: "4 B Ring", hotspot: "painite", name: "Painite", start: "S3"}`)];
       w.eval(`data = Object.assign({}, data, {mining_live: {start: "S2", system: "9", limpets: 10, text: "⛏ 4 B Ring · Alexandrite"}}); renderNow()`);
-      got.hHitsNow = d.querySelector("#nowBody .now-mine") ? d.querySelector("#nowBody .now-mine").textContent : null;
+      got.hHitsNow = d.querySelector("#nowBody .now-mine .now-v") ? d.querySelector("#nowBody .now-mine .now-v").textContent : null;
       w.eval("MINING.d = window.__hsKeep; delete window.__hsKeep");
       // D, the mining strip's warnings: limpets low (the number in Settings → Mining), the hold nearly full (2 to 5
       // minutes), full; each once a stint; a new stint warns again; Now shows the line while mining
@@ -10992,7 +11160,7 @@ const releasePayloads = async () => {
           return [{station: "Hub", system: "Sys", distance: 3, price: 182000, carrier: false}]; });
         MW.start = s; })()`);
       got.sellLeft = JSON.parse(w.eval("JSON.stringify(__spoken.splice(0))"));
-      got.nowMine = d.querySelector("#nowBody .now-mine") ? d.querySelector("#nowBody .now-mine").textContent : null;
+      got.nowMine = d.querySelector("#nowBody .now-mine .now-v") ? d.querySelector("#nowBody .now-mine .now-v").textContent : null;
       got.caps = w.eval(`fillLine("{ring} at {body}. So: {types} rings. {types}!", {ring: "a metallic ring", body: "A 3", types: "icy"})`);
       w.eval(`localStorage.setItem("miningRings", JSON.stringify({types: ["Rocky", "Bogus"], pristine: false})); drawMiningRings()`);
       got.ui = [[...d.querySelectorAll("#miningRings [data-ring]")].filter(b => b.checked).map(b => b.dataset.ring), d.getElementById("ringPristine").checked,
@@ -11558,10 +11726,10 @@ const releasePayloads = async () => {
         spansh_date: "2019-02-12", spansh_old: "2019-02-12", leaving: {all_found: false, honked: true, unscanned: 0, bio_pending: [], unmapped: []}, value_now: 0, value_max: 0}); renderNow(); hereData = Object.assign({}, hereData, {bodies: []}); renderHere();
         hereData.bodies = [{name: "A 3", type: "Planet", stale_bio: true, ring_details: []}]`);
       got.now = d.querySelector("#nowBody .now-old") ? d.querySelector("#nowBody .now-old").textContent : null;
-      got.nowNext = [/Next: rescan in the FSS/.test(d.getElementById("nowBody").textContent), /nothing worth staying for/.test(d.getElementById("nowBody").textContent)];
+      got.nowNext = [/^Next Rescan in the FSS/.test(nowSlot("next")), /nothing worth staying for/.test(nowSlot("next"))];
       got.head = d.getElementById("hereHead").textContent.includes("Spansh: pre-Odyssey, 2019-02-12");
       w.eval(`hereData = Object.assign({}, hereData, {leaving: {all_found: true, honked: true, unscanned: 0, bio_pending: [], unmapped: []}}); renderNow()`);
-      got.nowGone = [!d.querySelector("#nowBody .now-old"), /nothing worth staying for/.test(d.getElementById("nowBody").textContent)];
+      got.nowGone = [!d.querySelector("#nowBody .now-old"), /^Next ✓ nothing worth staying for/.test(nowSlot("next"))];
     } finally {
       w.eval(`const k = window.__po; data = k.data; hereData = k.hereData; speak = k.speak; [speechOn, isSpeaker] = k.flags; hushState = k.hush; lastAlert = k.alert;
         alertSpeak.brief = k.aspeak; linePlain = false; if (k.rq === null) localStorage.removeItem("routineQuiet"); else localStorage.setItem("routineQuiet", k.rq);

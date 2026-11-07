@@ -933,19 +933,73 @@ body.nowmode header, body.nowmode main { display: none; }
 #nowBar button { background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 8px; font: inherit;
   font-size: clamp(14px, 1.5vw, 18px); padding: 6px 12px; min-height: 40px; cursor: pointer; }
 #nowBar button.on { border-color: var(--accent); color: var(--accent); }
-#nowView .now-caps { margin-top: 2vh; border-top: 1px solid var(--line); padding-top: 1vh; }
-#nowView .now-cap { font-size: clamp(16px, 2.2vw, 26px); line-height: 1.3; padding: .5vh 0; cursor: pointer; }
+#nowView .now-caps { margin-top: 1vh; }
+#nowView .now-cap { font-size: var(--ns); line-height: 1.3; padding: .4vh 0; cursor: pointer; }
 #nowView .now-cap:hover { color: var(--accent); }
 #nowView .now-cap .unk { font-size: .75em; }
 @media (max-width: 640px) { #nowBar { float: none; justify-content: flex-start; margin: 0 0 10px; } #nowBar button { padding: 6px 9px; } }
-#nowView .now-sys { font-size: clamp(36px, 7vw, 80px); font-weight: 700; color: var(--accent); line-height: 1.1; margin-bottom: 2vh; word-break: break-word; }
-#nowView .now-line { font-size: clamp(20px, 3.4vw, 40px); margin: 1.4vh 0; line-height: 1.25; }
-#nowView .now-line.warn b { color: var(--warn); } #nowView .now-line.urgent b { color: var(--bad); }
-#nowView .now-risk.warn { color: var(--warn); } #nowView .now-risk.urgent { color: var(--bad); }
-#nowView .now-body { font-size: clamp(18px, 2.6vw, 30px); } #nowView .now-body .spacing { font-size: 1.3em; }
-#nowView .now-card { font-size: clamp(22px, 3.8vw, 44px); padding: 1.2vh 1.6vw; border-radius: 10px; margin: 1.4vh 0; border: 2px solid var(--line); }
+/* Now (the author's mock-ups, 2026-11-07: project/now-tidy): the title, one headline card, the target, the status rows
+   (a label column, each value in the same place every time) and the small foot. The sizes are variables, set per layout
+   below (and in tablet.css): --nt the title, --nw Next's headline, --nv a row's value, --nd the facts under it, --nk the
+   labels, --ns the foot. Every fact is a .part in a wrapping flex row: a row breaks only between parts, and a part
+   longer than the whole line (a very long name) wraps at its spaces, never mid-word (white-space: nowrap would let it
+   run off the screen instead) */
+#nowView { --nt: clamp(36px, 7vw, 80px); --nw: clamp(24px, 3.4vw, 46px); --nv: clamp(20px, 2.6vw, 34px); --nd: clamp(15px, 1.8vw, 24px);
+  --nk: clamp(11px, 1.1vw, 15px); --ns: clamp(14px, 1.6vw, 22px); --nc: clamp(22px, 3.8vw, 44px); --npad: clamp(10px, 1.4vw, 24px); }
+#nowView .now-sys { font-size: var(--nt); font-weight: 700; color: var(--accent); line-height: 1.1; margin-bottom: 1.6vh; overflow-wrap: break-word; }
+#nowView .now-parts { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .5em; row-gap: .1em; }
+#nowView .part { max-width: 100%; min-width: 0; }
+#nowView .now-parts > .sep { color: var(--muted); }
+#nowView .now-k { font-size: var(--nk); font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+#nowView .big { font-weight: 700; }
+#nowView .now-card { font-size: var(--nc); padding: 1.2vh 1.6vw; border-radius: 10px; margin: 1.4vh 0; border: 2px solid var(--line); }
 #nowView .now-card.yes { border-color: var(--good); color: var(--good); } #nowView .now-card.no { color: var(--muted); }
 #nowView .now-card.alert { border-color: var(--warn); color: var(--warn); }
+#nowView .now-card.now-passing { font-size: var(--nd); padding: .4em var(--npad); margin-top: 0; }
+/* the headline card's Next: what (left) and its value (right) on one line, the facts under it, then what comes after */
+#nowView .now-next { font-size: var(--nd); line-height: 1.3; padding: .55em var(--npad) .6em; margin: 0 0 1.6vh; border-radius: 14px;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--panel) 85%, transparent); }
+#nowView .now-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 1.2em; row-gap: .2em; }
+#nowView .now-hl { display: flex; align-items: baseline; column-gap: .8em; min-width: 0; }
+#nowView .now-what { font-size: var(--nw); font-weight: 600; color: var(--accent); line-height: 1.15; }
+#nowView .now-what b { font-weight: 700; }
+#nowView .now-right { justify-content: flex-end; margin-left: auto; }
+#nowView .now-pay { font-size: calc(var(--nw) * .84); font-weight: 700; }
+#nowView .now-pay.bio { color: var(--biohot); }
+#nowView .now-x5 { font-size: .6em; border: 1px solid currentColor; border-radius: 8px; padding: 0 .35em; vertical-align: .2em; }
+#nowView .now-detail { margin-top: .3em; }
+#nowView .now-then { font-size: .88em; color: var(--muted); margin-top: .5em; padding-top: .35em; border-top: 1px solid var(--line); }
+#nowView .now-then b { color: var(--text); }
+/* the targeted body: one line, its guesses smaller under it */
+#nowView .now-target { padding: 0 var(--npad) 1.2vh; margin-bottom: 1.4vh; border-bottom: 1px solid var(--line); }
+#nowView .now-tmain { font-size: calc(var(--nv) * .95); column-gap: .4em; } #nowView .now-tmain .now-k { align-self: center; margin-right: .3em; }
+#nowView .now-tdetail { font-size: calc(var(--nd) * .9); color: var(--muted); margin-top: .2em; }
+/* the status rows: a label column, the value, a detail line under it */
+#nowView .now-rows { padding: 0 var(--npad); }
+#nowView .now-row { display: grid; grid-template-columns: calc(var(--nk) * 8) minmax(0, 1fr); column-gap: 1em; align-items: baseline; margin: 0 0 1.3vh; }
+#nowView .now-row > .now-k { grid-row: 1; }
+#nowView .now-row > .now-v { font-size: var(--nv); line-height: 1.25; grid-column: 2; }
+#nowView .now-row > .now-d { font-size: calc(var(--nd) * .9); color: var(--muted); grid-column: 2; margin-top: .15em; }
+#nowView .now-row.warn .big { color: var(--warn); } #nowView .now-row.urgent .big { color: var(--bad); }
+#nowView .now-risk.warn > .now-v, #nowView .now-warn.warn { color: var(--warn); }
+#nowView .now-risk.urgent > .now-v, #nowView .now-warn.urgent { color: var(--bad); }
+#nowView .now-kinds { font-size: .78em; }
+#nowView .now-d b { color: var(--text); }
+#nowView .now-row.now-mine > .now-v { color: var(--accent); }   /* mining D: while you mine in a ring */
+/* the foot: small and muted */
+#nowView .now-foot { margin-top: 2.4vh; padding: 1vh var(--npad) 0; border-top: 1px solid var(--line); font-size: var(--ns); color: var(--muted); }
+#nowView .now-foot b { color: var(--text); }
+#nowView .now-foot > * + * { margin-top: .35em; }
+/* with the map up: the body as the title (the system and how you are there beside it), Next on one line, warnings */
+#nowView .now-title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .7em; row-gap: .2em; margin-bottom: 1vh; }
+#nowView .now-title .now-sys { margin: 0; }
+#nowView .now-of { font-size: var(--nd); color: var(--muted); }
+#nowView .now-how { font-size: calc(var(--nd) * .85); color: var(--info); border: 1px solid var(--info); border-radius: 10px; padding: 0 .5em; white-space: nowrap; }
+#nowView .now-next.one { margin-bottom: 1vh; padding-top: .35em; padding-bottom: .4em; }
+#nowView .now-next.one .now-right { font-size: calc(var(--nd) * 1.05); }
+#nowView .now-next.one .now-detail { font-size: .88em; }
+#nowView .now-warn { font-size: var(--nd); margin: .4em 0; }
+#nowView .now-target + .now-caps, #nowView .now-warn + .now-caps { margin-top: 1vh; }
 /* #3: the pad the station gave you, in large letters, the station under it */
 #nowView .now-pad { font-size: clamp(40px, 7vw, 96px); font-weight: 800; color: var(--good); line-height: 1; margin: 1vh 0 2vh; }
 #nowView .now-pad span { display: block; font-size: clamp(16px, 2.4vw, 28px); font-weight: 400; color: var(--muted); margin-top: .6vh; }
@@ -1152,7 +1206,7 @@ body.nowmode header, body.nowmode main { display: none; }
 .streak .sk.none { border-style: dashed; }
 #streakLn:empty { display: none; }
 .skipq { font-style: italic; }
-#nowView .now-small { font-size: clamp(16px, 2.2vw, 26px); color: var(--muted); } #nowView .now-small b { color: var(--text); }
+#nowView .now-small { font-size: var(--ns); color: var(--muted); } #nowView .now-small b { color: var(--text); }
 .lastsession { margin: 0 0 10px; padding: 6px 10px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 13px; background: var(--panel); }
 /* the alerts dialog's spoken-line transcript: each line's fate coloured by what became of it */
 details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: pointer; color: var(--accent); font-size: 12px; }
@@ -1195,9 +1249,17 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 .smap-zoom { display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 1.2; margin-bottom: .5em; flex-wrap: wrap; }
 .smap-zoom input[type=range] { flex: 1 1 120px; max-width: 240px; min-width: 90px; accent-color: var(--accent); }
 .smap-zoom [data-surfauto].on { color: var(--accent); border-color: var(--accent); }
-.smap-legend .lg-h { color: var(--muted); font-size: .8em; text-transform: uppercase; letter-spacing: .04em; margin: .7em 0 .2em; }
-.smap-legend .lg-h .unk { text-transform: none; letter-spacing: 0; }
-.smap-legend .lg-row { margin: .15em 0; }
+/* small-caps section headings; each row a mark column (the swatch, U1, L3, H, ◆) and its words, the details muted on the
+   same line (the author's mock-up, 2026-11-07) */
+.smap-legend .lg-h { color: var(--muted); font-size: .7em; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; margin: .9em 0 .3em; }
+.smap-legend .lg-h:first-child { margin-top: .2em; }
+.smap-legend .lg-h .unk { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.smap-legend .lg-row { margin: .15em 0; display: grid; grid-template-columns: 2.1em minmax(0, 1fr); column-gap: .3em; align-items: baseline; }
+.smap-legend .lg-mk { text-align: center; } .smap-legend .lg-mk .tg { min-width: 0; color: var(--accent); }
+.smap-legend .lg-mk .sw { margin-right: 0; }
+.smap-legend .lg-nw, .smap-legend .lg-tx > .unk { white-space: nowrap; }   /* a fact wraps whole, never mid-way */
+.smap-legend .lg-slot { font-size: .88em; }
+#nowView .now-warn .nowsell { color: var(--muted); } #nowView .now-warn .nowsell b { color: var(--text); }
 .smap-legend .lg-bio.faint { opacity: .6; }
 .smap-legend .sw { display: inline-block; width: .8em; height: .8em; border-radius: 50%; margin-right: .4em; vertical-align: -.05em; }
 .smap-legend .tg { display: inline-block; min-width: 2em; font-weight: 600; color: var(--muted); }
@@ -1225,28 +1287,19 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 #nowView.mapsplit #nowMap { grid-area: map; margin-top: 0; border-top: 0; padding-top: 0; }
 #nowView.mapsplit .smap-legend { flex: 0 0 auto; overflow-y: auto; font-size: clamp(13px, min(1vw, 1.8vh), 20px); }
 #nowView.mapsplit .smap-legend .lg-slots { grid-template-columns: 1fr; }
-#nowView.mapsplit .now-sys { font-size: clamp(30px, min(2.6vw, 6vh), 80px); margin-bottom: 1.2vh; }
-#nowView.mapsplit .now-line { font-size: clamp(18px, min(1.65vw, 3vh), 40px); margin: 1vh 0; }
-#nowView.mapsplit .now-body { font-size: clamp(16px, min(1.3vw, 2.4vh), 30px); }
-#nowView.mapsplit .now-card { font-size: clamp(18px, min(1.5vw, 2.8vh), 40px); padding: .8vh 1vw; }
-#nowView.mapsplit .now-small, #nowView.mapsplit .now-cap { font-size: clamp(15px, min(1.1vw, 2vh), 26px); }
-#nowView.mapsplit .now-caps { margin-top: 1.5vh; }
+#nowView.mapsplit { --nt: clamp(26px, min(2.4vw, 5vh), 64px); --nw: clamp(18px, min(1.7vw, 3.2vh), 38px); --nv: clamp(16px, min(1.4vw, 2.6vh), 32px);
+  --nd: clamp(14px, min(1.1vw, 2vh), 24px); --nk: clamp(10px, min(.85vw, 1.5vh), 14px); --ns: clamp(13px, min(1vw, 1.8vh), 22px);
+  --nc: clamp(18px, min(1.5vw, 2.8vh), 40px); }
 /* under the lines (portrait, phone): the legend below the map when beside it would cost the map too much */
 #nowMap.stack { flex-direction: column; align-items: center; } #nowMap.stack .smap-legend { width: 100%; flex-basis: auto; }
 /* a phone with the map under the lines: the lines a little smaller, so the map has room */
 @media (max-width: 640px) {
-  #nowView.mapon .now-sys { font-size: 30px; margin-bottom: 1vh; }
-  #nowView.mapon .now-line { font-size: 18px; margin: 1vh 0; } #nowView.mapon .now-body { font-size: 16px; }
-  #nowView.mapon .now-small, #nowView.mapon .now-cap { font-size: 15px; } #nowView.mapon .now-caps { margin-top: 1vh; }
-  #nowView.mapon .now-card { font-size: 17px; padding: 6px 10px; margin: 1vh 0; }
+  #nowView.mapon { --nt: 26px; --nw: 19px; --nv: 17px; --nd: 15px; --nk: 10px; --ns: 14px; --nc: 17px; --npad: 10px; }
 }
 /* a tablet in portrait with the map under the lines: the same, a step down from the no-map sizes */
 @media (min-width: 641px) {
-  #nowView.mapon:not(.mapsplit) .now-sys { font-size: clamp(36px, 5.5vw, 80px); margin-bottom: 1.2vh; }
-  #nowView.mapon:not(.mapsplit) .now-line { font-size: clamp(20px, 2.8vw, 40px); margin: 1vh 0; }
-  #nowView.mapon:not(.mapsplit) .now-card { font-size: clamp(20px, 2.8vw, 44px); padding: 1vh 1.4vw; margin: 1vh 0; }
-  #nowView.mapon:not(.mapsplit) .now-body { font-size: clamp(18px, 2.2vw, 30px); }
-  #nowView.mapon:not(.mapsplit) .now-small, #nowView.mapon:not(.mapsplit) .now-cap { font-size: clamp(16px, 1.9vw, 26px); }
+  #nowView.mapon:not(.mapsplit) { --nt: clamp(30px, 4.6vw, 64px); --nw: clamp(19px, 2.4vw, 36px); --nv: clamp(17px, 2vw, 30px);
+    --nd: clamp(15px, 1.6vw, 22px); --ns: clamp(14px, 1.4vw, 20px); --nc: clamp(19px, 2.4vw, 36px); }
 }
 
 /* ---- the header tiles: ▴ folds them into one summary line (▾ unfolds), page.js drawTilesFold / tilesLineHtml ---- */
@@ -1592,7 +1645,6 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 #alertDialog #prospectOpts .pmin label { margin: 0 4px 0 0; }
 #alertDialog #prospectOpts input.ppct { width: 3.6em; }
 #pop .hs.mrec { color: var(--info); }   /* your mining record under a ring (mining B) */
-.now-line.now-mine { color: var(--accent); }   /* mining D: the strip while you mine in a ring */
 /* Settings -> Auto honk and the co-pilot button: the button's own heading over its fields (2026-10-23) */
 #honkSettings h4.hchead, #shotSettings h4.hchead { margin: .9em 0 .2em; font-size: 1em; }
 #shotSettings .inlineopts input[type=number] { width: 4.5em; }

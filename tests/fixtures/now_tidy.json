@@ -1,0 +1,518 @@
+{
+ "_about": "Now's two cases from the author's tablet screenshots (2026-11-06/07, project/now-tidy): `system` in flight in a system (a Next, a target, fuel, aboard at its level with a sell place, a boxel, the streak and the session), `body` in the Rhino on a body with the surface map (a sample run, rigs, a site, a mining location, the ship). Made-up figures in the screenshots' shape; tests/page_smoke.js and project/now-tidy's screenshots load them (this_session.start is set to 88 minutes ago when loaded).",
+ "system": {
+  "data": {
+   "position": {
+    "name": "Smojooe VW-E c11-11",
+    "id64": 5031335599722,
+    "id": "5031335599722",
+    "x": 1000,
+    "y": -20,
+    "z": 2000,
+    "ts": "2026-11-06T20:00:00Z",
+    "visits": 1
+   },
+   "arrival": null,
+   "docking": null,
+   "on_body": null,
+   "near_body": null,
+   "sampling": null,
+   "surface": null,
+   "target": null,
+   "fuel": {
+    "main": 158.4,
+    "capacity": 160,
+    "pct": 99,
+    "jumps_recent": 23,
+    "jumps_max": 23,
+    "since_scoop": 0,
+    "last_scoop": "2026-11-06T19:59:00Z",
+    "scoop_rate": {
+     "scoopable": 20,
+     "of": 20,
+     "dry_run": 0
+    },
+    "here_scoop": null,
+    "to_full_s": null,
+    "live": true,
+    "low_flag": false,
+    "in_ship": true
+   },
+   "unsold": {
+    "total": 632200000,
+    "carto": {
+     "estimated_payout": 11300000,
+     "estimated_value": 11300000
+    },
+    "bio": {
+     "estimated_value": 620800000
+    }
+   },
+   "since_sale": {
+    "ts": "2026-10-26T18:00:00Z",
+    "days": 11.2,
+    "jumps": 260,
+    "ly": 7400
+   },
+   "sellers": {
+    "uc": {
+     "sell": {
+      "name": "Pioneer Hub",
+      "system": "Smojooe AR-E b25-8",
+      "id64": 5068464014705,
+      "distance": 37.2
+     }
+    },
+    "vista": {
+     "sell": {
+      "name": "Pioneer Hub",
+      "system": "Smojooe AR-E b25-8",
+      "id64": 5068464014705,
+      "distance": 37.2
+     }
+    }
+   },
+   "boxel": {
+    "key": "now-tidy",
+    "auto": false,
+    "next": {
+     "label": "Smojooe VW-E c11",
+     "name": "Smojooe VW-E c11-12",
+     "n": 12,
+     "picked": true,
+     "standard": true,
+     "spansh": false
+    }
+   },
+   "highway": null,
+   "survey": null,
+   "sight_near": null,
+   "mining_live": null,
+   "dry_stretch": null,
+   "boost": null,
+   "streak": {
+    "arrivals": [],
+    "new": 10,
+    "total": 20,
+    "run_new": 3,
+    "run_known": 0
+   },
+   "status": "ready",
+   "sphere_cut": null,
+   "near_around": null,
+   "systems": [
+    {
+     "name": "Smojooe VW-E c11-11",
+     "id": "5031335599722",
+     "id64": 5031335599722,
+     "distance": 0,
+     "visited": true,
+     "value_now": 43000
+    },
+    {
+     "name": "Smojooe UZ-H b23-8",
+     "id": "22958948234",
+     "id64": 22958948234,
+     "distance": 10.8,
+     "visited": false,
+     "main_class": null
+    }
+   ],
+   "this_session": {
+    "jumps": 9,
+    "ly": 248.4,
+    "systems": 9,
+    "firsts": 1,
+    "bodies_first": 20,
+    "mapped": 1,
+    "footfalls": 0,
+    "samples": 0,
+    "codex_new": 0,
+    "sold": 0,
+    "died": 0,
+    "lost": 0,
+    "start": null,
+    "found": 63000
+   },
+   "destination": {
+    "body_id": 14,
+    "name": "1 d",
+    "near": null
+   }
+  },
+  "hereData": {
+   "id64": "5031335599722",
+   "name": "Smojooe VW-E c11-11",
+   "region": 18,
+   "spansh_old": null,
+   "spansh_date": null,
+   "phenomena": [],
+   "rare_stars": [],
+   "pois": [],
+   "value_now": 43000,
+   "value_max": 70000000,
+   "bodies": [
+    {
+     "name": "Smojooe VW-E c11-11",
+     "body_id": 0,
+     "type": "Star",
+     "subtype": "M (Red dwarf) Star",
+     "main": true,
+     "scoopable": true,
+     "dist_ls": 0,
+     "genera": [],
+     "bio": 0,
+     "geo": 0,
+     "organics": [],
+     "codex": []
+    },
+    {
+     "name": "1 d",
+     "body_id": 14,
+     "type": "Planet",
+     "subtype": "Rocky body",
+     "dist_ls": 902,
+     "gravity": 0.13,
+     "atmosphere": "Ammonia",
+     "genera": [],
+     "bio": 4,
+     "geo": 0,
+     "organics": [],
+     "codex": [],
+     "value_max": 7500000,
+     "value_max_base": 7500000,
+     "value_parts": {
+      "bio_factor": 5
+     },
+     "bio_guess": [
+      {
+       "genus": "Osseus",
+       "best": "Osseus Pellebantus",
+       "species": [
+        "Osseus Pellebantus"
+       ],
+       "value": 2400000
+      },
+      {
+       "genus": "Tussock",
+       "best": "Tussock Albata",
+       "species": [
+        "Tussock Albata"
+       ],
+       "value": 1760000
+      },
+      {
+       "genus": "Fungoida",
+       "best": "Fungoida Gelata",
+       "species": [
+        "Fungoida Gelata"
+       ],
+       "value": 1680000
+      },
+      {
+       "genus": "Bacterium",
+       "best": "Bacterium Vesicula",
+       "species": [
+        "Bacterium Vesicula"
+       ],
+       "value": 1660000
+      }
+     ]
+    },
+    {
+     "name": "1 e",
+     "body_id": 15,
+     "type": "Planet",
+     "subtype": "Rocky body",
+     "dist_ls": 930,
+     "gravity": 0.1,
+     "atmosphere": "Ammonia",
+     "genera": null,
+     "bio": 3,
+     "geo": 0,
+     "organics": [],
+     "codex": [],
+     "value_parts": {
+      "bio_factor": 5
+     }
+    }
+   ],
+   "leaving": {
+    "id64": "5031335599722",
+    "body_count": 20,
+    "scanned": 20,
+    "unscanned": 0,
+    "honked": true,
+    "all_found": true,
+    "rescan": null,
+    "base_known": null,
+    "arrival": {
+     "body": "Smojooe VW-E c11-11",
+     "pos": [
+      0,
+      0,
+      0
+     ],
+     "approx": false,
+     "dist_ls": 0
+    },
+    "bio_pending": [
+     {
+      "body": "1 e",
+      "signals": 3,
+      "genera": null,
+      "partial": {},
+      "potential": 12920000,
+      "factor": 5,
+      "gravity": 0.1,
+      "atmosphere": "Ammonia",
+      "dist_ls": 930,
+      "pos": [
+       0,
+       -930,
+       0
+      ],
+      "approx": false
+     },
+     {
+      "body": "1 d",
+      "signals": 4,
+      "genera": null,
+      "partial": {},
+      "potential": 1500000,
+      "factor": 5,
+      "gravity": 0.13,
+      "atmosphere": "Ammonia",
+      "dist_ls": 902,
+      "pos": [
+       0,
+       -902,
+       0
+      ],
+      "approx": false
+     }
+    ],
+    "unmapped": []
+   }
+  }
+ },
+ "body": {
+  "data": {
+   "position": {
+    "name": "Smojooe ZC-D c12-22",
+    "id64": 2869440554457,
+    "id": "2869440554457",
+    "x": 1010,
+    "y": -20,
+    "z": 2010,
+    "ts": "2026-11-06T21:00:00Z",
+    "visits": 1
+   },
+   "arrival": null,
+   "docking": null,
+   "near_body": null,
+   "target": null,
+   "destination": null,
+   "highway": null,
+   "survey": null,
+   "on_body": {
+    "body": "8",
+    "full": "Smojooe ZC-D c12-22 8",
+    "how": "in the SRV",
+    "vehicle": "Rhino",
+    "system": "2869440554457"
+   },
+   "fuel": {
+    "main": 159,
+    "capacity": 160,
+    "pct": 99,
+    "jumps_recent": 23,
+    "jumps_max": 23,
+    "since_scoop": 1,
+    "scoop_rate": {
+     "scoopable": 20,
+     "of": 20,
+     "dry_run": 0
+    },
+    "here_scoop": null,
+    "to_full_s": null,
+    "live": true,
+    "low_flag": false,
+    "in_ship": false
+   },
+   "unsold": {
+    "total": 440700000,
+    "carto": {
+     "estimated_payout": 9700000,
+     "estimated_value": 9700000
+    },
+    "bio": {
+     "estimated_value": 431000000
+    }
+   },
+   "since_sale": {
+    "ts": "2026-11-01T18:00:00Z",
+    "days": 5.4,
+    "jumps": 120,
+    "ly": 3100
+   },
+   "sellers": {
+    "uc": {
+     "sell": {
+      "name": "Pioneer Hub",
+      "system": "Smojooe AR-E b25-8",
+      "id64": 5068464014705,
+      "distance": 30.4
+     }
+    },
+    "vista": {
+     "sell": {
+      "name": "Pioneer Hub",
+      "system": "Smojooe AR-E b25-8",
+      "id64": 5068464014705,
+      "distance": 30.4
+     }
+    }
+   },
+   "sampling": {
+    "genus": "Bacterium",
+    "species": "Bacterium Volu",
+    "samples": 2,
+    "need": 500,
+    "nearest": 142,
+    "to_go": 358,
+    "clear": false,
+    "points": 2,
+    "value": 7774700,
+    "factor": 1,
+    "tag": null
+   },
+   "surface": {
+    "body": "8",
+    "system": "2869440554457",
+    "body_id": 31,
+    "lat": -53.794,
+    "lon": -144.581,
+    "heading": 0,
+    "alt": 0,
+    "radius": 1500000,
+    "show": true,
+    "down": true,
+    "alt_avg": false,
+    "rhino": true,
+    "ship": {
+     "lat": -53.7989656,
+     "lon": -144.5557805,
+     "dist": 409
+    },
+    "rigs": [
+     {
+      "id": 1,
+      "n": 1,
+      "lat": -53.7924721,
+      "lon": -144.5771201,
+      "placed_ts": "2026-11-06T20:40:00Z",
+      "last_ts": "2026-11-06T20:55:00Z",
+      "minerals": {
+       "Low Temperature Diamonds": 10
+      },
+      "tons": 10,
+      "full": false,
+      "dist": 72
+     },
+     {
+      "id": 2,
+      "n": 2,
+      "lat": -53.7985455,
+      "lon": -144.5832633,
+      "placed_ts": "2026-11-06T20:30:00Z",
+      "last_ts": "2026-11-06T20:50:00Z",
+      "minerals": {
+       "Methanol Monohydrate Crystals": 14
+      },
+      "tons": 14,
+      "full": true,
+      "dist": 124
+     },
+     {
+      "id": 3,
+      "n": 3,
+      "lat": -53.6534344,
+      "lon": -144.5564272,
+      "placed_ts": "2026-11-06T20:10:00Z",
+      "last_ts": "2026-11-06T20:12:00Z",
+      "minerals": {},
+      "tons": 0,
+      "full": false,
+      "dist": 3700
+     }
+    ],
+    "sites": [
+     {
+      "id": 9,
+      "kind": "site",
+      "n": null,
+      "lat": -53.7859786,
+      "lon": -144.564187,
+      "minerals": {
+       "Low Temperature Diamonds": 11
+      },
+      "tons": 11,
+      "location": null,
+      "dist": 334
+     }
+    ],
+    "locations": [
+     {
+      "n": 3,
+      "lat": -53.7882704,
+      "lon": -144.5687136,
+      "dist": 242
+     }
+    ],
+    "bio": [
+     {
+      "species": "Bacterium Volu",
+      "genus": "Bacterium",
+      "samples": 2,
+      "current": true,
+      "need": 500,
+      "clear": false,
+      "points": [
+       {
+        "n": 1,
+        "lat": -53.7905623,
+        "lon": -144.5738868,
+        "dist": 142
+       },
+       {
+        "n": 2,
+        "lat": -53.7970558,
+        "lon": -144.5913465,
+        "dist": 179
+       }
+      ]
+     },
+     {
+      "species": "Fonticulua Campestris",
+      "genus": "Fonticulua",
+      "samples": 1,
+      "current": false,
+      "need": 500,
+      "clear": true,
+      "points": [
+       {
+        "n": 1,
+        "lat": -53.820738,
+        "lon": -144.5616004,
+        "dist": 762
+       }
+      ]
+     }
+    ],
+    "tags": [],
+    "pins": []
+   }
+  }
+ }
+}

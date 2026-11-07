@@ -169,29 +169,23 @@ body.tablet main input[type=checkbox], body.tablet main input[type=radio] { widt
 body.tablet tbody tr { cursor: pointer; }
 /* PC back-end actions stay on the PC: auto-target's switch, delay, test and steps (Target next stays) */
 body.tablet label:has(#hwyAutoOn), body.tablet label:has(#hwyAutoDelay), body.tablet #hwyAutoTest, body.tablet #hwyAutoStepsBox { display: none !important; }
-/* Now, sized for the main column (page.css sizes it for a whole window) */
-body.tablet #nowView { min-height: 0; flex: 1 1 0; overflow: auto; padding: 8px 14px; }
-body.tablet #nowView .now-sys { font-size: 40px; margin-bottom: 10px; }
-body.tablet #nowView .now-line { font-size: 24px; margin: 10px 0; }
-body.tablet #nowView .now-body { font-size: 20px; }
-body.tablet #nowView .now-card { font-size: 24px; padding: 8px 14px; margin: 10px 0; }
-body.tablet #nowView .now-small, body.tablet #nowView .now-cap { font-size: 18px; }
-body.tablet #nowView .now-cap { padding: 6px 0; }
-body.tablet #nowView.mapsplit .now-sys { font-size: 32px; } body.tablet #nowView.mapsplit .now-line { font-size: 20px; }
-body.tablet #nowView .now-caps { margin-top: 12px; padding-top: 8px; }
-/* Now with the surface map: compact text, so the map and its legend have the room (the captions are in the footer) */
-body.tablet #nowView.mapon .now-sys { font-size: 30px; margin-bottom: 6px; }
-body.tablet #nowView.mapon .now-line { font-size: 19px; margin: 6px 0; }
-body.tablet #nowView.mapon .now-body { font-size: 17px; }
-body.tablet #nowView.mapon .now-card { font-size: 19px; padding: 6px 12px; margin: 6px 0; }
-body.tablet #nowView.mapon .now-small, body.tablet #nowView.mapon .now-caps { display: none; }
-body.tablet #nowView.mapon #nowMap { margin-top: 6px; padding-top: 6px; }
+/* Now, sized for the main column (page.css sizes it for a whole window: its size variables, --nt and the rest); the foot
+   at the bottom of the column, so each part keeps its place from one system to the next */
+body.tablet #nowView { min-height: 0; flex: 1 1 0; overflow: auto; padding: 8px 14px;
+  --nt: 44px; --nw: 30px; --nv: 21px; --nd: 16px; --nk: 12px; --ns: 15px; --nc: 24px; --npad: 16px; }
+body.tablet #nowView:not([hidden]):not(.mapon) { display: flex; flex-direction: column; }
+body.tablet #nowView:not(.mapon) #nowBody { flex: 1 0 auto; display: flex; flex-direction: column; }
+body.tablet #nowView:not(.mapon) .now-foot { margin-top: auto; }
+body.tablet #nowView .now-cap { padding: 5px 0; }
+/* Now with the surface map: compact text, so the map and its legend have the room (the newest caption is in the footer) */
+body.tablet #nowView.mapon { --nt: 34px; --nw: 22px; --nv: 17px; --nd: 15px; --nk: 11px; --ns: 13px; --nc: 19px; --npad: 14px; }
+body.tablet #nowView.mapon #nowMap { margin-top: 8px; padding-top: 10px; }
 /* the header's strips take no room while empty (the desktop keeps the target line's height so the page does not jump) */
 body.tablet #target:empty { min-height: 0; margin: 0; }
 /* the Highway: the jump list wider than the desktop's 44 %, the map beside it */
 body.tablet.app #hwyPanes { grid-template-columns: minmax(0, 56%) minmax(0, 1fr); }
 .tb-sheet .tb-row { font-size: 18px; }
-body.tablet #nowMapLegend { font-size: 16px; }
+body.tablet #nowMapLegend { font-size: 15px; }
 /* the room a view has under the shell: the window less the shell's head, foot, padding and gaps, and the strips above */
 body.tablet { --tb-view-h: calc(100vh - var(--tb-head-h) - var(--tb-foot-h) - 2 * var(--tb-pad) - 2 * var(--tb-gap) - var(--head-h, 0px)); }
 /* a pop-up card (a body's mining odds, signals, a system's bodies): kept on the screen and scrolled by touch, a tap

@@ -1367,14 +1367,16 @@ function planText(it, totals = false) {
   if (it.kind === "map") { const u = it.u, t = totals && mapTotals(u);
     return `map <b>${esc(u.body)}</b> (${esc(u.subtype)}${u.terraformable ? " T" : ""}${t ? ` · ${t}` : u.increment ? `, +${credits(u.increment)}` : ""})`; }
   const b = it.b, parts = Object.entries(b.partial || {}).map(([g, n]) => `${esc(g)} ${n}/3`).concat(unstarted(b).map(esc));
-  // gravity and atmosphere: whether the landing is worth it is decided before the supercruise, not at the approach
-  const g = b.gravity != null ? ` · <span class="${b.gravity >= highGravity() ? "warnc" : ""}" title="surface gravity${b.gravity >= highGravity() ? ": at or over your high-gravity level" : ""}">${b.gravity.toFixed(1)} g</span>` : "";
-  const atm = b.atmosphere && b.atmosphere !== "None" ? ` · ${esc(b.atmosphere)}` : "";
+  const g = planGravity(b), atm = b.atmosphere && b.atmosphere !== "None" ? ` · ${esc(b.atmosphere)}` : "";
   return `bio on <b>${esc(b.body)}</b>` + (b.genera === null ? ` (${noDssText(b, parts)})` : parts.length ? `: ${parts.join(", ")}` : "") +
     (b.potential ? ` up to ${credits(pendingWorth(b))}` + (b.factor === 5 ? ` <span class="ok" title="nobody had set foot here when you scanned it: exobiology pays ×5 (included)">👣×5</span>` : "") : "") +
-    (b.codex_galaxy || b.codex_new ? ` <span class="cxnew${b.codex_galaxy ? " cxgal" : ""}" title="${b.codex_galaxy ? "new to your codex anywhere" : "new to your codex in this region"}` +
-      `${(b.codex_names || []).length ? `: ${esc(andList(b.codex_names))} (if ${b.codex_names.length > 1 ? "they are" : "it is"} there)` : ""}">${b.codex_galaxy ? "✪" : "✦"}</span>` : "") + g + atm;
+    planCodex(b) + (g ? ` · ${g}` : "") + atm;
 }
+// gravity and atmosphere: whether the landing is worth it is decided before the supercruise, not at the approach
+const planGravity = b => b.gravity == null ? "" : `<span class="${b.gravity >= highGravity() ? "warnc" : ""}" title="surface gravity${b.gravity >= highGravity() ? ": at or over your high-gravity level" : ""}">${b.gravity.toFixed(1)} g</span>`;
+// ✪ / ✦: a species new to your codex anywhere / in this region (if it is there)
+const planCodex = b => b.codex_galaxy || b.codex_new ? ` <span class="cxnew${b.codex_galaxy ? " cxgal" : ""}" title="${b.codex_galaxy ? "new to your codex anywhere" : "new to your codex in this region"}` +
+  `${(b.codex_names || []).length ? `: ${esc(andList(b.codex_names))} (if ${b.codex_names.length > 1 ? "they are" : "it is"} there)` : ""}">${b.codex_galaxy ? "✪" : "✦"}</span>` : "";
 // a stop's leg and what it pays per minute of its detour (the order's time with the stop less its time without it)
 const legFrom = it => it.from ? `from ${it.from}` : "from the arrival star";
 const planCost = it => { const t = legTime(it), pm = it.perMin ? `${credits(it.perMin)}/min` : "";
@@ -1492,6 +1494,15 @@ function renderOnBody() {
   if (!ob) { el.innerHTML = pinLineHtml(); return; }
   const b = obData && !obData.error && obData.bodies.find(x => x.name === ob.body);
   if (!b) { el.innerHTML = samplingHtml() + `${onOrOver(ob)} <b>${esc(ob.body)}</b> (${esc(howOnBody(ob))})`; return; }
+  const bits = onBodyBits(b, false);
+  const x5 = b.value_parts && b.value_parts.bio_factor === 5;
+  el.innerHTML = samplingHtml() + `${onOrOver(ob)} <b>${esc(ob.body)}</b> <span class="unk">(${esc(howOnBody(ob))})</span>: ` + (bits.join(" ") || `<span class="unk">no bio or geo signals known</span>`) +
+    (x5 && (b.genera.length || b.bio) ? ` · <span class="ok" title="nobody had set foot here when you scanned it: exobiology pays ×5">first footfall ×5</span>` : "") +
+    wrongSuitMark(ob, b);
+}
+// the body's genera with their state ("Stratum 2/3", "Bacterium 0/3 likely Aurasus 1.2M"), the signals not identified,
+// the geology: the strip's line and Now's on-body Next; `x5` adds the first footfall mark (Now's)
+function onBodyBits(b, x5 = true) {
   const bits = [], f = bioFactor(b);
   for (const g of bioGenera(b)) {
     const o = b.organics.find(o => o.genus === g), x = (b.bio_guess || []).find(q => q.genus === g);
@@ -1502,10 +1513,9 @@ function renderOnBody() {
   const unk = bioUnknown(b);
   if (unk) bits.push(`<span class="unk">${unk.label.replace(/ signals?/, m => " bio" + m)}</span>`);
   if (b.geo) bits.push(`<span class="sp geo">🪨 ${b.geo} geo</span>`);
-  const x5 = b.value_parts && b.value_parts.bio_factor === 5;
-  el.innerHTML = samplingHtml() + `${onOrOver(ob)} <b>${esc(ob.body)}</b> <span class="unk">(${esc(howOnBody(ob))})</span>: ` + (bits.join(" ") || `<span class="unk">no bio or geo signals known</span>`) +
-    (x5 && (b.genera.length || b.bio) ? ` · <span class="ok" title="nobody had set foot here when you scanned it: exobiology pays ×5">first footfall ×5</span>` : "") +
-    wrongSuitMark(ob, b);
+  if (x5 && b.value_parts && b.value_parts.bio_factor === 5 && (b.genera.length || b.bio))
+    bits.push(`<span class="ok" title="nobody had set foot here when you scanned it: exobiology pays ×5">first footfall ×5</span>`);
+  return bits;
 }
 // round 10's S4: the strip's ⚠ while you are on foot in a suit with no Genetic Sampler and the body has sampling left
 // (a genus not finished, or signals not yet identified); quiet by the spoken warning's rules (on_body's suit_quiet: a
@@ -1594,149 +1604,334 @@ function padMapSvg(m) {
   });
   return `<svg class="now-padmap" viewBox="0 0 ${f(w)} ${f(88 * u)}" role="img" aria-label="pad ${pad}, the carrier from above, bow up">${parts.join("")}</svg>`;
 }
-// ---- Now mode: five big lines for a second monitor, readable from the chair ----
+// ---- Now: a second monitor's or the tablet's page, read from the chair at a glance (the author's mock-ups,
+// 2026-11-07: project/now-tidy). Each part in a fixed place: the title; one headline card, the most important thing by
+// priority (the pad, a refusal, the arrival verdict, else Next); a passing alert; the target; the status rows (a label
+// column, each value in the same place every time, a small detail line under it); the small foot. On a body or flying
+// low over it (obNow: the surface map's case) the body is the title, Next is the job on it and only warnings stay, so
+// the map has the room. Every fact is a .part in a wrapping row (nowParts): a value breaks only between parts. Each
+// place carries data-slot (the tests read Now by it, never by line order) ----
+const NOW_SEP = `<span class="sep" aria-hidden="true"> · </span>`;
+// parts: html strings, or {h, c, a} for a part with its own class and attributes; empty ones left out
+const nowParts = list => list.filter(x => x && (typeof x === "string" || x.h)).map(x => typeof x === "string" ? `<span class="part">${x}</span>`
+  : `<span class="part${x.c ? " " + x.c : ""}"${x.a || ""}>${x.h}</span>`).join(NOW_SEP);
+// an HTML line's top-level " · " pieces (outside its tags and elements): the lines other places share (the route's, the
+// boxel's, a hop's cost) become Now's parts as they are. Attribute values are esc()aped, so a ">" ends a tag
+function splitTop(html) {
+  const out = [];
+  let depth = 0, cur = "", i = 0;
+  while (i < html.length) {
+    if (html[i] === "<") {
+      const j = html.indexOf(">", i);
+      if (j < 0) { cur += html.slice(i); break; }
+      const tag = html.slice(i, j + 1);
+      if (tag[1] === "/") depth--;
+      else if (!/\/>$/.test(tag) && !/^<(br|img|input|wbr|hr)\b/i.test(tag)) depth++;
+      cur += tag; i = j + 1; continue;
+    }
+    if (depth === 0 && html.startsWith(" · ", i)) { out.push(cur); cur = ""; i += 3; continue; }
+    cur += html[i]; i++;
+  }
+  out.push(cur);
+  return out.map(s => s.trim()).filter(Boolean);
+}
+// a status row: its label, its value's parts, and detail lines ({c, h}: h already parts) under it
+const nowRow = (slot, label, value, details = [], cls = "", attrs = "") => !value ? "" :
+  `<div class="now-row${cls ? " " + cls : ""}" data-slot="${slot}"${attrs}><span class="now-k">${label}</span> <div class="now-v now-parts">${value}</div>` +
+  details.filter(d => d && d.h).map(d => ` <div class="now-d now-parts${d.c ? " " + d.c : ""}">${d.h}</div>`).join("") + `</div>`;
+// the headline card's Next: what (left), its value or state (right), the facts under it, and then what comes after
+const nowNextCard = ({what, right = "", detail = "", then = "", cls = ""}) =>
+  `<div class="now-card now-next${cls ? " " + cls : ""}" data-slot="next"><div class="now-head"><span class="now-hl"><span class="now-k">Next</span> ` +
+  `<span class="now-what">${what}</span></span>${right ? ` <span class="now-right now-parts">${right}</span>` : ""}</div>` +
+  (detail ? ` <div class="now-detail now-parts">${detail}</div>` : "") + (then ? ` <div class="now-then now-parts">${then}</div>` : "") + `</div>`;
+// the body's title on Now with the map up: the system's sector left out of a procedural name ("Smojooe ZC-D c12-22 8"
+// is "ZC-D c12-22 8"), any other name in full
+function nowBodyName(ob, sys) {
+  const full = ob.full || ob.body || "", m = /^(.+) ([A-Z]{2}-[A-Z] [a-h]\d+(?:-\d+)?)$/.exec(sys || "");
+  return m && full.startsWith(sys + " ") ? `${m[2]} ${full.slice(sys.length + 1)}` : full;
+}
+// what Now needs of this system's suggested order (Here's data once it is for where you are)
+function nowSystem() {
+  const hd = hereData && !hereData.error && hereData.id64 === posId() ? hereData : null, l = hd && hd.leaving;
+  const w = l ? worthLeavingFor(l) : null, plan = w && !w.clean ? planItems(l) : [];
+  const dest = hd && data.destination ? (hd.bodies || []).find(b => b.body_id === data.destination.body_id) : null;
+  const destIsNext = !!(dest && !(w && w.rescan) && plan.length && plan[0].body === dest.name);   // under a rescan: its own line
+  const here = (data.systems || []).find(s => sysId(s) === sysId(data.position));
+  return {hd, l, w, plan, dest, destIsNext, here};
+}
 function renderNow() {
   drawNowBar();
-  const el = document.getElementById("nowBody"), p = data.position, f = data.fuel, t = data.target, a = data.arrival;
-  if (!p) { el.innerHTML = `<div class="now-sys">${esc(noJumpText())}</div>`; el._liveKey = null; renderSurface(); return; }
-  const lines = [`<div class="now-sys">${esc(p.name)}</div>`];
-  // #3: docking: the pad in large letters (the author, 2026-10-14), or why the station refused; gone once docked
-  const dk = data.docking;
-  if (dk && dk.pad != null) lines.push(`<div class="now-pad">PAD ${esc(dk.pad)}<span>${carrierMk(dk.layout)}${esc(dk.station || "")}</span>` +
-    (dk.where ? `<span class="now-where">${esc(dk.where)}</span>` : "") + (dk.map ? padMapSvg(dk.map) : "") + `</div>`);
-  else if (dk && dk.words && Date.now() - Date.parse(dk.ts) < 60000)
-    lines.push(`<div class="now-card alert">🛬 Docking denied${dk.station ? ` at ${esc(dk.station)}` : ""}: ${esc(dk.words)}</div>`);
-  // the arrival verdict, for twenty seconds after a jump
-  if (a && a.id64 === posId() && Date.now() - Date.parse(a.ts) < 20000)
-    lines.push(`<div class="now-card ${a.undiscovered ? "yes" : "no"}">${a.undiscovered ? "🏁 Undiscovered — first discovery is yours" : "Already discovered"}</div>`);
-  if (t) {
-    const label = {"unreported": "never reported — new discovery!", "no bodies": "no scan data", "partial": "partly scanned",
-      "explored": "fully scanned", "visited": "you've been here", "checking": "checking…"}[t.status] || t.status;
-    const hz = hazardNote(t.star_class);
-    lines.push(`<div class="now-line">➜ <b>${esc(t.name)}</b> <span class="t-${t.status.replace(" ", "")}">${esc(label)}</span>${targetCounts(t)}` +
-      (t.star_class ? ` <span class="${/^[OBAFGKM](_|$)/.test(t.star_class) ? "ok" : "noscoop"}">${esc(t.star_class)}${/^[OBAFGKM](_|$)/.test(t.star_class) ? " ⛽" : " ✕"}</span>` : "") +
-      (hz ? ` <span class="hazard">⚠ ${esc(hz)}</span>` : "") +
-      (t.hop ? `<div class="now-small now-hop">${hopCostHtml(t.hop)}</div>` : "") + `</div>`);   // S19: the jump's cost
-  }
-  // where the next jump goes: the route's next stop (as the strip says it), the kept boxel's Next
-  const nr = nowRouteHtml(), nb = nowBoxelHtml();
-  if (nr) lines.push(`<div class="now-line now-route">${nr}</div>`);
-  if (nb) lines.push(`<div class="now-line now-boxel">${nb}</div>`);
-  if (data.sight_near) lines.push(`<div class="now-line now-sight">${sightNearHtml(data.sight_near)}</div>`);   // explorer ideas, 9
-  if (f && f.live && f.pct != null)
-    lines.push(`<div class="now-line ${f.pct < 15 ? "urgent" : f.pct < 30 ? "warn" : ""}">⛽ <b>${f.pct}%</b>` +
-      (f.to_full_s != null ? ` · <span class="ok" title="while scooping: at the rate the tank is filling now">${toFullText(f.to_full_s)} to full</span>` : "") +
-      (f.jumps_max != null ? ` · ${f.jumps_max} ${jumpsWord(f.jumps_max)}` : "") + (f.since_scoop != null ? ` · ${f.since_scoop} since scoop` : "") +
-      (data.boost ? ` · <span class="boosted">boosted ×${data.boost}</span>` : "") +
-      (f.scoop_rate ? `<div class="now-small now-rate">${scoopRateWarn(f)}</div>` : "") +   // S19: the scoopable share
-      (dryStretchHere() ? `<div class="now-small now-dry">${dryStretchHtml()}: ${esc(dryStretchText(dryStretchHere()))}</div>` : "") +   // S2
-      (fuelLow(f) && hereScoopText(f) ? `<div class="now-small">${hereScoopText(f)}</div>` : "") + `</div>`);
-  const risk = nowRiskLine();
-  if (risk) lines.push(`<div class="now-line now-risk ${risk.cls}">${risk.html}</div>`);
-  // landed: what is left on this body (and the sample spacing); otherwise what is left in the system
-  if (obNow()) lines.push(`<div class="now-line now-body">${document.getElementById("onbody").innerHTML}</div>`);
-  else if (pinLineHtml()) lines.push(`<div class="now-line now-body">${pinLineHtml()}</div>`);   // #16: from orbit
-  else {
-    const here = data.systems.find(s => sysId(s) === sysId(p));
-    // the all-clear only once Here's data is for this system and the honk has found every body: before that
-    // (just after a jump, a failed lookup, an unhonked system) there is nothing to be clear about yet
-    const hd = hereData && !hereData.error && hereData.id64 === posId() ? hereData : null, l = hd && hd.leaving;
-    const w = l ? worthLeavingFor(l) : null;
-    const plan = w && !w.clean ? planItems(l) : [];
-    const dest = hd && data.destination ? hd.bodies.find(b => b.body_id === data.destination.body_id) : null;
-    const destIsNext = !!(dest && !(w && w.rescan) && plan.length && plan[0].body === dest.name);   // under a rescan: its own line
-    lines.push(`<div class="now-line">${w && w.rescan ? `<span class="warnc">Next: ${rescanHtml(w.rescan)}${plan.length ? ` <span class="unk">· ${plan.length} more</span>` : ""}</span>`
-      : plan.length ? `<span class="warnc">Next: ${destIsNext ? `<span title="the body you have targeted">➜</span> ` : ""}${planText(plan[0], true)}${legTime(plan[0]) ? ` <span class="unk" title="supercruise ${esc(legFrom(plan[0]))} (${legLs(plan[0])})">${legTime(plan[0])}</span>` : ""}` +
-      `${plan.length > 1 ? ` <span class="unk">· ${plan.length - 1} more</span>` : ""}</span>`
-      : !hd ? `<span class="unk">checking…</span>`
-      : !l || !l.honked ? `<span class="warnc">Next: honk</span> <span class="unk">(FSS discovery scan)</span>`
-      : l.unscanned > 0 ? `<span class="warnc">Next: ${nBodies(l.unscanned)} to find in the FSS</span>${spanshNoteHtml(l)}`
-      // #11: "nothing" from Spansh's pre-Odyssey records means little (Kurbo26): rescan it yourself first
-      : hd.spansh_old && !l.all_found ? `<span class="warnc">Next: rescan in the FSS</span> <span class="unk">(Spansh's data predates Odyssey)</span>`
-      : `<span class="ok">✓ nothing worth staying for</span>`}${here && here.value_now ? ` · <span class="unk">${credits(here.value_now)} cr aboard from here</span>` : ""}</div>`);
-    // a body targeted that is not the next item: an extra line, never in place of Next (Status.json keeps the target
-    // after you finish a body, so Next must stay visible)
-    if (dest && !destIsNext) lines.push(`<div class="now-line now-small">${nowDestText(hd, l, plan, dest)}</div>`);
-    const siteBodies = hd ? (hd.bodies || []).filter(b => b.sites && ["guardian", "thargoid", "anomaly"].some(k => b.sites[k])) : [];
-    if (siteBodies.length)   // Guardian or Thargoid sites, an anomaly, on this system's bodies
-      lines.push(`<div class="now-line now-sites"><span class="ok">${esc(siteText(siteBodies.map(b => ({body: b.name, sites: b.sites, reported: b.sites_reported}))))}</span></div>`);
-    if (hd && hd.pois && hd.pois.length)   // FSS signals worth a detour: Titans, beacons, listening posts...
-      lines.push(`<div class="now-line now-poi"><span class="ok">${poiLineHtml(hd.pois)}</span></div>`);
-    // green gas giants here: the model's guesses (check them in the system map) and any your codex confirms
-    const gggs = hd && hd.bodies ? hd.bodies.filter(b => b.ggg) : [];
-    if (gggs.length) {
-      const guess = gggs.filter(b => !b.ggg.confirmed), sure = gggs.filter(b => b.ggg.confirmed);
-      lines.push(`<div class="now-line now-ggg">` + (guess.length ? `${gggIcon(false, gggTitle(guess[0].ggg))} <span class="ok">Potential green gas giant${guess.length > 1 ? "s" : ""}: ` +
-        `${guess.map(b => `${esc(b.name)}${b.ggg.chance === "possible" ? " (possible)" : ""}`).join(", ")}</span> <span class="unk">· check in the system map</span>` : "") +
-        (sure.length ? `${guess.length ? " · " : ""}${gggIcon(true, gggTitle(sure[0].ggg))} <span class="ok">${esc(gggSureWords(sure))}</span>` : "") + `</div>`);
-    }
-    if (data.mining_live && data.mining_live.text)   // mining D: the strip while you mine in a ring (the overlay's too)
-      lines.push(`<div class="now-line now-mine">${esc(data.mining_live.text)}${miningHitsNow(data.mining_live)}</div>`);
-    if (hd && hd.spansh_old && !(hd.leaving && hd.leaving.all_found)) {   // #11: until your own scans have every body
-      // short, so it fits one line in Now's large type (the author): the details are in the hover
-      lines.push(`<div class="now-line now-old" title="${esc(spanshOldTitle(hd.spansh_old))}">🪦 ${esc(spanshOldNow(hd.spansh_old))}</div>`);
-    }
-    if (hd && hd.rare_stars && hd.rare_stars.length)   // a black hole, a Wolf-Rayet...: rare stars here
-      lines.push(`<div class="now-line now-rare"><span class="ok">⭐ ${esc(rareStarText(hd.rare_stars).replace(/^./, c => c.toUpperCase()))}</span></div>`);
-    // notable stellar phenomena the FSS found here: how many and where, and how many are still to visit
-    const nsp = hd && hd.phenomena && hd.phenomena.length ? hd.phenomena : null;
-    if (nsp) {
-      const what = phenomenaWhat(Object.fromEntries(nsp.map(p => [p.kind, p.n || 1])));
-      const all = phenomenaVisited(nsp) >= phenomenaCount(nsp);
-      lines.push(`<div class="now-line now-nsp"><span class="${all ? "ok" : "warnc"}">🌀 ${esc(what[0].toUpperCase() + what.slice(1))}</span>` +
-        ` <span class="unk">${phenomenaLeftText(nsp)}</span></div>`);
-    }
-  }
-  const hz = horizon(), sk = data.streak;
-  if (hz || (sk && sk.total)) lines.push(`<div class="now-line now-small">${[sk && sk.total ? `<b>${sk.new}/${sk.total}</b> new` : "",
-    hz ? esc(hz.system ? `nearest known unvisited: ${hz.system.name} ${hz.system.distance.toLocaleString("en-US", {maximumFractionDigits: 1})} ly` : hz.text.split(" — ")[0]) : ""].filter(Boolean).join(" · ")}</div>`);
-  const ls = data.last_session, ts = data.this_session;
-  if (ts) lines.push(`<div class="now-line now-small" id="thisSession" title="${esc(thisSessionTitle)}">This session ${esc(sessionTime(ts.start))} · ${esc(sessionLine(ts))}${ts.found ? ` · ~${credits(ts.found)} found` : ""}</div>`);
-  else if (ls) lines.push(`<div class="now-line now-small">Last session: ${esc(sessionLine(ls))}</div>`);
-  if (lastAlert && Date.now() - lastAlert.at < 15000)
-    lines.push(`<div class="now-card alert">${esc(lastAlert.title)}${lastAlert.body ? ` <span class="unk">${esc(lastAlert.body)}</span>` : ""}</div>`);
-  if (captions.length) lines.push(`<div class="now-caps">${captions.slice().reverse().map(c =>
-    `<div class="now-cap" data-words="${esc(c.words)}"${c.priv ? ` data-priv="1"` : ""} title="say it again (through the window that is speaking)">▶ ${esc(c.shown || c.words)} <span class="unk"><span class="cd">${agoText(c.at)}</span></span></div>`).join("")}</div>`);
-  if (nowHintUntil && Date.now() < nowHintUntil && !window.OutriderApp)   // the Android app keeps the screen on itself
-    lines.push(`<div class="now-line now-small now-hint">screen may sleep: set the tablet's screen timeout, or open over localhost/HTTPS</div>`);
+  const el = document.getElementById("nowBody"), p = data.position;
+  if (!p) { el.innerHTML = `<div class="now-sys" data-slot="title">${esc(noJumpText())}</div>`; el._liveKey = null; renderSurface(); return; }
+  const ob = obNow(), c = nowSystem();
+  const out = [ob ? `<div class="now-title" data-slot="title"><span class="now-sys">${esc(nowBodyName(ob, p.name))}</span>` +
+                    ` <span class="now-of">${esc(p.name)}</span> <span class="now-how">${esc(howOnBody(ob))}</span></div>`
+                  : `<div class="now-sys" data-slot="title">${esc(p.name)}</div>`];
+  out.push(nowHeadline(ob, c));
+  if (lastAlert && Date.now() - lastAlert.at < 15000)   // a passing alert: its own small card under the headline
+    out.push(`<div class="now-card alert now-passing" data-slot="alert">${esc(lastAlert.title)}${lastAlert.body ? ` <span class="unk">${esc(lastAlert.body)}</span>` : ""}</div>`);
+  out.push(ob ? nowBodyRest(ob, c) : nowSystemRest(c));
   // rewritten only when something but its ticking figures changed (setLive): a click or hover lasts across the 2 s
   // redraw and the payloads (complete review 2026-10-30: the sell line's plot, Replace and a caption's replay lost clicks)
-  setLive(el, lines.join(""));
+  setLive(el, out.join(""));
+  nowFitCaps(el);
   renderSurface();
 }
-// Now's route line: the route the strip shows (this device's pick with both), its next stop with 🎯 (the review's
+// the headline card: one thing at a time, by priority
+function nowHeadline(ob, c) {
+  const dk = data.docking, a = data.arrival;
+  // #3: docking: the pad in large letters (the author, 2026-10-14) with its map, or why the station refused; gone once docked
+  if (dk && dk.pad != null) return `<div class="now-pad" data-slot="pad">PAD ${esc(dk.pad)}<span>${carrierMk(dk.layout)}${esc(dk.station || "")}</span>` +
+    (dk.where ? `<span class="now-where">${esc(dk.where)}</span>` : "") + (dk.map ? padMapSvg(dk.map) : "") + `</div>`;
+  if (dk && dk.words && Date.now() - Date.parse(dk.ts) < 60000)
+    return `<div class="now-card alert" data-slot="denied">🛬 Docking denied${dk.station ? ` at ${esc(dk.station)}` : ""}: ${esc(dk.words)}</div>`;
+  // the arrival verdict, for twenty seconds after a jump
+  if (a && a.id64 === posId() && Date.now() - Date.parse(a.ts) < 20000)
+    return `<div class="now-card ${a.undiscovered ? "yes" : "no"}" data-slot="verdict">${a.undiscovered ? "🏁 Undiscovered — first discovery is yours" : "Already discovered"}</div>`;
+  return ob ? nowBodyNext(ob) : nowSystemNext(c);
+}
+// "then:": the stop after Next in the suggested order (i: its place), its leg time and how many more come after it
+function nowThen(plan, i) {
+  const it = plan[i];
+  if (!it) return plan.length ? ["then: nothing else worth the trip"] : [];
+  const more = plan.length - i - 1;
+  return [`then: ${it.kind === "map" ? "map" : "bio on"} <b>${esc(it.body)}</b>`, legTime(it), more > 0 ? `${more} more after` : ""];
+}
+function nowSystemNext(c) {
+  const {hd, l, w, plan, here} = c, a = pinActive();
+  const found = here && here.value_now ? `<span title="the unsold estimate gained in this system">${credits(here.value_now)} cr found here</span>` : "";
+  // #16: guided to a pin on a body from orbit
+  if (a) return nowNextCard({what: `📍 <b>${esc(a.name)}</b>`, right: nowParts([`<b>${esc(surfDist(a.dist))}</b>`, esc(pinTurnWords(a))]), cls: "pin",
+                             then: nowParts([found])});
+  if (w && w.rescan) return nowNextCard({what: `Rescan <b title="${esc(w.rescan.bodies.map(b => b.name).join(", "))}">${rescanCount(w.rescan)}</b> in the FSS`,
+    right: w.rescan.value ? nowParts([{c: "now-pay", h: credits(w.rescan.value)}]) : "", then: nowParts([...nowThen(plan, 0), found])});
+  if (plan.length) {
+    const it = plan[0], t = legTime(it), then = nowParts([...nowThen(plan, 1), found]);
+    const mark = c.destIsNext ? `<span title="the body you have targeted">➜</span> ` : "";
+    const leg = t ? `<span title="supercruise ${esc(legFrom(it))} (${legLs(it)})">${t} away</span>` : "";
+    const skip = it.skip ? `<span class="unk skipq" title="under your ${credits(skipFloor())} cr per minute of the detour to it">skip?</span>` : "";
+    if (it.kind === "map") {
+      const u = it.u, v = mapTotals(u) || (u.increment ? `+${credits(u.increment)}` : "");
+      return nowNextCard({what: `${mark}Map <b>${esc(u.body)}</b>`, right: v ? nowParts([{c: "now-pay", h: v}]) : "",
+                          detail: nowParts([esc(u.subtype) + (u.terraformable ? " T" : ""), leg, skip]), then});
+    }
+    const b = it.b, parts = Object.entries(b.partial || {}).map(([g, n]) => `${esc(g)} ${n}/3`).concat(unstarted(b).map(esc));
+    const pay = b.potential ? `up to ${credits(pendingWorth(b))}` + (b.factor === 5 ? ` <span class="now-x5 ok" title="nobody had set foot here when you scanned it: exobiology pays ×5 (included)">👣×5</span>` : "") : "";
+    return nowNextCard({what: `${mark}Bio on <b>${esc(b.body)}</b>${planCodex(b)}`, right: pay ? nowParts([{c: "now-pay bio", h: pay}]) : "",
+                        detail: nowParts([b.genera === null ? noDssText(b, parts) : parts.join(", "), planGravity(b),
+                                          b.atmosphere && b.atmosphere !== "None" ? esc(b.atmosphere) : "", leg, skip]), then});
+  }
+  const then = nowParts([found]);
+  // the all-clear only once Here's data is for this system and the honk has found every body: before that (just
+  // after a jump, a failed lookup, an unhonked system) there is nothing to be clear about yet
+  if (!hd) return nowNextCard({what: `<span class="unk">checking…</span>`, then});
+  if (!l || !l.honked) return nowNextCard({what: "Honk", detail: nowParts([`<span class="unk">FSS discovery scan</span>`]), then});
+  if (l.unscanned > 0) return nowNextCard({what: `${nBodies(l.unscanned)} to find in the FSS`, then,
+    detail: nowParts([spanshNote(l) && `<span class="unk" title="the honk's body count against the bodies Spansh has on record (as of its last update)">${spanshNote(l)}</span>`])});
+  // #11: "nothing" from Spansh's pre-Odyssey records means little (Kurbo26): rescan it yourself first
+  if (hd.spansh_old && !l.all_found) return nowNextCard({what: "Rescan in the FSS", detail: nowParts([`<span class="unk">Spansh's data predates Odyssey</span>`]), then});
+  return nowNextCard({what: `<span class="ok">✓ nothing worth staying for</span>`, cls: "clear", then});
+}
+// the targeted body when it is not Next: one line (what it is, how far, the verdict), its guessed genera under it;
+// `compact` (on another body, the map up): the line alone
+function nowTargetHtml(c, compact = false) {
+  const b = c.dest, {it, v, eta} = destVerdict(c.hd, c.l, c.plan, b), d = destParts(b);
+  const verdict = v === "skip" ? `<span class="unk skipq">skip?${it.perMin ? ` ${credits(it.perMin)}/min` : ""}</span>`
+    : v === "worth" ? `<span class="ok">worth it${it.perMin ? ` · ${credits(it.perMin)}/min` : ""}</span>`
+    : v === "under" ? `<span class="unk">under your threshold</span>`
+    : v === "scoop" ? `<span class="ok">scoopable star</span>` : v === "noscoop" ? `<span class="unk">not scoopable</span>`
+    : `<span class="unk">nothing to do here</span>`;
+  // what it is in one part (the mock-up's), then how far, then what it holds with the verdict
+  const main = nowParts([[`<b>${esc(b.name)}</b>`, d.subtype, d.g, d.atm].filter(Boolean).map((x, i) => i ? esc(x) : x).join(" · "),
+    [d.ls, eta != null ? scText(eta) : ""].filter(Boolean).join(", "), d.geo, [d.bioN, verdict].filter(Boolean).join(", ")]);
+  const under = compact ? "" : nowParts([...d.bio.map(esc), d.max]);
+  return `<div class="now-target" data-slot="target"><div class="now-tmain now-parts"><span class="now-k">Target</span> ${main}</div>` +
+    (under ? ` <div class="now-tdetail now-parts">${under}</div>` : "") + `</div>`;
+}
+// the system targeted for the next jump: what Spansh knows, the star, the jump's cost (S19)
+function nowJumpRow(t) {
+  const label = {"unreported": "never reported — new discovery!", "no bodies": "no scan data", "partial": "partly scanned",
+    "explored": "fully scanned", "visited": "you've been here", "checking": "checking…"}[t.status] || t.status;
+  const hz = hazardNote(t.star_class), sc = /^[OBAFGKM](_|$)/.test(t.star_class || "");
+  return nowRow("jump", "Jump", nowParts([`<b>${esc(t.name)}</b>`, `<span class="t-${t.status.replace(" ", "")}">${esc(label)}</span>`, targetCounts(t).trim(),
+    t.star_class ? `<span class="${sc ? "ok" : "noscoop"}">${esc(t.star_class)}${sc ? " ⛽" : " ✕"}</span>` : "", hz ? `<span class="hazard">⚠ ${esc(hz)}</span>` : ""]),
+    [t.hop && {c: "now-hop", h: nowParts(splitTop(hopCostHtml(t.hop)))}]);
+}
+const nowFuelLevel = f => f.pct < 15 ? "urgent" : f.pct < 30 ? "warn" : "";
+const nowSinceScoop = n => n === 0 ? "scooped here" : `${n} since scoop`;
+function nowFuelRow(f) {
+  if (!(f && f.live && f.pct != null)) return "";
+  const dry = dryStretchHere();
+  return nowRow("fuel", "Fuel", nowParts([`<b class="big">${f.pct}%</b>`,
+      f.to_full_s != null ? `<span class="ok" title="while scooping: at the rate the tank is filling now">${toFullText(f.to_full_s)} to full</span>` : "",
+      f.jumps_max != null ? `${f.jumps_max} ${jumpsWord(f.jumps_max)}` : "", f.since_scoop != null ? nowSinceScoop(f.since_scoop) : "",
+      data.boost ? `<span class="boosted">boosted ×${data.boost}</span>` : ""]),
+    [f.scoop_rate && {c: "now-rate", h: nowParts([scoopRateWarn(f)])},   // S19: the scoopable share
+     dry && {c: "now-dry", h: nowParts(splitTop(esc(dryStretchText(dry))).map((x, i) => i ? x : `${dryStretchHtml()}: ${x}`))},   // S2
+     fuelLow(f) && hereScoopText(f) && {c: "now-scoop", h: nowParts(splitTop(hereScoopText(f)))}], nowFuelLevel(f));
+}
+// this system's finds, as chips in one row, each with its own words and colour
+function nowHereChips(hd) {
+  if (!hd) return [];
+  const chips = [], bodies = hd.bodies || [];
+  const siteBodies = bodies.filter(b => b.sites && ["guardian", "thargoid", "anomaly"].some(k => b.sites[k]));
+  if (siteBodies.length)   // Guardian or Thargoid sites, an anomaly, on this system's bodies
+    for (const s of siteBodies) chips.push({c: "now-sites", h: `<span class="ok">${esc(siteText([{body: s.name, sites: s.sites, reported: s.sites_reported}]))}</span>`});
+  if (hd.pois && hd.pois.length)   // FSS signals worth a detour: Titans, beacons, listening posts...
+    for (const h of splitTop(poiLineHtml(hd.pois))) chips.push({c: "now-poi", h: `<span class="ok">${h}</span>`});
+  // green gas giants here: the model's guesses (check them in the system map) and any your codex confirms
+  const gggs = bodies.filter(b => b.ggg);
+  if (gggs.length) {
+    const guess = gggs.filter(b => !b.ggg.confirmed), sure = gggs.filter(b => b.ggg.confirmed);
+    chips.push({c: "now-ggg", h: (guess.length ? `${gggIcon(false, gggTitle(guess[0].ggg))} <span class="ok">Potential green gas giant${guess.length > 1 ? "s" : ""}: ` +
+      `${guess.map(b => `${esc(b.name)}${b.ggg.chance === "possible" ? " (possible)" : ""}`).join(", ")}</span> <span class="unk">· check in the system map</span>` : "") +
+      (sure.length ? `${guess.length ? " · " : ""}${gggIcon(true, gggTitle(sure[0].ggg))} <span class="ok">${esc(gggSureWords(sure))}</span>` : "")});
+  }
+  if (hd.rare_stars && hd.rare_stars.length)   // a black hole, a Wolf-Rayet...: rare stars here
+    chips.push({c: "now-rare", h: `<span class="ok">⭐ ${esc(rareStarText(hd.rare_stars).replace(/^./, x => x.toUpperCase()))}</span>`});
+  // notable stellar phenomena the FSS found here: how many and where, and how many are still to visit
+  const nsp = hd.phenomena && hd.phenomena.length ? hd.phenomena : null;
+  if (nsp) {
+    const what = phenomenaWhat(Object.fromEntries(nsp.map(p => [p.kind, p.n || 1]))), all = phenomenaVisited(nsp) >= phenomenaCount(nsp);
+    chips.push({c: "now-nsp", h: `<span class="${all ? "ok" : "warnc"}">🌀 ${esc(what[0].toUpperCase() + what.slice(1))}</span> <span class="unk">${phenomenaLeftText(nsp)}</span>`});
+  }
+  // #11: Spansh's pre-Odyssey data, until your own scans have every body (the details in the hover)
+  if (hd.spansh_old && !(hd.leaving && hd.leaving.all_found))
+    chips.push({c: "now-old", a: ` title="${esc(spanshOldTitle(hd.spansh_old))}"`, h: `🪦 ${esc(spanshOldNow(hd.spansh_old))}`});
+  return chips;
+}
+// the status rows and the foot, in a system
+function nowSystemRest(c) {
+  const out = [], f = data.fuel, t = data.target, risk = nowRiskLine();
+  if (c.dest && !c.destIsNext) out.push(nowTargetHtml(c));   // never in place of Next: Status.json keeps a finished body targeted
+  const rows = [nowFuelRow(f)];
+  if (risk) rows.push(nowRow("aboard", "Aboard", nowParts(risk.parts), [risk.sell && {c: "now-sell", h: nowParts([risk.sell])}], `now-risk ${risk.cls}`));
+  if (t) rows.push(nowJumpRow(t));
+  // where the next jump goes: the route's next stop (as the strip says it), the kept boxel's Next
+  rows.push(nowRow("route", "Route", nowParts(splitTop(nowRouteHtml())), [], "now-route"));
+  rows.push(nowRow("boxel", "Boxel", nowParts(splitTop(nowBoxelHtml({row: true}))), [], "now-boxel"));
+  if (data.sight_near) rows.push(nowRow("sight", "Sight", nowParts(splitTop(sightNearHtml(data.sight_near))), [], "now-sight"));   // explorer ideas, 9
+  if (data.mining_live && data.mining_live.text)   // mining D: while you mine in a ring (the overlay's strip too)
+    rows.push(nowRow("mining", "Mining", nowParts(splitTop(esc(data.mining_live.text) + miningHitsNow(data.mining_live))), [], "now-mine"));
+  rows.push(nowRow("here", "Here", nowParts(nowHereChips(c.hd))));
+  out.push(`<div class="now-rows">${rows.join("")}</div>`);
+  // the foot: the streak and nearest unvisited, the session, the spoken captions (as many as fit), the hint
+  const hz = horizon(), sk = data.streak, foot = [];
+  if (hz || (sk && sk.total)) foot.push(`<div class="now-streak now-parts" data-slot="streak">${nowParts([sk && sk.total ? `<b>${sk.new}/${sk.total}</b> new` : "",
+    hz ? esc(hz.system ? `nearest known unvisited: ${hz.system.name} ${hz.system.distance.toLocaleString("en-US", {maximumFractionDigits: 1})} ly` : hz.text.split(" — ")[0]) : ""])}</div>`);
+  const ls = data.last_session, ts = data.this_session;
+  if (ts) foot.push(`<div class="now-session now-parts" id="thisSession" data-slot="session" title="${esc(thisSessionTitle)}">${nowParts([`This session <b>${esc(sessionTime(ts.start))}</b>`,
+    ...splitTop(esc(sessionLine(ts))), ts.found ? `~${credits(ts.found)} found` : ""])}</div>`);
+  else if (ls) foot.push(`<div class="now-session now-parts" data-slot="session">${nowParts(splitTop(esc(sessionLine(ls))).map((x, i) => i ? x : `Last session: ${x}`))}</div>`);
+  foot.push(nowCapsHtml(captions.slice().reverse()), nowHintHtml());
+  out.push(`<div class="now-foot" data-slot="foot">${foot.join("")}</div>`);
+  return out.join("");
+}
+// the spoken captions, newest first (a tap replays one), and the screen-sleep hint
+const nowCapsHtml = list => !list.length ? "" : `<div class="now-caps" data-slot="captions">${list.map(c =>
+  `<div class="now-cap" data-words="${esc(c.words)}"${c.priv ? ` data-priv="1"` : ""} title="say it again (through the window that is speaking)">▶ ${esc(c.shown || c.words)} <span class="unk"><span class="cd">${agoText(c.at)}</span></span></div>`).join("")}</div>`;
+const nowHintHtml = () => nowHintUntil && Date.now() < nowHintUntil && !window.OutriderApp   // the Android app keeps the screen on itself
+  ? `<div class="now-small now-hint" data-slot="hint">screen may sleep: set the tablet's screen timeout, or open over localhost/HTTPS</div>` : "";
+// Q2 (the author, 2026-11-07): at the foot only as many captions as fit the height left, newest first and the newest
+// always; never pushing the rows off the screen. With the map up there is only the newest (nowBodyRest)
+function nowFitCaps(el) {
+  const caps = [...el.querySelectorAll(".now-caps .now-cap")];
+  caps.forEach(x => { x.hidden = false; });
+  const last = el.lastElementChild, nv = document.getElementById("nowView");
+  if (caps.length < 2 || !last || nv.classList.contains("mapon")) return;
+  const pad = parseFloat(getComputedStyle(nv).paddingBottom) || 0;
+  const limit = TABLET ? nv.getBoundingClientRect().bottom - pad : innerHeight - pad;
+  const scrolled = TABLET ? nv.scrollTop : 0;
+  for (let i = caps.length - 1; i > 0; i--) {
+    const r = last.getBoundingClientRect();
+    if (!r.height || r.bottom + scrolled <= limit) break;
+    caps[i].hidden = true;
+  }
+}
+// what is left to do on the body you are on: the sample run under way, else the next genus not started, else the pin
+// you fly to, else nothing (with where your ship is). From what renderOnBody and pinLineHtml know
+function nowBodyNext(ob) {
+  const sm = data.sampling, pin = pinActive(), b = obData && !obData.error ? (obData.bodies || []).find(x => x.name === ob.body) : null;
+  const pinPart = pin ? `📍 <b>${esc(pin.name)}</b>: ${esc(surfDist(pin.dist))}, ${esc(pinTurnWords(pin))}` : "";
+  const chips = b ? onBodyBits(b) : [];
+  if (sm && !sm.elsewhere && sm.samples && sm.samples < 3) {
+    const sp = (sm.species || "").split(" ").slice(1).join(" "), pays = runPays(sm.value, sm.factor);
+    const right = sm.clear ? [`<span class="ok">✓ clear to sample</span>`, `<span class="unk">${sm.nearest} m from the nearest, ${sm.need} m needed</span>`]
+      : sm.to_go != null ? [`<b title="${sm.to_go} m to go">${sm.nearest} of ${sm.need} m</b> <span class="unk">from the nearest sample</span>`, `<span class="unk">keep going</span>`]
+      : sm.need == null && sm.points > 0 ? [`<span class="unk">spacing unknown for this genus</span>`]
+      : [`<span class="unk" title="the position of your earlier samples was not recorded (they were taken before Outrider was running)">${sm.need ? `need ${sm.need} m from the last sample` : "spacing unknown"} (position unknown)</span>`];
+    return nowNextCard({what: `${esc(sm.genus || "")}${sp ? ` ${esc(sp)}` : ""} ${sm.samples}/3`, right: nowParts(right), cls: `one${sm.clear ? " clear" : ""}`,
+      detail: nowParts([pays && `<span class="pays" title="what the run pays once its three samples are analysed${sm.factor > 1 ? ", with the ×5 first footfall bonus" : ""}">pays ${esc(pays)}</span>`,
+                        tagText(sm).replace(/^ · /, ""), pinPart])});
+  }
+  const todo = b ? bioGenera(b).filter(g => !(b.organics || []).some(o => o.genus === g)) : [];
+  if (todo.length) {
+    const g = todo[0], x = (b.bio_guess || []).find(q => q.genus === g);
+    return nowNextCard({what: `${esc(g)} 0/3`, cls: "one", detail: nowParts([...chips, pinPart]),
+      right: x && x.best ? nowParts([`<span class="unk">likely</span> ${esc(x.best.split(" ").slice(1).join(" "))} ${credits((x.value || 0) * bioFactor(b))}`]) : ""});
+  }
+  const unk = b && bioUnknown(b);
+  if (unk) return nowNextCard({what: esc(unk.label.replace(/ signals?/, m => " bio" + m)), cls: "one", detail: nowParts([...chips, pinPart])});
+  if (pin) return nowNextCard({what: `📍 <b>${esc(pin.name)}</b>`, right: nowParts([`<b>${esc(surfDist(pin.dist))}</b>`, esc(pinTurnWords(pin))]), cls: "one pin",
+                               detail: nowParts(chips)});
+  if (!b) return nowNextCard({what: `<span class="unk">checking…</span>`, cls: "one"});
+  const s = data.surface, ship = s && s.ship && s.ship.lat != null && s.lat != null ? surfLocal(s, s.ship.lat, s.ship.lon) : null;
+  return nowNextCard({what: `<span class="ok">✓ nothing left on this body</span>`, cls: "one clear", detail: nowParts(chips),
+    right: ship ? nowParts([`your ship <b>${surfDist(ship.dist)}</b>`, `${String(Math.round(ship.brg) % 360).padStart(3, "0")}°`]) : ""});
+}
+// with the map up: warnings only (the data aboard at your amber level or the high-g stakes, low fuel, a run elsewhere,
+// the wrong suit), another body of this system targeted, and the newest caption; the rest comes back off the body
+function nowBodyRest(ob, c) {
+  const out = [], f = data.fuel, risk = nowRiskLine(), sm = data.sampling;
+  if (risk && (risk.cls === "warn" || risk.cls === "urgent"))
+    out.push(`<div class="now-warn now-parts now-risk ${risk.cls}" data-slot="aboard">${nowParts([...risk.short, risk.sell])}</div>`);
+  if (fuelLow(f) && f.pct != null)
+    out.push(`<div class="now-warn now-parts now-fuel ${nowFuelLevel(f) || "warn"}" data-slot="fuel">${nowParts([`⛽ <b>${f.pct}%</b>`,
+      f.jumps_max != null ? `${f.jumps_max} ${jumpsWord(f.jumps_max)}` : "", ...splitTop(hereScoopText(f))])}</div>`);
+  const away = sm && sm.elsewhere ? elsewhereText(sm.elsewhere) : "", b = obData && !obData.error ? (obData.bodies || []).find(x => x.name === ob.body) : null;
+  if (away) out.push(`<div class="now-warn now-parts warn" data-slot="warn">${nowParts([esc(away)])}</div>`);
+  const suit = wrongSuitMark(ob, b).replace(/^ · /, "");
+  if (suit) out.push(`<div class="now-warn now-parts" data-slot="warn">${nowParts([suit])}</div>`);
+  if (c.dest && c.dest.name !== ob.body) out.push(nowTargetHtml(c, true));
+  if (!TABLET) out.push(nowCapsHtml(captions.slice(-1)));   // the tablet's footer has the newest already
+  out.push(nowHintHtml());
+  return out.join("");
+}
+// Now's route row: the route the strip shows (this device's pick with both), its next stop with 🎯 (the review's
 // suggestion, 2026-10-12: Now never said where the next jump goes)
 function nowRouteHtml() {
   const hw = data.highway, sv = data.survey;
   return lineKind(hw, sv) === "rich" ? surveyLineHtml(sv, {short: true}) : hw ? hwyLineHtml(hw, {short: true}) : "";
 }
-// Now's boxel line: the kept boxel's Next (or the one followed, in Boxel mode), as the boxel pane's Next
-function nowBoxelHtml() {
+// Now's boxel row: the kept boxel's Next (or the one followed, in Boxel mode), as the boxel pane's Next; `row`: under
+// Now's BOXEL label, so without its own "▦ Boxel:"
+function nowBoxelHtml({row = false} = {}) {
   const bx = data.boxel && data.boxel.next;
   if (!bx || !bx.label || !(bx.picked || nearMode() === "boxel")) return "";
-  const head = `<span class="hwyg" aria-hidden="true">▦</span> `;
+  const head = row ? "" : `<span class="hwyg" aria-hidden="true">▦</span> `;
   if (bx.complete || bx.done) return `${head}${esc(bx.label)} <span class="ok">✓ ${bx.complete ? "complete" : "done"}</span>`;
   if (!bx.name) return `${head}${esc(bx.label)} <span class="unk">every system known is visited</span>`;
-  return `${head}<span class="warnc">Boxel: next</span> <span class="copy" data-name="${esc(bx.name)}" title="click to copy">${esc(bx.name)}</span>` +
+  return `${head}${row ? "next" : `<span class="warnc">Boxel: next</span>`} <span class="copy" data-name="${esc(bx.name)}" title="click to copy">${esc(bx.name)}</span>` +
     (bx.standard ? hwyAimBtn(bx.name, "boxel", null) : "") +
     ` · ${bx.spansh ? boxelKnown(bx) : `<span class="unk">to try</span>`}`;
 }
-// Now's at-risk line, under fuel: what the data aboard stands to lose, shown only once it matters (your amber level
-// or rebuy multiple). Docked where it sells, what selling here pays; on a high-g approach, that approach's stakes
-// (kept from the approach call-out until liftoff or leaving the body). null when there is nothing to say.
+// Now's at-risk row: what the data aboard stands to lose, shown only once it matters (your amber level or rebuy
+// multiple). Docked where it sells, what selling here pays; on a high-g approach, that approach's stakes (kept from
+// the approach call-out until liftoff or leaving the body). {cls, parts, short (the map's one line), sell}, or null
 let nowStakes = null;   // {sys, body_id, hg, landed}: the last approach's highGStakes
 function nowRiskLine() {
   const u = data.unsold, lvl = unsoldLevel(u);
-  if (nowStakes) { const s = nowStakes.hg;
-    return {cls: lvl === "urgent" ? "urgent" : "warn", html: `⚠ <b>${esc(s.gravity)} g</b> · ${esc(s.value)} aboard${s.rebuys ? ` · ${esc(s.rebuys)} rebuys` : ""}`}; }
+  if (nowStakes) { const s = nowStakes.hg, parts = [`⚠ <b>${esc(s.gravity)} g</b>`, `${esc(s.value)} aboard`, s.rebuys ? `${esc(s.rebuys)} rebuys` : ""];
+    return {cls: lvl === "urgent" ? "urgent" : "warn", parts, short: parts, sell: ""}; }
   if (lvl !== "warn" && lvl !== "urgent") return null;
   const sh = sellableHere(data.docked, u);
-  if (sh && sh.value > 0) return {cls: sh.level === "ok" ? "" : sh.level, html: `💰 sell here: <b>${credits(sh.value)}</b>`};
+  if (sh && sh.value > 0) { const parts = [`💰 sell here: <b>${credits(sh.value)}</b>`]; return {cls: sh.level === "ok" ? "" : sh.level, parts, short: parts, sell: ""}; }
   // whole days passed, never rounded up (as the overlay's Now panel: overlay.unsold_age)
   const rebuy = riskRebuy(), ss = data.since_sale, days = ss && ss.days >= 1 ? Math.floor(ss.days) : 0;
   const kinds = [(u.carto || {}).estimated_payout && `🗺 ${credits(u.carto.estimated_payout)}`, (u.bio || {}).estimated_value && `🧬 ${credits(u.bio.estimated_value)}`].filter(Boolean);
-  return {cls: lvl, html: [`<b>${kinds.length ? kinds.join(" · ") : credits(u.total)}</b> aboard`, rebuy ? `${(u.total / rebuy).toFixed(1)}× rebuy` : "",
-                           days ? `${days} d unsold` : "", nowSellPart(u)].filter(Boolean).join(" · ")};
+  const after = [rebuy ? `${(u.total / rebuy).toFixed(1)}× rebuy` : "", days ? `${days} d unsold` : ""];
+  return {cls: lvl, parts: [`<b class="big">${credits(u.total)}</b>${kinds.length ? ` <span class="now-kinds">${kinds.join(" · ")}</span>` : ""}`, ...after],
+          short: [`⚠ <b>${credits(u.total)}</b> aboard`, ...after], sell: nowSellPart(u)};
 }
 // the review's #11: where to sell what is at risk, with 🎯 and (from SELL_PLOT_MIN_LY) 🛣: the nearest place for the
 // service holding most of it (sellers_summary's `sell`: a station, or your own carrier, with a pad for your ship); one
@@ -2042,6 +2237,9 @@ const spPicData = (code, variant, name) => name ? ` data-sppic="${esc(code || ""
 const spLegendName = b => `<b class="sppic"${spPicData(b.code, b.variant_code, b.variant || b.species)}>${colourName(b.variant || b.species)}</b>${clCam(b.own_pic)}`;
 function surfaceLegend(s, L, cfg) {
   const by = k => L.items.filter(it => it.kind === k).sort((a, b) => a.dist - b.dist), rows = [];
+  // each row a mark column (the swatch, U1, L3, H, ◆) and its words, the details muted on the same line (the author's
+  // mock-up, 2026-11-07); the space between the two keeps the words apart in the row's text
+  const row = (attrs, mark, words) => `<div ${attrs}><span class="lg-mk">${mark}</span>${mark.startsWith("<i ") ? "" : " "}<span class="lg-tx">${words}</span></div>`;
   // the same colours as the map, which counts the tagged species too (review: the legend's swatch was another species')
   const bio = new Map(), colours = speciesColours([...(s.bio || []), ...(s.tags || [])]);
   for (const it of by("bio")) if (!bio.has(it.species)) bio.set(it.species, it);
@@ -2051,18 +2249,18 @@ function surfaceLegend(s, L, cfg) {
     .sort((x, y) => (x.it ? x.it.dist : 1e9) - (y.it ? y.it.dist : 1e9));
   const done = (s.bio || []).filter(b => b.done);
   if (species.length || done.length) rows.push(`<div class="lg-h">Samples</div>` + species.map(({b, it}) =>
-    `<div class="lg-row lg-bio${b.current ? " cur" : " faint"}" data-species="${esc(b.species)}"><i class="sw" style="background:${colours.get(b.species)}"></i>` +
-    `${spLegendName(b)} ${b.samples ?? "?"}/3${b.need ? ` · ${b.need} m` : ""}` +
-    (b.clear ? ` · <span class="ok">✓ clear</span>` : it && b.need ? ` · <span class="unk">${Math.round(it.dist)} of ${b.need} m</span>` : "") + `</div>`).join("") +
-    done.map(b => `<div class="lg-row lg-bio done" data-species="${esc(b.species)}"><i class="sw" style="background:${colours.get(b.species)}"></i>` +
-      `${spLegendName(b)} <span class="ok">✓ done</span>${b.points && b.points.length ? "" : ` <span class="unk" title="sampled while Outrider was not reading the game live: no positions">(no spots)</span>`}</div>`).join(""));
+    row(`class="lg-row lg-bio${b.current ? " cur" : " faint"}" data-species="${esc(b.species)}"`, `<i class="sw" style="background:${colours.get(b.species)}"></i>`,
+      `${spLegendName(b)} ${b.samples ?? "?"}/3${b.need ? ` <span class="unk lg-nw">· ${b.need} m</span>` : ""}` +
+      (b.clear ? ` <span class="lg-nw">· <span class="ok">✓ clear</span></span>` : it && b.need ? ` <span class="unk lg-nw">· ${Math.round(it.dist)} of ${b.need} m</span>` : ""))).join("") +
+    done.map(b => row(`class="lg-row lg-bio done" data-species="${esc(b.species)}"`, `<i class="sw" style="background:${colours.get(b.species)}"></i>`,
+      `${spLegendName(b)} <span class="ok">✓ done</span>${b.points && b.points.length ? "" : ` <span class="unk" title="sampled while Outrider was not reading the game live: no positions">(no spots)</span>`}`)).join(""));
   // plants you tagged with the composition scanner, per species: how many, the nearest one a sample would count at
   const tagged = new Map();
   for (const it of by("tag")) { const g = tagged.get(it.species) || {n: 0, near: null}; g.n++; if (!it.faint && !g.near) g.near = it; tagged.set(it.species, g); }
   if (tagged.size) rows.push(`<div class="lg-h">Tagged <span class="unk">(○ a sample would count · faint: inside a colony)</span></div>` +
-    [...tagged].map(([sp, g]) => `<div class="lg-row lg-tag"><i class="sw ring" style="border-color:${colours.get(sp)}"></i>` +
+    [...tagged].map(([sp, g]) => row(`class="lg-row lg-tag"`, `<i class="sw ring" style="border-color:${colours.get(sp)}"></i>`,
       `${spLegendName((s.tags || []).find(t => t.species === sp) || {species: sp})} ${g.n}` +
-      (g.near ? ` · <span class="unk">nearest ${surfWhere(g.near)}</span>` : "") + `</div>`).join(""));
+      (g.near ? ` · <span class="unk">nearest ${surfWhere(g.near)}</span>` : ""))).join(""));
   const rigs = by("rig"), slot = n => rigs.find(r => r.n === n);
   if (rigs.length || s.rhino) rows.push(`<div class="lg-h">Rigs <span class="unk">(○ filling · ● probably full${cfg.spacing ? ` · ring ~${cfg.spacing} m, an estimate` : ""})</span></div>` +
     `<div class="lg-slots">` + [1, 2, 3, 4, 5, 6].map(n => { const r = slot(n);
@@ -2074,19 +2272,19 @@ function surfaceLegend(s, L, cfg) {
   // #16: pins, in their order (the server's): tap one to fly to it
   const pins = (s.pins || []).map(p => L.items.find(it => it.kind === "pin" && it.id === p.id) || Object.assign({}, p, {kind: "pin", active: p.active, faint: p.reached}));
   if (pins.length) rows.push(`<div class="lg-h">Pins <span class="unk">(tap one to go there)</span></div>` + pins.map(it =>
-    `<div class="lg-row lg-pin${it.active ? " cur" : it.faint ? " faint" : ""}" data-pinact="${it.id}" title="${it.active ? "the pin you are guided to" : "go there: guided to it from now on"}">` +
-    `<span class="tg pin">◆</span> <b>${esc(it.tag || it.name)}</b> ${it.brg != null ? surfWhere(it) : `<span class="unk">${surfDist(it.dist)}</span>`}` +
-    `${it.active ? ` <span class="ok">● target</span>` : it.faint ? ` <span class="unk">reached</span>` : ""}</div>`).join(""));
+    row(`class="lg-row lg-pin${it.active ? " cur" : it.faint ? " faint" : ""}" data-pinact="${it.id}" title="${it.active ? "the pin you are guided to" : "go there: guided to it from now on"}"`,
+      `<span class="tg pin">◆</span>`, `<b>${esc(it.tag || it.name)}</b> ${it.brg != null ? `<span class="unk">${surfWhere(it)}</span>` : `<span class="unk">${surfDist(it.dist)}</span>`}` +
+      `${it.active ? ` <span class="ok">● target</span>` : it.faint ? ` <span class="unk">reached</span>` : ""}`)).join(""));
   const goto = (it, name) => ` <button type="button" class="mini" data-pingo="${it.lat},${it.lon}" data-pinname="${esc(name)}" title="pin it and go there">📍</button>`;
-  const sites = by("site");
-  if (sites.length) rows.push(`<div class="lg-h">Sites</div>` + sites.map(it =>
-    `<div class="lg-row" data-tag="${it.tag}"><span class="tg">${it.tag}</span> ${it.mineral ? esc(it.mineral) : `<span class="unk">?</span>`} <b>${it.tons} t</b>` +
-    ` <span class="unk">${it.site === "rig" ? (it.lost ? "rig lost" : "rig picked up") : "unmarked"}${it.location ? ` · L${it.location}` : ""} · ${surfDist(it.dist)}</span>${goto(it, `Site ${it.tag}`)}</div>`).join(""));
-  const locs = by("loc");
-  if (locs.length) rows.push(`<div class="lg-h">Mining locations</div>` + locs.map(it =>
-    `<div class="lg-row" data-tag="${it.tag}"><span class="tg loc">${it.tag}</span> ${surfWhere(it)}${goto(it, `Location ${it.n}`)}</div>`).join(""));
-  const ship = by("ship")[0];
-  if (ship) rows.push(`<div class="lg-row lg-ship"><span class="tg ship">H</span> Ship ${surfWhere(ship)}${goto(ship, "Ship")}</div>`);
+  // the sites (what a rig or a mining tool left), the mining locations and your ship, under one heading
+  const sites = by("site"), locs = by("loc"), ship = by("ship")[0], places = [];
+  for (const it of sites) places.push(row(`class="lg-row" data-tag="${it.tag}"`, `<span class="tg">${it.tag}</span>`,
+    `${it.mineral ? esc(it.mineral) : `<span class="unk">?</span>`} <b>${it.tons} t</b>` +
+    ` <span class="unk">${it.site === "rig" ? (it.lost ? "rig lost" : "rig picked up") : "unmarked"}${it.location ? ` · L${it.location}` : ""} · ${surfDist(it.dist)}</span>${goto(it, `Site ${it.tag}`)}`));
+  for (const it of locs) places.push(row(`class="lg-row" data-tag="${it.tag}"`, `<span class="tg loc">${it.tag}</span>`,
+    `<span class="unk">${surfWhere(it)}</span>${goto(it, `Location ${it.n}`)}`));
+  if (ship) places.push(row(`class="lg-row lg-ship"`, `<span class="tg ship">H</span>`, `Ship <span class="unk">${surfWhere(ship)}</span>${goto(ship, "Ship")}`));
+  if (places.length) rows.push(`<div class="lg-h">Sites and places</div>` + places.join(""));
   return rows.join("") || `<div class="unk">nothing marked on this body yet</div>`;
 }
 // the strip's one line: rigs, sites and the ship, short
@@ -2581,16 +2779,6 @@ function destVerdict(hd, l, plan, b) {
   const near = data.destination && data.destination.near, main = hd.bodies.find(x => x.main);
   const eta = (!near || (main && near === main.name)) && near !== b.name ? scSeconds(b.dist_ls) : null;
   return {it, v, eta};
-}
-// Now's heading-to line: what the targeted body is, the supercruise time and the verdict
-function nowDestText(hd, l, plan, b) {
-  const {it, v, eta} = destVerdict(hd, l, plan, b);
-  const verdict = v === "skip" ? `<span class="unk skipq">skip?${it.perMin ? ` ${credits(it.perMin)}/min` : ""}</span>`
-    : v === "worth" ? `<span class="ok">worth it${it.perMin ? ` · ${credits(it.perMin)}/min` : ""}</span>`
-    : v === "under" ? `<span class="unk">under your threshold</span>`
-    : v === "scoop" ? `<span class="ok">scoopable star</span>` : v === "noscoop" ? `<span class="unk">not scoopable</span>`
-    : `<span class="unk">nothing to do here</span>`;
-  return `➜ <b>${esc(b.name)}</b> · ${destBits(b).map(esc).join(" · ")}${eta != null ? ` · ${scText(eta)}` : ""} · ${verdict}`;
 }
 // leaving Now: ✕ back or a double tap (not on the bar or a caption). A window opened at ?mode=now stays on Now, with
 // its URL, so a stray tap or a reload keeps it there.
@@ -5893,13 +6081,17 @@ function historyTip(x) {
   return x && x.history ? `\nyours on bodies like this (${x.history.label}): ` +
     x.history.species.map(([s, n]) => `${s} ${n} of ${x.history.total}`).join(", ") : "";
 }
-// what the body targeted in-game is (plain text bits): Here's heading-to line and Now's
+// what the body targeted in-game is (plain text bits): Here's heading-to line (destBits) and Now's target (destParts)
+function destParts(b) {
+  const f = bioFactor(b), n = b.bio || b.genera.length, bio = b.bio_options ? [`${b.bio_options.genera.map(x => x.genus).join(" or ")}, ${credits(b.bio_options.low * f)} to ${credits(b.bio_options.high * f)}`]
+    : (b.bio_guess || []).slice(0, n).map(x => x.best ? `${x.best.split(" ")[0]}? ${credits((x.value || 0) * f)}` : x.genus);
+  return {subtype: b.subtype, g: b.gravity != null && b.type === "Planet" ? `${b.gravity.toFixed(2)} g` : "", atm: b.atmosphere && b.atmosphere !== "None" ? b.atmosphere : "",
+    bioN: n ? `${n} bio` : "", bio, geo: b.geo ? `${b.geo} geo` : "", ls: b.dist_ls != null ? `${Math.round(b.dist_ls).toLocaleString()} ls` : "",
+    max: maxOf(b) ? `max ${credits(maxOf(b))}` : ""};
+}
 function destBits(b) {
-  const f = bioFactor(b), bio = b.bio_options ? [`${b.bio_options.genera.map(x => x.genus).join(" or ")}, ${credits(b.bio_options.low * f)} to ${credits(b.bio_options.high * f)}`]
-    : (b.bio_guess || []).slice(0, b.bio || b.genera.length).map(x => x.best ? `${x.best.split(" ")[0]}? ${credits((x.value || 0) * f)}` : x.genus);
-  return [b.subtype, b.gravity != null && b.type === "Planet" && `${b.gravity.toFixed(2)} g`,
-    b.atmosphere && b.atmosphere !== "None" && b.atmosphere, (b.bio || b.genera.length) && `${b.bio || b.genera.length} bio${bio.length ? ` (${bio.join(", ")})` : ""}`,
-    b.geo && `${b.geo} geo`, b.dist_ls != null && `${Math.round(b.dist_ls).toLocaleString()} ls`, maxOf(b) && `max ${credits(maxOf(b))}`].filter(Boolean);
+  const d = destParts(b);
+  return [d.subtype, d.g, d.atm, d.bioN && `${d.bioN}${d.bio.length ? ` (${d.bio.join(", ")})` : ""}`, d.geo, d.ls, d.max].filter(Boolean);
 }
 document.getElementById("hereRows").addEventListener("click", e => {
   const tr = e.target.closest("tr[data-body]"); if (!tr) return;
