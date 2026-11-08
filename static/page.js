@@ -17022,10 +17022,21 @@ function tabDrawNav() {
   tag.parentElement.setAttribute("aria-label", on ? "Now, surface map showing" : "Now");
 }
 // the status strip: system, fuel, unsold (the levels as words and marks too, never colour alone)
+// the strip's system name in two parts: the first 10 characters always show, the rest gives way (tablet.css #tabSys)
+const TAB_SYS_HEAD = 10;
+function tabSetSys(name) {
+  const el = document.getElementById("tabSysV");
+  if (el.textContent === name) return;
+  const ch = Array.from(name), cut = ch.length > TAB_SYS_HEAD + 1 ? TAB_SYS_HEAD : ch.length;
+  const h = document.createElement("span"), t = document.createElement("span");
+  h.className = "tb-h"; h.textContent = ch.slice(0, cut).join("");
+  t.className = "tb-t"; t.textContent = ch.slice(cut).join("");
+  el.replaceChildren(h, ...(t.textContent ? [t] : []));
+}
 function tabRender() {
   const p = data.position, f = data.fuel, u = data.unsold;
   const set = (id, text, cls = "") => { const el = document.getElementById(id); if (el.textContent !== text) el.textContent = text; el.parentElement.className = "tb-chip" + (cls ? " " + cls : ""); };
-  set("tabSysV", p ? p.name : "—");
+  tabSetSys(p ? p.name : "—");
   const fl = !f ? ["—", ""] : !f.live ? [f.main != null ? `${f.main.toFixed(1)} t (last)` : "—", "stale"]
     : f.main == null ? ["not read yet", "stale"]
     : [`${f.main.toFixed(f.main >= 100 ? 0 : 1)}${f.capacity ? " / " + f.capacity : ""} t${f.pct != null && f.pct < 30 ? ` · ${f.pct < 15 ? "⚠ " : ""}${f.pct}%` : ""}`,
@@ -17050,7 +17061,7 @@ function tabDrawHush() {
 const tabLinkText = l => l.text + (ovPillNow ? ` · ${ovPillNow.text}` : "");
 function tabDrawLink(l) {
   const el = document.getElementById("tabLink"), text = tabLinkText(l);
-  if (el.textContent !== text) el.textContent = text;
+  if (el.textContent !== text) { const s = document.createElement("span"); s.textContent = text; el.replaceChildren(s); }   // the span takes the ellipsis
   el.className = "tb-link " + l.state;
   tabDrawHush(); tabDrawCaption();   // the hush's minutes count down with the pill's second; "reconnecting" follows the link
 }

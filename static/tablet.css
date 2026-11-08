@@ -36,13 +36,20 @@ html.tb-dim body.tablet { filter: brightness(.55); }
   min-width: 0; }
 .tb-chip .tb-k { font-family: var(--tb-font-display); font-size: 13px; color: var(--tb-chip-k); text-transform: var(--tb-case); letter-spacing: var(--tb-track); }
 .tb-chip .tb-v { font-size: 19px; font-weight: 500; color: var(--tb-chip-v); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#tabSys { flex: 0 1 auto; } #tabSys .tb-v { max-width: 260px; }
+/* the system's name: its first 10 characters (.tb-h) always show; the rest (.tb-t) may wrap anywhere, so its smallest
+   width is one letter, and is clamped to one line with an ellipsis. The chip's smallest width is then the head and a
+   little more, and the flex-shrink weight makes it give way before the link pill does (the A9, 2026-11-08) */
+#tabSys { flex: 0 1000 auto; min-width: auto; } #tabSys .tb-v { display: flex; max-width: 260px; }
+#tabSys .tb-h { flex: none; }
+#tabSys .tb-t { flex: 0 1 auto; min-width: 1.2em; overflow: hidden; white-space: normal; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; }
 .tb-chip.warn .tb-v { color: var(--warn); } .tb-chip.urgent .tb-v { color: var(--bad); font-weight: 700; } .tb-chip.stale .tb-v { color: var(--muted); }
 .tb-grow { flex: 1 1 auto; }
 .tb-link { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 14px; border-radius: var(--tb-chip-radius);
   border: 2px solid var(--tb-link-ok); color: var(--tb-link-ok); font-family: var(--tb-font-display); font-size: 15px;
   text-transform: var(--tb-case); letter-spacing: var(--tb-track); white-space: nowrap; }
-.tb-link::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+.tb-link > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tb-link::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
 .tb-link.stale { border-color: var(--tb-link-stale); color: var(--tb-link-stale); }
 .tb-link.none { border-color: var(--tb-link-none); color: var(--tb-link-none); border-style: dashed; }
 /* a newer release on GitHub: beside the link, in the theme's title colour and chip shape; tap for how to update */
@@ -240,8 +247,10 @@ body.tablet #hereHead { max-height: 24vh; overflow-y: auto; }
 body.tablet.app #hereLeaving { max-height: 16vh; }
 body.tablet.app main > #hereView.detail { grid-template-rows: auto auto minmax(260px, 1fr); }
 body.tablet.app main.nearPinned > #hereView.detail > #bodyPanel, body.tablet.app main.nearPinned > #hereView > #hereMain { min-height: 200px; }
-/* the strip: only the system's name gives way (ellipsis); fuel and unsold always show in full */
-#tabFuel, #tabUnsold, .tb-link { flex-shrink: 0; }
+/* the strip: the system's name gives way first, down to its first 10 characters, then the link pill (its end first,
+   the dot always); fuel and unsold always show in full (the author, 2026-11-08) */
+#tabFuel, #tabUnsold { flex-shrink: 0; }
+.tb-link { flex-shrink: 1; min-width: 0; }
 .tb-railhead > div { min-width: 0; }
 .tb-rbl { overflow: hidden; } .tb-rbl b { overflow: hidden; text-overflow: ellipsis; }   /* a long label never runs under its state */
 /* a server, or this tablet's Show the game controls off: no rail column, the main column takes its width */

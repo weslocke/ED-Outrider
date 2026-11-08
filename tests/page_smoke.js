@@ -6496,13 +6496,43 @@ const releasePayloads = async () => {
       out.tabletCaps = await look("tablet", "system", 1280, 800, caps(3));
       out.tabletMap = await look("tablet", "body", 1280, 800);
       out.deskMap = await look("?mode=now", "body", 1920, 1200, caps(3));
+      // the tablet's top strip on the Galaxy Tab A9 (1006 x 601 CSS px; the author's screenshot, 2026-11-08: the System
+      // chip showed no name at all): a long name, a large unsold and the long link pill. The name's first 10 characters
+      // show, the pill gives way (its dot kept), fuel and unsold in full, nothing runs off; on a 1280 x 800 tablet a short
+      // name takes no more room than itself
+      const strip = async (width, height, name) => {
+        const page = await browser.newPage({viewport: {width, height}, deviceScaleFactor: 1.33});
+        const perr = []; page.on("pageerror", e => perr.push(e.message));
+        await page.goto(base + "tablet");
+        await page.waitForFunction(() => typeof data !== "undefined" && !!data, null, {timeout: 30000});
+        await page.evaluate(() => { const f = window.fetch; window.fetch = (u, o) => /api\/nearby\?since=/.test(String(u)) ? new Promise(() => {}) : f(u, o); });
+        await page.evaluate(nowCaseJs("system"));
+        const r = await page.evaluate(`(() => { data.position = Object.assign({}, data.position, {name: ${JSON.stringify(name)}});
+          data.unsold = Object.assign({}, data.unsold, {total: 669700000}); tabRender();
+          ovPillNow = {text: "overlay …"}; tabDrawLink({text: "linked · no game", state: "linked"});
+          const box = s => document.querySelector(s).getBoundingClientRect(), bar = document.querySelector("#tabHead .tb-bar");
+          const full = s => { const e = document.querySelector(s); return e.scrollWidth <= e.clientWidth + 1; };
+          const v = box("#tabSysV"), h = box("#tabSysV .tb-h"), link = box("#tabLink");
+          return {name: document.getElementById("tabSysV").textContent, head: h.right <= v.right + 1 && v.right <= box("#tabSys").right + 1, hw: Math.round(h.width),
+                  slack: Math.round(v.width - [...document.querySelectorAll("#tabSysV > span")].reduce((a, e) => a + e.getBoundingClientRect().width, 0)),
+                  fuel: full("#tabFuelV"), unsold: full("#tabUnsoldV"), link: link.width >= 30 && link.right <= bar.getBoundingClientRect().right + 1,
+                  pill: document.getElementById("tabLink").textContent, over: bar.scrollWidth - bar.clientWidth}; })()`);
+        r.errors = perr;
+        await page.close();
+        return r;
+      };
+      out.a9 = await strip(1006, 601, "Smojooe VW-E c11-11");
+      out.wideShort = await strip(1280, 800, "Sol");
     } finally { await browser.close(); }
     const ok = r => r && !r.wrapped.length && !r.wide && r.rowsOn && r.fits && !r.errors.length;
     const want = {tablet: ok(out.tablet), tall: ok(out.tall), desk: ok(out.desk), tabletCaps: ok(out.tabletCaps) && out.tabletCaps.caps >= 1 && out.tabletCaps.caps < 3,
                   tabletMap: ok(out.tabletMap) && out.tabletMap.map === true, deskMap: ok(out.deskMap) && out.deskMap.map === true && out.deskMap.caps === 1};
+    const stripOk = (r, name, min) => r && r.name === name && r.head && r.hw >= min && r.fuel && r.unsold && r.link && r.over <= 1 && r.pill === "linked · no game · overlay …" && !r.errors.length;
+    want.a9strip = stripOk(out.a9, "Smojooe VW-E c11-11", 80);
+    want.shortName = stripOk(out.wideShort, "Sol", 10) && Math.abs(out.wideShort.slack) <= 1;
     const bad = Object.keys(want).filter(k => !want[k]);
     allOk = allOk && !bad.length;
-    console.log(!bad.length ? "OK" : "FAIL", "| now tidy browser |", !bad.length ? `no part wraps, nothing off the side, captions and the map fit (${exe})` : `failed ${bad.join(", ")}: ${JSON.stringify(out)}`);
+    console.log(!bad.length ? "OK" : "FAIL", "| now tidy browser |", !bad.length ? `no part wraps, nothing off the side, captions and the map fit, the tablet strip gives way in order (${exe})` : `failed ${bad.join(", ")}: ${JSON.stringify(out)}`);
   }
   // Server settings saved twice (complete review 2026-10-30): after a Save the password went back into its box and every
   // later Save sent it again; now the second Save has nothing to send

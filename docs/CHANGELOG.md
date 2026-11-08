@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The tablet strip's system name on a small tablet
+On the Galaxy Tab A9 (1006 × 601 CSS px) the top strip's System chip showed its label and no name: the link pill never
+gave way ("linked · no game · overlay …"), and fuel and unsold always show in full, so the name took all the shrinking.
+- **The order now (the author's choice):** the name gives way first, down to its first 10 characters ("Smojooe VW-…");
+  then the link pill, from its end, the dot always kept (its colour still says the link's state). Fuel and unsold are
+  unchanged.
+- **How:** page.js `tabSetSys` splits the name into a head (10 characters, never shrinks) and a tail that may wrap
+  anywhere and is clamped to one line, so the chip's smallest width is the head and a letter; the link's text is in its
+  own span for the ellipsis (tablet.css).
+- **Tests:** page_smoke's real-browser block at 1006 × 601 (the name's head shows, the pill fits, fuel and unsold in
+  full, nothing runs off) and a short name on 1280 × 800 that takes no more room than itself; fails with the old CSS.
+
 ## 2026-11-08 · The 3D system map on Now and Here
 The author's idea, from a screenshot of another tool used only as inspiration (project/PLAN-system-map-2026-11-08.md,
 the mock-ups in project/system-map/).
