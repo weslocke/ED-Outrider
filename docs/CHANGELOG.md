@@ -2,6 +2,25 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The 3D system map on Now and Here
+The author's idea, from a screenshot of another tool used only as inspiration (project/PLAN-system-map-2026-11-08.md,
+the mock-ups in project/system-map/).
+- **Now's 🪐 map:** the system you are in in 3D, each body you scanned where it is now, drawn as the schematic draws it,
+  with its orbit; the suggested order on it from where you are (numbered stops, leg distances, "skip?" dashed); the
+  stops listed with why they are there and their legs. Not to scale: each family squashed on its own log scale
+  (`sysSquash`). Fit / Top / Whole system; drag, right-drag, wheel, touch; hover or tap a body for its card; a stop's
+  number or row makes it the first stop.
+- **Where:** the desktop's 🪐 map button puts it beside Now's text (per device, off until turned on; `nowSysMap`); in a
+  window under 1200 px, and on the tablet, Text | 🪐 Map puts it in place of the text with the headline card on one
+  line above it. On a body the surface map comes first; Surface | 🪐 System shows the system map for that body only.
+  Here gets a 🪐 3D view (the system you are in).
+- **Shared camera:** the star map's mouse and touch handling moved into `camControls`, used by both maps.
+- **Docs:** views.md, tablet.md, DESIGN_NOTES ("The system map"), AGENT_GUIDE. The guide's schematic text still said
+  "supercruise time" for its legs: now the distance.
+- **Tests:** page_unit (the squash keeps directions and order, a 2 ls moon drawn clear of its planet, a 300,000 ls star
+  in frame; orbits, scale rings, the model's stops and legs), page_smoke `system_map` (the toggle, beside / in place,
+  the list, the note, the surface map first and System per body, Here's 3D, both cameras).
+
 ## 2026-11-08 · The system map's geometry (server)
 The first part of the 3D system map (project/PLAN-system-map-2026-11-08.md, part E).
 - `outrider/orbits.py`: `_tree` (the family tree and the placing, shared with `positions`), `ellipse` (an orbit as a

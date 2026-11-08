@@ -1302,6 +1302,68 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
     --nd: clamp(15px, 1.6vw, 22px); --ns: clamp(14px, 1.4vw, 20px); --nc: clamp(19px, 2.4vw, 36px); }
 }
 
+/* ---- the system map (2026-11-08): Now's 🪐 map and Here's 🪐 3D (page.js sysMount, sysDraw) ---- */
+#nowView .now-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: 1em; row-gap: .4em; }
+#nowView .now-top > .now-sys, #nowView .now-top > .now-title { min-width: 0; }
+.now-sw { display: inline-flex; flex: 0 0 auto; margin-left: auto; }
+.now-sw button { background: var(--panel); color: var(--muted); border: 1px solid var(--line); font: inherit; font-size: clamp(14px, 1.4vw, 18px);
+  padding: 6px 14px; min-height: 40px; cursor: pointer; white-space: nowrap; }
+.now-sw button + button { border-left: 0; }
+.now-sw button:first-child { border-radius: 10px 0 0 10px; } .now-sw button:last-child { border-radius: 0 10px 10px 0; }
+.now-sw button:only-child { border-radius: 10px; }
+.now-sw button.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.sysmap { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.sysmap[hidden] { display: none; }
+.sysbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+.sysbar button { font-size: 14px; padding: 4px 12px; min-height: 32px; }
+.sysbar .sys-k { margin-right: auto; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.sysmain { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.syscv { position: relative; flex: 1 1 auto; min-height: 240px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--panel) 80%, transparent), transparent 75%); }
+.syscv canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; cursor: grab; }
+.syscv canvas.dragging { cursor: grabbing; }
+.sysnote { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1em;
+  color: var(--muted); }
+#here3d > .sysnote { position: static; padding: 2em 1em; }
+.syslist { flex: 0 1 auto; max-height: 34%; overflow-y: auto; overscroll-behavior: contain; font-size: clamp(14px, 1.1vw, 18px); }
+.sysrow { display: grid; grid-template-columns: 2em 4.6em minmax(0, 1fr) auto; column-gap: .7em; align-items: baseline; padding: .32em .2em;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); cursor: pointer; }
+.sysrow .sysnum { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6em; height: 1.6em; border-radius: .8em;
+  background: var(--info); color: var(--bg); font-weight: 700; font-size: .85em; }
+.sysrow.next .sysnum { background: var(--accent); }
+.sysrow.sysfrom { cursor: default; } .sysrow.sysfrom .sysnum { background: none; color: var(--text); }
+.sysrow .sysnm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sysrow .syswhy { color: var(--muted); min-width: 0; }
+.sysrow .syspay { color: var(--text); white-space: nowrap; }
+.sysrow .sysleg { color: var(--accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sysrow.skip { opacity: .7; }
+.sysrow.first .sysnm::after { content: " ★"; color: var(--accent); }
+.sysrow.sysnone, .sysrow.sysfoot { display: block; cursor: default; }
+.sysrow:not(.sysfrom):not(.sysnone):not(.sysfoot):hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.syshint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+#here3d { height: min(78vh, 900px); margin-top: 6px; }
+/* Now with the map beside the text (a wide window): the text left at the sizes the surface map's split uses, the map
+   and its list right, the whole height */
+#nowView.syson:not(.sysflip) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: auto 1fr;
+  grid-template-areas: "bar sys" "body sys"; column-gap: 2vw; align-content: start;
+  --nt: clamp(26px, min(2.6vw, 5vh), 64px); --nw: clamp(18px, min(1.8vw, 3.2vh), 38px); --nv: clamp(16px, min(1.5vw, 2.6vh), 32px);
+  --nd: clamp(14px, min(1.15vw, 2vh), 24px); --nk: clamp(10px, min(.85vw, 1.5vh), 14px); --ns: clamp(13px, min(1vw, 1.8vh), 22px);
+  --nc: clamp(18px, min(1.6vw, 2.8vh), 40px); }
+#nowView.syson:not(.sysflip) #nowBar { grid-area: bar; float: none; justify-self: start; margin: 0 0 4px; }
+#nowView.syson:not(.sysflip) #nowBody { grid-area: body; min-width: 0; }
+#nowView.syson:not(.sysflip) #nowSys { grid-area: sys; position: sticky; top: 3vh; height: 94vh; }
+/* the map in place of the text (a narrow window; the tablet): the title, the headline on one line, then the map */
+#nowView.sysflip { display: flex; flex-direction: column; height: 100vh; min-height: 0; }
+#nowView.sysflip #nowBar { float: none; align-self: flex-end; }
+#nowView.sysflip #nowBody { flex: 0 0 auto; }
+#nowView.sysflip #nowSys { flex: 1 1 0; min-height: 0; margin-top: 1vh; }
+#nowView.sysflip .now-next .now-detail, #nowView.sysflip .now-next .now-then { display: none; }
+#nowView.sysflip .now-next { margin-bottom: .6vh; padding-top: .35em; padding-bottom: .4em; }
+@media (min-aspect-ratio: 5/4) and (min-width: 900px) {
+  #nowView.sysflip .sysmain, #here3d .sysmain { flex-direction: row; }
+  #nowView.sysflip .syslist, #here3d .syslist { flex: 0 0 min(34%, 460px); max-height: none; }
+}
+
 /* ---- the header tiles: ▴ folds them into one summary line (▾ unfolds), page.js drawTilesFold / tilesLineHtml ---- */
 .tilewrap { display: flex; gap: 6px; align-items: flex-start; margin-top: 10px; }
 .tilewrap > .tiles { flex: 1 1 auto; min-width: 0; margin-top: 0; }

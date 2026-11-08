@@ -6342,6 +6342,112 @@ const releasePayloads = async () => {
       : `failed ${bad.join(", ")}: ${JSON.stringify({got, map})}`, errors.slice(before));
     await releasePayloads();
   }
+  // The system map (2026-11-08, project/PLAN-system-map-2026-11-08.md): Now's 🪐 map toggle on the desktop (off by
+  // default, remembered, beside the text in a wide window, in its place with the headline alone in a narrow one), the
+  // stop list from the order with distances, the note with nothing to draw; on a body the surface map first, System
+  // picked for that body only (another body or a take-off gives the surface map back); Here's 🪐 3D; and the cameras'
+  // mouse (camControls, shared with the star map): a drag turns, the wheel zooms, a drag on the system map stops its
+  // auto fit until Fit
+  system_map: { if (skip("system_map")) break system_map;
+    holdPayloads();
+    const w = dom.window, before = errors.length;
+    const saved = w.eval("JSON.stringify({data, hereData, obData, obKey, view, caps: captions.slice(), lastAlert, sysMap: localStorage.getItem('nowSysMap'), here: hereModes.tab})");
+    w.eval(nowCaseJs("system"));
+    w.eval(`window.__iw = Object.getOwnPropertyDescriptor(window, "innerWidth")`);   // put back at the end
+    const sysJs = `const nv = document.getElementById("nowView"), box = document.getElementById("nowSys"), smap = document.getElementById("nowMap");
+      const sw = () => [...document.querySelectorAll("#nowBody .now-sw button")].map(b => b.textContent + (b.classList.contains("on") ? "*" : ""));
+      const wide = px => Object.defineProperty(window, "innerWidth", {value: px, configurable: true});`;
+    const got = JSON.parse(w.eval(`(() => { ${sysJs}
+      const o = {};
+      const geo = {id64: posId(), at: new Date().toISOString(), nodes: [
+        {id: 0, kind: "Star", parent: null, pos: [0, 0, 0], approx: false, orbit: null},
+        {id: 14, kind: "Planet", parent: 0, pos: [900, 120, 0], approx: false, orbit: {c: [0, 0, 0], u: [908, 0, 0], v: [0, 908, 0]}},
+        {id: 15, kind: "Planet", parent: 0, pos: [-920, 50, 3], approx: false, orbit: {c: [0, 0, 0], u: [921.4, 0, 0], v: [0, 921.4, 0]}}]};
+      const hold = () => { SYS.data = geo; SYS.error = null; SYS.loading = false; SYS.key = posId() + "|" + hereKeyOf(posId()); SYS.at = Date.now(); };
+      hold(); wide(1920); localStorage.removeItem("nowSysMap"); view = "now"; render();
+      o.off = [box.hidden, nv.classList.contains("syson"), sw()];
+      document.querySelector('[data-sysmap="toggle"]').click(); hold(); render();
+      o.on = [box.hidden, nv.classList.contains("syson"), nv.classList.contains("sysflip"), localStorage.getItem("nowSysMap"), sw(), !!nowSlot("fuel")];
+      o.list = [...box.querySelectorAll(".sysrow")].map(r => [...r.children].map(c => c.textContent.trim()).filter(Boolean).join(" "));
+      o.rowFirst = [...box.querySelectorAll(".sysrow[data-firststop]")].map(r => r.dataset.firststop);
+      o.k = box.querySelector(".sys-k").textContent;
+      const m = sysInst.now.model; o.model = [m.stops.map(s => s.n + ":" + s.it.body), m.legs.length, m.start && m.start.body, m.missing];
+      // narrow: the map in place of the text, the headline alone above it
+      wide(1000); render();
+      o.flip = [nv.classList.contains("sysflip"), sw(), nowSlot("fuel"), !!nowSlot("next")];
+      document.querySelector('[data-sysmap="text"]').click();
+      o.text = [box.hidden, localStorage.getItem("nowSysMap"), !!nowSlot("fuel")];
+      document.querySelector('[data-sysmap="map"]').click(); hold(); render();
+      // nothing scanned with an orbit: the note
+      SYS.data = {id64: posId(), at: geo.at, nodes: []}; render();
+      o.empty = [box.querySelector(".sysnote").hidden, box.querySelector(".sysnote").textContent];
+      hold(); wide(1920); render();
+      // the system map's camera: a drag turns it and stops the auto fit; Fit frames the route again
+      const cv = sysInst.now.canvas; cv.setPointerCapture = cv.setPointerCapture || (() => {});
+      const pe = (t, x, y) => cv.dispatchEvent(Object.assign(new MouseEvent(t, {clientX: x, clientY: y, button: 0, bubbles: true}), {pointerId: 7, pointerType: "mouse"}));
+      const y0 = sysInst.now.cam.yaw; pe("pointerdown", 100, 100); pe("pointermove", 180, 100); pe("pointerup", 180, 100);
+      o.cam = [+(sysInst.now.cam.yaw - y0).toFixed(2), sysInst.now.cam.user];
+      box.querySelector('[data-sysfit="route"]').click(); o.cam.push(sysInst.now.cam.user, sysInst.now.cam.fit);
+      return JSON.stringify(o); })()`));
+    // on a body: the surface map first, System for that body only
+    w.eval(nowCaseJs("body"));
+    const surf = JSON.parse(w.eval(`(() => { ${sysJs}
+      const o = {}; obKey = data.on_body.system + "|" + data.scan_version; obData = null;
+      wide(1920); localStorage.setItem("nowSysMap", "true"); view = "now"; render();
+      o.first = [!smap.hidden, box.hidden, sw()];
+      document.querySelector('[data-sysmap="system"]').click();
+      o.picked = [smap.hidden, box.hidden, sw()];
+      data.on_body = Object.assign({}, data.on_body, {body: "9", full: "Smojooe ZC-D c12-22 9"});
+      data.surface = Object.assign({}, data.surface, {body: "9", body_id: 32}); render();
+      o.other = [!smap.hidden, box.hidden, sw()];
+      document.querySelector('[data-sysmap="system"]').click();
+      const s = data.surface; data.surface = null; render();
+      o.takeoff = [box.hidden, sysPick];   // off the surface: the map you want (on here) shows
+      data.surface = s; render(); o.back = [!smap.hidden, box.hidden];
+      return JSON.stringify(o); })()`));
+    // the star map's camera through the shared controls
+    const star = JSON.parse(w.eval(`(() => { const c = mapCanvas; c.setPointerCapture = c.setPointerCapture || (() => {});
+      const pe = (t, x, y) => c.dispatchEvent(Object.assign(new MouseEvent(t, {clientX: x, clientY: y, button: 0, bubbles: true}), {pointerId: 8, pointerType: "mouse"}));
+      const keep = {yaw: M.yaw, pitch: M.pitch, zoom: M.zoom}, y0 = M.yaw, z0 = M.zoom;
+      pe("pointerdown", 100, 100); pe("pointermove", 150, 130); pe("pointerup", 150, 130);
+      const turned = +(M.yaw - y0).toFixed(2);
+      c.dispatchEvent(new WheelEvent("wheel", {deltaY: -200, cancelable: true}));
+      const out = [turned, M.zoom > z0, M.drag];
+      Object.assign(M, keep); return JSON.stringify(out); })()`));
+    // Here's 🪐 3D: the map in place of the table and the schematic
+    w.eval(`(() => { const s = ${saved}; data = s.data; hereData = s.hereData; obData = s.obData; obKey = s.obKey; view = s.view; render(); })()`);
+    await ensureHere();
+    const here = JSON.parse(w.eval(`(() => {
+      const keep = Object.assign({}, hereModes.tab); hereModes.tab = {top: "3d", split: false}; view = "here"; render(); renderHere();
+      const e3 = document.getElementById("here3d");
+      const o = [e3.hidden, document.getElementById("hereTableBox").hidden, document.getElementById("hereSchematic").hidden,
+                 !!e3.querySelector(".syscv canvas"), !!document.querySelector('#hereHead [data-mode="3d"].on')];
+      hereModes.tab = keep; return JSON.stringify(o); })()`));
+    w.eval(`(() => { const s = ${saved}; data = s.data; hereData = s.hereData; obData = s.obData; obKey = s.obKey; view = s.view; sysPick = null;
+      Object.defineProperty(window, "innerWidth", window.__iw); hereModes.tab = s.here; s.sysMap === null ? localStorage.removeItem("nowSysMap") : localStorage.setItem("nowSysMap", s.sysMap);
+      captions.length = 0; captions.push(...s.caps); lastAlert = s.lastAlert; render(); })()`);
+    const want = {
+      off: [true, false, ["🪐 map"]],
+      on: [false, true, false, "true", ["🪐 map*"], true],
+      list: ["⌖ Smojooe VW-E c11-11 arrived at", "1 1 e 🧬 3 · Ammonia up to 64.6M 930 ls"],
+      rowFirst: ["1 e"], k: /^System map · from /,
+      model: [["1:1 e"], 1, "Smojooe VW-E c11-11", []],
+      flip: [true, ["Text", "🪐 Map*"], null, true],
+      text: [true, "false", true],
+      empty: [false, "scan the system to see its bodies (the FSS gives each its orbit)"],
+      cam: [0.64, true, false, "route"]};
+    const wantSurf = {first: [true, true, ["Surface*", "🪐 System"]], picked: [true, false, ["Surface", "🪐 System*"]],
+      other: [true, true, ["Surface*", "🪐 System"]], takeoff: [false, null], back: [true, true]};
+    const test = (v, x) => x instanceof RegExp ? x.test(Array.isArray(v) ? v.join(",") : v || "") : JSON.stringify(v) === JSON.stringify(x);
+    const bad = [...Object.keys(want).filter(k => !test(got[k], want[k])), ...Object.keys(wantSurf).filter(k => !test(surf[k], wantSurf[k])).map(k => "surf." + k)];
+    if (!(star[0] > 0.3 && star[1] === true && star[2] === null)) bad.push("star " + JSON.stringify(star));
+    if (JSON.stringify(here) !== JSON.stringify([false, true, true, true, true])) bad.push("here " + JSON.stringify(here));
+    const good = !bad.length && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| system map |", good ? "Now's toggle (beside, in place, remembered), the list with distances, the note, the surface map first and System per body, Here's 3D, the shared camera"
+      : `failed ${bad.join(", ")}: ${JSON.stringify({got, surf, star, here})}`, errors.slice(before));
+    await releasePayloads();
+  }
   // The same in a real browser (Chromium through Playwright, when there is one: the layout jsdom cannot do): at
   // 1920x1200 and 1200x1920 (a tablet at 1.5x: 1280x800 and 800x1280 CSS px) and on the desktop's Now at 1920x1200, no
   // part breaks inside itself and nothing runs off the side; the captions take only the height left (the newest always);

@@ -180,6 +180,12 @@ body.tablet #nowView .now-cap { padding: 5px 0; }
 /* Now with the surface map: compact text, so the map and its legend have the room (the newest caption is in the footer) */
 body.tablet #nowView.mapon { --nt: 34px; --nw: 22px; --nv: 17px; --nd: 15px; --nk: 11px; --ns: 13px; --nc: 19px; --npad: 14px; }
 body.tablet #nowView.mapon #nowMap { margin-top: 8px; padding-top: 10px; }
+/* Now's 🪐 Map (the system map, 2026-11-08): the title and the headline on one line, the map and its list the rest */
+body.tablet #nowView.sysflip { height: auto; }
+body.tablet #nowView.sysflip #nowBody { flex: 0 0 auto; }
+body.tablet #nowView.sysflip #nowSys { flex: 1 1 0; min-height: 0; }
+body.tablet .syslist { font-size: 17px; }
+body.tablet .now-sw button { font-size: 17px; min-height: 44px; padding: 6px 18px; }
 /* the header's strips take no room while empty (the desktop keeps the target line's height so the page does not jump) */
 body.tablet #target:empty { min-height: 0; margin: 0; }
 /* the Highway: the jump list wider than the desktop's 44 %, the map beside it */

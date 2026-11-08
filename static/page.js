@@ -1673,18 +1673,21 @@ function nowSystem() {
 function renderNow() {
   drawNowBar();
   const el = document.getElementById("nowBody"), p = data.position;
-  if (!p) { el.innerHTML = `<div class="now-sys" data-slot="title">${esc(noJumpText())}</div>`; el._liveKey = null; renderSurface(); return; }
-  const ob = nowOb(), c = nowSystem();
-  const out = [ob ? `<div class="now-title" data-slot="title"><span class="now-sys">${esc(nowBodyName(ob, p.name))}</span>` +
+  if (!p) { el.innerHTML = `<div class="now-sys" data-slot="title">${esc(noJumpText())}</div>`; el._liveKey = null; renderNowSys(null); renderSurface(); return; }
+  const ob = nowOb(), c = nowSystem(), m = nowSysMode();
+  // the title with the map's switch beside it (the system map, 2026-11-08: nowSysMode)
+  const out = [`<div class="now-top">` + (ob ? `<div class="now-title" data-slot="title"><span class="now-sys">${esc(nowBodyName(ob, p.name))}</span>` +
                     ` <span class="now-of">${esc(p.name)}</span> <span class="now-how">${esc(howOnBody(ob))}</span></div>`
-                  : `<div class="now-sys" data-slot="title">${esc(p.name)}</div>`];
+                  : `<div class="now-sys" data-slot="title">${esc(p.name)}</div>`) + nowSwitchHtml(m) + `</div>`];
   out.push(nowHeadline(ob, c));
   if (lastAlert && Date.now() - lastAlert.at < 15000)   // a passing alert: its own small card under the headline
     out.push(`<div class="now-card alert now-passing" data-slot="alert">${esc(lastAlert.title)}${lastAlert.body ? ` <span class="unk">${esc(lastAlert.body)}</span>` : ""}</div>`);
-  out.push(ob ? nowBodyRest(ob, c) : nowSystemRest(c));
+  // the map in place of the text (the tablet, a narrow window): the headline alone above it (Q4), on one line
+  if (!(m.sys && m.flip)) out.push(ob ? nowBodyRest(ob, c) : nowSystemRest(c));
   // rewritten only when something but its ticking figures changed (setLive): a click or hover lasts across the 2 s
   // redraw and the payloads (complete review 2026-10-30: the sell line's plot, Replace and a caption's replay lost clicks)
   setLive(el, out.join(""));
+  renderNowSys(m);
   nowFitCaps(el);
   renderSurface();
 }
@@ -2659,7 +2662,8 @@ let ovMapRevealed = null;   // the body whose row the Overview's map last brough
 function renderSurface() {
   const s = data && data.surface, show = surfaceShows(s), cfg = surfaceCfg();
   const box = document.getElementById("nowMap"), strip = document.getElementById("obMap"), nv = document.getElementById("nowView");
-  const onNow = show && view === "now" && !dockedOnBody();   // docked at a port: nothing to find (as the overlay's radar)
+  // docked at a port: nothing to find (as the overlay's radar); System picked on Now: the system map in its place
+  const onNow = show && view === "now" && !dockedOnBody() && !nowSysMode().sys;
   box.hidden = !onNow;
   nv.classList.toggle("mapon", onNow);
   nv.classList.toggle("mapsplit", onNow && nowMapSplit(nowArea().vw, nowArea().vh));
@@ -5903,7 +5907,7 @@ function renderHere() {
   lastHereCtx = hereCtx(); lastHereDest = hereDestKey(); lastHerePlan = herePlanKey();
   const hm = h.tree ? hereMode() : {top: "list", split: false};
   document.getElementById("hereTable").classList.toggle("nosort", hm.top === "text");   // the tree is never sorted
-  const showTable = hm.top !== "schematic", showSch = hm.top === "schematic" || hm.split;
+  const show3d = hm.top === "3d", showTable = hm.top !== "schematic" && !show3d, showSch = hm.top === "schematic" || (hm.split && !show3d);
   document.getElementById("hereTable").hidden = !showTable;
   document.getElementById("hereHint").hidden = !showTable;
   document.getElementById("hereTableBox").hidden = !showTable;
@@ -5917,6 +5921,13 @@ function renderHere() {
   const sEl = document.getElementById("hereSchematic");
   sEl.hidden = !showSch; sEl.classList.toggle("split", showTable && showSch);
   if (showSch) { sEl.innerHTML = schematicHtml(h); drawSchemPath(sEl); }
+  // 🪐 3D (the system map, 2026-11-08): the system you are in only (its places are now, its order from where you are)
+  const e3 = document.getElementById("here3d");
+  e3.hidden = !show3d;
+  if (show3d) {
+    if (String(h.id64) === posId()) sysShow(sysMount("here", e3));
+    else { e3.innerHTML = `<div class="sysnote unk">The 3D view draws the system you are in.</div>`; delete sysInst.here; }
+  }
   const dest = data.destination && posId() === h.id64 ? data.destination : null;
   const destBody = dest && h.bodies.find(b => b.body_id === dest.body_id);
   // one cell per heading of #hereTable, in its order: Rings before ⛏ (the author, 2026-10-11: an empty Rings cell, the
@@ -6122,8 +6133,9 @@ document.getElementById("hereRows").addEventListener("click", e => {
 const HERE_MODES = [["list", "☰ list", "the body table, most valuable first"],
                     ["text", "≡ tree", "the body table in orbital order, moons indented under their planet"],
                     ["schematic", "◉ schematic", "the system drawn as stars, planets and moons"],
+                    ["3d", "🪐 3D", "the system you are in drawn in 3D, where each body is now, with the suggested order (not to scale)"],
                     ["split", "⬒ split", "add the schematic below the list or tree"]];
-// {top: list | text | schematic, split: schematic below the table (Here tab only)}
+// {top: list | text | schematic | 3d, split: schematic below the table (Here tab only)}
 const hereModes = {tab: {top: "list", split: true}, pane: {top: "list", split: false}};
 for (const [k, v] of Object.entries(store.get("hereModes", {})))   // older saves held a plain mode name
   if (hereModes[k]) hereModes[k] = typeof v === "string" ? {top: v === "split" ? "list" : v, split: v === "split"} : Object.assign(hereModes[k], v);
@@ -6134,8 +6146,8 @@ const hereOrbits = () => store.get("hereOrbits", true) !== false;
 const hereMode = () => { const m = hereModes[hereCtx()]; return hereCtx() === "tab" ? m : {top: m.top, split: false}; };
 function setHereMode(mode) {
   const m = hereModes[hereCtx()];
-  if (mode === "split") { m.split = !m.split; if (m.split && m.top === "schematic") m.top = "list"; }
-  else if (mode === "schematic") { m.top = "schematic"; m.split = false; }
+  if (mode === "split") { m.split = !m.split; if (m.split && (m.top === "schematic" || m.top === "3d")) m.top = "list"; }
+  else if (mode === "schematic" || mode === "3d") { m.top = mode; m.split = false; }
   else m.top = mode;   // list or tree: swaps the top half, split stays as it was
   store.set("hereModes", hereModes);
 }
@@ -8896,67 +8908,469 @@ function pinchStep(a, b) {
   return {dx: mb.x - ma.x, dy: mb.y - ma.y, scale: sa > 0 ? span(b) / sa : 1, x: mb.x, y: mb.y};
 }
 const twoOf = ptrs => [...ptrs.values()].slice(0, 2).map(p => ({x: p.x, y: p.y}));
-// left drag rotates; right (or middle) drag moves the picture; the wheel zooms. Touch: one finger rotates, two move the
-// picture and pinch to zoom; a tap shows the system's card (a click copies its name).
-const mapPtrs = new Map();
-mapCanvas.addEventListener("contextmenu", e => e.preventDefault());
-mapCanvas.addEventListener("pointerdown", e => {
-  mapPtrs.set(e.pointerId, {x: e.clientX, y: e.clientY});
-  mapCanvas.setPointerCapture(e.pointerId); mapCanvas.classList.add("dragging");
-  if (mapPtrs.size === 2) { M.drag = {two: twoOf(mapPtrs), panX: M.panX, panY: M.panY, zoom: M.zoom, moved: true}; return; }
-  if (mapPtrs.size > 2) return;
-  M.drag = {x: e.clientX, y: e.clientY, yaw: M.yaw, pitch: M.pitch, panX: M.panX, panY: M.panY,
-            pan: e.button === 2 || e.button === 1, moved: false};
-  if (M.drag.pan) e.preventDefault();
-});
-mapCanvas.addEventListener("pointermove", e => {
-  if (mapPtrs.has(e.pointerId)) mapPtrs.set(e.pointerId, {x: e.clientX, y: e.clientY});
-  if (M.drag && M.drag.two) {
-    if (mapPtrs.size < 2) return;
-    const g = pinchStep(M.drag.two, twoOf(mapPtrs));
-    M.panX = M.drag.panX + g.dx; M.panY = M.drag.panY + g.dy;
-    M.zoom = Math.max(0.2, Math.min(12, M.drag.zoom * g.scale));
-    hidePop(); M.hover = null; drawMap(); return;
-  }
-  if (M.drag) {
-    const dx = e.clientX - M.drag.x, dy = e.clientY - M.drag.y;
-    if (Math.abs(dx) + Math.abs(dy) > 3) M.drag.moved = true;
-    if (M.drag.pan) { M.panX = M.drag.panX + dx; M.panY = M.drag.panY + dy; }
-    else {
-      M.yaw = M.drag.yaw + dx * 0.008;
-      M.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, M.drag.pitch + dy * 0.008));
+// A 3D map's mouse and touch, the star map's and the system map's (camControls): left drag turns, right (or middle)
+// drag moves the picture, the wheel zooms; touch: one finger turns, two move the picture and pinch to zoom. cam: {yaw,
+// pitch, panX, panY, zoom, drag}; on: draw(), moved(real) (a drag began or went on: real once it moved more than 3 px,
+// or two fingers), hover(e) (no button down), tap(e, touch) (a press and release without a move, not the right
+// button), leave(), zoomed() (the wheel; optional).
+function camControls(canvas, cam, on, {minZoom = 0.2, maxZoom = 12} = {}) {
+  const ptrs = new Map();
+  canvas.addEventListener("contextmenu", e => e.preventDefault());
+  canvas.addEventListener("pointerdown", e => {
+    ptrs.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    canvas.setPointerCapture(e.pointerId); canvas.classList.add("dragging");
+    if (ptrs.size === 2) { cam.drag = {two: twoOf(ptrs), panX: cam.panX, panY: cam.panY, zoom: cam.zoom, moved: true}; return; }
+    if (ptrs.size > 2) return;
+    cam.drag = {x: e.clientX, y: e.clientY, yaw: cam.yaw, pitch: cam.pitch, panX: cam.panX, panY: cam.panY,
+                pan: e.button === 2 || e.button === 1, moved: false};
+    if (cam.drag.pan) e.preventDefault();
+  });
+  canvas.addEventListener("pointermove", e => {
+    if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (cam.drag && cam.drag.two) {
+      if (ptrs.size < 2) return;
+      const g = pinchStep(cam.drag.two, twoOf(ptrs));
+      cam.panX = cam.drag.panX + g.dx; cam.panY = cam.drag.panY + g.dy;
+      cam.zoom = Math.max(minZoom, Math.min(maxZoom, cam.drag.zoom * g.scale));
+      on.moved(true); on.draw(); return;
     }
-    hidePop(); M.hover = null; drawMap(); return;
-  }
-  const q = mapHit(e);
-  if ((q && q.pt) !== (M.hover && M.hover.pt)) { M.hover = q; drawMap(); }
-  if (q) { popId = "map"; pop.innerHTML = mapPopHtml(q.pt); pop.style.display = "block"; pop.classList.remove("taps"); placePop(e.clientX, e.clientY); }
-  else if (popId === "map") hidePop();
-});
-function mapPointerEnd(e) {
-  mapPtrs.delete(e.pointerId);
-  if (M.drag && M.drag.two) {   // one finger of two lifted: the other rotates on from here (never a tap)
-    const rest = [...mapPtrs.values()][0];
-    M.drag = rest ? {x: rest.x, y: rest.y, yaw: M.yaw, pitch: M.pitch, panX: M.panX, panY: M.panY, pan: false, moved: true} : null;
-    if (!M.drag) mapCanvas.classList.remove("dragging");
-    return;
-  }
-  const click = e.type === "pointerup" && M.drag && !M.drag.moved && !M.drag.pan; M.drag = null; mapCanvas.classList.remove("dragging");
-  if (!click) return;
-  const q = mapHit(e); if (!q) return;
-  if (e.pointerType === "touch") {   // the card, with its buttons (it takes taps: .taps)
-    popId = "map"; pop.innerHTML = mapPopHtml(q.pt, true); pop.style.display = "block"; pop.classList.add("taps"); placePop(e.clientX, e.clientY);
-  } else mapClick(q.pt);
+    if (cam.drag) {
+      const dx = e.clientX - cam.drag.x, dy = e.clientY - cam.drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 3) cam.drag.moved = true;
+      if (cam.drag.pan) { cam.panX = cam.drag.panX + dx; cam.panY = cam.drag.panY + dy; }
+      else {
+        cam.yaw = cam.drag.yaw + dx * 0.008;
+        cam.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cam.drag.pitch + dy * 0.008));
+      }
+      on.moved(cam.drag.moved); on.draw(); return;
+    }
+    on.hover(e);
+  });
+  const end = e => {
+    ptrs.delete(e.pointerId);
+    if (cam.drag && cam.drag.two) {   // one finger of two lifted: the other turns on from here (never a tap)
+      const rest = [...ptrs.values()][0];
+      cam.drag = rest ? {x: rest.x, y: rest.y, yaw: cam.yaw, pitch: cam.pitch, panX: cam.panX, panY: cam.panY, pan: false, moved: true} : null;
+      if (!cam.drag) canvas.classList.remove("dragging");
+      return;
+    }
+    const tap = e.type === "pointerup" && cam.drag && !cam.drag.moved && !cam.drag.pan; cam.drag = null; canvas.classList.remove("dragging");
+    if (tap) on.tap(e, e.pointerType === "touch");
+  };
+  canvas.addEventListener("pointerup", end);
+  canvas.addEventListener("pointercancel", end);
+  canvas.addEventListener("pointerleave", () => { if (!cam.drag) on.leave(); });
+  canvas.addEventListener("wheel", e => {
+    e.preventDefault(); cam.zoom = Math.max(minZoom, Math.min(maxZoom, cam.zoom * Math.exp(-e.deltaY * 0.0015)));
+    if (on.zoomed) on.zoomed();
+    on.draw();
+  }, {passive: false});
 }
-mapCanvas.addEventListener("pointerup", mapPointerEnd);
-mapCanvas.addEventListener("pointercancel", mapPointerEnd);
-// a tapped card (.taps) stays: a touch pointer leaves the canvas right after the tap that opened it (complete review
-// 2026-10-30: the card closed as it opened); a tap elsewhere closes it
-mapCanvas.addEventListener("pointerleave", () => { if (!M.drag) { M.hover = null; if (popId === "map" && !pop.classList.contains("taps")) hidePop(); drawMap(); } });
-mapCanvas.addEventListener("wheel", e => {
-  e.preventDefault(); M.zoom = Math.max(0.2, Math.min(12, M.zoom * Math.exp(-e.deltaY * 0.0015))); drawMap();
-}, {passive: false});
+// the star map: a tap shows the system's card (a click copies its name). A tapped card (.taps) stays: a touch pointer
+// leaves the canvas right after the tap that opened it (complete review 2026-10-30: the card closed as it opened); a tap
+// elsewhere closes it
+camControls(mapCanvas, M, {
+  draw: drawMap,
+  moved: () => { hidePop(); M.hover = null; },
+  hover: e => {
+    const q = mapHit(e);
+    if ((q && q.pt) !== (M.hover && M.hover.pt)) { M.hover = q; drawMap(); }
+    if (q) { popId = "map"; pop.innerHTML = mapPopHtml(q.pt); pop.style.display = "block"; pop.classList.remove("taps"); placePop(e.clientX, e.clientY); }
+    else if (popId === "map") hidePop();
+  },
+  tap: (e, touch) => {
+    const q = mapHit(e); if (!q) return;
+    if (touch) {   // the card, with its buttons (it takes taps: .taps)
+      popId = "map"; pop.innerHTML = mapPopHtml(q.pt, true); pop.style.display = "block"; pop.classList.add("taps"); placePop(e.clientX, e.clientY);
+    } else mapClick(q.pt);
+  },
+  leave: () => { M.hover = null; if (popId === "map" && !pop.classList.contains("taps")) hidePop(); drawMap(); },
+});
 addEventListener("resize", () => drawMap());
+
+// ---- the system map (2026-11-08, project/PLAN-system-map-2026-11-08.md) ----
+// The system you are in drawn in 3D with the suggested order on it: Now's 🪐 map (the desktop: a pane beside the text,
+// or in its place in a narrow window; the tablet: Text | Map) and Here's 🪐 3D view. Where each body is comes from GET
+// api/system_map (outrider.orbits.layout: your own scans, now, asked again when Here's data for the system changes and
+// every SYS_REFRESH_MS while a map shows: close moons move); its names and pictures from Here's rows (hereData, joined
+// by body_id; drawn as the schematic draws them: bodyLook, paintBody); the order from planItems. Not to scale (the
+// author: "simply a visual representation"): each family is squashed on a log scale of its own (sysSquash). The legs
+// show their true distance (legDist), never a time.
+const SYS_REFRESH_MS = 5 * 60 * 1000, SYS_SPLIT_MIN = 1200, SYS_FAMILY = 0.42;
+const SYS = {data: null, key: null, at: 0, loading: false, error: null};
+// per device: Now's map wanted (the desktop's pane; the tablet's and a narrow window's map in place of the text)
+const sysMapWanted = () => store.get("nowSysMap", false) === true;
+// on a body the surface map comes first; System picked there shows the system map for that body (its key) until you
+// take off or move to another body (the author, 2026-11-08: "Surface Map always has priority (unless they turn it off)")
+let sysPick = null;
+const surfaceUpNow = () => !!(data && surfaceShows(data.surface) && !dockedOnBody());
+// what Now shows: {surf: the surface map is up, sys: the system map shows, flip: in place of the text (else beside it),
+// key: the body you are on}
+function nowSysMode() {
+  const surf = surfaceUpNow(), ob = surf ? nowOb() : null, key = ob ? `${posId()}|${ob.body}` : null;
+  if (sysPick && (!surf || sysPick !== key)) sysPick = null;
+  return {surf, sys: surf ? !!key && sysPick === key : sysMapWanted(), flip: TABLET || nowArea().vw < SYS_SPLIT_MIN, key};
+}
+// Now's switch, beside the title: on a body with the surface map up "Surface | System"; else the desktop's "🪐 map"
+// toggle, or the tablet's (and a narrow window's) "Text | Map"
+function nowSwitchHtml(m) {
+  const seg = opts => `<span class="now-sw" role="group" aria-label="what Now shows">` + opts.map(([v, label, on, title]) =>
+    `<button type="button" data-sysmap="${v}" aria-pressed="${on}"${on ? ' class="on"' : ""} title="${title}">${label}</button>`).join("") + `</span>`;
+  if (m.surf) return seg([["surface", "Surface", !m.sys, "the surface map (it comes first on a body)"],
+                          ["system", "🪐 System", m.sys, "the system map, until you leave this body"]]);
+  if (!m.flip) return `<span class="now-sw"><button type="button" data-sysmap="toggle" aria-pressed="${m.sys}"${m.sys ? ' class="on"' : ""} ` +
+    `title="the system map beside the text, with the suggested order (this device)">🪐 map</button></span>`;
+  return seg([["text", "Text", !m.sys, "Now's text"], ["map", "🪐 Map", m.sys, "the system map with the suggested order (this device)"]]);
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-sysmap]"); if (!b) return;
+  const v = b.dataset.sysmap;
+  if (v === "toggle") store.set("nowSysMap", !sysMapWanted());
+  else if (v === "map" || v === "text") store.set("nowSysMap", v === "map");
+  else if (v === "system") sysPick = nowSysMode().key;
+  else if (v === "surface") sysPick = null;
+  hidePop(); render();
+});
+// The squash (pure): each family's offsets keep their direction, their lengths mapped by log between the family's
+// nearest and farthest member, from r0 of the family's radius to all of it (r0 0.35 at the root, 0.5 deeper; inside the
+// nearest, linearly to the parent; one member, or all about as far: 0.75 of it in proportion). The root's family
+// reaches 1; a node's own family SYS_FAMILY of the room it has (the drawn distance to its parent and to its nearest
+// sibling), so a moon 2 ls from its planet stays clear of it and a star 300,000 ls out stays in frame. nodes: [{id,
+// parent, pos}] (api/system_map). -> {drawn: Map id -> [x, y, z], scale: Map parent id -> f(d), depth: Map id -> n}
+function sysSquash(nodes) {
+  const by = new Map(nodes.map(n => [n.id, n])), kids = new Map();
+  for (const n of nodes) if (n.parent != null && by.has(n.parent)) { if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); }
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], len = v => Math.hypot(v[0], v[1], v[2]);
+  const drawn = new Map(), scale = new Map(), depth = new Map();
+  const visit = (n, R, dp) => {
+    depth.set(n.id, dp);
+    const ks = kids.get(n.id) || []; if (!ks.length) return;
+    const ds = ks.map(k => len(sub(k.pos, n.pos))).filter(d => d > 0);
+    const lo = ds.length ? Math.min(...ds) : 1, hi = ds.length ? Math.max(...ds) : 1, r0 = dp ? 0.5 : 0.35;
+    const f = d => !(d > 0) ? 0 : hi / lo < 1.08 ? R * 0.75 * d / hi : d < lo ? R * r0 * d / lo
+      : R * (r0 + (1 - r0) * Math.log(d / lo) / Math.log(hi / lo));
+    scale.set(n.id, f);
+    const base = drawn.get(n.id);
+    for (const k of ks) {
+      const v = sub(k.pos, n.pos), d = len(v), r = f(d);
+      drawn.set(k.id, d > 0 ? [base[0] + v[0] / d * r, base[1] + v[1] / d * r, base[2] + v[2] / d * r] : base.slice());
+    }
+    for (const k of ks) {
+      const p = drawn.get(k.id);
+      let room = len(sub(p, base));
+      for (const o of ks) if (o !== k) { const d = len(sub(p, drawn.get(o.id))); if (d > 0) room = Math.min(room, d); }
+      visit(k, SYS_FAMILY * (room > 0 ? room : R * 0.25), dp + 1);
+    }
+  };
+  for (const n of nodes) if (n.parent == null || !by.has(n.parent)) { drawn.set(n.id, [0, 0, 0]); visit(n, 1, 0); }
+  return {drawn, scale, depth};
+}
+// an orbit's points, squashed as its body is (pure): the ellipse {c, u, v} around the parent sampled n times
+function sysOrbitPoints(o, parentDrawn, f, n = 72) {
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n * 2 * Math.PI, cs = Math.cos(t), sn = Math.sin(t);
+    const v = [0, 1, 2].map(k => o.c[k] + o.u[k] * cs + o.v[k] * sn), d = Math.hypot(v[0], v[1], v[2]), r = f(d);
+    out.push(d > 0 ? parentDrawn.map((c, k) => c + v[k] / d * r) : parentDrawn.slice());
+  }
+  return out;
+}
+// the scale rings at the root (1-2-5 ls between three quarters of the nearest and a quarter past the farthest)
+function sysRings(nodes, rootId, f) {
+  const ds = nodes.filter(n => n.parent === rootId).map(n => Math.hypot(...n.pos.map((c, k) => c - nodes.find(x => x.id === rootId).pos[k]))).filter(d => d > 0);
+  if (!ds.length) return [];
+  const lo = Math.min(...ds) * 0.75, hi = Math.max(...ds) * 1.25, out = [];
+  for (let e = 0; e < 8; e++) for (const m of [1, 2, 5]) { const v = m * 10 ** e; if (v >= lo && v <= hi) out.push({ls: v, r: f(v)}); }
+  return out;
+}
+// What the map draws, from the geometry, Here's rows and the order (pure but for bodyLook's seed): {nodes: the
+// layout's nodes with `body` (Here's row) and `drawn`, rootId, scale, depth, stops: [{n, it, id}] (the order, numbered
+// as Here's schematic), legs: [{from, to, it}], start: {id, body, at} (where the order starts: at_body, else the
+// arrival star), missing: stops with no place}
+function sysModel(geo, hd, plan, l) {
+  const rows = new Map((hd && hd.bodies || []).filter(b => b.body_id != null).map(b => [b.body_id, b]));
+  const nodes = (geo && geo.nodes || []).map(n => Object.assign({}, n, {body: rows.get(n.id) || null}));
+  const sq = sysSquash(nodes), byName = new Map(nodes.filter(n => n.body).map(n => [n.body.name, n]));
+  nodes.forEach(n => { n.drawn = sq.drawn.get(n.id) || [0, 0, 0]; });
+  const root = nodes.find(n => n.parent == null);
+  const st = planStart(l), startNode = st.body != null ? byName.get(st.body) : null;
+  const stops = [], legs = [], missing = [];
+  let prev = startNode || null;
+  plan.forEach((it, i) => {
+    const node = byName.get(it.body);
+    if (!node) { missing.push(it.body); return; }
+    stops.push({n: i + 1, it, id: node.id});
+    if (prev && prev.id !== node.id) legs.push({from: prev.id, to: node.id, it});
+    prev = node;
+  });
+  return {nodes, rootId: root ? root.id : null, scale: sq.scale, depth: sq.depth, stops, legs, missing,
+          start: startNode ? {id: startNode.id, body: st.body, at: !!(l && l.at_body)} : null};
+}
+// a body's name on the map: a star that bears the system's name by its class ("K star"), else its short name
+const sysLabel = b => b.type === "Star" && (b.name === (data.position && data.position.name) || /\s/.test(b.name) && b.name.length > 12)
+  ? `${starCode(b.subtype) || ""} star`.trim() : b.name;
+// a body's size on the map in px (never to scale): stars largest, then by radius
+const sysBodyPx = b => !b ? 3 : b.type === "Star" ? 13 : 3 + 9 * Math.log10(Math.max(b.radius_km || 1000, 200) / 200) / Math.log10(400);
+const sysSprites = new Map();
+function sysSprite(b, R) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), rings = (b.ring_details || []).length || (b.rings ? 1 : 0);
+  const key = [schemSystem, b.name, b.subtype, b.atmosphere, b.radius_km, rings, Math.round(R * 2), dpr].join("|");
+  if (sysSprites.has(key)) return sysSprites.get(key);
+  if (sysSprites.size > 400) sysSprites.clear();
+  const L = bodyLook(b, {}, [schemSystem]), k = L.rings.length ? 5 : L.glow ? 4 : 2.8;
+  const c = document.createElement("canvas"), W = Math.max(4, Math.ceil(R * k * 2 * dpr));
+  c.width = c.height = W;
+  const g = c.getContext && c.getContext("2d");
+  const out = g ? (paintBody(g, W, L, R * 2 * dpr, 0.22), {c, w: W / dpr}) : null;
+  sysSprites.set(key, out); return out;
+}
+// one map: Now's (`now`) or Here's (`here`), built once in its box
+const sysInst = {};
+function sysMount(name, box) {
+  if (sysInst[name] && sysInst[name].box === box && box.contains(sysInst[name].canvas)) return sysInst[name];
+  box.innerHTML = `<div class="sysbar"><span class="now-k sys-k"></span><span class="sys-btns">` +
+    `<button type="button" class="mini" data-sysfit="route" title="frame the suggested order and where you are">Fit</button>` +
+    `<button type="button" class="mini" data-sysfit="top" title="look straight down">Top</button>` +
+    `<button type="button" class="mini" data-sysfit="all" title="frame every body">Whole system</button></span></div>` +
+    `<div class="sysmain"><div class="syscv"><canvas aria-label="the system in 3D: drag to turn, right-drag to move, the wheel to zoom" role="img"></canvas>` +
+    `<div class="sysnote" hidden></div></div><div class="syslist"></div></div>` +
+    `<div class="syshint">drag to turn · right-drag to move · wheel or pinch to zoom · tap a number to go there first · not to scale</div>`;
+  const inst = {name, box, canvas: box.querySelector("canvas"), list: box.querySelector(".syslist"), note: box.querySelector(".sysnote"),
+                cam: {yaw: -0.6, pitch: 0.75, zoom: 1, panX: 0, panY: 0, drag: null, user: false, fit: "route"},
+                sys: null, model: null, hits: [], hover: null, listKey: null};
+  camControls(inst.canvas, inst.cam, {
+    draw: () => sysDraw(inst),
+    moved: real => { if (real) inst.cam.user = true; if (popId === "sys") hidePop(); inst.hover = null; },
+    zoomed: () => { inst.cam.user = true; },
+    hover: e => sysHover(inst, e),
+    tap: (e, touch) => sysTap(inst, e, touch),
+    leave: () => { inst.hover = null; if (popId === "sys" && !pop.classList.contains("taps")) hidePop(); },
+  }, {minZoom: 0.3, maxZoom: 40});
+  box.addEventListener("click", e => {
+    const f = e.target.closest("[data-sysfit]"); if (!f) return;
+    const c = inst.cam;
+    if (f.dataset.sysfit === "top") { c.yaw = 0; c.pitch = Math.PI / 2; }
+    else { c.fit = f.dataset.sysfit; c.zoom = 1; c.panX = c.panY = 0; c.user = false; if (c.pitch === Math.PI / 2) c.pitch = 0.75; }
+    sysDraw(inst);
+  });
+  if (typeof ResizeObserver === "function") {
+    let w = 0, h = 0;
+    new ResizeObserver(([en]) => { const r = en.contentRect; if (Math.round(r.width) !== w || Math.round(r.height) !== h) { w = Math.round(r.width); h = Math.round(r.height); sysDraw(inst); } })
+      .observe(box.querySelector(".syscv"));
+  }
+  sysInst[name] = inst;
+  return inst;
+}
+// the geometry for the system you are in: asked when Here's data for it changes, and again every SYS_REFRESH_MS
+function sysEnsure() {
+  const id = posId(); if (!id) return;
+  const key = `${id}|${hereKeyOf(id)}`;
+  if (SYS.loading || (SYS.key === key && Date.now() - SYS.at < SYS_REFRESH_MS)) return;
+  SYS.loading = true; SYS.key = key;
+  const g = newRequest("sysmap");
+  apiJson(`api/system_map?id64=${encodeURIComponent(id)}`).then(d => {
+    if (!isNewest("sysmap", g)) return;
+    if (d.error) throw new Error(d.error);
+    SYS.data = d; SYS.error = null; SYS.at = Date.now();
+  }).catch(err => { if (isNewest("sysmap", g)) { SYS.error = err.message || "not reachable"; SYS.at = Date.now(); } })
+    .finally(() => { SYS.loading = false; Object.values(sysInst).forEach(i => { if (i.box.isConnected && !i.box.closest("[hidden]")) sysShow(i); }); });
+}
+// show a map: what it draws, its list and its note; draws it
+function sysShow(inst) {
+  sysEnsure();
+  const c = nowSystem(), geo = SYS.data && SYS.data.id64 === posId() ? SYS.data : null;
+  if (inst.sys !== posId()) { inst.sys = posId(); Object.assign(inst.cam, {zoom: 1, panX: 0, panY: 0, user: false, fit: "route", yaw: -0.6, pitch: 0.75}); }
+  if (c.hd) schemSystem = String(c.hd.id64 || "");
+  inst.model = geo && c.hd ? sysModel(geo, c.hd, c.plan, c.l) : null;
+  const m = inst.model, hasNodes = m && m.nodes.some(n => n.body);
+  inst.note.hidden = !!hasNodes;
+  inst.note.textContent = hasNodes ? "" : SYS.error && !geo ? `the map could not be loaded: ${SYS.error}` : !geo || !c.hd ? "loading…"
+    : "scan the system to see its bodies (the FSS gives each its orbit)";
+  inst.box.querySelector(".sys-k").textContent = m && m.start ? `System map · from ${m.start.body}` : "System map";
+  const lk = JSON.stringify([posId(), m && m.stops.map(s => [s.n, s.it.body, s.it.kind, s.it.skip, s.it.first, legDist(s.it)]), m && m.start && m.start.body]);
+  if (lk !== inst.listKey) { inst.listKey = lk; inst.list.innerHTML = sysListHtml(m, c.l); }
+  sysDraw(inst);
+}
+// a stop in words: what it is and what it pays ("🧬 4 · Ammonia · up to 19.3M", "map · Water world T · 1.1M/3.4M")
+function sysWhy(it) {
+  if (it.kind === "map") { const u = it.u; return [`map · ${esc(u.subtype)}${u.terraformable ? " T" : ""}`, mapTotals(u) || (u.increment ? `+${credits(u.increment)}` : "")]; }
+  const b = it.b, n = b.signals || (b.genera || []).length;
+  return [[n ? `🧬 ${n}` : "🧬", b.atmosphere && b.atmosphere !== "None" ? esc(b.atmosphere) : ""].filter(Boolean).join(" · "),
+          b.potential ? `up to ${credits(pendingWorth(b))}` : ""];
+}
+// the stop list beside (or under) the map: where the order starts, then each stop with why it is there and its leg; a
+// tap makes it the first stop (Here's data-firststop, as on the schematic)
+function sysListHtml(m, l) {
+  if (!m) return "";
+  const head = m.start ? `<div class="sysrow sysfrom"><span class="sysnum">⌖</span><span class="sysnm">${esc(m.start.body)}</span>` +
+    `<span class="syswhy">${m.start.at ? "last at" : "arrived at"}</span><span class="sysleg"></span></div>` : "";
+  const rows = m.stops.map(({n, it}) => {
+    const [what, pays] = sysWhy(it);
+    return `<div class="sysrow${it.skip ? " skip" : ""}${it.first ? " first" : ""}${n === 1 ? " next" : ""}" data-firststop="${esc(it.body)}" title="${esc(stopTitle(n, it))}">` +
+      `<span class="sysnum">${n}</span><span class="sysnm">${esc(it.body)}</span><span class="syswhy">${what}${pays ? ` <span class="syspay">${pays}</span>` : ""}` +
+      `${it.skip ? ` <span class="unk skipq">skip?</span>` : ""}</span><span class="sysleg">${legDist(it)}</span></div>`;
+  }).join("");
+  const none = !m.stops.length ? `<div class="sysrow sysnone unk">${l && !l.honked ? "honk first" : l && l.unscanned > 0 ? `${nBodies(l.unscanned)} to find in the FSS` : "nothing worth the trip here"}</div>` : "";
+  const miss = m.missing.length ? `<div class="sysrow unk">not on the map (no orbit in the scan): ${esc(andList(m.missing))}</div>` : "";
+  const reset = l && planFirstFor(l) ? `<div class="sysrow sysfoot">${planResetHtml(l)}</div>` : "";
+  return head + rows + none + miss + reset;
+}
+// the projection: the camera turned (yaw about the orbits' pole, then pitch), framed on `fit` (the route: where you
+// are and the stops; all: every node and the root's orbits), zoomed and moved; a little perspective
+function sysCamera(inst, W, H) {
+  const m = inst.model, c = inst.cam, cy = Math.cos(c.yaw), sy = Math.sin(c.yaw), cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
+  const rot = p => { const X = p[0] * cy - p[1] * sy, Y = p[0] * sy + p[1] * cy, Z = p[2]; return [X, Y * sp - Z * cp, Y * cp + Z * sp]; };
+  const byId = new Map(m.nodes.map(n => [n.id, n]));
+  let pts = [];
+  if (c.fit === "route" && m.stops.length) {
+    pts = [...m.stops.map(s => byId.get(s.id).drawn), ...(m.start ? [byId.get(m.start.id).drawn] : [])];
+  } else {
+    pts = m.nodes.map(n => n.drawn);
+    for (const n of m.nodes) if (n.orbit && m.depth.get(n.id) === 1) pts.push(...sysOrbitPoints(n.orbit, byId.get(n.parent).drawn, m.scale.get(n.parent), 24));
+  }
+  const rp = pts.map(rot);
+  let x0 = Math.min(...rp.map(p => p[0])), x1 = Math.max(...rp.map(p => p[0])), y0 = Math.min(...rp.map(p => p[1])), y1 = Math.max(...rp.map(p => p[1]));
+  const span = Math.max(x1 - x0, y1 - y0, 0.12), mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  x0 = mx - Math.max(x1 - x0, 0.12) / 2; x1 = mx + Math.max(x1 - x0, 0.12) / 2;
+  const pad = Math.min(80, Math.min(W, H) * 0.14);
+  const S = Math.min((W - 2 * pad) / Math.max(x1 - x0, span * 0.3), (H - 2 * pad) / Math.max(y1 - y0, span * 0.3)) * c.zoom;
+  return p => { const r = rot(p), k = 1 / (1 - Math.max(-2, Math.min(2, r[2])) * 0.12);
+    return [W / 2 + c.panX + (r[0] - mx) * S * k, H / 2 + c.panY + (r[1] - my) * S * k, r[2], k]; };
+}
+function sysDraw(inst) {
+  const cv = inst.canvas, m = inst.model, box = cv.parentElement;
+  const W = Math.round(box.clientWidth), H = Math.round(box.clientHeight);
+  const g = W > 0 && H > 0 && cv.getContext ? cv.getContext("2d") : null;
+  inst.hits = [];
+  if (!g) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  if (!m || !m.nodes.some(n => n.body)) return;
+  const cs = getComputedStyle(document.documentElement), col = v => cs.getPropertyValue(v).trim() || "#888";
+  const C = {line: col("--line"), muted: col("--muted"), text: col("--text"), accent: col("--accent"), info: col("--info"), bg: col("--bg"), bad: col("--bad")};
+  const proj = sysCamera(inst, W, H), byId = new Map(m.nodes.map(n => [n.id, n])), font = Math.round(Math.max(12, Math.min(17, W / 60)));
+  const zoomK = Math.max(0.7, Math.min(2.2, inst.cam.zoom ** 0.35));
+  // the scale rings at the root, on the orbits' plane
+  g.font = `500 ${font - 2}px system-ui, sans-serif`; g.textBaseline = "middle";
+  const placed = [], hit = (x, y, w, h) => placed.some(r => x < r[0] + r[2] && x + w > r[0] && y < r[1] + r[3] && y + h > r[1]);
+  const root = byId.get(m.rootId);
+  if (root) for (const r of sysRings(m.nodes, m.rootId, m.scale.get(m.rootId) || (() => 0))) {
+    g.beginPath();
+    for (let i = 0; i <= 96; i++) { const a = i / 96 * 2 * Math.PI, q = proj([r.r * Math.cos(a), r.r * Math.sin(a), 0]); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }
+    g.setLineDash([3, 7]); g.strokeStyle = C.line; g.lineWidth = 1; g.stroke(); g.setLineDash([]);
+    const q = proj([0, -r.r, 0]), t = lsShort(r.ls), w = g.measureText(t).width;
+    g.fillStyle = C.muted; g.globalAlpha = 0.75; g.fillText(t, q[0] + 6, q[1] - 6); g.globalAlpha = 1;
+    placed.push([q[0] + 6, q[1] - 6 - font / 2, w, font]);
+  }
+  // the orbits: the root's families stronger than the moons'
+  for (const n of m.nodes) {
+    if (!n.orbit || n.parent == null || !byId.has(n.parent) || n.kind === "Null" && !(m.nodes.some(k => k.parent === n.id && k.body))) continue;
+    const pts = sysOrbitPoints(n.orbit, byId.get(n.parent).drawn, m.scale.get(n.parent));
+    g.beginPath(); pts.forEach((p, i) => { const q = proj(p); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); });
+    const d = m.depth.get(n.id); g.strokeStyle = C.info; g.globalAlpha = d === 1 ? 0.42 : 0.2; g.lineWidth = d === 1 ? 1.3 : 1; g.stroke(); g.globalAlpha = 1;
+  }
+  // the route's legs, from where you are
+  const legs = m.legs.map(l => ({l, a: proj(byId.get(l.from).drawn), b: proj(byId.get(l.to).drawn)}));
+  for (const {l, a, b} of legs) {
+    g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]);
+    g.setLineDash(l.it.skip ? [6, 6] : []); g.strokeStyle = C.accent; g.globalAlpha = l.it.skip ? 0.5 : 0.85; g.lineWidth = 2; g.stroke();
+    g.setLineDash([]); g.globalAlpha = 1;
+  }
+  // the bodies, far to near (barycentres are not drawn)
+  const at = new Map();
+  const drawnBodies = m.nodes.filter(n => n.body).map(n => ({n, q: proj(n.drawn)})).sort((x, y) => x.q[2] - y.q[2]);
+  for (const {n, q} of drawnBodies) {
+    const R = sysBodyPx(n.body) * q[3] * zoomK, sp = sysSprite(n.body, R);
+    if (sp) g.drawImage(sp.c, q[0] - sp.w / 2, q[1] - sp.w / 2, sp.w, sp.w);
+    else { g.beginPath(); g.arc(q[0], q[1], R, 0, 2 * Math.PI); g.fillStyle = C.muted; g.fill(); }
+    at.set(n.id, {q, R});
+    inst.hits.push({kind: "body", x: q[0], y: q[1], r: Math.max(R + 3, 9), n});
+  }
+  // the labels: the stars' and the root's families' names, muted; where you are; the leg distances; the stop numbers
+  g.font = `500 ${font}px system-ui, sans-serif`;
+  for (const {n} of drawnBodies) {
+    if (!(n.body.type === "Star" || m.depth.get(n.id) === 1)) continue;
+    const {q, R} = at.get(n.id), t = sysLabel(n.body), w = g.measureText(t).width;
+    const x = q[0] - w / 2, y = q[1] + R + font * 0.9;
+    if (hit(x, y - font / 2, w, font)) continue;
+    placed.push([x, y - font / 2, w, font]);
+    g.fillStyle = n.body.type === "Star" ? C.accent : C.muted; g.fillText(t, x, y);
+  }
+  if (m.start && at.has(m.start.id)) {
+    const {q, R} = at.get(m.start.id), x = q[0] - R - 8, t = m.start.at ? `last at ${m.start.body}` : `arrived at ${m.start.body}`;
+    g.beginPath(); g.moveTo(x, q[1]); g.lineTo(x - 12, q[1] - 7); g.lineTo(x - 12, q[1] + 7); g.closePath(); g.fillStyle = C.text; g.fill();
+    g.font = `600 ${font}px system-ui, sans-serif`; const w = g.measureText(t).width;
+    g.fillText(t, x - 18 - w, q[1]); placed.push([x - 18 - w, q[1] - font / 2, w + 18, font]);
+  }
+  g.font = `600 ${font}px system-ui, sans-serif`;
+  for (const {l, a, b} of legs) {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]), t = legDist(l.it); if (len < 90 || !t) continue;
+    const w = g.measureText(t).width + 12, h = font * 1.5;
+    for (const f of [0.5, 0.38, 0.62, 0.28, 0.72]) {
+      const x = a[0] + (b[0] - a[0]) * f, y = a[1] + (b[1] - a[1]) * f;
+      if (hit(x - w / 2, y - h / 2, w, h)) continue;
+      placed.push([x - w / 2, y - h / 2, w, h]);
+      g.fillStyle = C.bg; g.globalAlpha = 0.85; g.beginPath(); g.roundRect ? g.roundRect(x - w / 2, y - h / 2, w, h, 6) : g.rect(x - w / 2, y - h / 2, w, h); g.fill(); g.globalAlpha = 1;
+      g.fillStyle = C.accent; g.textAlign = "center"; g.fillText(t, x, y + 1); g.textAlign = "left";
+      break;
+    }
+  }
+  // a body's numbers together ("2,3": its map and its bio), out from its family's centre for a moon
+  const nums = new Map();
+  for (const s of m.stops) { if (!nums.has(s.id)) nums.set(s.id, []); nums.get(s.id).push(s); }
+  for (const [id, ss] of nums) {
+    const a0 = at.get(id); if (!a0) continue;
+    const {q, R} = a0, n = byId.get(id), t = ss.map(s => s.n).join(","), r = font * 0.72, w = Math.max(2 * r, g.measureText(t).width + 10);
+    let ux = 0.7, uy = -0.7;
+    if (m.depth.get(id) > 1 && byId.has(n.parent)) { const p = proj(byId.get(n.parent).drawn), dx = q[0] - p[0], dy = q[1] - p[1], d = Math.hypot(dx, dy); if (d > 1) { ux = dx / d; uy = dy / d; } }
+    const x = q[0] + ux * (R + r + 3), y = q[1] + uy * (R + r + 3), first = ss[0].n === 1, skip = ss.every(s => s.it.skip);
+    g.beginPath(); g.roundRect ? g.roundRect(x - w / 2, y - r, w, 2 * r, r) : g.arc(x, y, r, 0, 2 * Math.PI);
+    g.fillStyle = first ? C.accent : C.info; g.globalAlpha = skip ? 0.55 : 1; g.fill(); g.globalAlpha = 1;
+    g.fillStyle = C.bg; g.font = `700 ${font - 1}px system-ui, sans-serif`; g.textAlign = "center"; g.fillText(t, x, y + 1); g.textAlign = "left";
+    inst.hits.unshift({kind: "stop", x, y, r: Math.max(r, w / 2) + 3, n, body: ss[0].it.body});
+  }
+}
+const sysHitAt = (inst, e) => { const r = inst.canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  return inst.hits.find(h => Math.hypot(h.x - x, h.y - y) <= h.r) || null; };
+// a body's card: what it is, how far from where the order starts, and what it is on the route for
+function sysCardHtml(inst, n, touch) {
+  const m = inst.model, b = n.body, st = m.start && m.nodes.find(x => x.id === m.start.id);
+  const d = st && st.id !== n.id ? Math.hypot(...n.pos.map((c, k) => c - st.pos[k])) : null;
+  const ss = m.stops.filter(s => s.id === n.id);
+  const lines = [`<b>${esc(b.name)}</b> <span class="unk">${esc(b.subtype || b.type || "")}</span>`,
+    d != null ? `${n.approx || st.approx ? "≈" : ""}${lsShort(d)} from ${esc(m.start.body)}` : st && st.id === n.id ? (m.start.at ? "where you were last" : "the arrival star") : "",
+    ...ss.map(s => `${s.n}: ${sysWhy(s.it).filter(Boolean).join(" · ")}${s.it.skip ? " · skip?" : ""}`),
+    !ss.length && !(st && st.id === n.id) ? `<span class="unk">not on the suggested order</span>` : ""];
+  return lines.filter(Boolean).map(x => `<div>${x}</div>`).join("") + (touch && ss.length && !ss[0].it.first
+    ? `<div><button type="button" class="mini" data-firststop="${esc(b.name)}">go here first</button></div>` : "");
+}
+function sysHover(inst, e) {
+  const h = sysHitAt(inst, e);
+  inst.canvas.style.cursor = h && h.kind === "stop" ? "pointer" : "";
+  if (h) { popId = "sys"; pop.innerHTML = sysCardHtml(inst, h.n, false); pop.style.display = "block"; pop.classList.remove("taps"); placePop(e.clientX, e.clientY); }
+  else if (popId === "sys") hidePop();
+}
+function sysTap(inst, e, touch) {
+  const h = sysHitAt(inst, e); if (!h) { if (popId === "sys") hidePop(); return; }
+  if (h.kind === "stop" && !touch && hereData && String(hereData.id64) === posId()) { setPlanFirst(String(hereData.id64), h.body); return; }
+  popId = "sys"; pop.innerHTML = sysCardHtml(inst, h.n, touch); pop.style.display = "block"; pop.classList.toggle("taps", touch); placePop(e.clientX, e.clientY);
+}
+// Now's map: shown beside the text (desktop) or in its place (flip); hidden while the surface map comes first
+function renderNowSys(m) {
+  const box = document.getElementById("nowSys"), nv = document.getElementById("nowView");
+  const on = !!(m && m.sys) && view === "now" && !!(data && data.position);
+  box.hidden = !on;
+  nv.classList.toggle("syson", on); nv.classList.toggle("sysflip", on && m.flip);
+  if (on) sysShow(sysMount("now", box));
+}
+// a window resized across SYS_SPLIT_MIN: the map goes from beside the text to in its place (or back)
+let sysFlipWas = null;
+addEventListener("resize", () => {
+  if (TABLET || !data || view !== "now") return;
+  const f = nowArea().vw < SYS_SPLIT_MIN;
+  if (f !== sysFlipWas) { sysFlipWas = f; renderNow(); }
+});
 
 // ---- the Neutron Highway: the Plot Route tab (the route's jump list, the plot form, a top-down map) and the highway
 // line under the header (Overview, Nearby, Here). The server plots with Spansh in the background (POST
@@ -10886,7 +11300,7 @@ pop.addEventListener("click", e => {
 });
 let lastPointer = null;
 document.addEventListener("mousemove", e => {
-  if (e.target === mapCanvas) return;  // the map draws its own hover
+  if (e.target === mapCanvas || e.target.closest && e.target.closest(".syscv")) return;  // the maps draw their own hover
   if (e.target.closest && e.target.closest("#pop")) return;   // inside the card (only the tablet's takes the pointer)
   lastPointer = {x: e.clientX, y: e.clientY};
   // a species' picture (S20: Here's species inside a body's row): the body's pop-up gives way to it
@@ -10896,7 +11310,7 @@ document.addEventListener("mousemove", e => {
 });
 function refreshPop() {
   // render() has just rebuilt the DOM: re-resolve whatever the pointer is over.
-  if (popId === null || popId === "map" || !lastPointer) return;
+  if (popId === null || popId === "map" || popId === "sys" || !lastPointer) return;
   const el = document.elementFromPoint(lastPointer.x, lastPointer.y);
   const td = el && el.closest && !(el.closest("[data-sppic]") && mouseHover()) &&
     el.closest("[data-minepop], [data-rescanpop], [data-pop], [data-bm], [data-unsold], [data-bodypop], [data-sbodypop]");

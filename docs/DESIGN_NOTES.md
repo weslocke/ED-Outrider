@@ -604,6 +604,27 @@ upstream project's choices, not rules of the game.
   the path from where you are with each leg's distance (S30). The first stop you pick there (one body, meta `plan_first`,
   live-only) applies only in the system you are in and is forgotten after a jump (the arrival elsewhere drops it, so a
   return to that system later does not bring it back; a re-read's older arrivals do not drop it).
+- **The system map** (the author, 2026-11-08, project/PLAN-system-map-2026-11-08.md): the system you are in in 3D
+  with the suggested order, on Now (the desktop: a pane beside the text, `nowSysMap` per device, off until turned on;
+  under `SYS_SPLIT_MIN` px wide or on the tablet, Text | Map in its place, the headline card on one line above it) and
+  as Here's 🪐 3D view (the system you are in only). Decisions:
+  - **Not to scale** ("simply a visual representation"): `sysSquash` maps each family's offsets by log between its
+    nearest and farthest member, keeping their directions; a node's own family gets `SYS_FAMILY` of the room it has
+    (to its parent and its nearest sibling as drawn). Leg labels give the true distance (`legDist`), never a time.
+  - **The server sends ellipses, not elements** (`outrider.orbits.ellipse`: a centre and two axis vectors, turned as
+    the position is), so the page draws orbits with sin and cos and needs no Kepler solver of its own (no twin).
+  - **A snapshot:** the places are worked out when the page asks (GET `/api/system_map`), again when Here's data for
+    the system changes and every five minutes while a map shows: close moons move noticeably in an hour.
+  - **Where you are** is the body you were last at (`at_body`), else the arrival star: between bodies Outrider does
+    not know your place in space.
+  - **The surface map first** on a body ("Surface Map always has priority (unless they turn it off)"): System picked
+    there (`sysPick`) lasts for that body only; a take-off or another body gives the surface map back.
+  - **Pictures** are the schematic's (`bodyLook`, `paintBody`), facing the screen: they do not turn with the camera,
+    and rings keep their own tilt.
+  - **Labels** only for the stars and the root's families (a star that bears the system's name by its class, "K star"),
+    where you are, the stop numbers and the leg distances (placed clear of each other); any other body by hover or tap.
+  - **The camera** is the star map's (`camControls`, shared), with Fit / Top / Whole system; Fit is automatic until
+    you move the camera, and again at each new system.
 - **The order shows distances, never times** (the author, 2026-11-08): Supercruise Overdrive makes the curve's
   minutes wrong, and fewer words read faster. Next, the "then:" line, Here's order and schematic, the targeted body,
   the overlay and the status report give each leg's distance body to body ("1.5k ls", page.js `lsShort` / `legDist`,

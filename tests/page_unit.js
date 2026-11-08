@@ -649,6 +649,51 @@ t("alert rows in step: ALERTS, ALERT_NAMES, ALERT_SHORT, ROW_WORDS; each row und
   assert.ok(calls > 60, `only ${calls} alertOut("row", ...) calls found: the reading of page.js broke`);
   assert.deepStrictEqual(wrong, [], "said by a row whose ROW_KEYS lacks it");
 });
+t("the system map's squash: directions and order kept, moons clear, the far star in frame", () => {
+  const out = JSON.parse(ev(`(() => {
+    const nodes = [{id: 0, parent: null, pos: [0, 0, 0]},
+      {id: 1, parent: 0, pos: [700, 0, 0]},            // a planet,
+      {id: 2, parent: 1, pos: [702, 0, 0]},            // its moon 2 ls out,
+      {id: 3, parent: 0, pos: [0, 3000, 0]},           // a farther planet,
+      {id: 4, parent: 0, pos: [-300000, 0, 10]},       // and a star 300,000 ls away
+      {id: 5, parent: 3, pos: [0, 3000, 0]}];          // a moon with no place of its own: at its planet
+    const {drawn, depth} = sysSquash(nodes), len = v => Math.hypot(...v), d = id => drawn.get(id);
+    const unit = v => v.map(x => x / len(v));
+    return JSON.stringify({
+      dir: [unit(d(1)), unit(d(3)), unit(d(4))].map(v => v.map(x => +x.toFixed(4))),
+      order: len(d(1)) < len(d(3)) && len(d(3)) < len(d(4)),
+      maxR: +Math.max(...[...drawn.values()].map(len)).toFixed(6),
+      moon: +len(d(2).map((x, i) => x - d(1)[i])).toFixed(4), planet: +len(d(1)).toFixed(4),
+      atPlanet: len(d(5).map((x, i) => x - d(3)[i])), depth: [depth.get(0), depth.get(1), depth.get(2)]}); })()`));
+  assert.deepStrictEqual(out.dir, [[1, 0, 0], [0, 1, 0], [-1, 0, 0]]);   // each offset keeps its direction
+  assert.ok(out.order);                                                   // and its order from the star
+  assert.strictEqual(out.maxR, 1);                                        // the farthest at the family's radius, in frame
+  assert.ok(out.planet >= 0.35 - 1e-9);                                   // the nearest at r0 of it
+  assert.ok(out.moon > 0.02 && out.moon < out.planet / 2, JSON.stringify(out));   // a 2 ls moon drawn clear of its planet
+  assert.strictEqual(out.atPlanet, 0);
+  assert.deepStrictEqual(out.depth, [0, 1, 2]);
+});
+t("the system map's orbits, rings and model: the body on its drawn orbit, legs from where you are with distances", () => {
+  const out = JSON.parse(ev(`(() => {
+    const geo = {nodes: [{id: 0, kind: "Star", parent: null, pos: [0, 0, 0], approx: false, orbit: null},
+      {id: 1, kind: "Planet", parent: 0, pos: [1000, 0, 0], approx: false, orbit: {c: [0, 0, 0], u: [1000, 0, 0], v: [0, 1000, 0]}},
+      {id: 2, kind: "Planet", parent: 0, pos: [0, 4000, 0], approx: false, orbit: {c: [0, 0, 0], u: [0, 4000, 0], v: [-4000, 0, 0]}}]};
+    const sq = sysSquash(geo.nodes), f = sq.scale.get(0);
+    const pts = sysOrbitPoints(geo.nodes[1].orbit, [0, 0, 0], f, 8);
+    const hd = {id64: "9", bodies: [{name: "Sys", body_id: 0, type: "Star"}, {name: "1", body_id: 1, type: "Planet"}, {name: "2", body_id: 2, type: "Planet"}, {name: "3", body_id: 3, type: "Planet"}]};
+    const l = {at_body: {body: "1", pos: [1000, 0, 0]}, arrival: {body: "Sys", pos: [0, 0, 0], dist_ls: 0}};
+    const plan = [{body: "2", kind: "bio", ls: 4123, legApprox: false}, {body: "2", kind: "map", ls: 0}, {body: "3", kind: "map", ls: 50, legApprox: true}];
+    const m = sysModel(geo, hd, plan, l);
+    return JSON.stringify({onOrbit: pts.every(p => Math.abs(Math.hypot(...p) - f(1000)) < 1e-9), closed: Math.hypot(...pts[0].map((x, i) => x - pts[8][i])) < 1e-9, n: pts.length,
+      rings: sysRings(geo.nodes, 0, f).map(r => r.ls), start: m.start, stops: m.stops.map(s => [s.n, s.id]),
+      legs: m.legs.map(g => [g.from, g.to, legDist(g.it)]), missing: m.missing}); })()`));
+  assert.ok(out.onOrbit && out.closed && out.n === 9, JSON.stringify(out));   // on the circle, round to the start
+  assert.deepStrictEqual(out.rings, [1000, 2000, 5000]);                     // 1-2-5 between ¾ of the nearest and 1¼ of the farthest
+  assert.deepStrictEqual(out.start, {id: 1, body: "1", at: true});           // where you were last
+  assert.deepStrictEqual(out.stops, [[1, 2], [2, 2]]);                       // a body's map and bio, one place, two numbers
+  assert.deepStrictEqual(out.legs, [[1, 2, "4.1k ls"]]);                     // a distance, never a time; none to the same body
+  assert.deepStrictEqual(out.missing, ["3"]);                                // a stop with no place: listed, not drawn
+});
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); ok++; console.log("OK |", name); }

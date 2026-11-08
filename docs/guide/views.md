@@ -158,10 +158,11 @@ with their planets left to right, moons underneath, barycentres boxed, each scan
 in the body panel: class colours, bands, oceans, clouds, atmosphere, rings). <i>Split</i> (on the Here tab, on by
 default) keeps the schematic under the list or tree. In the system you are in, the suggested order's stops are
 numbered on the bodies (①②③, two on a body with both mapping and bio; a stop not worth the trip greyed), with a faint
-path between them from where you are (the body you are at or were last at, else the arrival star) and the supercruise
-time of each leg, from body to body where the bodies are now ("≈" when about: from one star's family to another's in
+path between them from where you are (the body you are at or were last at, else the arrival star) and the distance
+of each leg, from body to body where the bodies are now ("≈" when about: from one star's family to another's in
 a multi-star system, or an orbit your scans do not give). Tap a number to go there first: Now, the voice, the to-do
-line and the overlay follow; <i>↺ order</i> puts the suggested order back.
+line and the overlay follow; <i>↺ order</i> puts the suggested order back. <i>🪐 3D</i> draws the system you are in
+as the system map does (below, under Now).
 <br><br><img src="../images/schematic.png" alt="The system schematic">
 </td>
 </tr>
@@ -285,6 +286,28 @@ has a fixed place, and a value never breaks in the middle (a line wraps only bet
    kind's sites it was) and Spansh's pre-Odyssey data).
 6. **The foot,** small: your discovery streak and the nearest unvisited system, this session, the spoken captions and
    (on a tablet over plain http) the screen-sleep hint.
+
+**🪐 The system map**, beside Now's title: the system you are in drawn in 3D, each body you have scanned where it is on
+its orbit now, drawn as in the schematic (class colours, bands, atmosphere, rings) with its orbit, and the suggested
+order on it: a line from where you are (the body you were last at, else the arrival star) through the stops, each stop
+numbered (two numbers on a body with both mapping and bio), each leg with its distance ("1.5k ls", "≈" when about), a
+stop not worth the trip dashed. It is not to scale: each family (a star's planets, a planet's moons) is squashed on its
+own log scale, so a moon a few light seconds from its planet stays clear of it and a far star stays on the screen; the
+faint rings round the star (1k, 2k ls...) give a sense of size. Beside it (or under it) the stops are listed: the
+body, why it is there (🧬 signals and atmosphere, or the mapping), what it pays and its leg.
+
+- **Moving it:** drag to turn, right-drag to move, the wheel to zoom (on a tablet: one finger turns, two move and
+  pinch). **Fit** frames the order and where you are (as it opens, and again at each new system, until you move it),
+  **Top** looks straight down, **Whole system** frames every body.
+- **Hover or tap a body** for its card (its class, how far it is from where you are, and what it is on the route for);
+  click a stop's number, or a row of the list, to go there first, as on Here's schematic.
+- **On the PC** the 🪐 map button opens it beside Now's text, and it stays on in that browser until you turn it off; in
+  a window too narrow for both (under 1200 px) it is **Text | 🪐 Map** instead, the map in place of the text with the
+  headline card above it on one line.
+- **On a body** the surface map comes first: Now's switch then reads **Surface | 🪐 System**, and System shows the
+  system map for that body until you take off or move to another body.
+- **Before the FSS** there is nothing to draw ("scan the system to see its bodies"): every body's orbit comes from your
+  own scans.
 
 Under fuel, "scoopable: 9 of last 20" (amber as on the fuel tile), and at the last scoopable star before a dry stretch
 "⛽ last scoop before 3 dry" with how much to scoop. While you scoop, the fuel row counts down to a full tank ("38 s to

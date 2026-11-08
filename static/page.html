@@ -50,6 +50,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
   <div id="nowBar"><button type="button" id="nowSpeech" title="spoken alerts on or off (this browser, as 🗣 in the header)">🗣</button><button type="button" id="nowHush" title="hush the voice for 30 minutes (danger lines still speak), wherever it is speaking">hush 30 min</button><button type="button" id="nowStatus" title="the co-pilot's status report, said by the window that is speaking">status report</button><button type="button" id="nowBack" title="back to the page (or double-tap)">✕ back</button></div>
   <div id="nowBody"></div>
   <div id="nowMap" hidden><div class="smap"><canvas id="nowMapCanvas" aria-label="surface map: heading up, you at the centre"></canvas></div><div id="nowMapLegend" class="smap-legend"></div></div>
+  <div id="nowSys" class="sysmap" hidden></div>
 </section>
 <main>
 <section id="overView" hidden>
@@ -130,6 +131,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
     (×1 for bodies you have not scanned). 3/3 ✓ means a species is analysed.</div>
   </div>
   <div id="hereSchematic" hidden></div>
+  <div id="here3d" class="sysmap" hidden></div>
   <div id="hereLegend" class="legend" hidden aria-label="what the icons mean"></div>
   </div>
   <div id="bodyPanel" class="pane" hidden></div>

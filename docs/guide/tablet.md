@@ -34,7 +34,9 @@ was clicked).
 - **Now** is laid out as on the PC ([Now](views.md)): the system, one headline card (the pad, a refusal, the arrival
   verdict, else Next with what comes after it), the targeted body, the status rows each in its place under its label
   (Fuel, Aboard, Jump, Route, Boxel, Sight, Mining, Here) and, at the bottom of the page, the streak, the session and as
-  many of the spoken captions as fit.
+  many of the spoken captions as fit. **Text | 🪐 Map** beside the title flips to the system map: the system in 3D
+  with the suggested order on it and its stops listed beside it, the headline card above it on one line (the tablet
+  remembers which). On a body the surface map comes first and the switch reads **Surface | 🪐 System**.
 - **On a planet** the tablet switches to Now when the surface map appears (the Now button says MAP) and back to your
   page when it goes. Now then gives the map the room: the body is the title, Next is the job on the body, and only
   warnings stay (the data aboard at your amber level, low fuel); the newest caption is in the footer.
