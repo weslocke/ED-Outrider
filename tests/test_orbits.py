@@ -329,6 +329,22 @@ class ServerPlaces(unittest.TestCase):
         self.assertIsNone(self.state.leaving_summary(self.id64)["at_body"])                # back: a new visit, no body yet
         self.assertIn("'body_last'", ed_outrider.RESET_JOURNAL_DATA)                       # rebuilt by a re-read
 
+    def test_mapping_a_body_moves_the_start(self):
+        """The author, 2026-11-08: A 1 mapped from supercruise (no approach, no drop), and the order still measured A 2's
+        leg from the arrival star (260 ls, not A 1's 140). The DSS's SAAScanComplete puts you at the body; a ring's
+        probe does not (no place for a ring)."""
+        a1 = next(x["BodyID"] for x in self.lines if x.get("BodyName") == f"{self.NAME} A 1")
+        self.assertIsNone(self.state.leaving_summary(self.id64)["at_body"])               # arrived: the order starts at the star
+        seq = self.j.body_last_seq
+        self.j.handle({"event": "SAAScanComplete", "timestamp": "2026-11-07T03:10:00Z", "SystemAddress": self.id64,
+                       "BodyName": f"{self.NAME} A 1", "BodyID": a1, "ProbesUsed": 5, "EfficiencyTarget": 7})
+        at = self.state.leaving_summary(self.id64)["at_body"]
+        self.assertEqual((at["body"], len(at["pos"])), ("A 1", 3))
+        self.assertEqual(self.j.body_last_seq, seq + 1)                                   # the page and overlay ask again
+        self.j.handle({"event": "SAAScanComplete", "timestamp": "2026-11-07T03:20:00Z", "SystemAddress": self.id64,
+                       "BodyName": f"{self.NAME} A 1 A Ring", "BodyID": a1 + 50, "ProbesUsed": 1, "EfficiencyTarget": 0})
+        self.assertEqual(self.state.leaving_summary(self.id64)["at_body"]["body"], "A 1")  # a ring: still A 1
+
     def test_an_approach_moves_the_start_without_a_scan(self):
         """Review round 11 A: every body scanned, then an approach (no Scan, so scan_version stays): the overlay's cached
         detail and the page's Here key (the payload's body_seq) must follow it, or Next, the schematic and the overlay

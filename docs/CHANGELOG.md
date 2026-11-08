@@ -2,6 +2,28 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · Mapping a body moves the order's start
+The author mapped A 1 from supercruise; A 1 left the order, and A 2's leg read 260 ls (from the arrival star) where it
+was 140 ls from A 1. The order starts from the body you are at or were last at (`Journals.body_last`), which moved only
+on ApproachBody, Touchdown or a drop at a body: none comes when you map from supercruise.
+- **Fix:** SAAScanComplete (the DSS, which reaches only a body you are beside) moves it too, a ring's probe aside
+  (`Journals.note_body_last`, shared with `track_srv`). The page and the overlay ask again as on an approach (body_seq).
+- **Docs:** DESIGN_NOTES (the suggested order).
+- **Tests:** test_orbits (mapping moves the start, a ring does not); fails without the fix.
+
+## 2026-11-08 · The system map's stop list on one line
+The author's A11 screenshot: beside the map, "High metal content world T 658k/1.9M" wrapped word by word, worse on the
+A9.
+- **Each stop on one line:** the body, what for and its one figure (the larger map total, the bio's "up to"): "map
+  1.9M", "bio 3 · 19.3M", then the leg. "skip?" is the row dimmed with its number dashed. The class and both totals
+  stay in the body's card (`sysWhyFull`).
+- **Its place stays put** (the author: "on the right or at the bottom and stay there"): beside the map on a landscape
+  tablet, as wide as its rows (up to 45%), the name the only part that gives way; the rows share their columns
+  (subgrid).
+- **Docs:** views.md.
+- **Tests:** page_smoke's real-browser block on the A9 (1006 × 601) and the A11 (1280 × 800): the list beside the map,
+  every row on one line, nothing cut; fails on the A9 with the old CSS. The system map block's list text.
+
 ## 2026-11-08 · The tablet strip's system name on a small tablet
 On the Galaxy Tab A9 (1006 × 601 CSS px) the top strip's System chip showed its label and no name: the link pill never
 gave way ("linked · no game · overlay …"), and fuel and unsold always show in full, so the name took all the shrinking.

@@ -5008,6 +5008,20 @@ class Journals:
         so journals read out of order (a legacy folder imported later) never lend one session's SRV to another."""
         return re.sub(r"\.\d+\.log:\d*$", "", self.line_source)
 
+    def note_body_last(self, here, name, ts):
+        """The body you are at or were last at in a system (body_last: where the suggested order starts, State.at_body):
+        ApproachBody, Touchdown, a SupercruiseExit or a login at a planet or star (track_srv), and a body you mapped with
+        the DSS (SAAScanComplete: the probes reach only a body you are beside; mapped from supercruise, none of the others
+        comes: the author, 2026-11-08, A 1 mapped and the order still measured from the arrival star). here: {system,
+        body_id} or None."""
+        if not here or ts < (self.body_last or {}).get("ts", ""):
+            return
+        self.body_last = dict(here, name=name, ts=ts)
+        # Here and the overlay ask for the order again (round 11 A); every move, the same body's too: its ts decides
+        # whether it is this visit's (at_body), and these lines come a few times per body at most
+        self.body_last_seq += 1
+        meta_set(self.db, "body_last", self.body_last)
+
     def track_srv(self, name, ev, ts):
         """Which body your SRV is out on, for MiningRefined (which names neither body nor position).
         The body you are at comes from ApproachBody, Touchdown, a SupercruiseExit at a planet or a Location on
@@ -5043,13 +5057,8 @@ class Journals:
         else:   # LeaveBody, FSDJump, CarrierJump, LoadGame, Died
             at = srv = None
         # where the suggested order starts: the body you are at or were last at, a star you dropped at too
-        if here and ts >= (self.body_last or {}).get("ts", "") and (name in ("ApproachBody", "Touchdown") or (
-                name in ("SupercruiseExit", "Location") and ev.get("BodyType") in ("Planet", "Star"))):
-            self.body_last = dict(here, name=ev.get("Body") or ev.get("BodyName") or "", ts=ts)
-            # Here and the overlay ask for the order again (round 11 A); every move, the same body's too: its ts decides
-            # whether it is this visit's (at_body), and these lines come a few times per body at most
-            self.body_last_seq += 1
-            meta_set(self.db, "body_last", self.body_last)
+        if name in ("ApproachBody", "Touchdown") or (name in ("SupercruiseExit", "Location") and ev.get("BodyType") in ("Planet", "Star")):
+            self.note_body_last(here, ev.get("Body") or ev.get("BodyName") or "", ts)
         if ts >= (self.body_here or {}).get("ts", "") and name != "SupercruiseEntry" and \
                 (at or {}) != {k: v for k, v in (self.body_here or {}).items() if k in ("system", "body_id")}:
             self.body_here = dict(at, name=ev.get("Body") or ev.get("BodyName") or "", ts=ts) if at else None
@@ -6575,6 +6584,8 @@ class Journals:
                 self.db.execute("INSERT OR IGNORE INTO own_ring_signals VALUES (?, ?, '{}', ?)",
                                 (system, ev["BodyName"], ts))
             elif ev.get("BodyID") is not None:
+                if system is not None:   # mapped it: you are at it, so the order now starts there
+                    self.note_body_last({"system": system, "body_id": ev["BodyID"]}, ev.get("BodyName") or "", ts)
                 # the "mapped" call-out (the page says it only with speak_mapped ticked): news once, so a remap
                 # of a body already mapped adds no moment, as a rescan adds no "scan"
                 known = self.db.execute("SELECT 1 FROM own_mapped WHERE system=? AND body_id=?",

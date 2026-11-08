@@ -586,7 +586,9 @@ upstream project's choices, not rules of the game.
 - **The suggested order by where the bodies are (2026-11-07):** the stops (a body; its map before its bio, together)
   are ordered by nearest neighbour on supercruise time, then 2-opt on the total, from where you are: the first stop you
   picked, else the body you are at or were last at in the system this visit (`at_body`, from `Journals.body_last`:
-  ApproachBody, Touchdown, a SupercruiseExit or a login at a planet or star, kept after you leave it), else the arrival
+  ApproachBody, Touchdown, a SupercruiseExit or a login at a planet or star, or a body you mapped (SAAScanComplete: the
+  DSS reaches only a body you are beside, and mapped from supercruise none of the others comes), kept after you leave
+  it), else the arrival
   star. Each leg is the supercruise curve (`scSeconds`) over the distance between the two bodies where they are now
   (`outrider/orbits.py`, the positions sent as each item's `pos`); a leg with an end that has no position (a scan with
   no MeanAnomaly) falls back to the difference of their distances to the arrival star, a lower bound, and is "≈" like an
