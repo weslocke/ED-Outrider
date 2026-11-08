@@ -1234,6 +1234,9 @@ const onOrOver = ob => ob.how === "flying low" ? "Over" : "On";
 // S30: the body you made the first stop in the system you are in (Here's schematic: a tap on its number), or null.
 // One for every window, the overlay and the voice (the server's meta plan_first); l: a leaving summary (its id64).
 const planFirstFor = l => { const pf = data && data.plan_first; return pf && l && l.id64 && pf.id64 === String(l.id64) ? pf.body : null; };
+// the bodies you skipped in that system (the system map's Skip, the author, 2026-11-08; the server's plan_skip): out of
+// the order everywhere until put back, ↺ order, or a jump
+const planSkipFor = l => { const ps = data && data.plan_skip; return ps && l && l.id64 && ps.id64 === String(l.id64) ? ps.bodies || [] : []; };
 // a stop's number in the suggested order: ① to ⑳, then (21) (the overlay's stop_glyph)
 const stopGlyph = n => n >= 1 && n <= 20 ? String.fromCodePoint(0x245F + n) : `(${n})`;
 // ---- the suggested order: stops by where the bodies are now (the server's pos, outrider/orbits.py) ----
@@ -1333,10 +1336,12 @@ const planMemo = new Map();   // system id64 -> {first, bodies}: the order last 
 function planItems(l) {
   const w = worthLeavingFor(l);
   if (!w) return [];
+  const skipped = planSkipFor(l);
   const items = [...w.maps.map(u => ({kind: "map", body: u.body, dist: u.dist_ls, pos: u.pos || null, approx: !!u.approx, value: u.increment, keep: u.special, u})),
                  ...w.bio_pending.map(b => ({kind: "bio", body: b.body, dist: b.dist_ls, pos: b.pos || null, approx: !!b.approx,
                                              value: b.potential == null ? null : pendingWorth(b),
-                                             keep: !!Object.keys(b.partial || {}).length || (codexNewCounts() && !!b.codex_new), b}))];
+                                             keep: !!Object.keys(b.partial || {}).length || (codexNewCounts() && !!b.codex_new), b}))]
+    .filter(it => !skipped.includes(it.body));
   const first = planFirstFor(l), key = l.id64 != null ? String(l.id64) : null, memo = key ? planMemo.get(key) : null;
   const {items: order, bodies} = orderPlan(items, planStart(l), first, memo && memo.first === first ? memo.bodies : null);
   if (key) { if (planMemo.size > 20 && !planMemo.has(key)) planMemo.clear(); planMemo.set(key, {first, bodies}); }
@@ -2266,23 +2271,27 @@ function surfaceLegend(s, L, cfg) {
   for (const it of by("bio")) if (!bio.has(it.species)) bio.set(it.species, it);
   // the runs under way, nearest first; then the species finished here, ticked, in the order they were done (kept the
   // author, 2026-11-02: a finished one used to leave the map and the legend)
-  // Unscanned (the author, 2026-11-08): the biology on this body not sampled yet, gone as each is started (it moves to
-  // Samples): each DSS genus not started with its likely species and value, one lost with the ship, and the signals no
-  // DSS has named yet. Bio only for now: the DSS names no geology (SAASignalsFound gives a count), see DESIGN_NOTES
+  // Unscanned (the author, 2026-11-08): the biology on this body you have not touched yet, gone as each is identified
+  // (tagged with the composition scanner: it moves to Tagged) or started (it moves to Samples): each DSS genus with its
+  // likely species and value, one lost with the ship, and the signals nothing has named yet (a tag of a genus the DSS
+  // did not name counts for one). Bio only for now: the DSS names no geology (SAASignalsFound gives a count), see DESIGN_NOTES
   const ob = nowOb(), ob_b = ob && obData && !obData.error ? (obData.bodies || []).find(x => x.name === ob.body) : null;
   if (ob_b) {
-    const f = bioFactor(ob_b), todo = [];
-    for (const g of bioGenera(ob_b)) {
+    const f = bioFactor(ob_b), todo = [], known = bioGenera(ob_b);
+    const tagged = new Set((s.tags || []).map(t => t.genus || String(t.species || "").split(" ")[0]).filter(Boolean));
+    for (const g of known) {
       const o = (ob_b.organics || []).find(o => o.genus === g), x = (ob_b.bio_guess || []).find(q => q.genus === g);
-      if (o && !o.lost) continue;
+      if (o && !o.lost || !o && tagged.has(g)) continue;
       todo.push(row(`class="lg-row lg-todo"`, `<span class="tg bio">🧬</span>`, `<b>${esc(g)}</b> ` + (o
         ? `<span class="bad">lost ✗</span> <span class="unk">sample again${o.value ? ` · ${credits(o.value * f)}` : ""}</span>`
         : x && x.best ? `<span class="unk">likely ${esc(x.best.split(" ").slice(1).join(" "))}${x.value ? ` · ${credits(x.value * f)}` : ""}</span>` : "")));
     }
-    const unk = bioUnknown(ob_b);
-    if (unk) {
-      const could = [...new Set(unk.list.map(x => x.genus).filter(Boolean))];
-      todo.push(row(`class="lg-row lg-todo"`, `<span class="tg bio">🧬</span>`, `${esc(unk.label.replace(/ signals?/, m => " bio" + m))}` +
+    const unk = bioUnknown(ob_b), extra = [...tagged].filter(g => !known.includes(g));
+    const left = unk ? unk.n - extra.length : 0;
+    if (left > 0) {
+      const could = [...new Set(unk.list.map(x => x.genus).filter(g => g && !tagged.has(g)))];
+      const label = known.length || extra.length ? `${left} more bio signal${left === 1 ? "" : "s"} not identified` : `${left} bio signal${left === 1 ? "" : "s"}, not DSS'd`;
+      todo.push(row(`class="lg-row lg-todo"`, `<span class="tg bio">🧬</span>`, `${esc(label)}` +
         (could.length ? ` <span class="unk">· could be ${esc(could.slice(0, 5).join(", "))}${could.length > 5 ? "…" : ""}</span>` : "")));
     }
     if (todo.length) rows.push(`<div class="lg-h">Unscanned</div>` + todo.join(""));
@@ -6174,7 +6183,7 @@ function setHereMode(mode) {
 }
 let lastHereCtx = null, lastHereDest = null, lastHerePlan = null;
 // S30: the first stop picked (in another window, by the overlay's player): Here's order and numbers follow it
-const herePlanKey = () => JSON.stringify((data && data.plan_first) || null);
+const herePlanKey = () => JSON.stringify([(data && data.plan_first) || null, (data && data.plan_skip) || null]);
 // the body targeted in-game, as Here last drew it (its heading-to line and highlighted row follow the target)
 const hereDestKey = () => { const d = data && data.destination; return d ? `${posId()}|${d.body_id ?? ""}` : ""; };
 // Tree mode: the same table rows in orbital order, each child indented under its parent. A barycentre
@@ -6336,6 +6345,16 @@ async function setPlanFirst(sys, body) {
   catch (err) { r = {error: err.message}; }
   if (r.error) { toast(`could not change the order: ${r.error}`); return; }
   data.plan_first = r.plan_first || null;
+  if (!body) data.plan_skip = null;   // ↺ order puts the skipped bodies back too (the server's set_plan_first)
+  render(); if (hereData) renderHere();
+}
+// the system map's Skip and its "skipped:" line: a body out of the order, or back in (POST api/plan/skip)
+async function setPlanSkip(sys, body, skip) {
+  let r;
+  try { r = await apiJson("api/plan/skip", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({id64: sys, body, skip})}); }
+  catch (err) { r = {error: err.message}; }
+  if (r.error) { toast(`could not change the order: ${r.error}`); return; }
+  data.plan_skip = r.plan_skip || null; data.plan_first = r.plan_first || null;
   render(); if (hereData) renderHere();
 }
 document.addEventListener("click", e => {
@@ -9162,10 +9181,10 @@ function sysMount(name, box) {
     `<button type="button" class="mini" data-sysfit="all" title="frame every body">Whole system</button></span></div>` +
     `<div class="sysmain"><div class="syscv"><canvas aria-label="the system in 3D: drag to turn, right-drag to move, the wheel to zoom" role="img"></canvas>` +
     `<div class="sysnote" hidden></div></div><div class="syslist"></div></div>` +
-    `<div class="syshint">drag to turn · right-drag to move · wheel or pinch to zoom · tap a number to go there first · not to scale</div>`;
+    `<div class="syshint">drag to turn · right-drag to move · wheel or pinch to zoom · tap a body or a row for why it is on the list · not to scale</div>`;
   const inst = {name, box, canvas: box.querySelector("canvas"), list: box.querySelector(".syslist"), note: box.querySelector(".sysnote"),
                 cam: {yaw: -0.6, pitch: 0.75, zoom: 1, panX: 0, panY: 0, drag: null, user: false, fit: "route"},
-                sys: null, model: null, hits: [], hover: null, listKey: null};
+                sys: null, model: null, hits: [], hover: null, listKey: null, open: null};
   camControls(inst.canvas, inst.cam, {
     draw: () => sysDraw(inst),
     moved: real => { if (real) inst.cam.user = true; if (popId === "sys") hidePop(); inst.hover = null; },
@@ -9174,6 +9193,15 @@ function sysMount(name, box) {
     tap: (e, touch) => sysTap(inst, e, touch),
     leave: () => { inst.hover = null; if (popId === "sys" && !pop.classList.contains("taps")) hidePop(); },
   }, {minZoom: 0.3, maxZoom: 40});
+  // the list: a row opens its drop-down (again, or another row, closes it); Skip, Do first, a skipped body put back
+  inst.list.addEventListener("click", e => {
+    const sys = hereData && String(hereData.id64) === posId() ? String(hereData.id64) : null, t = e.target;
+    const sk = t.closest("[data-sysskip]"), fs = t.closest("[data-sysfirst]"), un = t.closest("[data-sysunskip]"), row = t.closest("[data-sysopen]");
+    if (sk && sys) { e.preventDefault(); inst.open = null; setPlanSkip(sys, sk.dataset.sysskip, true); return; }
+    if (fs && sys) { e.preventDefault(); setPlanFirst(sys, fs.dataset.sysfirst); return; }
+    if (un && sys) { e.preventDefault(); setPlanSkip(sys, un.dataset.sysunskip, false); return; }
+    if (row) { e.preventDefault(); sysOpen(inst, row.dataset.sysopen); }
+  });
   box.addEventListener("click", e => {
     const f = e.target.closest("[data-sysfit]"); if (!f) return;
     const c = inst.cam;
@@ -9215,8 +9243,10 @@ function sysShow(inst) {
   inst.note.textContent = hasNodes ? "" : SYS.error && !geo ? `the map could not be loaded: ${SYS.error}` : !geo || !c.hd ? "loading…"
     : "scan the system to see its bodies (the FSS gives each its orbit)";
   inst.box.querySelector(".sys-k").textContent = m && m.start ? `System map · from ${m.start.body}` : "System map";
-  const lk = JSON.stringify([posId(), m && m.stops.map(s => [s.n, s.it.body, s.it.kind, s.it.skip, s.it.first, legDist(s.it)]), m && m.start && m.start.body]);
-  if (lk !== inst.listKey) { inst.listKey = lk; inst.list.innerHTML = sysListHtml(m, c.l); }
+  if (inst.open && !(m && m.stops.some(s => s.it.body === inst.open))) inst.open = null;   // done or skipped: closed
+  const lk = JSON.stringify([posId(), m && m.stops.map(s => [s.n, s.it.body, s.it.kind, s.it.skip, s.it.first, legDist(s.it)]), m && m.start && m.start.body,
+    inst.open, inst.open && c.hd ? (c.hd.bodies || []).find(b => b.name === inst.open) : null, c.l ? planSkipFor(c.l) : []]);
+  if (lk !== inst.listKey) { inst.listKey = lk; inst.list.innerHTML = sysListHtml(m, c.l, inst.open, c.hd); }
   sysDraw(inst);
 }
 // a stop in words: what it is and what it pays ("🧬 4 · Ammonia · up to 19.3M", "map · Water world T · 1.1M/3.4M")
@@ -9240,20 +9270,55 @@ function sysWhyFull(it) {
 }
 // the stop list beside (or under) the map: where the order starts, then each stop with why it is there and its leg; a
 // tap makes it the first stop (Here's data-firststop, as on the schematic)
-function sysListHtml(m, l) {
+// a stop's drop-down (the author, 2026-11-08: a tap shows why it is on the list, with Skip and Do first at its top): the
+// body's class, its mapping value without and with your bonuses, each genus with its likely species and value (and
+// with the first footfall ×5 when it still pays it), what is sampled or lost, its gravity and air, its leg
+function sysDetailHtml(body, its, hd, m) {
+  const b = hd && (hd.bodies || []).find(x => x.name === body), f = b ? bioFactor(b) : 1, first = its.some(it => it.first);
+  const v5 = v => !v ? "" : f === 5 ? `${credits(v / 5)} · <b>${credits(v)}</b> with first footfall` : credits(v);
+  const out = [`<div class="sysact"><button type="button" class="mini" data-sysskip="${esc(body)}" title="leave it out of the order (put it back from the skipped line)">Skip</button>` +
+    (first ? ` <span class="ok">★ your first stop</span>` : ` <button type="button" class="mini" data-sysfirst="${esc(body)}" title="make it the first stop">Do first</button>`) + `</div>`];
+  if (b) out.push(`<div>${esc(b.subtype || b.type || "")}${b.terraformable ? " · terraformable" : ""}${b.landable ? " · landable" : ""}` +
+    `${b.gravity != null && b.type === "Planet" ? ` · ${b.gravity.toFixed(2)} g` : ""}${b.atmosphere && b.atmosphere !== "None" ? ` · ${esc(b.atmosphere)}` : ""}</div>`);
+  const mp = its.find(it => it.kind === "map");
+  if (mp) { const u = mp.u, a = u.value_mapped, bo = u.value_mapped_bonus;
+    out.push(`<div>🗺 map: ${a ? credits(a) : u.increment ? `+${credits(u.increment)}` : "?"}${bo && credits(bo) !== credits(a) ? ` · <b>${credits(bo)}</b> with your bonuses` : ""}</div>`); }
+  if (b && its.some(it => it.kind === "bio")) {
+    const fx = f === 5 ? ` <span class="ok">first footfall ×5</span>` : "";
+    out.push(`<div>🧬 ${b.bio || bioGenera(b).length} signal${(b.bio || bioGenera(b).length) === 1 ? "" : "s"}${fx}</div>`);
+    for (const g of bioGenera(b)) {
+      const o = (b.organics || []).find(o => o.genus === g), x = (b.bio_guess || []).find(q => q.genus === g);
+      const sp = o && o.species ? o.species : x && x.best ? x.best : "";
+      const state = !o ? (x && x.best ? "likely " : "") : o.lost ? `<span class="bad">lost ✗</span> ` : o.done ? `<span class="ok">✓ done</span> ` : `${o.samples}/3 `;
+      out.push(`<div class="sysg"><b>${esc(g)}</b> ${state}${esc(sp.split(" ").slice(1).join(" "))}${(o && o.value) || (x && x.value) ? ` · ${v5(((o && o.value) || x.value) * f)}` : ""}</div>`);
+    }
+    const unk = bioUnknown(b);
+    if (unk) { const could = [...new Set(unk.list.map(x => x.genus).filter(Boolean))];
+      out.push(`<div class="sysg">${esc(unk.label)}${could.length ? ` <span class="unk">· could be ${esc(could.slice(0, 5).join(", "))}</span>` : ""}</div>`); }
+  }
+  // its leg from where you are; from the arrival star too once you have moved on from it
+  const leg = its.find(it => it.ls), star = b && b.dist_ls != null && !(leg && !(m.start && m.start.at)) ? `${lsShort(b.dist_ls)} from the arrival star` : "";
+  if (leg || star) out.push(`<div class="unk">${[leg ? `${legDist(leg)} from ${esc(m.start ? m.start.body : "where you are")}` : "", star].filter(Boolean).join(" · ")}</div>`);
+  return `<div class="sysrow sysdetail">${out.join("")}</div>`;
+}
+function sysListHtml(m, l, open = null, hd = null) {
   if (!m) return "";
   const head = m.start ? `<div class="sysrow sysfrom"><span class="sysnum">⌖</span><span class="sysnm">${esc(m.start.body)}</span>` +
     `<span class="syswhy">${m.start.at ? "last at" : "arrived at"}</span><span class="sysleg"></span></div>` : "";
   const rows = m.stops.map(({n, it}) => {
     const [what, pays] = sysWhy(it);
-    return `<div class="sysrow${it.skip ? " skip" : ""}${it.first ? " first" : ""}${n === 1 ? " next" : ""}" data-firststop="${esc(it.body)}" title="${esc(stopTitle(n, it))}">` +
+    const its = m.stops.filter(s => s.it.body === it.body), last = its[its.length - 1].n === n;
+    return `<div class="sysrow${it.skip ? " skip" : ""}${it.first ? " first" : ""}${n === 1 ? " next" : ""}${open === it.body ? " open" : ""}" data-sysopen="${esc(it.body)}" title="tap for why it is on the list, Skip and Do first">` +
       `<span class="sysnum">${n}</span><span class="sysnm">${esc(it.body)}</span><span class="syswhy">${what}${pays ? ` <span class="syspay">${pays}</span>` : ""}</span>` +
-      `<span class="sysleg">${legDist(it)}</span></div>`;   // skip?: the row dimmed, its number dashed (the title says it)
+      `<span class="sysleg">${legDist(it)}</span></div>` +   // skip?: the row dimmed, its number dashed
+      (open === it.body && last ? sysDetailHtml(it.body, its.map(s => s.it), hd, m) : "");
   }).join("");
   const none = !m.stops.length ? `<div class="sysrow sysnone unk">${l && !l.honked ? "honk first" : l && l.unscanned > 0 ? `${nBodies(l.unscanned)} to find in the FSS` : "nothing worth the trip here"}</div>` : "";
   const miss = m.missing.length ? `<div class="sysrow sysmiss unk">not on the map (no orbit in the scan): ${esc(andList(m.missing))}</div>` : "";
-  const reset = l && planFirstFor(l) ? `<div class="sysrow sysfoot">${planResetHtml(l)}</div>` : "";
-  return head + rows + none + miss + reset;
+  const skipped = l ? planSkipFor(l) : [];
+  const back = skipped.length ? `<div class="sysrow sysfoot unk">skipped: ${skipped.map(b => `<button type="button" class="mini" data-sysunskip="${esc(b)}" title="put it back in the order">${esc(b)} ↺</button>`).join(" ")}</div>` : "";
+  const reset = l && (planFirstFor(l) || skipped.length) ? `<div class="sysrow sysfoot">${planResetHtml(l)}</div>` : "";
+  return head + rows + none + miss + back + reset;
 }
 // the projection: the camera turned (yaw about the orbits' pole, then pitch), framed on `fit` (the route: where you
 // are and the stops; all: every node and the root's orbits), zoomed and moved; a little perspective
@@ -9413,8 +9478,16 @@ function sysHover(inst, e) {
 }
 function sysTap(inst, e, touch) {
   const h = sysHitAt(inst, e); if (!h) { if (popId === "sys") hidePop(); return; }
-  if (h.kind === "stop" && !touch && hereData && String(hereData.id64) === posId()) { setPlanFirst(String(hereData.id64), h.body); return; }
+  // a stop (its number, or the body itself): its drop-down in the list, as a tap on its row (the author, 2026-11-08)
+  const stop = h.kind === "stop" ? h.body : h.n && h.n.body && inst.model && inst.model.stops.some(s => s.it.body === h.n.body.name) ? h.n.body.name : null;
+  if (stop) { if (popId === "sys") hidePop(); sysOpen(inst, stop, true); return; }
   popId = "sys"; pop.innerHTML = sysCardHtml(inst, h.n, touch); pop.style.display = "block"; pop.classList.toggle("taps", touch); placePop(e.clientX, e.clientY);
+}
+// open a stop's drop-down (the same one again closes it), the row scrolled into view when asked (a tap on the map)
+function sysOpen(inst, body, scroll = false) {
+  inst.open = inst.open === body ? null : body;
+  sysShow(inst);
+  if (scroll && inst.open) { const r = inst.list.querySelector(".sysrow.open"); if (r && r.scrollIntoView) r.scrollIntoView({block: "nearest"}); }
 }
 // Now's map: shown beside the text (desktop) or in its place (flip); hidden while the surface map comes first
 function renderNowSys(m) {

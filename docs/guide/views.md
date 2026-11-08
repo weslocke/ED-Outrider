@@ -302,8 +302,13 @@ is dimmed, its number dashed. The body's class and both map totals are in its ca
 - **Moving it:** drag to turn, right-drag to move, the wheel to zoom (on a tablet: one finger turns, two move and
   pinch). **Fit** frames the order, where you are and where you have been (as it opens, and again at each new system, until you move it),
   **Top** looks straight down, **Whole system** frames every body.
-- **Hover or tap a body** for its card (its class, how far it is from where you are, and what it is on the route for);
-  click a stop's number, or a row of the list, to go there first, as on Here's schematic.
+- **Tap a stop** (a row of the list, its number or the body on the map) for why it is on the list, under its row: the
+  body's class, its mapping value now and with your bonuses, each genus with its likely species and value (and with the
+  ×5 first footfall when it still pays it), what is sampled or lost, its gravity and air, and its leg. At the top,
+  **Skip** leaves it out of the order everywhere (Next, the "then:" line, the map, the overlay) until you leave the
+  system; the **skipped:** line under the list puts one back, and ↺ order puts back all of them. **Do first** makes it
+  the first stop. Tap it again, or another, to close it. **Hover or tap any other body** for its card (its class and how
+  far it is from where you are).
 - **On the PC** the 🪐 map button opens it beside Now's text, and it stays on in that browser until you turn it off; in
   a window too narrow for both (under 1200 px) it is **Text | 🪐 Map** instead, the map in place of the text with the
   headline card above it on one line.
@@ -628,7 +633,8 @@ their letters), a crosshair along your heading and quarter rings, to read a bear
 - **Unscanned:** at the top of the legend, the biology on this body you have not sampled yet: each genus the DSS
   found that you have not started, with its likely species and value ("Stratum · likely Tectonicas · 19.0M"), one whose
   samples were lost with the ship ("lost ✗ · sample again"), and before the DSS how many signals there are and what they
-  could be. Each leaves the list at its first sample (it moves to the samples above it); the heading goes when nothing is
+  could be. Each leaves the list once you have identified it: tagged with the composition scanner (it moves to Tagged;
+  before the DSS a tag accounts for one of the signals) or sampled (it moves to Samples); the heading goes when nothing is
   left. Geology is not listed: the DSS writes only how many geological signals a body has, never which features.
 - **Tagged plants** (as BioScan's waypoints): point the composition scanner at a plant, from the ship flying low,
   the SRV or on foot, and Outrider remembers where it is, as a hollow ring in the species' colour. Faint means a

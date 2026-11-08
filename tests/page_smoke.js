@@ -6306,6 +6306,11 @@ const releasePayloads = async () => {
       const todo = () => [...document.querySelectorAll("#nowMapLegend .lg-todo")].map(r => r.textContent.replace(/\\s+/g, " ").trim());
       const head = () => [...document.querySelectorAll("#nowMapLegend .lg-h")].map(h => h.textContent.split(" (")[0]);
       obData = {region: 18, bodies: [body(false)]}; renderNow(); o.genus = nowSlot("next"); o.todo = [todo(), head()];
+      // a tag is a positive identification (the author, 2026-11-08: Bacterium Volu tagged and still Unscanned): it leaves
+      const tag = (species, genus) => ({species, genus, lat: data.surface.lat + 0.0001, lon: data.surface.lon, dist: 30, bearing: 0, way: "ahead", current: false, usable: true});
+      const keepTags = data.surface.tags;
+      data.surface = Object.assign({}, data.surface, {tags: [tag("Stratum Tectonicas", "Stratum")]}); renderNow(); o.todoTagged = [todo(), head()];
+      data.surface = Object.assign({}, data.surface, {tags: keepTags});
       obData = {region: 18, bodies: [body(true)]}; renderNow(); o.done = nowSlot("next"); o.todoDone = [todo(), head()];
       // round 11 G: a species whose samples died with the ship is to do again, not "nothing left on this body"
       const lostBody = body(true);
@@ -6314,6 +6319,8 @@ const releasePayloads = async () => {
       // before the DSS: the signals and what they could be; one genus sampled without a DSS, one signal left
       obData = {region: 18, bodies: [{name: "8", genera: [], bio: 3, geo: 2, value_parts: {bio_factor: 1}, organics: [],
         bio_guess: [{genus: "Stratum"}, {genus: "Bacterium"}, {genus: "Fungoida"}, {genus: "Osseus"}]}]}; renderNow(); o.todoPre = todo();
+      data.surface = Object.assign({}, data.surface, {tags: [tag("Bacterium Volu", "Bacterium")]}); renderNow(); o.todoPreTag = todo();
+      data.surface = Object.assign({}, data.surface, {tags: keepTags});
       obData = {region: 18, bodies: [{name: "8", genera: [], bio: 2, geo: 0, value_parts: {bio_factor: 1}, bio_guess: [{genus: "Stratum"}, {genus: "Bacterium"}],
         organics: [{genus: "Bacterium", species: "Bacterium Volu", samples: 1, done: false, lost: false}]}]}; renderNow(); o.todoOne = todo();
       // round 11 B: docked at a planetary port (Docked|Landed): the system's layout (Route, Boxel, session), no map
@@ -6345,7 +6352,9 @@ const releasePayloads = async () => {
       todo: [["🧬 Stratum likely Tectonicas · 19.0M"], ["Unscanned", "Samples", "Rigs", "Sites and places"]],
       todoDone: [[], ["Samples", "Rigs", "Sites and places"]], todoLost: ["🧬 Bacterium lost ✗ sample again · 1.0M"],
       todoPre: ["🧬 3 bio signals, not DSS'd · could be Stratum, Bacterium, Fungoida"],
-      todoOne: ["🧬 1 more bio signal not identified · could be Stratum"]};
+      todoOne: ["🧬 1 more bio signal not identified · could be Stratum"],
+      todoTagged: [[], ["Samples", "Tagged", "Rigs", "Sites and places"]],
+      todoPreTag: ["🧬 2 more bio signals not identified · could be Stratum, Fungoida"]};
     const test = (v, x) => x instanceof RegExp ? x.test(v || "") : JSON.stringify(v) === JSON.stringify(x);
     const bad = [...Object.keys(want).filter(k => !test(got[k], want[k])), ...Object.keys(wantMap).filter(k => !test(map[k], wantMap[k])).map(k => "map." + k)];
     const good = !bad.length && errors.length === before;
@@ -6381,7 +6390,7 @@ const releasePayloads = async () => {
       document.querySelector('[data-sysmap="toggle"]').click(); hold(); render();
       o.on = [box.hidden, nv.classList.contains("syson"), nv.classList.contains("sysflip"), localStorage.getItem("nowSysMap"), sw(), !!nowSlot("fuel")];
       o.list = [...box.querySelectorAll(".sysrow")].map(r => [...r.children].map(c => c.textContent.trim()).filter(Boolean).join(" "));
-      o.rowFirst = [...box.querySelectorAll(".sysrow[data-firststop]")].map(r => r.dataset.firststop);
+      o.rowFirst = [...box.querySelectorAll(".sysrow[data-firststop]")].length;   // a row no longer sets the first stop
       o.k = box.querySelector(".sys-k").textContent;
       const m = sysInst.now.model; o.model = [m.stops.map(s => s.n + ":" + s.it.body), m.legs.length, m.start && m.start.body, m.missing];
       // narrow: the map in place of the text, the headline alone above it
@@ -6400,6 +6409,28 @@ const releasePayloads = async () => {
       const y0 = sysInst.now.cam.yaw; pe("pointerdown", 100, 100); pe("pointermove", 180, 100); pe("pointerup", 180, 100);
       o.cam = [+(sysInst.now.cam.yaw - y0).toFixed(2), sysInst.now.cam.user];
       box.querySelector('[data-sysfit="route"]').click(); o.cam.push(sysInst.now.cam.user, sysInst.now.cam.fit);
+      return JSON.stringify(o); })()`));
+    // a stop's drop-down (the author, 2026-11-08): a tap opens why it is on the list with Skip and Do first, again closes
+    // it; Skip leaves it out (POST api/plan/skip, answered here) and the skipped line puts it back; Do first as before
+    const drop = JSON.parse(await w.eval(`(async () => { ${sysJs}
+      const o = {}, posts = [], realApi = apiJson, sysId = posId(), tick = () => new Promise(r => setTimeout(r, 0));
+      const geo = sysInst.now.model ? SYS.data : null;
+      apiJson = async (u, opt) => { const b = JSON.parse(opt.body); posts.push([u, b]);
+        return u === "api/plan/skip" ? {ok: true, plan_skip: b.skip ? {id64: sysId, bodies: [b.body]} : null, plan_first: null}
+          : {ok: true, plan_first: b.body ? {id64: sysId, body: b.body} : null}; };
+      const row = () => box.querySelector('.sysrow[data-sysopen="1 e"]'), det = () => box.querySelector(".sysdetail");
+      const text = e => e ? [...e.children].map(c => c.textContent.replace(/\\s+/g, " ").trim()).join(" | ") : null;
+      wide(1920); view = "now"; render();
+      row().click();
+      o.open = [row().classList.contains("open"), [...det().querySelectorAll(".sysact button")].map(b => b.textContent), text(det())];
+      row().click(); o.closed = det();
+      row().click(); det().querySelector("[data-sysskip]").click(); await tick(); await tick();
+      o.skipped = [JSON.stringify(posts[0]), !!row(), text(box.querySelector(".sysfoot"))];
+      box.querySelector('[data-sysunskip="1 e"]').click(); await tick(); await tick();
+      o.back = [JSON.stringify(posts[1]), !!row(), !!box.querySelector("[data-sysunskip]")];
+      row().click(); det().querySelector("[data-sysfirst]").click(); await tick(); await tick();
+      o.first = [JSON.stringify(posts[2]), text(det() && det().querySelector(".sysact"))];
+      apiJson = realApi; data.plan_first = null; data.plan_skip = null; render();
       return JSON.stringify(o); })()`));
     // on a body: the surface map first, System for that body only
     w.eval(nowCaseJs("body"));
@@ -6442,7 +6473,7 @@ const releasePayloads = async () => {
       off: [true, false, ["🪐 map"]],
       on: [false, true, false, "true", ["🪐 map*"], true],
       list: ["⌖ Smojooe VW-E c11-11 arrived at", "1 1 e bio 3 · 64.6M 930 ls"],
-      rowFirst: ["1 e"], k: /^System map · from /,
+      rowFirst: 0, k: /^System map · from /,
       model: [["1:1 e"], 1, "Smojooe VW-E c11-11", []],
       flip: [true, ["Text", "🪐 Map*"], null, true],
       text: [true, "false", true],
@@ -6454,6 +6485,15 @@ const releasePayloads = async () => {
     const bad = [...Object.keys(want).filter(k => !test(got[k], want[k])), ...Object.keys(wantSurf).filter(k => !test(surf[k], wantSurf[k])).map(k => "surf." + k)];
     if (!(star[0] > 0.3 && star[1] === true && star[2] === null)) bad.push("star " + JSON.stringify(star));
     if (JSON.stringify(here) !== JSON.stringify([false, true, true, true, true])) bad.push("here " + JSON.stringify(here));
+    const wantDrop = {open: [true, ["Skip", "Do first"], "Skip Do first | Rocky body · 0.10 g · Ammonia | 🧬 3 signals first footfall ×5 | 3 signals, not DSS'd | 930 ls from Smojooe VW-E c11-11"],
+      closed: null, skipped: [JSON.stringify(["api/plan/skip", {id64: "5031335599722", body: "1 e", skip: true}]), false, "1 e ↺"],
+      back: [JSON.stringify(["api/plan/skip", {id64: "5031335599722", body: "1 e", skip: false}]), true, false],
+      first: [JSON.stringify(["api/plan/first", {id64: "5031335599722", body: "1 e"}]), "Skip | ★ your first stop"]};
+    for (const k of Object.keys(wantDrop)) {
+      const v = drop[k], x = wantDrop[k];
+      const okK = Array.isArray(x) ? x.every((xi, i) => xi instanceof RegExp ? xi.test(v && v[i] || "") : JSON.stringify(v && v[i]) === JSON.stringify(xi)) : JSON.stringify(v) === JSON.stringify(x);
+      if (!okK) bad.push("drop." + k + " " + JSON.stringify(v));
+    }
     const good = !bad.length && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| system map |", good ? "Now's toggle (beside, in place, remembered), the list with distances, the note, the surface map first and System per body, Here's 3D, the shared camera"

@@ -1286,6 +1286,45 @@ class Server(unittest.TestCase):
         self.assertEqual(self.state.plan_first_body(), "B 1")                        # an older arrival read late: kept
         self.assertNotIn("plan_first", ed_outrider.RESET_JOURNAL_DATA)              # live-only: a re-read keeps it
 
+    def test_skipped_bodies_for_every_window(self):
+        """The system map's Skip (the author, 2026-11-08): POST /api/plan/skip leaves a body out of the order on the
+        server, for the system you are in only, so the overlay's panels agree with the page; put back one at a time,
+        or all by ↺ order; a skipped first stop is no longer first; forgotten by an arrival elsewhere."""
+        from aiohttp.test_utils import TestClient, TestServer
+        self.assertEqual([it["body"] for it in O.plan_items(LEAVING_PLAN, 500_000, 10_000_000, skip=("A 3",))], ["B 2", "B 1"])
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Test Sector AB-C d1-2",
+                                    "SystemAddress": 77, "StarPos": [0, 0, 0]})
+        self.state.system_detail = lambda id64: DETAIL_PLAN if id64 == 77 else None
+        self.state.overlay_cfg.update(enabled=True, now_panel=True)
+        self.state.journals.status_json = {"live": True, "flags": ed_outrider.FLAG_SUPERCRUISE, "gui_focus": 0}
+        panel = lambda pid: next(texts(p) for p in self.state.overlay_panels(now=1010) if p["id"] == pid)
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                post = lambda body: c.post("/api/plan/skip", json=body)
+                out = [(await post({"id64": "77", "body": "B 2", "skip": True})).status, self.state.plan_skip()]
+                out += [(await post(b)).status for b in ({"id64": "78", "body": "B 2", "skip": True}, {"id64": "77", "body": "B 2"},
+                                                         {"id64": "77", "body": None, "skip": True}, {"id64": "77", "body": "x" * 101, "skip": True})]
+                return out
+        ok, kept, elsewhere, no_skip, no_body, long = asyncio.run(go())
+        self.assertEqual((ok, kept, elsewhere, no_skip, no_body, long), (200, {"id64": "77", "bodies": ["B 2"]}, 409, 400, 400, 400))
+        self.assertEqual(self.state.payload()["plan_skip"], {"id64": "77", "bodies": ["B 2"]})
+        self.assertFalse(any("B 2" in t and t.startswith("①") for t in panel("system")))
+        self.assertTrue(any(t.startswith("Next: map A 3") or t.startswith("Next: bio on A 3") for t in panel("now")), panel("now"))
+        self.assertTrue(self.state.set_plan_skip(77, "B 2", False))                      # put back
+        self.assertIsNone(self.state.plan_skip())
+        self.state.set_plan_first(77, "B 1")
+        self.state.set_plan_skip(77, "B 1", True)
+        self.state.set_plan_skip(77, "A 3", True)
+        self.assertEqual((self.state.plan_first(), self.state.plan_skip_bodies()), (None, ["B 1", "A 3"]))   # skipped: not first
+        self.state.set_plan_first(77, None)                                              # ↺ order: every body back
+        self.assertIsNone(self.state.plan_skip())
+        self.state.set_plan_skip(77, "B 1", True)
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(2000), "StarSystem": "Elsewhere",
+                                    "SystemAddress": 78, "StarPos": [5, 0, 0]})
+        self.assertIsNone(self.state.plan_skip())                                        # another system: forgotten
+        self.assertNotIn("plan_skip", ed_outrider.RESET_JOURNAL_DATA)                   # live-only: a re-read keeps it
+
     def test_nothing_while_the_game_loads(self):
         """After a crash the old Status.json still says live: the relaunched game's loading screens, before the menu
         and after it, showed the dead session's panels until the new session's Location (the author, 2026-10-11)."""

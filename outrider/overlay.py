@@ -539,7 +539,7 @@ def stop_glyph(n):
     return chr(0x245F + n) if 1 <= n <= 20 else f"({n})"
 
 
-def system_rows(detail, highlight, bio_min, codex=True, first=None):
+def system_rows(detail, highlight, bio_min, codex=True, first=None, skip=()):
     """The system panel's bodies: what is left to do on each body worth it, then the valuable ones already done.
     [{name, what, status, value, key (warn/accent/good), mark, todo, dist, stops}], the credits left in the whole
     system, and how many bodies have something left that is under your levels (not listed; a body someone else mapped
@@ -548,7 +548,7 @@ def system_rows(detail, highlight, bio_min, codex=True, first=None):
     their numbers in it (two on a body with both mapping and bio), the rows by their first number. A body you have not
     scanned (Spansh's record only: the order cannot know it yet) is listed by its value as before, unnumbered, after
     them; the done ones last."""
-    plan = plan_items((detail or {}).get("leaving"), highlight, bio_min, codex, first)
+    plan = plan_items((detail or {}).get("leaving"), highlight, bio_min, codex, first, skip=skip)
     stops = {}
     for n, it in enumerate(plan, 1):
         stops.setdefault(it["body"], {}).setdefault("n", []).append(n)
@@ -593,10 +593,10 @@ def system_rows(detail, highlight, bio_min, codex=True, first=None):
     return rows, left_all, under
 
 
-def system_panel(detail, pal, size="normal", highlight=500_000, bio_min=10_000_000, max_rows=8, codex=True, first=None):
+def system_panel(detail, pal, size="normal", highlight=500_000, bio_min=10_000_000, max_rows=8, codex=True, first=None, skip=()):
     """The system panel ("worth your time"): None when no body is worth listing. codex, first: as plan_items (the
     config's codex_interesting, the first stop you picked here)."""
-    rows, left_all, under = system_rows(detail, highlight, bio_min, codex, first)
+    rows, left_all, under = system_rows(detail, highlight, bio_min, codex, first, skip)
     if not rows:
         return None
     shown = rows[:max_rows]
@@ -1353,12 +1353,13 @@ def plan_start(leaving):
             "dist": dist if dist is not None else (None if leaving.get("at_body") else 0)}
 
 
-def plan_items(leaving, highlight, bio_min, codex=True, first=None, memo=PLAN_MEMO):
+def plan_items(leaving, highlight, bio_min, codex=True, first=None, memo=PLAN_MEMO, skip=()):
     """Now's suggested order (page.js worthLeavingFor + planItems) with the config's levels: the mapping over the
     highlight level (or special) and the bio over bio_min (or started, unpriced, or new to your codex), ordered by
     order_plan from where you are. [{kind, body, dist, pos, value, sec, ls, leg_approx, detour, per_min, u|b}].
     first: the body you made the first stop (S30, State.plan_first_body): it leads, its items `first` True; a body not in
-    the list changes nothing. memo: the orders last shown per system (plan_keep), None for none."""
+    the list changes nothing. memo: the orders last shown per system (plan_keep), None for none. skip: the bodies you
+    skipped there (State.plan_skip_bodies): left out."""
     if not leaving:
         return []
     bio = [b for b in leaving.get("bio_pending") or [] if b.get("partial") or b.get("potential") is None
@@ -1369,6 +1370,8 @@ def plan_items(leaving, highlight, bio_min, codex=True, first=None, memo=PLAN_ME
               "value": u.get("increment"), "u": u} for u in maps]
     items += [{"kind": "bio", "body": b.get("body"), "dist": b.get("dist_ls"), "pos": b.get("pos"), "approx": bool(b.get("approx")),
                "value": None if b.get("potential") is None else b["potential"] * (b.get("factor") or 1), "b": b} for b in bio]
+    if skip:
+        items = [it for it in items if it["body"] not in skip]
     key = str(leaving["id64"]) if leaving.get("id64") is not None and memo is not None else None
     m = memo.get(key) if key else None
     items, bodies = order_plan(items, plan_start(leaving), first, m["bodies"] if m and m["first"] == first else None)
@@ -1626,7 +1629,7 @@ def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, h
         rows += on_body_parts(ob, info.get("body"), info.get("sampling"), NOW_W - 2 * PAD, size)
     else:
         l = info.get("leaving")
-        plan = plan_items(l, highlight, bio_min, codex, info.get("plan_first")) if info.get("detail_ready") else []
+        plan = plan_items(l, highlight, bio_min, codex, info.get("plan_first"), skip=info.get("plan_skip") or ()) if info.get("detail_ready") else []
         dest = info.get("destination")
         right = (f"{credits(info['value_now'])} here", "muted") if info.get("value_now") else None
         rescan = ((l or {}).get("rescan") or {}).get("bodies") if info.get("detail_ready") else None

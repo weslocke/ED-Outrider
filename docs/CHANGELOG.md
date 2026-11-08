@@ -2,6 +2,24 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · A stop's drop-down on the system map, Skip; a tag leaves Unscanned
+- **The drop-down** (the author): a tap on a stop (its row, its number or its body on the map) opens why it is on the
+  list under its row, instead of making it the first stop: the class, the mapping value now and with your bonuses, each
+  genus with its likely species and value (×5 first footfall shown when it still pays it), what is sampled or lost, the
+  gravity and air, its leg. Again, or another, closes it. `sysDetailHtml`, `sysOpen`.
+- **Skip and Do first** at its top. Skip leaves the whole body out of the order everywhere until you leave the system:
+  `State.plan_skip` / `set_plan_skip`, POST `/api/plan/skip`, the payload's `plan_skip`, page.js `planItems` and the
+  overlay's `plan_items(skip=)` (Now and System panels). The list's "skipped:" line puts one back; ↺ order puts back all
+  of them (POST /api/plan/first with null clears them). A skipped first stop is no longer first. The leaving warning
+  still names it.
+- **A tag leaves Unscanned** (the author: Bacterium Volu tagged and still listed): a species tagged with the
+  composition scanner is identified, so its genus leaves Unscanned (it is under Tagged); before the DSS a tag of a
+  genus not named yet accounts for one of the signals.
+- **Docs:** views.md, DESIGN_NOTES, AGENT_GUIDE.
+- **Tests:** test_overlay (skip: the endpoint, the panels, put back, ↺ order, a skipped first stop, an arrival
+  elsewhere); page_smoke's system map (open, close, Skip, put back, Do first; no row sets the first stop) and now tidy
+  slots (a tag leaves Unscanned; before the DSS a tag counts for one signal); each fails without its change.
+
 ## 2026-11-08 · The surface map's Unscanned
 The author: the surface map's legend showed bio only once it was being sampled; an "Unscanned" section should list what
 the body still has, each gone as it is done.

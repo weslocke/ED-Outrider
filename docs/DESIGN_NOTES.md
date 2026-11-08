@@ -624,6 +624,11 @@ upstream project's choices, not rules of the game.
     the system changes and every five minutes while a map shows: close moons move noticeably in an hour.
   - **Where you are** is the body you were last at (`at_body`), else the arrival star: between bodies Outrider does
     not know your place in space.
+  - **A tap on a stop opens its drop-down** (the author, 2026-11-08), not "go there first": why it is on the list
+    (`sysDetailHtml`, from Here's row: the same figures as Here), with **Skip** and **Do first** at its top. Skip is kept
+    on the server like the first stop (`plan_skip`, POST `/api/plan/skip`), so the tablet, the PC and the overlay agree;
+    a whole body (its map and its bio), for this visit; the leaving warning still names a skipped body (it is still
+    unfinished). ↺ order puts back the skips too.
   - **Where you have been** (the author, 2026-11-08: "previous routes shown with a broken grey line"): every body you
     were at this visit (`Journals.body_trail`, the same moves as `body_last`, one entry per stay; the summary's `trail`)
     from the arrival star, a grey dashed line with a ✓ on each body, no distances (flown legs). Every body, not only

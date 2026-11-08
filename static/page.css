@@ -1332,7 +1332,14 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 .sysrow { grid-column: 1 / -1; display: grid; grid-template-columns: 2em minmax(0, auto) auto auto; grid-template-columns: subgrid;
   column-gap: .7em; align-items: baseline; padding: .32em .2em; white-space: nowrap;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); cursor: pointer; }
-.sysrow.sysnone, .sysrow.sysfoot, .sysrow.sysmiss { width: 0; min-width: 100%; white-space: normal; }
+.sysrow.sysnone, .sysrow.sysfoot, .sysrow.sysmiss, .sysrow.sysdetail { width: 0; min-width: 100%; white-space: normal; }
+/* a stop's drop-down (the author, 2026-11-08): under its row, Skip and Do first on top, then why it is on the list */
+.sysrow.open { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.sysrow.sysdetail { display: block; cursor: default; padding: .35em .6em .55em 2.7em; font-size: .92em; line-height: 1.45;
+  background: color-mix(in srgb, var(--panel) 70%, transparent); }
+.sysdetail .sysact { display: flex; gap: .5em; align-items: center; margin-bottom: .3em; }
+.sysdetail .sysact .mini { font-size: 1em; padding: .2em .9em; min-height: 2em; }
+.sysdetail .sysg { padding-left: 1.2em; }
 .sysrow .sysnum { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6em; height: 1.6em; border-radius: .8em;
   background: var(--info); color: var(--bg); font-weight: 700; font-size: .85em; }
 .sysrow.next .sysnum { background: var(--accent); }
@@ -1344,7 +1351,8 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 .sysrow.skip { opacity: .7; } .sysrow.skip .sysnum { background: none; border: 1px dashed var(--muted); color: var(--muted); }
 .sysrow.first .sysnm::after { content: " ★"; color: var(--accent); }
 .sysrow.sysnone, .sysrow.sysfoot, .sysrow.sysmiss { display: block; cursor: default; }
-.sysrow:not(.sysfrom):not(.sysnone):not(.sysfoot):hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.sysrow.sysfoot .mini { margin: 2px 0; }
+.sysrow:not(.sysfrom):not(.sysnone):not(.sysfoot):not(.sysdetail):hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .syshint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 #here3d { height: min(78vh, 900px); margin-top: 6px; }
 /* Now with the map beside the text (a wide window): the text left at the sizes the surface map's split uses, the map

@@ -1726,6 +1726,7 @@ RANK_NAMES = {   # the two ranks an explorer cares about
 # Engineering materials: the login snapshot and everything that adds or spends them (see outrider.materials).
 # Flying to and from a body: the approach briefing, the leaving-a-body warning (and what you touched down on).
 BODY_EVENTS = ("ApproachBody", "LeaveBody", "Touchdown")
+PLAN_SKIP_MAX = 50     # bodies skipped per system (State.set_plan_skip)
 BODY_TRAIL_MAX = 100   # the system map's trail (Journals.body_trail): bodies kept per visit, the newest
 # The SRV on a body, and what its refinery collects (1 t per MiningRefined): "Mined previously" per body (own_mined).
 # These are read for that alone; the body comes from SRV_TRACKED (see Journals.track_srv).
@@ -2638,7 +2639,7 @@ def stamp_next_stop(db):
     """A next stop chosen (or a first stop picked, S30's plan_first) before set_ts was stored: stamp it with the last
     arrival before the reset deletes 'pos', so the re-read that follows does not clear it on an earlier visit to that
     system (or an earlier arrival elsewhere)."""
-    for key in ("next_stop", "plan_first"):
+    for key in ("next_stop", "plan_first", "plan_skip"):
         ns = meta_get(db, key)
         if ns and not ns.get("set_ts"):
             ns["set_ts"] = (meta_get(db, "pos") or {}).get("ts") or iso_ts(time.time())
@@ -4736,9 +4737,10 @@ class Journals:
             meta_set(self.db, "next_stop", None)
         # the first stop picked in the system you were in (S30) is forgotten by a jump: it does not come back on a
         # return days later
-        pf = meta_get(self.db, "plan_first")
-        if pf and pf.get("id64") != str(id64) and current and ts > (pf.get("set_ts") or ""):
-            meta_set(self.db, "plan_first", None)
+        for key in ("plan_first", "plan_skip"):   # the bodies you skipped there too (the author, 2026-11-08)
+            pf = meta_get(self.db, key)
+            if pf and pf.get("id64") != str(id64) and current and ts > (pf.get("set_ts") or ""):
+                meta_set(self.db, key, None)
         if current:
             if name in ("FSDJump", "CarrierJump") and self.pos and self.pos["id64"] != id64:
                 self.note_region(self.pos, id64, x, y, z, ts)
@@ -9745,6 +9747,7 @@ class State:
             "streak": self.streak(),
             "destination": self.destination(),
             "plan_first": self.plan_first(),   # S30: the body you made the suggested order's first stop here
+            "plan_skip": self.plan_skip(),     # the bodies you skipped here (the system map's Skip)
             "moments": self.moments_summary(),
             "chat": list(self.journals.chat),   # #17: live chat, in memory only (the page reads it aloud if asked)
             "mining_version": self.journals.mining_version,   # mining B: the page reads /api/mining/hotspots again on a change
@@ -11138,14 +11141,43 @@ class State:
         return (self.plan_first() or {}).get("body")
 
     def set_plan_first(self, id64, body):
-        """POST /api/plan/first: `body` first in the system you are in (id64), or None: the suggested order again.
-        False when id64 is not where you are."""
+        """POST /api/plan/first: `body` first in the system you are in (id64), or None: the suggested order again (the
+        bodies you skipped there come back too: "↺ order"). False when id64 is not where you are."""
         pos = self.journals.pos
         if not pos or pos["id64"] != id64:
             return False
         # set_ts, the arrival here (as next_stop's): a later arrival elsewhere forgets it, a re-read's older ones do not
         meta_set(self.db, "plan_first", {"id64": str(id64), "body": body, "set_ts": pos.get("ts") or iso_ts(time.time())}
                  if body else None)
+        if not body:
+            meta_set(self.db, "plan_skip", None)
+        self.db.commit()
+        self.bump()
+        return True
+
+    def plan_skip(self):
+        """The bodies you skipped in the system you are in (the system map's Skip, the author, 2026-11-08): {id64,
+        bodies} or None. Left out of the suggested order everywhere (page.js planItems, the overlay's plan_items) until
+        you put one back, ↺ order, or an arrival in another system (Journals.handle, as plan_first)."""
+        ps, pos = meta_get(self.db, "plan_skip"), self.journals.pos
+        if isinstance(ps, dict) and pos and ps.get("id64") == str(pos["id64"]) and ps.get("bodies"):
+            return {"id64": ps["id64"], "bodies": list(ps["bodies"])}
+        return None
+
+    def plan_skip_bodies(self):
+        return (self.plan_skip() or {}).get("bodies") or []
+
+    def set_plan_skip(self, id64, body, skip):
+        """POST /api/plan/skip: `body` skipped (skip True) or put back (False) in the system you are in. A skipped body
+        that was the first stop is no longer first. False when id64 is not where you are."""
+        pos = self.journals.pos
+        if not pos or pos["id64"] != id64:
+            return False
+        bodies = [b for b in self.plan_skip_bodies() if b != body] + ([body] if skip else [])
+        meta_set(self.db, "plan_skip", {"id64": str(id64), "bodies": bodies[-PLAN_SKIP_MAX:],
+                                        "set_ts": pos.get("ts") or iso_ts(time.time())} if bodies else None)
+        if skip and self.plan_first_body() == body:
+            meta_set(self.db, "plan_first", None)
         self.db.commit()
         self.bump()
         return True
@@ -11250,7 +11282,7 @@ class State:
                 "rebuy": risk_rebuy(self.journals.ship), "since_sale": self.since_sale(),
                 "on_body": ob, "body": bodies.get(ob["body"]) if ob else None,
                 "sampling": self.sampling_summary() if ob else None,
-                "detail_ready": detail is not None, "leaving": (detail or {}).get("leaving"), "plan_first": self.plan_first_body(),
+                "detail_ready": detail is not None, "leaving": (detail or {}).get("leaving"), "plan_first": self.plan_first_body(), "plan_skip": self.plan_skip_bodies(),
                 "value_now": (self.systems.get(pos["id64"]) or {}).get("value_now"),
                 "destination": dest["name"] if dest else None,
                 "destination_ls": dest.get("dist_ls") if dest else None,
@@ -11376,7 +11408,8 @@ class State:
                 fresh = True
             if fresh:
                 p = outrider.overlay.system_panel(self.overlay_detail(pos["id64"]), pal, size["system"], BODY_HIGHLIGHT, BIO_MIN,
-                                                  codex=CODEX_INTERESTING, first=self.plan_first_body())
+                                                  codex=CODEX_INTERESTING, first=self.plan_first_body(),
+                                                  skip=self.plan_skip_bodies())
                 if p:
                     out.append(p)
         # the Target panel: in your ship, not landed (landed, in the SRV or on foot the radar has the screen); docked
@@ -24839,6 +24872,21 @@ def make_app(state, hosts=None):
             return web.json_response({"error": "not the system you are in"}, status=409)
         return web.json_response({"ok": True, "plan_first": state.plan_first()})
 
+    async def plan_skip_view(request):
+        """{id64, body, skip: true | false}: that body left out of the suggested order of the system you are in, or put
+        back (the system map's Skip and its "skipped:" line)."""
+        body = await json_object(request)
+        try:
+            id64 = parse_id64((body or {})["id64"])
+        except (ValueError, KeyError, TypeError, OverflowError):
+            id64 = None
+        name, skip = (body or {}).get("body"), (body or {}).get("skip")
+        if id64 is None or not (isinstance(name, str) and 0 < len(name) <= 100) or not isinstance(skip, bool):
+            return web.json_response({"error": "expected {id64, body: a body's name, skip: true or false}"}, status=400)
+        if not state.set_plan_skip(id64, name, skip):
+            return web.json_response({"error": "not the system you are in"}, status=409)
+        return web.json_response({"ok": True, "plan_skip": state.plan_skip(), "plan_first": state.plan_first()})
+
     async def hush_view(request):
         """{mode: "10m" | "30m" | "jump" | "off"}: hush the voice (danger lines still speak) or end the hush."""
         body = await json_object(request)
@@ -25518,6 +25566,7 @@ def make_app(state, hosts=None):
     app.router.add_post("/api/speech/unban", speech_ban_view)
     app.router.add_post("/api/hush", hush_view)
     app.router.add_post("/api/plan/first", plan_first_view)
+    app.router.add_post("/api/plan/skip", plan_skip_view)
     app.router.add_post("/api/copilot", copilot_view)
     app.router.add_post("/api/backup", backup_view)
     app.router.add_post("/api/bio/colours", bio_colours_view)
