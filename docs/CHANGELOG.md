@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The system map shows where you have been
+The author: keep the stops already done on the map, the route between them "shown with a broken grey line", while the
+list drops them (keeping "last at").
+- **The trail:** from the arrival star, every body you were at this visit (approached, landed, dropped at or mapped), in
+  order: a grey dashed line, a grey ✓ on each body (a body still to do keeps its number), no distances; its card says
+  "you were here this visit". Every body, not only finished stops (the author's choice). Fit frames it as well.
+- **Server:** `Journals.body_trail` (meta, one entry per stay, this visit's only, cleared by a re-read like
+  `body_last`), sent as the leaving summary's `trail` (`State.visit_trail`).
+- **Docs:** views.md, DESIGN_NOTES (the system map), AGENT_GUIDE.
+- **Tests:** test_orbits (the trail in order, a stay once, a ring adds nothing, another system and a new visit start
+  afresh, kept in meta and reset); page_unit (the model's trail, the card's line, Fit framing a visited body: fails
+  without it).
+
 ## 2026-11-08 · Mapping a body moves the order's start
 The author mapped A 1 from supercruise; A 1 left the order, and A 2's leg read 260 ls (from the arrival star) where it
 was 140 ls from A 1. The order starts from the body you are at or were last at (`Journals.body_last`), which moved only

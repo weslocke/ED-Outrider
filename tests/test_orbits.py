@@ -345,6 +345,35 @@ class ServerPlaces(unittest.TestCase):
                        "BodyName": f"{self.NAME} A 1 A Ring", "BodyID": a1 + 50, "ProbesUsed": 1, "EfficiencyTarget": 0})
         self.assertEqual(self.state.leaving_summary(self.id64)["at_body"]["body"], "A 1")  # a ring: still A 1
 
+    def test_the_visit_trail(self):
+        """The system map's trail (the author, 2026-11-08: "previous routes shown with a broken grey line"): every body
+        you were at this visit, in order, one entry per stay; a ring's probe adds nothing; another system and a new visit
+        start it afresh; kept in meta and cleared by a re-read."""
+        bid = {x["BodyName"][len(self.NAME) + 1:]: x["BodyID"] for x in self.lines if x.get("BodyName", "").startswith(self.NAME + " ")}
+        mapped = lambda ts, name: {"event": "SAAScanComplete", "timestamp": ts, "SystemAddress": self.id64,
+                                   "BodyName": f"{self.NAME} {name}", "BodyID": bid.get(name, 99), "ProbesUsed": 5, "EfficiencyTarget": 7}
+        approach = lambda ts, name: {"event": "ApproachBody", "timestamp": ts, "StarSystem": self.NAME,
+                                     "SystemAddress": self.id64, "Body": f"{self.NAME} {name}", "BodyID": bid[name]}
+        trail = lambda: [t["body"] for t in self.state.leaving_summary(self.id64)["trail"]]
+        self.assertEqual(trail(), [])                                                       # arrived: nothing yet
+        self.j.handle(mapped("2026-11-07T03:10:00Z", "A 1"))
+        self.j.handle(approach("2026-11-07T03:12:00Z", "A 1"))                              # the same body: one stay
+        self.j.handle(mapped("2026-11-07T03:20:00Z", "A 1 A Ring"))                         # a ring: no place
+        self.j.handle(mapped("2026-11-07T03:30:00Z", "A 2"))
+        self.j.handle(approach("2026-11-07T03:40:00Z", "A 1"))                              # back again: a new stay
+        self.assertEqual(trail(), ["A 1", "A 2", "A 1"])
+        self.assertEqual([e["body_id"] for e in ed_outrider.meta_get(self.db, "body_trail")], [bid["A 1"], bid["A 2"], bid["A 1"]])
+        self.assertIn("'body_trail'", ed_outrider.RESET_JOURNAL_DATA)                       # rebuilt by a re-read
+        self.j.handle({"event": "FSDJump", "timestamp": "2026-11-07T04:00:00Z", "StarSystem": "Elsewhere", "SystemAddress": 99,
+                       "StarPos": [1, 0, 0]})
+        self.assertEqual(self.state.leaving_summary(self.id64)["trail"], [])                # another system
+        self.j.handle({"event": "FSDJump", "timestamp": "2026-11-07T04:10:00Z", "StarSystem": self.NAME,
+                       "SystemAddress": self.id64, "StarPos": [0, 0, 0]})
+        self.assertEqual(trail(), [])                                                       # back: a new visit
+        self.j.handle(mapped("2026-11-07T04:20:00Z", "A 2"))
+        self.assertEqual(trail(), ["A 2"])
+        self.assertEqual(len(ed_outrider.meta_get(self.db, "body_trail")), 1)               # the old visit's dropped
+
     def test_an_approach_moves_the_start_without_a_scan(self):
         """Review round 11 A: every body scanned, then an approach (no Scan, so scan_version stays): the overlay's cached
         detail and the page's Here key (the payload's body_seq) must follow it, or Next, the schematic and the overlay

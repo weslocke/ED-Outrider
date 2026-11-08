@@ -293,12 +293,14 @@ order on it: a line from where you are (the body you were last at, else the arri
 numbered (two numbers on a body with both mapping and bio), each leg with its distance ("1.5k ls", "≈" when about), a
 stop not worth the trip dashed. It is not to scale: each family (a star's planets, a planet's moons) is squashed on its
 own log scale, so a moon a few light seconds from its planet stays clear of it and a far star stays on the screen; the
-faint rings round the star (1k, 2k ls...) give a sense of size. Beside it (or under it) the stops are listed, one line
+faint rings round the star (1k, 2k ls...) give a sense of size. Where you have been this visit is a grey broken line
+from the arrival star through each body you were at (approached, landed, dropped at or mapped), each with a grey ✓; the
+list leaves those out, starting at the body you were last at. Beside it (or under it) the stops are listed, one line
 each: the body, why it is there and what it pays ("map 1.9M", "bio 3 · 19.3M"), and its leg. A stop not worth the trip
 is dimmed, its number dashed. The body's class and both map totals are in its card (hover it, or tap it on the map).
 
 - **Moving it:** drag to turn, right-drag to move, the wheel to zoom (on a tablet: one finger turns, two move and
-  pinch). **Fit** frames the order and where you are (as it opens, and again at each new system, until you move it),
+  pinch). **Fit** frames the order, where you are and where you have been (as it opens, and again at each new system, until you move it),
   **Top** looks straight down, **Whole system** frames every body.
 - **Hover or tap a body** for its card (its class, how far it is from where you are, and what it is on the route for);
   click a stop's number, or a row of the list, to go there first, as on Here's schematic.

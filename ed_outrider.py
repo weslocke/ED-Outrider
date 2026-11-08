@@ -1726,6 +1726,7 @@ RANK_NAMES = {   # the two ranks an explorer cares about
 # Engineering materials: the login snapshot and everything that adds or spends them (see outrider.materials).
 # Flying to and from a body: the approach briefing, the leaving-a-body warning (and what you touched down on).
 BODY_EVENTS = ("ApproachBody", "LeaveBody", "Touchdown")
+BODY_TRAIL_MAX = 100   # the system map's trail (Journals.body_trail): bodies kept per visit, the newest
 # The SRV on a body, and what its refinery collects (1 t per MiningRefined): "Mined previously" per body (own_mined).
 # These are read for that alone; the body comes from SRV_TRACKED (see Journals.track_srv).
 # Liftoff: only for the surface map's ship marker (a Liftoff while aboard takes it away).
@@ -2442,7 +2443,7 @@ DELETE FROM own_systems; DELETE FROM own_bodies; DELETE FROM own_signals; DELETE
 DELETE FROM own_firsts; DELETE FROM own_mapped; DELETE FROM own_footfall; DELETE FROM sales; DELETE FROM deaths;
 DELETE FROM own_genera; DELETE FROM own_organic; DELETE FROM codex; DELETE FROM bio_sales;
 DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM phenomena_sites; DELETE FROM poi; DELETE FROM sale_events; DELETE FROM logins;
-DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here', 'body_last', 'on_foot');
+DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here', 'body_last', 'body_trail', 'on_foot');
 DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population; DELETE FROM stations;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
 DELETE FROM mining_sales; DELETE FROM meta WHERE key IN ('mined_stock', 'mined_carrier', 'mined_died', 'sale_dock');
@@ -3455,6 +3456,9 @@ class Journals:
         # the body you were last at in a system ({system, body_id, name, ts}: ApproachBody, Touchdown, a SupercruiseExit
         # or a login at a planet or star), kept after you leave it: where the suggested order starts (State.at_body)
         ("body_last", "body_last", None),
+        # every body you were at in the system you are in this visit, in order ({system, body_id, name, ts}, the same
+        # moves as body_last; one entry per stay): the system map's trail of where you have been (State.visit_trail)
+        ("body_trail", "body_trail", list),
         ("ship_marker", "ship_marker", None),
         # cargo (outrider/cargo.py): the ship's hold folded as it is read; the market you are docked at, for a
         # CargoTransfer (it names no carrier). Kept here, not taken from self.docked: a re-read replays the docks in
@@ -5017,10 +5021,19 @@ class Journals:
         if not here or ts < (self.body_last or {}).get("ts", ""):
             return
         self.body_last = dict(here, name=name, ts=ts)
+        # the trail: this system's, this visit's (a jump in again starts it afresh), a body again in a row one stay
+        since = (self.pos or {}).get("ts") or "" if (self.pos or {}).get("id64") == here["system"] else ts
+        trail = [e for e in self.body_trail or [] if e.get("system") == here["system"] and (e.get("ts") or "") >= since]
+        if trail and trail[-1].get("body_id") == here["body_id"]:
+            trail[-1] = dict(trail[-1], ts=ts)
+        else:
+            trail.append(dict(self.body_last))
+        self.body_trail = trail[-BODY_TRAIL_MAX:]
         # Here and the overlay ask for the order again (round 11 A); every move, the same body's too: its ts decides
         # whether it is this visit's (at_body), and these lines come a few times per body at most
         self.body_last_seq += 1
         meta_set(self.db, "body_last", self.body_last)
+        meta_set(self.db, "body_trail", self.body_trail)
 
     def track_srv(self, name, ev, ts):
         """Which body your SRV is out on, for MiningRefined (which names neither body nor position).
@@ -14145,7 +14158,20 @@ class State:
         if out is not None:
             places = out.pop("_places", {})
             out["at_body"] = self.at_body(id64, places)
+            out["trail"] = self.visit_trail(id64, places)
         return out
+
+    def visit_trail(self, id64, places):
+        """Every body you were at in the system you are in this visit, in order: [{body}] (Journals.body_trail), the
+        last of them where the order starts (at_body). Another system, or no body yet: []."""
+        pos = self.journals.pos
+        if not pos or pos.get("id64") != id64:
+            return []
+        since = pos.get("ts") or ""
+        name = lambda e: (places.get(e.get("body_id")) or places.get(str(e.get("body_id"))) or {}).get("body") \
+            or short_name(pos.get("name"), e.get("name") or "")
+        return [{"body": name(e)} for e in self.journals.body_trail or []
+                if e.get("system") == id64 and (e.get("ts") or "") >= since]
 
     def at_body(self, id64, places):
         """Where the suggested order starts in the system you are in: the body you are at or were last at there this

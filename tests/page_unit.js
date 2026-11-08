@@ -681,18 +681,36 @@ t("the system map's orbits, rings and model: the body on its drawn orbit, legs f
     const sq = sysSquash(geo.nodes), f = sq.scale.get(0);
     const pts = sysOrbitPoints(geo.nodes[1].orbit, [0, 0, 0], f, 8);
     const hd = {id64: "9", bodies: [{name: "Sys", body_id: 0, type: "Star"}, {name: "1", body_id: 1, type: "Planet"}, {name: "2", body_id: 2, type: "Planet"}, {name: "3", body_id: 3, type: "Planet"}]};
-    const l = {at_body: {body: "1", pos: [1000, 0, 0]}, arrival: {body: "Sys", pos: [0, 0, 0], dist_ls: 0}};
-    const plan = [{body: "2", kind: "bio", ls: 4123, legApprox: false}, {body: "2", kind: "map", ls: 0}, {body: "3", kind: "map", ls: 50, legApprox: true}];
+    const l = {at_body: {body: "1", pos: [1000, 0, 0]}, arrival: {body: "Sys", pos: [0, 0, 0], dist_ls: 0},
+               trail: [{body: "2"}, {body: "2"}, {body: "9 not drawn"}, {body: "1"}]};
+    const plan = [{body: "2", kind: "bio", ls: 4123, legApprox: false, b: {signals: 2}}, {body: "2", kind: "map", ls: 0, u: {subtype: "Icy body"}},
+                  {body: "3", kind: "map", ls: 50, legApprox: true, u: {subtype: "Icy body"}}];
     const m = sysModel(geo, hd, plan, l);
     return JSON.stringify({onOrbit: pts.every(p => Math.abs(Math.hypot(...p) - f(1000)) < 1e-9), closed: Math.hypot(...pts[0].map((x, i) => x - pts[8][i])) < 1e-9, n: pts.length,
       rings: sysRings(geo.nodes, 0, f).map(r => r.ls), start: m.start, stops: m.stops.map(s => [s.n, s.id]),
-      legs: m.legs.map(g => [g.from, g.to, legDist(g.it)]), missing: m.missing}); })()`));
+      legs: m.legs.map(g => [g.from, g.to, legDist(g.it)]), missing: m.missing, trail: m.trail,
+      card: [0, 1, 2].map(id => /you were here this visit/.test(sysCardHtml({model: m}, m.nodes.find(n => n.id === id), false)))}); })()`));
   assert.ok(out.onOrbit && out.closed && out.n === 9, JSON.stringify(out));   // on the circle, round to the start
   assert.deepStrictEqual(out.rings, [1000, 2000, 5000]);                     // 1-2-5 between ¾ of the nearest and 1¼ of the farthest
   assert.deepStrictEqual(out.start, {id: 1, body: "1", at: true});           // where you were last
   assert.deepStrictEqual(out.stops, [[1, 2], [2, 2]]);                       // a body's map and bio, one place, two numbers
   assert.deepStrictEqual(out.legs, [[1, 2, "4.1k ls"]]);                     // a distance, never a time; none to the same body
   assert.deepStrictEqual(out.missing, ["3"]);                                // a stop with no place: listed, not drawn
+  assert.deepStrictEqual(out.trail, [0, 2, 1]);                             // where you have been: the arrival star, then each stay
+  assert.deepStrictEqual(out.card, [false, true, true]);                     // its card says so (the arrival star aside)
+});
+t("the system map's Fit frames where you have been this visit as well as the stops (the trail)", () => {
+  const out = JSON.parse(ev(`(() => {
+    const P = (id, x, y) => ({id, kind: "Planet", parent: 0, pos: [x, y, 0], approx: false, orbit: null});
+    const geo = {nodes: [{id: 0, kind: "Star", parent: null, pos: [0, 0, 0], approx: false, orbit: null}, P(1, 1000, 0), P(2, -1000, 0), P(3, 0, 1000)]};
+    const hd = {id64: "9", bodies: [{name: "Sys", body_id: 0, type: "Star"}, ...[1, 2, 3].map(i => ({name: String(i), body_id: i, type: "Planet"}))]};
+    const l = {at_body: {body: "3"}, arrival: {body: "Sys"}, trail: [{body: "2"}, {body: "3"}]};
+    const m = sysModel(geo, hd, [{body: "1", kind: "map", ls: 1400}], l);
+    const proj = sysCamera({model: m, cam: {yaw: 0, pitch: Math.PI / 2, zoom: 1, panX: 0, panY: 0, fit: "route"}}, 400, 300);
+    const q = proj(m.nodes.find(n => n.id === 2).drawn);
+    return JSON.stringify({trail: m.trail, inFrame: q[0] >= 0 && q[0] <= 400 && q[1] >= 0 && q[1] <= 300}); })()`));
+  assert.deepStrictEqual(out.trail, [0, 2, 3]);
+  assert.ok(out.inFrame, JSON.stringify(out));   // 2: visited, neither a stop nor where you are, still on the screen
 });
 (async () => {
   for (const [name, fn] of later) {

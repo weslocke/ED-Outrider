@@ -619,6 +619,11 @@ upstream project's choices, not rules of the game.
     the system changes and every five minutes while a map shows: close moons move noticeably in an hour.
   - **Where you are** is the body you were last at (`at_body`), else the arrival star: between bodies Outrider does
     not know your place in space.
+  - **Where you have been** (the author, 2026-11-08: "previous routes shown with a broken grey line"): every body you
+    were at this visit (`Journals.body_trail`, the same moves as `body_last`, one entry per stay; the summary's `trail`)
+    from the arrival star, a grey dashed line with a ✓ on each body, no distances (flown legs). Every body, not only
+    finished stops (the author's choice): the route as flown. The list keeps only "last at" and what is left. Fit
+    frames the trail too.
   - **The surface map first** on a body ("Surface Map always has priority (unless they turn it off)"): System picked
     there (`sysPick`) lasts for that body only; a take-off or another body gives the surface map back.
   - **Pictures** are the schematic's (`bodyLook`, `paintBody`), facing the screen: they do not turn with the camera,

@@ -9103,7 +9103,14 @@ function sysModel(geo, hd, plan, l) {
     if (prev && prev.id !== node.id) legs.push({from: prev.id, to: node.id, it});
     prev = node;
   });
-  return {nodes, rootId: root ? root.id : null, scale: sq.scale, depth: sq.depth, stops, legs, missing,
+  // where you have been this visit (the author, 2026-11-08): the arrival star, then each body you were at (l.trail, the
+  // server's Journals.body_trail), the last of them where the order starts; a body again in a row once
+  const trail = [];
+  [l && l.arrival && l.arrival.body, ...(l && l.trail || []).map(t => t.body)].forEach(name => {
+    const node = name != null ? byName.get(name) : null;
+    if (node && trail[trail.length - 1] !== node.id) trail.push(node.id);
+  });
+  return {nodes, rootId: root ? root.id : null, scale: sq.scale, depth: sq.depth, stops, legs, missing, trail,
           start: startNode ? {id: startNode.id, body: st.body, at: !!(l && l.at_body)} : null};
 }
 // a body's name on the map: a star that bears the system's name by its class ("K star"), else its short name
@@ -9235,7 +9242,9 @@ function sysCamera(inst, W, H) {
   const byId = new Map(m.nodes.map(n => [n.id, n]));
   let pts = [];
   if (c.fit === "route" && m.stops.length) {
-    pts = [...m.stops.map(s => byId.get(s.id).drawn), ...(m.start ? [byId.get(m.start.id).drawn] : [])];
+    // the route: the stops, where you are and where you have been this visit (the trail)
+    pts = [...m.stops.map(s => byId.get(s.id).drawn), ...(m.start ? [byId.get(m.start.id).drawn] : []),
+           ...(m.trail || []).filter(id => byId.has(id)).map(id => byId.get(id).drawn)];
   } else {
     pts = m.nodes.map(n => n.drawn);
     for (const n of m.nodes) if (n.orbit && m.depth.get(n.id) === 1) pts.push(...sysOrbitPoints(n.orbit, byId.get(n.parent).drawn, m.scale.get(n.parent), 24));
@@ -9281,6 +9290,12 @@ function sysDraw(inst) {
     const pts = sysOrbitPoints(n.orbit, byId.get(n.parent).drawn, m.scale.get(n.parent));
     g.beginPath(); pts.forEach((p, i) => { const q = proj(p); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); });
     const d = m.depth.get(n.id); g.strokeStyle = C.info; g.globalAlpha = d === 1 ? 0.42 : 0.2; g.lineWidth = d === 1 ? 1.3 : 1; g.stroke(); g.globalAlpha = 1;
+  }
+  // where you have been this visit: a broken grey line through it, no distances (they are flown)
+  const trail = (m.trail || []).filter(id => byId.has(id)).map(id => proj(byId.get(id).drawn));
+  if (trail.length > 1) {
+    g.beginPath(); trail.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]));
+    g.setLineDash([5, 6]); g.strokeStyle = C.muted; g.globalAlpha = 0.75; g.lineWidth = 1.6; g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
   }
   // the route's legs, from where you are
   const legs = m.legs.map(l => ({l, a: proj(byId.get(l.from).drawn), b: proj(byId.get(l.to).drawn)}));
@@ -9331,12 +9346,23 @@ function sysDraw(inst) {
   // a body's numbers together ("2,3": its map and its bio), out from its family's centre for a moon
   const nums = new Map();
   for (const s of m.stops) { if (!nums.has(s.id)) nums.set(s.id, []); nums.get(s.id).push(s); }
+  const badgeAt = (id, R, q, r) => {
+    const n = byId.get(id); let ux = 0.7, uy = -0.7;
+    if (m.depth.get(id) > 1 && byId.has(n.parent)) { const p = proj(byId.get(n.parent).drawn), dx = q[0] - p[0], dy = q[1] - p[1], d = Math.hypot(dx, dy); if (d > 1) { ux = dx / d; uy = dy / d; } }
+    return [q[0] + ux * (R + r + 3), q[1] + uy * (R + r + 3)];
+  };
+  // a body you were at (not the arrival star, not one still to do): a grey ✓ where its number was
+  for (const id of new Set((m.trail || []).slice(1))) {
+    const a0 = at.get(id); if (!a0 || nums.has(id)) continue;
+    const r = font * 0.62, [x, y] = badgeAt(id, a0.R, a0.q, r);
+    g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fillStyle = C.bg; g.globalAlpha = 0.85; g.fill(); g.globalAlpha = 1;
+    g.strokeStyle = C.muted; g.lineWidth = 1.2; g.stroke();
+    g.fillStyle = C.muted; g.font = `700 ${font - 2}px system-ui, sans-serif`; g.textAlign = "center"; g.fillText("✓", x, y + 1); g.textAlign = "left";
+  }
   for (const [id, ss] of nums) {
     const a0 = at.get(id); if (!a0) continue;
     const {q, R} = a0, n = byId.get(id), t = ss.map(s => s.n).join(","), r = font * 0.72, w = Math.max(2 * r, g.measureText(t).width + 10);
-    let ux = 0.7, uy = -0.7;
-    if (m.depth.get(id) > 1 && byId.has(n.parent)) { const p = proj(byId.get(n.parent).drawn), dx = q[0] - p[0], dy = q[1] - p[1], d = Math.hypot(dx, dy); if (d > 1) { ux = dx / d; uy = dy / d; } }
-    const x = q[0] + ux * (R + r + 3), y = q[1] + uy * (R + r + 3), first = ss[0].n === 1, skip = ss.every(s => s.it.skip);
+    const [x, y] = badgeAt(id, R, q, r), first = ss[0].n === 1, skip = ss.every(s => s.it.skip);
     g.beginPath(); g.roundRect ? g.roundRect(x - w / 2, y - r, w, 2 * r, r) : g.arc(x, y, r, 0, 2 * Math.PI);
     g.fillStyle = first ? C.accent : C.info; g.globalAlpha = skip ? 0.55 : 1; g.fill(); g.globalAlpha = 1;
     g.fillStyle = C.bg; g.font = `700 ${font - 1}px system-ui, sans-serif`; g.textAlign = "center"; g.fillText(t, x, y + 1); g.textAlign = "left";
@@ -9353,7 +9379,8 @@ function sysCardHtml(inst, n, touch) {
   const lines = [`<b>${esc(b.name)}</b> <span class="unk">${esc(b.subtype || b.type || "")}</span>`,
     d != null ? `${n.approx || st.approx ? "≈" : ""}${lsShort(d)} from ${esc(m.start.body)}` : st && st.id === n.id ? (m.start.at ? "where you were last" : "the arrival star") : "",
     ...ss.map(s => `${s.n}: ${sysWhyFull(s.it).filter(Boolean).join(" · ")}${s.it.skip ? " · skip?" : ""}`),
-    !ss.length && !(st && st.id === n.id) ? `<span class="unk">not on the suggested order</span>` : ""];
+    (m.trail || []).slice(1).includes(n.id) ? `<span class="unk">✓ you were here this visit</span>` : "",
+    !ss.length && !(st && st.id === n.id) && !(m.trail || []).includes(n.id) ? `<span class="unk">not on the suggested order</span>` : ""];
   return lines.filter(Boolean).map(x => `<div>${x}</div>`).join("") + (touch && ss.length && !ss[0].it.first
     ? `<div><button type="button" class="mini" data-firststop="${esc(b.name)}">go here first</button></div>` : "");
 }
