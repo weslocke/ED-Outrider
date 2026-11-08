@@ -1325,9 +1325,14 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 .sysnote { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1em;
   color: var(--muted); }
 #here3d > .sysnote { position: static; padding: 2em 1em; }
-.syslist { flex: 0 1 auto; max-height: 34%; overflow-y: auto; overscroll-behavior: contain; font-size: clamp(14px, 1.1vw, 18px); }
-.sysrow { display: grid; grid-template-columns: 2em 4.6em minmax(0, 1fr) auto; column-gap: .7em; align-items: baseline; padding: .32em .2em;
+/* the stop list: one line per stop, never wrapped (the author, 2026-11-08); its columns shared by every row (subgrid),
+   the name the only part that gives way (ellipsis); the notes under the rows wrap and never widen the list */
+.syslist { flex: 0 1 auto; max-height: 34%; overflow-y: auto; overscroll-behavior: contain; font-size: clamp(14px, 1.1vw, 18px);
+  display: grid; grid-template-columns: 2em minmax(0, auto) auto auto; column-gap: .7em; align-content: start; }
+.sysrow { grid-column: 1 / -1; display: grid; grid-template-columns: 2em minmax(0, auto) auto auto; grid-template-columns: subgrid;
+  column-gap: .7em; align-items: baseline; padding: .32em .2em; white-space: nowrap;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); cursor: pointer; }
+.sysrow.sysnone, .sysrow.sysfoot, .sysrow.sysmiss { width: 0; min-width: 100%; white-space: normal; }
 .sysrow .sysnum { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6em; height: 1.6em; border-radius: .8em;
   background: var(--info); color: var(--bg); font-weight: 700; font-size: .85em; }
 .sysrow.next .sysnum { background: var(--accent); }
@@ -1336,9 +1341,9 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 .sysrow .syswhy { color: var(--muted); min-width: 0; }
 .sysrow .syspay { color: var(--text); white-space: nowrap; }
 .sysrow .sysleg { color: var(--accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.sysrow.skip { opacity: .7; }
+.sysrow.skip { opacity: .7; } .sysrow.skip .sysnum { background: none; border: 1px dashed var(--muted); color: var(--muted); }
 .sysrow.first .sysnm::after { content: " ★"; color: var(--accent); }
-.sysrow.sysnone, .sysrow.sysfoot { display: block; cursor: default; }
+.sysrow.sysnone, .sysrow.sysfoot, .sysrow.sysmiss { display: block; cursor: default; }
 .sysrow:not(.sysfrom):not(.sysnone):not(.sysfoot):hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .syshint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 #here3d { height: min(78vh, 900px); margin-top: 6px; }
@@ -1361,7 +1366,7 @@ details.speechlog { margin-top: 12px; } details.speechlog summary { cursor: poin
 #nowView.sysflip .now-next { margin-bottom: .6vh; padding-top: .35em; padding-bottom: .4em; }
 @media (min-aspect-ratio: 5/4) and (min-width: 900px) {
   #nowView.sysflip .sysmain, #here3d .sysmain { flex-direction: row; }
-  #nowView.sysflip .syslist, #here3d .syslist { flex: 0 0 min(34%, 460px); max-height: none; }
+  #nowView.sysflip .syslist, #here3d .syslist { flex: 0 0 auto; width: max-content; max-width: 45%; max-height: none; }   /* as wide as its rows */
 }
 
 /* ---- the header tiles: ▴ folds them into one summary line (▾ unfolds), page.js drawTilesFold / tilesLineHtml ---- */

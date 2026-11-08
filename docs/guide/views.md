@@ -293,8 +293,9 @@ order on it: a line from where you are (the body you were last at, else the arri
 numbered (two numbers on a body with both mapping and bio), each leg with its distance ("1.5k ls", "≈" when about), a
 stop not worth the trip dashed. It is not to scale: each family (a star's planets, a planet's moons) is squashed on its
 own log scale, so a moon a few light seconds from its planet stays clear of it and a far star stays on the screen; the
-faint rings round the star (1k, 2k ls...) give a sense of size. Beside it (or under it) the stops are listed: the
-body, why it is there (🧬 signals and atmosphere, or the mapping), what it pays and its leg.
+faint rings round the star (1k, 2k ls...) give a sense of size. Beside it (or under it) the stops are listed, one line
+each: the body, why it is there and what it pays ("map 1.9M", "bio 3 · 19.3M"), and its leg. A stop not worth the trip
+is dimmed, its number dashed. The body's class and both map totals are in its card (hover it, or tap it on the map).
 
 - **Moving it:** drag to turn, right-drag to move, the wheel to zoom (on a tablet: one finger turns, two move and
   pinch). **Fit** frames the order and where you are (as it opens, and again at each new system, until you move it),

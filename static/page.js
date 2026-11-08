@@ -9192,7 +9192,19 @@ function sysShow(inst) {
   sysDraw(inst);
 }
 // a stop in words: what it is and what it pays ("🧬 4 · Ammonia · up to 19.3M", "map · Water world T · 1.1M/3.4M")
+// condensed, one line beside the map (the author, 2026-11-08: the A9 and A11 wrapped the class word by word): what and
+// the one figure that ranks it, the larger map total or the bio's "up to"; the class and the full totals are in the
+// body's card (hover, or tap the body on the map: sysWhyFull)
 function sysWhy(it) {
+  if (it.kind === "map") {
+    const u = it.u, top = Math.max(u.value_mapped || 0, u.value_mapped_bonus || 0);
+    return ["map", top ? credits(top) : u.increment ? `+${credits(u.increment)}` : ""];
+  }
+  const b = it.b, n = b.signals || (b.genera || []).length;
+  return [n ? `bio ${n} ·` : "bio", b.potential ? credits(pendingWorth(b)) : ""];
+}
+// the same in full, for the body's card: the class (T: terraformable), both map totals, the atmosphere, "up to"
+function sysWhyFull(it) {
   if (it.kind === "map") { const u = it.u; return [`map · ${esc(u.subtype)}${u.terraformable ? " T" : ""}`, mapTotals(u) || (u.increment ? `+${credits(u.increment)}` : "")]; }
   const b = it.b, n = b.signals || (b.genera || []).length;
   return [[n ? `🧬 ${n}` : "🧬", b.atmosphere && b.atmosphere !== "None" ? esc(b.atmosphere) : ""].filter(Boolean).join(" · "),
@@ -9207,11 +9219,11 @@ function sysListHtml(m, l) {
   const rows = m.stops.map(({n, it}) => {
     const [what, pays] = sysWhy(it);
     return `<div class="sysrow${it.skip ? " skip" : ""}${it.first ? " first" : ""}${n === 1 ? " next" : ""}" data-firststop="${esc(it.body)}" title="${esc(stopTitle(n, it))}">` +
-      `<span class="sysnum">${n}</span><span class="sysnm">${esc(it.body)}</span><span class="syswhy">${what}${pays ? ` <span class="syspay">${pays}</span>` : ""}` +
-      `${it.skip ? ` <span class="unk skipq">skip?</span>` : ""}</span><span class="sysleg">${legDist(it)}</span></div>`;
+      `<span class="sysnum">${n}</span><span class="sysnm">${esc(it.body)}</span><span class="syswhy">${what}${pays ? ` <span class="syspay">${pays}</span>` : ""}</span>` +
+      `<span class="sysleg">${legDist(it)}</span></div>`;   // skip?: the row dimmed, its number dashed (the title says it)
   }).join("");
   const none = !m.stops.length ? `<div class="sysrow sysnone unk">${l && !l.honked ? "honk first" : l && l.unscanned > 0 ? `${nBodies(l.unscanned)} to find in the FSS` : "nothing worth the trip here"}</div>` : "";
-  const miss = m.missing.length ? `<div class="sysrow unk">not on the map (no orbit in the scan): ${esc(andList(m.missing))}</div>` : "";
+  const miss = m.missing.length ? `<div class="sysrow sysmiss unk">not on the map (no orbit in the scan): ${esc(andList(m.missing))}</div>` : "";
   const reset = l && planFirstFor(l) ? `<div class="sysrow sysfoot">${planResetHtml(l)}</div>` : "";
   return head + rows + none + miss + reset;
 }
@@ -9340,7 +9352,7 @@ function sysCardHtml(inst, n, touch) {
   const ss = m.stops.filter(s => s.id === n.id);
   const lines = [`<b>${esc(b.name)}</b> <span class="unk">${esc(b.subtype || b.type || "")}</span>`,
     d != null ? `${n.approx || st.approx ? "≈" : ""}${lsShort(d)} from ${esc(m.start.body)}` : st && st.id === n.id ? (m.start.at ? "where you were last" : "the arrival star") : "",
-    ...ss.map(s => `${s.n}: ${sysWhy(s.it).filter(Boolean).join(" · ")}${s.it.skip ? " · skip?" : ""}`),
+    ...ss.map(s => `${s.n}: ${sysWhyFull(s.it).filter(Boolean).join(" · ")}${s.it.skip ? " · skip?" : ""}`),
     !ss.length && !(st && st.id === n.id) ? `<span class="unk">not on the suggested order</span>` : ""];
   return lines.filter(Boolean).map(x => `<div>${x}</div>`).join("") + (touch && ss.length && !ss[0].it.first
     ? `<div><button type="button" class="mini" data-firststop="${esc(b.name)}">go here first</button></div>` : "");

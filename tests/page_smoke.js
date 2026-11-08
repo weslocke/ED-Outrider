@@ -6429,7 +6429,7 @@ const releasePayloads = async () => {
     const want = {
       off: [true, false, ["🪐 map"]],
       on: [false, true, false, "true", ["🪐 map*"], true],
-      list: ["⌖ Smojooe VW-E c11-11 arrived at", "1 1 e 🧬 3 · Ammonia up to 64.6M 930 ls"],
+      list: ["⌖ Smojooe VW-E c11-11 arrived at", "1 1 e bio 3 · 64.6M 930 ls"],
       rowFirst: ["1 e"], k: /^System map · from /,
       model: [["1:1 e"], 1, "Smojooe VW-E c11-11", []],
       flip: [true, ["Text", "🪐 Map*"], null, true],
@@ -6521,6 +6521,41 @@ const releasePayloads = async () => {
         await page.close();
         return r;
       };
+      // the system map's stop list on the tablet (the author's A11 screenshot, 2026-11-08: "High metal content world T"
+      // wrapped word by word beside the map): on the A9 and the A11 it stays beside the map, one line per stop
+      const sysList = async (width, height) => {
+        const page = await browser.newPage({viewport: {width, height}, deviceScaleFactor: 1.5});
+        const perr = []; page.on("pageerror", e => perr.push(e.message));
+        await page.goto(base + "tablet");
+        await page.waitForFunction(() => typeof data !== "undefined" && !!data, null, {timeout: 30000});
+        await page.evaluate(() => { const f = window.fetch; window.fetch = (u, o) => /api\/nearby\?since=|api\/system_map/.test(String(u)) ? new Promise(() => {}) : f(u, o); });
+        await page.evaluate(nowCaseJs("system"));
+        const r = await page.evaluate(`(() => {
+          SYS.data = {id64: posId(), at: new Date().toISOString(), nodes: [
+            {id: 0, kind: "Star", parent: null, pos: [0, 0, 0], approx: false, orbit: null},
+            {id: 14, kind: "Planet", parent: 0, pos: [900, 120, 0], approx: false, orbit: {c: [0, 0, 0], u: [908, 0, 0], v: [0, 908, 0]}}]};
+          SYS.error = null; SYS.loading = false; SYS.key = posId() + "|" + hereKeyOf(posId()); SYS.at = Date.now();
+          localStorage.setItem("nowSysMap", "true"); view = "now"; render(); renderNow();
+          const box = document.getElementById("nowSys"), list = box.querySelector(".syslist");
+          const map = (n, body, sub, a, b, ls, skip) => ({n, it: {kind: "map", body, ls, skip, first: false, u: {subtype: sub, terraformable: true, value_mapped: a, value_mapped_bonus: b}}});
+          list.innerHTML = sysListHtml({start: {body: "A", at: false}, missing: [], stops: [
+            map(1, "A 1", "High metal content world", 658000, 1900000, 184, false),
+            map(2, "A 2", "High metal content world", 640000, 1800000, 140, true),
+            {n: 3, it: {kind: "bio", body: "2 c", ls: 1530, skip: false, first: false, b: {signals: 3, atmosphere: "Thin Ammonia", potential: 19300000, factor: 1}}},
+            map(4, "AB 12 c a", "Water world", 1100000, 3400000, 33000, false)]}, null);
+          const lb = list.getBoundingClientRect(), cv = box.querySelector(".syscv").getBoundingClientRect(), main = box.querySelector(".sysmain").getBoundingClientRect();
+          const rows = [...list.querySelectorAll(".sysrow")], fs = parseFloat(getComputedStyle(list).fontSize);
+          return {texts: rows.map(e => [...e.children].map(c => c.textContent.trim()).filter(Boolean).join(" ")),
+                  oneLine: rows.every(e => e.getBoundingClientRect().height <= fs * 2.4),
+                  clipped: rows.flatMap(e => [...e.querySelectorAll(".syswhy, .sysleg")]).filter(c => c.scrollWidth > c.clientWidth + 1).map(c => c.textContent),
+                  names: rows.every(e => e.querySelector(".sysnm").clientWidth > fs),
+                  beside: lb.left >= cv.right - 1 && lb.right <= main.right + 1, map: Math.round(cv.width)}; })()`);
+        r.errors = perr;
+        await page.close();
+        return r;
+      };
+      out.listA9 = await sysList(1006, 601);
+      out.listA11 = await sysList(1280, 800);
       out.a9 = await strip(1006, 601, "Smojooe VW-E c11-11");
       out.wideShort = await strip(1280, 800, "Sol");
     } finally { await browser.close(); }
@@ -6529,6 +6564,10 @@ const releasePayloads = async () => {
                   tabletMap: ok(out.tabletMap) && out.tabletMap.map === true, deskMap: ok(out.deskMap) && out.deskMap.map === true && out.deskMap.caps === 1};
     const stripOk = (r, name, min) => r && r.name === name && r.head && r.hw >= min && r.fuel && r.unsold && r.link && r.over <= 1 && r.pill === "linked · no game · overlay …" && !r.errors.length;
     want.a9strip = stripOk(out.a9, "Smojooe VW-E c11-11", 80);
+    const listTexts = ["⌖ A arrived at", "1 A 1 map 1.9M 184 ls", "2 A 2 map 1.8M 140 ls", "3 2 c bio 3 · 19.3M 1.5k ls", "4 AB 12 c a map 3.4M 33k ls"];
+    const listOk = r => r && JSON.stringify(r.texts) === JSON.stringify(listTexts) && r.oneLine && !r.clipped.length && r.names && r.beside
+      && r.map > 300 && !r.errors.length;
+    want.listA9 = listOk(out.listA9); want.listA11 = listOk(out.listA11);
     want.shortName = stripOk(out.wideShort, "Sol", 10) && Math.abs(out.wideShort.slack) <= 1;
     const bad = Object.keys(want).filter(k => !want[k]);
     allOk = allOk && !bad.length;
