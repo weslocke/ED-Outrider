@@ -2,6 +2,21 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The surface map's Unscanned
+The author: the surface map's legend showed bio only once it was being sampled; an "Unscanned" section should list what
+the body still has, each gone as it is done.
+- **Unscanned** at the top of the legend (Now's and the overlay pane's, `surfaceLegend`): each DSS genus not started
+  (likely species and value), one lost with the ship, the signals no DSS has named (and what they could be). A genus
+  leaves at its first sample; the heading goes with the last. The same data as the on-body Next (`bioGenera`,
+  `bioUnknown`), so the two agree.
+- **Bio only, for now (the author's choice):** checked on the author's journals (97 files, a copy): the DSS's
+  SAASignalsFound names the genera but gives geology as a count only, and only a CodexEntry (the composition scanner)
+  names a geological feature, one per feature scanned (several per site, the same type more than once), so neither the
+  features left nor the sites left can be known. The author will test a geo row later on a body with geo signals.
+- **Docs:** views.md (the surface map).
+- **Tests:** page_smoke's now tidy slots: a genus not started, all done (no section), lost, before the DSS, one signal
+  left beside a genus sampled without a DSS; fails without the change.
+
 ## 2026-11-08 · The system map shows where you have been
 The author: keep the stops already done on the map, the route between them "shown with a broken grey line", while the
 list drops them (keeping "last at").

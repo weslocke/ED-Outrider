@@ -568,6 +568,11 @@ upstream project's choices, not rules of the game.
 - **The surface map's altitude in a browser is capped at the server's** (`[defaults] surface_alt`, review F24): the
   server sends positions only below its own altitude, so a browser set higher would show a frozen map. A lower one
   hides sooner, as before. Climbing past the altitude wakes the page once, so the map goes away on time.
+- **The surface map's Unscanned is bio only** (the author, 2026-11-08): the journal names a body's genera after the DSS
+  (SAASignalsFound's Genuses) but gives geology as a count alone; only a CodexEntry (the composition scanner) names a
+  geological feature, one per feature scanned (checked on the author's journals: several per site, the same type more
+  than once, so more entries than signals). Neither the features left nor the sites left can be known. A geo row
+  (the count, the types the volcanism allows, those logged here ticked) waits for the author to try one in game.
 - **`[defaults] rig_warn` is the one server-wide `[defaults]` key** (round 10's S14): every other `[defaults]` key is
   what a new browser starts with, and each browser then keeps its own. The far-rig distance is also the spoken leash
   warning's, which the server says for every window, so a browser's own value made the map and the voice disagree.

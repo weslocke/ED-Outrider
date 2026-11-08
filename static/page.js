@@ -2266,6 +2266,27 @@ function surfaceLegend(s, L, cfg) {
   for (const it of by("bio")) if (!bio.has(it.species)) bio.set(it.species, it);
   // the runs under way, nearest first; then the species finished here, ticked, in the order they were done (kept the
   // author, 2026-11-02: a finished one used to leave the map and the legend)
+  // Unscanned (the author, 2026-11-08): the biology on this body not sampled yet, gone as each is started (it moves to
+  // Samples): each DSS genus not started with its likely species and value, one lost with the ship, and the signals no
+  // DSS has named yet. Bio only for now: the DSS names no geology (SAASignalsFound gives a count), see DESIGN_NOTES
+  const ob = nowOb(), ob_b = ob && obData && !obData.error ? (obData.bodies || []).find(x => x.name === ob.body) : null;
+  if (ob_b) {
+    const f = bioFactor(ob_b), todo = [];
+    for (const g of bioGenera(ob_b)) {
+      const o = (ob_b.organics || []).find(o => o.genus === g), x = (ob_b.bio_guess || []).find(q => q.genus === g);
+      if (o && !o.lost) continue;
+      todo.push(row(`class="lg-row lg-todo"`, `<span class="tg bio">🧬</span>`, `<b>${esc(g)}</b> ` + (o
+        ? `<span class="bad">lost ✗</span> <span class="unk">sample again${o.value ? ` · ${credits(o.value * f)}` : ""}</span>`
+        : x && x.best ? `<span class="unk">likely ${esc(x.best.split(" ").slice(1).join(" "))}${x.value ? ` · ${credits(x.value * f)}` : ""}</span>` : "")));
+    }
+    const unk = bioUnknown(ob_b);
+    if (unk) {
+      const could = [...new Set(unk.list.map(x => x.genus).filter(Boolean))];
+      todo.push(row(`class="lg-row lg-todo"`, `<span class="tg bio">🧬</span>`, `${esc(unk.label.replace(/ signals?/, m => " bio" + m))}` +
+        (could.length ? ` <span class="unk">· could be ${esc(could.slice(0, 5).join(", "))}${could.length > 5 ? "…" : ""}</span>` : "")));
+    }
+    if (todo.length) rows.push(`<div class="lg-h">Unscanned</div>` + todo.join(""));
+  }
   const species = (s.bio || []).filter(b => !b.done && b.points && b.points.length).map(b => ({b, it: bio.get(b.species)}))
     .sort((x, y) => (x.it ? x.it.dist : 1e9) - (y.it ? y.it.dist : 1e9));
   const done = (s.bio || []).filter(b => b.done);

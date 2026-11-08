@@ -6302,12 +6302,20 @@ const releasePayloads = async () => {
       const body = done => ({name: "8", genera: ["Bacterium", "Stratum"], bio: 2, geo: 0, value_parts: {bio_factor: 1},
         organics: [{genus: "Bacterium", species: "Bacterium Volu", samples: done ? 3 : 2, done, lost: false}].concat(done ? [{genus: "Stratum", species: "Stratum Tectonicas", samples: 3, done: true, lost: false}] : []),
         bio_guess: [{genus: "Stratum", best: "Stratum Tectonicas", species: ["Stratum Tectonicas"], value: 19010800}]});
-      obData = {region: 18, bodies: [body(false)]}; renderNow(); o.genus = nowSlot("next");
-      obData = {region: 18, bodies: [body(true)]}; renderNow(); o.done = nowSlot("next");
+      // the legend's Unscanned (the author, 2026-11-08): what is left to sample here, gone as each is started
+      const todo = () => [...document.querySelectorAll("#nowMapLegend .lg-todo")].map(r => r.textContent.replace(/\\s+/g, " ").trim());
+      const head = () => [...document.querySelectorAll("#nowMapLegend .lg-h")].map(h => h.textContent.split(" (")[0]);
+      obData = {region: 18, bodies: [body(false)]}; renderNow(); o.genus = nowSlot("next"); o.todo = [todo(), head()];
+      obData = {region: 18, bodies: [body(true)]}; renderNow(); o.done = nowSlot("next"); o.todoDone = [todo(), head()];
       // round 11 G: a species whose samples died with the ship is to do again, not "nothing left on this body"
       const lostBody = body(true);
       lostBody.organics[0] = Object.assign({}, lostBody.organics[0], {lost: true, value: 1e6});
-      obData = {region: 18, bodies: [lostBody]}; renderNow(); o.lost = nowSlot("next");
+      obData = {region: 18, bodies: [lostBody]}; renderNow(); o.lost = nowSlot("next"); o.todoLost = todo();
+      // before the DSS: the signals and what they could be; one genus sampled without a DSS, one signal left
+      obData = {region: 18, bodies: [{name: "8", genera: [], bio: 3, geo: 2, value_parts: {bio_factor: 1}, organics: [],
+        bio_guess: [{genus: "Stratum"}, {genus: "Bacterium"}, {genus: "Fungoida"}, {genus: "Osseus"}]}]}; renderNow(); o.todoPre = todo();
+      obData = {region: 18, bodies: [{name: "8", genera: [], bio: 2, geo: 0, value_parts: {bio_factor: 1}, bio_guess: [{genus: "Stratum"}, {genus: "Bacterium"}],
+        organics: [{genus: "Bacterium", species: "Bacterium Volu", samples: 1, done: false, lost: false}]}]}; renderNow(); o.todoOne = todo();
       // round 11 B: docked at a planetary port (Docked|Landed): the system's layout (Route, Boxel, session), no map
       data.on_body = Object.assign({}, data.on_body, {how: "landed", vehicle: null, docked: true}); renderNow();
       o.docked = [document.getElementById("nowView").classList.contains("mapon") || !document.getElementById("nowMap").hidden,
@@ -6333,7 +6341,11 @@ const releasePayloads = async () => {
       fuel: "⛽ 22% · 4 jumps", other: /^Target 9 · Icy body · 0\.10 g · 40 ls/, same: null,
       genus: /^Next Stratum 0\/3 likely Tectonicas 19\.0M Bacterium 2\/3 Volu · Stratum 0\/3/,
       done: /^Next ✓ nothing left on this body your ship \d+ m · \d{3}° Bacterium 3\/3 ✓/,
-      lost: /^Next Bacterium lost ✗ sample again · 1\.0M Bacterium lost ✗/, docked: [false, "Smojooe ZC-D c12-22", []]};
+      lost: /^Next Bacterium lost ✗ sample again · 1\.0M Bacterium lost ✗/, docked: [false, "Smojooe ZC-D c12-22", []],
+      todo: [["🧬 Stratum likely Tectonicas · 19.0M"], ["Unscanned", "Samples", "Rigs", "Sites and places"]],
+      todoDone: [[], ["Samples", "Rigs", "Sites and places"]], todoLost: ["🧬 Bacterium lost ✗ sample again · 1.0M"],
+      todoPre: ["🧬 3 bio signals, not DSS'd · could be Stratum, Bacterium, Fungoida"],
+      todoOne: ["🧬 1 more bio signal not identified · could be Stratum"]};
     const test = (v, x) => x instanceof RegExp ? x.test(v || "") : JSON.stringify(v) === JSON.stringify(x);
     const bad = [...Object.keys(want).filter(k => !test(got[k], want[k])), ...Object.keys(wantMap).filter(k => !test(map[k], wantMap[k])).map(k => "map." + k)];
     const good = !bad.length && errors.length === before;

@@ -625,6 +625,11 @@ their letters), a crosshair along your heading and quarter rings, to read a bear
   sampled and tagged species as Here does, its colour as the game names it and 📷 when your codex folders have a picture of it, and on a PC a
   mouse over the name shows a picture of it: one of your own at random, else Canonn's), plants you tagged (below), your rigs 1–6 with a faint spacing ring, saved sites (U1…
   unmarked, S1… rigs picked up) and mining locations (L3). Anything off the map is a chevron on the rim.
+- **Unscanned:** at the top of the legend, the biology on this body you have not sampled yet: each genus the DSS
+  found that you have not started, with its likely species and value ("Stratum · likely Tectonicas · 19.0M"), one whose
+  samples were lost with the ship ("lost ✗ · sample again"), and before the DSS how many signals there are and what they
+  could be. Each leaves the list at its first sample (it moves to the samples above it); the heading goes when nothing is
+  left. Geology is not listed: the DSS writes only how many geological signals a body has, never which features.
 - **Tagged plants** (as BioScan's waypoints): point the composition scanner at a plant, from the ship flying low,
   the SRV or on foot, and Outrider remembers where it is, as a hollow ring in the species' colour. Faint means a
   sample there would not count (it is inside the colony of one you took). While sampling, the strip says the
