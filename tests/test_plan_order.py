@@ -153,8 +153,8 @@ class Order(unittest.TestCase):
         got = order(items)
         self.assertEqual(bodies(got), ["C 2", "C 4", "C 3"])                 # no distance at all: last
         self.assertEqual([it["leg_approx"] for it in got], [False, True, True])
-        self.assertEqual(O.leg_text(got[1]), "≈" + O.sc_text(got[1]["sec"])[1:])
-        self.assertTrue(O.leg_text(got[0]).startswith("~"))
+        self.assertEqual(O.leg_text(got[1]), "≈" + O.ls_short(got[1]["ls"]))   # distances, never times (2026-11-08)
+        self.assertEqual(O.leg_text(got[0]), "40 ls")
         self.assertEqual((got[2]["sec"], got[2]["detour"], O.leg_text(got[2])), (None, None, ""))
         self.assertIsNotNone(got[1]["detour"])                               # the unknown stop after it does not count
 

@@ -50,8 +50,9 @@ distances are from where you are), then shown in the Rings hover too
 The to-do line ticks itself off as you honk, map and sample, in a suggested order: the shortest supercruise from
 where you are, body to body by where each body is on its orbit now, worked out again as you go (a new order only
 when it saves at least a tenth of the time left or 30 s, so the numbers do not shuffle for nothing). Each stop has its
-supercruise time from the one before and what it pays per minute of the time it adds ("~2 min · 450k/min"; "≈" when
-the distance is about; "skip?" when not worth the trip). Bio nobody has set foot on is
+distance from the one before and what it pays per minute of the time it adds ("1.5k ls · 450k/min"; "≈" when
+the distance is about; "skip?" when not worth the trip). The order shows distances, never times: with Supercruise
+Overdrive the minutes would be wrong, though the order is still worked out on supercruise time. Bio nobody has set foot on is
 valued with the ×5 first-footfall bonus, except in a populated system: Vista Genomics never pays it there. A bio line's
 ✪ (✦: this region only) says a species that could be there is new to your codex; hover it for which. Before the DSS
 the table and the body's hover mark each possible genus the same way. 🔭 beside a body is a curiosity (hover it for
@@ -269,12 +270,12 @@ has a fixed place, and a value never breaks in the middle (a line wraps only bet
    galaxy map's fleet or squadron carrier marker); a refusal's reason for a minute; for twenty seconds after a jump,
    whether the system was undiscovered; otherwise **Next**: what to do here ("Bio on 1 e" with "up to 64.6M 👣×5" on
    the right, "Map 3 a", "Honk", "3 bodies to find in the FSS", "✓ nothing worth staying for"), its facts under it
-   (signals, gravity, atmosphere, the supercruise time, "≈" when about), and the stop after it in the suggested order
-   ("then: map 3 a · ~45 s · 2 more after"; after the last stop "then: honk" or "then: 5 bodies to find in the FSS"
+   (signals, gravity, atmosphere, how far it is, "≈" when about), and the stop after it in the suggested order
+   ("then: map 3 a · 1.2k ls · 2 more after"; after the last stop "then: honk" or "then: 5 bodies to find in the FSS"
    while the system still has them, else "then: nothing else worth the trip") with what you found here.
 3. **A passing alert**, for fifteen seconds, in its own small card under the headline.
 4. **Target:** the body you have targeted when it is not Next, on one line ("1 d · Rocky body · 0.13 g · Ammonia ·
-   902 ls, ~30 s · 4 bio, under your threshold"), its likely genera and their values smaller under it.
+   902 ls · 4 bio, under your threshold"), its likely genera and their values smaller under it.
 5. **The status rows,** each label in a column on the left and its value in the same place every time, a row only
    when it has something: **Fuel**, **Aboard**, **Jump** (the system targeted for the next jump), **Route**, **Boxel**,
    **Sight**, **Mining** and **Here** (this system's finds as a row of chips: signals worth a detour ("Titan Cocijo ·

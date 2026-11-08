@@ -91,7 +91,7 @@ before.
   week "2 weeks 2 days since sold", or "2wk2d since sold" when that would not fit; whole days). Then, on a body,
   each genus there with its samples and how far the next sample must be; elsewhere **Next**: first any scans lost
   with a ship still to redo ("rescan 12 lost scans in the FSS (4.1M)"), else the first item of Here's
-  suggested order with what it pays, the supercruise time from where you are and how many more, and the body you have targeted when it is
+  suggested order with what it pays, how far it is from where you are and how many more, and the body you have targeted when it is
   not that one. Last, this session's figures.
 - **Bio signals** (optional): every body in the system with bio signals, whether it meets your levels or not. A body
   worth it (over `bio_min`, a run started, new to your codex, or not priced yet) is in bright colours, the rest are

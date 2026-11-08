@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The order shows distances, not times
+The author's call (project/PLAN-system-map-2026-11-08.md, Q2): with Supercruise Overdrive the curve's minutes are
+wrong, and fewer words read faster.
+- Now's Next ("1.5k ls"), its "then:" line, Here's suggested order and schematic path, the targeted body ("902 ls",
+  no time after it), the scoopable-star line and the overlay's Now panel give each leg's distance body to body, "≈"
+  when about. New: page.js `lsShort` / `legDist` / `lsSpoken`, the overlay's `ls_short` / `leg_text` (same cases in
+  page_unit and test_overlay). Gone: `legTime`, `spokenTime`, the overlay's `sc_text`, `destVerdict`'s `eta`.
+- The status report says "Next: map A 1, 50.0M, about 1,500 light seconds"; the targeted body's line no longer says a
+  time.
+- Unchanged: the order itself, its keep rule, "skip?" and the per-minute figure still run on supercruise time
+  (`scSeconds`).
+
 ## 2026-11-07 · Review round 11 fixes
 The nine bugs the round 11 review confirmed (project/done/reviews/review-2026-11-07/FIXES.md). PARSER_VERSION 76: one
 journal re-read (C, E and I change what the CMDR tab's Sessions, vouchers and missions store).

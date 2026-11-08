@@ -1568,8 +1568,9 @@ const releasePayloads = async () => {
       notes: JSON.stringify(got.notes) === JSON.stringify(["2 not on Spansh", "all on Spansh, nothing hidden", "none on Spansh", "all on Spansh", ""]),
       brief: got.brief === "Known. 14 bodies. 2 of them not on Spansh." && !/Spansh/.test(got.briefOwn),
       left: got.left.includes("A 4 3 signals, not DSS'd ≤39.0M") && got.left.includes("A 6 Stratum ≤19.0M"),
-      now: /^Target B 1 · Icy body · 0\.30 g · 1,200 ls, ~\d+ s · nothing to do here$/.test(got.nowOther) && /^Target B 1 · Icy body · 0\.30 g · 1,200 ls · nothing/.test(got.nowFar)
-        && /^Next ➜ Bio on C 2/.test(got.nowHead[0]) && got.nowHead[1] === null && /^Target A · K \(Yellow-Orange\) Star · 0 ls, ~15 s · scoopable star$/.test(got.nowStar),
+      now: /^Target B 1 · Icy body · 0\.30 g · 1,200 ls · nothing to do here$/.test(got.nowOther)   // a distance only, never a time (2026-11-08)
+        && /^Target B 1 · Icy body · 0\.30 g · 1,200 ls · nothing/.test(got.nowFar)
+        && /^Next ➜ Bio on C 2/.test(got.nowHead[0]) && got.nowHead[1] === null && /^Target A · K \(Yellow-Orange\) Star · 0 ls · scoopable star$/.test(got.nowStar),
       holds: got.holds,
       nowNext: /^Route .*Next: Stop 38.*· 4\.2 ly · 38 of 120 · refuel in 3 jumps$/.test(got.nowRoute) && /^Boxel next Smojooe KL-P d5-41.* · known · 3 of 14 bodies$/.test(got.nowBoxel) && got.nowNone,
     };
@@ -3385,7 +3386,7 @@ const releasePayloads = async () => {
     const want = {topup: [["Top up here: about 3 jumps of fuel left", "fuel_target"]], topupSay: ["fuel_topup", true], again: [],
       both: [["Top up here: about 3 jumps of fuel left", "fuel_target"]], bothBody: true,
       low: [["Fuel 20% and Brown Two is not scoopable", "fuel_target"]], lowKey: "fuel_target", plenty: [],
-      here: ["⛽ scoopable here: B (K) · 1,240 ls · ~35 s", "⛽ scoopable here: B (M) · 5,200 ls", "no scoopable star here",
+      here: ["⛽ scoopable here: B (K) · 1,240 ls", "⛽ scoopable here: B (M) · 5,200 ls", "no scoopable star here",
              "no other scoopable star known yet (FSS to check)", ""],
       starKnown: [["fuel_star", true, "Star B can be scooped, 1,240 light seconds out."]], starUnknown: [["fuel_star", false, true]],
       underOff: [], underOn: [["Fuel: 3 jumps left", "fuel_low"]], underOnce: [],
@@ -4362,11 +4363,11 @@ const releasePayloads = async () => {
       Object.assign(alertSpeak, ${savedAs}); store.set("alertSpeak", alertSpeak); data = ${savedData}; speechLib = ${savedLib}; render()`);
     delete w.navigator.sendBeacon;
     const want = {capped: ["cut short: the PC's player ran past the line's length", "said"], beacon: ["api/say/stop", true], beaconAfter: 1,
-      status: {next: "Fuel 64 percent, 8 jumps. Next: map A 1, 50.0M, about 15 seconds. 412.0M aboard, 3.2 rebuys. Nearest unvisited: Drojau LL-O b26-3, 6.4 light-years.",
-               other: "A 3: 2.4 g, thin ammonia, 3 bio signals, up to 19.0M, about 30 seconds, worth it. Fuel 64 percent, 8 jumps. Next: map A 1, 50.0M, about 15 seconds. 412.0M aboard, 3.2 rebuys.",
-               done: "Fuel 64 percent, 8 jumps. B 2: nothing to do. Next: map A 1, 50.0M, about 15 seconds. 412.0M aboard, 3.2 rebuys.",
-               none: "Fuel 64 percent, 8 jumps. Next: map A 1, 50.0M, about 15 seconds. 412.0M aboard, 3.2 rebuys. Nearest unvisited: Drojau LL-O b26-3, 6.4 light-years.",
-               now: got.status && /^Target A 3 · .* · 900 ls, ~30 s · 3 bio, worth it/.test(got.status.now) ? got.status.now : "(heading-to line)"},
+      status: {next: "Fuel 64 percent, 8 jumps. Next: map A 1, 50.0M, about 100 light seconds. 412.0M aboard, 3.2 rebuys. Nearest unvisited: Drojau LL-O b26-3, 6.4 light-years.",
+               other: "A 3: 2.4 g, thin ammonia, 3 bio signals, up to 19.0M, worth it. Fuel 64 percent, 8 jumps. Next: map A 1, 50.0M, about 100 light seconds. 412.0M aboard, 3.2 rebuys.",
+               done: "Fuel 64 percent, 8 jumps. B 2: nothing to do. Next: map A 1, 50.0M, about 100 light seconds. 412.0M aboard, 3.2 rebuys.",
+               none: "Fuel 64 percent, 8 jumps. Next: map A 1, 50.0M, about 100 light seconds. 412.0M aboard, 3.2 rebuys. Nearest unvisited: Drojau LL-O b26-3, 6.4 light-years.",
+               now: got.status && /^Target A 3 · .* · 900 ls · 3 bio, worth it/.test(got.status.now) ? got.status.now : "(heading-to line)"},
       bag: {stored: 30, first50: 50, fresh: true, sample: true, capped: 300}, trySample: true,
       mapped: ["A 2 mapped efficiently, 3.4M. Next: biology on C 2, up to 19.0M.", "A 2 mapped efficiently · 3.4M cr",
                "A 2 mapped, 2 probes over target, no efficiency bonus, 3.4M. Nothing else here over your levels.",
@@ -6316,8 +6317,8 @@ const releasePayloads = async () => {
       captions.length = 0; captions.push(...s.caps); lastAlert = s.lastAlert; render(); })()`);
     const want = {
       slots: ["title", "next", "target", "fuel", "aboard", "boxel", "foot", "streak", "session"],
-      next: "Next Bio on 1 e up to 64.6M 👣×5 3 signals, not DSS'd · 0.1 g · Ammonia · ~30 s away then: nothing else worth the trip · 43k cr found here",
-      target: "Target 1 d · Rocky body · 0.13 g · Ammonia · 902 ls, ~30 s · 4 bio, under your threshold Osseus? 12.0M · Tussock? 8.8M · Fungoida? 8.4M · Bacterium? 8.3M · max 7.5M",
+      next: "Next Bio on 1 e up to 64.6M 👣×5 3 signals, not DSS'd · 0.1 g · Ammonia · 930 ls then: nothing else worth the trip · 43k cr found here",
+      target: "Target 1 d · Rocky body · 0.13 g · Ammonia · 902 ls · 4 bio, under your threshold Osseus? 12.0M · Tussock? 8.8M · Fungoida? 8.4M · Bacterium? 8.3M · max 7.5M",
       fuel: "Fuel 99% · 23 jumps · scooped here scoopable: 20 of last 20",
       aboard: /^Aboard 632\.2M 🗺 11\.3M · 🧬 620\.8M · .*11 d unsold sell \(UC \+ Vista\): Smojooe AR-E b25-8 37 ly/,
       boxel: "Boxel next Smojooe VW-E c11-12 · to try",
@@ -8920,7 +8921,7 @@ const releasePayloads = async () => {
       const svg = sEl.querySelector("svg.spath");
       o.path = svg && [svg.querySelector("polyline").getAttribute("points").split(" ").length, [...svg.querySelectorAll("text")].map(t => t.textContent)];
       // no positions in this fixture: each leg is the difference of the distances to the arrival star, so "≈"
-      o.wantPath = [4, [scText(scSeconds(420)), scText(scSeconds(560)), scText(scSeconds(89020))].map(t => t.replace(/^~/, "≈"))];
+      o.wantPath = [4, [420, 560, 89020].map(ls => "≈" + lsShort(ls))];   // distances, never times (2026-11-08)
       o.head = sEl.querySelector(".splan").textContent;
       o.noReset = !sEl.querySelector("[data-planfirst]");
       o.list = document.getElementById("hereLeaving").querySelectorAll(".stopn").length;

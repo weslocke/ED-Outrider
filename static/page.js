@@ -1347,9 +1347,16 @@ function planItems(l) {
   }
   return order;
 }
-// a leg's supercruise time as the order shows it: "~35 s", "≈35 s" when about (an approximate place or no position);
+// A distance in light seconds, short: "443 ls", "1.5k ls", "33k ls", "1.2M ls"; spoken "about 1,500 light seconds".
+// The order shows distances, never times (the author, 2026-11-08): Supercruise Overdrive makes the curve's minutes
+// wrong, and fewer words read faster. The order itself still ranks its stops by scSeconds.
+// (the overlay's ls_short: the same sums, JavaScript's half-up rounding)
+const lsShort = ls => ls < 999.5 ? `${Math.round(ls)} ls` : ls < 9950 ? `${Math.round(ls / 100) / 10}k ls`
+  : ls < 999500 ? `${Math.round(ls / 1000)}k ls` : `${Math.round(ls / 1e5) / 10}M ls`;
+const lsSpoken = ls => `about ${(ls < 1000 ? Math.max(10, Math.round(ls / 10) * 10) : Math.round(ls / 100) * 100).toLocaleString("en-US")} light seconds`;
+// a leg's distance as the order shows it: "1.5k ls", "≈1.5k ls" when about (an approximate place or no position);
 // "" for none (the second item on a body, or no distance)
-const legTime = it => it.sec ? (it.legApprox ? scText(it.sec).replace(/^~/, "≈") : scText(it.sec)) : "";
+const legDist = it => it.ls ? `${it.legApprox ? "≈" : ""}${lsShort(it.ls)}` : "";
 const legLs = it => it.ls == null ? "" : `${it.legApprox ? "≈" : ""}${Math.round(it.ls).toLocaleString("en-US")} ls`;
 // A body's mapped value as the "Next" lines give it (the author's choice, review Q5): the whole value once mapped,
 // without and with your first-discovery / first-mapped bonuses; one number when no bonus applies. Screen "771k/2.2M",
@@ -1379,8 +1386,8 @@ const planCodex = b => b.codex_galaxy || b.codex_new ? ` <span class="cxnew${b.c
   `${(b.codex_names || []).length ? `: ${esc(andList(b.codex_names))} (if ${b.codex_names.length > 1 ? "they are" : "it is"} there)` : ""}">${b.codex_galaxy ? "✪" : "✦"}</span>` : "";
 // a stop's leg and what it pays per minute of its detour (the order's time with the stop less its time without it)
 const legFrom = it => it.from ? `from ${it.from}` : "from the arrival star";
-const planCost = it => { const t = legTime(it), pm = it.perMin ? `${credits(it.perMin)}/min` : "";
-  return (t || pm ? ` <span class="unk" title="${esc([t ? `supercruise ${legFrom(it)} (${legLs(it)}${it.legApprox ? ", about" : ""})` : "",
+const planCost = it => { const t = legDist(it), pm = it.perMin ? `${credits(it.perMin)}/min` : "";
+  return (t || pm ? ` <span class="unk" title="${esc([t ? `${legFrom(it)}, body to body (${legLs(it)}${it.legApprox ? ", about" : ""})` : "",
     pm ? `what the stop pays per minute of its detour (${scText(it.detour)})` : ""].filter(Boolean).join("; "))}">· ${[t, pm].filter(Boolean).join(" · ")}</span>` : "") +
   (it.skip ? ` <span class="unk skipq" title="under your ${credits(skipFloor())} cr per minute of the detour to it">skip?</span>` : ""); };
 // The honk's body count against the bodies Spansh has on record (l.base_known, in Here's data only): whether the FSS
@@ -1702,7 +1709,7 @@ function nowThen(plan, i, l) {
   if (!it) return !plan.length ? [] : !l || !l.honked ? ["then: honk"]
     : l.unscanned > 0 ? [`then: ${nBodies(l.unscanned)} to find in the FSS`] : ["then: nothing else worth the trip"];
   const more = plan.length - i - 1;
-  return [`then: ${it.kind === "map" ? "map" : "bio on"} <b>${esc(it.body)}</b>`, legTime(it), more > 0 ? `${more} more after` : ""];
+  return [`then: ${it.kind === "map" ? "map" : "bio on"} <b>${esc(it.body)}</b>`, legDist(it), more > 0 ? `${more} more after` : ""];
 }
 function nowSystemNext(c) {
   const {hd, l, w, plan, here} = c, a = pinActive();
@@ -1713,9 +1720,9 @@ function nowSystemNext(c) {
   if (w && w.rescan) return nowNextCard({what: `Rescan <b title="${esc(w.rescan.bodies.map(b => b.name).join(", "))}">${rescanCount(w.rescan)}</b> in the FSS`,
     right: w.rescan.value ? nowParts([{c: "now-pay", h: credits(w.rescan.value)}]) : "", then: nowParts([...nowThen(plan, 0, l), found])});
   if (plan.length) {
-    const it = plan[0], t = legTime(it), then = nowParts([...nowThen(plan, 1, l), found]);
+    const it = plan[0], t = legDist(it), then = nowParts([...nowThen(plan, 1, l), found]);
     const mark = c.destIsNext ? `<span title="the body you have targeted">➜</span> ` : "";
-    const leg = t ? `<span title="supercruise ${esc(legFrom(it))} (${legLs(it)})">${t} away</span>` : "";
+    const leg = t ? `<span title="${esc(legFrom(it))}, body to body (${legLs(it)})">${t}</span>` : "";
     const skip = it.skip ? `<span class="unk skipq" title="under your ${credits(skipFloor())} cr per minute of the detour to it">skip?</span>` : "";
     if (it.kind === "map") {
       const u = it.u, v = mapTotals(u) || (u.increment ? `+${credits(u.increment)}` : "");
@@ -1742,7 +1749,7 @@ function nowSystemNext(c) {
 // the targeted body when it is not Next: one line (what it is, how far, the verdict), its guessed genera under it;
 // `compact` (on another body, the map up): the line alone
 function nowTargetHtml(c, compact = false) {
-  const b = c.dest, {it, v, eta} = destVerdict(c.hd, c.l, c.plan, b), d = destParts(b);
+  const b = c.dest, {it, v} = destVerdict(c.hd, c.l, c.plan, b), d = destParts(b);
   const verdict = v === "skip" ? `<span class="unk skipq">skip?${it.perMin ? ` ${credits(it.perMin)}/min` : ""}</span>`
     : v === "worth" ? `<span class="ok">worth it${it.perMin ? ` · ${credits(it.perMin)}/min` : ""}</span>`
     : v === "under" ? `<span class="unk">under your threshold</span>`
@@ -1750,7 +1757,7 @@ function nowTargetHtml(c, compact = false) {
     : `<span class="unk">nothing to do here</span>`;
   // what it is in one part (the mock-up's), then how far, then what it holds with the verdict
   const main = nowParts([[`<b>${esc(b.name)}</b>`, d.subtype, d.g, d.atm].filter(Boolean).map((x, i) => i ? esc(x) : x).join(" · "),
-    [d.ls, eta != null ? scText(eta) : ""].filter(Boolean).join(", "), d.geo, [d.bioN, verdict].filter(Boolean).join(", ")]);
+    d.ls, d.geo, [d.bioN, verdict].filter(Boolean).join(", ")]);
   const under = compact ? "" : nowParts([...d.bio.map(esc), d.max]);
   return `<div class="now-target" data-slot="target"><div class="now-tmain now-parts"><span class="now-k">Target</span> ${main}</div>` +
     (under ? ` <div class="now-tdetail now-parts">${under}</div>` : "") + `</div>`;
@@ -2780,16 +2787,13 @@ async function nowWake() {
   finally { nowLockAsking = false; }
 }
 document.addEventListener("visibilitychange", nowWake);
-// What the suggested order makes of the targeted body, and its supercruise time (only from the arrival star or open
-// space: the curve is star-relative). One place for Now's heading-to line and the spoken status report, so the two
-// verdicts cannot drift: {it: its plan item or null, v: worth | skip | under | scoop | noscoop | none, eta: s or null}
+// What the suggested order makes of the targeted body. One place for Now's heading-to line and the spoken status
+// report, so the two verdicts cannot drift: {it: its plan item or null, v: worth | skip | under | scoop | noscoop | none}
 function destVerdict(hd, l, plan, b) {
   const it = plan.find(x => x.body === b.name) || null;
   const listed = l && [...(l.bio_pending || []), ...(l.unmapped || [])].some(x => x.body === b.name);
   const v = it ? (it.skip ? "skip" : "worth") : listed ? "under" : b.type === "Star" ? (b.scoopable ? "scoop" : "noscoop") : "none";
-  const near = data.destination && data.destination.near, main = hd.bodies.find(x => x.main);
-  const eta = (!near || (main && near === main.name)) && near !== b.name ? scSeconds(b.dist_ls) : null;
-  return {it, v, eta};
+  return {it, v};
 }
 // leaving Now: ✕ back or a double tap (not on the bar or a caption). A window opened at ?mode=now stays on Now, with
 // its URL, so a stray tap or a reload keeps it there.
@@ -4619,7 +4623,6 @@ function isRoutine(m) {
   return !(m.bio && m.bio.value >= bioMinNow());
 }
 // supercruise time in words: "about 40 seconds", "about 6 minutes"
-const spokenTime = sec => sec < 90 ? `about ${Math.max(10, Math.round(sec / 5) * 5)} seconds` : `about ${Math.round(sec / 60)} minutes`;
 // The Highway in a spoken clause (review S2): the too-much-fuel warning first, boost here (or done), the next stop
 // and the refuel coming up; off the route, the closest route system. "" with no route, or once it is complete.
 // S9-S9: a route's time left in words: "40 min", "1 h 40"; spoken "40 minutes", "1 hour 40"
@@ -4673,16 +4676,16 @@ function statusReportText() {
   const rs = hd && hd.leaving ? worthLeavingFor(hd.leaving).rescan : null;
   if (rs) parts.push(`Next: ${rescanSaid(rs)}`);   // S9-S1: the rescan trip's reason first
   else if (plan.length) { const it = plan[0];
-    parts.push(`Next: ${it.kind === "map" ? `map ${it.body}` : `biology on ${it.body}`}${nextValue(it, true) ? `, ${nextValue(it, true)}` : ""}${it.sec ? `, ${spokenTime(it.sec)}` : ""}`); }
+    parts.push(`Next: ${it.kind === "map" ? `map ${it.body}` : `biology on ${it.body}`}${nextValue(it, true) ? `, ${nextValue(it, true)}` : ""}${it.ls ? `, ${lsSpoken(it.ls)}` : ""}`); }
   const u = data && data.unsold, rebuy = riskRebuy();
   if (u && !u.error && u.total > 0) parts.push(`${credits(u.total)} aboard${rebuy ? `, ${(u.total / rebuy).toFixed(1)} rebuys` : ""}`);
   const hz = data && !hw ? horizon() : null;   // mid-route the next stop is the Highway's
   if (hz && hz.system) parts.push(`Nearest unvisited: ${hz.system.name}, ${Math.round(hz.system.distance * 10) / 10} light-years`);
   return parts.length ? parts.slice(0, 4).join(". ") + "." : "Nothing to report yet.";
 }
-// the targeted body said short: "A 3: 2.4 g, thin ammonia, 3 bio signals, up to 19.0M, about 2 minutes, worth it"
+// the targeted body said short: "A 3: 2.4 g, thin ammonia, 3 bio signals, up to 19.0M, worth it"
 // (no subtype, geo, distance or rate: destBits is for reading, far too long to hear)
-function destSpoken(b, {it, v, eta}) {
+function destSpoken(b, {it, v}) {
   const f = bioFactor(b), n = b.bio || (b.genera || []).length;
   const upTo = it && it.kind === "bio" && it.value ? it.value : b.bio_options ? b.bio_options.high * f
     : (b.bio_guess || []).slice(0, n).reduce((a, x) => a + (x.value || 0) * f, 0);
@@ -4690,7 +4693,6 @@ function destSpoken(b, {it, v, eta}) {
     b.atmosphere && b.atmosphere !== "None" && String(b.atmosphere).toLowerCase(),
     n && `${n} bio signal${n === 1 ? "" : "s"}${upTo ? `, up to ${credits(upTo)}` : ""}`,
     it && it.kind === "map" && it.value && `${credits(it.value)} to map`,
-    eta != null && spokenTime(eta),
     {worth: "worth it", skip: "maybe skip it", under: "under your threshold", scoop: "scoopable", noscoop: "not scoopable"}[v]];
   return `${b.name}: ${bits.filter(Boolean).join(", ")}`;
 }
@@ -6255,7 +6257,7 @@ function schemPlan(h) {
 }
 const planResetHtml = l => ` <button type="button" class="mini" data-planfirst="" data-plansys="${esc(l.id64)}" title="back to the suggested order: the shortest supercruise from where you are">↺ order</button>`;
 const stopTitle = (n, it) => `stop ${n}: ${it.kind === "map" ? "map" : "bio"}` +
-  (legTime(it) ? ` · ${legTime(it)} of supercruise ${legFrom(it)} (${legLs(it)}, body to body)` : "") + (it.perMin ? ` · ${credits(it.perMin)}/min of its detour` : "") +
+  (legDist(it) ? ` · ${legLs(it)} ${legFrom(it)}, body to body` : "") + (it.perMin ? ` · ${credits(it.perMin)}/min of its detour` : "") +
   (it.skip ? ` · under your ${credits(skipFloor())} cr per minute of the detour to it` : "") +
   (it.first ? "\nyour first stop: ↺ order puts the suggested order back" : "\ntap: make this body the first stop");
 function stopsHtml(b) {
@@ -6263,7 +6265,7 @@ function stopsHtml(b) {
   return st ? `<span class="stops">${st.map(({n, it}) => `<span class="sstop${it.skip ? " skip" : ""}${it.first ? " first" : ""}" data-firststop="${esc(b.name)}" title="${esc(stopTitle(n, it))}">${stopGlyph(n)}</span>`).join("")}</span>` : "";
 }
 // The faint path between the stops in their order, from where the order starts (the body you are at or were last at,
-// else the arrival star), each leg with its supercruise time body to body (the plan's legs: ≈ when about). Drawn over
+// else the arrival star), each leg with its distance body to body (the plan's legs: ≈ when about). Drawn over
 // the laid-out schematic, below its bodies; again when its box changes size (jsdom lays nothing out: every point is
 // 0, 0 there).
 function drawSchemPath(sEl) {
@@ -6280,8 +6282,8 @@ function drawSchemPath(sEl) {
   for (const it of schemPlanNow) {
     if (prev && prev.name === it.body) continue;   // map and bio on one body (or the body you are at): no leg
     const p = at(it.body); if (!p) continue;
-    if (prev && legTime(it))
-      labels.push(`<text x="${((prev.p[0] + p[0]) / 2).toFixed(1)}" y="${((prev.p[1] + p[1]) / 2 - 3).toFixed(1)}">${legTime(it)}</text>`);
+    if (prev && legDist(it))
+      labels.push(`<text x="${((prev.p[0] + p[0]) / 2).toFixed(1)}" y="${((prev.p[1] + p[1]) / 2 - 3).toFixed(1)}">${legDist(it)}</text>`);
     pts.push(...(prev && !pts.length ? [prev.p] : []), p);
     prev = {name: it.body, p};
   }
@@ -6348,7 +6350,7 @@ function schematicHtml(h) {
   };
   const n = schemPlanNow.length, first = n && schemPlanNow[0].first;
   const head = n > 1 ? `<div class="splan unk" title="from where you are (the body you are at or were last at, else the arrival star), body to body by where the bodies are now; ≈: about (a star family to another in a multi-star system, or an orbit not known); worked out again as you go">${first ? "your first stop, then " : ""}` +
-    `the suggested order ${stopGlyph(1)}–${stopGlyph(n)} · the times are supercruise from body to body · tap a number to go there first` +
+    `the suggested order ${stopGlyph(1)}–${stopGlyph(n)} · the distances are from body to body · tap a number to go there first` +
     `${first ? planResetHtml(h.leaving) : ""}</div>` : "";
   return h.tree.length ? head + h.tree.map(top).join("") : `<div class="unk">No bodies known here.</div>`;
 }
@@ -11143,13 +11145,13 @@ function scoopRateWarn(f) {
 }
 const expectedGap = r => r.of / Math.max(r.scoopable, 1);   // jumps between scoopable stars, as they have come lately
 // Another star here to scoop at when the arrival star cannot be (the server's here_scoop): "none here" only once every
-// star is known; the travel time only where it is short enough for the rough curve to mean something.
+// star is known.
 function hereScoopText(f, plain) {
   const h = f && f.here_scoop; if (!h) return "";
   if (h.name) {
-    const sec = h.dist_ls <= 2000 ? scSeconds(h.dist_ls) : null, cls = h.subtype ? ` (${h.subtype.split(" ")[0]})` : "";
+    const cls = h.subtype ? ` (${h.subtype.split(" ")[0]})` : "";
     return plain ? `Star ${h.name} can be scooped, ${h.dist_ls.toLocaleString("en-US")} light seconds out.`
-      : `⛽ scoopable here: <b>${esc(h.name)}</b>${esc(cls)} · ${h.dist_ls.toLocaleString("en-US")} ls${sec != null ? ` · ${scText(sec)}` : ""}`;
+      : `⛽ scoopable here: <b>${esc(h.name)}</b>${esc(cls)} · ${h.dist_ls.toLocaleString("en-US")} ls`;
   }
   return plain ? "" : h.complete ? `<span class="noscoop">no scoopable star here</span>` : `<span class="unk">no other scoopable star known yet (FSS to check)</span>`;
 }

@@ -601,9 +601,15 @@ upstream project's choices, not rules of the game.
   shuffle for nothing. The memory is per window (`planMemo`, the overlay's `PLAN_MEMO`), per system, and forgotten when
   another first stop is picked or ↺ order is pressed. The time spent mapping or on foot is not counted. Its first stop
   is said ("Next: …") only in the mapped call-out and the status report. Here's schematic numbers its stops and draws
-  the path from where you are with each leg's time (S30). The first stop you pick there (one body, meta `plan_first`,
+  the path from where you are with each leg's distance (S30). The first stop you pick there (one body, meta `plan_first`,
   live-only) applies only in the system you are in and is forgotten after a jump (the arrival elsewhere drops it, so a
   return to that system later does not bring it back; a re-read's older arrivals do not drop it).
+- **The order shows distances, never times** (the author, 2026-11-08): Supercruise Overdrive makes the curve's
+  minutes wrong, and fewer words read faster. Next, the "then:" line, Here's order and schematic, the targeted body,
+  the overlay and the status report give each leg's distance body to body ("1.5k ls", page.js `lsShort` / `legDist`,
+  the overlay's `ls_short` / `leg_text`; spoken "about 1,500 light seconds", `lsSpoken`). The order itself, its keep
+  rule, "skip?" and the per-minute figure still run on `scSeconds`: supercruise speeds up with distance, so time ranks
+  the stops better than raw distance does.
 - **Where the bodies are: the convention found by reading the game's navigation panel** (2026-11-07, 199 readings in
   nine systems; the research is in project/done/research/). The journal gives every body's orbit (Scan:
   SemiMajorAxis, Eccentricity, OrbitalInclination, Periapsis, AscendingNode, MeanAnomaly, OrbitalPeriod and the

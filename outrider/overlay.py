@@ -1123,10 +1123,6 @@ def sc_seconds(ls):
     return max(15, 7.5 * math.log(max(ls, 1)) - 20) if ls <= 2000 else SC_KNEE + (ls - 2000) * (360 - SC_KNEE) / 98000
 
 
-def sc_text(sec):
-    return f"~{max(10, _half_up(sec / 5) * 5)} s" if sec < 90 else f"~{_half_up(sec / 60)} min"
-
-
 def route_check_parts(tc):
     """S11's mark for the Target panel (page.js targetCheckHtml's words): the followed route's next stop targeted, a
     later stop of it, or another system. [] without a check."""
@@ -1386,12 +1382,25 @@ def plan_items(leaving, highlight, bio_min, codex=True, first=None, memo=PLAN_ME
     return items
 
 
+def ls_short(ls):
+    """A distance in light seconds, short (page.js lsShort): "443 ls", "1.5k ls", "33k ls", "1.2M ls"."""
+    tenth = lambda x: str(int(x)) if x == int(x) else f"{x:.1f}"
+    if ls < 999.5:
+        return f"{_half_up(ls)} ls"
+    if ls < 9950:
+        return f"{tenth(_half_up(ls / 100) / 10)}k ls"
+    if ls < 999500:
+        return f"{_half_up(ls / 1000)}k ls"
+    return f"{tenth(_half_up(ls / 1e5) / 10)}M ls"
+
+
 def leg_text(it):
-    """A leg's time as the order shows it (page.js legTime): "~35 s", "≈35 s" when about; "" for none."""
-    if not it.get("sec"):
+    """A leg's distance as the order shows it (page.js legDist): "1.5k ls", "≈1.5k ls" when about; "" for none. The
+    order shows distances, never times (the author, 2026-11-08: Supercruise Overdrive makes the curve's minutes wrong);
+    it still ranks its stops by sc_seconds."""
+    if not it.get("ls"):
         return ""
-    t = sc_text(it["sec"])
-    return "≈" + t[1:] if it.get("leg_approx") else t
+    return ("≈" if it.get("leg_approx") else "") + ls_short(it["ls"])
 
 
 def map_totals(u):
@@ -1645,9 +1654,9 @@ def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, h
         if dest and not dest_next:
             it = next((x for x in plan if x["body"] == dest), None)
             row = [("➜ ", "accent"), (dest, "title")]
-            sec = sc_seconds(info.get("destination_ls"))
-            if sec is not None:
-                row.append((f" · {sc_text(sec)}", "muted"))
+            dls = info.get("destination_ls")
+            if isinstance(dls, (int, float)) and not isinstance(dls, bool) and math.isfinite(dls) and dls >= 0:
+                row.append((f" · {ls_short(dls)}", "muted"))
             row.append((" · worth it" + (f" · {credits(it['per_min'])}/min" if it.get("per_min") else ""), "good") if it
                        else (" · nothing to do here", "muted"))
             rows.append(row)

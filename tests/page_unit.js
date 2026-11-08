@@ -40,10 +40,12 @@ t("tons, fmtK, signedCr, spokenNumber", () => {
   eq(`[tons(1234), tons(null), fmtK(12345.6), fmtK(null)]`, ["1,234 t", "0 t", "12,346", "?"]);
   eq(`[signedCr(-1500), signedCr(2.5e6), spokenNumber(12.345), spokenNumber("7")]`, ["−2k", "+2.5M", "12.3", "7"]);
 });
-t("etaText and spokenTime", () => {
+t("etaText, lsShort and lsSpoken", () => {
   eq(`[etaText(30), etaText(125), etaText(3600), etaText(3720), etaText(125, true), etaText(3720, true), etaText(7200, true)]`,
      ["1 min", "2 min", "1 h", "1 h 02", "2 minutes", "1 hour 2", "2 hours"]);
-  eq(`[spokenTime(5), spokenTime(42), spokenTime(600)]`, ["about 10 seconds", "about 40 seconds", "about 10 minutes"]);
+  // the order's distances (never times, 2026-11-08); the overlay's ls_short has the same cases (test_overlay)
+  eq(`[0.4, 443, 999.4, 999.6, 1517, 1250, 9949, 9951, 33400, 999400, 999600, 1250000].map(lsShort)`, ["0 ls", "443 ls", "999 ls", "1k ls", "1.5k ls", "1.3k ls", "9.9k ls", "10k ls", "33k ls", "999k ls", "1M ls", "1.3M ls"]);
+  eq(`[lsSpoken(4), lsSpoken(443), lsSpoken(1517)]`, ["about 10 light seconds", "about 440 light seconds", "about 1,500 light seconds"]);
 });
 t("andList, orList", () => eq(`[andList(["a"]), andList(["a", "b"]), andList(["a", "b", "c"]), orList(["x", "y", "z"])]`,
   ["a", "a and b", "a, b and c", "x, y or z"]));
@@ -126,11 +128,11 @@ t("planItems: from the body you are at, skip? from the detour, ≈ legs, the ord
     localStorage.setItem("skipFloor", "1500000");
     let p = planItems(L());
     o.order = p.map(it => it.body + (it.skip ? "?" : ""));            // A 2 across the star: last, the only skip (its detour)
-    o.legs = p.map(legTime);
+    o.legs = p.map(legDist);
     o.cost = planCost(p[2]).replace(/<[^>]+>/g, "");
     p = planItems(L({at_body: {body: "A 2", pos: [-1010, 0, 0], approx: true, dist_ls: 1010}}));   // you went to A 2 first
     o.fromA2 = p.map(it => it.body);                                     // the old order from there is far worse: replaced
-    o.firstLeg = [p[0].sec, legTime(p[0])];                              // at the body: no leg, no time shown
+    o.firstLeg = [p[0].sec, legDist(p[0])];                              // at the body: no leg, no distance shown
     planMemo.clear();
     const at3 = L({at_body: {body: "A 3", pos: [1050, 30, 0], approx: false, dist_ls: 1050}});
     o.from3 = planItems(at3).map(it => it.body);
@@ -145,8 +147,8 @@ t("planItems: from the body you are at, skip? from the detour, ≈ legs, the ord
     localStorage.removeItem("skipFloor"); planMemo.clear();
     return JSON.stringify(o); })()`));
   assert.deepStrictEqual(out.order, ["A 1", "A 3", "A 2?"]);
-  assert.deepStrictEqual(out.legs, ["~30 s", "~15 s", "≈35 s"]);
-  assert.match(out.cost, /≈35 s · 968k\/min skip\?/);   // 600k over its 37 s detour, under the 1.5M floor
+  assert.deepStrictEqual(out.legs, ["1k ls", "58 ls", "≈2.1k ls"]);   // distances, never times (2026-11-08)
+  assert.match(out.cost, /≈2.1k ls · 968k\/min skip\?/);   // 600k over its 37 s detour, under the 1.5M floor
   assert.deepStrictEqual(out.fromA2, ["A 2", "A 1", "A 3"]);
   assert.deepStrictEqual(out.firstLeg, [0, ""]);
   assert.deepStrictEqual(out.from3, ["A 3", "A 1", "A 2"]);

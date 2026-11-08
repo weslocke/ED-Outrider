@@ -726,8 +726,9 @@ class NowPanel(unittest.TestCase):
         self.assertEqual(O.sc_seconds(50), 15)                                   # never under 15 s
         self.assertAlmostEqual(O.sc_seconds(2000), 7.5 * math.log(2000) - 20)
         self.assertAlmostEqual(O.sc_seconds(100_000), 360)
-        self.assertEqual([O.sc_text(s) for s in (15, 37.0, 12.4, 360)], ["~15 s", "~35 s", "~10 s", "~6 min"])
-        self.assertEqual(O.sc_text(17.5), "~20 s")                               # JavaScript's rounding, half up
+        # the order's distances (page.js lsShort: page_unit has the same cases); JavaScript's rounding, half up
+        self.assertEqual([O.ls_short(x) for x in [0.4, 443, 999.4, 999.6, 1517, 1250, 9949, 9951, 33_400, 999_400, 999_600, 1_250_000]],
+                         ["0 ls", "443 ls", "999 ls", "1k ls", "1.5k ls", "1.3k ls", "9.9k ls", "10k ls", "33k ls", "999k ls", "1M ls", "1.3M ls"])
 
     def test_plan_as_the_page(self):
         plan = O.plan_items(LEAVING, 500_000, 10_000_000)
@@ -771,7 +772,7 @@ class NowPanel(unittest.TestCase):
         self.assertTrue(risk(0.9).endswith("12.0× rebuy"))                                     # under a day: nothing
         self.assertEqual(lines[4:6], ["4.5M here", "Next: bio on B 2: Fonticulua"])
         # ≈: no positions here, the distances to the arrival star stand in; per minute of B 2's detour (15 + 27.4 - 28.0 s)
-        self.assertTrue(lines[6].strip().startswith("up to 2.0M ✦ · ≈15 s · 8.3M/min · 3 more"))
+        self.assertTrue(lines[6].strip().startswith("up to 2.0M ✦ · ≈40 ls · 8.3M/min · 3 more"))   # a distance, never a time
         self.assertEqual(lines[-2:], ["This session 1 h 46 · 28 jumps · 6,541 ly · 12 new systems", "1 sample"])   # wrapped, not cut
         quiet = O.now_panel(dict(self.INFO, unsold={"total": 1_000_000}, fuel={"live": True, "pct": 80}, target=None,
                                  this_session=None, last_session={"jumps": 3}), pal)
@@ -860,7 +861,7 @@ class NowPanel(unittest.TestCase):
                                                             "value": 4.1e6}}
         self.assertEqual(line(leaving=lost), "Next: rescan 2 lost scans in the FSS (4.1M)")
         heading = texts(O.now_panel(dict(self.INFO, destination="A 3", destination_ls=600), pal))
-        self.assertIn("➜ A 3 · ~30 s · worth it · 2.8M/min", heading)   # the time from the arrival star; per minute of its detour
+        self.assertIn("➜ A 3 · 600 ls · worth it · 2.8M/min", heading)   # its distance from the arrival star; per minute of its detour
         self.assertIn("➜ A 2 · nothing to do here", texts(O.now_panel(dict(self.INFO, destination="A 2"), pal)))
         self.assertIn("Next: ➜ bio on B 2: Fonticulua", texts(O.now_panel(dict(self.INFO, destination="B 2"), pal)))   # it is Next
         # complete review 2026-10-30: under a rescan the Next row is the rescan, so the target keeps its own line
