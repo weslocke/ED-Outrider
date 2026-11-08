@@ -9244,9 +9244,10 @@ function sysShow(inst) {
     : "scan the system to see its bodies (the FSS gives each its orbit)";
   inst.box.querySelector(".sys-k").textContent = m && m.start ? `System map · from ${m.start.body}` : "System map";
   if (inst.open && !(m && m.stops.some(s => s.it.body === inst.open))) inst.open = null;   // done or skipped: closed
-  const lk = JSON.stringify([posId(), m && m.stops.map(s => [s.n, s.it.body, s.it.kind, s.it.skip, s.it.first, legDist(s.it)]), m && m.start && m.start.body,
-    inst.open, inst.open && c.hd ? (c.hd.bodies || []).find(b => b.name === inst.open) : null, c.l ? planSkipFor(c.l) : []]);
-  if (lk !== inst.listKey) { inst.listKey = lk; inst.list.innerHTML = sysListHtml(m, c.l, inst.open, c.hd); }
+  // rewritten only when its words change (a tap or a scroll lasts across the redraws): the whole list compared, so
+  // "honk first" gives way to the FSS line with no stop changing (the author, 2026-11-08: honked, still "honk first")
+  const lk = sysListHtml(m, c.l, inst.open, c.hd);
+  if (lk !== inst.listKey) { inst.listKey = lk; inst.list.innerHTML = lk; }
   sysDraw(inst);
 }
 // a stop in words: what it is and what it pays ("🧬 4 · Ammonia · up to 19.3M", "map · Water world T · 1.1M/3.4M")

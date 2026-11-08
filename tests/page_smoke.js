@@ -6430,7 +6430,13 @@ const releasePayloads = async () => {
       o.back = [JSON.stringify(posts[1]), !!row(), !!box.querySelector("[data-sysunskip]")];
       row().click(); det().querySelector("[data-sysfirst]").click(); await tick(); await tick();
       o.first = [JSON.stringify(posts[2]), text(det() && det().querySelector(".sysact"))];
-      apiJson = realApi; data.plan_first = null; data.plan_skip = null; render();
+      // no stop left: what the system still needs, kept up to date with no stop changing (honked, still "honk first")
+      apiJson = realApi; data.plan_first = null;
+      const keepL = hereData.leaving, none = () => text(box.querySelector(".syslist")).split(" | ").filter(t => !/arrived at|last at/.test(t)).join(" | ");
+      data.plan_skip = {id64: sysId, bodies: ["1 e"]};
+      hereData.leaving = Object.assign({}, keepL, {honked: false}); render(); o.none = [none()];
+      hereData.leaving = Object.assign({}, keepL, {honked: true, unscanned: 3}); render(); o.none.push(none());
+      hereData.leaving = keepL; data.plan_skip = null; render();
       return JSON.stringify(o); })()`));
     // on a body: the surface map first, System for that body only
     w.eval(nowCaseJs("body"));
@@ -6488,7 +6494,8 @@ const releasePayloads = async () => {
     const wantDrop = {open: [true, ["Skip", "Do first"], "Skip Do first | Rocky body · 0.10 g · Ammonia | 🧬 3 signals first footfall ×5 | 3 signals, not DSS'd | 930 ls from Smojooe VW-E c11-11"],
       closed: null, skipped: [JSON.stringify(["api/plan/skip", {id64: "5031335599722", body: "1 e", skip: true}]), false, "1 e ↺"],
       back: [JSON.stringify(["api/plan/skip", {id64: "5031335599722", body: "1 e", skip: false}]), true, false],
-      first: [JSON.stringify(["api/plan/first", {id64: "5031335599722", body: "1 e"}]), "Skip | ★ your first stop"]};
+      first: [JSON.stringify(["api/plan/first", {id64: "5031335599722", body: "1 e"}]), "Skip | ★ your first stop"],
+      none: ["honk first | skipped: 1 e ↺ | ↺ order", "3 bodies to find in the FSS | skipped: 1 e ↺ | ↺ order"]};
     for (const k of Object.keys(wantDrop)) {
       const v = drop[k], x = wantDrop[k];
       const okK = Array.isArray(x) ? x.every((xi, i) => xi instanceof RegExp ? xi.test(v && v[i] || "") : JSON.stringify(v && v[i]) === JSON.stringify(xi)) : JSON.stringify(v) === JSON.stringify(x);

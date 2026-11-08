@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The system map's list keeps up with the honk
+The author: the map still said "honk first" after the honk. The stop list was rewritten only when a stop changed
+(its key held the stops, not the line under them), so with no stop before or after the honk its first words stayed.
+- **Fix:** the list is compared whole (`sysShow`): "honk first" gives way to "3 bodies to find in the FSS" (the
+  author's "scan in the FSS first"), then to "nothing worth the trip here", as the summary moves.
+- **Tests:** page_smoke's system map: not honked, then honked with 3 bodies to find, no stop changing; fails without
+  the fix (still "honk first").
+
 ## 2026-11-08 · A stop's drop-down on the system map, Skip; a tag leaves Unscanned
 - **The drop-down** (the author): a tap on a stop (its row, its number or its body on the map) opens why it is on the
   list under its row, instead of making it the first stop: the class, the mapping value now and with your bonuses, each
