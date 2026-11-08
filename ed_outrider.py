@@ -14291,9 +14291,9 @@ class State:
                 "clean": not unscanned and not bio_pending and not unmapped and not rescan,
                 "arrival": dict(places[main], dist_ls=0) if main is not None else None, "_places": places}
 
-    def body_places(self, id64, where_name, bodies):
-        """Each of your scanned bodies' place now, from the orbits in your scans (outrider.orbits): {body_id: {body,
-        pos: [x, y, z] ls to 0.1 or None, approx, dist_ls}}. The suggested order's legs are timed on these."""
+    def orbit_inputs(self, id64):
+        """Your scans and barycentres in a system, as outrider.orbits takes them: ([Scan], {body_id: elements with
+        "timestamp"}). A record that will not parse is left out."""
         scans = []
         for r in self.db.execute("SELECT raw FROM own_bodies WHERE system=? AND raw IS NOT NULL", (id64,)):
             try:
@@ -14306,6 +14306,28 @@ class State:
                 bary[r["body_id"]] = dict(json.loads(r["record"]), timestamp=r["ts"])
             except (TypeError, ValueError):
                 pass
+        return scans, bary
+
+    def system_map(self, id64):
+        """GET /api/system_map: the system map's geometry (Now's 🪐 map, Here's 3D view) from your own scans, now:
+        {id64, at (ISO time the places are for), nodes: [{id, kind, parent, pos [x, y, z] ls, approx, orbit {c, u, v} or
+        None}]} (outrider.orbits.layout; orbits relative to the parent's place). The page joins the nodes to Here's body
+        rows by id for names and pictures, and squashes them for drawing. No nodes: nothing scanned with an orbit."""
+        scans, bary = self.orbit_inputs(id64)
+        now = time.time()
+        try:
+            nodes = outrider.orbits.layout(scans, bary, now)
+        except (TypeError, ValueError, KeyError, AttributeError, ZeroDivisionError):   # a malformed scan: no map
+            nodes = []
+        r3 = lambda v, n: [round(x, n) for x in v]
+        return {"id64": str(id64), "at": iso_ts(now),
+                "nodes": [{"id": n["id"], "kind": n["kind"], "parent": n["parent"], "pos": r3(n["pos"], 3), "approx": n["approx"],
+                           "orbit": {k: r3(v, 4) for k, v in n["orbit"].items()} if n["orbit"] else None} for n in nodes]}
+
+    def body_places(self, id64, where_name, bodies):
+        """Each of your scanned bodies' place now, from the orbits in your scans (outrider.orbits): {body_id: {body,
+        pos: [x, y, z] ls to 0.1 or None, approx, dist_ls}}. The suggested order's legs are timed on these."""
+        scans, bary = self.orbit_inputs(id64)
         try:
             pos, approx = outrider.orbits.positions(scans, bary, time.time())
         except (TypeError, ValueError, KeyError, AttributeError, ZeroDivisionError):   # a malformed scan: no places
@@ -24239,6 +24261,18 @@ def make_app(state, hosts=None):
             return web.json_response({"error": "unknown system"}, status=404)
         return web.json_response(d)
 
+    async def system_map_view(request):
+        """GET /api/system_map?id64=: the system map's geometry (State.system_map), for the system you are in when no
+        id64 is given."""
+        raw = request.query.get("id64") or (state.journals.pos or {}).get("id64")
+        try:
+            id64 = parse_id64(str(raw)) if raw is not None else None
+        except ValueError:
+            return web.json_response({"error": "bad id"}, status=400)
+        if id64 is None:
+            return web.json_response({"error": "no system yet"}, status=404)
+        return web.json_response(state.system_map(id64))
+
     async def find_view(request):
         """GET /api/find?name=: one system by name (see State.find_system); the page then opens it by id."""
         name = " ".join((request.query.get("name") or "").split())
@@ -25413,6 +25447,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/route/list", route_list_view)
     app.router.add_get("/api/species/picture", species_picture_view)
     app.router.add_get("/api/system/{id64}", system_view)
+    app.router.add_get("/api/system_map", system_map_view)
     app.router.add_get("/api/history", history_view)
     app.router.add_get("/api/organics", organics_view)
     app.router.add_get("/api/checklist", checklist_view)

@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The system map's geometry (server)
+The first part of the 3D system map (project/PLAN-system-map-2026-11-08.md, part E).
+- `outrider/orbits.py`: `_tree` (the family tree and the placing, shared with `positions`), `ellipse` (an orbit as a
+  centre and two axis vectors around its parent, turned as the position is, so the body is on its own drawn orbit) and
+  `layout` (every scanned body and every barycentre with members: parent, place, approximate, orbit).
+- GET `/api/system_map?id64=` (`State.system_map`; the system you are in without an id): the layout from your own
+  scans, now, rounded. The page fetches it only while a map is shown. `State.orbit_inputs` reads the scans and
+  barycentres for it and for `body_places`.
+- No stored data changes: no `PARSER_VERSION` bump.
+
 ## 2026-11-08 · The order shows distances, not times
 The author's call (project/PLAN-system-map-2026-11-08.md, Q2): with Supercruise Overdrive the curve's minutes are
 wrong, and fewer words read faster.

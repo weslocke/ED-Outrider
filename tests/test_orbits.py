@@ -8,6 +8,7 @@ part of the tolerance.
 
 Run all: python3 -m unittest discover tests (or scripts/verify.sh).
 """
+import asyncio
 import json
 import math
 import os
@@ -161,6 +162,90 @@ class Approximate(unittest.TestCase):
         self.assertEqual((pos, approx), ({0: (0.0, 0.0, 0.0)}, set()))
 
 
+def on_ellipse(rel, o):
+    """how far rel is from the ellipse c + u cos E + v sin E (u and v at right angles), in ls"""
+    d = [rel[k] - o["c"][k] for k in range(3)]
+    uu, vv = sum(x * x for x in o["u"]), sum(x * x for x in o["v"])
+    cosE, sinE = sum(d[k] * o["u"][k] for k in range(3)) / uu, sum(d[k] * o["v"][k] for k in range(3)) / vv
+    return math.dist(rel, [o["c"][k] + o["u"][k] * cosE + o["v"][k] * sinE for k in range(3)])
+
+
+class SystemLayout(unittest.TestCase):
+    """The system map's geometry (outrider.orbits.layout, GET /api/system_map): every node's place as positions() has
+    it, and each orbit an ellipse around its parent that the body is on now."""
+
+    def test_the_four_systems(self):
+        for name, f in readings().items():
+            scans, bary = split(f["lines"])
+            at = ts_seconds(f["readings"][0]["at"])
+            nodes = {n["id"]: n for n in orbits.layout(scans, bary, at)}
+            pos, approx = orbits.positions(scans, bary, at)
+            for bid, p in pos.items():   # every body with a place is a node, at that place
+                self.assertLess(math.dist(nodes[bid]["pos"], p), 1e-9, (name, bid))
+                self.assertEqual(nodes[bid]["approx"], bid in approx, (name, bid))
+            for n in nodes.values():
+                if n["parent"] is None:
+                    self.assertIsNone(n["orbit"], (name, n["id"]))
+                    continue
+                self.assertIn(n["parent"], nodes, (name, n["id"]))
+                if n["orbit"] is None:
+                    continue
+                rel = [n["pos"][k] - nodes[n["parent"]]["pos"][k] for k in range(3)]
+                size = math.dist(rel, (0, 0, 0))
+                self.assertLess(on_ellipse(rel, n["orbit"]), 1e-6 * max(size, 1), (name, n["id"]))   # it is on its orbit
+            kinds = {n["kind"] for n in nodes.values()}
+            self.assertTrue({"Star", "Planet"} <= kinds, name)
+
+    def test_the_frame_rule_turns_the_orbit(self):
+        """In the binary (YC-D c12-0) a planet of a star with an orbit has its offset turned by that star's orientation:
+        its orbit must be turned the same way, or the planet is off its own drawn orbit."""
+        f = readings()["Smojooe YC-D c12-0"]
+        scans, bary = split(f["lines"])
+        at = ts_seconds(f["readings"][0]["at"])
+        nodes = {n["id"]: n for n in orbits.layout(scans, bary, at)}
+        el = {s["BodyID"]: s for s in scans}
+        turned = [n for n in nodes.values() if n["id"] in el and n["parent"] is not None and n["orbit"]
+                  and nodes[n["parent"]]["kind"] == "Star" and nodes[n["parent"]]["parent"] is not None]
+        self.assertTrue(turned)
+        off = 0
+        for n in turned:   # unturned (the ellipse without the parent's frame), the planet is off it
+            rel = [n["pos"][k] - nodes[n["parent"]]["pos"][k] for k in range(3)]
+            off += on_ellipse(rel, orbits.ellipse(el[n["id"]])) > 1e-3 * math.dist(rel, (0, 0, 0))
+        self.assertTrue(off)
+
+    def test_a_circle_and_its_axes(self):
+        el = {"SemiMajorAxis": orbits.C * 100, "Eccentricity": 0.0, "MeanAnomaly": 0.0, "OrbitalPeriod": 1000.0,
+              "OrbitalInclination": 30.0, "AscendingNode": 10.0, "Periapsis": 20.0}
+        o = orbits.ellipse(el)
+        self.assertAlmostEqual(math.dist(o["c"], (0, 0, 0)), 0.0)
+        self.assertAlmostEqual(math.dist(o["u"], (0, 0, 0)), 100.0)
+        self.assertAlmostEqual(math.dist(o["v"], (0, 0, 0)), 100.0)
+        self.assertAlmostEqual(sum(o["u"][k] * o["v"][k] for k in range(3)), 0.0)
+        o = orbits.ellipse(dict(el, Eccentricity=0.6))
+        self.assertAlmostEqual(math.dist(o["c"], (0, 0, 0)), 60.0)              # a·e from the focus
+        self.assertAlmostEqual(math.dist(o["v"], (0, 0, 0)), 80.0)              # b = a·√(1 - e²)
+        self.assertIsNone(orbits.ellipse({"SemiMajorAxis": 1e9}))               # no orbit (no MeanAnomaly)
+
+    def test_left_out_and_unscanned(self):
+        """A barycentre with no scan is a node with no orbit (its members approximate, each on its own orbit); a planet
+        with no orbit of its own is left out and its moon hangs from the star (its place is the same from there)."""
+        at = ts_seconds("2026-11-07T00:00:00Z")
+        A = Approximate()
+        star = dict(A.STAR, Parents=None, BodyID=1)
+        old = A.planet(2, [{"Star": 1}], 300.0)
+        del old["MeanAnomaly"]
+        scans = [star, old, A.planet(3, [{"Planet": 2}, {"Star": 1}], 2.0),
+                 A.planet(6, [{"Null": 5}, {"Star": 1}], 2.0), A.planet(7, [{"Null": 5}, {"Star": 1}], 3.0)]
+        nodes = {n["id"]: n for n in orbits.layout(scans, [], at)}
+        self.assertNotIn(2, nodes)
+        self.assertEqual((nodes[3]["parent"], nodes[3]["approx"]), (1, True))
+        self.assertLess(on_ellipse([nodes[3]["pos"][k] - nodes[1]["pos"][k] for k in range(3)], nodes[3]["orbit"]), 1e-9)
+        self.assertEqual((nodes[5]["kind"], nodes[5]["orbit"], nodes[5]["parent"]), ("Null", None, 1))
+        self.assertEqual((nodes[6]["parent"], nodes[6]["approx"], nodes[7]["approx"]), (5, True, True))
+        self.assertIsNone(nodes[1]["parent"])
+        self.assertEqual(orbits.layout([], [], at), [])
+
+
 class ServerPlaces(unittest.TestCase):
     """leaving_summary: every item's pos (to 0.1 ls) and approx, the arrival star's place, and at_body: the body you are at
     or were last at in the system you are in this visit."""
@@ -197,6 +282,31 @@ class ServerPlaces(unittest.TestCase):
         self.assertLess(math.dist(l["arrival"]["pos"], want[ids["A"]]), 0.2)
         self.assertIsNone(l["at_body"])                                   # no body yet: the order starts at the star
         self.assertNotIn("_places", l)
+
+    def test_system_map(self):
+        """GET /api/system_map's answer (State.system_map): the layout's nodes, rounded, ids as the Here rows have them."""
+        got = self.state.system_map(self.id64)
+        self.assertEqual(got["id64"], str(self.id64))
+        scans, bary = split(self.lines)
+        want = {n["id"]: n for n in orbits.layout(scans, bary, ts_seconds(got["at"]))}
+        self.assertEqual({n["id"] for n in got["nodes"]}, set(want))
+        for n in got["nodes"]:
+            self.assertLess(math.dist(n["pos"], want[n["id"]]["pos"]), 0.2)   # to 0.001 ls (and a moment later)
+            self.assertEqual((n["kind"], n["parent"], n["approx"]), (want[n["id"]]["kind"], want[n["id"]]["parent"], want[n["id"]]["approx"]))
+            self.assertEqual(n["orbit"] is None, want[n["id"]]["orbit"] is None)
+        json.dumps(got)                                                           # it goes out as JSON
+        from aiohttp.test_utils import TestClient, TestServer
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                here = await c.get("/api/system_map")                              # the system you are in
+                other = await c.get("/api/system_map?id64=12345")
+                bad = await c.get("/api/system_map?id64=nope")
+                return here.status, (await here.json())["id64"], other.status, (await other.json())["nodes"], bad.status
+        self.assertEqual(asyncio.run(go()), (200, str(self.id64), 200, [], 400))
+        self.assertEqual(self.state.system_map(12345)["nodes"], [])              # nothing scanned there
+        self.db.execute("UPDATE own_bodies SET raw='{\"BodyID\": 1, \"Parents\": 5}' WHERE system=?", (self.id64,))
+        self.assertEqual(self.state.system_map(self.id64)["nodes"], [])          # malformed scans: no map, no crash
 
     def test_at_body_is_the_last_body_this_visit(self):
         approach = lambda ts, name, bid: {"event": "ApproachBody", "timestamp": ts, "StarSystem": self.NAME,

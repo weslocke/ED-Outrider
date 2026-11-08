@@ -89,11 +89,10 @@ def _first(entry):
     return kind, bid
 
 
-def positions(scans, barycentres, at):
-    """Every scanned body's position at `at`: ({body_id: (x, y, z) ls}, {the approximate body ids}).
-    scans: Scan events (dicts, the journal's own keys); barycentres: ScanBaryCentre events, or {body_id: elements
-    with "timestamp"}. A body with no orbit of its own (old journals: no MeanAnomaly) has no position unless it is the
-    root."""
+def _tree(scans, barycentres, at):
+    """The system's family tree and the placing of its nodes, shared by positions() and layout(): (bodies {id: scan},
+    parent {id: parent id}, kind {id: Star | Planet | Null}, place(node) -> ((x, y, z), approx), frame(node) -> the
+    matrix its offset is turned by (its parent's orientation by the frame rule) or None, elements(node))."""
     if isinstance(barycentres, dict):
         bary = {int(k): v for k, v in barycentres.items()}
     else:
@@ -127,6 +126,14 @@ def positions(scans, barycentres, at):
     def elements(node):
         return bodies.get(node) or bary.get(node)
 
+    def frame(node):
+        """the frame rule: the parent's orientation, when the parent is a star with an orbit or a planet pair"""
+        par = parent.get(node)
+        pel = elements(par)
+        if pel and has_orbit(pel) and (kind.get(par) == "Star" or (kind.get(par) == "Null" and planet_pair(par))):
+            return turn(pel)
+        return None
+
     memo = {}
 
     def place(node, depth=0):
@@ -144,12 +151,21 @@ def positions(scans, barycentres, at):
         if v is None:   # no orbit known: placed at what it orbits
             v, approx = (0.0, 0.0, 0.0), True
         else:
-            pel = elements(par)
-            if pel and has_orbit(pel) and (kind.get(par) == "Star" or (kind.get(par) == "Null" and planet_pair(par))):
-                v = _apply(turn(pel), v)
+            r = frame(node)
+            if r:
+                v = _apply(r, v)
         memo[node] = (tuple(base[k] + v[k] for k in range(3)), approx)
         return memo[node]
 
+    return bodies, parent, kind, place, frame, elements
+
+
+def positions(scans, barycentres, at):
+    """Every scanned body's position at `at`: ({body_id: (x, y, z) ls}, {the approximate body ids}).
+    scans: Scan events (dicts, the journal's own keys); barycentres: ScanBaryCentre events, or {body_id: elements
+    with "timestamp"}. A body with no orbit of its own (old journals: no MeanAnomaly) has no position unless it is the
+    root."""
+    bodies, parent, _kind, place, _frame, _el = _tree(scans, barycentres, at)
     pos, approx = {}, set()
     for bid, s in bodies.items():
         if parent.get(bid) is not None and not has_orbit(s):
@@ -159,6 +175,54 @@ def positions(scans, barycentres, at):
         if a:
             approx.add(bid)
     return pos, approx
+
+
+def ellipse(el, frame=None):
+    """A body's orbit as an ellipse around what it orbits, in light seconds: {c, u, v}, each (x, y, z), the points
+    c + u·cos E + v·sin E for E in 0..2π (the same plane and turn as offset(), so the body's own place is on it), or
+    None without an orbit. frame: the parent's orientation by the frame rule (_tree's frame), or None."""
+    if not has_orbit(el):
+        return None
+    a, e = _num(el, "SemiMajorAxis") / C, min(max(_num(el, "Eccentricity") or 0.0, 0.0), 0.999)
+    r = turn(el)
+    vec = lambda x, y: tuple(r[k][0] * x + r[k][1] * y for k in range(3))
+    c, u, v = vec(-a * e, 0.0), vec(a, 0.0), vec(0.0, a * math.sqrt(1 - e * e))
+    if frame:
+        c, u, v = _apply(frame, c), _apply(frame, u), _apply(frame, v)
+    return {"c": c, "u": u, "v": v}
+
+
+def layout(scans, barycentres, at):
+    """The system map's geometry (GET /api/system_map): every scanned body and every barycentre with members, each
+    {id, kind (Star | Planet | Null), parent (id or None), pos (x, y, z) ls, approx, orbit (ellipse() relative to the
+    parent's place, or None)}. A body with no orbit of its own (and not the root) is left out, as in positions(): its
+    place is unknown. A barycentre is a node so the map can squash each family on its own; it is not drawn."""
+    bodies, parent, kind, place, frame, elements = _tree(scans, barycentres, at)
+    nodes = {}
+
+    def add(node):
+        if node in nodes:
+            return
+        el = elements(node) or {}
+        if node in bodies and parent.get(node) is not None and not has_orbit(el):
+            return
+        p, a = place(node)
+        par = parent.get(node)
+        nodes[node] = {"id": node, "kind": kind.get(node, "Null"), "parent": par, "pos": p, "approx": a,
+                       "orbit": ellipse(el, frame(node)) if par is not None else None}
+        if par is not None:
+            add(par)
+
+    for bid in bodies:
+        add(bid)
+    # a parent left out (a body with no orbit of its own) sits at its own parent's place, so its children hang from the
+    # nearest ancestor that is in: their place and their orbit's centre are the same from there
+    for node in nodes.values():
+        par, hops = node["parent"], 0
+        while par is not None and par not in nodes and hops < 64:
+            par, hops = parent.get(par), hops + 1
+        node["parent"] = par if par in nodes else None
+    return list(nodes.values())
 
 
 def distance(p, q):
