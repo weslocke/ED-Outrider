@@ -16,7 +16,8 @@ before.
 ## What it shows
 
 - **The system panel**, in supercruise: each body worth your time, numbered in the suggested order as on Here's
-  schematic (①②③; the body you tapped to go to first leads), with what is left to do (TO MAP,
+  schematic (①②③; the body you made the first stop, by a tap on Here's schematic or **Do first** on the system map, leads;
+  one you **Skip** on the system map is left out until you leave the system or put it back), with what is left to do (TO MAP,
   TO LAND, a sample run under way such as "Bacterium 1/3") and what it pays, the codex mark with the new colour
   ("✪ Lime"), then the valuable bodies you have finished (MAPPED, SAMPLED); curiosities on an "Also here" line; what
   is left in the whole system, and how many bodies are under your levels. A body you have not scanned yet (known to
@@ -91,7 +92,7 @@ before.
   week "2 weeks 2 days since sold", or "2wk2d since sold" when that would not fit; whole days). Then, on a body,
   each genus there with its samples and how far the next sample must be; elsewhere **Next**: first any scans lost
   with a ship still to redo ("rescan 12 lost scans in the FSS (4.1M)"), else the first item of Here's
-  suggested order with what it pays, how far it is from where you are and how many more, and the body you have targeted when it is
+  suggested order (never a body you skipped) with what it pays, how far it is from where you are and how many more, and the body you have targeted when it is
   not that one. Last, this session's figures.
 - **Bio signals** (optional): every body in the system with bio signals, whether it meets your levels or not. A body
   worth it (over `bio_min`, a run started, new to your codex, or not priced yet) is in bright colours, the rest are
@@ -101,7 +102,7 @@ before.
 - **Alerts** (optional): the page's alerts for a few seconds each, under the system strip at the top: what you
   would hear or see as a notification ("B 1: Earth-like world", "Fuel low", "Interdicted"), its title and a line or two
   of its text, newest first, three at most. Each stays 8 seconds; danger (hull, heat, interdiction, fuel, a rig too far,
-  the suit running low, the ship lost, the carrier leaving without you) stays 15 seconds, in red with a red frame. It
+  the suit running low, the ship lost, a bounty put on you, the carrier leaving without you) stays 15 seconds, in red with a red frame. It
   shows every alert switched on in **Settings → Alerts** (mining's in **Settings → Mining**) in the browser that saw it (any of notify, sound or speak ticked), even while
   the voice is off or hushed. The alerts are worded by Outrider's page, so a page must be open somewhere (a browser
   window, the second screen or the tablet): with none open, the panel stays empty. Several windows open count once.

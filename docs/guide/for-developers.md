@@ -37,6 +37,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/tls.py` | Every outgoing HTTPS connection's certificates (this computer's plus certifi's), and a certificate failure in plain words |
 | `outrider/health.py` | What kind of failure a lookup or upload met, and which lookup services are down |
 | `outrider/fsd.py`, `outrider/highway.py`, `outrider/core.py` | The frame shift drive's maths and fuel model; the Highway's route helpers; small shared helpers |
+| `outrider/orbits.py` | Where a system's bodies are now, from the orbits in your own scans (Kepler, checked against the game's navigation panel): the suggested order's legs body to body, and the 3D system map's places and orbit ellipses (GET `/api/system_map`) |
 | `outrider/tools.py` | The read-only questions an AI may ask (one registry, used by the MCP bridge and the voice) |
 | `outrider/ask.py`, `resources/ask.json` | Questions by voice (`POST /api/ask`): the fixed phrases, then the optional AI layer |
 | `outrider/mcp.py` | The MCP bridge for AI clients: `python3 -m outrider.mcp` (stdio); `--list` shows the tools |

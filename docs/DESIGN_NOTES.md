@@ -622,6 +622,9 @@ upstream project's choices, not rules of the game.
     the position is), so the page draws orbits with sin and cos and needs no Kepler solver of its own (no twin).
   - **A snapshot:** the places are worked out when the page asks (GET `/api/system_map`), again when Here's data for
     the system changes and every five minutes while a map shows: close moons move noticeably in an hour.
+  - **A body with no orbit in its scan is not drawn** (no SemiMajorAxis or MeanAnomaly; journals from before about mid
+    2021 may lack MeanAnomaly): its place is unknown, so the list names it under "not on the map (no orbit in the
+    scan)" (`sysmiss`), and its moons hang from the nearest ancestor that is drawn (`orbits.layout`).
   - **Where you are** is the body you were last at (`at_body`), else the arrival star: between bodies Outrider does
     not know your place in space.
   - **A tap on a stop opens its drop-down** (the author, 2026-11-08), not "go there first": why it is on the list
@@ -1376,7 +1379,8 @@ upstream project's choices, not rules of the game.
   the entries came in (review F21).
 - **A map's "Next" gives the body's whole mapped value, without and with your bonuses** (the author's choice,
   review Q5): "Next: map 7 (771k/2.2M)", spoken "771 thousand, 2.2 million with bonuses", one number when no bonus
-  of yours applies; on Now's Next line, the mapped call-out and the status report. Which bodies make the list and
+  of yours applies; on Now's Next line, the system map's list and cards, the mapped call-out, the status report, the
+  FSS debrief, the leaving warning and the targeted body's line (page.js `mapValueSaid`, 2026-11-08). Which bodies make the list and
   their order still go by the bonus-free increment (what mapping adds), as the green-row level does.
 - **A malformed speech file is not installed** (Codex F7): valid JSON whose lists hold anything but strings keeps
   the last good document in use, with the problem shown; bans keep working.
@@ -2075,6 +2079,8 @@ confirmed while playing. Treat reports about them as likely real.
   sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone); each
   mineral's own threshold, a ring's best prices nearby, Search's 2+ and a mining mission's 🔍 (2026-10-24); your record
   said at a hotspot's drop, Now's "hits 3/8" and the limpets you could synthesise (2026-10-27).
+- The stint's best rock (2026-11-07): "the best yet this stint" (`prospect_best`, row `prospectbest`) and the mining
+  recap's best rock: tested on synthetic stints only.
 - The sample spacing while flying the ship low over the body (discussion #3, 2026-10-23): from the point under the
   ship, with Status.json's live Latitude/Longitude in flight; tested on made-up Status.json only.
 - A screenshot on the Windows clipboard (`winkeys.set_clipboard_image`: CF_DIB and the registered PNG format, 2026-10-25):
@@ -2115,6 +2121,9 @@ confirmed while playing. Treat reports about them as likely real.
 - The commander filter (S9-S4) with a real second commander's journals in the folder: written to Frontier's journal
   format (Commander and LoadGame carry the FID), tested on synthetic files only; the commander chooser (Discussion
   #18: a pick's restart and re-read), and two live folders written at once (each its own upload session).
+- The Sessions' Ship and "On foot" (#23, 2026-11-05/06): the ship you fought or mined in, and kills on foot after a
+  Disembark or a Frontline dropship's `DropshipDeploy`: built from Kurbo26's report and journal lines, waiting for him
+  or the author to try it in a live session.
 - Pins at Guardian and Thargoid pickups (2026-11-07): the pickup lines' names and Status.json's flags at a real site,
   on foot and in the SRV; built from the journal manual's events and the game's symbols only.
 - Surface pins' guidance from orbital cruise down and their arrival distances; carrier trips' following (the leg on

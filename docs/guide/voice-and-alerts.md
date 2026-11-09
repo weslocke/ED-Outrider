@@ -41,8 +41,8 @@ the game too, for a few seconds each:
 - on a route you follow in Outrider, a system targeted in game that is not the next stop (its own row, **Not the next stop targeted**;
   spoken once per target, no notification by default; see [Plot Route](plot-route.md))
 - **docking** (its own row, **Docking pad and refusals**, spoken by Comms): the pad the station gave you, said every time, even while
-  hushed ("Pad 34."), 5 seconds after the grant so it doesn't talk over the station's own voice (**Settings → Voice → Say your landing pad … s after docking is granted**, 0 to 20: `[speech] pad_delay`, for a chattier station), and why it refused when that isn't obvious: no pad free, ship too big, access restricted, hostile,
-  your offences (with the nearest Interstellar Factors, as for **Wanted** below), a fighter still out (too far away is not said). No notification by default. The pad also shows large on
+  hushed ("Pad 34."), 5 seconds after the grant so it doesn't talk over the station's own voice (**Settings → Voice → Say your landing pad … s after docking is granted**, 0 to 20: `[speech] pad_delay`, for a chattier station), and why it refused when that isn't obvious: no pad free, ship too big, access restricted, hostile
+  (with the nearest Interstellar Factors while you have a bounty on you in this system), your offences (with the nearest Interstellar Factors, as for **Wanted** below), a fighter still out (too far away is not said). No notification by default. The pad also shows large on
   Now and in the overlay (where the Surface radar goes). At a starport or carrier the pad's place follows: "Pad 34. At the back, up on
   your right." The words assume you come through the slot with the **green lights on your right**, and the first docking
   of each game session (then every fourth) says so: "With the green lights on your right, it's at the back, up on your
@@ -55,7 +55,7 @@ the game too, for a few seconds each:
   you kept back), said 90 seconds after the last page
 - hull damage, heat damage, interdiction, and unsold data past a threshold
 - **wanted** (its own row, **Wanted**, under Danger and risk): a bounty put on you in this system, said as a danger line
-  (by Tactical with the crew on, else Comms) with where to pay it off: "Brewer Corporation has put a 500 credit bounty
+  (with the crew on, by Tactical while **Danger lines always in Tactical's voice** is on, else by Comms) with where to pay it off: "Brewer Corporation has put a 500 credit bounty
   on you. Nearest Interstellar Factors: Hamilton Port in Wolf 359, 12 light-years." The nearest in another system when
   Spansh knows one (the station here may be the one shooting at you), else one here; the line waits a few seconds at
   most for Spansh and is said without it otherwise. Bounties only, never fines; once per faction each time you are in
@@ -69,6 +69,14 @@ the game too, for a few seconds each:
   (settlement business wants another suit), while you hold an on-foot mission, in a taxi or multicrew, and on a body
   with nothing left or never scanned. On foot, the strip under the header shows "⚠ Maverick suit: no Genetic Sampler"
   while there is sampling left
+- **surface pins** (its own row, **Surface pins**, under Exobiology and the surface, said by the Navigator): a pin set,
+  then the one you fly to at 10 km, 1 km and 100 m and on arrival; no notification by default (see The surface map in
+  [The views](views.md))
+- **a codex picture filed** (two rows of its own under Exobiology and the surface, **Codex picture: plant** and
+  **Codex picture: geology**): with Settings → Screenshots → **Also save tagged screenshots into your codex folders**
+  ticked, each shot taken live and filed in your codex folders is a notification and a line ("Picture filed in your
+  codex: Bacterium Volu."): a plant's said by the Exobiologist, a formation's by the Science Officer. Shots converted
+  later are filed quietly (see [Automation](automation.md))
 - someone else's scans of a system holding your unsold first discoveries reached Spansh (the firsts watch, see
   [My firsts](views.md)): a card and a notification each time, "👁 Someone else scanned your unsold Drojau LL-O
   b26-3: 3 bodies reached Spansh 12 days after you (your scan 15 days ago) · 14.2M cr at stake", and spoken at most
@@ -130,7 +138,8 @@ the game too, for a few seconds each:
 Spoken but not notified unless you tick it: the arrival briefing, the FSS debrief, leaving a body with
 sampling unfinished, each species completed, tank full, a high-gravity approach with a lot aboard, the
 Neutron Highway's next stop, auto-target's result, the jump line, auto honk's result, and the Rhino's rigs (the
-co-pilot button's confirmations, what a rig collected, rigs still marked out when you dock the Rhino). Discovery
+co-pilot button's confirmations, what a rig collected, rigs still marked out when you dock the Rhino), a planet mapped, surface pins and the mining alerts (rings to mine,
+limpets and the hold, the prospector call-out and the stint's best rock; their switches are in Settings → Mining). Discovery
 streaks (ten known systems in a row, or five undiscovered) are part of the arrival alert, which is notified. Not
 spoken until ticked: scooping stopped early, supercharge and the body brief on approach (they repeat what the game or
 another alert already said). Off until ticked: **jumponium** (see the voice, below), **Upload on hold** and **Carrier
@@ -302,7 +311,7 @@ the sentence ends:
 | Exobiologist | valuable bodies, sampling, Exomastery routes, plant codex pictures |
 | Chief Engineer | fuel, tank full, scooping stopped, jumponium, hull and heat, the suit running low |
 | Quartermaster | sales, unsold data, your carrier, its upkeep and its trips, losses |
-| Comms Officer | the game's start and exit, someone scanning your firsts, an upload on hold, docking pads and refusals, other players' chat (read aloud, below) |
+| Comms Officer | the game's start and exit, someone scanning your firsts, an upload on hold, docking pads and refusals, a bounty on you (Tactical's while Danger lines always in Tactical's voice is on), other players' chat (read aloud, below) |
 | Tactical | every danger line (while Danger lines always in Tactical's voice is on) |
 | Mining Officer | the Rhino's rigs, rings to mine, limpets and the hold (nearly full, full, where to sell), the prospector call-out and motherlodes, the stint's best rock |
 
@@ -316,15 +325,17 @@ the sentence ends:
   (Personality voices). Whenever a member cannot speak (its voice not installed or failing to load), the XO says the
   line instead, so no line is ever lost; the table says why under its name, and Show log says it once.
 - **Danger lines always in Tactical's voice** (on by default): hull, heat, interdiction, the suit running low, the fuel
-  warnings, your carrier leaving without you, a ship lost, a rig too far, so a danger line is never mistaken for chatter. Off, they stay with
+  warnings, your carrier leaving without you, a ship lost, a rig too far, a bounty on you, so a danger line is never mistaken for chatter. Off, they stay with
   their alert's crew member. Danger still comes first either way.
 - **Who says which alert:** ⚙ Settings → Alerts has a **Crew** column while the crew is on: move any alert to another
   member there. A danger alert says "spoken by Tactical (danger)" while that switch is on.
 - Outrider keeps the crew, so every browser and the tablet (with Play alerts here) speak with it. The tablet's own
   Settings has none of this: the crew is set on the PC.
 - **Crew lines.** With the crew on, some lines have one crew member mention another: "Fuel 18 percent. Ask the Navigator
-  for the nearest scoopable star." (about 3 per alert in each personality, for 26 alerts: arrivals, briefings, bodies,
-  biology, fuel, the hull, sales, your carrier, the session's end). A member with a name is called by it ("Ask Mira");
+  for the nearest scoopable star." (about 3 per alert in Down to business, Sarcastic and Sweet and loving and their swearing versions,
+  for 27 alerts: arrivals, briefings, bodies, biology, the codex, rare stars, fuel, the hull, sales, your carrier,
+  firsts scanned by others, the session's end and more; Sarcastic adds an upload on hold and the carrier's upkeep; the
+  other personalities have one to three in all). A member with a name is called by it ("Ask Mira");
   without one, by its role. They are said only while the crew is on (with it off you hear exactly the lines you heard
   before), and never by the member they mention: move the fuel alerts to the Navigator and the lines that mention the
   Navigator are left out for them. **▶ Audition: crew lines** (here and in the voice lab) plays them.
@@ -368,7 +379,9 @@ the sentence ends:
   depends on the body alone). Biology is said at once only when every genus the body could have is new to you; while
   some are and some are not and bodies are still unscanned (a star yet to be scanned can rule a genus in or out), it
   waits until you have scanned every body of the system and is said then if it still is.
-  **The jump line** in the hyperspace tunnel, with whether the star ahead is scoopable, and any hazard.
+  **The jump line** in the hyperspace tunnel, with whether the star ahead is scoopable, and any hazard
+  ("Neutron star ahead: throttle down on arrival, mind the jet cone."; **Say the hazard when the FSD charges for a
+  neutron star, white dwarf or black hole** in What the voice says, on by default).
 - **Greeting and goodbye:** what is at stake after a long break (and any core module under your level), and a
   session recap when you quit.
 - **Exobiology:** leaving a body mid-run warns; the third sample says what it paid and what is left; within 100 m of
@@ -486,8 +499,8 @@ route you follow: the Highway, Road to Riches, Exomastery, a world, sweep or tra
 your next stop, else the route plotted in the game; a route at its last stop says so, or gives way to the other one
 you follow), **what's left here,
 nearest unvisited, nearest scoopable star** (the nearest known one from you, and whether it is within one jump; the
-star you are at first, when it scoops; most unreported stars can be scooped too), **nearest station** (or carrier, Vista, cartographics, repair, refuel, shipyard, material trader,
-raw material trader, "where can I sell": see
+star you are at first, when it scoops; most unreported stars can be scooped too), **nearest station** (or carrier, Vista, cartographics, repair, refuel, shipyard, outfitting, material trader,
+raw, manufactured or encoded ("data") material trader, "where can I sell": see
 [Nearest place to dock](plot-route.md#-nearest-place-to-dock); a place further than 500 ly also gets a neutron route
 plotted there while you follow none), **nearest green gas giant** (a guess from what
 Outrider has cached: see [Potential green gas giants](views.md#-potential-green-gas-giants)), **FSD injections**
@@ -498,8 +511,7 @@ biology and geology), **left behind** (the nearest one or two systems within 100
 `body_highlight_level` and `bio_min`), **bookmark this system** (any words after it are its note: "bookmark this
 system ringed water world") and **remove the bookmark**, **say that again** (the last line, again, in the window that
 speaks), **show** a page on the tablet ("show Nearby", "open Bio", "open Plot Route", "back to Now"), **hush** and **unhush**. A hush can take a time: "hush for ten minutes",
-"quiet until the next jump" (30 minutes when you say none; another time gets the nearest of 10, 30 minutes or the
-next jump). Their phrases are in `resources/ask.json`; edit them freely (Outrider reads them at start).
+"quiet until the next jump" (30 minutes when you say none; another time gets the nearer of 10 and 30 minutes). Their phrases are in `resources/ask.json`; edit them freely (Outrider reads them at start).
 
 **Voice commands** (⚙ Settings → Voice, the fold at the end; on the tablet, Settings → **Voice commands…**) lists
 them all, grouped, from that file: what each one does, every phrase that asks it, and the words that narrow it ("vista",

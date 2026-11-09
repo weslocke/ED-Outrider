@@ -33,7 +33,7 @@ reported to Spansh, so you see them before you go (the hover says "reported by o
 only your own scans are ever spoken); Here tags the body itself. 📍
 counts FSS signals worth a detour (a Titan shows the galaxy map's Titan marker instead): Titans, Guardian beacons, generation ships, listening posts, number stations, tourist
 beacons and memorials (hover for which).
-<br><br><img src="../images/nearby.png" alt="Nearby systems">
+<br><br><img src="../images/nearby.png" alt="Nearby systems, with the Plotted route pane open under the list: the route the game plotted, system by system">
 </td>
 <td width="50%" valign="top">
 <b>Here</b> — the current system body by body: values, bio and geo signals, 🌋 volcanism, and before the
@@ -68,7 +68,7 @@ semi-major axis), not today's distance; the arrival star's own planets have none
 "/ 2.6 ls" too; the body's panel keeps it); **Show orbital distance** brings it back. This device remembers it.
 A footer under the list says what each icon means, for the icons that system's list shows (none, no footer); it
 stays in view while the list scrolls.
-"🧬? check in the FSS" marks a landable body you have only from an AutoScan or a nav beacon, whose signals nobody
+"bio possible: check the FSS" (🧬? in a narrow pane) marks a landable body you have only from an AutoScan or a nav beacon, whose signals nobody
 counted, where life is possible. A finished species is one line, its codex entry with what it pays ("📖 Bacterium
 Alcyoneum - Red ✦ 8.3M"), the colour's word in that colour (Settings → Display can turn that off). On a PC, a mouse over
 a species' name (one you sample, one finished, the likeliest guess) shows a picture of it, as in the surface map's
@@ -161,7 +161,9 @@ numbered on the bodies (①②③, two on a body with both mapping and bio; a st
 path between them from where you are (the body you are at or were last at, else the arrival star) and the distance
 of each leg, from body to body where the bodies are now ("≈" when about: from one star's family to another's in
 a multi-star system, or an orbit your scans do not give). Tap a number to go there first: Now, the voice, the to-do
-line and the overlay follow; <i>↺ order</i> puts the suggested order back. <i>🪐 3D</i> draws the system you are in
+line and the overlay follow; <i>↺ order</i> puts the suggested order back. A body you Skip on the system map is left
+out here too, from the to-do line and the numbers, until you leave the system; the system map's <b>skipped:</b> line
+(Now, or 🪐 3D here) puts it back. <i>🪐 3D</i> draws the system you are in
 as the system map does (below, under Now).
 <br><br><img src="../images/schematic.png" alt="The system schematic">
 </td>
@@ -297,9 +299,11 @@ faint rings round the star (1k, 2k ls...) give a sense of size. Where you have b
 from the arrival star through each body you were at (approached, landed, dropped at or mapped), each with a grey ✓; the
 list leaves those out, starting at the body you were last at. Beside it (or under it) the stops are listed, one line
 each: the body, why it is there and what it pays ("map 1.9M", "bio 3 · 19.3M"), and its leg. A stop not worth the trip
-is dimmed, its number dashed. The body's class and both map totals are in its card (hover it, or tap it on the map).
+is dimmed, its number dashed. The body's class and both map totals are in its card (hover it) and its drop-down (tap it).
 With no stop yet the list says why: **honk first** before the honk, **3 bodies to find in the FSS** while the FSS has
-some left, **nothing worth the trip here** once every body is found and none is over your levels.
+some left, **nothing worth the trip here** once every body is found and none is over your levels. A stop whose scan gave it no orbit is named
+under the list ("not on the map (no orbit in the scan): 2 a"): it keeps its place in the order but has no number on the
+map.
 
 <p align="center">
   <img src="../images/system-map.png" alt="Now with the system map beside it: the dashed trail from the arrival star through 4 a and 1 (each ticked), three bio stops numbered on the map with their legs, and the list under it with the second stop's drop-down open: Skip, Do first, its class, its signal and its leg from the stop before" width="900">
@@ -311,7 +315,7 @@ some left, **nothing worth the trip here** once every body is found and none is 
 - **Tap a stop** (a row of the list, its number or the body on the map) for why it is on the list, under its row: the
   body's class, its mapping value now and with your bonuses, each genus with its likely species and value (and with the
   ×5 first footfall when it still pays it), what is sampled or lost, its gravity and air, and its leg. At the top,
-  **Skip** leaves it out of the order everywhere (Next, the "then:" line, the map, the overlay) until you leave the
+  **Skip** leaves it out of the order everywhere (Next, the "then:" line, the map, Here's to-do line and schematic, the overlay) until you leave the
   system; the **skipped:** line under the list puts one back, and ↺ order puts back all of them. **Do first** makes it
   the first stop. Tap it again, or another, to close it. **Hover or tap any other body** for its card (its class and how
   far it is from where you are).
@@ -454,7 +458,8 @@ render green from a giant's surface temperature, mass and radius. Outrider runs 
 journal's own figures for: your scans, and Spansh's records of other people's.
 
 - **A green planet with "?"** marks a potential one: beside the body in Here, on the system's row in Nearby (a
-  system worth going to), and a Now line ("Potential green gas giant: B 3 · check in the system map"). Without the
+  system worth going to), and a Now line ("Potential green gas giant: B 3 · check in the system map": the game's own system map, where its real colour
+  shows; Outrider's 🪐 map draws a giant by its class and cannot tell). Without the
   "?" it is confirmed: your codex has its green entry. The game files it on the system's main star, not the giant, but
   writes it in the same second as your FSS scan of the giant, which names it. Only when no scan of yours shares that
   second (an older journal, say) is the giant picked by its class: the only one of that class, else the ones the
@@ -776,8 +781,9 @@ above the list:
   tier reached of the top one, your contribution and the top share of contributors you are in, and the time left (a
   goal that has ended goes, even while the game still lists it for its reward).
 - **Sessions**: your sessions of the last 30 days with fighting or mining in them (40 at most), each from one login to
-  the next. Combat:
-  kills, by ship, bounties and bonds, kills an hour, deaths. Mining: **Where** (the system and the ring, or the body your
+  the next. Each row's **Ship** is the ship you fought or mined in, not the one you logged in with ("On foot" for kills
+  on foot, such as in a ground conflict zone; with three ships or more, the first → the last "+N", every ship in its
+  hover). Combat: kills, bounties by ship, bounties and bonds, kills an hour, time fighting, deaths. Mining: **Where** (the system and the ring, or the body your
   SRV mined on, with 🎯; "+1" when the session mined in more places, named in its hover), tons refined and of what (what the SRV's refinery
   collected on a planet is shown apart, and is not in the tons an hour), asteroids prospected and their content,
   limpets launched, and **Sold**: what the ore you mined sold for in that login, wherever and whenever you mined it (a

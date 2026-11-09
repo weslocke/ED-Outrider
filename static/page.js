@@ -9283,7 +9283,7 @@ function sysWhyFull(it) {
           b.potential ? `up to ${credits(pendingWorth(b))}` : ""];
 }
 // the stop list beside (or under) the map: where the order starts, then each stop with why it is there and its leg; a
-// tap makes it the first stop (Here's data-firststop, as on the schematic)
+// tap opens the stop's drop-down (sysDetailHtml: Skip and Do first at its top)
 // a stop's drop-down (the author, 2026-11-08: a tap shows why it is on the list, with Skip and Do first at its top): the
 // body's class, its mapping value without and with your bonuses, each genus with its likely species and value (and
 // with the first footfall ×5 when it still pays it), what is sampled or lost, its gravity and air, its leg
@@ -9475,7 +9475,8 @@ function sysDraw(inst) {
 const sysHitAt = (inst, e) => { const r = inst.canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
   return inst.hits.find(h => Math.hypot(h.x - x, h.y - y) <= h.r) || null; };
 // a body's card: what it is, how far from where the order starts, and what it is on the route for
-function sysCardHtml(inst, n, touch) {
+// a body's card on the map (hovered, or tapped when it is no stop: a stop's tap opens its drop-down instead)
+function sysCardHtml(inst, n) {
   const m = inst.model, b = n.body, st = m.start && m.nodes.find(x => x.id === m.start.id);
   const d = st && st.id !== n.id ? Math.hypot(...n.pos.map((c, k) => c - st.pos[k])) : null;
   const ss = m.stops.filter(s => s.id === n.id);
@@ -9484,13 +9485,12 @@ function sysCardHtml(inst, n, touch) {
     ...ss.map(s => `${s.n}: ${sysWhyFull(s.it).filter(Boolean).join(" · ")}${s.it.skip ? " · skip?" : ""}`),
     (m.trail || []).slice(1).includes(n.id) ? `<span class="unk">✓ you were here this visit</span>` : "",
     !ss.length && !(st && st.id === n.id) && !(m.trail || []).includes(n.id) ? `<span class="unk">not on the suggested order</span>` : ""];
-  return lines.filter(Boolean).map(x => `<div>${x}</div>`).join("") + (touch && ss.length && !ss[0].it.first
-    ? `<div><button type="button" class="mini" data-firststop="${esc(b.name)}">go here first</button></div>` : "");
+  return lines.filter(Boolean).map(x => `<div>${x}</div>`).join("");
 }
 function sysHover(inst, e) {
   const h = sysHitAt(inst, e);
   inst.canvas.style.cursor = h && h.kind === "stop" ? "pointer" : "";
-  if (h) { popId = "sys"; pop.innerHTML = sysCardHtml(inst, h.n, false); pop.style.display = "block"; pop.classList.remove("taps"); placePop(e.clientX, e.clientY); }
+  if (h) { popId = "sys"; pop.innerHTML = sysCardHtml(inst, h.n); pop.style.display = "block"; pop.classList.remove("taps"); placePop(e.clientX, e.clientY); }
   else if (popId === "sys") hidePop();
 }
 function sysTap(inst, e, touch) {
@@ -9498,7 +9498,7 @@ function sysTap(inst, e, touch) {
   // a stop (its number, or the body itself): its drop-down in the list, as a tap on its row (the author, 2026-11-08)
   const stop = h.kind === "stop" ? h.body : h.n && h.n.body && inst.model && inst.model.stops.some(s => s.it.body === h.n.body.name) ? h.n.body.name : null;
   if (stop) { if (popId === "sys") hidePop(); sysOpen(inst, stop, true); return; }
-  popId = "sys"; pop.innerHTML = sysCardHtml(inst, h.n, touch); pop.style.display = "block"; pop.classList.toggle("taps", touch); placePop(e.clientX, e.clientY);
+  popId = "sys"; pop.innerHTML = sysCardHtml(inst, h.n); pop.style.display = "block"; pop.classList.toggle("taps", touch); placePop(e.clientX, e.clientY);
 }
 // open a stop's drop-down (the same one again closes it), the row scrolled into view when asked (a tap on the map)
 function sysOpen(inst, body, scroll = false) {

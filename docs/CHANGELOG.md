@@ -2,6 +2,27 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The Opus docs sweep: every doc checked against the code, nine screenshots retaken
+An Opus sweep (7 auditors, each finding checked by a verifier against the code): 48 confirmed (2 high, 18 medium, 28
+low), 8 refuted; all 48 applied.
+- **Guides:** README (combat and missions, the Plotted route pane, the 3D system map, best rock and the recap, pickup
+  pins, the browser's voice); settings.md (the page's Auto honk / Auto-target switches override the file once used,
+  ED_JOURNALS); views.md (Skip carries to Here, Here's "bio possible", Sessions' Ship column, "system map" in the green
+  gas giant line is the game's, a stop's tap opens its drop-down, "not on the map (no orbit)"); voice-and-alerts.md (the
+  codex picture and surface pins rows, Wanted in Tactical's and Comms' lists, the hostile docking refusal, crew line
+  counts, what notifies, the jump line's hazard tick, the hush's spoken times, nearest station's words); automation.md
+  (the status report's Next by distance); overlay.md (Skip and Do first, the Wanted alert); tablet.md (the strip's
+  system name on a small tablet).
+- **Developer docs:** AGENT_GUIDE (the system map's list and drop-down, Unscanned, the test count, the alert recipe's
+  in-step lists), for-developers.md (outrider/orbits.py), JOURNAL_REFERENCE (SAAScanComplete moves the order's start
+  and the trail; geology as a count; CodexEntry per feature), DESIGN_NOTES (not yet tried: best rock, Sessions' Ship;
+  where the whole mapped value is said; a body with no orbit is not drawn).
+- **Screenshots retaken:** surface (zoom slider, Unscanned, a finished species), tablet, overlay (distances in ls),
+  here and schematic (🪐 3D, Hide orbital distance; the schematic with the suggested order), nearby (the Plotted route
+  pane open), history (the trip's 📋), overview and overview-27in.
+- **Page:** the system map card's "go here first" button removed (a stop's tap opens its drop-down since 177900b, so
+  the card it lived in never shows for a stop), and the stale comment above the stop list.
+
 ## 2026-11-08 · Docs brought up to date, the system map's picture; a drop-down's leg from the stop before
 - **Fix (page.js `sysDetailHtml`):** a stop's drop-down gave its leg "from" where you are for every stop ("4 ls from
   1" for 5 b, 4 ls after 5 d); it now names the stop before it, the first stop's from where you are. Seen while taking

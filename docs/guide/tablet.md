@@ -62,7 +62,9 @@ was clicked).
   pixels, the app's version and, in the Android app, its own screens (Server…, Voice…, App menu…), and Sign out when
   Outrider asks for a password.
 - **A smaller tablet** (under 1200 × 700 CSS pixels) gets a compact layout: a narrower page
-  list, and a narrower rail whose buttons (all eleven of a full set) fit without scrolling, with short names (Gear, Scoop, Night vis.…).
+  list, and a narrower rail whose buttons (all eleven of a full set) fit without scrolling, with short names (Gear, Scoop, Night vis.…); when the top strip is short of room, the system's name gives way first,
+  down to its first 10 characters ("Smojooe VW-…"), then the link's words from their end (its coloured dot stays),
+  while fuel and unsold always show in full.
 - **The control rail** on the right (on the game PC only; not in Docker): up to eleven game buttons for where you are
   (ship, SRV, Nomad, fighter, on foot), each pressing that control's keyboard binding on the PC once. The defaults are
   landing gear, cargo scoop, night vision, ship lights, flight assist, silent running, hardpoints and analysis mode;
