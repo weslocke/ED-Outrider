@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · page_consts.js writes all of its answer; tried in game
+- **Fix:** a verify failed in test_bookmarks with page.js's constants cut at 8 KB. `tests/page_consts.js` exited
+  straight after `process.stdout.write`; Linux gives a user with many pipes open 8 KB ones, and what node still held
+  was dropped. It now exits in the write's callback.
+- **Tests:** test_pages' PageConstsPipe: a 4 KB pipe read late; fails without the fix (4096 bytes, cut JSON).
+- **Docs:** DESIGN_NOTES' "Not yet tried": the order by where the bodies are, the rail's HighRes and the spoken
+  call-outs (all but the ship-loss debrief) confirmed in game by the author.
+
 ## 2026-11-08 · The system map's list keeps up with the honk
 The author: the map still said "honk first" after the honk. The stop list was rewritten only when a stop changed
 (its key held the stops, not the line under them), so with no stop before or after the honk its first words stayed.

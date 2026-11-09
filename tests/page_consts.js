@@ -17,5 +17,6 @@ for (const name of names) {
   if (v === undefined) out.undefined.push(name);
   else out.values[name] = JSON.parse(JSON.stringify(v, plain));
 }
-process.stdout.write(JSON.stringify(out));
-process.exit(0);   // the page's timers would keep node running
+// exit (the page's timers would keep node running) once the JSON is written: a pipe can be small (Linux gives a user
+// with many pipes open 8 KB ones), and an exit straight after write() dropped what was still queued
+process.stdout.write(JSON.stringify(out), () => process.exit(0));

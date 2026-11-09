@@ -2068,9 +2068,6 @@ upstream project's choices, not rules of the game.
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
 confirmed while playing. Treat reports about them as likely real.
 
-- The suggested order by where the bodies are (2026-11-07): the positions match the navigation panel's readings,
-  but the order itself, its re-planning from the body you are at (`at_body`), the keep rule and the "≈" legs on Here,
-  Now, the schematic and the overlay were tested on fixtures only.
 - Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the
   prospector call-out, the ⛏ line and its warnings' timing (limpets low, hold nearly full, hold full with where to
   sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone); each
@@ -2078,9 +2075,6 @@ confirmed while playing. Treat reports about them as likely real.
   said at a hotspot's drop, Now's "hits 3/8" and the limpets you could synthesise (2026-10-27).
 - The sample spacing while flying the ship low over the body (discussion #3, 2026-10-23): from the point under the
   ship, with Status.json's live Latitude/Longitude in flight; tested on made-up Status.json only.
-- The rail's HighRes button (2026-10-25): Hide UI and Screenshot pressed from the tablet work (the author, 2026-10-25),
-  and so does the rail's refusal while Elite is not the window in front ("click into the game", 2026-10-31);
-  HighRes (Alt+F10) through the rail's virtual keyboard was not tried.
 - A screenshot on the Windows clipboard (`winkeys.set_clipboard_image`: CF_DIB and the registered PNG format, 2026-10-25):
   written to the Win32 API, run only on Linux (xclip) by the author.
 - Screenshots (2026-10-26, the author in game): F10 and HighRes conversion, the medium and small copies, the crop,
@@ -2139,7 +2133,8 @@ confirmed while playing. Treat reports about them as likely real.
 - The rig restock recipe (3 Iron, 2 Nickel, 1 Mechanical Equipment), taken from a community guide.
 - Playing lines and sounds on the PC (pw-play, paplay, aplay, ffplay) with real audio.
 - Piper in the browser and the one-speaker logic across real windows (headless Chromium only).
-- Many spoken call-outs (FSS debrief, leaving a body, approach, welcome back, ship-loss debrief, session recap).
+- The ship-loss debrief spoken (the other call-outs, the FSS debrief, leaving a body, the approach, welcome back and
+  the session recap, work in game: the author, 2026-11-08).
 - The fuel model against a live Status.json and a laden ship; EngineerCraft at a real engineer.
 - Colour-variant prediction against a fresh in-game codex entry (backtested only).
 - The firsts watch's rotation against live Spansh, and its first-sighting card and line (S6) on a real sighting; an OBS source on `/api/status` after the guard change.

@@ -610,3 +610,43 @@ class ShipNames(unittest.TestCase):
                              ("type8", "Type-8 Transporter"), ("type9_military", "Type-10 Defender"),
                              ("anacondamkii", "Anaconda Mk II")):
             self.assertEqual(names.get(symbol), name, symbol)
+
+
+class PageConstsPipe(unittest.TestCase):
+    """tests/page_consts.js writes all of its JSON into a small pipe read late (a verify failed with it cut at 8 KB:
+    Linux gives a user with many pipes open 8 KB ones, and node exited with the rest still queued)."""
+
+    def test_the_whole_answer_through_a_small_pipe(self):
+        import fcntl
+        import shutil
+        import subprocess
+        import time
+        import page_consts
+        node, mods = shutil.which("node"), page_consts._node_modules()
+        if not node or not os.path.isdir(os.path.join(mods, "jsdom")) or not hasattr(fcntl, "F_SETPIPE_SZ"):
+            self.skipTest("needs node, jsdom and Linux's F_SETPIPE_SZ")
+        r, w = os.pipe()
+        fcntl.fcntl(w, fcntl.F_SETPIPE_SZ, 4096)
+        options = json.dumps(dict(ed_outrider.SEARCH_OPTIONS, mining=[]))
+        p = subprocess.Popen([node, os.path.join(page_consts.TESTS, "page_consts.js"), os.path.abspath(mods),
+                              *page_consts.NAMES], stdin=subprocess.PIPE, stdout=w, cwd=page_consts.REPO)
+        os.close(w)
+        try:
+            p.stdin.write(options.encode())
+            p.stdin.close()
+            size = bytearray(4)
+            deadline = time.monotonic() + 120
+            while time.monotonic() < deadline and p.poll() is None:   # the pipe full: node is waiting on it
+                fcntl.ioctl(r, 0x541B, size)                         # FIONREAD
+                if int.from_bytes(size, "little") >= 4096:
+                    break
+                time.sleep(0.05)
+            time.sleep(0.5)                                           # time enough for an exit that drops the rest
+            with os.fdopen(r, "rb") as f:
+                out = f.read()
+        finally:
+            if p.poll() is None:
+                p.kill()
+            p.wait()
+        self.assertGreater(len(out), 4096)
+        self.assertEqual(set(json.loads(out)["values"]) | set(json.loads(out)["undefined"]), set(page_consts.NAMES))
