@@ -71,9 +71,11 @@ before.
 
 - **The system strip** (optional, off until you tick it), made for the top of the screen: two short lines, centred.
   The first says where you are: the system, its region and the star (⛽ scoopable, ⚡ a neutron star or white dwarf),
-  and in a populated system, on its right, the security level and your reputation with the controlling faction
-  (Hostile in red; Unfriendly up to -35, Neutral to +4, Cordial to +35, Friendly to +90, then Allied).
-  The second, condensed: the distance from Sol, what its data pays now and at most, 🏁 when you discovered it, how many
+  and in a populated system, on its right, the security level. In a populated system a short line of its own names
+  your reputation with the controlling faction: "Allied with Mother Gaia" (Hostile in red; Unfriendly up to -35,
+  Neutral to +4, Cordial to +35, Friendly to +90, then Allied).
+  The second, condensed: the distance from Sol (or from the system you name under **Strip's distance to** in
+  Settings → In-game overlay, say an expedition's end or your home system), what its data pays now and at most, 🏁 when you discovered it, how many
   bodies and how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether
   Spansh knows the system ("Spansh ✗ (new to it)" when it does not; "Spansh ✓ (pre-Odyssey)" when its data predates
   Odyssey's surface data: worth a rescan).

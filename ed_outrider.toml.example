@@ -287,6 +287,8 @@
 #                           # break that lock on some systems
 # pad_diagram = true        # while docking at a starport or carrier: a diagram of where your pad is under PAD 34, in the
 #                           # Surface radar's place and on Now (false: the number and its words only)
+# strip_reference = ""      # the system strip's distance: to this system instead of Sol (a system Outrider knows;
+#                           # Settings -> In-game overlay looks a name up for you)
 
 [screenshots]
 # Screenshots (outrider/screenshots.py; a game-PC feature, converting needs the optional Pillow package): each new F10

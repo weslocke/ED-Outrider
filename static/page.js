@@ -15300,6 +15300,10 @@ function overlayHtml(o) {
     `<input type="number" data-ov="system_seconds" min="0" max="3600" step="1" value="${o.system_seconds ?? 0}"> s</label>` +
     `<label title="metres from the Surface radar's centre to its edge (100 to 20000; it widens to fit a colony ring)">Radar range ` +
     `<input type="number" data-ov="radar_range" min="100" max="20000" step="50" value="${o.radar_range ?? 800}"> m</label></div>` +
+    // #24 (Hiner399): the strip's distance, from Sol or a system of your own
+    `<div class="mod ovctl" data-find="overlay.strip_reference reference system"><label title="the System Strip's distance: to this system instead of Sol (an expedition's end, your home system); empty: Sol">Strip's distance to ` +
+    `<input type="text" data-ovref maxlength="100" spellcheck="false" placeholder="Sol" value="${esc(o.strip_reference || "")}"></label>` +
+    (o.strip_reference_known === false ? `<span class="hint warnc">not found: the strip says Sol</span>` : "") + `</div>` +
     `<div class="ovwrap" data-find-block="panels"><table class="ovlay"><thead>${OV_HEADS}</thead><tbody>${rows}</tbody></table></div>` +
     (heldBy.length ? `<div class="hint ovheld">${esc(heldBy.join(", "))}: held at ${floor} px: your screen is too small to go lower</div>` : "") +
     `<div class="hint" id="overlayMsg">${esc(overlayNote)}</div>`;
@@ -15348,8 +15352,18 @@ async function overlayPost(path, body) {
     overlayDrawn = ""; renderOverlay();
   }
 }
+// the strip's reference system: a typed name found first (api/find, which keeps it), so the file holds the game's spelling
+async function ovRefSet(text) {
+  const name = text.trim();
+  if (!name) return overlayPost("api/overlay", {strip_reference: ""});
+  let d;
+  try { d = await apiJson(`api/find?name=${encodeURIComponent(name)}`); } catch (err) { d = {error: err.message}; }
+  if (!d || d.error) { overlayNote = (d && d.error) || "that system could not be found"; overlayDrawn = ""; return renderOverlay(); }
+  return overlayPost("api/overlay", {strip_reference: d.name});
+}
 document.getElementById("overlayBox").addEventListener("change", e => {
   const t = e.target;
+  if (t.dataset.ovref !== undefined) { t.blur(); return ovRefSet(t.value); }
   if (t.dataset.ov && t.type === "checkbox") overlayPost("api/overlay", {[t.dataset.ov]: t.checked});   // enabled, show_inactive, pad_diagram, hide_mouse_lock
   // a select keeps the focus, which holds renderOverlay off: let go, so the server's answer (its note) is drawn
   else if (t.dataset.ov && t.type === "number") {   // panel_scale, system_seconds, radar_range: numbers (the server clamps them)

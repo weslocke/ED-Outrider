@@ -814,6 +814,16 @@ t("a trade route's heading keeps its start once the first stops scroll out of th
 t("the system map's stop: the dot only before a figure", () => {
   eq(`[sysWhy({kind: "bio", b: {signals: 3, potential: null}})[0], sysWhy({kind: "bio", b: {signals: 3, potential: 900000, bio_left: 1}})[0]]`, ["bio 3", "bio 3 ·"]);
 });
+later.push(["the strip's reference system: found first, the game's spelling saved; blank is Sol; a miss says why", async () => {
+  const out = JSON.parse(await ev(`(async () => { const api = apiJson, rend = renderOverlay, posts = []; renderOverlay = () => {};
+    apiJson = async (u, o) => { if (String(u).startsWith("api/find")) return /nowhere/.test(u) ? {error: "No system called nowhere"} : {name: "Beagle Point"};
+      posts.push(JSON.parse(o.body)); return {}; };
+    try { await ovRefSet(" beagle point "); await ovRefSet("  "); await ovRefSet("nowhere"); return JSON.stringify([posts, overlayNote]); }
+    finally { apiJson = api; renderOverlay = rend; overlayNote = ""; } })()`));
+  assert.deepStrictEqual(out, [[{strip_reference: "Beagle Point"}, {strip_reference: ""}], "No system called nowhere"]);
+  const html = ev(`overlayHtml({enabled: true, theme: "default", text_size: "normal", panels: {}, analysis_only: [], hide_docked: [], hide_on_foot: [], layout: {}, strip_reference: "Beagle Point", strip_reference_known: false})`);
+  assert.ok(/data-ovref[^>]*value="Beagle Point"/.test(html) && /not found: the strip says Sol/.test(html), html.slice(0, 300));
+}]);
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); ok++; console.log("OK |", name); }

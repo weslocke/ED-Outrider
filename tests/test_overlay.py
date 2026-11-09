@@ -19,6 +19,10 @@ import outrider.overlay as O  # noqa: E402
 class Settings(unittest.TestCase):
     def test_defaults_and_bad_values(self):
         self.assertEqual(O.overlay_settings({})["overlay"], O.DEFAULTS)
+        self.assertEqual(O.overlay_settings({"overlay": {"strip_reference": "  Beagle   Point "}})["overlay"]["strip_reference"], "Beagle Point")
+        with contextlib.redirect_stderr(io.StringIO()) as said:
+            self.assertEqual(O.overlay_settings({"overlay": {"strip_reference": 7}})["overlay"]["strip_reference"], "")
+        self.assertIn("strip_reference", said.getvalue())
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
             got = O.overlay_settings({"overlay": {"enabled": "yes", "theme": "Neon", "text_size": "LARGE", "radar_range": 50,
@@ -980,6 +984,23 @@ class Strip(unittest.TestCase):
         self.assertNotIn("first discovered", "".join(r[0] for r in new["items"][0]["runs"]))
         self.assertIsNone(O.strip_panel({}, pal))
 
+    def test_the_faction_and_the_reference_system(self):
+        """#24 (Hiner399): whose reputation it is, and the distance to a system of your own."""
+        pal = O.palette()
+        info = {"name": "Shinrarta Dezhra", "region": "Inner Orion Spur", "star": "K", "sol_ly": 47.0, "honked": True}
+        texts = lambda p: ["".join(r[0] for r in i["runs"]) for i in p["items"] if i.get("align") != "right"]   # noqa: E731
+        long_one = {"security": "Low Security", "faction": "The Very Long Named Union of Independent Pilots", "rep": 10}
+        got = O.strip_panel(dict(info, standing=long_one), pal)
+        self.assertEqual(texts(got)[1:], ["Sol 47 ly", "Cordial with The Very Long Named Union of Independent Pilots"])
+        self.assertLessEqual(got["w"], O.CANVAS_W - 40)
+        unknown = {"security": "Low Security", "faction": "Named", "rep": None}   # no reputation: nothing to attribute
+        self.assertEqual(texts(O.strip_panel(dict(info, standing=unknown), pal))[1:], ["Sol 47 ly"])
+        self.assertEqual(texts(O.strip_panel(info, pal))[1:], ["Sol 47 ly"])      # the black: no third line
+        far = O.strip_panel(dict(info, reference={"name": "Beagle Point", "ly": 12345.6}), pal)
+        self.assertEqual(texts(far)[1], "Beagle Point 12,346 ly")
+        cut = O.strip_panel(dict(info, reference={"name": "A System Name Far Too Long To Keep Whole", "ly": 3.0}), pal)
+        self.assertEqual(texts(cut)[1], "A System Name Far Too L… 3 ly")
+
     def test_security_and_reputation(self):
         """A populated system: its security and your reputation with its controlling faction on the top row's right, in
         the region's font; Hostile in red; none in an unpopulated system (the author, 2026-10-14)."""
@@ -989,14 +1010,15 @@ class Strip(unittest.TestCase):
         p = O.strip_panel(dict(info, standing={"security": "High Security", "faction": "Pilots' Federation", "rep": 95}), pal)
         right = [i for i in p["items"] if i.get("align") == "right"]
         self.assertEqual(len(right), 1)
-        self.assertEqual(["".join(r[0] for r in i["runs"]) for i in right], ["High Security  ·  Allied"])
+        self.assertEqual(["".join(r[0] for r in i["runs"]) for i in right], ["High Security"])
+        self.assertIn("Allied with Pilots' Federation", ["".join(r[0] for r in i["runs"]) for i in p["items"]])
         region = next(r for r in p["items"][0]["runs"] if r[0] == "Inner Orion Spur")
         self.assertTrue(all(r[1:] == region[1:] for r in right[0]["runs"]))   # the region's colour, size, weight
         self.assertEqual(right[0]["x"], p["w"] - O.PAD - 4)
         self.assertGreater(p["w"], plain["w"])                                 # room for it, the row still centred
         self.assertEqual([i for i in plain["items"] if i.get("align") == "right"], [])
         hostile = O.strip_panel(dict(info, standing={"security": "Anarchy", "faction": "X", "rep": -95}), pal)
-        word = next(r for i in hostile["items"] if i.get("align") == "right" for r in i["runs"] if r[0] == "Hostile")
+        word = next(r for i in hostile["items"] for r in i["runs"] if r[0] == "Hostile with X")
         self.assertEqual(word[1], pal["bad"])
         self.assertEqual([O.rep_level(x) for x in (-100, -90, -89.9, -35, 0, 4, 4.1, 35, 89.9, 90, 90.1, None)],
                          ["Hostile", "Hostile", "Unfriendly", "Unfriendly", "Neutral", "Neutral", "Cordial", "Cordial",
@@ -1107,6 +1129,26 @@ class Server(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.state.config_path = os.path.join(tmp.name, "ed_outrider.toml")   # where the switches are written
+
+    def test_the_strips_reference_system(self):
+        """#24: set by a name known here (the game's spelling kept), written for the next start; the distance is to it;
+        blank is Sol again; a name in the file that nothing knows yet leaves the strip on Sol, and Settings says so."""
+        j, s = self.state.journals, self.state
+        j.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Beagle Point", "SystemAddress": 77, "StarPos": [30, 40, 0]})
+        j.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1010), "StarSystem": "Here", "SystemAddress": 78, "StarPos": [0, 0, 0]})
+        self.assertIsNone(s.overlay_strip_info(j.pos)["reference"])
+        out, status = s.overlay_set({"strip_reference": "beagle  point"})
+        self.assertEqual((status, out["strip_reference"], out["strip_reference_known"]), (200, "Beagle Point", True))
+        self.assertEqual(s.overlay_strip_info(j.pos)["reference"], {"name": "Beagle Point", "ly": 50.0})
+        with open(s.config_path, encoding="utf-8") as f:
+            self.assertIn('strip_reference = "Beagle Point"', f.read())
+        self.assertEqual(s.overlay_set({"strip_reference": "Nowhere Known"})[1], 400)
+        self.assertEqual(s.overlay_cfg["strip_reference"], "Beagle Point")        # refused: unchanged
+        self.assertEqual(s.overlay_set({"strip_reference": ""})[0]["strip_reference"], "")
+        self.assertIsNone(s.overlay_strip_info(j.pos)["reference"])
+        s.overlay_cfg["strip_reference"] = "Typed In The File"
+        self.assertIsNone(s.overlay_strip_info(j.pos)["reference"])
+        self.assertFalse(s.overlay_info(now=1)["strip_reference_known"])
 
     def test_view_and_version(self):
         v = self.state.overlay_view(now=1000)

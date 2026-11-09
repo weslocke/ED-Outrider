@@ -1625,6 +1625,7 @@ show_inactive = {"true" if st["overlay"]["show_inactive"] else "false"}   # keep
 hide_on_foot = [{", ".join(q(x) for x in st["overlay"]["hide_on_foot"])}]   # panels hidden on foot (in a station or on a planet's surface): any of system, body, radar, strip, now, bio, alerts
 hide_mouse_lock = {"true" if st["overlay"]["hide_mouse_lock"] else "false"}   # no overlay at all on foot and in the DSS, where Elite locks the mouse (an overlay can break that lock on some systems)
 pad_diagram = {"true" if st["overlay"]["pad_diagram"] else "false"}   # while docking at a starport or carrier, a diagram of where your pad is under PAD 34, in the overlay's Surface radar place and on Now (false: the number and its words only)
+strip_reference = {q(st["overlay"]["strip_reference"])}   # the system strip's distance: to this system instead of Sol ("": Sol; a system Outrider knows, Settings -> In-game overlay looks a name up)
 
 [screenshots]   # the game's F10 / Alt+F10 shots converted as you take them (game PC; needs the optional Pillow package)
 enabled = {"true" if st["screenshots"]["enabled"] else "false"}   # convert each new screenshot (Settings -> Screenshots)
@@ -9544,6 +9545,7 @@ class State:
         # time the overlay window asked (Settings says whether one is connected), and Here's summary cache for it
         self.overlay_cfg = dict(outrider.overlay.DEFAULTS, analysis_only=[],
                                 hide_docked=list(outrider.overlay.HIDE_DOCKED_DEFAULT))
+        self.strip_reference_memo = None   # (name, (x, y, z) or None, when): strip_reference_place
         self.overlay_zone = None
         self.navroute_late = None   # NavRoute.json owed for a NavRoute line: {ts, since, last} (navroute_retry)   # the Target panel's near-body zone: {system, body, t (last seen in it)}, D1
         self.overlay_alerts = []   # the Alerts panel's (S26): the last few alerts the page posted, oldest first (in memory)
@@ -11237,15 +11239,30 @@ class State:
         self._overlay_detail = (key, detail, base)
         return detail
 
+    def strip_reference_place(self, name, now=None):
+        """(x, y, z) of [overlay] strip_reference (#24), or None while no table here knows that name (the strip says Sol).
+        Kept per name, so a strip drawn every second runs no search; an unknown one is tried again a minute later."""
+        now = time.time() if now is None else now
+        memo = self.strip_reference_memo
+        if memo and memo[0] == name and (memo[1] or now - memo[2] < 60):
+            return memo[1]
+        hit = self.find_local(name)
+        self.strip_reference_memo = (name, tuple(hit[2:5]) if hit else None, now)
+        return self.strip_reference_memo[1]
+
     def overlay_strip_info(self, pos):
         """What the system strip says about the system you are in."""
         detail = self.overlay_detail(pos["id64"]) or {}
         lv = detail.get("leaving") or {}
         sol = math.dist((pos["x"], pos["y"], pos["z"]), (0, 0, 0)) if pos.get("x") is not None else None
+        name, place = self.overlay_cfg.get("strip_reference") or "", None
+        if name and pos.get("x") is not None:
+            place = self.strip_reference_place(name)
+        reference = {"name": name, "ly": math.dist((pos["x"], pos["y"], pos["z"]), place)} if place else None
         firsts = detail.get("firsts") or {}
         row = self.systems.get(pos["id64"]) or {}   # the Nearby list's row: Spansh's knowledge, planets, your maps
         bodies = [b for b in detail.get("bodies") or [] if b.get("type") == "Planet"]
-        return {"name": pos.get("name"), "region": detail.get("region"), "sol_ly": sol, "star": self.here_star(),
+        return {"name": pos.get("name"), "region": detail.get("region"), "sol_ly": sol, "reference": reference, "star": self.here_star(),
                 "found": lv.get("scanned"), "total": lv.get("body_count") or row.get("body_count"),
                 "all_found": lv.get("all_found"), "honked": lv.get("honked"),
                 "value_now": detail.get("value_now"), "value_max": detail.get("value_max"),
@@ -11597,6 +11614,8 @@ class State:
                 "analysis_only": list(cfg.get("analysis_only") or []), "hide_docked": list(cfg.get("hide_docked") or []),
                 "hide_on_foot": list(cfg.get("hide_on_foot") or []), "hide_mouse_lock": bool(cfg.get("hide_mouse_lock")),
                 "show_inactive": bool(cfg.get("show_inactive")), "pad_diagram": bool(cfg.get("pad_diagram", True)),
+                "strip_reference": cfg.get("strip_reference") or "",
+                "strip_reference_known": not cfg.get("strip_reference") or self.strip_reference_place(cfg["strip_reference"]) is not None,
                 "system_seconds": cfg.get("system_seconds", 0), "radar_range": cfg.get("radar_range", 800),
                 "window": window, "layout": layout,
                 "test": max(0, round(self.overlay_test_until - now)), "arrange": max(0, round(self.overlay_arrange_until - now)),
@@ -11607,7 +11626,7 @@ class State:
     def overlay_set(self, body, now=None):
         """POST /api/overlay {enabled?, theme?, text_size?, panel_scale?: %, panels?: {system|body|radar|strip|now|bio|alerts: bool},
         analysis_only?: [panel ids], hide_docked?: [panel ids but radar], hide_on_foot?: [panel ids], show_inactive?: bool,
-        pad_diagram?: bool, hide_mouse_lock?: bool, test?: bool,
+        pad_diagram?: bool, hide_mouse_lock?: bool, strip_reference?: a system's name ("": Sol), test?: bool,
         arrange?: bool}: the
         switches, applied at once and written into [overlay] for the next start (panel_scale clamped to
         outrider.overlay.PANEL_SCALE_LIMITS); test panels for
@@ -11641,6 +11660,12 @@ class State:
                 changes["hide_on_foot"] = O.foot_list(val)    # and this one
             elif key in ("test", "arrange") and isinstance(val, bool):
                 pass
+            elif key == "strip_reference" and isinstance(val, str) and len(val) <= FIND_NAME_MAX:
+                name = " ".join(val.split())   # the page's GET /api/find first: a hit is kept, so it is known here
+                hit = self.find_local(name) if name else None
+                if name and not hit:
+                    return {"error": f"{name}: no system of that name is known here"}, 400
+                changes[key] = hit[1] if hit else ""
             else:
                 return {"error": f"{key}: not a setting, or not a valid value for it"}, 400
         if "test" in body:

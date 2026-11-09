@@ -55,7 +55,7 @@ HIDE_DOCKED_DEFAULT = ("system", "body", "now", "bio")
 DEFAULTS = {"enabled": False, "theme": "default", "text_size": "normal", "system_panel": True, "body_panel": True,
             "radar": True, "strip_panel": False, "now_panel": False, "bio_panel": False, "alerts_panel": False, "system_seconds": 0,
             "radar_range": 800, "analysis_only": [], "hide_docked": list(HIDE_DOCKED_DEFAULT), "show_inactive": False,
-            "panel_scale": 100, "pad_diagram": True, "hide_on_foot": [], "hide_mouse_lock": False}
+            "panel_scale": 100, "pad_diagram": True, "hide_on_foot": [], "hide_mouse_lock": False, "strip_reference": ""}
 # [overlay] panel_scale (a GitHub report, 2026-10-14: too large on a 4K TV): all panels' size in %, on top of each panel's
 # own; Settings -> In-game overlay's All panels, Ctrl + wheel in Arrange mode
 PANEL_SCALE_LIMITS = (20, 250)
@@ -232,6 +232,11 @@ def overlay_settings(cfg):
             out[key] = int(min(hi, max(lo, v)))
         else:
             _warn(f"{key} = {v!r} must be a number; using {DEFAULTS[key]}")
+    v = o.get("strip_reference")
+    if isinstance(v, str):
+        out["strip_reference"] = " ".join(v.split())
+    elif v is not None:
+        _warn(f"strip_reference = {v!r} must be a system's name; using Sol")
     out["analysis_only"] = analysis_list(o.get("analysis_only"), _warn)
     out["hide_docked"] = docked_list(o.get("hide_docked"), _warn)
     out["hide_on_foot"] = foot_list(o.get("hide_on_foot"), _warn)
@@ -869,12 +874,17 @@ def rep_level(rep):
     return next((word for top, word in REP_LEVELS if rep <= top), "Allied")
 
 
+STRIP_NAME_CHARS = 24   # the strip's reference system is cut to this
+
+
 def strip_panel(info, pal, size="normal"):
     """The system strip: two short lines across the top, centred in their box. Line 1: the system, its region, the
-    star. Line 2: the distance from Sol, now and max, your first discovery; then bodies, found of total, discovered by
-    you, mapped of planets, whether Spansh knows the system (the author, 2026-10-10). In a populated system the top
-    row's right side has its security and your reputation with its controlling faction, in the region's font, Hostile
-    in red (the author, 2026-10-14). info: {name, region, star, sol_ly, total, found, all_found, honked, value_now,
+    star. Line 2: the distance from Sol or the system you chose (reference, #24), now and max, your first discovery; then
+    bodies, found of total, discovered by you, mapped of planets, whether Spansh knows the system (the author, 2026-10-10).
+    In a populated system the top row's right side has its security, in the region's font (the author, 2026-10-14), and
+    a line of its own says your reputation with its controlling faction, by name (#24: "Allied with Mother Gaia"; on the
+    top row, which stays centred, a name costs its width twice and ordinary systems had no room), Hostile in red. info: {name, region, star, sol_ly, reference: {name, ly} or None, total, found,
+    all_found, honked, value_now,
     value_max, first, firsts, mapped, planets, in_spansh, standing: {security, faction, rep}, mining}. While you mine in a
     ring (mining D), a third line: `mining`, the mining strip in words. Its width follows its text."""
     if not info or not info.get("name"):
@@ -888,7 +898,9 @@ def strip_panel(info, pal, size="normal"):
                 parts.extend([sep, (text, pal[key], size, False)] if parts else [(text, pal[key], size, False)])
         return parts
     one = line((info["name"], pal["title"], "large", True), [(info.get("region"), "muted"), (star_words(info.get("star")), "text")])
-    rest = [(f"Sol {info['sol_ly']:,.0f} ly" if info.get("sol_ly") is not None else "", "muted")]
+    short = lambda s: fit(s, STRIP_NAME_CHARS * CHAR_W.get(size, CHAR_W["normal"]), size)   # noqa: E731
+    ref = info.get("reference")
+    rest = [(f"{short(ref['name'])} {ref['ly']:,.0f} ly" if ref else f"Sol {info['sol_ly']:,.0f} ly" if info.get("sol_ly") is not None else "", "muted")]
     if info.get("value_max"):
         rest += [(f"now {credits(info.get('value_now'))}", "text"), (f"max {credits(info['value_max'])}", "accent")]
     rest.append(("🏁 first discovered" if info.get("first") else "", "good"))
@@ -906,12 +918,11 @@ def strip_panel(info, pal, size="normal"):
                      "warn" if old else "muted" if info["in_spansh"] else "warn"))
     two = line(None, rest)
     three = [(info["mining"], pal["accent"], size, False)] if info.get("mining") else None
-    lines = [one] + ([two] if two else []) + ([three] if three else [])
     st = info.get("standing") or {}
     level = rep_level(st.get("rep"))
-    right = [(x, pal["bad"] if x == "Hostile" else pal["muted"], size, False)
-             for x in ([st["security"]] if st.get("security") else []) + ([level] if level else [])]
-    right = [p for i, part in enumerate(right) for p in ([sep, part] if i else [part])]
+    standing = [(f"{level} with {st['faction']}", pal["bad"] if level == "Hostile" else pal["muted"], size, False)] if level and st.get("faction") else None
+    lines = [one] + ([two] if two else []) + ([standing] if standing else []) + ([three] if three else [])
+    right = [(st["security"], pal["muted"], size, False)] if st.get("security") else []
     wide = lambda ln: sum(text_width(t, s) for t, _, s, _ in ln)
     # the top row stays centred: room for the right side on both sides of it, so the two never meet
     need = max([wide(ln) for ln in lines] + ([wide(one) + 2 * (wide(right) + 24)] if right else []))

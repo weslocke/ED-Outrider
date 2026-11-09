@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · The system strip: whose reputation, and a reference system (#24, Hiner399)
+- **Overlay strip:** your reputation names the controlling faction, on a line of its own in a populated system ("Allied
+  with Mother Gaia"); the top row's right side keeps the security level.
+- **Overlay strip:** `[overlay] strip_reference` (Settings → In-game overlay, "Strip's distance to"): the distance to a
+  system of your choice instead of Sol; a typed name is found through `/api/find`, blank is Sol, and a name nothing knows
+  leaves the strip on Sol and says so in Settings.
+
 ## 2026-11-09 · Sweep 12, batch 3: the rare ones
 - **Fix (server):** the 3D map's boost stars and Search's white dwarf class missed DAO, DO, DOV and DX; a mining recap was
   said again after a restart (`recap_mark` now in SAVED); EDDN's per-kind hold card stayed after switching EDDN off; a
