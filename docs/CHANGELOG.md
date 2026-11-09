@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The debrief says a body's whole mapped value
+The author: A 4 was said (and notified) as "492k to map" while the system map's list showed 1.6M. The FSS debrief,
+the leaving warning and the targeted body's line still said the bonus-free increment (what mapping adds to the scan),
+missed when Q5 (2026-11-07) moved the list, the cards and the Next line to the body's whole mapped value.
+- **Fix (page.js `mapValueSaid`):** "A 4, High metal content body, 620k to map, 1.6M with bonuses" (one number when
+  the bonuses add nothing); the leaving warning's text "(High metal content body, 620k/1.6M)" as the cards; the
+  increment only for a body without those values. The order still ranks by the increment.
+- **Tests:** page_unit: the debrief, the target line, the leaving text and the list's value; fails without the fix
+  ("492k to map").
+
 ## 2026-11-08 · A plant's codex picture tried in game
 - **Docs:** DESIGN_NOTES' "Not yet tried": the plant's codex picture line works in game (the author); geology's waits
   for a formation.

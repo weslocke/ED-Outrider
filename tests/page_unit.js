@@ -712,6 +712,23 @@ t("the system map's Fit frames where you have been this visit as well as the sto
   assert.deepStrictEqual(out.trail, [0, 2, 3]);
   assert.ok(out.inFrame, JSON.stringify(out));   // 2: visited, neither a stop nor where you are, still on the screen
 });
+t("the debrief, the leaving warning and the target say a body's whole mapped value, as the list shows it", () => {
+  // the author, 2026-11-08: A 4 said "492k to map" while the map's list showed 1.6M (the bonus-free increment)
+  const out = JSON.parse(ev(`(() => {
+    const u = {body: "A 4", subtype: "High metal content body", terraformable: false, increment: 492000,
+               value_mapped: 620000, value_mapped_bonus: 1.6e6, special: true, dist_ls: 10};   // kept: a first map
+    const same = Object.assign({}, u, {body: "A 5", value_mapped_bonus: 620000});
+    const old = {body: "A 6", subtype: "Icy body", terraformable: false, increment: 30000, special: false, dist_ls: 10};
+    const it = {kind: "map", body: "A 4", value: u.increment, u};
+    return JSON.stringify({said: [mapSaid(u), mapSaid(same), mapSaid(old)],
+      target: destSpoken({name: "A 4", type: "Planet", gravity: 0.3}, {it, v: "worth"}),
+      leaving: leavingText({unmapped: [u], bio_pending: []}).replace(/<[^>]+>/g, ""), list: sysWhy(it)[1]}); })()`));
+  assert.deepStrictEqual(out.said, ["A 4, High metal content body, 620k to map, 1.6M with bonuses",
+                                    "A 5, High metal content body, 620k to map", "A 6, Icy body, 30k to map"]);
+  assert.strictEqual(out.target, "A 4: 0.3 g, 620k to map, 1.6M with bonuses, worth it");
+  assert.ok(out.leaving.includes("A 4 (High metal content body, 620k/1.6M)"), out.leaving);
+  assert.strictEqual(out.list, "1.6M");
+});
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); ok++; console.log("OK |", name); }

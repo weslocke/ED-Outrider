@@ -1201,7 +1201,7 @@ function leavingText(l) {
   if (!l || l.clean) return "";
   const bits = l.rescan ? [rescanHtml(l.rescan)] : [];
   if (l.maps.length) bits.push("unmapped " + l.maps.map(u => `<b>${esc(u.body)}</b> (${esc(u.subtype)}${u.terraformable ? " T" : ""}` +
-    (u.increment ? `, +${credits(u.increment)}` : "") + ")").join(", "));
+    (mapTotals(u) ? `, ${mapTotals(u)}` : u.increment ? `, +${credits(u.increment)}` : "") + ")").join(", "));
   for (const b of l.bio_pending) {
     const parts = Object.entries(b.partial).map(([g, n]) => `${esc(g)} ${n}/3`).concat(unstarted(b).map(esc));
     bits.push(`bio on <b>${esc(b.body)}</b>${b.genera === null ? ` (${noDssText(b, parts)})` : parts.length ? ` (${parts.join(", ")})` : ""}` +
@@ -4501,7 +4501,15 @@ const codexWhy = b => codexNewCounts() && b.codex_new ? ", new to your codex her
 // once for the bio bodies, and what every bio body said shares is said once after them ("both new to your codex
 // here, with first footfall"); an attribute only some share stays on those. Runs under way keep their "(Stratum 1
 // of 3)". A long line is slow to hear, and Piper cuts one past 1,000 characters at a sentence end.
-const mapSaid = u => `${u.body}, ${spokenClass(u.subtype, u.terraformable)}${u.increment ? `, ${credits(u.increment)} to map` : ""}`;
+// what mapping a body is worth, said as the list and the Next line show it (Q5): its whole mapped value, then with your
+// bonuses when they differ ("1.2M to map, 1.6M with bonuses"); the bonus-free increment only without those (the author,
+// 2026-11-08: the debrief said 492k for a body the map's list showed at 1.6M)
+function mapValueSaid(u) {
+  const a = u && u.value_mapped;
+  if (!a) return u && u.increment ? `${credits(u.increment)} to map` : "";
+  return `${credits(a)} to map` + (mapTotals(u) === credits(a) ? "" : `, ${credits(u.value_mapped_bonus)} with bonuses`);
+}
+const mapSaid = u => `${u.body}, ${spokenClass(u.subtype, u.terraformable)}${mapValueSaid(u) ? `, ${mapValueSaid(u)}` : ""}`;
 function workSaid(w, runsOf) {
   const maps = w.maps.map(u => ({v: u.increment || 0, u})).sort((a, b) => b.v - a.v);
   const bio = w.bio_pending.map(b => { const runs = runsOf(b); return {v: runs.length ? Infinity : pendingWorth(b), b, runs}; })
@@ -4731,7 +4739,7 @@ function destSpoken(b, {it, v}) {
   const bits = [b.type === "Planet" && b.gravity != null && `${b.gravity.toFixed(1)} g`,
     b.atmosphere && b.atmosphere !== "None" && String(b.atmosphere).toLowerCase(),
     n && `${n} bio signal${n === 1 ? "" : "s"}${upTo ? `, up to ${credits(upTo)}` : ""}`,
-    it && it.kind === "map" && it.value && `${credits(it.value)} to map`,
+    it && it.kind === "map" && mapValueSaid(it.u || {increment: it.value}),
     {worth: "worth it", skip: "maybe skip it", under: "under your threshold", scoop: "scoopable", noscoop: "not scoopable"}[v]];
   return `${b.name}: ${bits.filter(Boolean).join(", ")}`;
 }
