@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · Docs brought up to date, the system map's picture; a drop-down's leg from the stop before
+- **Fix (page.js `sysDetailHtml`):** a stop's drop-down gave its leg "from" where you are for every stop ("4 ls from
+  1" for 5 b, 4 ls after 5 d); it now names the stop before it, the first stop's from where you are. Seen while taking
+  the screenshot below.
+- **Docs:** docs/images/system-map.png (new: Now with the map, the trail through two done bodies, three stops, a
+  drop-down open) in views.md's system map section; views.md: the list's line with no stop (honk first, bodies to find
+  in the FSS, nothing worth the trip); README's "See the whole system" names the 3D system map.
+- **Tests:** page_unit: three stops' legs from the stop before; fails without the fix ("4 ls from 1").
+
 ## 2026-11-08 · The debrief says a body's whole mapped value
 The author: A 4 was said (and notified) as "492k to map" while the system map's list showed 1.6M. The FSS debrief,
 the leaving warning and the targeted body's line still said the bonus-free increment (what mapping adds to the scan),

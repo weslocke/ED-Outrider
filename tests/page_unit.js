@@ -729,6 +729,15 @@ t("the debrief, the leaving warning and the target say a body's whole mapped val
   assert.ok(out.leaving.includes("A 4 (High metal content body, 620k/1.6M)"), out.leaving);
   assert.strictEqual(out.list, "1.6M");
 });
+t("a stop's drop-down gives its leg from the stop before it, the first stop's from where you are", () => {
+  // the docs' screenshot (2026-11-08): 5 b, 4 ls after 5 d, read "4 ls from 1" (where you were last)
+  const out = JSON.parse(ev(`(() => {
+    const st = [{body: "5 d", kind: "bio", ls: 2800}, {body: "5 b", kind: "bio", ls: 4}, {body: "5 e", kind: "bio", ls: 8}];
+    const m = {start: {id: 3, body: "1", at: true}, stops: st.map((it, i) => ({n: i + 1, it})), missing: []};
+    const leg = body => (sysDetailHtml(body, [st.find(x => x.body === body)], null, m).match(/class="unk">([^<]*)</) || [])[1];
+    return JSON.stringify(["5 d", "5 b", "5 e"].map(leg)); })()`));
+  assert.deepStrictEqual(out, ["2.8k ls from 1", "4 ls from 5 d", "8 ls from 5 b"]);
+});
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); ok++; console.log("OK |", name); }

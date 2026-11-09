@@ -298,6 +298,12 @@ from the arrival star through each body you were at (approached, landed, dropped
 list leaves those out, starting at the body you were last at. Beside it (or under it) the stops are listed, one line
 each: the body, why it is there and what it pays ("map 1.9M", "bio 3 · 19.3M"), and its leg. A stop not worth the trip
 is dimmed, its number dashed. The body's class and both map totals are in its card (hover it, or tap it on the map).
+With no stop yet the list says why: **honk first** before the honk, **3 bodies to find in the FSS** while the FSS has
+some left, **nothing worth the trip here** once every body is found and none is over your levels.
+
+<p align="center">
+  <img src="../images/system-map.png" alt="Now with the system map beside it: the dashed trail from the arrival star through 4 a and 1 (each ticked), three bio stops numbered on the map with their legs, and the list under it with the second stop's drop-down open: Skip, Do first, its class, its signal and its leg from the stop before" width="900">
+</p>
 
 - **Moving it:** drag to turn, right-drag to move, the wheel to zoom (on a tablet: one finger turns, two move and
   pinch). **Fit** frames the order, where you are and where you have been (as it opens, and again at each new system, until you move it),

@@ -9310,9 +9310,12 @@ function sysDetailHtml(body, its, hd, m) {
     if (unk) { const could = [...new Set(unk.list.map(x => x.genus).filter(Boolean))];
       out.push(`<div class="sysg">${esc(unk.label)}${could.length ? ` <span class="unk">· could be ${esc(could.slice(0, 5).join(", "))}</span>` : ""}</div>`); }
   }
-  // its leg from where you are; from the arrival star too once you have moved on from it
+  // its leg from the stop before it (the first stop's from where you are); from the arrival star too once you have moved
+  // on from it (the docs' screenshot, 2026-11-08: the second stop's leg was said to be from where you are)
   const leg = its.find(it => it.ls), star = b && b.dist_ls != null && !(leg && !(m.start && m.start.at)) ? `${lsShort(b.dist_ls)} from the arrival star` : "";
-  if (leg || star) out.push(`<div class="unk">${[leg ? `${legDist(leg)} from ${esc(m.start ? m.start.body : "where you are")}` : "", star].filter(Boolean).join(" · ")}</div>`);
+  const i = leg ? m.stops.findIndex(s => s.it === leg) : -1;
+  const from = i > 0 ? m.stops[i - 1].it.body : m.start ? m.start.body : "where you are";
+  if (leg || star) out.push(`<div class="unk">${[leg ? `${legDist(leg)} from ${esc(from)}` : "", star].filter(Boolean).join(" · ")}</div>`);
   return `<div class="sysrow sysdetail">${out.join("")}</div>`;
 }
 function sysListHtml(m, l, open = null, hd = null) {
