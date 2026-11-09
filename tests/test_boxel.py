@@ -89,6 +89,10 @@ class Server(unittest.TestCase):
         self.j.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(self.now - 600 + s), "StarSystem": name,
                        "SystemAddress": id64, "StarPos": [x, y, z]})
 
+    def test_no_position_is_not_a_hand_made_name(self):
+        """Sweep 2026-11-09: before any journal has said where you are it blamed "a hand-made name"."""
+        self.assertIn("not known yet", self.state.boxel_view()["why"])
+
     def test_review_7_rows(self):
         """Review 2026-10-26: a hand-made sector's name Spansh knows carries its id64 (a click opens it in Here), and a
         visited system Spansh knows is never "not in Spansh" on its card."""

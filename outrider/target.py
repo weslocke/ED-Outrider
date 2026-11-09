@@ -140,15 +140,19 @@ PHASES = {1: "open the galaxy map", 2: "go to the search field", 3: "enter the s
           5: "plot the route", 6: "close the galaxy map", 7: "check the target"}
 
 # US keyboard layout: each printable ASCII character as (evdev key, shift)
-def keyboard_layout(run=None, platform=None):
+def keyboard_layout(run=None, platform=None, window=None, user32=None):
     """S7-S1: this desktop's keyboard layout, as a short name ("us", "de", "us,de"), for the Auto-target box's word on
     typing (the name is typed by US key positions); None when it cannot be told. Linux: `setxkbmap -query`, else
-    `localectl status`; Windows: the foreground thread's layout (0409 is US English). Read only: nothing is pressed."""
+    `localectl status`; Windows: the layout of `window`'s thread (the game's, a hex id, once a run has found it), else
+    the window in front (Windows keeps a layout per window; 0409 is US English). Read only: nothing is pressed."""
     platform = platform or sys.platform
     if platform == "win32":
         try:
-            import ctypes
-            lang = ctypes.windll.user32.GetKeyboardLayout(0) & 0xFFFF
+            if user32 is None:
+                import ctypes
+                user32 = ctypes.windll.user32
+            hwnd = int(window, 16) if window else user32.GetForegroundWindow()
+            lang = user32.GetKeyboardLayout(user32.GetWindowThreadProcessId(hwnd, None) if hwnd else 0) & 0xFFFF
         except Exception:  # noqa: BLE001 -- unknown is the answer
             return None
         return "us" if lang == 0x0409 else f"{lang:04x}"

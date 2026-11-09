@@ -32,6 +32,7 @@ import re
 
 from . import DATA_DIR, RESOURCES_DIR
 from . import chatter as _chatter
+from . import pronounce as _pronounce
 
 # every line the page speaks, and the {placeholders} it fills for it. Always available: {name} (one of the
 # names you asked to be called, at random: game commander names are often unpronounceable), {cmdr} (the
@@ -514,6 +515,9 @@ class SpeechLines:
             addons = [(source, os.path.basename(path), self._files[path]["doc"])
                       for source, path, _m in self._files_sig or () if self._files.get(path, {}).get("doc")]
             self.merged, self.notes, self.info_list = merge_personalities(self.doc, addons)
+            for source, _name, doc in addons:   # your own lines' words are English too, as the shipped ones' (pronounce's sector rule)
+                if source == "yours":
+                    _pronounce.learn_english(json.dumps(doc))
         self._merged_for = key
 
     def _doc(self):

@@ -384,6 +384,8 @@ class Exposure(Base):
 
     def test_exposure_warning(self):
         W = ed_outrider.exposure_warnings
+        self.assertFalse(ed_outrider.public_name("gamepc.fritz.box"))   # sweep 2026-11-09: a FRITZ!Box's own LAN names
+        self.assertTrue(ed_outrider.public_name("example.box"))
         self.assertTrue(any("internet" in w and "outrider.example.com" in w for w in W("0.0.0.0", "pw", ["outrider.example.com"])))
         self.assertTrue(any("internet" in w for w in W("0.0.0.0", "pw", ["8.8.8.8:8025"])))
         self.assertEqual(W("0.0.0.0", "pw", ["mypc.lan", "tablet", "box.local", "nas.home.arpa", "192.168.1.9", "10.0.0.2:8025",

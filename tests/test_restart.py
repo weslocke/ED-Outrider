@@ -60,6 +60,16 @@ class Plan(unittest.TestCase):
         state = ed_outrider.State(db, ed_outrider.Journals(db), None, 25)
         self.assertEqual(state.payload()["restart"]["can"], False)   # a State made outside run() cannot either
 
+    def test_a_restart_through_the_bat_never_rescans(self):
+        """Sweep 2026-11-09: the .bat starts a Restart with %*, --rescan included: every journal read again each time."""
+        self.assertTrue(ed_outrider.rescan_asked(True, env={}))
+        self.assertFalse(ed_outrider.rescan_asked(True, env={"OUTRIDER_RESTARTED": "1"}))
+        self.assertFalse(ed_outrider.rescan_asked(False, env={}))
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "launch_outrider.bat"), encoding="utf-8") as f:
+            script = f.read()
+        self.assertIn('set "OUTRIDER_RESTARTED=1"', script[script.index(":again"):])
+        self.assertLess(script.index('set "OUTRIDER_RESTARTED="'), script.index(":check"))   # a fresh start in the same window does rescan
+
     def test_arguments_again_without_rescan(self):
         argv = ["--config", "my.toml", "--rescan", "--port", "8026", "--resca", "--res", "--journals", "x"]
         self.assertEqual(ed_outrider.restart_argv(argv), ["--config", "my.toml", "--port", "8026", "--res", "--journals", "x"])
@@ -157,6 +167,7 @@ class Route(unittest.TestCase):
             status, body, stopped = self.post()
         self.assertEqual((status, body["code"], stopped), (409, "too_soon", False))
         self.assertIn("Try again in", body["error"])
+        self.assertIn(f"waits {ed_outrider.RESTART_MIN_UPTIME_S} s", body["error"])   # sweep 2026-11-09: "only once it has run 10 s" at 12 s
         with unittest.mock.patch.object(ed_outrider, "STARTED", time.monotonic() - 60):
             self.assertEqual(self.post()[0], 202)
 

@@ -410,6 +410,17 @@ class PersonalityFiles(unittest.TestCase):
         self.assertNotIn("naval", self.BASE["styles"])   # the base document is left as it was
         self.assertEqual(sorted(self.BASE["lines"]["hull"]), ["business", "when"])
 
+    def test_your_own_words_are_english_to_the_sector_rule(self):
+        """Sweep 2026-11-09: only the shipped lines were read, so "Avast Smojooe AR-E b25-8" stressed Avast as a sector."""
+        import outrider.pronounce as P
+        self.addCleanup(setattr, P, "_english", None)
+        P._english = None
+        self.assertNotIn("avast", P.english_words())
+        os.makedirs(self.yours)
+        self.write(os.path.join(self.yours, "pirate.json"), {"styles": {"pirate": "Pirate"}, "lines": {"hull": {"pirate": ["Avast {system}, here we come."]}}})
+        self.sl.lines()
+        self.assertIn("avast", P.english_words())
+
     def test_who_wins(self):
         """Yours replaces a shipped one of the same name; a base personality is never replaced; a name taken twice in
         one folder is taken once; lists for other personalities or unknown alerts are left out."""

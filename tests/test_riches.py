@@ -795,6 +795,8 @@ class SurveyKinds(unittest.TestCase):
         # Alpha Centauri, already reached), and Alpha Centauri, visited but not finished, is not said "finished"
         _meta, rows = self.state.riches_state()
         self.assertEqual(rows[self.state.riches_next_open(rc, rows)[0]]["system"], "Barnard's Star")
+        # sweep 2026-11-09: from the start again the line counts every leg to that stop, not only the leg before it
+        self.assertEqual(self.state.survey_summary()["next"]["jumps"], rows[1]["jumps"] + rows[2]["jumps"])
         self.jump(-80, 18263140541865, "Barnard's Star", -3)
         self.assertIsNotNone(ed_outrider.meta_get(self.db, "riches"))   # the route kept
         self.jump(-70, 24860210308521, "Wolf 359", 4)

@@ -23,6 +23,7 @@ rem relative paths in the arguments are the caller's: Outrider runs from the fol
 set "CALLER=%CD%"
 cd /d "%~dp0"
 set "HERE=%CD%"
+set "OUTRIDER_RESTARTED="
 rem Settings -> Server's Restart: Outrider exits with 75 and this starts it again (below), setup included
 set "OUTRIDER_LAUNCHER=%~f0"
 set "PP0=%PYTHONPATH%"
@@ -129,6 +130,8 @@ exit /b 0
 
 :again
 echo Restarting ED Outrider
+rem the arguments (%*) are the first start's: Outrider sees this and does not --rescan again
+set "OUTRIDER_RESTARTED=1"
 cd /d "%HERE%"
 goto check
 

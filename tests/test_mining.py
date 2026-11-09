@@ -269,6 +269,23 @@ class Stints(unittest.TestCase):
         self.j.handle({"event": "Docked", "timestamp": ts or self.at(s), "StationName": "Hub", "StationType": "Coriolis",
                        "MarketID": 5, "StarSystem": "Sys", "SystemAddress": 9, "Taxi": False, "Multicrew": False})
 
+    def test_a_restart_does_not_repeat_the_recap(self):
+        """Sweep 2026-11-09: recap_mark lived in memory only, so a restart between two docks said the same recap again."""
+        self.jump(-50)
+        self.j.handle({"event": "Loadout", "timestamp": self.at(1), "Ship": "python", "ShipID": 7, "ShipName": "Digger",
+                       "ShipIdent": "DG", "CargoCapacity": 128, "MaxJumpRange": 20.0, "Modules": [{"Slot": "Slot01", "Item": "int_refinery_size4_class5"}]})
+        self.drop(2)
+        self.prospect(10, lode="Opal", water=12.0)
+        for i in range(22):
+            self.refine(100 + i * 40, "platinum")
+        self.leave(1000)
+        self.dock(1100)
+        self.assertEqual(len(self.recaps()), 1)
+        self.j = ed_outrider.Journals(self.db)
+        self.j.handle({"event": "Undocked", "timestamp": self.at(1200), "StationName": "Hub", "StationType": "Coriolis", "MarketID": 5})
+        self.dock(1300)
+        self.assertEqual(self.recaps(), [])
+
     def test_the_recap_on_leaving_or_docking(self):
         """Round 10's S21: a recap as you dock or jump away after mining, never at a ring exit (the author's answer 17):
         the ring of the latest stint, its stints since you arrived (or since the last recap), MINING_RECAP_MIN_T tons at

@@ -82,6 +82,19 @@ class EntryCheck(unittest.TestCase):
         ok = lambda argv, **kw: subprocess.CompletedProcess(argv, 0, stdout="rules:      evdev\nlayout:     us\n")
         self.assertEqual(support.REAL_KEYBOARD_LAYOUT(run=ok, platform="linux"), "us")
 
+    def test_windows_reads_the_games_window_not_its_own_thread(self):
+        """Sweep 2026-11-09: GetKeyboardLayout(0) is the caller's thread, Outrider's own; a layout is kept per window."""
+        import support
+        class User32:
+            def GetForegroundWindow(self):
+                return 0x20
+            def GetWindowThreadProcessId(self, hwnd, _):
+                return {0x10: 1, 0x20: 2}[hwnd]
+            def GetKeyboardLayout(self, thread):
+                return {0: 0x0409, 1: 0x0419, 2: 0x0407}[thread]
+        self.assertEqual(support.REAL_KEYBOARD_LAYOUT(platform="win32", window="10", user32=User32()), "0419")   # the game's, once found
+        self.assertEqual(support.REAL_KEYBOARD_LAYOUT(platform="win32", user32=User32()), "0407")               # else the window in front
+
 
 if __name__ == "__main__":
     unittest.main()

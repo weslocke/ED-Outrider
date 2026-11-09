@@ -222,6 +222,11 @@ class BioNames(unittest.TestCase):
         self.assertEqual(outrider.bio.journal_class("High metal content world"), "High metal content body")
         self.assertEqual(outrider.bio.journal_class("Earth-like world"), "Earthlike body")
 
+    def test_every_white_dwarf_class_is_asked_for(self):   # sweep 2026-11-09: DAO, DO, DOV and DX were left out
+        for names in (ed_outrider.BOOST_STARS, ed_outrider.STAR_GROUPS["wd"]):
+            for code in ("DA", "DAO", "DO", "DOV", "DX"):
+                self.assertIn(f"White Dwarf ({code}) Star", names)
+
     def test_star_codes(self):
         for name, code in [("M (Red dwarf) Star", "M"), ("M (Red giant) Star", "M_RedGiant"),
                            ("K (Yellow-Orange giant) Star", "K_OrangeGiant"), ("White Dwarf (DA) Star", "DA"),
@@ -231,6 +236,9 @@ class BioNames(unittest.TestCase):
         self.assertTrue(outrider.bio.star_matches("M", "M_RedGiant"))
         self.assertTrue(outrider.bio.star_matches("D", "DAB"))
         self.assertFalse(outrider.bio.star_matches("K", "M"))
+        self.assertEqual(outrider.bio.star_code("CHd Star"), "CHd")      # sweep 2026-11-09: the one lower-case code
+        self.assertTrue(outrider.bio.star_matches("C", "CHd"))
+        self.assertTrue(outrider.bio.luminosity_matches("I", "Ia0"))     # the journal's hypergiant
         self.assertTrue(outrider.bio.luminosity_matches("V", "Vab"))
         self.assertFalse(outrider.bio.luminosity_matches("V", "IV"))
 

@@ -3495,6 +3495,7 @@ class JournalsRegistry(unittest.TestCase):
     }
     # meta key -> why it is NOT cleared by RESET_JOURNAL_DATA
     KEPT_THROUGH_REREAD = {
+        "recap_mark": "the latest recap said, live only: a re-read says none",
         "docking": "live-only: the pad a station gave you just now (#3), written for live lines only; a re-read writes "
                    "nothing to it",
         "docking_said": "live-only: grants counted this session for #12's green-lights cadence, live lines only",

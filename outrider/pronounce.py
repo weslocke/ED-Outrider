@@ -303,6 +303,11 @@ def english_words():
     return _english
 
 
+def learn_english(text):
+    """The words of a player's own personality file (speech.SpeechLines, as it merges one): English to the rule above."""
+    english_words().update(w.lower() for w in re.findall(r"[A-Za-z]{2,}", text))
+
+
 def _pieces(text, table):
     out, i = [], 0
     longest = max(len(k) for k in table)

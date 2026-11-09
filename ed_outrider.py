@@ -403,8 +403,9 @@ SELLER_REFRESH_S = 6 * 3600  # ...or this long (carriers move)
 EDSM_SYSTEM = "https://www.edsm.net/api-v1/system"
 EDSM_SPHERE = "https://www.edsm.net/api-v1/sphere-systems"
 EDSM_BODIES = "https://www.edsm.net/api-system-v1/bodies"   # ?systemName=: {name, bodyCount, bodies: [{type...}]}
-BOOST_STARS = ["Neutron Star"] + [f"White Dwarf ({c}) Star" for c in
-                                  ("D", "DA", "DAB", "DAZ", "DAV", "DB", "DBZ", "DBV", "DQ", "DC", "DCV")]
+WHITE_DWARFS = [f"White Dwarf ({c}) Star" for c in   # every class the game has
+                ("D", "DA", "DAB", "DAO", "DAZ", "DAV", "DB", "DBZ", "DBV", "DO", "DOV", "DQ", "DC", "DCV", "DX")]
+BOOST_STARS = ["Neutron Star"] + WHITE_DWARFS
 SPANSH_PAGE = 500          # largest page size the search endpoint honours
 SPANSH_MAX_PAGES = 10
 SPANSH_CONCURRENCY = 4     # body-detail fetches after an arrival
@@ -3457,6 +3458,7 @@ class Journals:
         # the body you were last at in a system ({system, body_id, name, ts}: ApproachBody, Touchdown, a SupercruiseExit
         # or a login at a planet or star), kept after you leave it: where the suggested order starts (State.at_body)
         ("body_last", "body_last", None),
+        ("recap_mark", "recap_mark", None),       # ts of the latest mining recap or death: kept, or a restart says the last recap again
         # every body you were at in the system you are in this visit, in order ({system, body_id, name, ts}, the same
         # moves as body_last; one entry per stay): the system map's trail of where you have been (State.visit_trail)
         ("body_trail", "body_trail", list),
@@ -3490,7 +3492,7 @@ class Journals:
               # round 10's S4: the suit worn (read by the Disembark's check), a live Disembark waiting for its suit line,
               # the bodies warned of this visit and those with a settlement approached; S22: the (system, faction)
               # bounties said this stay; S21: the latest mining recap (or death) a recap counts from
-              "suit_worn", "foot_pending", "suit_said", "settlements", "wanted_said", "recap_mark")
+              "suit_worn", "foot_pending", "suit_said", "settlements", "wanted_said")
     """Incremental reader: each file is read from where the last pass stopped."""
 
     def __init__(self, db):
@@ -5927,6 +5929,7 @@ class Journals:
                 row = None
             if name == "Died":
                 self.recap_mark = ts   # S21: no recap of what a death ended (a dock after the respawn says nothing of it)
+                meta_set(self.db, "recap_mark", ts)
             elif name in MINING_RECAP_ON:
                 self.mining_recap(name, ts)
             if not ring:
@@ -6025,6 +6028,7 @@ class Journals:
         if tons < MINING_RECAP_MIN_T:
             return
         self.recap_mark = ts
+        meta_set(self.db, "recap_mark", ts)
         cid, top = refined.most_common(1)[0]
         seconds = sum(max(0, ts_seconds(r["end_ts"] or r["last_ts"] or r["start_ts"]) - ts_seconds(r["start_ts"])) for r in rows)
         rocks = prospect_best([p for r in rows for p in json.loads(r["prospects"] or "[]")])
@@ -10760,7 +10764,8 @@ class State:
         up = (time.monotonic() if now is None else now) - STARTED
         if r.get("how") == "docker" and up < RESTART_MIN_UPTIME_S:
             return {"error": f"Outrider started {up:.0f} s ago: Docker starts a container again only once it has run "
-                             f"10 s. Try again in {RESTART_MIN_UPTIME_S - up:.0f} s.", "code": "too_soon"}, 409
+                             f"10 s, and Outrider waits {RESTART_MIN_UPTIME_S} s to be sure. Try again in "
+                             f"{RESTART_MIN_UPTIME_S - up:.0f} s.", "code": "too_soon"}, 409
         self.restart_wanted = True
         print(f"restart: asked for from the page; {RESTART_WORDS.get(r.get('how'), r.get('how'))}")
         asyncio.get_running_loop().call_later(0.2, self.stop_event.set)   # the answer goes out first
@@ -16967,7 +16972,8 @@ class State:
                     f"keep it: {out.get('error')}")
             print(f"uploads: {note}", file=sys.stderr)
         self.upload_status.pop(service, None)
-        self.upload_hold_gone(service)
+        for key in [k for k in self.upload_held_said if k == service or k.startswith(f"{service}:")]:   # EDDN's are per kind
+            self.upload_hold_gone(key)
         self.upload_down_clear(service)   # an outage from before the hold is over
         self.upload_recent.end(service)   # a failure after this starts a new outage
         self.upload_down_clear(service)
@@ -19425,7 +19431,9 @@ class State:
         b = self.boxel_active()
         auto = bool(meta_get(self.db, "boxel_auto"))
         if not b:
-            return {"boxel": None, "auto": auto, "why": "this system has a hand-made name, so it is in no boxel: pick one below"}
+            why = ("this system has a hand-made name, so it is in no boxel: pick one below" if self.journals.pos
+                   else "your position is not known yet: no journal has said where you are")
+            return {"boxel": None, "auto": auto, "why": why}
         prefix, pos = b["prefix"], self.journals.pos
         visited = self.boxel_visited(prefix)
         cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
@@ -21417,7 +21425,8 @@ class State:
         at, (nx, skipped) = rc.get("at"), self.riches_next_open(rc, rows)
         nxt = rows[nx] if nx is not None else None
         # each row's jumps is its leg from the row before: past finished systems (S12) the trip is their legs too
-        legs = [rows[k]["jumps"] for k in skipped + [nx]] if nxt else []
+        # (and back at a loop's start, with the next stop further on: every leg from here to it)
+        legs = [rows[k]["jumps"] for k in (range(at + 1, nx + 1) if at is not None and at < nx else skipped + [nx])] if nxt else []
         return {
             "kind": kind_of(rc), "id": rc.get("id"), "created_ts": rc.get("created_ts"),
             "destination": rows[-1]["system"], "total": n - 1, "index": nx, "at": at,
@@ -21886,8 +21895,9 @@ class State:
         steps, missing = t.plan()
         info["missing"] = [{"key": n, "why": w} for n, w in missing]
         info["steps"] = t.describe(steps)
-        if self._kb_layout is ...:   # S7-S1: read once (a subprocess), on the game PC only
-            self._kb_layout = outrider.target.keyboard_layout()
+        win = sys.platform == "win32"   # S7-S1: read once (a subprocess), on the game PC only; on Windows, cheap and per window: the game's once a run has found it
+        if self._kb_layout is ... or win:
+            self._kb_layout = outrider.target.keyboard_layout(window=self.game_window.window if win and self.game_window else None)
         info["entry_check"] = outrider.target.entry_check(self._kb_layout, self.clipboard.tool if self.clipboard else None)
         info["status"] = ("off" if not cfg["autotarget"] else "dry run: logs the steps, presses nothing" if info["dry_run"]
                           else h.device_error or "the virtual keyboard is not open" if not h.ready
@@ -23007,8 +23017,7 @@ _SCOOP = [
     ("M", ["M (Red dwarf) Star", "M (Red giant) Star", "M (Red super giant) Star"]),
 ]
 _OTHER_STARS = [
-    ("wd", "White dwarf", [f"White Dwarf ({c}) Star" for c in
-                           ("D", "DA", "DAB", "DAZ", "DAV", "DB", "DBZ", "DBV", "DQ", "DC", "DCV")]),
+    ("wd", "White dwarf", WHITE_DWARFS),
     ("n", "Neutron star", ["Neutron Star"]),
     ("bh", "Black hole", ["Black Hole", "Supermassive Black Hole"]),
     ("bd", "Brown dwarf (L/T/Y)", ["L (Brown dwarf) Star", "T (Brown dwarf) Star", "Y (Brown dwarf) Star"]),
@@ -23754,7 +23763,7 @@ def safe_next(nxt):
         and not any(c == "\\" or c.isspace() or ord(c) < 32 for c in nxt)
 
 
-LAN_SUFFIXES = (".lan", ".local", ".home", ".internal", ".home.arpa", ".localdomain")
+LAN_SUFFIXES = (".lan", ".local", ".home", ".internal", ".home.arpa", ".localdomain", ".fritz.box")   # .fritz.box: AVM's routers
 
 
 def public_name(name):
@@ -25976,6 +25985,12 @@ def service_change(action, args, game_pc, container=None):
     return outrider.service.uninstall(how, why)
 
 
+def rescan_asked(rescan, env=None):
+    """Whether this start re-reads the journals as --rescan asked: never a Restart through launch_outrider.bat, which
+    says so with OUTRIDER_RESTARTED (restart_argv is the same rule where a restart is an exec)."""
+    return bool(rescan) and not (os.environ if env is None else env).get("OUTRIDER_RESTARTED")
+
+
 def restart_argv(argv):
     """The arguments to start again with: as given, but never --rescan (or its abbreviation), which would read every
     journal again at each restart."""
@@ -26860,6 +26875,8 @@ def main(argv=None):
                         "on Linux (at login), a Startup entry on Windows; then exit.")
     p.add_argument("--uninstall-service", action="store_true", help="Remove what --install-service made, and exit.")
     args = p.parse_args(argv)
+    # launch_outrider.bat starts a Restart with its original arguments (%*): --rescan must not read every journal again
+    args.rescan = rescan_asked(args.rescan)
     serving = not (args.write_config or args.list_backups or args.restore is not None or args.install_service
                    or args.uninstall_service)
     # Outrider's own log (S5b): the server's lines from here on, for Show log and <db dir>/outrider.log (opened in

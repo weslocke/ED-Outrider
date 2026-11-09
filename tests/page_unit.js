@@ -790,6 +790,27 @@ t("the voice lab says no Piper voice is installed", () => {
     try { labOpen(); return document.getElementById("labVoice").textContent; } finally { speechLib.lines = {}; data = was; } })()`);
   assert.ok(/no Piper voice installed/.test(text), text);
 });
+t("the mining recap's title carries a full hour: never 1 h 60", () =>
+  eq(`[miningRecapText({ring: "R", tons: 80, seconds: 7190, stints: 1}).title, miningRecapText({ring: "R", tons: 80, seconds: 4200, stints: 1}).title]`,
+     ["⛏ R: 80 t in 2 h 00", "⛏ R: 80 t in 1 h 10"]));
+t("parsePinCoords: the hemisphere letter before the number", () => {
+  eq(`parsePinCoords("N 12.34 W 45.67")`, {lat: 12.34, lon: -45.67});
+  eq(`parsePinCoords("S 12.34 W 45.67")`, {lat: -12.34, lon: -45.67});
+  eq(`parsePinCoords("W45.67, S12.34")`, {lat: -12.34, lon: -45.67});
+  eq(`parsePinCoords("12.34 S, 45.67 E")`, {lat: -12.34, lon: 45.67});
+  eq(`parsePinCoords("Lat -12.34 Lon 45.67")`, {lat: -12.34, lon: 45.67});
+});
+later.push(["the crew table: a name saved draws no forced rebuild, any other change does", async () => {
+  const out = JSON.parse(await ev(`(async () => { const d = drawCrew, api = apiJson, m = drawVoiceMemory, calls = [];
+    drawCrew = f => calls.push(f); drawVoiceMemory = () => {}; apiJson = async () => ({});
+    try { await crewPost({role: "xo", name: "Mira"}); await crewPost({role: "xo", personality: "sarcastic"}); return JSON.stringify(calls); }
+    finally { drawCrew = d; apiJson = api; drawVoiceMemory = m; } })()`));
+  assert.deepStrictEqual(out, [false, true]);
+}]);
+t("a trade route's heading keeps its start once the first stops scroll out of the window", () => {
+  const html = ev(`tradeHeadHtml({route: {from: "Start", count: 16, at: 12, options: {station: "First Port"}, systems: [{i: 2, station: "Third Port", cumulative: 5}]}})`);
+  assert.ok(html.includes("Trade route from First Port"), html);
+});
 t("the system map's stop: the dot only before a figure", () => {
   eq(`[sysWhy({kind: "bio", b: {signals: 3, potential: null}})[0], sysWhy({kind: "bio", b: {signals: 3, potential: 900000, bio_left: 1}})[0]]`, ["bio 3", "bio 3 ·"]);
 });

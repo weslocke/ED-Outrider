@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · Sweep 12, batch 3: the rare ones
+- **Fix (server):** the 3D map's boost stars and Search's white dwarf class missed DAO, DO, DOV and DX; a mining recap was
+  said again after a restart (`recap_mark` now in SAVED); EDDN's per-kind hold card stayed after switching EDDN off; a
+  loop route back at its start gave only the last leg as the jumps to the next stop; Boxel blamed "a hand-made name"
+  when no position was known; `*.fritz.box` drew the "internet name" warning; Docker's restart refusal said 10 s while
+  waiting 15 s.
+- **Fix (launch_outrider.bat, `rescan_asked`):** a Restart after `--rescan` read every journal again each time on Windows.
+- **Fix (page):** the mining recap's "1 h 60"; `N 12.34 W 45.67` (the letter first) put a pin on the wrong side of the
+  planet; saving a crew name threw away the field Tab had moved to; a long trade route's heading named the wrong start.
+- **Fix (bio.py):** a CHd carbon star matched no star rule or colour, an Ia0 hypergiant no class I rule.
+- **Fix (pronounce.py, speech.py):** your own personality's words count as English before a sector name.
+- **Fix (target.py, Windows, untried there):** the keyboard layout is read from the game's window once a run has found it,
+  else the window in front, not Outrider's own thread.
+
 ## 2026-11-09 · Sweep 12, batch 2: the small bugs, the Claude desktop recipe
 - **Fix (cargo.py `market_query`, `can_land`):** the Sell / Buy lookup and Sell all lost, for a medium ship, the stations
   with large pads but no medium ones (Odyssey settlements): Spansh cannot filter "medium or large", so it is asked for

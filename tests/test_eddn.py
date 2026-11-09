@@ -660,6 +660,12 @@ class SenderAndPipeline(unittest.TestCase):
         self.assertEqual([m["service"] for m in self.j.moments if m["kind"] == "upload_held"], ["eddn"])
         self.state.retry_upload("eddn", "journal")
         self.assertEqual(cards(), [])
+        # sweep 2026-11-09: a kind's card goes with the switch too (its key is eddn:<schema>, not eddn)
+        self.state.upload_hold_said("eddn:journal", "eddn", "EDDN refuses journal messages")
+        self.assertEqual(len(cards()), 1)
+        with unittest.mock.patch.object(self.state, "config_save", return_value=({}, 200)):
+            self.state.set_upload("eddn", False)
+        self.assertEqual(cards(), [])
 
     def test_hour_old_rows_are_not_sent(self):
         """Any EDDN message an hour late (an outage, switched off and on) is dropped, not sent as current."""

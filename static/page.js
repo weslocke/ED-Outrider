@@ -2444,13 +2444,14 @@ for (const id of ["nowMapLegend", "ovMapLegend"]) document.getElementById(id).ad
 // coordinates, also before you reach the body), 📍 Pin here, 📍 on a site or location; Bookmarks lists them all ----
 // typed or pasted coordinates: decimal degrees in any common layout ("-12.34, 45.67", "Lat -12.34 Lon 45.67",
 // "12.34 S, 45.67 E", a degree sign, text around them); the first number is the latitude unless the letters say
-// otherwise; S and W are negative. {lat, lon} or {error}
+// otherwise; S and W are negative; the letter may come first ("N 12.34 W 45.67"). {lat, lon} or {error}
 function parsePinCoords(text) {
-  const re = /([-+−]?\d+(?:\.\d+|,\d+)?)\s*°?\s*([NSEW](?![a-z]))?/gi, nums = [];
+  const re = /(?:\b([NSEW])\s*)?([-+−]?\d+(?:\.\d+|,\d+)?)\s*°?\s*([NSEW](?![a-z]))?/gi, nums = [];
   let m;
   while (nums.length < 2 && (m = re.exec(String(text || "")))) {
-    let v = Number(m[1].replace(",", ".").replace("−", "-"));
-    const h = (m[2] || "").toUpperCase();
+    let v = Number(m[2].replace(",", ".").replace("−", "-"));
+    if (m[1] && m[3]) re.lastIndex -= m[3].length;   // a letter before this number: the one after it is the next number's
+    const h = (m[1] || m[3] || "").toUpperCase();
     if (h === "S" || h === "W") v = -Math.abs(v);
     nums.push({v, h});
   }
@@ -4310,7 +4311,7 @@ function recapDuration(secs) {
 function miningRecapText(m) {
   const rate = m.seconds >= 60 ? Math.round(m.tons * 3600 / m.seconds) : null, n = m.motherlodes || 0;
   const lodes = n ? (n === 1 ? "a motherlode" : `${n} motherlodes`) : "";
-  const h = Math.floor((m.seconds || 0) / 3600), min = Math.round(((m.seconds || 0) % 3600) / 60);
+  const all = Math.round((m.seconds || 0) / 60), h = Math.floor(all / 60), min = all % 60;   // whole minutes first: never "1 h 60"
   return {title: `⛏ ${m.ring}: ${m.tons} t in ${h ? `${h} h ${String(min).padStart(2, "0")}` : `${Math.max(1, min)} min`}`,
           body: [rate != null && `${rate} t/h`, lodes, `${m.stints} stint${m.stints === 1 ? "" : "s"}`,
                  Array.isArray(m.best) && m.best[2] > 0 && `best rock: ${m.best[1] || m.best[0]} ${Math.round(m.best[2])} %`].filter(Boolean).join(" · "),
@@ -10488,7 +10489,7 @@ function tradeHeadHtml(d) {
   const where = rt.at != null ? `you are at stop ${rt.at} of ${rt.count - 1}` : rt.off_route ? "off the route" : `not on the route yet`;
   const nx = rt.next != null ? sy.find(s => s.i === rt.next) : null;
   const live = data && data.survey && data.survey.id === rt.id ? data.survey : null;   // S11: the live line's check
-  return `<div class="hwyttl">Trade route from ${esc(sy[0] ? sy[0].station : rt.from)} <span class="unk">${esc(rt.from)}</span></div>` +
+  return `<div class="hwyttl">Trade route from ${esc((sy[0] && sy[0].i === 0 ? sy[0].station : o.station) || rt.from)} <span class="unk">${esc(rt.from)}</span></div>` +
     `<div class="hwystats">${where} · ${rt.count - 1} hop${rt.count === 2 ? "" : "s"} · <b>≈${credits((last && last.cumulative) || 0)} cr</b> profit in all (Spansh's prices)</div>` +
     (rt.done_ts ? `<div class="hwystate hwydone">Trade route complete.</div>`
       : nx ? `<div class="hwystate">Next: <b>${esc(nx.station || "")}</b>, <b class="copy" data-name="${esc(nx.system)}" title="click to copy">${esc(nx.system)}</b>` +
@@ -13516,7 +13517,8 @@ async function crewPost(body) {
   const m = document.getElementById("crewMsg");
   m.textContent = r.error ? `Not kept: ${r.error}` : crewSaid(body);
   m.className = r.error ? "hint warnc" : "hint";
-  drawCrew(true); drawVoiceMemory();
+  // only a name changed: no forced rebuild, which threw away the field Tab was moving to
+  drawCrew(!(!r.error && body.name !== undefined && Object.keys(body).length === 2)); drawVoiceMemory();
   return r;
 }
 // one line of a crew member's own, as the alerts would say it: an alert row it speaks for (Tactical: the danger lines

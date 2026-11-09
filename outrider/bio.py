@@ -197,7 +197,7 @@ def star_code(s):
     m = re.match(r"^Wolf-Rayet (\w+) Star$", s)
     if m:
         return "W" + m.group(1)
-    m = re.match(r"^([A-Z]+)(?:-type)? (?:\(([^)]*)\) )?Star$", s)
+    m = re.match(r"^(CHd|[A-Z]+)(?:-type)? (?:\(([^)]*)\) )?Star$", s)
     if not m:
         return s
     code, detail = m.group(1), (m.group(2) or "").lower()
@@ -221,7 +221,7 @@ def star_matches(query, code):
 
 
 def luminosity_matches(want, have):
-    return bool(have) and any(want + flag == have for flag in ("", "a", "b", "ab", "z"))
+    return bool(have) and any(want + flag == have for flag in ("", "a", "b", "ab", "z", "a0"))   # a0: the journal's hypergiant, Ia0
 
 
 # --------------------------------------------------------------------------
