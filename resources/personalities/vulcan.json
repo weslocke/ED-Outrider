@@ -684,6 +684,20 @@
     "{name}, the codex has a new entry. {entry}. {what}. Acknowledged."
    ]
   },
+  "codex_picture": {
+   "vulcan": [
+    "Picture of {entry} filed in the codex folder.",
+    "{entry}, recorded visually. Filed.",
+    "Your image of {entry} has been catalogued, {name}.",
+    "Fascinating. {entry}, filed.",
+    "{entry}. The image is now in the codex folder.",
+    "An image of {entry} has been added to your records.",
+    "Noted, {name}. {entry}, filed.",
+    "{entry}. The picture is adequate. Filed.",
+    "The image of {entry} has been stored.",
+    "{entry}, documented and filed."
+   ]
+  },
   "docking_granted": {
    "vulcan": [
     "Pad {pad}.",

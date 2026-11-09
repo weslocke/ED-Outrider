@@ -2,6 +2,21 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · A codex picture is said
+The author: an XO line and a notification when a screenshot is filed as a codex picture; then the Exobiologist for a
+plant and the Science Officer for geology.
+- **Server:** `shot_convert` adds a `codex_picture` moment (what bio/geo, entry, colour, group, file) once a live shot is
+  copied into its codex folder; a catch-up's shots (start-up, "Convert the screenshots already there") are filed quietly.
+- **Page:** two alert rows in "Exobiology and the surface", `biopic` (Codex picture: plant, the Exobiologist's) and
+  `geopic` (Codex picture: geology, the Science Officer's): "📷 Codex picture: Bacterium Volu" with the colour and the
+  file, and the new `codex_picture` line ({entry}); ALERT_NAMES, ALERT_DETAILS, ROW_WORDS, ROW_KEYS, CREW_ROLES.
+- **Lines:** `codex_picture` in speech.json (15 a list: a rare line, test_crew's short list) and 10 in every shipped
+  personality and its swearing list.
+- **Docs:** automation.md (your own codex), voice-and-alerts.md (the crew table).
+- **Tests:** test_screenshots' `test_a_codex_picture_is_said` (said, off, nothing near, a catch-up; fails without the
+  server change); page_smoke's batch D voice `codexPic` (each row, its title and line; fails without the page change);
+  test_crew's default rows.
+
 ## 2026-11-08 · page_consts.js writes all of its answer; tried in game
 - **Fix:** a verify failed in test_bookmarks with page.js's constants cut at 8 KB. `tests/page_consts.js` exited
   straight after `process.stdout.write`; Linux gives a user with many pipes open 8 KB ones, and what node still held

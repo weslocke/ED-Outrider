@@ -4342,6 +4342,18 @@ const releasePayloads = async () => {
     w.eval(`data = Object.assign({}, data, {moments: [{seq: lastMomentSeq + 1, kind: "mapped", system: "1", body: "Q 9", probes: 3, target: 6, value: 1e6,
       leaving: {honked: true, unscanned: 0, bio_pending: [], unmapped: []}}]}); onData()`);
     got.mappedOn = w.eval('speechLog.filter(e => /Q 9 mapped/.test(e.words)).map(e => e.kind).join()');
+    // a shot filed in your codex folders (the author, 2026-11-08): a notification and a line, a plant's by the
+    // Exobiologist (row biopic), a formation's by the Science Officer (geopic: test_crew's default rows)
+    got.codexPic = JSON.parse(w.eval(`(() => {
+      speechLog.length = 0; alertCfg.enabled = true;
+      const titles = [];
+      for (const m of [{kind: "codex_picture", what: "bio", entry: "Bacterium Volu", colour: "Teal", file: "a.png"},
+                       {kind: "codex_picture", what: "geo", entry: "Water Ice Geyser", colour: null, file: "b.png"}]) {
+        data = Object.assign({}, data, {moments: [Object.assign({seq: lastMomentSeq + 1, ts: new Date().toISOString()}, m)]}); onData();
+        titles.push(lastAlert && lastAlert.kind + " " + lastAlert.title + " | " + lastAlert.body);
+      }
+      return JSON.stringify({titles, said: speechLog.filter(e => /Bacterium Volu|Water Ice Geyser/.test(e.words)).map(e => e.kind),
+                             named: [ALERT_NAMES.biopic, ALERT_NAMES.geopic], keys: [ROW_KEYS.biopic, ROW_KEYS.geopic]}); })()`));
     w.localStorage.removeItem("sayMapped");
     // S9: the tally and its mute
     w.eval(`speechLog.length = 0; for (const k of Object.keys(speechTally)) delete speechTally[k]; alertSpeak.jump = true;
@@ -4373,6 +4385,9 @@ const releasePayloads = async () => {
                "A 2 mapped, 2 probes over target, no efficiency bonus, 3.4M. Nothing else here over your levels.",
                "A 2 mapped, 1 probe over target, no efficiency bonus. 2 bodies still to find in the FSS."],
       mappedRow: [true, false, true, false], mappedOff: false, mappedOn: "mapped",
+      codexPic: {titles: ["biopic 📷 Codex picture: Bacterium Volu | Teal · a.png", "geopic 📷 Codex picture: Water Ice Geyser | b.png"],
+                 said: ["biopic", "geopic"],
+                 named: ["Codex picture: plant", "Codex picture: geology"], keys: [["codex_picture"], ["codex_picture"]]},
       q5: ["Next: map A 5 (771k/2.2M)", "A 2 mapped efficiently, 3.4 million. Next: map A 5, 771 thousand, 2.2 million with bonuses.",
            "Next: map A 5 (771k)", "map A 5 (High metal content body · 771k/2.2M)", "map A 5 (High metal content body, +5.0M)"],
       tally: "This session: FSD charging 2 🔇 · New codex entry 1 🔇 · Asked for 1", gridBefore: true, mutes: "codex,jump",

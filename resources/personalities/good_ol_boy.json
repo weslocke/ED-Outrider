@@ -1322,6 +1322,32 @@
     "Codex entry, {name}: {entry}. {what}."
    ]
   },
+  "codex_picture": {
+   "good_ol_boy": [
+    "Got your picture of {entry} put up, partner.",
+    "{entry}, filed. That one's goin' on the fridge.",
+    "Well, ain't that a pretty picture. {entry}, saved.",
+    "{name}, I tucked that picture of {entry} in the codex.",
+    "Picture of {entry}, filed right next to the others.",
+    "{entry}. Grandma'd want a copy of that one.",
+    "Saved your snapshot of {entry}, buddy.",
+    "That there's {entry}. Picture's filed.",
+    "Put {entry} in the album, partner.",
+    "{entry}, filed away nice and neat."
+   ],
+   "good_ol_boy_profane": [
+    "Damn fine picture of {entry}, partner. Filed.",
+    "{entry}, saved. Hell of a shot.",
+    "Well, damn, {name}. {entry}, in the album.",
+    "Hot damn, look at {entry}. Filed.",
+    "Picture of {entry}, filed. Damn pretty.",
+    "{entry}. Hell yeah, that one's a keeper.",
+    "Saved your damn picture of {entry}, buddy.",
+    "{entry}, filed. Damn if that ain't fridge-worthy.",
+    "Hell, {name}, {entry} came out good. Filed.",
+    "Damn, partner. {entry}, in the codex."
+   ]
+  },
   "docking_granted": {
    "good_ol_boy": [
     "Pad {pad}, {name}.",

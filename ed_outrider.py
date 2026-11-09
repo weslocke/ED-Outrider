@@ -13734,6 +13734,11 @@ class State:
         written = (out or {}).get("written") or []
         if (out or {}).get("codex"):
             self._codex_folders = None   # Here's and the checklist's 📷 see it at once
+            if not shot.get("backlog") and subject:   # said (the author, 2026-11-08): bio by the Exobiologist, geology
+                # by the Science Officer (page.js rows biopic / geopic); a catch-up's shots are filed quietly
+                self.journals.moment("codex_picture", shot["ts"], what=subject.get("kind"), entry=subject.get("entry"),
+                                     colour=subject.get("colour") or None, group=subject.get("group"),
+                                     file=os.path.basename(out["codex"]))
         got = {k: paths[k] if paths.get(k) and paths[k] in written else None for k in ("full", "medium", "small", "crop")}
         self.db.execute("INSERT OR REPLACE INTO screenshots (ts, original, system, system_name, body, body_id, lat, lon, heading, "
                         "cmdr, subject, full, medium, small, crop, width, height, error) "

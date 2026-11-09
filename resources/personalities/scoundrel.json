@@ -1321,6 +1321,32 @@
     "{entry}. {what}. Hell of a lot easier than the Lave customs line."
    ]
   },
+  "codex_picture": {
+   "scoundrel": [
+    "Picture of {entry}, filed. Somebody'd pay for that.",
+    "{entry}, in the folder. Put it on the tab, {name}.",
+    "Filed your picture of {entry}. Postcards, maybe?",
+    "{entry}. Saved. Collectors like this kind of thing.",
+    "Your shot of {entry} is filed. Nice angle.",
+    "{entry}, filed. One day we sell prints.",
+    "Got {entry} on file, {name}. Evidence, if anyone asks.",
+    "Picture of {entry}. Filed under things worth money.",
+    "{entry}, saved. Not a bad haul for one click.",
+    "Filed {entry}. Keep shooting, I'll handle the marketing."
+   ],
+   "scoundrel_profane": [
+    "Picture of {entry}, filed. Hell, that'd sell.",
+    "{entry}. Damn nice shot, {name}.",
+    "Filed your damn picture of {entry}. Prints, I'm telling you.",
+    "{entry}, saved. Hell of a souvenir.",
+    "Damn, {entry}. Filed under things worth money.",
+    "{entry}, filed. Does this shit pay? Tell me it pays.",
+    "Your shot of {entry} is filed. Damn, you're good.",
+    "Hell yes, {entry}, in the folder.",
+    "{entry}, filed. Who's a clever little crook?",
+    "Filed {entry}, {name}. Damn fine merchandise."
+   ]
+  },
   "docking_granted": {
    "scoundrel": [
     "Pad {pad}. I'll find the bar.",

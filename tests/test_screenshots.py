@@ -612,6 +612,33 @@ class Server(unittest.TestCase):
             self.assertEqual((im.format, im.size), ("PNG", (320, 180)))
         self.assertFalse(os.path.exists(os.path.join(self.pictures, "Screenshot_0005.bmp")))   # deleted after
 
+    def test_a_codex_picture_is_said(self):
+        """The author, 2026-11-08: a shot filed in your codex folders is a line and a notification (page.js rows biopic /
+        geopic: a plant's by the Exobiologist, geology's by the Science Officer): a codex_picture moment with what it
+        shows; none with the codex off, for a shot of nothing filed, or for a shot caught up at start-up."""
+        said = lambda: [m for m in self.j.moments if m["kind"] == "codex_picture"]
+        self.shoot()
+        self.run_queue()
+        self.assertEqual(said(), [])                                             # the codex off
+        self.st.shots_cfg["codex"] = True
+        self.shoot("Screenshot_0002.bmp")
+        self.run_queue()
+        [m] = said()
+        self.assertEqual((m["what"], m["entry"], m["group"], m["colour"]), ("geo", "Water Ice Geyser", "Geyser", None))
+        self.assertEqual(m["file"], os.path.basename(self.st.shots_last["codex"]))
+        self.assertTrue(self.st.moment_live(m["ts"]))                             # the page takes it
+        self.shoot("Screenshot_0003.bmp", lon=0.5)                                # nothing near: not filed, not said
+        self.run_queue()
+        self.assertEqual(len(said()), 1)
+        self.j.importing = True                                                   # caught up at start-up: filed quietly
+        try:
+            self.shoot("Screenshot_0004.bmp")
+        finally:
+            self.j.importing = False
+        self.run_queue()
+        self.assertTrue(self.st.shots_last["codex"])
+        self.assertEqual(len(said()), 1)
+
     def test_checklists_show_your_own_pictures(self):
         """[screenshots] codex_show (the author, 2026-10-26): a checklist entry's picture is one of your own from its codex
         folder (a species' colour, a formation), any picture there, picked at random; Canonn's where there is none; the

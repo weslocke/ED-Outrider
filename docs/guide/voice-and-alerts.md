@@ -298,8 +298,8 @@ the sentence ends:
 |---|---|
 | XO / Co-pilot | the main voice: voice answers, the status report, the co-pilot, the hush and speech on |
 | Navigator | jumps and every route line (the Highway, survey and trade routes), fuel short of a refuel, last scoop, auto-target, wrong target, supercharges, surface pins |
-| Science Officer | target verdicts, arrivals, the honk, briefings, the FSS, mapped planets, high-g approaches, bio bodies ahead, leaving with work left, codex, phenomena, green gas giants, rare stars, surface sites, signals, curiosities |
-| Exobiologist | valuable bodies, sampling, Exomastery routes |
+| Science Officer | target verdicts, arrivals, the honk, briefings, the FSS, mapped planets, high-g approaches, bio bodies ahead, leaving with work left, codex, phenomena, green gas giants, rare stars, surface sites, signals, curiosities, geology codex pictures |
+| Exobiologist | valuable bodies, sampling, Exomastery routes, plant codex pictures |
 | Chief Engineer | fuel, tank full, scooping stopped, jumponium, hull and heat, the suit running low |
 | Quartermaster | sales, unsold data, your carrier, its upkeep and its trips, losses |
 | Comms Officer | the game's start and exit, someone scanning your firsts, an upload on hold, docking pads and refusals, other players' chat (read aloud, below) |

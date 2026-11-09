@@ -1317,6 +1317,32 @@
     "{entry}. {what}. Damn, the codex likes us today."
    ]
   },
+  "codex_picture": {
+   "naval_us": [
+    "Picture filed: {entry}.",
+    "{entry}, filed to the codex, {name}.",
+    "Codex picture logged. {entry}.",
+    "Your shot of {entry} is filed.",
+    "{entry}, photographed and filed.",
+    "Filed, {name}. {entry}.",
+    "Codex folder updated: {entry}.",
+    "{entry}. Picture logged.",
+    "Picture of {entry}, filed and secured.",
+    "{entry}, in the codex folder."
+   ],
+   "naval_us_profane": [
+    "Picture filed: {entry}. Damn fine shot.",
+    "{entry}, {name}. Hell of a picture.",
+    "Codex picture, {entry}. Damn good.",
+    "Your shot of {entry} is filed. Hell yes.",
+    "{entry}, filed. Damn fine work.",
+    "Filed {entry}, {name}. Hell of a thing.",
+    "{entry}. Picture logged. Damn good eye.",
+    "Hell, {entry} came out sharp. Filed.",
+    "Picture of {entry}, filed. Damn right.",
+    "{entry}, in the folder. Hell of a shot."
+   ]
+  },
   "docking_granted": {
    "naval_us": [
     "Pad {pad}.",

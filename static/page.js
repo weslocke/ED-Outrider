@@ -3114,6 +3114,8 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["sampling", "leaving a body with biology unsampled, a species completed, near a tagged plant, on foot without the Genetic Sampler", "alert"],
   ["bodybrief", "what a body's biological signals could be (the FSS already said they are there)", null],
   ["pins", "a pin set, then at 10 km, 1 km and 100 m, and on arrival", null],
+  ["biopic", "a screenshot of a plant filed in your own codex pictures", null],
+  ["geopic", "a screenshot of a geology formation filed in your own codex pictures", null],
   ["fuel", "fuel low where you cannot scoop, or a top-up worth taking before scoopable stars run out", "alert"],
   ["scoop", "fuel scooping filled the tank", null],
   ["scoopstop", "scooping stopped below 90%, not counting a jump", null],
@@ -3159,6 +3161,7 @@ const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arri
   jumponium: "Jumponium materials", leaving: "Leaving work behind", phenomena: "Stellar phenomena", rare_star: "Rare star",
   ggg: "Green gas giant?", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities",
   codex: "New codex entry", sampling: "Exobiology unfinished", bodybrief: "Bio signals on approach", pins: "Surface pins",
+  biopic: "Codex picture: plant", geopic: "Codex picture: geology",
   fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped early", lastscoop: "Last scoopable star",
   refuelshort: "Fuel short of the refuel stop", highway: "Highway next stop", exo: "Exomastery route",
   riches: "Road to Riches, worlds, sweeps", trade: "Trade route", carriertrip: "Carrier trip", autotarget: "Auto-target",
@@ -3171,6 +3174,8 @@ const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arri
 const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, a thud if it is visited or fully scanned. Never spoken: the arrival is.",
   arrival: "The streak lengths are under Risk and warnings. The region is said only when the arrival briefing, which opens with it, is not. The sound plays only to correct a targeting call that was wrong.",
   brief: "Said after the honk, or 12 s after arriving without one.",
+  biopic: "Only with Settings → Screenshots → \"Also save tagged screenshots into your codex folders\" on, for a shot taken live (not one converted later). Said by the Exobiologist.",
+  geopic: "Only with Settings → Screenshots → \"Also save tagged screenshots into your codex folders\" on, for a shot taken live (not one converted later). Said by the Science Officer.",
   honk: "Not spoken while the arrival briefing is.",
   find: "A body someone else has mapped is not named, but said once per system (\"already mapped, still worth mapping\").",
   mapped: "\"A 2 mapped efficiently, 3.4M. Next: biology on C 2.\" Switched on in Voice → What the voice says → Say when a planet is mapped.",
@@ -12000,6 +12005,9 @@ function onData() {
       else if (m.kind === "ggg" && m.body)   // a potential green gas giant: the ladder model's guess, said with delight
         alertOut("ggg", `Potential green gas giant: ${m.body}`, `${m.what || "a gas giant"}${m.chance === "possible" ? ", possible" : ""}: check it in the system map`,
                  {say: () => line("ggg", {body: m.body}, `Possible green gas giant: ${m.body}.`)});
+      else if (m.kind === "codex_picture" && m.entry)   // a shot filed in your codex folders: a plant's by the Exobiologist, geology's by Science
+        alertOut(m.what === "geo" ? "geopic" : "biopic", `📷 Codex picture: ${m.entry}`, [m.colour, m.file].filter(Boolean).join(" · "),
+                 {say: () => line("codex_picture", {entry: m.entry}, `Picture of ${m.entry} filed in your codex.`)});
       else if (m.kind === "rare_star" && m.what)   // a rare star resolved: said with delight
         alertOut("rare_star", `⭐ ${m.what[0].toUpperCase()}${m.what.slice(1)}`, m.star || "",
                  {say: () => line("rare_star", {what: m.what}, `Rare star: ${m.what}.`)});
@@ -13361,7 +13369,8 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
   hull: "hull, heat, interdiction", suit: "the suit running low", carrier: "your carrier", upkeep: "carrier upkeep", wanted: "a bounty on you", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
-  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", prospectbest: "the stint's best rock", uploads: "uploads", uploadheld: "uploads on hold"};
+  rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", prospectbest: "the stint's best rock", uploads: "uploads", uploadheld: "uploads on hold",
+  biopic: "plant codex pictures", geopic: "geology codex pictures"};
 // the speech keys each alert row says (a crew member's ▶, the by-crew audition, which rows hold danger lines)
 const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "region", "streak_new", "streak_known"],
   game: ["game_start", "welcome_back", "game_exit", "session_recap"], jump: ["fsd_charge"], brief: ["arrival_brief", "old_data"],
@@ -13373,7 +13382,8 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], upkeep: ["upkeep_low"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
   curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"],
-  prospectbest: ["prospect_best"], uploadheld: ["upload_held"], wanted: ["wanted"]};
+  prospectbest: ["prospect_best"], uploadheld: ["upload_held"], wanted: ["wanted"],
+  biopic: ["codex_picture"], geopic: ["codex_picture"]};
 const XO_SPEAKS = "voice answers, the status report, the co-pilot, the hush and speech on";
 const crewOn = () => !!(data && data.crew && data.crew.on);
 const crewDangerOn = () => !!(data && data.crew && data.crew.danger !== false);

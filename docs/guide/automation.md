@@ -136,7 +136,10 @@ package (see [Install and run](install.md)), and is off until you tick it.
   `Geology/<group>/<formation>/` inside the export folder, whichever commander took it:
   `Biology/Tussock/Tussock Albata/Green/Smojooe UW-E c11-28 7 f 2026-10-26 08-51-14.jpg`. The folders take the
   English names whatever the game's language. A shot of a plant you have not sampled or tagged yet knows no plant,
-  so it is not copied, nor is one whose colour cannot be told.
+  so it is not copied, nor is one whose colour cannot be told. Each shot filed this way is a notification and a line
+  ("Picture filed in your codex: Bacterium Volu."): a plant's said by the Exobiologist (the alert row **Codex picture:
+  plant**), a formation's by the Science Officer (**Codex picture: geology**), each with its own switches in Settings →
+  Alerts. Shots converted later (at start-up, or with "Convert the screenshots already there") are filed quietly.
 - **Your pictures on the checklists:** **Show your own pictures on the Bio/Geo checklists** makes the Exo-Biology and
   Geology checklists show one of your own pictures of a species' colour or a formation, picked at random from its
   codex folder each time you open it (and at each click on a colour), instead of Canonn's; Canonn's still shows where the folder is missing or has

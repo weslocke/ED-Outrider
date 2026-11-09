@@ -1311,6 +1311,32 @@
     "Codex entry, {name}. {entry}. {what}. Damn good. I suppose."
    ]
   },
+  "codex_picture": {
+   "ivanova": [
+    "Picture of {entry}. Filed, {name}.",
+    "{entry}, in the codex folder. Happy now?",
+    "Filed your picture of {entry}. Try to contain yourself.",
+    "{entry}. Saved. We are explorers, apparently also photographers.",
+    "Codex picture, {entry}. Filed.",
+    "{name}, {entry} is in the folder. Moving on.",
+    "Your picture of {entry} is filed. I didn't look at it.",
+    "{entry}, saved. Another one for the slideshow nobody asked for.",
+    "Filed. {entry}. Next.",
+    "Picture of {entry}, logged and filed."
+   ],
+   "ivanova_profane": [
+    "Picture of {entry}. Filed. Fucking thrilling.",
+    "{entry}, in the goddamn folder, {name}.",
+    "Filed your picture of {entry}. Can we go shoot something now?",
+    "{entry}. Saved. Hell of a hobby.",
+    "Another damn picture of {entry}. Filed.",
+    "{name}, {entry} is filed. Don't make me look at it.",
+    "Codex picture, {entry}. Filed, for God's sake.",
+    "{entry}, saved. Damn, we're a gallery now.",
+    "Filed. {entry}. Goddamn next.",
+    "Your picture of {entry} is filed. Hell, it's not bad."
+   ]
+  },
   "docking_granted": {
    "ivanova": [
     "{name}, pad {pad}. Finally.",

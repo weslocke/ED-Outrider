@@ -1323,6 +1323,32 @@
     "{entry}. {what}. A bloody fine addition."
    ]
   },
+  "codex_picture": {
+   "naval_rn": [
+    "Picture of {entry} filed, {name}.",
+    "{entry}, entered in the codex album.",
+    "Very good. Your picture of {entry} is filed.",
+    "{entry}, photographed and filed.",
+    "Filed, {name}. {entry}.",
+    "Codex picture taken: {entry}.",
+    "{entry}, in the folder. Rather a good one.",
+    "Your shot of {entry} is filed, {name}.",
+    "{entry}. Filed with the others.",
+    "Picture of {entry}, logged and stowed."
+   ],
+   "naval_rn_profane": [
+    "Picture of {entry} filed. Bloody good.",
+    "{entry}, in the album. Damn fine shot.",
+    "Well, I'll be damned. {entry}, filed.",
+    "{entry}, filed, {name}. Bloody marvellous.",
+    "Your picture of {entry} is stowed. Damn good.",
+    "{entry}. Filed. Bloody well done.",
+    "Codex picture, {entry}. Damn handsome.",
+    "Filed {entry}, {name}. Bloody lovely.",
+    "{entry}, photographed. Damn fine work.",
+    "Picture of {entry}, in the folder. Bloody good show."
+   ]
+  },
   "docking_granted": {
    "naval_rn": [
     "Pad {pad}.",

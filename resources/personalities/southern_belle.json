@@ -1322,6 +1322,32 @@
     "Well, I'll be a son of a gun. {entry}. {what}."
    ]
   },
+  "codex_picture": {
+   "southern_belle": [
+    "Oh, what a pretty picture of {entry}, {name}. It's filed.",
+    "{entry}, pressed in your scrapbook, sugar.",
+    "Well, I never. {entry}, filed.",
+    "Your picture of {entry} is put away, darlin'.",
+    "{entry}, saved. Grandmama would've framed that one.",
+    "Isn't that just lovely. {entry}, filed.",
+    "I've tucked your picture of {entry} away, sugar.",
+    "{entry}, in the album, {name}. Pretty as a peach.",
+    "Filed your picture of {entry}, darlin'.",
+    "{entry}. Saved. My, my, what an eye you have."
+   ],
+   "southern_belle_profane": [
+    "Well, I'll be damned, {name}. {entry}, filed.",
+    "{entry}, sugar. Hot damn, what a picture.",
+    "Holy shit, {name}, {entry} looks gorgeous. Filed.",
+    "Damn, darlin'. {entry}, in the scrapbook.",
+    "{entry}, filed. Hell's bells, that's pretty.",
+    "Your damn fine picture of {entry} is put away, sugar.",
+    "Hot damn, {entry}. Saved.",
+    "{entry}, filed, darlin'. Damn if that ain't lovely.",
+    "Hell, {name}, {entry}'s in the album.",
+    "{entry}. Saved. Damn, what an eye."
+   ]
+  },
   "docking_granted": {
    "southern_belle": [
     "Pad {pad}, sugar.",

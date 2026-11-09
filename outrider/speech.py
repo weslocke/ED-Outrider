@@ -51,6 +51,8 @@ KEYS = {
     "bio_tag_near": "within 100 m of a plant you tagged with the composition scanner where the next sample of the "
                     "species you are sampling would count: {genus}, {distance} (metres)",
     "codex": "a new codex entry: {entry} (the entry's name), {what} (voucher or new to the region)",
+    "codex_picture": "a screenshot filed as one of your own codex pictures ([screenshots] codex: a plant's by the "
+                     "Exobiologist, a geology formation's by the Science Officer): {entry} (the species or the formation)",
     "docking_granted": "docking granted, said every time: {pad} (the landing pad's number), {station} (the station or carrier)",
     "docking_denied": "docking denied for a reason that is not obvious (no pad free, ship too big, access restricted, "
                       "hostile, your offences, a fighter out; never for distance): {reason} (the reason in words), "
@@ -650,6 +652,7 @@ SAMPLES = {
     "find_body": {"what": "Water world, terraformable, undiscovered", "body": "A 3", "value": "2.3M"}, "mapped_before": {},
     "find_bio": {"body": "B 7", "value": "19.0M"}, "sample_clear": {"genus": "Stratum"}, "bio_tag_near": {"genus": "Tussock", "distance": 80},
     "codex": {"entry": "Stratum Tectonicas", "what": "new to your codex for this region"},
+    "codex_picture": {"entry": "Bacterium Volu"},
     "docking_granted": {"pad": 34, "station": "Jameson Memorial"},
     "docking_denied": {"reason": "no pad free for your ship: try again shortly", "station": "Jameson Memorial"},
     "phenomena": {"what": "three notable stellar phenomena, all in rings"},
@@ -719,8 +722,8 @@ CREW_ROLES = (
      ("jump", "highway", "riches", "trade", "refuelshort", "lastscoop", "autotarget", "wrongtarget", "supercharge", "pins")),
     ("science", "Science Officer", "Science Officer",
      ("discovery", "arrival", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "leaving", "codex", "phenomena",
-      "ggg", "rare_star", "surface_site", "signal_poi", "curious")),
-    ("exobiologist", "Exobiologist", "Exobiologist", ("exo", "find", "sampling")),
+      "ggg", "rare_star", "surface_site", "signal_poi", "curious", "geopic")),
+    ("exobiologist", "Exobiologist", "Exobiologist", ("exo", "find", "sampling", "biopic")),
     ("engineer", "Chief Engineer", "Engineer", ("fuel", "scoop", "scoopstop", "jumponium", "hull", "suit")),
     ("quartermaster", "Quartermaster", "Quartermaster", ("sell", "saleleft", "unsold", "carrier", "upkeep", "carriertrip", "loss")),
     ("comms", "Comms Officer", "Comms", ("uploads", "uploadheld", "firstsseen", "game", "docking", "chat", "wanted")),
@@ -747,6 +750,7 @@ ROW_KEYS = {
     "unsold": ("unsold_warn", "unsold_urgent"), "firstsseen": ("firsts_seen",), "hull": ("hull", "heat", "interdicted"),
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
+    "biopic": ("codex_picture",), "geopic": ("codex_picture",),
     "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none", "limpets_low", "hold_nearly_full", "hold_full"), "prospect": ("prospect_hit", "motherlode"),
     "prospectbest": ("prospect_best",),
     "uploadheld": ("upload_held",), "suit": ("suit_low",), "upkeep": ("upkeep_low",), "wanted": ("wanted",),

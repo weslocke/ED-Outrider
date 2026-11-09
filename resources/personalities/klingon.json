@@ -1320,6 +1320,32 @@
     "{entry}. {what}. On to the next, before some petty rival sniffs it out!"
    ]
   },
+  "codex_picture": {
+   "klingon": [
+    "A picture of {entry}! A trophy for our wall!",
+    "{entry}, captured! Into the codex!",
+    "Ha! {entry} is ours now, {name}! Filed!",
+    "The image of {entry} is taken! Songs will follow!",
+    "{entry}! Filed with honour!",
+    "Another trophy, {name}! {entry}, in the codex!",
+    "Your picture of {entry} is filed! A worthy prize!",
+    "{entry}! It could not escape our scanner!",
+    "Filed! {entry} joins the hall of trophies!",
+    "{entry}, captured and filed! Qapla'!"
+   ],
+   "klingon_profane": [
+    "{entry}! Filed! Let the cowards at the station see that!",
+    "Damn right, {name}! {entry}, captured!",
+    "{entry}! A trophy, damn it! Filed!",
+    "Ha! {entry}! The petaQ who stayed docked will never see this!",
+    "Filed, by Kahless! {entry}!",
+    "{entry}, captured! Damn fine hunting!",
+    "Hell yes, {name}! {entry} hangs on our wall now!",
+    "Your damn picture of {entry} is filed! Glorious!",
+    "{entry}! Filed! Let any Ferengi try to buy that one!",
+    "Damn, {entry}! A trophy worthy of song!"
+   ]
+  },
   "docking_granted": {
    "klingon": [
     "Pad {pad}! A port after battle!",
