@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · The system map's picture wider
+- **Docs:** docs/images/system-map.png retaken at 2200x1000 (was 1600x1000) so the system's name is on one line
+  (the author, for EDCodex); the same replay, the second stop's drop-down open.
+
 ## 2026-11-08 · Version 2026.11.08, The System Map Release
 - **Version:** `outrider/__init__.py` 2026.11.08: from this release on a version is its release date (the author's
   choice), not the next number after the last.
