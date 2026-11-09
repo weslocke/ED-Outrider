@@ -42,6 +42,14 @@ class UnsoldEstimate(unittest.TestCase):
              [sale("2026-01-03T00:00:00Z", ["A"])]
         self.assertIsNone(outrider.unsold.analyse(ev, ARGS)["death_in_window"])   # died before the sale
 
+    def test_a_scan_from_before_3_3_is_not_counted_aboard(self):
+        """Sweep 2026-11-09: before 3.3 a Scan names no StarSystem, so no sale could ever match it: it stayed "aboard" for good."""
+        old = scan("2018-05-01T00:00:00Z", "Oldsys", 5, 2, "Oldsys A 2")
+        for k in ("StarSystem", "SystemAddress", "WasDiscovered", "WasMapped", "ScanType"):
+            del old[2][k]
+        ev = [old, sale("2018-05-02T00:00:00Z", ["Oldsys"]), scan("2026-01-01T00:00:00Z", "New", 2, 0, "New", star=True)]
+        self.assertEqual([r["system"] for r in outrider.unsold.analyse(ev, ARGS)["exploration"]["rows"]], ["New"])
+
     def test_partial_sale_keeps_unsold_systems(self):
         ev = [scan("2026-01-01T00:00:00Z", "A", 1, 0, "A", star=True), scan("2026-01-01T00:00:00Z", "B", 2, 0, "B", star=True),
               sale("2026-01-02T00:00:00Z", ["A"])]

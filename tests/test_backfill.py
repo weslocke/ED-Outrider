@@ -354,6 +354,17 @@ class Server(unittest.TestCase):
         self.assertIn("does not take back-dated events", bf["why"])
         self.assertEqual([s for _, _, s in self.queued()], ["dropped", "dropped", "dropped"])
 
+    def test_a_stopped_backfill_can_be_sent_again(self):
+        """Sweep 2026-11-09: Stop left its unsent rows 'dropped', and UNIQUE(service, source) refused the same range for a
+        week: "every event of this range was queued before"."""
+        self.start()
+        [(status, j)] = self.post([(200, {})], {"action": "stop"})
+        self.assertEqual((j["progress"]["state"], j["progress"]["unsent"]), ("stopped", 2))
+        self.start()
+        self.assertEqual(self.state.edsm_bf_job["state"], "done", self.state.edsm_bf_job)
+        self.assertEqual(self.queued(), [("edsm_bf", "FSDJump", "queued"), ("edsm_bf", "FSDJump", "queued")])
+        self.assertEqual(self.state.edsm_backfill()["total"], 2)
+
     def test_a_new_backfill_does_not_carry_the_last_ones_unsent(self):
         """Review 2026-10-23 S3-B2: a backfill stopped with rows unsent left "N not sent" on the next one's line."""
         self.start()

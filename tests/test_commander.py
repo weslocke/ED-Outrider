@@ -353,6 +353,21 @@ class Missions(unittest.TestCase):
         self.assertEqual((m[2]["name"], m[2]["target"], m[2]["count"], m[2]["wing"], m[2]["redirected"], m[2]["system"], m[2]["station"]),
                          ("Massacre", "Bad Lot", 12, True, True, "Sol", "Old Port"))
 
+    def test_a_mission_done_but_not_handed_in_stays_at_login(self):
+        """Sweep 2026-11-09: the login's Missions line lists it under Complete, not Active; it was dropped although it
+        still has to be handed in."""
+        j, _ = setup(self, [
+            ev(T("08:00:00"), "MissionAccepted", MissionID=1, Name="Mission_Massacre", Faction="Sol Workers", TargetFaction="Bad Lot", KillCount=3,
+               DestinationSystem="Wolf 359", Expiry=T("20:00:00")),
+            ev(T("08:01:00"), "MissionAccepted", MissionID=2, Name="Mission_Failed_one", Expiry=T("20:00:00")),
+            ev(T("10:00:00"), "Missions", Active=[], Failed=[{"MissionID": 2, "Name": "Mission_Failed_one", "PassengerMission": False, "Expires": 0}],
+               Complete=[{"MissionID": 1, "Name": "Mission_Massacre", "PassengerMission": False, "Expires": 3600},
+                         {"MissionID": 7, "Name": "Mission_Before_these_journals", "PassengerMission": False, "Expires": 3600}])])
+        m = C.missions(j.cmdr_view["missions"], now=NOW)
+        self.assertEqual(sorted((r["id"], r["redirected"]) for r in m), [(1, True), (7, True)])   # the failed one is gone
+        self.assertEqual(next(r for r in m if r["id"] == 1)["expiry"], T("20:00:00"))              # its own expiry kept
+        self.assertFalse(C.counts_kills(j.cmdr_view["missions"]))                                  # no more kills counted for it
+
     def test_the_login_list_decides(self):
         missions = [ev(T("08:00:00"), "MissionAccepted", MissionID=1, Name="Mission_A", Expiry=T("20:00:00")),
                     ev(T("08:01:00"), "MissionAccepted", MissionID=2, Name="Mission_B"),

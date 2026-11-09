@@ -926,7 +926,8 @@ def hold_rows(results_lists, lines, laden=None, now=None, own_names=(), sort="pa
                          "takes": {"lines": len(buys), "of": len(lines), "tons": sum(b["tons"] for b in buys),
                                    "of_tons": sum(t for _, t, _ in lines)},
                          "buys": sorted(buys, key=lambda b: -b["value"]), "misses": misses, "age_s": age,
-                         "services": services, "uc": "Universal Cartographics" in services, "vista": "Vista Genomics" in services})
+                         "services": services, "uc": "Universal Cartographics" in services, "vista": "Vista Genomics" in services,
+                         "x": r.get("system_x"), "y": r.get("system_y"), "z": r.get("system_z")})
     rows.sort(key=(lambda x: (x["distance"], -x["pays"])) if sort == "near" else (lambda x: (-x["pays"], x["distance"])))
     return rows[:LOOKUP_SIZE * 2]
 

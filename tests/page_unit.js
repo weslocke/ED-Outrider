@@ -738,6 +738,17 @@ t("a stop's drop-down gives its leg from the stop before it, the first stop's fr
     return JSON.stringify(["5 d", "5 b", "5 e"].map(leg)); })()`));
   assert.deepStrictEqual(out, ["2.8k ls from 1", "4 ls from 5 d", "8 ls from 5 b"]);
 });
+t("a spoken distance over 1000 stays whole under a browser locale that groups with a dot", () => {
+  // sweep 2026-11-09: "4.500 kilometres" went through spokenText's decimal rule and was said "4.5 kilometres"
+  const out = JSON.parse(ev(`(() => {
+    const was = Number.prototype.toLocaleString;
+    Number.prototype.toLocaleString = function (l, o) { return was.call(this, l || "de-DE", o); };
+    try { return JSON.stringify([spokenText(pinSpokenDist(4500000)), spokenText(spokenLy(2345)),
+                                 spokenText(factorsSaid({name: "Fac", system: "Sol", ly: 1200}))]); }
+    finally { Number.prototype.toLocaleString = was; } })()`));
+  assert.deepStrictEqual(out, ["4,500 kilometres", "2,345 light-years", "Nearest Interstellar Factors: Fac in Sol, 1,200 light-years."]);
+  assert.ok(!/toLocaleString\(\)\}? ?(kilometres|light-years)/.test(pageJs), "a spoken distance with a bare toLocaleString()");
+});
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); ok++; console.log("OK |", name); }

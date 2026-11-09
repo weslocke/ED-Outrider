@@ -9445,7 +9445,7 @@ class State:
         self.history_cache = None  # S24: (key, species_history) -- your completed runs, counted again when they change
         self.checklist_finds = {}  # S29: (species, colour, where you are) -> (time.time(), answer): Spansh asked again after a while
         self.checklist_found = {}  # S29: id64 -> (name, x, y, z) of the systems a find listed, for locate (☆ on its rows)
-        self.nearest_found = {}    # S31: the same for the Nearest finder's rows (their 🎯), at most NEAREST_FOUND_KEEP
+        self.nearest_found = {}    # S31: the same for the Nearest finder's rows (their 🎯) and the Sell / Buy lookup's (☆), at most NEAREST_FOUND_KEEP
         self.carrier_task = None
         self.carrier_retry = {}    # carrier system id64 -> time.time() before which Spansh is not asked again
         self.sc_task = None        # Spansh's report of your squadron's carrier (maybe_squadron_spansh)
@@ -12816,6 +12816,16 @@ class State:
         self.db.commit()
         return self.spansh_commodities["norm"]
 
+    def note_listed(self, rows):
+        """A Sell / Buy lookup's stations ({id64 as text, system, x, y, z}): kept beside the Nearest finder's so locate()
+        finds their systems for the row's ☆ Bookmark (Spansh's answer is held nowhere else)."""
+        for r in rows:
+            if str(r.get("id64") or "").isdigit() and r.get("system") and r.get("x") is not None:
+                self.nearest_found.pop(int(r["id64"]), None)
+                self.nearest_found[int(r["id64"])] = (r["system"], r["x"], r["y"], r["z"])
+        while len(self.nearest_found) > NEAREST_FOUND_KEEP:   # the oldest listed first
+            self.nearest_found.pop(next(iter(self.nearest_found)))
+
     async def cargo_lookup(self, q):
         """GET /api/cargo/lookup: where to sell (or buy) tons of a commodity, from Spansh's station search (read only).
 
@@ -12869,6 +12879,7 @@ class State:
         avg = own["avg"] if own and own.get("avg") else None
         rows = outrider.cargo.market_rows(d.get("results"), name, mode, tons, holding=holding, avg=avg,
                                           laden=self.range_now() or (self.journals.ship or {}).get("max_range"))
+        self.note_listed(rows)
         return {"commodity": name, "mode": mode, "tons": tons, "from": src, "where": where, "avg": avg,
                 "sort": "near" if q.get("sort") == "near" else "price", "within": within, "age": age,
                 "carriers": q.get("carriers") in ("1", "true"), "pad": pad, "pad_known": bool(ship.get("pad")),
@@ -12934,6 +12945,7 @@ class State:
         rows = outrider.cargo.hold_rows([x.get("results") for x in got if not isinstance(x, BaseException)], lines,
                                         laden=self.range_now() or (self.journals.ship or {}).get("max_range"),
                                         own_names=own, sort=sort)
+        self.note_listed(rows)
         return {"lines": [{"name": n, "tons": t, "avg": a} for n, t, a in lines], "asked": [n for n, _, _ in asked],
                 "left_out": left, "sort": sort, "within": within, "age": age, "carriers": carriers, "pad": pad,
                 "pad_known": bool(pad), "where": ref.get("name"), "rows": rows, "names_missing": not names,
@@ -17730,6 +17742,11 @@ class State:
                              f"({found[0]['date']} to {found[-1]['date']}): nothing sent. Choose a range that ends before the "
                              f"first or starts after the last.")
                 return
+            # rows an earlier Stop dropped never reached EDSM ("not sent: ..."), and the guard above has just found the
+            # range empty: they go out now (UNIQUE per source kept them from being queued again for a week). A row EDSM
+            # itself answered stays "queued before"
+            self.db.executemany("DELETE FROM upload_queue WHERE service = 'edsm_bf' AND state = 'dropped' AND source = ? "
+                                "AND last_status LIKE 'not sent: %'", ((r["source"],) for r in pv["rows"]))
             n = 0
             for r in pv["rows"]:
                 who = types.SimpleNamespace(cmdr=r["cmdr"], gameversion=r["gameversion"], gamebuild=r["gamebuild"])

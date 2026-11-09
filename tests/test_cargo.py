@@ -983,6 +983,23 @@ class Lookup(unittest.TestCase):
         out, _ = hold(sort="near")
         self.assertEqual(out["sort"], "near")
 
+    def test_a_looked_up_station_can_be_bookmarked(self):
+        """Sweep 2026-11-09: ☆ on a Sell / Buy or Sell all row answered "unknown system": nothing kept where its system is."""
+        import asyncio
+        self.j.pos = {"id64": 10477373803, "name": "Sol", "x": 0, "y": 0, "z": 0}
+        self.j.ship = {"name": "Sample", "type": "explorer_nx", "cargo_capacity": 64}
+        self.j.ship_cargo = cargo.new_ship()
+        out, _ = self.look(commodity="platinum", mode="sell")
+        row = out["rows"][2]
+        self.assertIsNone(self.state.db.execute("SELECT 1 FROM bookmarks").fetchone())
+        self.assertTrue(self.state.set_bookmark(int(row["id64"]), "sell here"))
+        self.assertEqual(self.state.db.execute("SELECT name, note FROM bookmarks").fetchall()[0][:2], (row["system"], "sell here"))
+        self.state.nearest_found.clear()
+        cargo.ship_snapshot(self.j.ship_cargo, [{"Name": "platinum", "Count": 64}], 64, "2026-10-07T09:00:00Z")
+        out, status = asyncio.run(self.state.cargo_hold_lookup({}))
+        self.assertEqual(status, 200)
+        self.assertIsNotNone(self.state.locate(int(out["rows"][0]["id64"])))
+
     def test_ltds_and_void_opals_in_another_language(self):
         """Complete review 2026-10-30: for the ~100 commodities whose id is not Spansh's letters, a non-English client's
         localised name and the id both missed Spansh's list: "no market data" for LTDs, Sell all leaving them out."""

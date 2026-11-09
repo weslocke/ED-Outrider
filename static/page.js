@@ -2460,7 +2460,9 @@ function parsePinCoords(text) {
 }
 const pinCoordText = c => `${Math.abs(c.lat).toFixed(4)}° ${c.lat < 0 ? "S" : "N"}, ${Math.abs(c.lon).toFixed(4)}° ${c.lon < 0 ? "W" : "E"}`;
 const pinTurnWords = p => p.turn == null ? (p.way || "") : Math.abs(p.turn) < 10 ? "ahead" : `turn ${Math.abs(p.turn)}° ${p.turn > 0 ? "right" : "left"}`;
-const pinSpokenDist = m => m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} metres` : m < 10000 ? `${(m / 1000).toFixed(1)} kilometres` : `${Math.round(m / 1000).toLocaleString()} kilometres`;
+const pinSpokenDist = m => m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} metres` : m < 10000 ? `${(m / 1000).toFixed(1)} kilometres` : `${Math.round(m / 1000).toLocaleString("en-US")} kilometres`;   // en-US: spokenText reads "4.500" (another locale's grouping) as 4.5
+// a spoken distance in light-years: en-US for the same reason
+const spokenLy = d => `${Math.round(d).toLocaleString("en-US")} light-years`;
 const pinSpokenTurn = p => p.turn == null ? (p.way || "") : Math.abs(p.turn) < 10 ? "dead ahead" : `turn ${Math.abs(p.turn)} degrees ${p.turn > 0 ? "right" : "left"}`;
 function pinSpoken(m) {
   if (m.what === "arrived") return `Arrived at ${m.name}.` + (m.next ? ` Next: ${m.next.name}, ${pinSpokenDist(m.next.dist)}, ${pinSpokenTurn(m.next)}.` : "");
@@ -4270,17 +4272,16 @@ async function holdFullSell(m, ask = null) {
   const range = plainRange();
   const ownNear = own && own.distance != null && range && own.distance <= range ? own : null;
   if (!best && !ownNear) return;
-  const ly = d => `${Math.round(d).toLocaleString()} light-years`;
   const said = [], shown = [];
   if (best) {
-    const at = `${best.station} in ${best.system}${best.distance != null ? `, ${ly(best.distance)}` : ""}`;
+    const at = `${best.station} in ${best.system}${best.distance != null ? `, ${spokenLy(best.distance)}` : ""}`;
     said.push(near ? `Nearest buyer for ${name}: ${at}, ${credits(best.price)} credits a ton.`
                    : `Best price for ${name} within 100 light-years: ${at}, ${credits(best.price)} credits a ton.`);
     shown.push(`${near ? "nearest buyer" : "best within 100 ly"}: ${best.station}, ${best.system}` +
                `${best.distance != null ? ` · ${Math.round(best.distance).toLocaleString()} ly` : ""} · ${credits(best.price)} cr/t`);
   }
   if (ownNear) {
-    const where = own.distance < 0.5 ? "here in the system" : ly(own.distance);
+    const where = own.distance < 0.5 ? "here in the system" : spokenLy(own.distance);
     said.push(`${best ? "Or your" : "Your"} carrier, ${where}: somewhere to unload.`);
     shown.push(`your carrier ${own.distance < 0.5 ? "here" : `${Math.round(own.distance)} ly`}: somewhere to unload (it pays nothing)`);
   }
@@ -4321,7 +4322,7 @@ async function miningRecapOut(m, ask = null) {
   const rows = await Promise.race([ask(100, "price", false), new Promise(r => setTimeout(() => r(null), RECAP_SELL_WAIT_MS))]);
   const best = (rows || [])[0];
   if (!best || String(posId()) !== m.system) return;   // nothing known, Spansh slow or off, or you have left
-  const at = `${best.station} in ${best.system}${best.distance != null ? `, ${Math.round(best.distance).toLocaleString()} light-years` : ""}`;
+  const at = `${best.station} in ${best.system}${best.distance != null ? `, ${spokenLy(best.distance)}` : ""}`;
   alertOut("ring", `Sell ${name}: ${best.station}, ${best.system}`,
            `best within 100 ly${best.distance != null ? ` · ${Math.round(best.distance).toLocaleString()} ly` : ""} · ${credits(best.price)} cr/t`,
            {tag: "mining_recap_sell", say: `Best price for ${name} within 100 light-years: ${at}, ${credits(best.price)} credits a ton.`});
@@ -4344,7 +4345,7 @@ async function factorsNearest(ask = factorsAsk) {
 }
 const factorsShown = f => `nearest Interstellar Factors: ${f.name}, ${f.system}${f.here ? " (here)" : f.ly != null ? ` · ${Math.round(f.ly).toLocaleString()} ly` : ""}`;
 const factorsSaid = f => `Nearest Interstellar Factors: ${f.name} in ${f.system}` +
-  (f.here ? ", here in the system." : f.ly != null ? `, ${Math.round(f.ly).toLocaleString()} light-years.` : ".");
+  (f.here ? ", here in the system." : f.ly != null ? `, ${spokenLy(f.ly)}.` : ".");
 async function wantedOut(m, ask) {
   const f = await factorsNearest(ask), who = m.faction || "a faction here", bounty = credits(m.bounty);
   alertOut("wanted", `⚖ Wanted: ${bounty} cr bounty`, [`${who}${m.crime ? ` (${m.crime})` : ""}`, f && factorsShown(f)].filter(Boolean).join(" · "),

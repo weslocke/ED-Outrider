@@ -597,18 +597,21 @@ EXPIRES_IS_TIME = 10 ** 9   # a Missions list's Expires this large is a Unix tim
 
 def mission_apply(state, ev, here=None):
     """The missions you hold, as cargo.ship_apply folds the hold: {mission id: row}. The login's Missions line says
-    which are still active (one the journals never saw accepted is kept by its name alone); accept, redirect, a cargo
-    depot and the endings follow in order, and a Bounty counts for the massacre missions (mission_kill; here: where you
-    are, its `system`)."""
+    which are still active and which are done, waiting to be handed in (`Complete`: still held; one the journals never
+    saw accepted is kept by its name alone); accept, redirect, a cargo depot and the endings follow in order, and a
+    Bounty counts for the massacre missions (mission_kill; here: where you are, its `system`)."""
     held, name, mid = dict(state or {}), ev["event"], ev.get("MissionID")
     if name in KILL_LINES:
         return mission_kill(held, ev, (here or {}).get("system"))
     if name == "Missions":
-        active = {str(m.get("MissionID")): m for m in ev.get("Active") or [] if isinstance(m, dict) and m.get("MissionID") is not None}
+        listed = {which: {str(m.get("MissionID")): m for m in ev.get(which) or [] if isinstance(m, dict) and m.get("MissionID") is not None}
+                  for which in ("Active", "Complete")}
         at = ts_seconds(ev["timestamp"])
-        held = {k: v for k, v in held.items() if k in active}
-        for k, m in active.items():
+        held = {k: v for k, v in held.items() if k in listed["Active"] or k in listed["Complete"]}
+        for k, m in {**listed["Complete"], **listed["Active"]}.items():
             row = held.setdefault(k, _mission({"MissionID": m["MissionID"], "Name": m.get("Name"), "LocalisedName": m.get("Name_Localised")}))
+            if k in listed["Complete"] and k not in listed["Active"]:   # done: the panel's "redirected" / "✓ done", no more kills counted
+                row["redirected"] = True
             exp = m.get("Expires")
             if not row["expiry"] and isinstance(exp, (int, float)) and exp > 0:
                 # the seconds left; a colonisation mission's is the time itself (real journals, 2026-10-14:

@@ -701,6 +701,8 @@ def analyse(events, args):
         if name == "Scan":
             if ev.get("ScanType") in NAV_BEACON_SCANS:
                 continue
+            if not ev.get("StarSystem"):
+                continue  # before the game's 3.3 (December 2018) a Scan names no system: no sale can ever be matched to it
             if "WasFootfalled" in ev:
                 # Vista Genomics pays x5 where nobody had set foot when you scanned the body (the first scan
                 # counts: a rescan after your own landing says footfalled), and never in a populated system

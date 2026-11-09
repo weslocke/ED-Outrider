@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · Sweep 12, batch 1: the five medium bugs
+A complete Fable sweep of eac5aca (34 areas x 2 lenses, skeptics per finding): 17 confirmed bugs, none high.
+- **Fix (commander.py `mission_apply`):** a mission done but not handed in (the login's `Missions` line, `Complete`) no
+  longer vanishes from CMDR → Missions at the next login; it stays, marked done.
+- **Fix (`State.note_listed`):** ☆ Bookmark on a Sell / Buy or Sell all row answered "unknown system"; the lookups'
+  systems are now kept for `locate` (Sell all's rows carry x, y, z).
+- **Fix (`_edsm_bf_send`):** a stopped EDSM backfill could not be sent again for a week ("every event of this range was
+  queued before"); rows Stop dropped, which never reached EDSM, are cleared once the guard has passed.
+- **Fix (page.js `pinSpokenDist`, `spokenLy`):** distances of 1,000 or more were spoken a thousand times too small in a
+  browser whose locale groups with a dot (German, Spanish, Italian, Dutch...): "4.500 kilometres" said as 4.5.
+- **Fix (unsold.py):** a Scan from before 3.3 names no system, so no sale could match it: such bodies stayed in the
+  Unsold estimate for good. They are left out.
+
 ## 2026-11-08 · The system map's picture wider
 - **Docs:** docs/images/system-map.png retaken at 2200x1000 (was 1600x1000) so the system's name is on one line
   (the author, for EDCodex); the same replay, the second stop's drop-down open.
