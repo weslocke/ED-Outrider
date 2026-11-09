@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · Version 2026.11.08, The System Map Release
+- **Version:** `outrider/__init__.py` 2026.11.08: from this release on a version is its release date (the author's
+  choice), not the next number after the last.
+- **What's new:** its section for 2026.11.08 (the system map, the order by where bodies are, the Plotted route pane,
+  Speak with this browser's voice, the surface map, mining, combat and missions, running it, fixes).
+
 ## 2026-11-08 · The Opus docs sweep: every doc checked against the code, nine screenshots retaken
 An Opus sweep (7 auditors, each finding checked by a verifier against the code): 48 confirmed (2 high, 18 medium, 28
 low), 8 refuted; all 48 applied.

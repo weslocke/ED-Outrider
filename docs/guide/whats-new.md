@@ -11,6 +11,108 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## 2026.11.08 · 8 November 2026 · The System Map Release
+
+**The system you are in drawn in 3D with the suggested order on it and where you have been, an order that follows
+where the bodies really are, the route you plotted in the game listed system by system, Speak with this browser's
+voice, a surface map that zooms out and keeps what you finished, and a few things for combat and mission players.**
+
+> [!IMPORTANT]
+> **The first start re-reads your journals once** (each ship you fought or mined in, kills on foot, your sample runs'
+> English names in any game language, massacre kills and bounty vouchers): a few seconds, or a few minutes for years of
+> journals. Outrider **backs up your database first**, and the page shows how far it has got. Your bookmarks, pins,
+> routes and settings are kept. From this release on a version is its release date.
+
+### 🪐 The system map
+
+<p align="center">
+  <img src="../images/system-map.png" alt="Now with the system map: the trail through two done bodies, three stops numbered, a stop's drop-down open" width="900">
+</p>
+
+- **The system you are in, in 3D**, on Now (🪐 map beside the title on a PC, **Text | 🪐 Map** on a tablet or a narrow
+  window, **Surface | 🪐 System** on a body) and in Here (🪐 3D): each body you have scanned where it is on its orbit
+  now, drawn as in the schematic, with the suggested order on it, numbered, each leg with its distance. Drag to turn,
+  the wheel to zoom; **Fit**, **Top** and **Whole system**. See [the system map](views.md#-the-views).
+- **Where you have been this visit**: a grey broken line from the arrival star through each body you were at, each
+  with a ✓; the list starts at the body you were last at.
+- **The stops listed beside it**, one line each ("map 1.9M", "bio 3 · 19.3M", the leg). **Tap a stop** (its row, its
+  number or its body) for why it is on the list: the body's class, its mapping value with and without your bonuses,
+  each genus with its likely species and value, its gravity and air, its leg from the stop before. At its top **Skip**
+  leaves it out everywhere until you leave the system (the **skipped:** line puts it back) and **Do first** makes it
+  the first stop. With no stop yet the list says why: honk first, bodies to find in the FSS, or nothing worth the trip.
+
+### 🧭 The suggested order
+
+- **By where the bodies really are**: each body's place on its orbit right now, from your own scans, so the order
+  goes body to body the short way, re-planned from the body you are at (flying to one, landing, or mapping it from
+  supercruise moves the start). Its legs show **distances, not times** ("1.5k ls"): with the SCO drive no time would be
+  right. Here, Now, the overlay and the status report follow it.
+- **The whole mapped value** is said and shown everywhere: the FSS debrief, the leaving warning and the targeted
+  body's line say "1.2M to map, 1.6M with bonuses", as the list and Next do.
+
+### 🛣 The route you plotted
+
+- **🛣 Show route** in Nearby's heading (and the Overview's bar) opens the **Plotted route** pane under the list: the
+  route the game plotted (or the Highway's, or your carrier's trip), system by system, with Nearby's columns, how far
+  along and how far from you (thanks to Psilovybin, [issue #22](https://github.com/weslocke/ED-Outrider/issues/22)).
+  See [the views](views.md#-the-views).
+
+### 🌿 On the surface
+
+- **The surface map zooms**: a slider from close up to 50 km across, and **Auto**, whose widest view fits everything on
+  the body.
+- **A finished species stays** on the map as small × marks, ticked in the legend; the legend's species are named as
+  Here names them, with a picture on hover.
+- **Unscanned** at the top of the legend: each genus the DSS found that you have not tagged or sampled yet, with its
+  likely species and value, gone as you tag or start it.
+- **Pins at Guardian and Thargoid sites**: a pickup there drops a pin where you stand, one per site (⚙ Settings →
+  Surface map).
+- **A codex picture is said**: with your codex folders on, a screenshot filed as a plant's picture is said by the
+  Exobiologist, a formation's by the Science Officer, each its own alert row.
+- **Here: Hide orbital distance**, for shorter rows; the species there show their picture on a mouse over.
+
+### 🎙 Voice
+
+- **Speak with this browser's voice**: ⚙ Settings → Voice → **Speak with** picks Piper or the voices your browser
+  has, with a picker of them; no download.
+- **A moved Outrider folder** no longer leaves Piper "not installed": the launchers remake the Python environment
+  where the folder now is, and Outrider says why Piper would not load when it cannot (thanks to docfallingapart,
+  [issue #21](https://github.com/weslocke/ED-Outrider/issues/21)).
+
+### ⛏ Mining
+
+- **"The best yet"**: a prospected rock richer in its mineral than any untouched one before it this stint is said as
+  the best yet (its own row in ⚙ Settings → Mining).
+- **A recap as you leave or dock** after mining: what you refined, the best rock, and where it sells best.
+
+### ⚔ Combat and missions
+
+- **CMDR → Missions counts a massacre's kills** ("7/18 counted"); a Collect mission gets a 🔍 into Buy.
+- **The vouchers you hold**: the Unsold tile lists bounty vouchers and combat bonds, with where to hand them in.
+- **Merits this Powerplay cycle**, and the **Community Goals** you joined.
+- **A bounty on you** is said with the nearest Interstellar Factors; a station hostile to you while wanted says so too.
+- **The wrong suit**: stepping out on a body with sampling left in a suit other than the Artemis is said.
+- **CMDR → Sessions' Ship** is the ship you fought or mined in, "On foot" for kills on foot, the first and the last
+  when you flew three or more (thanks to Kurbo26, [issue #23](https://github.com/weslocke/ED-Outrider/issues/23)).
+
+### 🧰 Running it
+
+- **Now is easier to read at a glance**: the system, one headline card, then the rest, the captions fitted to the
+  height left; on a body, the body is the title.
+- **A smaller tablet** keeps the system's name in the top strip (its first 10 characters at least).
+- **History's "Since your last sale"** has a 📋: the trip so far in Markdown.
+- **Settings keeps you from leaving an edit unsaved**; a journal folder typed in Server is checked on Save; Settings →
+  Server says how a tablet or phone reaches Outrider; the very first start opens the page in your browser.
+
+### 🔧 Fixes
+
+- Three review rounds' fixes, among them: games in other languages (sample runs and codex marks by the game's codes),
+  a long carrier trip in the route pane no longer stalls the server, a species lost in a death no longer counts as
+  finished, massacre kills in conflict zones and against Thargoids, docked at a planetary port no longer shows the
+  surface layout, and an unnamed ship named by its type.
+
+---
+
 ## 2026.10.30 · 31 October 2026 · The Misc Release
 
 **Your squadron's carrier beside your own, the commander you follow picked from a list, the station your stored
