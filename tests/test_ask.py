@@ -142,6 +142,12 @@ class Phrases(unittest.TestCase):
         self.assertIn("ask.json", err.getvalue())
         self.assertEqual(ask.match("status report", ph), "status_report")
 
+    def test_no_unvisited_system_is_said_in_words(self):
+        """Sweep 2026-11-09: the voice read the AI's note, "no known unvisited system within 37.5 ly"."""
+        async def get(path, q=None):
+            return {"position": {"id": 1}, "systems": [], "sphere_cut": 37.5, "radius": 25}
+        self.assertEqual(asyncio.run(ask.fixed_answer("nearest_unvisited", get)), "No known unvisited system within 37.5 light years.")
+
     def test_fixed_answers(self):
         go = lambda c: asyncio.run(ask.fixed_answer(c, fake_get()))   # noqa: E731
         self.assertEqual(go("fuel"), "Fuel at 41 percent, about 6 jumps at max range, range 72.5 light years.")

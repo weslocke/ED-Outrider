@@ -749,6 +749,50 @@ t("a spoken distance over 1000 stays whole under a browser locale that groups wi
   assert.deepStrictEqual(out, ["4,500 kilometres", "2,345 light-years", "Nearest Interstellar Factors: Fac in Sol, 1,200 light-years."]);
   assert.ok(!/toLocaleString\(\)\}? ?(kilometres|light-years)/.test(pageJs), "a spoken distance with a bare toLocaleString()");
 });
+t("the EDSM Import block's fold is its own, not Fill-gaps'", () => {
+  const out = JSON.parse(ev(`(() => {
+    const box = document.getElementById("uploadsBox"), d = document.createElement("details");
+    d.className = "bfill imlog"; box.appendChild(d); BF.open = false; IM.open = false; d.open = true;
+    d.dispatchEvent(new Event("toggle")); const r = [BF.open, IM.open]; d.remove(); return JSON.stringify(r); })()`));
+  assert.deepStrictEqual(out, [false, true]);
+});
+t("Here's checklist names a body skipped on the system map, with the way back", () => {
+  const l = {id64: "42", honked: true, unscanned: 0, all_found: true, bio_pending: [], rescan: null, arrival: {body: "A", pos: [0, 0, 0], approx: false, dist_ls: 0},
+    unmapped: [{body: "3", subtype: "Water world", terraformable: false, increment: 900000, value_mapped: 1200000, value_mapped_bonus: 1200000, special: false, dist_ls: 800, pos: [0, 800, 0], approx: false}]};
+  const html = ev(`(() => { const was = data; data = {position: {id: "42", name: "Sys"}, plan_first: null, plan_skip: {id64: "42", bodies: ["3"]}, defaults: {}};
+    try { return checklistHtml(${JSON.stringify(l)}); } finally { data = was; } })()`);
+  assert.ok(/skipped: 3/.test(html) && /data-planfirst/.test(html), html);
+});
+t("Recount: Enter in a lone count field saves instead of closing the dialog", () => {
+  const out = JSON.parse(ev(`(() => { const s = document.getElementById("recountSave"), was = s.onclick; let saved = 0; s.onclick = () => saved++;
+    const e = new Event("submit", {cancelable: true}); document.querySelector("#recountDlg form").dispatchEvent(e); s.onclick = was;
+    return JSON.stringify([e.defaultPrevented, saved]); })()`));
+  assert.deepStrictEqual(out, [true, 1]);
+});
+t("the route pane: a row not placed yet has nothing for Here, so no data-id", () => {
+  const out = JSON.parse(ev(`(() => { const was = data, wasD = RT.data; data = {previous: null, position: {id: "1"}};
+    document.getElementById("routeWrap").hidden = false;
+    RT.data = {choices: [], which: "carrier", more: 0, asking: null, rows: [{name: "Not placed", id: "5", n: 1, along: 1.5, nodata: true, unplaced: true}, {name: "Placed", id: "6", n: 2, along: 2, nodata: true}]};
+    try { drawRouteList(); return JSON.stringify([...document.querySelectorAll("#routeRows tr")].map(r => r.dataset.id || null)); }
+    finally { data = was; RT.data = wasD; document.getElementById("routeWrap").hidden = true; } })()`));
+  assert.deepStrictEqual(out, [null, "6"]);
+});
+t("chat read aloud: an emoji alone is seen in the captions, not said as a bare name", () => {
+  const out = JSON.parse(ev(`(() => { const a = alertOut, c = addCaption, said = [], caps = [];
+    alertOut = (...x) => said.push(x); addCaption = t => caps.push(t);
+    try { const g = [{sender: "Kurbo", text: "\u{1F44D}", channel: "squadron"}];
+      chatSay(g); return JSON.stringify([said.length, caps, chatWords(g), chatWords(g, " And 2 more on squadron."), chatWords([{sender: "Kurbo", text: "hello", channel: "squadron"}])]); }
+    finally { alertOut = a; addCaption = c; } })()`));
+  assert.deepStrictEqual(out, [0, ["Kurbo: \u{1F44D}"], "", "And 2 more on squadron.", "Kurbo: hello."]);
+});
+t("the voice lab says no Piper voice is installed", () => {
+  const text = ev(`(() => { const was = data; speechLib.lines = {x: {when: "a"}}; data = null;
+    try { labOpen(); return document.getElementById("labVoice").textContent; } finally { speechLib.lines = {}; data = was; } })()`);
+  assert.ok(/no Piper voice installed/.test(text), text);
+});
+t("the system map's stop: the dot only before a figure", () => {
+  eq(`[sysWhy({kind: "bio", b: {signals: 3, potential: null}})[0], sysWhy({kind: "bio", b: {signals: 3, potential: 900000, bio_left: 1}})[0]]`, ["bio 3", "bio 3 ·"]);
+});
 (async () => {
   for (const [name, fn] of later) {
     try { await fn(); ok++; console.log("OK |", name); }

@@ -523,6 +523,8 @@ async def fixed_answer(command, get, rows=10, text="", limits=None):
             return n["error"]
         x = n.get("nearest")
         if not x:
+            if n.get("within_ly") is not None:   # the note's own words are for the AI ("... within 37.5 ly")
+                return f"No known unvisited system within {ly(n['within_ly'])} light years."
             return n.get("note") or "No known unvisited system nearby."
         return f"Nearest unvisited: {x['name']}, {ly(x.get('distance_ly'))} light years" + (", scoopable." if x.get("scoopable") else ".")
     if command == "nearest_scoop":

@@ -118,6 +118,7 @@ class Hops(Base):
                          [(30, 1, 480.5, True), (60, 2, 780.5, False)])
         rows = self.state.route_list("carrier")["rows"]
         self.assertEqual([r.get("nodata", False) for r in rows], [False, True])
+        self.assertEqual([r.get("unplaced", False) for r in rows], [False, True])   # nothing for Here to show: its row is not clickable
 
     def test_a_long_carrier_trip_looks_up_only_the_legs_shown(self):
         """Review round 10 B4: every leg ahead went through locate() (whose Boxel-cache tail parses the whole cache) on

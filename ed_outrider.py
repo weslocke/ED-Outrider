@@ -12878,9 +12878,10 @@ class State:
         own = next((x for x in ship["lines"] if x["id"] == i), None) if src == "ship" else None
         avg = own["avg"] if own and own.get("avg") else None
         rows = outrider.cargo.market_rows(d.get("results"), name, mode, tons, holding=holding, avg=avg,
-                                          laden=self.range_now() or (self.journals.ship or {}).get("max_range"))
+                                          laden=self.range_now() or (self.journals.ship or {}).get("max_range"), pad=pad)
         self.note_listed(rows)
         return {"commodity": name, "mode": mode, "tons": tons, "from": src, "where": where, "avg": avg,
+                "lots": own.get("lots") if avg else None,
                 "sort": "near" if q.get("sort") == "near" else "price", "within": within, "age": age,
                 "carriers": q.get("carriers") in ("1", "true"), "pad": pad, "pad_known": bool(ship.get("pad")),
                 "count": d.get("count"), "rows": rows, "names_missing": not names}, 200
@@ -12944,7 +12945,7 @@ class State:
         own = {v for v in (c.get("callsign"), c.get("name")) if v}
         rows = outrider.cargo.hold_rows([x.get("results") for x in got if not isinstance(x, BaseException)], lines,
                                         laden=self.range_now() or (self.journals.ship or {}).get("max_range"),
-                                        own_names=own, sort=sort)
+                                        own_names=own, sort=sort, pad=pad)
         self.note_listed(rows)
         return {"lines": [{"name": n, "tons": t, "avg": a} for n, t, a in lines], "asked": [n for n, _, _ in asked],
                 "left_out": left, "sort": sort, "within": within, "age": age, "carriers": carriers, "pad": pad,
@@ -18860,7 +18861,7 @@ class State:
             placed = None not in (h["x"], h["y"], h["z"])
             if h["id64"] is None or not placed:
                 rows.append({"name": h["name"], "id": str(h["id64"]) if h["id64"] is not None else None, "n": h["n"],
-                             "along": h["along"], "nodata": True})
+                             "along": h["along"], "nodata": True, "unplaced": True})   # unplaced: nothing for Here to show
                 continue
             self.route_list_found.pop(h["id64"], None)
             self.route_list_found[h["id64"]] = (h["name"], h["x"], h["y"], h["z"])

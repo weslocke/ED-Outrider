@@ -915,7 +915,8 @@ class Lookup(unittest.TestCase):
         q = cargo.market_query("Tritium", "buy", 500, ref, pad="M", carriers=True, sort="near")
         self.assertEqual(list(q["filters"]["market"][0]), ["name", "supply"])
         self.assertNotIn("type", q["filters"])
-        self.assertIn("medium_pads", q["filters"])
+        self.assertNotIn("medium_pads", q["filters"])            # a medium ship lands on a large pad too: market_rows sorts it out
+        self.assertEqual(q["size"], cargo.LOOKUP_SIZE * cargo.MEDIUM_ASK)
         self.assertEqual(q["sort"], [{"distance": {"direction": "asc"}}])
         self.assertEqual(cargo.market_query("Gold", "buy", 1, ref)["sort"][0],
                          {"market_buy_price": [{"name": "Gold", "direction": "asc"}]})
@@ -982,6 +983,19 @@ class Lookup(unittest.TestCase):
         self.assertEqual(out["rows"][0]["station"], "Zahn City")
         out, _ = hold(sort="near")
         self.assertEqual(out["sort"], "near")
+
+    def test_a_medium_ship_keeps_a_station_with_only_large_pads(self):
+        """Sweep 2026-11-09: asking Spansh for medium_pads >= 1 lost the settlements with one large and one small pad
+        (tests/fixtures/spansh_dock.json has one); only the small-only stations are out of a medium ship's reach."""
+        market = [{"commodity": "Gold", "sell_price": 9000, "demand": 50}]
+        results = [{"name": "Small", "market_id": 1, "small_pads": 2, "medium_pads": 0, "large_pads": 0, "market": market},
+                   {"name": "Settlement", "market_id": 2, "small_pads": 1, "medium_pads": 0, "large_pads": 1, "market": market},
+                   {"name": "Outpost", "market_id": 3, "small_pads": 1, "medium_pads": 2, "large_pads": 0, "market": market}]
+        self.assertEqual([r["station"] for r in cargo.market_rows(results, "Gold", "sell", 1, pad="M", now=1)], ["Settlement", "Outpost"])
+        self.assertEqual(len(cargo.market_rows(results, "Gold", "sell", 1, pad=None, now=1)), 3)
+        self.assertEqual({r["station"] for r in cargo.hold_rows([results], [("Gold", 1, None)], now=1, pad="M")}, {"Settlement", "Outpost"})
+        many = [dict(results[1], market_id=i) for i in range(cargo.LOOKUP_SIZE * 2)]
+        self.assertEqual(len(cargo.market_rows(many, "Gold", "sell", 1, pad="M", now=1)), cargo.LOOKUP_SIZE)
 
     def test_a_looked_up_station_can_be_bookmarked(self):
         """Sweep 2026-11-09: ☆ on a Sell / Buy or Sell all row answered "unknown system": nothing kept where its system is."""

@@ -1416,6 +1416,9 @@ function checklistHtml(l) {
   if (plan.length > 1) items.push(`<li class="unk" title="the shortest supercruise from where you are, body to body by where they are now (≈: about); worked out again as you go">${plan[0].first ? "your first stop, then the suggested order:" : "suggested order:"}${plan[0].first ? planResetHtml(l) : ""}</li>`);
   // numbered as on the schematic (S30), when there is an order to number
   plan.forEach((it, i) => items.push(item(false, (plan.length > 1 ? `<span class="stopn">${stopGlyph(i + 1)}</span> ` : "") + planText(it) + planCost(it))));
+  // what you skipped on the system map is still there to do: said, with the way back (↺ order puts them back)
+  const skippedHere = planSkipFor(l);
+  if (skippedHere.length) items.push(`<li class="unk">skipped: ${skippedHere.map(esc).join(", ")}${planResetHtml(l)}</li>`);
   // the two reasons apart: another commander mapped it, or it is small (review 2026-10-23 S5-B4: an Earth-like someone
   // else mapped was called "small, under your level")
   const byOthers = (l.unmapped || []).filter(u => u.mapped_before && !w.maps.includes(u)).length;
@@ -5290,7 +5293,7 @@ function drawRouteList() {
                ly: s => s.from_you, dist: s => s.along, lead: s => `<td class="num">${s.n}</td>`};
   const fk = focusKey("routeRows");
   tb.innerHTML = d.rows.map(s => s.nodata
-    ? `<tr${s.id ? ` data-id="${esc(s.id)}"` : ""}><td class="bmcell"></td><td class="num">${s.n || ""}</td><td class="name" data-name="${esc(s.name)}" title="click to copy">${nameWords(s.name)}</td>` +
+    ? `<tr${s.id && !s.unplaced ? ` data-id="${esc(s.id)}"` : ""}><td class="bmcell"></td><td class="num">${s.n || ""}</td><td class="name" data-name="${esc(s.name)}" title="click to copy">${nameWords(s.name)}</td>` +
       `<td class="num dist">${s.along != null ? s.along.toFixed(2) : ""}</td><td colspan="8" class="unk">${a ? "asking Spansh…" : "not placed yet: Spansh has no record of it, or was not reached"}</td></tr>`
     : sysRowHtml(s, ctx)).join("") ||
     `<tr><td colspan="12" class="unk">${d.which ? "nothing ahead on this route" : "no route plotted"}</td></tr>`;
@@ -7499,6 +7502,8 @@ document.getElementById("recountAdd").onclick = () => {
   document.getElementById("recountRows").appendChild(tr);
   tr.querySelector(".rcname").focus();
 };
+// Enter in a lone count field submits the form (no submit button, one field): a method=dialog form then closes unsaved
+document.querySelector("#recountDlg form").addEventListener("submit", e => { e.preventDefault(); document.getElementById("recountSave").click(); });
 document.getElementById("recountSave").onclick = async () => {
   const counts = {};
   for (const i of document.querySelectorAll("#recountRows input.qn[data-rc]")) {
@@ -7603,7 +7608,7 @@ function renderLook() {
   const left = [q.stolen ? `${tons(q.stolen)} stolen: black market only` : "", q.mission ? `${tons(q.mission)} for a mission` : ""].filter(Boolean);
   let h = `<h3 class="subhead lookhead">${sell ? "Sell" : "Buy"} ${n !== q.tons ? `${tons(n)} of ${tons(q.tons)}` : q.of && q.of !== q.tons ? `${tons(q.tons)} of ${tons(q.of)}` : tons(q.tons)} ${esc(a && a.commodity || q.label)}` +
     (left.length && sell ? ` <span class="unk">(${esc(left.join("; "))}${q.black ? "; black markets only, at the legal market's price" : ""})</span>` : "") +
-    (avg ? ` <span class="unk">· you paid ${q.tons ? "Avg " : ""}${Math.round(avg).toLocaleString()} cr/t</span>` : "") +
+    (avg ? ` <span class="unk">· you paid ${a.lots > 1 ? "Avg " : ""}${Math.round(avg).toLocaleString()} cr/t</span>` : "") +
     `<button type="button" class="mini lookclose" data-lk="close" title="close the lookup">✕</button></h3>`;
   h += `<div class="lookbar"><span class="seg2"><button type="button" class="mini${LK.sort === "price" ? " on" : ""}" data-lk="price">Best price</button>` +
     `<button type="button" class="mini${LK.sort === "near" ? " on" : ""}" data-lk="near">Closest</button></span>` +
@@ -9274,7 +9279,7 @@ function sysWhy(it) {
     return ["map", top ? credits(top) : u.increment ? `+${credits(u.increment)}` : ""];
   }
   const b = it.b, n = b.signals || (b.genera || []).length;
-  return [n ? `bio ${n} ·` : "bio", b.potential ? credits(pendingWorth(b)) : ""];
+  return [n ? `bio ${n}${b.potential ? " ·" : ""}` : "bio", b.potential ? credits(pendingWorth(b)) : ""];   // the dot only before a figure
 }
 // the same in full, for the body's card: the class (T: terraformable), both map totals, the atmosphere, "up to"
 function sysWhyFull(it) {
@@ -13294,6 +13299,7 @@ const chatEnd = t => /[.!?]$/.test(t) ? t : t + ".";
 function chatWords(group, extra = "") {
   const m = group[0], h = chatHeader();
   const body = group.map(x => chatClean(x.text, x.more)).filter(Boolean).map(chatEnd).join(" ");
+  if (!body) return extra.trim();   // emoji alone: nothing to read, so no bare "Kurbo:"
   return (h === "full" ? `Commander ${m.sender} ${CHAT_WHERE[m.channel] || ""}: ` : h === "name" ? `${m.sender}: ` : "") + body + extra;
 }
 // the payload's chat: the messages past the last seen; none from the first payload (a page opening never reads a backlog)
@@ -13310,7 +13316,8 @@ function takeChat(first) {
   chatPump();
 }
 function chatSay(group, extra = "") {
-  const m = group[0], text = group.map(x => chatClean(x.text, x.more)).join(" ");
+  const m = group[0], text = group.map(x => chatClean(x.text, x.more)).join(" ").trim();
+  if (!text && !extra) return addCaption(`${m.sender}: ${group.map(x => x.text).join(" ")}`, null, true);   // emoji alone: seen, not said
   alertOut("chat", `${m.sender} · ${CHAT_WORD[m.channel] || m.channel}`, text, {say: chatWords(group, extra),
     caption: `${m.sender}: ${text}`, priv: true, chatFrom: m.sender});
 }
@@ -13809,9 +13816,9 @@ function labDrawInUse() {
   labEl("labGive").disabled = !p.voice || !labEl("labGiveStyle").value;
   labEl("labAssign").disabled = !p.voice || !labEl("labCrewRole").value;
 }
-function labFillVoices() {
+function labFillVoices(force = false) {
   const t = data && data.tts, voices = (t && t.voices) || [], sel = labEl("labVoice"), keep = sel.value;
-  if (sel.dataset.opts === voices.join(",")) return;
+  if (!force && sel.dataset.opts === voices.join(",")) return;
   sel.innerHTML = voices.map(v => `<option>${esc(v)}</option>`).join("") || `<option value="">(no Piper voice installed: More voices below)</option>`;
   sel.dataset.opts = voices.join(",");
   sel.value = voices.includes(keep) ? keep : (t && t.voice) || voices[0] || "";
@@ -13840,8 +13847,7 @@ function labWatch() {
 async function labOpen() {
   if (!Object.keys(speechLib.lines || {}).length) await loadSpeechLib();   // the lines, if the page has none yet
   const t = data && data.tts;
-  labEl("labVoice").dataset.opts = "";
-  labFillVoices();
+  labFillVoices(true);   // the placeholder too: no voice joined is "", which the check above took for already drawn
   if (t && t.voice) labEl("labVoice").value = t.voice;
   labEl("labSpeed").value = String(speechSpeed());
   labEl("labSpeedOut").textContent = speechSpeed().toFixed(2) + "×";
@@ -14977,7 +14983,7 @@ function uploadsHtml(u) {
       : s === "edsm" && x.dry_run ? ` <span class="warnc" title="OUTRIDER_EDSM_DRYRUN is set: each request is built and logged (data/edsm-dryrun.jsonl), nothing is sent">(dry run: nothing sent)</span>`
       : s === "inara" && x.dry_run ? ` <span class="warnc" title="OUTRIDER_INARA_DRYRUN is set: each request is built and logged (data/inara-dryrun.jsonl), nothing is sent">(dry run: nothing sent)</span>`
       : s === "inara" && x.dev ? ` <span class="warnc" title="OUTRIDER_INARA_DEV is set: requests say isBeingDeveloped (a test account's trial)">(development mode)</span>` : "";
-    const nums = [x.queued ? `${x.queued} waiting` : "", x.sent_24h ? `${x.sent_24h} sent today` : "", x.dropped_24h ? `${x.dropped_24h} refused` : "", x.dry_24h ? `${x.dry_24h} in dry runs` : ""].filter(Boolean).join(" · ");
+    const nums = [x.queued ? `${x.queued} waiting` : "", x.sent_24h ? `${x.sent_24h} sent in 24 h` : "", x.dropped_24h ? `${x.dropped_24h} refused` : "", x.dry_24h ? `${x.dry_24h} in dry runs` : ""].filter(Boolean).join(" · ");
     // ticked by what the player switched (wanted), whatever holds or blocks it now
     const ticked = x.wanted ?? (x.on || !!x.held);
     return `<label class="mod"><input type="checkbox" data-upload="${s}"${ticked ? " checked" : ""}${x.available && !u.simulate ? "" : " disabled"}> ` +
@@ -15095,7 +15101,7 @@ document.getElementById("uploadsBox").addEventListener("input", e => {
   const f = e.target.closest("[data-bf]"); if (f) BF[f.dataset.bf] = f.value;
 });
 document.getElementById("uploadsBox").addEventListener("toggle", e => {
-  if (e.target.classList && e.target.classList.contains("bfill")) BF.open = e.target.open;
+  if (e.target.classList && e.target.classList.contains("bfill") && !e.target.classList.contains("imlog")) BF.open = e.target.open;   // the Import block has bfill's look, and its own state
 }, true);   // toggle does not bubble: caught on its way down
 document.getElementById("uploadsBox").addEventListener("click", async e => {
   const b = e.target.closest("[data-bfact]"); if (!b) return;

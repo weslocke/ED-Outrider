@@ -795,6 +795,30 @@ class Batch6Voice(unittest.TestCase):
             said("y", "en_US-c-low")
             self.assertEqual(loads.count("en_US-c-low.onnx"), 1)             # loaded once
 
+    def test_no_line_opens_a_number_with_a_capital_a(self):
+        """Sweep 2026-11-09: "A {count} system streak" reached Piper as "AY 5": the body-letter rule cannot tell the article
+        from a star's letter. Lower case is safe, so a line says "That's a {gravity} g world"."""
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        numbers = {"count": "5", "value": "5 million", "gravity": "2"}
+        found = []
+
+        def walk(o):
+            if isinstance(o, dict):
+                for v in o.values():
+                    walk(v)
+            elif isinstance(o, list):
+                for v in o:
+                    walk(v)
+            elif isinstance(o, str):
+                for k, n in numbers.items():
+                    if "A {%s}" % k in o and "[[" in outrider.tts.body_letters(o.replace("{%s}" % k, n), "en-us"):
+                        found.append(o)
+        for path in [os.path.join(root, "resources", "speech.json")] + glob.glob(os.path.join(root, "resources", "personalities", "*.json")):
+            with open(path, encoding="utf-8") as f:
+                walk(json.load(f))
+        self.assertEqual(found, [])
+
     def test_body_letters_for_piper(self):   # a body's letters as letters ("ay one", not "uh one"); names as they are
         import outrider.tts
         b = lambda t, v="en-gb-x-rp": outrider.tts.body_letters(t, v)

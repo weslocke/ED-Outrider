@@ -182,7 +182,8 @@ async def nearest_unvisited(get, args, rows):
                 key=lambda x: x.get("distance") or 0)
     cut = p.get("sphere_cut")
     if not xs or (cut is not None and xs[0].get("distance", 0) > cut):
-        return {"nearest": None, "note": f"no known unvisited system within {cut if cut is not None else p.get('radius')} ly"}
+        within = cut if cut is not None else p.get("radius")
+        return {"nearest": None, "within_ly": within, "note": f"no known unvisited system within {within} ly"}
     return {"nearest": _sys_brief(xs[0]), "next_ones": [_sys_brief(x) for x in xs[1:min(len(xs), 1 + max(0, min(rows, 5) - 1))]]}
 
 

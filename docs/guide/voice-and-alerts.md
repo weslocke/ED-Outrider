@@ -547,7 +547,8 @@ anything. Nothing extra to install.
 - **Claude Code**, from the Outrider folder: `claude mcp add --transport stdio outrider -- python3 -m outrider.mcp`
   (add `--scope user` to have it in every project). Use the venv's python if Outrider runs in one.
 - **Claude desktop app:** add to `claude_desktop_config.json` under `mcpServers`:
-  `"outrider": {"command": "python3", "args": ["-m", "outrider.mcp"], "cwd": "/path/to/Outrider"}`.
+  `"outrider": {"command": "python3", "args": ["/path/to/Outrider/outrider/mcp.py"]}` (the full path; use the venv's
+  python as the command if Outrider runs in one).
 - **An Outrider elsewhere** (a Docker server): the bridge runs on the computer with your AI client, from a checkout
   of this repository; set `[mcp] url` (`"http://server:8025"`) and `[mcp] password` (its `[server] password`; or
   `--url` and `--password`), and it signs in.

@@ -6025,7 +6025,7 @@
     "Gravity's {gravity} g. That's {rebuys} rebuys we'd be gambling.",
     "{name}, I know that look. {gravity} g. No.",
     "{gravity} g and a full data bank. Fly on.",
-    "A {gravity} g world. Pretty. Deadly. Skip it.",
+    "That's a {gravity} g world. Pretty. Deadly. Skip it.",
     "Keep your hands steady, {name}. {gravity} g.",
     "Sir, recommend we don't. {gravity} g, {value} credits unsold.",
     "{gravity} g. Our money doesn't bounce, and neither do we.",
@@ -6084,7 +6084,7 @@
     "That planet's a mugger, {name}. {gravity} g.",
     "Keep it in orbit. {gravity} g. I'm begging.",
     "Shit, {gravity} g. Okay, {name}. Nose up. Breathe.",
-    "A {gravity} g rock and a full hold. Bad bloody idea."
+    "That's a {gravity} g rock and a full hold. Bad bloody idea."
    ]
   },
   "arrival_brief": {

@@ -2569,7 +2569,7 @@ const releasePayloads = async () => {
       apiJson = async (u, o) => {
         if (!String(u).startsWith("api/cargo/lookup")) return __realApi(u, o);
         __asked.push(String(u));
-        return {commodity: "Platinum", mode: "sell", tons: 64, from: "ship", where: "Sol", avg: 45210, sort: "price", within: 500,
+        return {commodity: "Platinum", mode: "sell", tons: 64, from: "ship", where: "Sol", avg: 45210, lots: window.__lookLots || 2, sort: "price", within: 500,
                 age: 14, carriers: false, pad: "L", pad_known: true, count: 2, rows: [
           {station: "Jung Base", system: "HIP 11402", id64: "123", distance: 341.2, jumps: 7, ls: 46085, far: true, type: "Planetary Outpost",
            carrier: false, pad: "L", price: 302844, qty: 17850, value: 19382016, profit: 16488576, age_s: 400000, services: ["Market"],
@@ -2591,7 +2591,9 @@ const releasePayloads = async () => {
     got.sel = !!d.querySelector('#cargoList tr.sel[data-cid="platinum"]');
     look.querySelectorAll("tr.lookrow")[1].click();
     got.detail = (look.querySelector("tr.lookdetail") || {}).textContent || "";
+    w.eval("window.__lookLots = 1");   // one purchase: no average to speak of (the table's own wording)
     look.querySelector('[data-lk="near"]').click(); await sleep(50);
+    got.oneLot = (look.querySelector(".lookhead") || {}).textContent;
     const box = look.querySelector('[data-lk="carriers"]'); box.checked = true; box.dispatchEvent(new w.Event("change", {bubbles: true})); await sleep(50);
     got.asked = w.eval("__asked.slice()");
     look.querySelector('[data-lk="close"]').click();
@@ -2600,6 +2602,7 @@ const releasePayloads = async () => {
     const a = got.asked.map(u => new URLSearchParams(u.split("?")[1]));
     const bad = [];
     if (!/^Sell 64 t Platinum · you paid Avg 45,210 cr\/t/.test(got.head || "") || got.rows !== 2 || !got.far || !got.sel) bad.push("answer");
+    if (!/· you paid 45,210 cr\/t/.test(got.oneLot || "")) bad.push("one purchase called an average");
     if (!/sell your exploration data and samples here too/.test(got.detail) || !/Plot route here/.test(got.detail)) bad.push("row");
     if (a.length !== 3 || a[0].get("commodity") !== "platinum" || a[0].get("tons") !== "64" || a[0].get("from") !== "ship" ||
         a[1].get("sort") !== "near" || a[2].get("carriers") !== "1") bad.push("asked");
@@ -7202,7 +7205,7 @@ const releasePayloads = async () => {
                         accounts: [{commander: "Briadin", name: "Briadin", set: true, hint: "0123…4567 (40 characters)"}]}, simulate: false, readonly: false};
       const box = document.createElement("div"); box.innerHTML = uploadsHtml(u);
       const t = box.textContent;
-      return [/EDDN/.test(t) && /\(test schemas only\)/.test(t), /2 waiting · 40 sent today · 1 refused/.test(t), /held: also uploading from erangel/.test(t),
+      return [/EDDN/.test(t) && /\(test schemas only\)/.test(t), /2 waiting · 40 sent in 24 h · 1 refused/.test(t), /held: also uploading from erangel/.test(t),
               box.querySelectorAll("[data-upload]").length, !!box.querySelector('.edsmacc[data-cmdr="Briadin"] .edsmKey[placeholder^="set"]') && /stored key: 0123…4567 \\(40 characters\\)/.test(t),
               /unavailable: the Legacy/.test(uploadsHtml({eddn: {available: true, blocked: "the Legacy game (3.8): nobody takes its data"}, edsm: {}})),
               // test mode is said whatever the state: here while EDDN is unavailable

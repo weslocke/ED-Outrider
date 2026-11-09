@@ -2,6 +2,21 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · Sweep 12, batch 2: the small bugs, the Claude desktop recipe
+- **Fix (cargo.py `market_query`, `can_land`):** the Sell / Buy lookup and Sell all lost, for a medium ship, the stations
+  with large pads but no medium ones (Odyssey settlements): Spansh cannot filter "medium or large", so it is asked for
+  more and the small-only stations are dropped here.
+- **Fix (page):** opening the EDSM Import block also opened Fill-gaps; a body skipped on the system map vanished from
+  Here's checklist (now "skipped: …" with ↺ order); Enter in Recount's lone count field closed it unsaved; a route-pane
+  row not yet placed opened an empty "unknown system" in Here; an emoji-only chat line was said as a bare name (now a
+  caption only); the voice lab never said no Piper voice is installed; "N sent today" was a 24-hour count; the Sell /
+  Buy heading said "Avg" for one purchase; a stray "·" on an unpriced bio stop.
+- **Fix (speech):** a line opening with "A {count}", "A {value}" or "A {gravity}" was said "AY 5" by Piper (the body
+  letter rule); ten lines reworded, a test keeps them out.
+- **Fix (ask.py, tools.py):** "nearest unvisited" with nothing found read the AI's note aloud ("... within 37.5 ly").
+- **Docs (voice-and-alerts.md):** the Claude desktop recipe runs `outrider/mcp.py` by its full path; it relied on a
+  `cwd` key the app may not honour.
+
 ## 2026-11-09 · Sweep 12, batch 1: the five medium bugs
 A complete Fable sweep of eac5aca (34 areas x 2 lenses, skeptics per finding): 17 confirmed bugs, none high.
 - **Fix (commander.py `mission_apply`):** a mission done but not handed in (the login's `Missions` line, `Complete`) no

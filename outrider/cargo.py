@@ -798,6 +798,14 @@ SERVICES_SHOWN = ("Refuel", "Repair", "Restock", "Universal Cartographics", "Vis
                   "Interstellar Factors Contact", "Black Market")
 
 
+MEDIUM_ASK = 3     # a medium ship's lookup asks for this many pages' worth: the small-only stations are dropped afterwards
+
+
+def can_land(r, pad):
+    """Whether a Spansh station has a pad for a ship needing `pad` (only "M" needs checking: "L" is Spansh's own filter)."""
+    return pad != MEDIUM or bool(r.get("has_large_pad") or r.get("large_pads") or r.get("medium_pads"))
+
+
 def market_query(name, mode, tons, ref, within=500, age_days=14, now=None, pad=None, carriers=False, sort="price"):
     """Spansh's /api/stations/search body: stations that take all `tons` of `name` (mode "sell": demand) or have that
     much (mode "buy": supply), within `within` ly of ref {x, y, z}, data newer than age_days, best price or nearest
@@ -813,8 +821,8 @@ def market_query(name, mode, tons, ref, within=500, age_days=14, now=None, pad=N
         filters["type"] = {"value": [CARRIER_TYPE]}
     if pad == LARGE:
         filters["has_large_pad"] = {"value": True}
-    elif pad == MEDIUM:
-        filters["medium_pads"] = {"value": [1, 9999], "comparison": "<=>"}
+    # pad "M": no filter here. A medium ship also lands on a large pad and Spansh's filters cannot say "medium or large":
+    # it would lose the settlements with large and small pads only. market_rows / hold_rows drop the small-only stations
     near = {"distance": {"direction": "asc"}}
     if sort == "near":
         order = [near]
@@ -823,7 +831,7 @@ def market_query(name, mode, tons, ref, within=500, age_days=14, now=None, pad=N
     else:
         order = [{"market_buy_price": [{"name": name, "direction": "asc"}]}, near]
     return {"filters": filters, "sort": order, "reference_coords": {"x": ref["x"], "y": ref["y"], "z": ref["z"]},
-            "size": LOOKUP_SIZE, "page": 0}
+            "size": LOOKUP_SIZE * MEDIUM_ASK if pad == MEDIUM else LOOKUP_SIZE, "page": 0}
 
 
 def _when(v):
@@ -836,13 +844,13 @@ def _when(v):
     return None
 
 
-def market_rows(results, name, mode, tons, holding=(), avg=None, laden=None, now=None):
+def market_rows(results, name, mode, tons, holding=(), avg=None, laden=None, now=None, pad=None):
     """Spansh's stations as the lookup's rows. holding: [(name, tons)] of what you carry (the station's other buys
     from it, when selling); avg: what you paid per ton (the profit); laden: your range now (a jump count)."""
     now = time.time() if now is None else now
     rows = []
     for r in results or []:
-        if not isinstance(r, dict):
+        if not isinstance(r, dict) or not can_land(r, pad):
             continue
         market = {m.get("commodity"): m for m in r.get("market") or [] if isinstance(m, dict)}
         m = market.get(name)
@@ -871,14 +879,14 @@ def market_rows(results, name, mode, tons, holding=(), avg=None, laden=None, now
                      "age_s": round(now - updated) if updated else None, "services": services,
                      "uc": "Universal Cartographics" in services, "vista": "Vista Genomics" in services,
                      "also": also[:5], "x": r.get("system_x"), "y": r.get("system_y"), "z": r.get("system_z")})
-    return rows
+    return rows[:LOOKUP_SIZE] if pad == MEDIUM else rows
 
 
 HOLD_LINES_MAX = 4          # "Sell all": the lines whose best buyers are asked for (the largest by tons)
 HOLD_CARRIER_FRESH_S = 7 * 86400   # "Sell all": another carrier's market older than this is left out (it moves, its orders go)
 
 
-def hold_rows(results_lists, lines, laden=None, now=None, own_names=(), sort="pays"):
+def hold_rows(results_lists, lines, laden=None, now=None, own_names=(), sort="pays", pad=None):
     """"Sell all" (the review's #15): the stations in several of Spansh's answers (each the best buyers of one of your
     lines: market_query with demand from 1), each once (by market id), priced for your whole hold from the market each
     result carries: every line it buys, min(your tons, its demand) at its price. lines: [(name, tons, avg or None)].
@@ -893,7 +901,7 @@ def hold_rows(results_lists, lines, laden=None, now=None, own_names=(), sort="pa
             if not isinstance(r, dict):
                 continue
             key = r.get("market_id") or (r.get("name"), r.get("system_name"))
-            if key in seen or r.get("name") in own_names:
+            if key in seen or r.get("name") in own_names or not can_land(r, pad):
                 continue
             seen.add(key)
             market = {m.get("commodity"): m for m in r.get("market") or [] if isinstance(m, dict)}
