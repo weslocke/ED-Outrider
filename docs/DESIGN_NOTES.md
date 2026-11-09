@@ -2068,6 +2068,8 @@ upstream project's choices, not rules of the game.
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
 confirmed while playing. Treat reports about them as likely real.
 
+- A codex picture said (2026-11-08): a plant's (the Exobiologist's, row biopic) works in game (the author, 2026-11-08); a
+  geology formation's (the Science Officer's, geopic) is tested on the fixture's Water Ice Geyser only.
 - Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the
   prospector call-out, the ⛏ line and its warnings' timing (limpets low, hold nearly full, hold full with where to
   sell, its wider search out in the black), the limpet reminder (fixed twice: limpets bought, a collector alone); each

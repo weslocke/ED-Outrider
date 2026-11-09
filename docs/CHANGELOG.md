@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-08 · A plant's codex picture tried in game
+- **Docs:** DESIGN_NOTES' "Not yet tried": the plant's codex picture line works in game (the author); geology's waits
+  for a formation.
+
 ## 2026-11-08 · A codex picture is said
 The author: an XO line and a notification when a screenshot is filed as a codex picture; then the Exobiologist for a
 plant and the Science Officer for geology.
