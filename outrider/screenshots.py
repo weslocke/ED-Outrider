@@ -40,7 +40,7 @@ TOKENS = ("cmdr", "system", "body", "date", "time", "highres", "subject")
 # or Geology/<group>/<name>, the shipped lists' English names (bio_rules.json and its colour tables, geo_codex.json), so
 # the folders are the same in any game language; codex_show: the checklists show a picture from them (CODEX_IMAGES:
 # any the player puts there too, edited or cropped)
-CODEX_FOLDERS = {"bio": "Biology", "geo": "Geology"}
+CODEX_FOLDERS = {"bio": "Biology", "geo": "Geology", "phen": "Phenomena"}   # phen: a shot at a phenomenon in space
 CODEX_FORMATS = ("", "png", "jpg", "webp")   # "": a copy of the picture exported; else the shot converted again, full size
 CODEX_DECODERS = ("PNG", "JPEG", "WEBP", "GIF")   # what a codex folder's picture is opened as, whatever its name says
 # (review 2026-10-26: an EPS named .png ran Ghostscript); XMP_MAX: the metadata read (Outrider's own is under 2 KB)
@@ -330,7 +330,7 @@ def codex_folders(root):
     checklist (its 📷 marks); links are not followed (review 2026-10-26: a 📷 for a folder of broken or linked files
     only, where the panel showed Canonn's)."""
     found = set()
-    for top, depth in ((CODEX_FOLDERS["bio"], 3), (CODEX_FOLDERS["geo"], 2)):
+    for top, depth in ((CODEX_FOLDERS["bio"], 3), (CODEX_FOLDERS["geo"], 2), (CODEX_FOLDERS["phen"], 2)):
         base = os.path.join(root or "", top)
         if not root or not os.path.isdir(base):
             continue
@@ -466,8 +466,8 @@ def metadata(shot):
     except (KeyError, TypeError, ValueError):
         pass
     keywords = ["Elite Dangerous", system, body]
-    if subj.get("name") and subj.get("kind") == "geo":   # a formation is its name (third in-depth review: "Water" was a keyword)
-        keywords += [subj["name"], "Geology"]
+    if subj.get("name") and subj.get("kind") in ("geo", "phen"):   # a formation is its name (third in-depth review: "Water" was a keyword)
+        keywords += [subj["name"], "Geology" if subj["kind"] == "geo" else "Phenomena"]
     elif subj.get("name"):
         colour = subj["name"].split(" - ")[1] if " - " in subj["name"] else ""   # the variant's colour ("Yellow")
         keywords += [subj["name"], subj["name"].split(" - ")[0], subj["name"].split()[0], colour,

@@ -266,7 +266,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
 </section>
 <section id="bioView" hidden>
   <div class="srow">
-    <span class="seg" role="radiogroup" aria-label="Bio/Geo view"><label title="every sample run, aboard, sold or lost"><input type="radio" name="bioMode" value="runs" checked>My Samples</label><label title="every species the rules know, by galactic region, with what you have done there"><input type="radio" name="bioMode" value="check">Exo-Biology</label><label title="the codex's Geology and Anomalies entries (fumaroles, geysers, Lagrange clouds...) by galactic region: which you have logged, and how often each has been reported there"><input type="radio" name="bioMode" value="geo">Geology</label></span>
+    <span class="seg" role="radiogroup" aria-label="Bio/Geo view"><label title="every sample run, aboard, sold or lost"><input type="radio" name="bioMode" value="runs" checked>My Samples</label><label title="every species the rules know, by galactic region, with what you have done there"><input type="radio" name="bioMode" value="check">Exo-Biology</label><label title="the codex's surface geology (fumaroles, geysers, gas vents, lava spouts) by galactic region: which you have logged, and how often each has been reported there"><input type="radio" name="bioMode" value="geo">Geology</label><label title="what is found in space at notable stellar phenomena (Lagrange clouds, crystals, space organisms, the lettered anomalies) by galactic region: which you have logged, and how often each has been reported there"><input type="radio" name="bioMode" value="phen">Phenomena</label></span>
     <label class="checkonly">Region <select id="clRegion"></select></label>
     <label class="runonly">Last <select id="bDays"><option value="7">7 days</option><option value="30" selected>30 days</option>
       <option value="90">90 days</option><option value="365">year</option><option value="3650">everything</option></select></label>
@@ -280,7 +280,11 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
   <div id="clStatus" class="status checkonly"></div>
   <div class="pane checkonly" id="clPane">
     <div class="clwrap"><div id="clGrid" class="clgrid"></div><aside id="clSide" class="clside"><p class="unk">Click a species for its colours and where it grows.</p></aside></div>
-    <div class="hint geohint">Geology and anomalies, as your codex groups them. <span class="cl-logged">Logged</span>: in your codex for
+    <div class="hint phenhint">Found in space at notable stellar phenomena (the panel names each one's codex section).
+      <span class="cl-logged">Logged</span>: in your codex for this region; <span class="clelse">elsewhere</span>: in another region.
+      The number is the sites reported in the region (Canonn); <span class="cl-no">greyed</span>: none yet. 🔍 nearby: the nearest
+      reported systems. A shot you take there goes to your codex folders under what you logged.</div>
+    <div class="hint geohint">Surface geology: fumaroles, geysers, gas vents and lava spouts (the anomalies and Lagrange clouds are on Phenomena). <span class="cl-logged">Logged</span>: in your codex for
       this region; <span class="clelse">elsewhere</span>: logged in another region. The number is how many sites players have reported in
       the region (Canonn's records, in resources/geo_codex.json); <span class="cl-no">greyed</span>: none reported there yet, which is not to say
       there are none. Completion is the share of the entries reported in the region that you have logged.</div>

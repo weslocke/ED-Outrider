@@ -315,7 +315,17 @@ def geo_short(entry):
     for tail in (" Lagrange " + group, " " + group):
         if group and name.endswith(tail) and len(name) > len(tail):
             return name[: -len(tail)]
-    return name
+    # Phenomena's organisms carry the group's word inside: "Candidum Peduncle Pod" -> "Candidum Pod" (a Peduncle box holds
+    # pods and trees), "Chryseum Void Heart" -> "Chryseum Heart", "Stolon Tree" -> "Tree"
+    short = re.sub(rf"(^|\s){re.escape(group)}\s", r"\1", name, count=1).strip() if group else name
+    return short or name
+
+
+# the box order inside a list: Geology's kinds, then Phenomena's clouds, crystals, spheres and plates before its organisms
+# (alphabetical) and the lettered anomalies last
+GEO_KIND_ORDER = {"Geology": 0, "Cloud": 1, "Anomaly": 2}
+PHEN_GROUP_ORDER = ("Lagrange Cloud", "Storm Cloud", "Ice Crystals", "Silicate Crystals", "Metallic Crystals", "Mineral Spheres",
+                    "Calcite Plates")
 
 
 def geo_table(entries, region, codex, region_count):
@@ -350,9 +360,9 @@ def geo_table(entries, region, codex, region_count):
             totals["logged"] += 1
             totals["colours_found"] += 1 if sites else 0
     totals["completion"] = round(100 * totals["colours_found"] / totals["possible"], 2) if totals["possible"] else None
-    kind_order = {"Geology": 0, "Cloud": 1, "Anomaly": 2}
+    rank = lambda g: PHEN_GROUP_ORDER.index(g) if g in PHEN_GROUP_ORDER else len(PHEN_GROUP_ORDER)   # noqa: E731
     out = [{"genus": g, "kind": rows[0]["kind"], "species": sorted(rows, key=lambda x: x["short"])}
-           for g, rows in sorted(groups.items(), key=lambda kv: (kind_order.get(kv[1][0]["kind"], 9), kv[0]))]
+           for g, rows in sorted(groups.items(), key=lambda kv: (GEO_KIND_ORDER.get(kv[1][0]["kind"], 9), rank(kv[0]), kv[0]))]
     return {"genera": out, "summary": totals}
 
 

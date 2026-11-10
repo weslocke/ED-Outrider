@@ -1597,6 +1597,7 @@ body.app #richPane { grid-column: 1; grid-row: 2; }
 /* the exobiology checklist (Bio/Geo -> Exo-Biology; Geology shares it) */
 #bioView.check .runonly, #bioView:not(.check) .checkonly { display: none; }
 #bioView.geo .biohint, #bioView:not(.geo) .geohint { display: none; }
+#bioView.phen .geohint, #bioView:not(.phen) .phenhint { display: none; }   /* Phenomena: Geology's view, its own hint */
 .clwrap { display: flex; gap: 14px; align-items: flex-start; }
 /* the boxes flow down columns, newspaper style: a short box leaves no hole beside a long one */
 .clgrid { flex: 1 1 auto; min-width: 0; column-width: 230px; column-gap: 10px; }

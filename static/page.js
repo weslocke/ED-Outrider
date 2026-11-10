@@ -8089,10 +8089,11 @@ function clFigure(img, alt, colour) {
     `<figcaption>${colour ? `${esc(colour)} · ` : ""}${credit}</figcaption></figure>`;
 }
 const CL_WORD = {sold: "sold", aboard: "aboard", lost: "lost", logged: "logged"};
-// Bio/Geo's three views: My Samples ("runs"), the Exo-Biology checklist ("check"), Geology ("geo": the codex's Geology and Anomalies)
-const BIO_MODES = ["runs", "check", "geo"];
+// Bio/Geo's four views: My Samples ("runs"), the Exo-Biology checklist ("check"), Geology ("geo": the surface) and
+// Phenomena ("phen": found in space at notable stellar phenomena). Geology and Phenomena draw alike (codex entries, no colours)
+const BIO_MODES = ["runs", "check", "geo", "phen"];
 let bioMode = BIO_MODES.includes(store.get("bioMode", "runs")) ? store.get("bioMode", "runs") : "runs";
-const clKind = () => bioMode === "geo" ? "geo" : "bio";
+const clKind = () => bioMode === "geo" || bioMode === "phen" ? bioMode : "bio";
 const clRegionEl = document.getElementById("clRegion");
 function setBioMode(m) {
   const was = clKind();
@@ -8100,7 +8101,8 @@ function setBioMode(m) {
   store.set("bioMode", bioMode);
   const bv = document.getElementById("bioView");
   bv.classList.toggle("check", bioMode !== "runs");
-  bv.classList.toggle("geo", bioMode === "geo");
+  bv.classList.toggle("geo", bioMode === "geo" || bioMode === "phen");
+  bv.classList.toggle("phen", bioMode === "phen");
   document.querySelectorAll("[name=bioMode]").forEach(x => { x.checked = x.value === bioMode; });
   if (clKind() !== was) { CL.data = null; CL.key = null; CL.open = null; CL.species = null; CL.find = null; }   // the other list
   if (view === "bio") { if (bioMode !== "runs") loadChecklist(true); else loadBio(); }
@@ -8169,7 +8171,7 @@ function renderChecklist() {
   clFillRegions(d);
   const s = d.summary;
   const where = d.region_name || (d.region == null && clRegionEl.value === "all" ? "All regions" : "Where you are (not in a known region): all regions");
-  const geo = d.kind === "geo";
+  const geo = d.kind === "geo" || d.kind === "phen";   // a codex list: entries, no colours
   // "N of M": N counts only what M counts (logged and reported here; found where it can grow), what else you have is
   // said apart: it read "3 of 2 entries" with an entry nobody had reported here (the Fable review of 2026-10-10, #3)
   const rowsAll = d.genera.flatMap(g => g.species);
@@ -8282,14 +8284,15 @@ async function clLoadSpecies(id) {
 function clFindBtn(r, colour, label) {
   const what = r.name + (colour ? ` - ${colour}` : "");
   return `<button type="button" class="clfindb" data-clfind="${esc(r.id)}" data-clcolour="${esc(colour || "")}"` +
-    ` title="${esc(`nearby: the nearest bodies where commanders reported ${what} to Spansh`)}">${label}</button>`;
+    ` title="${esc(clKind() === "phen" ? `nearby: the nearest systems where commanders reported ${what} (Canonn)`
+      : `nearby: the nearest bodies where commanders reported ${what} to Spansh`)}">${label}</button>`;
 }
 async function clFind(id, colour) {
   if (CL.open !== id) { CL.open = id; CL.colour = null; renderChecklist(); clLoadSpecies(id); }
   const f = CL.find = {id, colour, busy: true, answer: null};
   clDrawSide();
   let a;
-  try { a = await apiJson(`api/checklist/find?species=${encodeURIComponent(id)}${colour ? `&colour=${encodeURIComponent(colour)}` : ""}${clKind() === "geo" ? "&kind=geo" : ""}`); }
+  try { a = await apiJson(`api/checklist/find?species=${encodeURIComponent(id)}${colour ? `&colour=${encodeURIComponent(colour)}` : ""}${clKind() !== "bio" ? `&kind=${clKind()}` : ""}`); }
   catch (err) { a = {error: err.message}; }
   if (CL.find !== f) return;   // another find (or ✕) meanwhile
   f.busy = false; f.answer = a;
@@ -8301,9 +8304,10 @@ function clFindHtml(r) {
   const a = f.answer, bms = bmMap();
   const head = `<div class="clfind"><div class="clfindh"><span>Nearest reported: <b>${esc(r.name + (f.colour ? ` - ${f.colour}` : ""))}</b></span>` +
     `<button type="button" class="mini" data-clfindclose title="close the list">✕</button></div>`;
-  if (f.busy) return head + `<div class="unk">asking Spansh…</div></div>`;
+  const canonn = clKind() === "phen";   // Phenomena: Canonn's reported systems, not Spansh's bodies
+  if (f.busy) return head + `<div class="unk">${canonn ? "asking Canonn…" : "asking Spansh…"}</div></div>`;
   if (!a || a.error) return head + `<div class="noscoop">${esc(a ? a.error : "")}</div></div>`;
-  if (!a.rows.length) return head + `<div class="unk">No body within ${a.radius.toLocaleString()} ly has it reported to Spansh.</div></div>`;
+  if (!a.rows.length) return head + `<div class="unk">${canonn ? "Canonn has no reported site for it." : `No body within ${a.radius.toLocaleString()} ly has it reported to Spansh.`}</div></div>`;
   // a sweep tick on each (the review's #12): ticks from several species' lists plot one trip (Plot a sweep, S51)
   const rows = a.rows.map(x => `<tr><td>${sweepTick(x.system)}</td><td title="${esc(x.system)}">${esc(x.system)}</td><td>${esc(x.body || "")}</td>` +
     `<td class="num">${x.ly == null ? "" : `${x.ly.toLocaleString(undefined, {maximumFractionDigits: 1})} ly`}</td>` +
@@ -8312,7 +8316,7 @@ function clFindHtml(r) {
     `<td>${bmIcon(x.id, x.system, bms)}</td>` +
     `<td><button type="button" class="mini" data-clcopy="${esc(x.system)}" title="copy the system's name">Copy</button>${sysAimBtn(x.system, x.id)}</td></tr>`).join("");
   const more = a.count > a.rows.length ? `${(a.count - a.rows.length).toLocaleString()} more further away · ` : "";
-  return head + `<table class="clfindt">${rows}</table><div class="unk">${more}reported to Spansh by commanders' uploads; distances from ${esc(a.where || "you")}</div>` +
+  return head + `<table class="clfindt">${rows}</table><div class="unk">${more}${a.source === "Canonn" ? "reported to Canonn by commanders" : "reported to Spansh by commanders' uploads"}; distances from ${esc(a.where || "you")}</div>` +
     `<div class="srow">${swbarHtml()}</div></div>`;
 }
 document.getElementById("clSide").addEventListener("click", e => {
@@ -8325,12 +8329,13 @@ document.getElementById("clSide").addEventListener("click", e => {
 function clDrawSide() {
   const side = document.getElementById("clSide"), r = clRow(CL.open);
   let html;
-  if (!r) html = `<p class="unk">${clKind() === "geo" ? "Click an entry for where it has been reported and where you logged it."
+  if (!r) html = `<p class="unk">${clKind() !== "bio" ? "Click an entry for where it has been reported and where you logged it."
     : "Click a species for its colours (under it in its box), its picture and where it grows."}</p>`;
-  else if (clKind() === "geo") {
+  else if (clKind() !== "bio") {
     const sp = CL.species && CL.species.id === r.id ? CL.species : null;
     const mine = sp && !sp.error ? [...new Set(sp.runs.map(x => x.system))] : [];
     html = `<h4>${esc(r.name)}</h4><div class="unk">${esc([sp && sp.group, sp && sp.kind].filter(Boolean).join(" · "))}</div>` +
+      (sp && sp.section && clKind() === "phen" ? `<div class="unk">Codex: Biological and Geological → ${esc(sp.section)}</div>` : "") +
       `<p>${r.sites ? `Reported at <b>${r.sites.toLocaleString()}</b> site${r.sites === 1 ? "" : "s"} ${CL.data.region == null ? "in all" : "in this region"}`
         : "Not reported in this region yet"}${sp && sp.sites_total ? `, ${sp.sites_total.toLocaleString()} in the galaxy` : ""}.` +
       ` ${r.state ? `<span class="cl-logged">Logged here</span>` : r.elsewhere ? `<span class="clelse">Logged in another region</span>` : "Not in your codex here."}</p>` +
@@ -8369,7 +8374,7 @@ document.getElementById("clSide").addEventListener("mousemove", e => {
   const allow = v && CL.species && !CL.species.error && CL.species.regions ? CL.species.regions[String(v)] : undefined;
   const reg = allow && CL.data && (CL.data.regions || []).find(x => x.id === v);
   if (!reg) { tip.hidden = true; return; }   // a faint region (it cannot grow there), outside the map, or not loaded yet
-  const sites = clKind() === "geo" && CL.species.sites ? CL.species.sites[String(v)] : null;
+  const sites = clKind() !== "bio" && CL.species.sites ? CL.species.sites[String(v)] : null;
   const grows = sites ? `${sites.toLocaleString()} reported site${sites === 1 ? "" : "s"}` : allow === "parts" ? "only in parts" : "can grow here";
   const words = [reg.name, grows, reg.completion != null ? `${clPct(reg.completion)} complete` : ""].filter(Boolean).join(" · ");
   if (tip.textContent !== words) tip.textContent = words;
@@ -12072,7 +12077,8 @@ function onData() {
         alertOut("ggg", `Potential green gas giant: ${m.body}`, `${m.what || "a gas giant"}${m.chance === "possible" ? ", possible" : ""}: check it in the system map`,
                  {say: () => line("ggg", {body: m.body}, `Possible green gas giant: ${m.body}.`)});
       else if (m.kind === "codex_picture" && m.entry)   // a shot filed in your codex folders: a plant's by the Exobiologist, geology's by Science
-        alertOut(m.what === "geo" ? "geopic" : "biopic", `📷 Codex picture: ${m.entry}`, [m.colour, m.file].filter(Boolean).join(" · "),
+        // (a formation's or a phenomenon's: the Science Officer, row geopic)
+        alertOut(m.what === "bio" ? "biopic" : "geopic", `📷 Codex picture: ${m.entry}`, [m.colour, m.file].filter(Boolean).join(" · "),
                  {say: () => line("codex_picture", {entry: m.entry}, `Picture of ${m.entry} filed in your codex.`)});
       else if (m.kind === "rare_star" && m.what)   // a rare star resolved: said with delight
         alertOut("rare_star", `⭐ ${m.what[0].toUpperCase()}${m.what.slice(1)}`, m.star || "",

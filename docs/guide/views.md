@@ -586,13 +586,20 @@ all too, with the species and a species' details scrolling separately.
   <img src="../images/checklist.png" alt="The exobiology checklist: genus boxes with each species' state and colours found, and a species' colours and galaxy map beside them" width="900">
 </p>
 
-**Bio/Geo → Geology** is the same for the codex's **Geology and Anomalies** entries: fumaroles, gas vents, geysers and
-lava spouts, then Lagrange clouds and the lettered anomalies. Each is logged in your codex for the region, or not;
+**Bio/Geo → Geology** is the same for the codex's surface geology: fumaroles, gas vents, geysers and lava spouts. Each is logged in your codex for the region, or not;
 beside it, how many sites players have reported in that region (from [Canonn](https://canonn.science)), greyed where
 none have been reported yet (which is not to say there are none). Completion is the share of the entries reported in
 the region that you have logged. Click one for its picture, its sites in the galaxy, where you logged it, and the map
 of the regions it has been reported in. **🔍** on an entry you have not logged lists the nearest bodies where
 commanders' mapping reported it to Spansh, as for a species (☆, Copy, 🎯).
+
+**Bio/Geo → Phenomena** is the same for what is found in space at notable stellar phenomena: Lagrange and storm clouds,
+ice, silicate and metallic crystals, mineral spheres, calcite plates, the space organisms (molluscs, pods, trees...) and
+the lettered anomalies. They are grouped by where you find them, so the anomalies and clouds the game's codex files under
+Geology and Anomalies are here; an entry's panel names the codex section it is in. **🔍 nearby** lists the nearest
+systems where it has been reported, from Canonn's list for that entry (fetched when you ask; nothing about you is sent).
+With your codex folders on (Settings → Screenshots), a shot you take at a phenomenon is filed under the codex entry you
+logged there, in `Phenomena/<group>/<entry>/`.
 
 The pictures are [Canonn](https://canonn.science)'s screenshots, each credited to the commander who took it: Outrider
 links to them (they load from Canonn when you open an entry; click one for full size) and keeps no copy. Click a

@@ -49,10 +49,10 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/screenshots.py` | Screenshots (game PC; converting needs Pillow): the game's BMPs converted to PNG, JPG or WebP with their copies, crop and metadata, what a surface shot shows, your codex folders and their pictures on the Bio/Geo checklists, the folder picker |
 | `outrider/bio.py` | The exobiology predictor; `--backtest` scores it against your journals, `--update-rules` fetches the rules by hand |
 | `resources/bio_rules.json` | Spawn rules, nebulae and regions from BioScan and klightspeed's region map; the server never writes it: its refreshed copy and ExploData's colour variants (`bio_colours.json`, never shipped) are downloaded beside your database, in `data/`, on the first start (`outrider/bio.py`) |
-| `outrider/checklist.py` | The Exo-Biology and Geology checklists: every species and site by galactic region, with what you have done with it there |
+| `outrider/checklist.py` | The Exo-Biology, Geology and Phenomena checklists: every species and site by galactic region, with what you have done with it there |
 | `outrider/canonn_sites.py` | A body's known Guardian sites and geology from Canonn, read for the body panel's Pins (📍 pin it) |
 | `outrider/codex_images.py` | The checklists' pictures: links to Canonn's screenshots and their credits, refreshed from Canonn once a day |
-| `resources/geo_codex.json` | The codex's Geology and Anomalies entries and how many sites of each are reported per region, for the Geology checklist |
+| `resources/geo_codex.json` | The codex entries of the Geology (the surface) and Phenomena (in space) checklists, each with its `list`, and how many sites of each are reported per region |
 | `outrider/ggg.py` | Potential green gas giants: the community's seven-layer ladder model, from a scan's temperature, mass and radius |
 | `outrider/codex_bodies.py` | Which codex entry a star or planet type logs, for the ✦ / ✪ on types new to your codex |
 | `outrider/codex_geo.py` | Which geology codex entries a body's volcanism could log, for the ✦ / ✪ on geology new to your codex |

@@ -158,6 +158,7 @@ import copy
 import difflib
 import functools
 import hashlib
+import csv
 import io
 import json
 import math
@@ -437,6 +438,7 @@ ROUTE_LIST_KEEP = 500      # systems the pane listed that a click can still open
 ROUTE_LOOKUP_SKIP = ((0.0, 0.0, 0.0, 1000.0), (-9530.5, -910.28125, 19808.125, 500.0))
 CHECKLIST_FIND_LY = 20000  # ly: S29's search for the nearest reported bodies of a species (sorted nearest first)
 CHECKLIST_FIND_ROWS = 25   # bodies asked for (one page)
+PHEN_SITES_KEEP = 12          # Phenomena 🔍 nearby: the entries' site lists (fetched from Canonn) kept in memory
 CHECKLIST_FIND_KEEP_S = 600   # s: the same species, colour and place answered from memory, not asked again
 USER_AGENT = "ED Outrider (personal exploration helper)"
 
@@ -3505,7 +3507,7 @@ class Journals:
     # must not announce its moments twice). A latest value another line's handler reads as a guard belongs here too
     # ("overwritten by the retry" is not enough when it is read before the line that sets it comes round again).
     MEMORY = ("moment_seq", "moments", "last_heat", "life_support_off", "modules_off", "modules_off_at", "loadout_off_said",
-              "modules_left", "under_attack_at", "canopy_breached", "overheated",
+              "modules_left", "under_attack_at", "canopy_breached", "overheated", "nsp_drop",
               "body_touched", "approached", "brief_key", "regions_said", "rings_said",
               "codex_said", "fss_signals_pending", "region_entered", "jumponium", "sale_run", "burst", "nsp_burst",
               "docking_hold", "chat_seq", "chat", "shots_new", "_cmdrs_backfilled",
@@ -3560,6 +3562,7 @@ class Journals:
         # the Ship page's latched lights: modules left off until a tap or a Loadout {item: words}, the last UnderAttack's
         # seconds, a breached canopy (True), the last overheat's length in seconds
         self.modules_left, self.under_attack_at, self.canopy_breached, self.overheated = {}, None, False, None
+        self.nsp_drop = None   # a live visit to a notable stellar phenomenon {system, ts, entries, held} (note_screenshot)
         # in memory only (a restart forgets them, which errs on the quiet side):
         self.body_touched = set()  # (system, body_id) touched down, disembarked or sampled on since arriving there
         self.approached = set()    # (system, body_id) briefed on approach this game session (once each)
@@ -4490,6 +4493,10 @@ class Journals:
             self.note_loading(name, ev, ts)
             if name == "Fileheader":
                 return
+        if self.nsp_drop and name in ("SupercruiseEntry", "FSDJump", "CarrierJump", "Docked", "LoadGame", "Died", "Shutdown"):
+            self.end_nsp_drop()
+        elif self.nsp_drop and name == "CodexEntry" and ev.get("SystemAddress") == self.nsp_drop["system"] and ev.get("EntryID") is not None:
+            self.nsp_drop["entries"].append(ev["EntryID"])
         if name in ("LoadGame", "Died", "Shutdown"):   # what was left off is for the next Loadout to say
             self.life_support_off, self.modules_off, self.loadout_off_said = None, {}, set()
             self.modules_left, self.under_attack_at, self.canopy_breached, self.overheated = {}, None, False, None
@@ -5459,6 +5466,15 @@ class Journals:
         self.db.execute("INSERT OR IGNORE INTO geo_tags VALUES (?, ?, ?, ?, ?, ?, ?)",
                         (system, ev["BodyID"], ev.get("EntryID"), ev.get("Name_Localised") or ev.get("Name"), lat, lon, ts))
 
+    def end_nsp_drop(self):
+        """A visit to a notable stellar phenomenon is over (back to supercruise, a jump, docked, the game left): the shots
+        held for want of a codex entry go to the converter, as the first entry logged in the visit (none: not filed)."""
+        d, self.nsp_drop = self.nsp_drop, None
+        for shot in (d or {}).get("held") or []:
+            if d["entries"]:
+                shot["phen"] = list(d["entries"])   # the first Phenomena entry of the visit (State.shot_subject)
+            self.shots_new.append(shot)
+
     def note_screenshot(self, ev, ts):
         """A live Screenshot event (the game's F10 / Alt+F10): queued for the State's conversion (shots_new) with where
         it was taken and by whom. A catch-up or re-read never converts (Settings' "convert what is already there" does)."""
@@ -5478,13 +5494,22 @@ class Journals:
                 lat, lon, heading = st["lat"], st["lon"], st.get("heading")
         # the start-up catch-up's lines (a shot taken in the minutes before Outrider started) are converted, never put on
         # the clipboard: "the shots you take" only (third in-depth review 2026-10-25)
-        self.shots_new.append({"backlog": bool(getattr(self, "importing", False)) or None,
+        shot = {"backlog": bool(getattr(self, "importing", False)) or None,
                                "ts": ts, "original": re.split(r"[\\/]", str(ev["Filename"]))[-1],
                                "system": ev.get("System") or pos.get("name"),
                                "system_id": pos.get("id64") if (ev.get("System") or pos.get("name")) == pos.get("name") else None,
                                "body": ev.get("Body") or None, "lat": lat, "lon": lon,
                                "heading": heading, "width": ev.get("Width"), "height": ev.get("Height"),
-                               "cmdr": (self.commander or {}).get("name")})
+                               "cmdr": (self.commander or {}).get("name")}
+        # at a notable stellar phenomenon, in space (no position): the codex entry logged there, the latest before the
+        # shot; none yet: held until the visit ends (end_nsp_drop), then the first one logged in it
+        d = self.nsp_drop
+        if d and lat is None and shot["system_id"] is not None and shot["system_id"] == d["system"]:
+            if not d["entries"]:
+                d["held"].append(shot)
+                return
+            shot["phen"] = list(reversed(d["entries"]))   # the latest Phenomena entry before the shot (State.shot_subject)
+        self.shots_new.append(shot)
 
     @staticmethod
     def pickup_kind(name, ev):
@@ -5554,6 +5579,9 @@ class Journals:
             self.phenomenon_found(system, kind, ts)
         elif self.pos and ts >= self.pos.get("ts", ""):   # the drop happens in the system you are in (not an old one read later)
             system = self.pos["id64"]
+            if live_event(ts):   # a visit: its codex entries name the shots taken there (note_screenshot)
+                self.end_nsp_drop()
+                self.nsp_drop = {"system": system, "ts": ts, "entries": [], "held": []}
             self.db.execute("INSERT INTO phenomena (system, kind, ts, reached_ts, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT(system, kind) "
                             "DO UPDATE SET reached_ts = coalesce(reached_ts, excluded.reached_ts)", (system, kind, ts, ts))
             # each drop is a site visited (the journal cannot tell which of a kind's sites it was)
@@ -9526,6 +9554,7 @@ class State:
         self.canonn_lock = asyncio.Lock()   # one ask at a time: two windows opening one body ask once
         self.history_cache = None  # S24: (key, species_history) -- your completed runs, counted again when they change
         self.checklist_finds = {}  # S29: (species, colour, where you are) -> (time.time(), answer): Spansh asked again after a while
+        self.phen_sites = {}       # Phenomena 🔍 nearby: entry id -> its sites from Canonn (phenomena_sites), this session
         self.checklist_found = {}  # S29: id64 -> (name, x, y, z) of the systems a find listed, for locate (☆ on its rows)
         self.nearest_found = {}    # S31: the same for the Nearest finder's rows (their 🎯) and the Sell / Buy lookup's (☆), at most NEAREST_FOUND_KEEP
         self.carrier_task = None
@@ -13901,7 +13930,13 @@ class State:
     def shot_subject(self, shot):
         """What a surface shot shows (outrider.screenshots.nearest_subject): your sample spots (bio_spots: a finished run's
         too), the plants you tagged and
-        the geology formations logged on its body within [screenshots] subject_m; also the body's id and radius."""
+        the geology formations logged on its body within [screenshots] subject_m; also the body's id and radius. A shot
+        at a phenomenon in space (Journals.note_screenshot's `phen`: the codex entry logged there) is that entry."""
+        if shot.get("phen") is not None:   # the visit's codex entries in the order to try: the first on the Phenomena list
+            known = {str(x["id"]): x for x in self.codex_list("phen")}
+            e = next((known[str(i)] for i in shot["phen"] if str(i) in known), None)
+            return None, ({"kind": "phen", "name": e["name"], "entry_id": e["id"], "group": e.get("group"), "entry": e["name"],
+                           "colour": None, "dist": None} if e else None)
         body = None
         if shot.get("system_id") is None and shot.get("system"):   # a shot from the journals (the backlog): by its name
             row = self.db.execute("SELECT id64 FROM jumps WHERE name=? ORDER BY ts DESC LIMIT 1", (shot["system"],)).fetchone()
@@ -15589,6 +15624,11 @@ class State:
                 self._geo_codex = []
         return self._geo_codex
 
+    def codex_list(self, which):
+        """The Geology ("geo": the surface) or Phenomena ("phen": in space, at notable stellar phenomena) checklist's
+        entries: geo_codex.json's `list`, else (a file from before it) by kind: Geology on the surface, the rest in space."""
+        return [e for e in self.geo_codex() if (e.get("list") or ("geo" if e.get("kind") == "Geology" else "phen")) == which]
+
     def codex_images(self):
         """{entry's English name lower-cased: [image url, commander]}: the list fetched today (data/codex_images.json)
         when it is sound, else the shipped one (outrider.codex_images.load). Read once, and again after a refresh."""
@@ -15631,8 +15671,8 @@ class State:
         R = outrider.bio.load_rules() if outrider.bio else None
         if not R or not R.get("region_names"):
             return {"error": "the exobiology rules are not loaded"}, 503
-        if kind not in ("bio", "geo"):
-            return {"error": "kind is bio or geo"}, 400
+        if kind not in ("bio", "geo", "phen"):
+            return {"error": "kind is bio, geo or phen"}, 400
         names = R["region_names"]
         count = len(names) - 1
         pos = self.journals.pos or {}
@@ -15656,19 +15696,19 @@ class State:
                 loc = self.locate(system)
                 placed[system] = outrider.bio.region_number(loc[1], loc[2], loc[3]) if loc and loc[1] is not None else None
             return placed[system]
-        if kind == "geo":
-            entries = self.geo_codex()
+        if kind in ("geo", "phen"):
+            entries = self.codex_list(kind)
             if not entries:
-                return {"error": "the geology list is missing (resources/geo_codex.json)"}, 503
+                return {"error": f"the {'geology' if kind == 'geo' else 'phenomena'} list is missing (resources/geo_codex.json)"}, 503
             ids = {e["id"] for e in entries}
             # placed by the system's place, the localised region name only as a fallback, as the bio list (review
             # round 9: a non-English game's Geology list never showed any progress)
             codex = [{"entry_id": c["entry_id"],
                       "region": (region_of(c["system"]) if c["system"] is not None else None) or number.get((c["region"] or "").lower())}
                      for c in self.db.execute("SELECT entry_id, region, system FROM codex") if c["entry_id"] in ids]
-            out = self.codex_marks(outrider.checklist.geo_table(entries, region, codex, count), "geo")
+            out = self.codex_marks(outrider.checklist.geo_table(entries, region, codex, count), kind)
             done = outrider.checklist.geo_completion(entries, codex, count)
-            return dict(out, kind="geo", regions=[{"id": i, "name": n, "completion": done.get(i)} for i, n in enumerate(names) if n],
+            return dict(out, kind=kind, regions=[{"id": i, "name": n, "completion": done.get(i)} for i, n in enumerate(names) if n],
                         completion_all=done["all"], here=here, region=region, region_name=names[region] if region else None), 200
         fates = organic_fates(self.db)
         runs = []
@@ -15688,10 +15728,11 @@ class State:
         return dict(out, kind="bio", regions=[{"id": i, "name": n, "completion": done.get(i)} for i, n in enumerate(names) if n],
                     completion_all=done["all"], here=here, region=region, region_name=names[region] if region else None), 200
 
-    def checklist_geo(self, entry_id):
-        """GET /api/checklist?kind=geo&species=<entry id>: one geology entry for the panel: the regions it has been
-        reported in ("yes"), the sites per region, and where you logged it ({x, z, state, system})."""
-        e = next((x for x in self.geo_codex() if str(x["id"]) == str(entry_id)), None)
+    def checklist_geo(self, entry_id, which="geo"):
+        """GET /api/checklist?kind=geo|phen&species=<entry id>: one Geology or Phenomena entry for the panel: the regions
+        it has been reported in ("yes"), the sites per region, where you logged it ({x, z, state, system}) and the codex
+        section the game files it in."""
+        e = next((x for x in self.codex_list(which) if str(x["id"]) == str(entry_id)), None)
         if e is None:
             return {"error": "no such entry"}, 404
         runs = []
@@ -15701,8 +15742,8 @@ class State:
                 runs.append({"x": loc[1], "z": loc[3], "state": "logged", "system": loc[0]})
         regions = e.get("regions") or {}
         img = self.codex_images().get(e["name"].lower())
-        return {"id": str(e["id"]), "name": e["name"], "kind": e.get("kind"), "group": e.get("group"),
-                "image": self.codex_own("geo", e.get("group"), e["name"]) or ({"url": img[0], "cmdr": img[1]} if img else None),
+        return {"id": str(e["id"]), "name": e["name"], "kind": e.get("kind"), "group": e.get("group"), "section": e.get("section"),
+                "image": self.codex_own(which, e.get("group"), e["name"]) or ({"url": img[0], "cmdr": img[1]} if img else None),
                 "regions": {r: "yes" for r, n in regions.items() if n}, "sites": regions, "sites_total": sum(regions.values()),
                 "runs": runs}, 200
 
@@ -15749,8 +15790,10 @@ class State:
         subtype filter (Spansh's geology landmarks are named as the codex names them: checked 2026-10-23), no colour.
         The same question from the same place is answered from memory for CHECKLIST_FIND_KEEP_S.
         Not an AI tool (it asks Spansh). (answer, HTTP status)."""
+        if kind == "phen":
+            return await self.phenomena_find(species_id, colour, now)
         if kind == "geo":
-            e = next((e for e in self.geo_codex() if str(e.get("id")) == str(species_id)), None)
+            e = next((e for e in self.codex_list("geo") if str(e.get("id")) == str(species_id)), None)
             if e is None:
                 return {"error": "no such geology entry"}, 404
             if colour:
@@ -15787,15 +15830,52 @@ class State:
             rows = species_find_rows(results, sp["name"], colour)
             self.checklist_finds = {k: v for k, v in self.checklist_finds.items() if now - v[0] < CHECKLIST_FIND_KEEP_S}
             self.checklist_finds[key] = (now, (rows, count))
+        return self.find_answer(sp["name"], colour, pos, rows, count, "Spansh"), 200
+
+    def find_answer(self, name, colour, pos, rows, count, source):
+        """A 🔍 nearby list as the page draws it: the rows (nearest first) with whether you visited each system and
+        bookmarked it; `source`: who reported them (Spansh's landmarks, Canonn's sites)."""
         for r in rows:   # bookmarking a row (☆) locates its system by id64
             self.checklist_found[int(r["id"])] = (r["system"], r["x"], r["y"], r["z"])
         marks = [int(r["id"]) for r in rows]
         bookmarked = {b[0] for b in self.db.execute(
             f"SELECT id64 FROM bookmarks WHERE id64 IN ({','.join('?' * len(marks))})", marks)} if marks else set()
         visited = self.visited or {v[0] for v in self.db.execute("SELECT id64 FROM visits")} | outrider.edsmlog.ids(self.db)
-        return {"species": sp["name"], "colour": colour, "where": pos.get("name"), "count": count,
+        return {"species": name, "colour": colour, "where": pos.get("name"), "count": count, "source": source,
                 "radius": CHECKLIST_FIND_LY,
-                "rows": [dict(r, visited=int(r["id"]) in visited, bookmarked=int(r["id"]) in bookmarked) for r in rows]}, 200
+                "rows": [dict(r, visited=int(r["id"]) in visited, bookmarked=int(r["id"]) in bookmarked) for r in rows]}
+
+    async def phenomena_find(self, entry_id, colour=None, now=None):
+        """🔍 nearby for a Phenomena entry: Spansh's landmarks are bodies, these are in space, so the entry's own list of
+        reported sites is fetched from Canonn (its public dump: only that request is sent, nothing about you), kept for
+        the session (PHEN_SITES_KEEP lists at most), and its CHECKLIST_FIND_ROWS nearest systems are answered."""
+        e = next((x for x in self.codex_list("phen") if str(x["id"]) == str(entry_id)), None)
+        if e is None:
+            return {"error": "no such phenomena entry"}, 404
+        if colour:
+            return {"error": "a phenomena entry has no colours"}, 400
+        if not e.get("dump"):
+            return {"error": f"Canonn has no list of reported sites for {e['name']}"}, 503
+        pos = self.journals.pos
+        if not pos or pos.get("x") is None:
+            return {"error": "your position is not known yet"}, 409
+        sites = self.phen_sites.get(e["id"])
+        if sites is None:
+            try:
+                async with self.spansh.session.get(e["dump"], timeout=ClientTimeout(total=60)) as r:
+                    r.raise_for_status()
+                    sites = phenomena_sites(await r.text(errors="replace"))
+            except Exception as err:  # noqa: BLE001 -- Canonn down, slow or answering something else: said, nothing kept
+                print(f"phenomena find: {type(err).__name__}: {err}", file=sys.stderr)
+                return {"error": f"Canonn could not be asked ({type(err).__name__}); try again later"}, 502
+            if len(self.phen_sites) >= PHEN_SITES_KEEP:
+                self.phen_sites.pop(next(iter(self.phen_sites)))
+            self.phen_sites[e["id"]] = sites
+        x0, y0, z0 = pos["x"], pos.get("y") or 0, pos["z"]
+        near = sorted(((math.dist((x0, y0, z0), (s[2], s[3], s[4])), s) for s in sites), key=lambda t: t[0])
+        rows = [{"id": str(s[0]), "system": s[1], "x": s[2], "y": s[3], "z": s[4], "body": None, "body_id": None,
+                 "ly": round(d, 1), "gravity": None, "dist_ls": None, "colours": []} for d, s in near[:CHECKLIST_FIND_ROWS]]
+        return self.find_answer(e["name"], None, pos, rows, len(sites), "Canonn"), 200
 
     def organics(self, days):
         """Every exobiology sample run (newest first) with what it is worth and whether it was banked,
@@ -23348,6 +23428,21 @@ def reported_life(results, id64):
     return out
 
 
+def phenomena_sites(text):
+    """Canonn's dump of an entry's reported sites (CSV: system, x, y, z, entry id, id64, region, region) ->
+    [(id64, system, x, y, z)], one per system; malformed lines are skipped."""
+    out, seen = [], set()
+    for row in csv.reader(io.StringIO(text)):
+        try:
+            sid, name, x, y, z = int(row[5]), row[0].strip(), float(row[1]), float(row[2]), float(row[3])
+        except (IndexError, ValueError):
+            continue
+        if name and sid not in seen:
+            seen.add(sid)
+            out.append((sid, name, x, y, z))
+    return out
+
+
 def species_find_rows(results, species, colour=None):
     """Spansh's answer to S29's species search -> [{id, system, x, y, z, body, body_id, ly, gravity, dist_ls,
     colours}], nearest first: only the bodies whose `landmarks` really name the species (and the colour, when one was
@@ -24648,7 +24743,10 @@ def make_app(state, hosts=None):
     async def checklist_view(request):
         kind = request.query.get("kind", "bio")
         if "species" in request.query:
-            out, status = (state.checklist_geo if kind == "geo" else state.checklist_species)(request.query["species"])
+            if kind in ("geo", "phen"):
+                out, status = state.checklist_geo(request.query["species"], kind)
+            else:
+                out, status = state.checklist_species(request.query["species"])
             return web.json_response(out, status=status)
         out, status = state.checklist(request.query.get("region", "here"), kind)
         return web.json_response(out, status=status)
@@ -24664,7 +24762,7 @@ def make_app(state, hosts=None):
         species = request.query.get("species", "")[:200]
         if not species:
             return web.json_response({"error": "species is required"}, status=400)
-        kind = "geo" if request.query.get("kind") == "geo" else "bio"   # S9-S6: a Geology entry
+        kind = request.query.get("kind") if request.query.get("kind") in ("geo", "phen") else "bio"   # S9-S6: Geology; Phenomena
         out, status = await state.checklist_find(species, request.query.get("colour", "")[:60] or None, kind=kind)
         return web.json_response(out, status=status)
 

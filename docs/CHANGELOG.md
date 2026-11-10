@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · Bio/Geo → Phenomena: what is found in space
+- **New:** a fourth Bio/Geo checklist, **Phenomena**: the 186 codex entries found at notable stellar phenomena (Lagrange
+  and storm clouds, ice, silicate and metallic crystals, mineral spheres, calcite plates, the space organisms, the lettered
+  anomalies), by galactic region as Geology, the panel naming the codex section each is in. **Geology is now the surface
+  only** (23: fumaroles, geysers, gas vents, lava spouts); its anomalies and clouds moved to Phenomena.
+- **🔍 nearby** on a Phenomena entry: the nearest systems where it has been reported, from Canonn's list for that entry,
+  fetched when asked (only that request; kept for the session).
+- **Screenshots:** a shot taken at a phenomenon (a destination drop there, until back to supercruise) is filed under the
+  codex entry logged there (`[screenshots] codex`: `Phenomena/<group>/<entry>/`), the latest before the shot, or the first
+  of the visit for a shot taken before any scan; the checklist shows it with its 📷.
+- **Data:** `resources/geo_codex.json` rebuilt from Canonn (209 entries, each with its `list`: geo or phen); the build
+  script takes the Organic Structures found in space too.
+
 ## 2026-11-09 · The crew's revert asks first
 - **Settings → Alerts, Crew column:** the heading's link is **(Revert to Crew Defaults)** and asks "Revert every alert to
   its default crew member?" before it changes anything.

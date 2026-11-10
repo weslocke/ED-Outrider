@@ -1992,6 +1992,12 @@ upstream project's choices, not rules of the game.
 
 ## Known limits
 
+- **Phenomena: grouped by where you find it, not by the codex's sections** (the author, 2026-11-09). The game files the
+  lettered anomalies and Lagrange clouds under Geology and Anomalies, beside the surface's fumaroles; Bio/Geo puts them
+  on Phenomena with the space organisms and crystals (Organic Structures), and Geology keeps the surface. The panel
+  names each entry's codex section, so the two can be matched. Its 🔍 nearby asks Canonn (Spansh's landmarks are on
+  bodies), one entry's public site list at a time, never shipped (all of them: about 2.9 MB). A shot is filed by the
+  visit's codex entries, never by a guess: a visit that logged nothing files nothing.
 - **The warning levels are the one shared exception to per-device settings** (2026-11-09): a desktop page sends
   `unsoldCfg` and `fuelJumps` as it saves them (POST `/api/levels`, meta `shared_levels`) and a tablet follows the
   server's copy over its own, since a tablet has no control for them. The last desktop to save (or load with its own

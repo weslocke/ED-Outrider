@@ -236,7 +236,23 @@ const releasePayloads = async () => {
     const geoFirst = (d.querySelector("#clGrid .clbox h4 span") || {}).textContent;
     const geoHint = dom.window.getComputedStyle(d.querySelector("#clPane .geohint")).display !== "none" &&
                     dom.window.getComputedStyle(d.querySelector("#clPane .biohint")).display === "none";
-    const geo = geoFirst === "Fumarole" && geoHint && /complete/.test(d.getElementById("clStatus").textContent);
+    const geo = geoFirst === "Fumarole" && geoHint && /complete/.test(d.getElementById("clStatus").textContent) &&
+      ![...d.querySelectorAll("#clGrid .clbox h4 span")].some(e => /Anomaly|Lagrange/.test(e.textContent));   // the surface only now
+    // Phenomena (2026-11-09): what is found in space, clouds first, anomalies last, its own hint; the panel names the
+    // codex section the game files it in, and its 🔍 says Canonn
+    radio("phen").checked = true; radio("phen").dispatchEvent(new dom.window.Event("change", {bubbles: true}));
+    const boxNames = () => [...d.querySelectorAll("#clGrid .clbox h4 > span:first-child")].map(e => e.textContent.trim());
+    for (let waited = 0; boxNames()[0] !== "Lagrange Cloud" && waited < 10000; waited += 100) await sleep(100);
+    const phenBoxes = boxNames(), phenHint = dom.window.getComputedStyle(d.querySelector("#clPane .phenhint")).display !== "none" &&
+      dom.window.getComputedStyle(d.querySelector("#clPane .geohint")).display === "none";
+    const crystal = [...d.querySelectorAll("#clGrid tr[data-cl]")].find(r => /^Prasinum Metallic Crystals/.test(r.getAttribute("title") || ""));
+    if (crystal) crystal.click();
+    for (let waited = 0; !/Codex: Biological and Geological/.test(d.getElementById("clSide").textContent) && waited < 5000; waited += 100) await sleep(100);
+    const phenSide = d.getElementById("clSide").textContent, phenFind = (d.querySelector("#clSide [data-clfind]") || {}).title || "";
+    const phen = phenBoxes[0] === "Lagrange Cloud" && /-Type Anomaly/.test(phenBoxes[phenBoxes.length - 1]) && phenBoxes.includes("Mollusc") && phenHint &&
+      /Codex: Biological and Geological → Organic Structures/.test(phenSide) && /Canonn/.test(phenFind);
+    radio("geo").checked = true; radio("geo").dispatchEvent(new dom.window.Event("change", {bubbles: true}));
+    for (let waited = 0; boxNames()[0] !== "Fumarole" && waited < 10000; waited += 100) await sleep(100);
     // "N of M" counts only what M counts: an entry logged where nobody has reported one is said apart, not "3 of 2"
     // (the Fable review of 2026-10-10, #3)
     const counts = JSON.parse(dom.window.eval(`(() => { const saved = CL.data;
@@ -295,9 +311,9 @@ const releasePayloads = async () => {
     await sleep(300);
     const back = !d.getElementById("bioView").classList.contains("check") && dom.window.getComputedStyle(d.getElementById("bioPane")).display !== "none";
     const good = boxes >= 20 && /possible species found/.test(status) && options === 44 && side && side.textContent === name &&
-                 shown === "check" && geo && countsOk && ticksOk && keyOk && raceOk && back && errors.length === before;
+                 shown === "check" && geo && phen && countsOk && ticksOk && keyOk && raceOk && back && errors.length === before;
     allOk = allOk && good;
-    console.log(good ? "OK" : "FAIL", "| exobiology checklist |", `${boxes} genus boxes, ${options} region choices, panel ${side && side.textContent}, geology ${geo} (${geoFirst}), counts ${countsOk || JSON.stringify(counts)}, genus ticks ${ticksOk || JSON.stringify(ticks)}, keyboard ${keyOk}, region race ${raceOk || JSON.stringify(race)}, back to runs ${back}`,
+    console.log(good ? "OK" : "FAIL", "| exobiology checklist |", `${boxes} genus boxes, ${options} region choices, panel ${side && side.textContent}, geology ${geo} (${geoFirst}), phenomena ${phen} (${phenBoxes[0]}…${phenBoxes[phenBoxes.length - 1]}, ${!!crystal}, ${/Codex:/.test(phenSide)}, ${phenFind.slice(0, 40)}), counts ${countsOk || JSON.stringify(counts)}, genus ticks ${ticksOk || JSON.stringify(ticks)}, keyboard ${keyOk}, region race ${raceOk || JSON.stringify(race)}, back to runs ${back}`,
                 status.slice(0, 80), errors.slice(before));
     await releasePayloads();
   }
@@ -4365,7 +4381,8 @@ const releasePayloads = async () => {
       speechLog.length = 0; alertCfg.enabled = true;
       const titles = [];
       for (const m of [{kind: "codex_picture", what: "bio", entry: "Bacterium Volu", colour: "Teal", file: "a.png"},
-                       {kind: "codex_picture", what: "geo", entry: "Water Ice Geyser", colour: null, file: "b.png"}]) {
+                       {kind: "codex_picture", what: "geo", entry: "Water Ice Geyser", colour: null, file: "b.png"},
+                       {kind: "codex_picture", what: "phen", entry: "Prasinum Metallic Crystals", colour: null, file: "c.png"}]) {
         data = Object.assign({}, data, {moments: [Object.assign({seq: lastMomentSeq + 1, ts: new Date().toISOString()}, m)]}); onData();
         titles.push(lastAlert && lastAlert.kind + " " + lastAlert.title + " | " + lastAlert.body);
       }
@@ -4402,7 +4419,8 @@ const releasePayloads = async () => {
                "A 2 mapped, 2 probes over target, no efficiency bonus, 3.4M. Nothing else here over your levels.",
                "A 2 mapped, 1 probe over target, no efficiency bonus. 2 bodies still to find in the FSS."],
       mappedRow: [true, false, true, false], mappedOff: false, mappedOn: "mapped",
-      codexPic: {titles: ["biopic 📷 Codex picture: Bacterium Volu | Teal · a.png", "geopic 📷 Codex picture: Water Ice Geyser | b.png"],
+      codexPic: {titles: ["biopic 📷 Codex picture: Bacterium Volu | Teal · a.png", "geopic 📷 Codex picture: Water Ice Geyser | b.png",
+                          "geopic 📷 Codex picture: Prasinum Metallic Crystals | c.png"],
                  said: ["biopic", "geopic"],
                  named: ["Codex picture: plant", "Codex picture: geology"], keys: [["codex_picture"], ["codex_picture"]]},
       q5: ["Next: map A 5 (771k/2.2M)", "A 2 mapped efficiently, 3.4 million. Next: map A 5, 771 thousand, 2.2 million with bonuses.",
