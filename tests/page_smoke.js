@@ -7139,6 +7139,27 @@ const releasePayloads = async () => {
     allOk = allOk && goodTh;
     console.log(goodTh ? "OK" : "FAIL", "| desktop theme |", goodTh ? "Default - Outrider and eleven themes; set, remembered, back to the Default" : JSON.stringify(got), errors.slice(before));
   }
+  // #26 (Psilovybin): a clock beside the title, UTC by default, or local time, or none; per device, the other in its hover
+  header_clock: { if (skip("header_clock")) break header_clock;
+    const w = dom.window, d = w.document, before = errors.length;
+    const got = JSON.parse(w.eval(`(() => { const was = localStorage.getItem("clock"), el = document.getElementById("hdrClock"), sel = document.getElementById("clockMode");
+      const o = {}; localStorage.removeItem("clock"); drawClock();
+      o.def = [sel.options.length, clockMode(), !el.hidden, /^\\d\\d:\\d\\d UTC$/.test(el.textContent), /where you are$/.test(el.title)];
+      sel.value = "local"; sel.dispatchEvent(new Event("change"));
+      o.local = [!el.hidden, !/UTC/.test(el.textContent) && /\\d:\\d\\d/.test(el.textContent), /UTC: the game's time$/.test(el.title), JSON.parse(localStorage.getItem("clock"))];
+      sel.value = "off"; sel.dispatchEvent(new Event("change"));
+      o.off = el.hidden;
+      const t = new Date(Date.UTC(2026, 10, 10, 3, 5));
+      o.fmt = [clockText("utc", t), clockText("off", t), clockText("local", t) === t.toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})];
+      localStorage.setItem("clock", "nonsense"); o.bad = clockMode();
+      if (was === null) localStorage.removeItem("clock"); else localStorage.setItem("clock", was);
+      drawClock(); sel.value = clockMode();
+      return JSON.stringify(o); })()`));
+    const want = {def: [3, "utc", true, true, true], local: [true, true, true, "local"], off: true, fmt: ["03:05 UTC", "", true], bad: "utc"};
+    const goodClock = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && goodClock;
+    console.log(goodClock ? "OK" : "FAIL", "| header clock |", goodClock ? "UTC by default, local, off; the other in its hover" : JSON.stringify(got), errors.slice(before));
+  }
   // a newer release (payload update, [server] update_check): the Update pill shows it, opens how to update for this
   // install (Docker here) with GitHub's link, "Skip this version" hides it for that version only; none: no pill
   update_pill: { if (skip("update_pill")) break update_pill;

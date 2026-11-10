@@ -15934,6 +15934,25 @@ alertDialog.addEventListener("close", () => { sfClear(); SF.srvLoaded = false; }
 // ---- the desktop theme (Settings > Display; the author, 2026-10-04): the tablet's themes for this page too, per browser
 // ("desktopTheme", not shared), set on <html data-theme> (page.html's head sets it before the first paint). "" is
 // Default - Outrider, which alone keeps the light mode. The tablet chooses its own (tabTheme).
+// The clock beside the title (#26, Psilovybin): UTC, the game's own time (the default, the author 2026-11-09), or local
+// time, or none; per device, as the theme. Its hover gives the other one. Minutes only: a ticking second distracts.
+const CLOCK_MODES = ["utc", "local", "off"];
+const clockMode = () => { const v = store.get("clock", "utc"); return CLOCK_MODES.includes(v) ? v : "utc"; };
+const clockUtc = d => `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
+const clockLocal = d => d.toLocaleTimeString([], {hour: "numeric", minute: "2-digit"});
+const clockText = (mode, d) => mode === "utc" ? clockUtc(d) : mode === "local" ? clockLocal(d) : "";
+function drawClock() {
+  const el = document.getElementById("hdrClock");
+  if (!el) return;
+  const mode = TABLET ? "off" : clockMode(), d = new Date(), t = clockText(mode, d);
+  el.hidden = !t;
+  if (el.textContent !== t) el.textContent = t;
+  el.title = mode === "utc" ? `${clockLocal(d)} where you are` : mode === "local" ? `${clockUtc(d)}: the game's time` : "";
+}
+drawClock();
+setInterval(drawClock, 5000);
+document.getElementById("clockMode").value = clockMode();
+document.getElementById("clockMode").onchange = e => { store.set("clock", e.target.value); drawClock(); };
 function deskTheme(t, save = true) {
   t = TB.themes.includes(t) ? t : "";
   if (save) store.set("desktopTheme", t);

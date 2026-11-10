@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · A clock beside the title (#26, Psilovybin)
+- **New (desktop page):** the time beside "ED Outrider", in UTC (the game's time) by default; Settings → Display →
+  **Clock beside the title**: UTC, local time or off, per device; its hover gives the other. Not on the tablet.
+
 ## 2026-11-09 · Bio/Geo → Phenomena: what is found in space
 - **New:** a fourth Bio/Geo checklist, **Phenomena**: the 186 codex entries found at notable stellar phenomena (Lagrange
   and storm clouds, ice, silicate and metallic crystals, mineral spheres, calcite plates, the space organisms, the lettered

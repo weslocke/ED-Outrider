@@ -422,6 +422,7 @@ dialog input[type=number] { background: var(--bg); color: var(--text); border: 1
 /* ---- header: title + tabs, then tiles ---- */
 .topbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .topbar h1 { margin-right: 4px; }
+.hdrclock { margin-left: -6px; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }   /* #26 */
 .topbar .views { margin-left: auto; }
 .topbar .icons { display: inline-flex; gap: 6px; }
 button.icon { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px;

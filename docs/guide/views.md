@@ -255,6 +255,9 @@ switches to short forms ("HMC", "G star"; hover for the full text) rather than s
 useful columns; Nearby's status and notable tags go under the system's name and its bodies only when that is still
 not enough, and then on every row.
 
+**The clock.** Beside the title, the time in UTC: the game's own clock, the one every journal time is in. ⚙ Settings →
+Display → **Clock beside the title** switches it to your local time or off, on this device; its hover gives the other.
+
 **Themes.** ⚙ Settings → Display → **Theme on this browser** dresses the page in one of the tablet's themes: LCARS,
 Elite, Babylon 5 (Earthforce, Narn, Minbari, Centauri, Vorlon, Shadows), Sith, Rebel Alliance or Dark, each with its colours, its
 lettering on the title, tabs and labels, and its shapes. **Default - Outrider** is the look above, and the only one that
