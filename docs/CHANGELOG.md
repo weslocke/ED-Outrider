@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · The heat alert hears the game's HeatWarning
+- **Fix:** the heat alert only listened for `HeatDamage`, which the game did not write even at 127% heat (in game,
+  2026-11-09; none in 100 journals), so it never fired. It now fires on `HeatWarning` too, titled "Overheating", at most
+  once in 30 seconds as before.
+
 ## 2026-11-09 · Modules left off after a repair: said out loud
 - **New alert (Settings → Alerts, "Module left off", the Chief Engineer):** the AFMU switches a module off to repair it and
   leaves it off. Life support is said 20 seconds after its repair and every 45 seconds until the game's danger warning

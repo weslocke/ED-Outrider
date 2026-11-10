@@ -11937,7 +11937,7 @@ function onData() {
         alertOut("find", `Bio on ${m.body}: up to ${credits(m.bio_value)} cr`, `${m.signals} signal${m.signals === 1 ? "" : "s"}`,
                  {say: () => line("find_bio", {body: m.body, value: credits(m.bio_value)}, `Biology on ${m.body}, worth up to ${credits(m.bio_value)} credits.`)});
         toast(`🧬 ${m.body}: up to ${credits(m.bio_value)} cr`);
-      } else if (m.kind === "heat") alertOut("hull", "Heat damage", "", {tag: "heat", say: () => line("heat", {}, "Heat damage.")});
+      } else if (m.kind === "heat") alertOut("hull", m.warning ? "Overheating" : "Heat damage", "", {tag: "heat", say: () => line("heat", {}, m.warning ? "Overheating." : "Heat damage.")});
       else if (m.kind === "life_support") alertOut("modules", "Life support is off", "Switch it back on", {tag: "life_support_off", say: () => line("life_support_off", {}, "Life support is off. Switch it back on.")});
       else if (m.kind === "modules_off" && (m.modules || []).length) {
         const modules = andList(m.modules);

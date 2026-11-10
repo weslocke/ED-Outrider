@@ -7823,7 +7823,7 @@
       ]
     },
     "heat": {
-      "when": "heat damage",
+      "when": "overheating (the game's heat warning, or heat damage)",
       "business": [
         "Heat damage. Reduce temperature.",
         "Warning. Ship overheating.",

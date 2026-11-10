@@ -111,7 +111,7 @@ KEYS = {
                        "cover (any route Outrider follows; said once per stretch, with two or more such stars): {count} (how "
                        "many, a number, e.g. 3)",
     "hull": "hull fell below half or a quarter: {pct}",
-    "heat": "heat damage",
+    "heat": "overheating (the game's heat warning, or heat damage)",
     "interdicted": "interdicted: {by}",
     "docked_sell": "docked where you can sell a worthwhile haul: {value}, {station}",
     "undocked_unsold": "undocked with a red-level haul unsold: {value}",

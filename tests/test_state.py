@@ -788,6 +788,14 @@ class Batch1Alerts(unittest.TestCase):
             self.j.handle({"event": "HeatDamage", "timestamp": f"2026-01-01T{t}Z"})
         self.assertEqual([m["ts"] for m in self.kinds("heat")], ["2026-01-01T00:10:00Z", "2026-01-01T00:10:31Z"])
 
+    def test_heat_warning_alerts_though_the_game_writes_no_heat_damage(self):
+        """In game, 2026-11-09: 127% heat wrote one HeatWarning and no HeatDamage, so the alert never fired."""
+        self.j.handle({"event": "HeatWarning", "timestamp": "2026-01-01T00:10:00Z"})
+        self.j.handle({"event": "HeatDamage", "timestamp": "2026-01-01T00:10:05Z"})   # the same overheat: one alert
+        self.j.handle({"event": "HeatDamage", "timestamp": "2026-01-01T00:10:31Z"})
+        self.assertEqual([(m["ts"], m["warning"]) for m in self.kinds("heat")],
+                         [("2026-01-01T00:10:00Z", True), ("2026-01-01T00:10:31Z", False)])
+
     def test_failed_tick_does_not_repeat_moments_or_codex(self):   # F12
         import contextlib, io, tempfile
         d = tempfile.mkdtemp()

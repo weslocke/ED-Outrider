@@ -53,7 +53,7 @@ the game too, for a few seconds each:
 - docking where the station buys your data, and what you banked when you sold
 - a sale that left data aboard (Universal Cartographics sells 50 systems a page; at Vista Genomics, the species
   you kept back), said 90 seconds after the last page
-- hull damage, heat damage, interdiction, and unsold data past a threshold
+- hull damage, overheating, interdiction, and unsold data past a threshold
 - **wanted** (its own row, **Wanted**, under Danger and risk): a bounty put on you in this system, said as a danger line
   (with the crew on, by Tactical while **Danger lines always in Tactical's voice** is on, else by Comms) with where to pay it off: "Brewer Corporation has put a 500 credit bounty
   on you. Nearest Interstellar Factors: Hamilton Port in Wolf 359, 12 light-years." The nearest in another system when

@@ -1690,7 +1690,7 @@ SHIP_EVENTS = ("FuelScoop", "RefuelAll", "RefuelPartial", "CarrierStats", "Carri
                "CarrierBuy", "CarrierDecommission", "CarrierCancelDecommission",   # a new carrier; giving one up
                "Cargo",   # the hold's tonnage: the ship's mass, for the fuel model
                # hull and danger: live alerts only (hull % is kept; the rest are moments, not state)
-               "HullDamage", "RepairAll", "Repair", "RepairDrone", "HeatDamage", "Interdicted",
+               "HullDamage", "RepairAll", "Repair", "RepairDrone", "HeatDamage", "HeatWarning", "Interdicted",
                "JetConeBoost",   # a neutron / white dwarf charge: the next jump's range is multiplied
                "AfmuRepairs",    # a module repaired in flight: its new health (core module health, S5)
                "NavRouteClear",  # the plotted route was cleared
@@ -6244,12 +6244,13 @@ class Journals:
             if ev.get("HullRepaired"):
                 self.hull_repaired(ts)
             return
-        if name == "HeatDamage":
-            # the game can log it every few seconds while overheating: at most one alert per HEAT_QUIET, not a
-            # queue of danger sounds and speeches
+        if name in ("HeatDamage", "HeatWarning"):
+            # HeatWarning is the one the game really writes: 127% for 38 s damaged a dozen modules with one HeatWarning and
+            # no HeatDamage (in game, 2026-11-09; none in 100 journals). HeatDamage can log every few seconds while
+            # overheating: at most one alert per HEAT_QUIET, not a queue of danger sounds and speeches
             t = ts_seconds(ts)
             if self.last_heat is None or not 0 <= t - self.last_heat < HEAT_QUIET:
-                self.moment("heat", ts)
+                self.moment("heat", ts, warning=name == "HeatWarning")
                 self.last_heat = t
             return
         if name == "NavRouteClear":
