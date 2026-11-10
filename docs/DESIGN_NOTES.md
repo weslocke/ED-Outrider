@@ -1992,6 +1992,12 @@ upstream project's choices, not rules of the game.
 
 ## Known limits
 
+- **Modules left off: the game reports only half of it** (`State.module_watch`, 2026-11-09). Nothing says a module was
+  switched back on. Life support can be followed by the in-danger flag (an alarm that stops by itself), so it repeats;
+  every other module gets one reminder, worded as a nudge because it may already be back on. The flag has other causes
+  (heat, any FSD use), so only an `AfmuRepairs` or a `Loadout` starts the alarm, never the flag: switching life support
+  off by hand, with no repair, says nothing. An AFMU repair of life support with the flag off (docked) says nothing either.
+  The tap that clears a reminder belongs to the Ship page (`project/PLAN-ship-panel-2026-11-08.md` section 3a), not this.
 - **New versions: a notice, never an update** (`[server] update_check`, on by default). GitHub's latest release at
   start (after a minute) and daily; a newer one is a quiet pill in the theme's accent, not an alert or a spoken
   line, with the steps for this install (Docker, a git clone, a download). No self-update: a container cannot
@@ -2072,6 +2078,8 @@ upstream project's choices, not rules of the game.
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
 confirmed while playing. Treat reports about them as likely real.
 
+- Modules left off, said out loud (2026-11-09): the flags and events were read in a live game, the alert itself is tested
+  with fakes only; life support off at a login (does the flag come on, when?) has not been seen.
 - A codex picture said (2026-11-08): a plant's (the Exobiologist's, row biopic) works in game (the author, 2026-11-08); a
   geology formation's (the Science Officer's, geopic) is tested on the fixture's Water Ice Geyser only.
 - Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the

@@ -3413,6 +3413,82 @@
     "Suit {what} is low. {value} credits at stake. Bugger off back to the ship."
    ]
   },
+  "life_support_off": {
+   "naval_rn": [
+    "Life support is off, {name}. Recommend you switch it on at once.",
+    "Warning, life support is off. Recommend it be switched on immediately.",
+    "{name}, life support is off. Request you put it back on.",
+    "Be advised, life support is off. Switch on without delay.",
+    "Emergency stations. Life support is off, recommend switching it on.",
+    "Life support state: off. Recommend you bring it on at once, {name}.",
+    "Damage control reports life support off. Recommend you switch it on.",
+    "Life support off, {name}. Modules panel, switch it on.",
+    "Caution, life support in the {ship} is off. Switch it on immediately.",
+    "Life support is off. First priority is getting it back on.",
+    "{name}, I must report life support off. Recommend it goes on at once.",
+    "First Lieutenant's compliments, life support is off. Recommend it goes back on directly.",
+    "Urgent, {name}. Life support is off, and must be put back on.",
+    "Life support is off. Recommend the right panel, modules, and switch it on.",
+    "All hands, life support is off. Recommend it be switched back on forthwith.",
+    "Be advised, {name}. Life support is switched off, recommend you turn it on."
+   ],
+   "naval_rn_profane": [
+    "Life support is off, {name}. Switch the bloody thing on.",
+    "Warning, life support is off. Put it back on, damn it.",
+    "Bloody hell, life support is off. Back on at once.",
+    "{name}, life support is off. Get it on, and bloody quick.",
+    "Be advised, life support is off. Don't dawdle, damn it, switch it on.",
+    "Life support is off. A damn costly thing to forget, {name}, so put it on.",
+    "Modules panel, bloody quick. Life support is off, and it wants switching on.",
+    "Damn and blast, life support is off. Recommend you switch it on, sharpish.",
+    "Life support is bloody off, {name}. Get a move on and switch it on.",
+    "The {ship} has life support off. Damn poor show, switch it on.",
+    "Bloody hell, {name}. Life support is off, and I'll thank you to turn it on.",
+    "Life support is off, and the Admiralty won't pay for a corpse. Switch it on, damn it.",
+    "Recommend you stop admiring the view, damn it. Life support is off, put it on.",
+    "Damn well switch it on, {name}. Life support is off.",
+    "Life support off. Bloody well turn it back on, if you please.",
+    "Caution, bloody urgent. Life support is off, so switch it on."
+   ]
+  },
+  "modules_off": {
+   "naval_rn": [
+    "{name}, recommend checking {modules} before proceeding.",
+    "Be advised: {modules} may still be off.",
+    "Advisory: confirm {modules} back on.",
+    "Report: state of {modules} unconfirmed. Recommend you check.",
+    "Recommend restoring {modules}, if not already done.",
+    "Rounds, {name}: a look at {modules}, if you please.",
+    "Before we proceed, kindly confirm {modules}.",
+    "Modules panel, if you please. {modules}.",
+    "Caution. {modules} might remain switched off.",
+    "One would be obliged if you'd check {modules}, {name}.",
+    "Request confirmation of {modules} before getting under way.",
+    "Standing reminder: switch {modules} back on, if not done.",
+    "Cannot confirm state of {modules} from here. Recommend an inspection.",
+    "Recommend you confirm {modules} before {ship} proceeds.",
+    "Worth a look at {modules}, I should think.",
+    "Respectfully, I suggest a check of {modules}."
+   ],
+   "naval_rn_profane": [
+    "{name}, bloody well check {modules}.",
+    "Be advised: {modules} may still be off. Damn poor show if so.",
+    "Recommend restoring {modules}, if not already done, damn it.",
+    "Report: state of {modules} bloody unknown. Go and look.",
+    "Damn the schedule. Inspect {modules} first.",
+    "Modules panel, damn it. {modules}.",
+    "Would you kindly check {modules}, you bloody menace.",
+    "Bloody careless to get under way without confirming {modules}.",
+    "Advisory: {modules} might be off. Bloody inconvenient.",
+    "Cannot see a damn thing from here. Confirm {modules}.",
+    "Damn it all, {name}, did anyone see to {modules}?",
+    "I'll not log a bloody stupid loss. Check {modules}.",
+    "Request confirmation of {modules}, and be damn quick about it.",
+    "Hell's teeth, {name}. A look at {modules}, if you please.",
+    "{ship} goes nowhere, damn it, until you've had a look at {modules}.",
+    "Sod it, I'll say it: switch {modules} back on."
+   ]
+  },
   "heat": {
    "naval_rn": [
     "Heat damage, {name}. Recommend reducing temperature.",

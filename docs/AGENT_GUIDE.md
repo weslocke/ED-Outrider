@@ -538,7 +538,7 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
   `bookmarked`; `tests/test_speech.py` counts both). The shipped lists hold 50 lines each for business, sarcastic, sweet and
   the two `_profane` lists for most keys (shorter ones: `mapped_before` 12, `bio_tag_near` 15, `autotarget_nothing` 15,
   12 in its `_profane` lists; `wrong_target` 15; the danger keys `fuel_short` and `fuel_last_scoop` 15 in all but
-  business; `docking_granted` / `docking_denied` 15; `old_data` 16; `upload_held` 15; `bookmarked`, `upkeep_low` and `suit_low` 16; the chatter's own: `chatter_space` 60,
+  business; `docking_granted` / `docking_denied` 15; `old_data` 16; `upload_held` 15; `bookmarked`, `upkeep_low`, `suit_low`, `life_support_off` and `modules_off` 16; the chatter's own: `chatter_space` 60,
   `chatter_planet_orbit` / `_landed` 30, `chatter_react` 20, each topic's `chat_*_ask` / `_answer` 12; ring mining's
 limpet, hold, `prospect_hit`, `prospect_best` and `motherlode` keys about 16, `ring_found_many` 32); unit tests check coverage, placeholders and at least 10 per list. Every shipped
   personality file (`resources/personalities/*.json`) needs at least 10 lines for each key too, in its `<id>` list and

@@ -83,7 +83,7 @@ class CrewTable(unittest.TestCase):
         want = {"jump": "navigator", "highway": "navigator", "riches": "navigator", "trade": "navigator",
                 "refuelshort": "navigator", "lastscoop": "navigator", "wrongtarget": "navigator",
                 "arrival": "science", "brief": "science", "codex": "science", "exo": "exobiologist", "sampling": "exobiologist",
-                "fuel": "engineer", "hull": "engineer", "scoop": "engineer", "sell": "quartermaster", "carrier": "quartermaster",
+                "fuel": "engineer", "hull": "engineer", "modules": "engineer", "scoop": "engineer", "sell": "quartermaster", "carrier": "quartermaster",
                 "loss": "quartermaster", "game": "comms", "firstsseen": "comms", "rigs": "mining", "rigleash": "mining",
                 "biopic": "exobiologist", "geopic": "science"}   # a codex picture (2026-11-08): a plant's, a formation's
         self.assertEqual({k: role[k] for k in want}, want)
@@ -583,7 +583,7 @@ class CrewLines(unittest.TestCase):
                  "limpets_none": 15, "prospect_hit": 15, "prospect_best": 15, "motherlode": 15, "limpets_low": 15, "hold_nearly_full": 15,
                  "hold_full": 15, "old_data": 15,   # old_data (#11): a clause after the briefing
                  # the review's suggestions (2026-10-24): rare lines, about 15 a list
-                 "upload_held": 12, "suit_low": 12, "upkeep_low": 12, "bookmarked": 12,
+                 "upload_held": 12, "suit_low": 12, "upkeep_low": 12, "bookmarked": 12, "life_support_off": 12, "modules_off": 12,
                  "codex_picture": 15}   # a shot filed in your codex folders (2026-11-08): only with that setting on
         crew_keys, said = {}, []
         for key, entry in doc["lines"].items():

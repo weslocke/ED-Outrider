@@ -3424,6 +3424,82 @@
     "Damn it, {name}. Suit {what} low. Back to the ship."
    ]
   },
+  "life_support_off": {
+   "good_ol_boy": [
+    "{name}, life support is off. Let's get her switched back on, and quick.",
+    "Well, shoot. Life support's off, buddy, so flip it on before we start gasping.",
+    "Dadgum, partner, life support is off. Get that thing turned back on.",
+    "Easy now, but don't dawdle. Life support is off, so let's switch her on.",
+    "{name}, I don't mean to fuss, but life support is off and I'd sure like it on.",
+    "Lord have mercy, life support is off. Turn her on, buddy, right now.",
+    "Now hold on a minute. Life support is off, and a feller needs that on.",
+    "Grandpa always said never shut the door on your own air. Life support is off, so turn it back on.",
+    "Life support is off, partner. Modules panel, flip that switch on, and we'll call it good.",
+    "Shoot, buddy, the {ship} has her life support off. Let's get it back on.",
+    "Life support's off, {name}. Breathing's one habit I'd sure hate to see you quit, so turn it on.",
+    "Well now, that life support won't turn itself back on. It's off, partner.",
+    "Mighty fine day to keep breathing, {name}. Life support is off, so let's switch her back on.",
+    "Life support is off. Get on over to the modules panel and flip her on, buddy.",
+    "Buddy, this here's serious. Life support is off, and it needs turning back on.",
+    "Now don't panic, partner. Life support is off, and all it wants is switching on."
+   ],
+   "good_ol_boy_profane": [
+    "Damn it, {name}, life support is off. Get that son of a bitch switched back on.",
+    "Holy hell, buddy, life support is off. Flip it on.",
+    "Shit, partner, life support is off. Turn her on before we choke to death.",
+    "Life support's off, buddy. Haul your butt to the modules panel and switch it on.",
+    "Well, hell. Life support is off, and I'd sure as shit like it on.",
+    "Son of a bitch, life support is off. Get it back on, {name}.",
+    "Life support is off, partner. Grandpa'd tan your hide, so turn the damn thing back on.",
+    "{name}, life support is off. Quit lollygagging and flip the damn switch on.",
+    "Hell's bells, life support is off. Get her on, buddy, and quick as hell.",
+    "Damn, the {ship} has her life support off. Turn that sucker back on.",
+    "Life support is off, buddy. A man can't cuss without air, so switch the damn thing on.",
+    "Holy shit, partner, life support is off. Turn it on right damn now.",
+    "Get your ass in gear, {name}. Life support is off, and it needs to be on.",
+    "Shoot, that's a hell of a thing to leave off. Life support, buddy, get it switched on.",
+    "Life support is off, and that's dumber than a sack of hammers. Flip it back on, partner.",
+    "Damn it all, buddy, life support is off. You turn that thing on before I get ornery."
+   ]
+  },
+  "modules_off": {
+   "good_ol_boy": [
+    "{name}, might wanna check {modules} before we head on.",
+    "Hey partner, don't forget {modules}. Back on when you're ready.",
+    "Now I can't see the switches from here, but {modules} might still be off.",
+    "Shoot, buddy, give {modules} a look-see, would ya?",
+    "Grandpa always said check the gate latch before you drive off. Same goes for {modules}.",
+    "Hold on a minute, pal. Did ya get {modules} back on?",
+    "Dadgum, nearly forgot. {modules} might need flippin' back on.",
+    "{name}, if ya ain't done it yet, flip {modules} back on.",
+    "Ain't nothin' to fuss about, but take a gander at {modules}.",
+    "Hey now, before we light out, check on {modules}.",
+    "Might be nothin', partner. Still, I'd have a look at {modules}.",
+    "Can't plow a field with the tractor shut off. Go check {modules}.",
+    "Best mosey on over to the modules panel, buddy, and look at {modules}.",
+    "Just hollerin' so you don't forget, {name}. {modules}, back on.",
+    "Before {ship} goes a-wanderin', look in on {modules}.",
+    "Grandma'd have my hide if I didn't remind ya about {modules}."
+   ],
+   "good_ol_boy_profane": [
+    "Damn, {name}, you ever flip {modules} back on?",
+    "Hell, partner, go look at {modules} 'fore we get our asses in a sling.",
+    "Shit, buddy, {modules} might still be shut off.",
+    "Grandpa always said a switch left off'll bite ya, the son of a bitch. Check {modules}.",
+    "Don't you go flyin' off half-cocked, pal. Check {modules}, damn it.",
+    "I can't see the damn switches from this seat. Look at {modules}.",
+    "Well, hell. Ain't nobody checked {modules} that I know of.",
+    "Get your butt to the modules panel, {name}, and see about {modules}.",
+    "Could be fine. Could be a real shitshow. Take a look at {modules}.",
+    "Flip {modules} back on if ya ain't, you ornery cuss.",
+    "Dang it all to hell, buddy, don't forget {modules}.",
+    "Son of a bitch, nearly forgot. {modules}, back on, partner.",
+    "Ain't no damn use flyin' without {modules}. Go check.",
+    "Hey, jackass, and I say that with love. Check {modules}.",
+    "Before {ship} goes to hell in a bucket, look in on {modules}.",
+    "Shoot, this ain't my first rodeo, and I still check. Damn well look at {modules}."
+   ]
+  },
   "heat": {
    "good_ol_boy": [
     "{name}, I don't mean to fuss, but we're cookin'. Throttle down and turn away from that star.",

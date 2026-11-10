@@ -1159,6 +1159,20 @@ const releasePayloads = async () => {
       data.moments = [{seq: s0 + 1, ts: new Date().toISOString(), kind: "heat"}]; onData();
       const res = flagged && !woke && lastMomentSeq === s0 + 1;
       data.moments = saved; lastMomentSeq = s0; [speechOn, isSpeaker, alertSpeak.hull] = flags; return res; })()`) && said.length === nSaid;
+    // modules left off: life support with the danger sound and its own tag, the others named in one reminder
+    const moduleOff = JSON.parse(w.eval(`(() => { const s0 = lastMomentSeq, saved = data.moments, f = [speechOn, isSpeaker, soundOn, alertSpeak.modules, alertSound.modules, lastAlert], out = [], realOut = alertOut;
+      speechOn = isSpeaker = soundOn = alertSpeak.modules = alertSound.modules = true;
+      alertOut = (kind, title, body, opts) => { out.push({kind, title, tag: opts.tag, sound: opts.sound === undefined ? null : opts.sound, words: opts.say()}); };
+      const now = new Date().toISOString();
+      data.moments = [{seq: s0 + 1, ts: now, kind: "life_support"}, {seq: s0 + 2, ts: now, kind: "modules_off", modules: ["FSD", "fuel scoop", "sensors"]}, {seq: s0 + 3, ts: now, kind: "modules_off", modules: []}];
+      onData();
+      alertOut = realOut; data.moments = saved; lastMomentSeq = s0; [speechOn, isSpeaker, soundOn, alertSpeak.modules, alertSound.modules, lastAlert] = f;
+      return JSON.stringify({out, row: ALERTS.some(a => a[0] === "modules" && a[2] === "danger"), danger: DANGER.has("life_support_off") && !DANGER.has("modules_off")}); })()`));
+    const goodModuleOff = moduleOff.row && moduleOff.danger && moduleOff.out.length === 2 &&
+      moduleOff.out[0].kind === "modules" && moduleOff.out[0].tag === "life_support_off" && moduleOff.out[0].sound === null && /life support/i.test(moduleOff.out[0].words) &&
+      moduleOff.out[1].tag === "modules_off" && moduleOff.out[1].sound === "alert" && moduleOff.out[1].title === "Switch back on: FSD, fuel scoop and sensors" && moduleOff.out[1].words.includes("FSD, fuel scoop and sensors");
+    allOk = allOk && goodModuleOff;
+    console.log(goodModuleOff ? "OK" : "FAIL", "| modules left off |", goodModuleOff ? "life support and one reminder" : JSON.stringify(moduleOff));
     // G1.3: with the sound on, the voice waits for that sound (the fanfare's chord runs to 1.7 s)
     const nSaid2 = said.length;
     w.eval(`(() => { const f = [speechOn, isSpeaker, soundOn, alertSound.arrival, alertSpeak.arrival]; speechOn = isSpeaker = soundOn = alertSound.arrival = alertSpeak.arrival = true;

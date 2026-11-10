@@ -126,6 +126,12 @@ KEYS = {
     "upkeep_low": "your fleet carrier's balance, counted down week by week from its last stats (an estimate), now covers "
                   "less than four weeks of upkeep (once per stats reading): {carrier} (its name), {weeks} (the weeks of "
                   "upkeep left, in words, e.g. '3 weeks')",
+    "life_support_off": "the ship's life support is switched off, as an AFMU repair leaves it or a login's listing shows it (a "
+                        "danger line, repeated every 45 seconds until it is back on)",
+    "modules_off": "other modules were left switched off (an AFMU repair leaves them off; a login's listing shows the "
+                   "critical ones; said once, and they may be back on by then, so a nudge rather than a fact): {modules} "
+                   "(already phrased: 'FSD', 'sensors' or 'FSD, fuel scoop and thrusters', one or several: never the "
+                   "subject of is/are, and no 'the' before it)",
     "suit_low": "on foot on a planet, your suit's oxygen or health just ran low while unsold data or samples are aboard "
                 "that dying would lose (a danger line, once each time it drops low): {what} ('oxygen' or 'health'), {value} "
                 "(what a death would lose, in credits, e.g. '412M'), {distance} (how far the ship is, e.g. '640 metres')",
@@ -678,6 +684,8 @@ SAMPLES = {
     "unsold_warn": {"value": "52.0M"}, "unsold_urgent": {"value": "251.3M"},
     "firsts_seen": {"system": "Drojau LL-O b26-3", "value": "14.2M"},
     "upload_held": {"service": "EDSM"},
+    "life_support_off": {},
+    "modules_off": {"modules": "FSD, fuel scoop and thrusters"},
     "suit_low": {"what": "oxygen", "value": "412M", "distance": "640 metres"},
     "upkeep_low": {"carrier": "Deep Wanderer", "weeks": "3 weeks"},
     "bookmarked": {"system": "Drojau LL-O b26-3"},
@@ -728,7 +736,7 @@ CREW_ROLES = (
      ("discovery", "arrival", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "leaving", "codex", "phenomena",
       "ggg", "rare_star", "surface_site", "signal_poi", "curious", "geopic")),
     ("exobiologist", "Exobiologist", "Exobiologist", ("exo", "find", "sampling", "biopic")),
-    ("engineer", "Chief Engineer", "Engineer", ("fuel", "scoop", "scoopstop", "jumponium", "hull", "suit")),
+    ("engineer", "Chief Engineer", "Engineer", ("fuel", "scoop", "scoopstop", "jumponium", "hull", "modules", "suit")),
     ("quartermaster", "Quartermaster", "Quartermaster", ("sell", "saleleft", "unsold", "carrier", "upkeep", "carriertrip", "loss")),
     ("comms", "Comms Officer", "Comms", ("uploads", "uploadheld", "firstsseen", "game", "docking", "chat", "wanted")),
     ("tactical", "Tactical", "Tactical", ()),
@@ -751,7 +759,7 @@ ROW_KEYS = {
     "find": ("find_body", "find_bio", "mapped_before", "sample_clear"), "jumponium": ("jumponium",),
     "sampling": ("bio_done_last", "bio_done_more", "bio_tag_near", "left_body"), "approach": ("high_g",),
     "bodybrief": ("body_brief",), "docking": ("docking_granted", "docking_denied"), "sell": ("docked_sell", "sold", "undocked_unsold", "unsold_urgent"), "saleleft": ("sale_left",),
-    "unsold": ("unsold_warn", "unsold_urgent"), "firstsseen": ("firsts_seen",), "hull": ("hull", "heat", "interdicted"),
+    "unsold": ("unsold_warn", "unsold_urgent"), "firstsseen": ("firsts_seen",), "hull": ("hull", "heat", "interdicted"), "modules": ("life_support_off", "modules_off"),
     "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
     "biopic": ("codex_picture",), "geopic": ("codex_picture",),
@@ -760,7 +768,7 @@ ROW_KEYS = {
     "uploadheld": ("upload_held",), "suit": ("suit_low",), "upkeep": ("upkeep_low",), "wanted": ("wanted",),
 }
 DANGER = ("hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop",
-          "carrier_departs", "ship_lost", "rig_leash", "suit_low", "wanted")
+          "carrier_departs", "ship_lost", "rig_leash", "suit_low", "wanted", "life_support_off")
 # The crew placeholders (crew batch 3, the author's idea of 2026-10-13): a line may name another crew member, one
 # placeholder per role ("...ask {engineer} whether the tank can take that stretch"). Filled with the member's name when
 # Settings gives it one (the name in every position: "Mira", never "the Mira"), else these words, with a capital at a

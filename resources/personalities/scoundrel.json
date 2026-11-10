@@ -3383,6 +3383,82 @@
     "Fuck me, {name}, {what} low. Ship. Now."
    ]
   },
+  "life_support_off": {
+   "scoundrel": [
+    "Sir, life support is off. Switch it back on, now.",
+    "{name}, life support is off. Not a joke, turn it on.",
+    "Life support is off, buddy. Turn it on before we both stop breathing.",
+    "Life support is off. Nobody's paying us to suffocate, {name}, so switch it on.",
+    "Okay, okay. Life support is off, let's get it back on.",
+    "Life support is off. Breathing's the one bill you can't skip, sir, so turn it on.",
+    "Sir, modules panel. Life support is off, and I like it on.",
+    "Life support's off, {name}. Flip it on like the cops are behind you.",
+    "Look, I've got a cut to collect, so you need air. Life support is off, turn it on.",
+    "Sir, not a joke. Life support is off, get it back on.",
+    "We've got life support off, buddy. That's bad for business, so switch it on.",
+    "Forget everything else, {name}. Life support is off, turn it back on.",
+    "I've talked us out of worse, but not this one. Life support is off, turn it on.",
+    "Life support is off on the {ship}. Hit the switch, sir, put it on.",
+    "Sir, dead men don't collect. Life support is off, switch it on.",
+    "Life support off. I've seen better odds at the card table, so turn it on."
+   ],
+   "scoundrel_profane": [
+    "Sir, life support is off. Get your ass to the panel and switch it on.",
+    "Shit. Life support is off, {name}, turn it on.",
+    "{name}, life support is off. No bullshit, flip it on.",
+    "Fuck me, life support is off. Turn it on, buddy.",
+    "Life support is off. We are not dying for a few lousy credits, so switch it on.",
+    "Who the hell flies with no air? Life support is off, get it back on.",
+    "Life support's off, sir. Haul ass and switch it on.",
+    "Damn it, buddy, life support is off. Turn it on, now.",
+    "Shit, shit. Life support is off on the {ship}, put it back on.",
+    "Life support is off, sir. Flip the damn switch on before we're up shit creek.",
+    "Hell of a place to choke, {name}. Life support is off, turn it on.",
+    "I'm going to be pissed if you die. Life support is off, switch it on.",
+    "Life support is off, and that's a load of crap. Get it back on, sir.",
+    "No bullshit, buddy, life support is off. Modules panel, turn it on.",
+    "Son of a bitch, life support is off. Put it back on, {name}.",
+    "Fucking hell, sir, life support is off. Turn it back on before we both owe the devil."
+   ]
+  },
+  "modules_off": {
+   "scoundrel": [
+    "Sir. Check {modules}.",
+    "{name}, might want to look at {modules} before we leave in a hurry.",
+    "We always leave in a hurry. Check {modules} first.",
+    "If you already switched {modules} back on, I was never here.",
+    "Hold up. {modules} could still be off.",
+    "I've flown with worse odds, but check {modules}.",
+    "Don't like flying on a maybe. Look at {modules}.",
+    "Modules panel, {name}. {modules}. Humor me.",
+    "Sir, switch {modules} back on if you haven't.",
+    "Funny thing about a quick getaway. You want {modules} switched on.",
+    "I've been stranded before. It's not fun. Check {modules}.",
+    "Can't see the switches from here, {name}. {modules}, take a look.",
+    "Before {ship} takes off on another bad idea, check {modules}.",
+    "Back on with {modules}, then we can go make poor decisions.",
+    "Could be nothing. Could be the kind of nothing that gets you killed. Check {modules}.",
+    "A smart crook checks the getaway ship. Have a look at {modules}."
+   ],
+   "scoundrel_profane": [
+    "Shit. Check {modules}.",
+    "Sir. {modules}, no bullshit. Go look.",
+    "{name}, switch {modules} back on, for fuck's sake, if you haven't.",
+    "Hold up, damn it. {modules} could still be off.",
+    "I've been shot at over dumber shit. Check {modules}.",
+    "We run from the law with {modules} switched off, we're screwed. Go see.",
+    "Look at {modules}, or this gets real shitty, real fast.",
+    "Modules panel, you beautiful bastard. {modules}.",
+    "Damn it, {name}, I can't see the switches. {modules}.",
+    "Don't fly on a maybe, for fuck's sake. Look at {modules}.",
+    "A getaway with a switch left off is a damn short getaway. Check {modules}.",
+    "Sir. Hell of a thing to forget, {modules}.",
+    "If {modules} got switched back on, fine. If not, we're fucked.",
+    "Before {ship} pulls any more bullshit, check {modules}.",
+    "Shit, nearly forgot. {modules}, back on.",
+    "I like my neck, damn it. Have a look at {modules}."
+   ]
+  },
   "heat": {
    "scoundrel": [
     "Sir. We're cooking. Throttle down and turn away from the star.",

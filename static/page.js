@@ -3140,6 +3140,7 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["unsold", "your unsold data crosses the amber or red level", "cash"],
   ["firstsseen", "someone else's scans of your unsold first discoveries reached Spansh", "alert"],
   ["hull", "hull damage, heat damage, an interdiction", "danger"],
+  ["modules", "a module left switched off, as an AFMU repair leaves it; life support repeats until it is back on", "danger"],
   ["suit", "on foot on a planet, your suit's oxygen or health running low with data aboard", "danger"],
   ["approach", "approaching a high-gravity landable body with a lot of unsold data aboard", "alert"],
   ["loss", "what was lost with your ship, and the nearest system to rescan", "danger"],
@@ -3172,7 +3173,7 @@ const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arri
   refuelshort: "Fuel short of the refuel stop", highway: "Highway next stop", exo: "Exomastery route",
   riches: "Road to Riches, worlds, sweeps", trade: "Trade route", carriertrip: "Carrier trip", autotarget: "Auto-target",
   wrongtarget: "Not the next stop targeted", docking: "Docking pad and refusals", sell: "Selling", saleleft: "Data left after a sale",
-  unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction", suit: "Suit oxygen or health low", approach: "High gravity",
+  unsold: "Unsold data", firstsseen: "Firsts scanned by others", hull: "Hull, heat, interdiction", modules: "Module left off", suit: "Suit oxygen or health low", approach: "High gravity",
   loss: "Ship lost", wanted: "Wanted", carrier: "Carrier", upkeep: "Carrier upkeep low", game: "Game start and quit", chat: "Players' chat", uploads: "Uploads failing", uploadheld: "Upload on hold",
   ring: "Rings to mine", limpets: "Limpets and the hold", prospect: "Prospector call-out",
   prospectbest: "Best rock this stint", rigs: "Mining rigs", rigleash: "Rig too far", rigsout: "Rigs still out"};
@@ -3201,6 +3202,7 @@ const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, 
   saleleft: "Universal Cartographics sells 50 systems a page: said once the pages stop and the estimate has caught up.",
   unsold: "The levels are under Risk and warnings → Unsold data on board.",
   firstsseen: "The firsts watch: a card and a notification each time, spoken at most once in 30 minutes.",
+  modules: "The AFMU switches a module off to repair it and leaves it off. Life support is said every 45 seconds until the game's danger warning clears, which it does a few seconds after you switch it on. Any other module is said once, about 20 seconds after the last repair of a run, because the game does not report switching one back on. A login also names life support, the FSD, thrusters, power distributor, sensors, fuel scoop or shields if they are off.",
   suit: "What a death would lose and how far your ship is. Once each time it runs low; quiet in a station or with nothing aboard. Read from Status.json as Frontier documents it: not yet tried in a live game.",
   approach: "The gravity and unsold levels are under Risk and warnings → Approach warning (unsold over the amber level or the rebuy multiple).",
   loss: "Samples that died with you count too.",
@@ -3802,7 +3804,7 @@ const allFilled = (text, all) => [...text.matchAll(/\{(\w+)\}/g)].every(m => all
 // Danger lines: a joke at 20% hull costs clarity, so with "Danger alerts always down to business" ticked (the
 // default) these come only from the business lists and never swear, whatever personalities are ticked.
 // (ship_lost too: a debrief after a rebuy is no time for a joke; it also jumps the queue like the others)
-const DANGER = new Set(["hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop", "carrier_departs", "ship_lost", "rig_leash", "suit_low", "wanted"]);
+const DANGER = new Set(["hull", "heat", "interdicted", "fuel_low", "fuel_star", "fuel_target", "fuel_topup", "fuel_short", "fuel_last_scoop", "carrier_departs", "ship_lost", "rig_leash", "suit_low", "wanted", "life_support_off"]);
 const speechDangerBusiness = () => !!(store.get("speechDangerBusiness", null) ?? (data && data.defaults && data.defaults.speech_danger_business) ?? true);
 // "One personality per system": the personality is drawn at game start and at each arrival and says every line
 // until the next one, so a character (and its own voice) holds through a system. In memory only: a reload draws
@@ -11936,6 +11938,11 @@ function onData() {
                  {say: () => line("find_bio", {body: m.body, value: credits(m.bio_value)}, `Biology on ${m.body}, worth up to ${credits(m.bio_value)} credits.`)});
         toast(`🧬 ${m.body}: up to ${credits(m.bio_value)} cr`);
       } else if (m.kind === "heat") alertOut("hull", "Heat damage", "", {tag: "heat", say: () => line("heat", {}, "Heat damage.")});
+      else if (m.kind === "life_support") alertOut("modules", "Life support is off", "Switch it back on", {tag: "life_support_off", say: () => line("life_support_off", {}, "Life support is off. Switch it back on.")});
+      else if (m.kind === "modules_off" && (m.modules || []).length) {
+        const modules = andList(m.modules);
+        alertOut("modules", `Switch back on: ${modules}`, "", {sound: "alert", tag: "modules_off", say: () => line("modules_off", {modules}, `Switch ${modules} back on.`)});
+      }
       else if (m.kind === "interdicted") alertOut("hull", `Interdicted${m.by ? " by " + m.by : ""}`, m.submitted ? "you submitted" : "",
                                                   {tag: "interdicted", say: () => line("interdicted", {by: m.by || "someone"}, "Interdicted.")});
       else if (m.kind === "game_start") { const ship = m.ship ? shipLabel(m.ship) : "";
@@ -13387,7 +13394,7 @@ const ROW_WORDS = {pins: "surface pins", carriertrip: "carrier trips", chat: "ot
   trade: "trade routes", highway: "the Highway", refuelshort: "fuel short of a refuel", lastscoop: "last scoop", autotarget: "auto-target",
   wrongtarget: "wrong target", find: "valuable bodies", jumponium: "jumponium", sampling: "sampling", approach: "high-g approaches",
   bodybrief: "bio bodies ahead", docking: "docking pads", sell: "sales", saleleft: "data left after a sale", unsold: "unsold data", firstsseen: "someone scanning your firsts",
-  hull: "hull, heat, interdiction", suit: "the suit running low", carrier: "your carrier", upkeep: "carrier upkeep", wanted: "a bounty on you", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
+  hull: "hull, heat, interdiction", modules: "modules left off", suit: "the suit running low", carrier: "your carrier", upkeep: "carrier upkeep", wanted: "a bounty on you", codex: "codex", phenomena: "phenomena", ggg: "green gas giants",
   rare_star: "rare stars", surface_site: "surface sites", signal_poi: "signals", curious: "curiosities", loss: "losses",
   rigs: "rigs", rigleash: "the rig leash", rigsout: "rigs out", ring: "rings to mine", limpets: "limpets and the hold", prospect: "the prospector", prospectbest: "the stint's best rock", uploads: "uploads", uploadheld: "uploads on hold",
   biopic: "plant codex pictures", geopic: "geology codex pictures"};
@@ -13399,7 +13406,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   autotarget: ["autotarget_nothing"], wrongtarget: ["wrong_target"], find: ["find_body", "find_bio", "mapped_before", "sample_clear"],
   jumponium: ["jumponium"], sampling: ["bio_done_last", "bio_done_more", "bio_tag_near", "left_body"], approach: ["high_g"],
   bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold", "unsold_urgent"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
-  firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], upkeep: ["upkeep_low"], codex: ["codex"],
+  firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], modules: ["life_support_off", "modules_off"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], upkeep: ["upkeep_low"], codex: ["codex"],
   phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
   curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"],
   prospectbest: ["prospect_best"], uploadheld: ["upload_held"], wanted: ["wanted"],

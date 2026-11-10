@@ -3409,6 +3409,82 @@
     "Suit {what} is low! {value} credits ride with you. Get them home, bloody fool!"
    ]
   },
+  "life_support_off": {
+   "klingon": [
+    "Life support is off, {name}! Turn it back on!",
+    "There is no honour in choking on your own ship! Life support is off, switch it on!",
+    "Life support is off! A warrior dies blade in hand, not gasping in a chair, so turn it on!",
+    "{name}, your life support is off! Bring it back on, warrior!",
+    "Life support is off! Even a dying targ fights for breath, so switch it on!",
+    "The {ship} holds her breath! Life support is off, turn it on now!",
+    "Warrior, life support is off! Switch it on before your songs end unsung!",
+    "Life support is off, {name}! Death by thin air is no death for a warrior, turn it on!",
+    "Hear me! Life support is off, and you will turn it back on!",
+    "Life support is off! No enemy may claim so shameful a kill, switch it on!",
+    "No song was ever sung of a warrior who forgot to breathe! Life support is off, turn it on!",
+    "Life support is off! To the modules panel, warrior, and switch it on!",
+    "{name}, life support is off! Turn it on and live to fight!",
+    "A blade needs a whetstone and a warrior needs air! Life support is off, switch it back on!",
+    "Life support is off! Your ancestors can wait, {name}, turn it on!",
+    "Life support is off! Do this one small thing, warrior, and turn it back on!"
+   ],
+   "klingon_profane": [
+    "Life support is off, {name}! Turn the damned thing back on!",
+    "Hell, warrior, life support is off! Switch it on, son of a targ!",
+    "Life support is off! Only a Ferengi would die to save on air, turn it on!",
+    "Damn it, {name}, life support is off! Get it back on!",
+    "Life support is off, you stubborn targ! To the modules panel, and switch it on!",
+    "Bloody fool, life support is off! Turn it on before I drag you to it!",
+    "You gutless cur, would you die by neglect? Life support is off, turn it on!",
+    "Life support is off! By hell, I will not bury a warrior who forgot a switch, turn it on!",
+    "A Ferengi's honour is thicker than this air! Life support is off, switch it back on!",
+    "Damned fool, life support is off on the {ship}! Bring it back on!",
+    "Life support is off! I will not gasp for air beside some toothless old fool, turn it on!",
+    "Hell and blood, life support is off! Switch it on, {name}, and do it now!",
+    "Life support is off! Even a coward has the sense to breathe, you son of a targ, turn it on!",
+    "Damn your hide, warrior, life support is off! Turn it on, now!",
+    "Life support is off, damn it! Turn it on, or choke like a stranded Ferengi!",
+    "Only a damned fool leaves life support off! Turn it back on, {name}!"
+   ]
+  },
+  "modules_off": {
+   "klingon": [
+    "{name}! Check {modules} before we ride to battle!",
+    "Hear me! {modules} may still sleep! Wake what slumbers!",
+    "A warrior inspects his blade before the fight! Inspect {modules}!",
+    "Do not fly on blind! Look to {modules}!",
+    "{modules} may yet be without power! Go and see!",
+    "If you have restored {modules}, good! If not, do it now!",
+    "Honour demands readiness! Confirm {modules}!",
+    "Switch {modules} back on! A sleeping weapon wins no songs!",
+    "No bird of prey leaves the nest unchecked! Look to {modules}!",
+    "I cannot see your switches from my station, {name}! Check {modules}!",
+    "Go to the modules panel! Demand an answer from {modules}!",
+    "A careless warrior dies without a song! Check {modules}!",
+    "Before {ship} moves, look to {modules}!",
+    "Let it not be said we forgot {modules}! Check!",
+    "Wake {modules}, {name}, if you have not already!",
+    "What is a ship half asleep? Prey! Check {modules}!"
+   ],
+   "klingon_profane": [
+    "Damn it, {name}! Look to {modules}!",
+    "Hell! {modules} may still be dead! Go and see!",
+    "Only a Ferengi would fly on without checking {modules}!",
+    "Check {modules}, son of a targ!",
+    "Shit! Did you ever wake {modules}?",
+    "Do not drift like Ferengi garbage! Switch {modules} back on!",
+    "By the blood of my enemies, damn you, inspect {modules}!",
+    "A bloody fool forgets {modules}! Do not be that fool!",
+    "Hear me, targ herder! Check {modules}, damn it!",
+    "My bloody eyes cannot see your switches! Look at {modules}!",
+    "Damn your hide, {name}! {modules}, back on, if you have not!",
+    "There is no honour in dying to a forgotten switch! Check {modules}, damn it!",
+    "To hell with haste! Confirm {modules} first!",
+    "The bloody modules panel, now! Look to {modules}!",
+    "Before {ship} moves one damn length, inspect {modules}!",
+    "Shit! A Ferengi counts his coins twice! Count {modules} once!"
+   ]
+  },
   "heat": {
    "klingon": [
     "We are burning, {name}! Pull away from the star!",

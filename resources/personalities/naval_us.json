@@ -3379,6 +3379,82 @@
     "Hell of a time for it. {what} low. Get to the ship."
    ]
   },
+  "life_support_off": {
+   "naval_us": [
+    "Life support is off, {name}. Recommend you switch it back on immediately.",
+    "Be advised, life support is off. Turn it back on now.",
+    "Warning, life support is off. Switch it on at the modules panel.",
+    "{name}, life support is off. Recommend immediate action to bring it back on.",
+    "Set condition one. Life support is off, turn it on now.",
+    "Bridge to captain, life support is off. Recommend you power it back on.",
+    "Caution, life support is off aboard the {ship}. Switch it on at once.",
+    "Life support status, off. Request you turn it back on, {name}.",
+    "General quarters. Life support is off, bring it back on.",
+    "Life support off. Recommend right panel, modules, switch on.",
+    "Be advised, {name}. Life support is off, and it needs to come back on.",
+    "All hands, life support is off. Recommend power on without delay.",
+    "Emergency. Life support is off, recommend you switch it on.",
+    "{name}, damage control reports life support off. Turn it on now.",
+    "Life support is off. This is your top priority, get it back on.",
+    "Attention on deck. Life support is off, recommend it be switched on."
+   ],
+   "naval_us_profane": [
+    "Life support is off, {name}. Damn it, switch it back on.",
+    "Be advised, life support is off. Turn it on, and move like hell.",
+    "Warning, life support is off. Recommend you hightail it to the damn modules panel and switch it on.",
+    "{name}, life support is off. Turn it on, damn it, that's an order.",
+    "Life support is off, and that's a damn poor way to run a ship. Switch it on.",
+    "Hell of a way to die, {name}. Life support is off, get it back on.",
+    "Set condition one, damn it. Life support is off, turn it on.",
+    "Life support is off aboard the {ship}. Get it on, and move like hell.",
+    "Bridge to captain, what the hell. Life support is off, switch it back on.",
+    "Be advised, you can't hold your damn breath that long. Life support is off, turn it on.",
+    "God damn it, life support is off. Recommend you power it on right now.",
+    "Life support is off. Request you get your ass to the modules panel and turn it on.",
+    "Damn poor odds without air, {name}. Life support is off, bring it back on.",
+    "Life support off, damn it. Turn it on, best speed.",
+    "General quarters, damn it. Life support is off, recommend you switch it on.",
+    "Hell no, not on my watch. Life support is off, get it switched back on."
+   ]
+  },
+  "modules_off": {
+   "naval_us": [
+    "Be advised, {modules} may still be off.",
+    "{name}, recommend verifying {modules} before getting underway.",
+    "Advisory: confirm {modules} back online.",
+    "Report: status of {modules} unconfirmed. Recommend a check.",
+    "Recommend restoring {modules} if not already accomplished.",
+    "Pre-flight item: {modules}. Verify.",
+    "Request you check {modules}, {name}.",
+    "Modules panel, {name}. Verify {modules}.",
+    "Caution. {modules} might remain offline.",
+    "Unable to confirm {modules} from this station. Recommend a visual check.",
+    "Standing by for your check of {modules}.",
+    "Reminder: bring {modules} back online if not already done.",
+    "Before {ship} gets underway, verify {modules}.",
+    "Checklist item open: {modules}.",
+    "Recommend we hold here until {modules} can be verified.",
+    "Stand by. Verify {modules} before the next jump."
+   ],
+   "naval_us_profane": [
+    "Damn, {name}, verify {modules}.",
+    "Hell of a time to find a switch off. Check {modules}.",
+    "Be advised, {modules} may still be off. Damn well look.",
+    "Recommend you check {modules}, damn it.",
+    "Report: {modules} unconfirmed. That's a hell of a way to fly.",
+    "Bring {modules} back online if you haven't, damn it.",
+    "Modules panel, {name}. Now, damn it. {modules}.",
+    "Hell, {name}. Did anybody verify {modules}?",
+    "Unable to confirm a damn thing from this station. Check {modules}.",
+    "Checklist item still open, damn it: {modules}.",
+    "Hold your damn throttle. Verify {modules} first.",
+    "Get eyes on {modules}, and get it done, damn it.",
+    "No damn way I'm signing off without a check of {modules}.",
+    "Before {ship} goes to hell, verify {modules}.",
+    "Advisory: {modules} might be offline. Damn nuisance.",
+    "Hell no, we don't skip this one. Verify {modules}."
+   ]
+  },
   "heat": {
    "naval_us": [
     "Heat damage, {name}. Recommend we reduce temperature now.",

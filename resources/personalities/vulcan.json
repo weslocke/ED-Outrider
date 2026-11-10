@@ -1764,6 +1764,46 @@
     "Advisory. {what} low. {value} credits unsold. Return to the ship."
    ]
   },
+  "life_support_off": {
+   "vulcan": [
+    "Life support is off. Switch it back on.",
+    "{name}, life support is off. Turn it on.",
+    "Life support is off. Logic dictates that you switch it back on.",
+    "Breathing is required for survival. Life support is off, and it should be turned on.",
+    "Life support is off. Continued operation in this state would be illogical, switch it on.",
+    "{name}, life support is off. I must insist you turn it on.",
+    "Life support is off. I would prefer not to report your death, so please switch it on.",
+    "Humans require atmosphere. Life support is off, therefore it must be switched on.",
+    "Life support is off aboard the {ship}. I recommend you return it to the on position.",
+    "The probability of survival improves markedly with life support on. It is off.",
+    "Your life support is off, {name}. The modules panel will permit you to turn it on.",
+    "Life support off. There is one logical response, and it is to switch it on.",
+    "{name}, life support is off. Your emotional state is irrelevant, turn it on.",
+    "I note that life support is off. I advise you to turn it back on at once.",
+    "Life support is off. The priority is self-evident, switch it on.",
+    "It is illogical to leave life support off. Turn it on, {name}."
+   ]
+  },
+  "modules_off": {
+   "vulcan": [
+    "{modules} may remain offline. Verification is advised.",
+    "{name}. It would be logical to check {modules}.",
+    "I cannot observe the switches from this position. Please verify {modules}.",
+    "Advisory. Confirm {modules} before proceeding.",
+    "An unverified assumption is a poor basis for flight. Check {modules}.",
+    "If you have already restored {modules}, this reminder may be disregarded.",
+    "The modules panel will confirm the state of {modules}.",
+    "A brief inspection of {modules} would be prudent.",
+    "{name}, I recommend restoring power to {modules}, if that has not been done.",
+    "Insufficient data on {modules}. A visual check would resolve the question.",
+    "It is illogical to proceed without confirming {modules}.",
+    "{name}. Please verify {modules} before the next jump.",
+    "I note that {modules} may require reactivation.",
+    "Before {ship} proceeds, verify {modules}.",
+    "Reminder. Switch {modules} back on if required.",
+    "Flight without {modules} would be inefficient. I suggest a check."
+   ]
+  },
   "heat": {
    "vulcan": [
     "Heat damage. Reduce temperature.",

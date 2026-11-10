@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · Modules left off after a repair: said out loud
+- **New alert (Settings → Alerts, "Module left off", the Chief Engineer):** the AFMU switches a module off to repair it and
+  leaves it off. Life support is said 20 seconds after its repair and every 45 seconds until the game's danger warning
+  clears, so it stops by itself once you switch it back on; a run of repairs does not hold it back. Any other module is
+  said once, about 20 seconds after the last repair of a run, the critical ones first. A login (or respawn) that lists
+  life support, the FSD, thrusters, power distributor, sensors, fuel scoop or shields off says so too, once a login.
+- **Speech keys** `life_support_off` (a danger line) and `modules_off` {modules}: 16 lines a list in every personality.
+- From in-game tests of 2026-11-09 (`docs/JOURNAL_REFERENCE.md`).
+
 ## 2026-11-09 · The system strip: whose reputation, and a reference system (#24, Hiner399)
 - **Overlay strip:** your reputation names the controlling faction, on a line of its own in a populated system ("Allied
   with Mother Gaia"); the top row's right side keeps the security level.

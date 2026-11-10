@@ -3381,6 +3381,82 @@
     "God damn it, your {what} is failing. Ship, {distance}. Go."
    ]
   },
+  "life_support_off": {
+   "ivanova": [
+    "Life support is off, {name}. Turn it back on.",
+    "Wonderful. Life support is off, so switch it back on.",
+    "Life support is off. That is not a suggestion, {name}, switch it on.",
+    "Whatever you are doing, stop doing it. Life support is off, and it goes back on now.",
+    "{name}, life support is off. I am not in the mood to bury anyone today, so turn it on.",
+    "Life support off. Modules panel, switch it on, no arguments.",
+    "My grandmother lived through worse winters than this, but she had air. Life support is off, turn it on.",
+    "Do not test me today. Life support is off, and I want it back on.",
+    "Life support is off. Absolutely wonderful, {name}, now turn it on.",
+    "We do not breathe by wishing. Life support is off, so put it back on.",
+    "Life support is off aboard the {ship}. Turn it on, and do it now.",
+    "{name}, switch life support back on. It is off, and I will not ask nicely for long.",
+    "There is a Russian word for a pilot with life support off, and it is not kind. Turn it on.",
+    "Life support is off. I have had a bad day already, {name}, switch it back on.",
+    "Life support is off. Everything else can wait, turn it back on.",
+    "Attention, {name}. Life support is off and I expect it on, immediately."
+   ],
+   "ivanova_profane": [
+    "Life support is off, {name}. Turn the damn thing on.",
+    "Shit. Life support is off, so get it back on.",
+    "God damn it, life support is off. Switch it on.",
+    "Life support is off. Fucking wonderful, now turn it on.",
+    "{name}, life support is off. Move your ass to the modules panel and turn it on.",
+    "For God's sake, life support is off. Put it back on.",
+    "Life support off, and I am not dragging your corpse anywhere. Turn it the hell on.",
+    "Stop whatever the hell you are doing. Life support is off, and it goes on now.",
+    "Shit, shit. Life support is off, {name}, switch it on.",
+    "My grandmother would slap you, {name}. Life support is off, turn the damn thing on.",
+    "Life support is off aboard the {ship}. Get it on, no fucking arguments.",
+    "I have no patience left for this shit. Life support is off, turn it back on.",
+    "Life support is off, damn it. I will not say please, switch it on.",
+    "Do you enjoy suffocating, {name}? Life support is off, so turn the fucking thing on.",
+    "Hell. Life support is off, and you are going to turn it back on right now.",
+    "We are not dying of stupidity today. Life support is off, get it the fuck back on."
+   ]
+  },
+  "modules_off": {
+   "ivanova": [
+    "{modules} may still be off. Check, {name}.",
+    "{name}. Check {modules}. Now, please.",
+    "Oh, wonderful. {modules} might still be off.",
+    "Switch {modules} back on, if you have not. I am not asking twice.",
+    "My grandmother checked the stove twice before leaving. Check {modules}.",
+    "Modules panel. {modules}. Look.",
+    "I cannot see the switches from here. You can. {modules}.",
+    "Do not leave without checking {modules}.",
+    "Confirm {modules} before we move, {name}.",
+    "Maybe you did this already. Maybe not. Check {modules}.",
+    "One more thing to worry about. {modules}. Back on, please.",
+    "I have enough problems today. Do not make {modules} another one.",
+    "{name}, back on with {modules}, if you have not done so.",
+    "In my family, we assume the worst. So, check {modules}.",
+    "People who fly without {modules} end up in my reports. Check.",
+    "Before {ship} moves, {modules}. Verify."
+   ],
+   "ivanova_profane": [
+    "{name}, check {modules}, damn it.",
+    "Oh, fucking wonderful. {modules} could still be off.",
+    "Modules panel. {modules}. Look, for fuck's sake.",
+    "I can't see the damn switches. You can. {modules}.",
+    "My grandmother checked everything twice and trusted nobody. Check {modules}, damn you.",
+    "Fly on without checking {modules}? Hell no.",
+    "Switch {modules} back on if you haven't. I'm not writing that damn report.",
+    "One more damn thing today. Check {modules}.",
+    "Did you switch {modules} back on, or do we just fucking hope?",
+    "Maybe it's done. Maybe it's shit. Check {modules}.",
+    "I've had a lousy day, {name}. Don't add {modules} to the damn list.",
+    "Hold the ship, damn it. Look at {modules} first.",
+    "In my family we expect the worst, and we're usually fucking right. Check {modules}.",
+    "Back on with {modules}, {name}, or I'll be in a hell of a mood.",
+    "Before {ship} moves a damn meter, verify {modules}.",
+    "Shit. {modules}. Go check."
+   ]
+  },
   "heat": {
    "ivanova": [
     "Heat damage, {name}. Throttle down and turn away from the star.",

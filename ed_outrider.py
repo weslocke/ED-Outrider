@@ -2042,6 +2042,14 @@ ON_FOOT_DOCKED = (1 << 3) | (1 << 13) | (1 << 14)   # Status.json Flags2: on foo
 FLAG2_ON_FOOT_PLANET = 1 << 4   # Status.json Flags2: on foot on a planet's surface
 SUIT_LOW = (("oxygen", 1 << 6), ("health", 1 << 7))   # Status.json Flags2: the suit's LowOxygen, LowHealth (S9-S7)
 HEAT_QUIET = 30            # s: at most one heat alert in this long
+FLAG_SHIELDS_UP = 1 << 3   # Status.json Flags: shields up (down at once when switched off, up again only at half charge)
+# The modules worth a word when left off, the order they are said in: (the part after int_ in the item, as a voice says it)
+MODULE_WORDS = (("lifesupport", "life support"), ("hyperdrive", "FSD"), ("engine", "thrusters"),
+                ("powerdistributor", "power distributor"), ("sensors", "sensors"), ("fuelscoop", "fuel scoop"),
+                ("shieldgenerator", "shields"))
+LIFE_SUPPORT_FIRST_S = 20    # s after its repair (or Loadout) before life support is said: the flag clears 7-10 s after it is on
+LIFE_SUPPORT_REPEAT_S = 45   # s between sayings while it stays off (5 to 25 minutes of oxygen, by its rating)
+MODULES_OFF_SETTLE_S = 20    # s after the latest repair before the others are said: repairs come one after another
 FUEL_HISTORY = 20          # recent jumps used to estimate fuel per jump
 JUMP_CARGO_S = 120         # s: a Status.json hold this close to a jump stands in for a Cargo not read yet
 SCOOP_RATE_OF = 20         # arrivals the scoopable share is taken over
@@ -2723,6 +2731,17 @@ def system_standing(ev):
                 if isinstance(f, dict) and f.get("Name") == faction), None)
     rep = rep if isinstance(rep, (int, float)) and not isinstance(rep, bool) else None
     return {"security": sec, "faction": faction, "rep": rep} if sec or faction else None
+
+
+def module_rank(item):
+    """A module item's place in MODULE_WORDS (life support first); past its end for a module not in that list."""
+    return next((n for n, (part, _) in enumerate(MODULE_WORDS) if item.startswith(f"int_{part}")), len(MODULE_WORDS))
+
+
+def module_words(item, label=None):
+    """A module as a voice says it: MODULE_WORDS, else the game's name without its bracket ("FSD (SCO)"), lower case."""
+    rank = module_rank(item)
+    return MODULE_WORDS[rank][1] if rank < len(MODULE_WORDS) else re.sub(r"\s*\([^)]*\)", "", str(label or "")).strip().lower() or "a module"
 
 
 def live_event(ts, now=None):
@@ -3483,7 +3502,8 @@ class Journals:
     # MEMORY: changed by handling lines, kept in memory only: checkpoint() / restore() copy each (a failed tick's retry
     # must not announce its moments twice). A latest value another line's handler reads as a guard belongs here too
     # ("overwritten by the retry" is not enough when it is read before the line that sets it comes round again).
-    MEMORY = ("moment_seq", "moments", "last_heat", "body_touched", "approached", "brief_key", "regions_said", "rings_said",
+    MEMORY = ("moment_seq", "moments", "last_heat", "life_support_off", "modules_off", "modules_off_at", "loadout_off_said",
+              "body_touched", "approached", "brief_key", "regions_said", "rings_said",
               "codex_said", "fss_signals_pending", "region_entered", "jumponium", "sale_run", "burst", "nsp_burst",
               "docking_hold", "chat_seq", "chat", "shots_new", "_cmdrs_backfilled",
               "last_all_found",   # read by note_jumponium as "the FSS is done here"
@@ -3531,6 +3551,9 @@ class Journals:
         self.body_last_seq = 0
         self.moment_seq = 0
         self.last_heat = None      # seconds of the latest heat moment (HeatDamage within HEAT_QUIET adds none)
+        # modules left off (State.module_watch): the life support alarm {due, known, said}, the others waiting for their
+        # one reminder {item: words} and the time of the latest, and the critical modules the last Loadout listed off
+        self.life_support_off, self.modules_off, self.modules_off_at, self.loadout_off_said = None, {}, 0, set()
         # in memory only (a restart forgets them, which errs on the quiet side):
         self.body_touched = set()  # (system, body_id) touched down, disembarked or sampled on since arriving there
         self.approached = set()    # (system, body_id) briefed on approach this game session (once each)
@@ -3623,6 +3646,34 @@ class Journals:
     def moment(self, kind, ts, **kw):
         self.moment_seq += 1
         self.moments.append(dict(kw, seq=self.moment_seq, ts=ts, kind=kind))
+
+    def module_left_off(self, item, words, ts, known=False):
+        """A module left off, for State.module_watch: life support to the alarm (`known`: a Loadout listed it off, so it
+        is said once even with no danger flag), any other to the one reminder after a run of repairs."""
+        t = ts_seconds(ts)
+        if item.startswith("int_lifesupport"):
+            self.life_support_off = {"due": t + LIFE_SUPPORT_FIRST_S, "known": known, "said": False}
+        else:
+            self.modules_off[item] = words
+            self.modules_off_at = t
+
+    def loadout_modules(self, ev, ts):
+        """A live Loadout, the one place the game lists what is on: a module it lists on is not left off any more, and a
+        critical one it lists off is said (once a login: a docking's Loadout listing the same one says nothing new)."""
+        if not live_event(ts):
+            return
+        off = set()
+        for m in ev.get("Modules") or []:
+            item = str(m.get("Item") or "").lower()
+            if m.get("On") is not False:
+                self.modules_off.pop(item, None)
+                if item.startswith("int_lifesupport"):
+                    self.life_support_off = None
+            elif module_rank(item) < len(MODULE_WORDS):
+                off.add(item)
+        for item in off - self.loadout_off_said:
+            self.module_left_off(item, module_words(item), ts, known=True)
+        self.loadout_off_said = off
 
     def fresh(self, key, ts, current=None):
         """False for an event older than the newest one already applied to `key` (docked, carrier, boost...).
@@ -4430,6 +4481,8 @@ class Journals:
             self.note_loading(name, ev, ts)
             if name == "Fileheader":
                 return
+        if name in ("LoadGame", "Died", "Shutdown"):   # what was left off is for the next Loadout to say
+            self.life_support_off, self.modules_off, self.loadout_off_said = None, {}, set()
         if name in ("Disembark", "DropshipDeploy", "Embark", "LoadGame", "Resurrect", "Location"):
             self.track_foot(name, ev, ts)
         if name in SALE_DOCK_EVENTS:
@@ -4480,6 +4533,7 @@ class Journals:
             self.db.execute("UPDATE play_activity SET ship=? WHERE ship='' AND login_ts=(SELECT max(login_ts) FROM "
                             "play_activity WHERE login_ts <= ?)", (str(ev.get("ShipName") or "").strip() or ev.get("Ship"), ts))
             self.note_modules(ev, ts)
+            self.loadout_modules(ev, ts)
             self.note_fleet(ev, ts)
             if ev.get("HullHealth") is not None and ts >= (self.hull or {}).get("ts", ""):
                 self.hull = {"pct": round(ev["HullHealth"] * 100), "ts": ts}
@@ -6183,6 +6237,8 @@ class Journals:
             item = re.sub(r"^\$|_name;$", "", str(ev.get("Module") or "").lower())
             if isinstance(ev.get("Health"), (int, float)):
                 self.modules_touch(ts, lambda m: m["item"] == item and (m.update(health=ev["Health"], ts=ts, boosts=0) or True))
+            if live_event(ts):   # the AFMU switches its module off itself and leaves it off (in game, 2026-11-09)
+                self.module_left_off(item, module_words(item, ev.get("Module_Localised")), ts)
             return
         if name == "RepairDrone":
             if ev.get("HullRepaired"):
@@ -10404,6 +10460,7 @@ class State:
         h = self.surface_here()
         self.trail.note(h)
         self.suit_watch(st, h, now)
+        self.module_watch(st, now)
         if self.in_rhino(h):
             for rig in self.rigs_out(h["system"], h["body_id"]):
                 d = surface_m(h["lat"], h["lon"], rig["lat"], rig["lon"], h["radius"])
@@ -10445,6 +10502,29 @@ class State:
         if h and m and (m["system"], m["body_id"]) == (h["system"], h["body_id"]):
             dist = round(surface_m(h["lat"], h["lon"], m["lat"], m["lon"], h["radius"]))
         self.journals.moment("suit", iso_ts(now), what=risen[0], value=value, dist=dist)
+
+    def module_watch(self, st, now):
+        """Modules left off after a repair (Journals.module_left_off). Nothing says a module was switched back on, but
+        two things show live (tested in game, 2026-11-09): life support off sets the in-danger flag, which clears 7 to
+        10 s after it is back on, and shields off clears the shields-up flag. So a `life_support` moment repeats until
+        the flag clears, and the rest get one `modules_off` moment {modules: words, the critical first} once a run of
+        repairs has stopped. The flag has other causes (heat, a jump), so it only ever answers for a repair or Loadout."""
+        j = self.journals
+        flags = (st.get("flags") or 0) if st.get("live") else 0
+        danger = bool(flags & FLAG_IN_MAIN_SHIP and flags & outrider.target.FLAG_IN_DANGER)
+        alarm = j.life_support_off
+        if alarm and alarm["said"] and not danger:
+            j.life_support_off = None
+        elif alarm and now >= alarm["due"]:
+            if danger or alarm["known"]:
+                j.moment("life_support", iso_ts(now))
+            j.life_support_off = dict(alarm, due=now + LIFE_SUPPORT_REPEAT_S, said=True) if danger else None
+        if j.modules_off and now - j.modules_off_at >= MODULES_OFF_SETTLE_S:
+            words = [w for i, w in sorted(j.modules_off.items(), key=lambda kv: module_rank(kv[0]))
+                     if not (flags & FLAG_SHIELDS_UP and i.startswith("int_shieldgenerator"))]
+            j.modules_off = {}
+            if words:
+                j.moment("modules_off", iso_ts(now), modules=words)
 
     def note_location(self, h):
         """Arrived at a targeted planetary mining location (Status.json Destination #index=N, in this system): your
