@@ -17245,7 +17245,8 @@ function shipLightHtml(l) {
   const words = oxygen ? oxygenWords(data.panel.oxygen_left) : l.id === "life_support" && l.words === "off" ? "off · goes out when it's back on" : l.words;
   const cls = `tb-lt tb-lt-${l.level}${l.wide ? " wide" : ""}${l.id === "life_support" && l.level !== "off" ? " pulse" : ""}`;
   const inner = `<span class="tb-ltname">${esc(l.label)}</span>${words ? `<small${oxygen ? " data-oxygen" : ""}>${esc(words)}</small>` : ""}`;
-  return l.latched ? `<button type="button" class="${cls}" data-panel-ack="${esc(l.id)}">${inner}</button>` : `<div class="${cls}">${inner}</div>`;
+  return l.latched ? `<button type="button" class="${cls}" data-light="${esc(l.id)}" data-panel-ack="${esc(l.id)}">${inner}</button>`
+    : `<div class="${cls}" data-light="${esc(l.id)}">${inner}</div>`;   // data-light: its icon (scripts/dark_icons.py)
 }
 function shipFig(label, big, pct, sub, level = "") {
   return `<div class="tb-shipfig"><span class="tb-k">${esc(label)}</span><b>${esc(big)}</b><div class="tb-figbar"><i class="${level}" style="width:${Math.max(0, Math.min(100, pct || 0))}%"></i></div><span class="tb-st">${esc(sub || "\u00a0")}</span></div>`;

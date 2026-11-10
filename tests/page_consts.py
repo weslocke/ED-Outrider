@@ -23,7 +23,7 @@ REPO = os.path.dirname(TESTS)
 # the constants the tests read: fetched together, in one node run
 NAMES = ("ALERTS", "ALERT_NAMES", "ALERT_GROUPS", "ROW_WORDS", "ROW_KEYS", "DANGER", "TABLET_VIEWS", "TB.groups",
          "TB_EMBLEMS", "SHIP_NAMES", "SHIP_NO_PICTURE", "MARKERS", "SERVER_LINE_KEYS", "SOUND_LEAD", "AUDITION_KEYS",
-         "SETTING_SHAPES", "BM_IMPORT_MAX", "SURVEY", "SETTINGS_KEYS")
+         "SETTING_SHAPES", "BM_IMPORT_MAX", "SURVEY", "SETTINGS_KEYS", "SHIP_LIGHTS")
 _values, _undefined = {}, set()
 
 

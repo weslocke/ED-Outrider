@@ -559,6 +559,20 @@ class Tablet(unittest.TestCase):
         self.assertTrue(all(r.startswith('[data-theme="dark"] body.tablet ') and "data:image/svg+xml," in r for r in rules))
         self.assertNotIn("url(\"../icons", css)
 
+    def test_ship_light_icons(self):
+        """The Ship page's lights each have a Lucide icon before the name, in every theme, written by scripts/dark_icons.py
+        (the block in tablet.css is that script's output: run it after changing SHIP_ICONS)."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("dark_icons", os.path.join(os.path.dirname(ed_outrider.STATIC_DIR), "scripts", "dark_icons.py"))
+        icons = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(icons)
+        lights = [row[0] for row in consts("SHIP_LIGHTS")]
+        self.assertEqual([light for light, _ in icons.SHIP_ICONS], lights)
+        for _, name in icons.SHIP_ICONS:
+            self.assertTrue(os.path.exists(os.path.join(ed_outrider.STATIC_DIR, "icons", "lucide", f"{name}.svg")), name)
+        with open(os.path.join(ed_outrider.STATIC_DIR, "tablet.css"), encoding="utf-8") as f:
+            self.assertIn(icons.ship_block(), f.read())
+
     def test_user_fonts(self):
         with tempfile.TemporaryDirectory() as d:
             with open(os.path.join(d, "lcars-display.ttf"), "wb") as f:

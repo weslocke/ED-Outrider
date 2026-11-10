@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Writes the icon block of static/themes/dark.css (the tablet's "dark" theme): each Lucide icon used, from
-static/icons/lucide/*.svg (ISC licence: static/icons/LICENSE-lucide.txt), as a CSS mask in a data URI, put on the
-page's own classes (the nav, the footer, the rail, a few table markers). Only that theme shows them; the words beside
-an icon stay. Run it after adding an icon or changing ICONS: python3 scripts/dark_icons.py
+"""Writes the icon blocks: static/themes/dark.css's (the tablet's "dark" theme) and static/tablet.css's Ship page lights
+(every theme). Each Lucide icon used, from static/icons/lucide/*.svg (ISC licence: static/icons/LICENSE-lucide.txt), as a
+CSS mask in a data URI, put on the page's own classes (the nav, the footer, the rail, a few table markers; the lights'
+names). The dark theme's show only in that theme; the words beside an icon stay. Run it after adding an icon or changing
+ICONS or SHIP_ICONS: python3 scripts/dark_icons.py
 """
 import os
 import re
@@ -12,6 +13,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ICON_DIR = os.path.join(ROOT, "static", "icons", "lucide")
 CSS = os.path.join(ROOT, "static", "themes", "dark.css")
 BEGIN, END = "/* ---- icons: written by scripts/dark_icons.py ---- */", "/* ---- end of the icons ---- */"
+TABLET_CSS = os.path.join(ROOT, "static", "tablet.css")
+SHIP_BEGIN, SHIP_END = "/* ---- the Ship page's light icons: written by scripts/dark_icons.py ---- */", "/* ---- end of the light icons ---- */"
+# the Ship page's lights (page.js SHIP_LIGHTS ids), in every theme: an icon before each light's name, in its colour
+SHIP_ICONS = (("life_support", "heart-pulse"), ("off_after_repair", "wrench"), ("danger", "triangle-alert"), ("shields", "shield"),
+              ("overheat", "thermometer"), ("interdiction", "magnet"), ("under_attack", "crosshair"), ("hull", "rocket"),
+              ("canopy", "eye"), ("fuel", "fuel"), ("unsold", "scroll-text"), ("rebuy", "coins"), ("wanted", "siren"),
+              ("mass_lock", "lock"), ("fsd", "zap"), ("silent", "volume-x"))
 T = '[data-theme="dark"] body.tablet'
 # (selector, icon, size in px or None for 1.1em, hide the element's own glyph)
 ICONS = [(f"{T} #tabNav [data-view=\"{v}\"]", i, None, False) for v, i in
@@ -60,16 +68,32 @@ def block():
     return "\n".join(out)
 
 
-def main():
-    with open(CSS, encoding="utf-8") as f:
+def ship_block():
+    out = [SHIP_BEGIN]
+    for light, name in SHIP_ICONS:
+        out.append(f"body.tablet .tb-lt[data-light=\"{light}\"] .tb-ltname::before {{ content: \"\"; display: inline-block; "
+                   f"width: 1.2em; height: 1.2em; vertical-align: -0.25em; margin-right: .45em; background: currentColor; "
+                   f"-webkit-mask: {uri(name)} center / contain no-repeat; mask: {uri(name)} center / contain no-repeat; }}")
+    out.append(SHIP_END)
+    return "\n".join(out)
+
+
+def write(path, begin, end, text):
+    with open(path, encoding="utf-8", newline="") as f:
         css = f.read()
-    if BEGIN in css:
-        css = css[:css.index(BEGIN)] + block() + css[css.index(END) + len(END):]
+    if begin in css:
+        css = css[:css.index(begin)] + text + css[css.index(end) + len(end):]
     else:
-        css = css.rstrip("\n") + "\n" + block() + "\n"
-    with open(CSS, "w", encoding="utf-8") as f:
+        css = css.rstrip("\n") + "\n" + text + "\n"
+    with open(path, "w", encoding="utf-8", newline="") as f:
         f.write(css)
+
+
+def main():
+    write(CSS, BEGIN, END, block())
     print(f"wrote {len(ICONS) + 2} icon rules into {os.path.relpath(CSS, ROOT)}")
+    write(TABLET_CSS, SHIP_BEGIN, SHIP_END, ship_block())
+    print(f"wrote {len(SHIP_ICONS)} light icons into {os.path.relpath(TABLET_CSS, ROOT)}")
 
 
 if __name__ == "__main__":

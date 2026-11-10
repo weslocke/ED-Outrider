@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · The Ship page's lights get icons
+- **Tablet:** each light has a line icon before its name, in every theme (Lucide, ISC, as the dark theme's; ten more of
+  them in `static/icons/lucide/`, written into `tablet.css` by `scripts/dark_icons.py`); a light's words wrap to two lines.
+
 ## 2026-11-09 · The Ship page in game: plainer lights, and the PC's warning levels on the tablet
 - **Fix (tablet):** the unsold levels set on the PC never reached a tablet, which kept the defaults (50M amber), so the
   Ship page and the strip went amber at 101.6M with 500M set. A desktop page now sends its unsold levels and fuel-jumps
