@@ -2078,6 +2078,8 @@ upstream project's choices, not rules of the game.
 These were built and tested with synthetic events, recorded files, fakes or headless browsers, but not
 confirmed while playing. Treat reports about them as likely real.
 
+- The Ship page (2026-11-09): Pips, LegalState and the journal's UnderAttack and CockpitBreached are from Frontier's manual;
+  the oxygen countdown takes a life support's emergency oxygen by class (D = 7.5 min fits the author's death).
 - Modules left off, said out loud (2026-11-09): the flags and events were read in a live game, the alert itself is tested
   with fakes only; life support off at a login (does the flag come on, when?) has not been seen.
 - A codex picture said (2026-11-08): a plant's (the Exobiologist's, row biopic) works in game (the author, 2026-11-08); a

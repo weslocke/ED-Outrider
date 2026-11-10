@@ -86,10 +86,11 @@ class Tablet(unittest.TestCase):
         nav = re.search(r'<nav id="tabNav".*?</nav>', html, re.S).group(0)
         pages = re.findall(r'<button type="button" class="tb-page" data-view="(\w+)"', nav)
         views, groups = consts("TABLET_VIEWS", "TB.groups")
-        self.assertEqual(len(pages), 13)
+        self.assertEqual(len(pages), 14)
         self.assertEqual(views, pages)
+        self.assertEqual(pages[0], "ship")                                   # above the groups: always one tap away
         for p in pages:
-            self.assertEqual(sum(p in v for v in groups.values()), 1, p)
+            self.assertEqual(sum(p in v for v in groups.values()), 0 if p == "ship" else 1, p)
         # each group's pages sit under its own heading in the nav, in the same order
         for g, v in groups.items():
             block = re.search(rf'<div class="tb-pages" data-pages="{g}">(.*?)</div>', nav, re.S).group(1)

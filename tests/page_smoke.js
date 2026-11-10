@@ -6213,6 +6213,31 @@ const releasePayloads = async () => {
                     '[false,false,"false"]'], prefs: ["lcars", true, "true", null, "here"],
       voiceCmds: [true, true, false, true, true, true, true, "auto"], tabEarn: ["cmdr", false, 5, true, 5, "8px"],
       tabShip: [1, "pointer", ["static/ships/mediumtransport01.webp", "Lynx Highliner", "auto"], true, true, true]};
+    // the Ship page: above the groups, the server's lights and the page's own, never switched away from
+    const shipGot = JSON.parse(tw.eval(`(() => { const was = {view, panel: data.panel, fuel: data.fuel, hull: data.hull, docking: data.docking, ship: data.ship, mapWas: TB.mapWas};
+      view = "ship"; const off = id => ({id, level: "off", words: "", latched: false});
+      data.ship = Object.assign({}, data.ship, {type: "explorer_nx", name: "explorer_nx", ident: "BR-03E", max_range: 90.66, cargo_capacity: 64});
+      data.hull = {pct: 20}; data.fuel = {live: true, main: 20, pct: 12, capacity: 160};
+      data.panel = {live: true, oxygen_left: 90, pips: [2, 8, 2], cargo: 4, balance: 5, scooping: true, lowest_module: 70, lights: [{id: "life_support", level: "warning", words: "", latched: false},
+        {id: "off_after_repair", level: "caution", words: "FSD · tap when back on", latched: true}, {id: "danger", level: "settling", words: "life support off", latched: false},
+        ...["shields", "overheat", "interdiction", "under_attack", "canopy", "wanted", "mass_lock", "fsd", "silent"].map(off)]};
+      render();
+      const q = s => document.querySelector("#shipLights " + s), tiles = document.querySelectorAll("#shipLights .tb-lt");
+      const out = {shown: !document.getElementById("shipView").hidden, onShip: document.body.classList.contains("tb-on-ship"), tiles: tiles.length, wide: document.querySelectorAll("#shipLights .wide").length,
+        life: [q(".pulse .tb-ltname").textContent, q("[data-oxygen]").textContent], tap: q("button[data-panel-ack]").dataset.panelAck, oneTapOnly: document.querySelectorAll("#shipLights button").length,
+        hull: [...tiles].find(t => /^Hull/i.test(t.textContent)).className, fuel: [...tiles].find(t => /^Fuel/i.test(t.textContent)).textContent,
+        card: [document.querySelector("#tbShipCard img").getAttribute("src"), document.querySelector(".tb-shipname").textContent, document.querySelector(".tb-shipsub").textContent], group: document.querySelector('#tabNav [data-view="ship"]').classList.contains("on"), hereGroup: !!document.querySelector("#tabNav [data-group].here")};
+      out.voice = tabShowPage("near"); out.stayedVoice = view;
+      data.docking = {pad: 7}; TB.mapWas = false; tabAutoView(); out.stayedPad = view; out.beforeMap = TB.beforeMap;
+      Object.assign(data, {panel: was.panel, fuel: was.fuel, hull: was.hull, docking: was.docking, ship: was.ship}); TB.mapWas = was.mapWas; view = was.view; render();
+      out.backHidden = document.getElementById("shipView").hidden; out.backOff = !document.body.classList.contains("tb-on-ship");
+      return JSON.stringify(out); })()`));
+    const shipWant = {shown: true, onShip: true, tiles: 16, wide: 2, life: ["Life support off", "oxygen about 1:30 · goes out when it's back on"], tap: "off_after_repair", oneTapOnly: 1,
+      hull: "tb-lt tb-lt-warning", fuel: "Fuellow · 12 % · scooping", card: ["static/ships/explorer_nx.webp", "BR-03E", "Caspian Explorer · 90.7 ly"], group: true, hereGroup: false,
+      voice: false, stayedVoice: "ship", stayedPad: "ship", beforeMap: null, backHidden: true, backOff: true};
+    const goodShip = JSON.stringify(shipGot) === JSON.stringify(shipWant);
+    allOk = allOk && goodShip;
+    console.log(goodShip ? "OK" : "FAIL", "| ship page |", goodShip ? "card, lights, stays put" : JSON.stringify(shipGot));
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const goodT = !bad.length && !terr.length;
     allOk = allOk && goodT;

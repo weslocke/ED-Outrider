@@ -321,3 +321,46 @@ body.tablet .emlegend, body.tablet .cmfig .emsub, body.tablet .emnotes { font-si
    tap on the card itself closes it rather than reaching what lies under it */
 body.tablet #cmdrBody .cmshipname { text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
 body.tablet #shipCard { pointer-events: auto; }
+
+/* ---- the Ship page (page.js "the Ship page"): a ship card and a board of lights. The four light colours are the same in
+   every theme so that their meaning is; the frame around them follows the theme's parts. ---- */
+.tb-page[data-view="ship"] { width: 100%; font-weight: 600; }
+.tb-shipview { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; overflow-y: auto; }
+.tb-shipview[hidden] { display: none; }
+.tb-ship { display: flex; align-items: center; gap: 16px; padding: 6px 14px; border: 1px solid var(--tb-rail-border); border-radius: var(--tb-btn-radius); background: var(--tb-chip-bg); flex: 0 0 auto; }
+.tb-ship img { height: clamp(44px, 9vh, 96px); width: auto; }
+.tb-shipwho { flex: 1 1 0; min-width: 0; overflow: hidden; }
+body.tablet.tb-on-ship header { display: none; }   /* the board is the page: the strips and cards stay on the other pages */
+.tb-shipname { font-family: var(--tb-font-display); color: var(--tb-title); font-size: clamp(18px, 2.8vh, 26px); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: var(--tb-case); letter-spacing: var(--tb-track); }
+.tb-shipsub { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-shipfigs { flex: 0 0 auto; display: flex; gap: clamp(10px, 1.6vw, 28px); margin-left: auto; align-items: flex-end; }
+.tb-shipfig { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.tb-shipfig b { color: var(--text); font-size: clamp(15px, 2.3vh, 20px); white-space: nowrap; }
+.tb-shipfig .tb-st { font-size: 11px; white-space: nowrap; }
+.tb-figbar { width: clamp(44px, 6vw, 120px); height: 6px; background: var(--line); }
+.tb-figbar i { display: block; height: 100%; background: var(--accent); }
+.tb-figbar i.warn { background: #ffb000; } .tb-figbar i.bad { background: #ff3b30; }
+.tb-pips { display: flex; gap: 6px; }
+.tb-pip { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; }
+.tb-pip span { display: flex; gap: 2px; }
+.tb-pip i { width: 7px; height: 12px; background: var(--line); }
+.tb-pip i.f { background: var(--text); }
+.tb-pip i.h { background: linear-gradient(var(--line) 50%, var(--text) 50%); }
+.tb-shipsec { display: flex; align-items: center; gap: 10px; color: var(--tb-title); font-family: var(--tb-font-display); font-size: 14px; letter-spacing: 2px; text-transform: uppercase; flex: 0 0 auto; }
+.tb-shipline { flex: 1; height: 1px; background: var(--line); }
+.tb-shipsec .tb-btn { min-height: 34px; padding: 0 14px; }
+.tb-lights { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(112px, 12vw, 170px), 1fr));
+  grid-auto-rows: minmax(clamp(48px, 9vh, 96px), 1fr); gap: 6px; }
+.tb-lt { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; min-width: 0; padding: 0 6px; font: inherit; text-align: center;
+  border: 1px solid #1f1a14; background: #0b0a09; color: #6a5f52; }
+.tb-lt.wide { grid-column: span 2; }
+.tb-ltname { font-size: clamp(11px, 1.8vh, 16px); letter-spacing: 1.5px; text-transform: uppercase; }
+.tb-lt small { max-width: 100%; font-size: clamp(10px, 1.45vh, 13px); letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-lt-warning { background: #ff3b30; color: #fff; border-color: #ff8a80; font-weight: 700; box-shadow: 0 0 14px #ff3b3088; }
+.tb-lt-caution { background: #ffb000; color: #000; border-color: #ffd36b; font-weight: 700; }
+.tb-lt-settling { background: #0f3a40; color: #3fd4e6; border-color: #3fd4e6; font-weight: 700; }
+.tb-lt-advisory { background: #161c20; color: #a7bac6; border-color: #2c3840; }
+body.tablet button.tb-lt { cursor: pointer; border-radius: 0 !important; clip-path: none !important; }   /* lights are one shape in every theme */
+.tb-lt.pulse { animation: tb-lt-pulse 1.2s ease-in-out infinite; }
+@keyframes tb-lt-pulse { 50% { background: #a81f18; box-shadow: 0 0 4px #ff3b3044; } }
+@media (prefers-reduced-motion: reduce) { .tb-lt.pulse { animation: none; outline: 3px solid #fff; outline-offset: -3px; } }

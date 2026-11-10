@@ -26,6 +26,11 @@ was clicked).
   "LINKED · NO GAME", "UNLINKED · RETRYING").
 - **The pages** are on the left in three groups: Explore (Now, Nearby, Here, Bio/Geo), Navigate (Bookmarks,
   Search, Map, Plot Route) and Records (History, Log, Materials, CMDR, My firsts). There is no Overview.
+- **Ship**, at the top of the page list, is a status board: your ship's hull, lowest module, fuel, cargo and power, and a
+  board of lights that stays dark while all is well. Red is danger, amber a caution, cyan a danger with a known cause.
+  **Life support off** counts down your oxygen and goes out by itself once it is back on. **Off after repair** lists the
+  modules the AFMU left off (the game does not report switching one back on, so tap it when you have); **Clear** puts
+  out every light that needs a tap. A tablet showing Ship stays on it: nothing switches its page but a tap.
 - **Tap a row** in a table for all of its facts, including the columns too narrow to show, with Show in Here,
   Bookmark and, on a route's row, a bookmark or a Nearby row (game PC), **Target** (the galaxy map's destination marker). On the galaxy map a tap on a system shows its card,
   with **Target** when auto-target works on the game PC, Copy name and **Plot route**.

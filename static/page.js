@@ -2916,7 +2916,7 @@ function star(s) {
 
 // the tablet keeps its own page (a desktop browser opening /tablet to try it must not lose its view) and has no Overview
 // in the nav's order (tests/test_tablet.py checks it against page.html's tb-page buttons and TB.groups)
-const TABLET_VIEWS = ["now", "near", "here", "bio", "bm", "search", "map", "hwy", "hist", "log", "mat", "cmdr", "firsts"];
+const TABLET_VIEWS = ["ship", "now", "near", "here", "bio", "bm", "search", "map", "hwy", "hist", "log", "mat", "cmdr", "firsts"];
 let view = TABLET ? store.get("tabletView", "now") : store.get("view", "near");
 if (view === "rich") view = "hwy";   // Road to Riches had a tab of its own for a day (PR #1): it is a route type of Plot Route now
 if (TABLET && !TABLET_VIEWS.includes(view)) view = "now";
@@ -5039,6 +5039,9 @@ function render() {
   const nearPinned = view === "near" && !!pinnedSystem;
   document.getElementById("hereView").hidden = !(view === "here" || nearPinned || view === "overview");
   document.querySelector("main").classList.toggle("nearPinned", nearPinned);
+  document.getElementById("shipView").hidden = view !== "ship";
+  document.body.classList.toggle("tb-on-ship", view === "ship");
+  if (view === "ship") renderShip();
   document.getElementById("firstsView").hidden = view !== "firsts";
   document.getElementById("cmdrView").hidden = view !== "cmdr";
   if (view === "cmdr") loadCmdr();
@@ -11792,6 +11795,7 @@ function lineWithAfter(cp) {
 const SERVER_LINE_KEYS = ["bookmarked"];
 // S9-S16: the tablet shows a page asked for by voice, as one tapped in its nav (no automatic way back from it)
 function tabShowPage(page) {
+  if (view === "ship") return false;   // a tablet showing Ship ignores voice page switches (PLAN-ship-panel)
   const b = document.querySelector(`#tabNav [data-view="${page}"]`) || document.querySelector(`[data-view="${page}"]`);
   if (!b) return false;
   TB.beforeMap = null; TB.group = null;
@@ -17088,7 +17092,7 @@ document.addEventListener("click", async e => {
 // (static/themes/<name>.css, data-theme on <html>, chosen per device) dresses them. An alert is a banner here; the tablet
 // speaks and plays sounds only with Play alerts here ticked (tabletSpeaks). The one page switch it makes by itself: to Now when the surface map shows or a pad is granted, and
 // back to the page you were on when that is over. A tap on a table row opens a sheet with all its facts (no hover here).
-const tabGroupOf = v => Object.keys(TB.groups).find(g => TB.groups[g].includes(v)) || "explore";
+const tabGroupOf = v => v === "ship" ? null : Object.keys(TB.groups).find(g => TB.groups[g].includes(v)) || "explore";   // Ship stands above the groups
 // a sheet opened and closed (the open attribute where a browser has no modal dialogs: the smoke test's jsdom)
 const tabShow = d => { if (!d.open) { if (d.showModal) d.showModal(); else d.setAttribute("open", ""); } };
 const tabClose = d => { if (d.close) d.close(); else d.removeAttribute("open"); };
@@ -17182,9 +17186,72 @@ function tabDim(on) { document.documentElement.classList.toggle("tb-dim", !!on);
 // Kurbo26's idea; PAD 34 and its diagram are on Now), back to where you were once both are over (docked, cancelled,
 // the map hidden), only if you are still on Now and chose no page meanwhile. A pinned system belongs to the page it was
 // pinned in: Now shows where you are.
+// ---- the Ship page (project/PLAN-ship-panel-2026-11-08.md): a ship card and a board of lights, dark when all is well ----
+// The server works out what its flags and journals say (data.panel, outrider/panel.py); hull, fuel, unsold and rebuy use
+// the same levels as the rest of the page. [id, label, wide]: the board's fixed order.
+const SHIP_LIGHTS = [["life_support", "Life support off", true], ["off_after_repair", "Off after repair", true], ["danger", "Danger"], ["shields", "Shields down"],
+  ["overheat", "Overheated"], ["interdiction", "Interdiction"], ["under_attack", "Under attack"], ["hull", "Hull"], ["canopy", "Canopy"], ["fuel", "Fuel"],
+  ["unsold", "Unsold data"], ["rebuy", "Rebuy"], ["wanted", "Wanted"], ["mass_lock", "Mass lock"], ["fsd", "FSD"], ["silent", "Silent running"]];
+function shipPageLights() {
+  const p = data.panel || {lights: []}, by = Object.fromEntries((p.lights || []).map(l => [l.id, l])), f = data.fuel, u = data.unsold, h = data.hull;
+  const off = {level: "off", words: "", latched: false};
+  const hb = hullBand(h);
+  by.hull = hb ? {level: hb === 2 ? "warning" : "caution", words: `${h.pct} %`, latched: false} : off;
+  const low = fuelLow(f), scoop = !!p.scooping;
+  by.fuel = low ? {level: f.pct != null && f.pct < 15 ? "warning" : "caution", words: `low${f.pct != null ? ` · ${f.pct} %` : ""}${scoop ? " · scooping" : ""}`, latched: false}
+    : scoop ? {level: "advisory", words: "scooping", latched: false} : off;
+  const lvl = u ? unsoldLevel(u) : null;
+  by.unsold = lvl === "urgent" || lvl === "warn" ? {level: lvl === "urgent" ? "warning" : "caution", words: `${credits(u.total)} cr`, latched: false} : off;
+  const rebuy = riskRebuy();
+  by.rebuy = rebuy && p.balance != null && p.balance < rebuy ? {level: "warning", words: "can't cover it", latched: false} : off;
+  return SHIP_LIGHTS.map(([id, label, wide]) => ({id, label, wide: !!wide, ...(by[id] || off)}));
+}
+const oxygenWords = s => `oxygen about ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} · goes out when it's back on`;
+function shipLightHtml(l) {
+  const oxygen = l.id === "life_support" && l.level !== "off" && l.words === "" && data.panel.oxygen_left != null;
+  const words = oxygen ? oxygenWords(data.panel.oxygen_left) : l.id === "life_support" && l.level !== "off" && !l.words ? "goes out when it's back on" : l.words;
+  const cls = `tb-lt tb-lt-${l.level}${l.wide ? " wide" : ""}${l.id === "life_support" && l.level !== "off" ? " pulse" : ""}`;
+  const inner = `<span class="tb-ltname">${esc(l.label)}</span>${words ? `<small${oxygen ? " data-oxygen" : ""}>${esc(words)}</small>` : ""}`;
+  return l.latched ? `<button type="button" class="${cls}" data-panel-ack="${esc(l.id)}">${inner}</button>` : `<div class="${cls}">${inner}</div>`;
+}
+function shipFig(label, big, pct, sub, level = "") {
+  return `<div class="tb-shipfig"><span class="tb-k">${esc(label)}</span><b>${esc(big)}</b><div class="tb-figbar"><i class="${level}" style="width:${Math.max(0, Math.min(100, pct || 0))}%"></i></div><span class="tb-st">${esc(sub || "\u00a0")}</span></div>`;
+}
+function renderShip() {
+  if (!data) return;
+  const s = data.ship || {}, p = data.panel || {}, f = data.fuel || {}, h = data.hull, pic = shipPicture(s.type);
+  const name = s.name && s.name !== s.type ? s.name : s.ident || shipName(s.type) || "Your ship";
+  const sub = [shipName(s.type), s.name && s.name !== s.type && s.ident ? s.ident : null, s.max_range ? `${s.max_range.toFixed(1)} ly` : null].filter(Boolean).join(" · ");
+  const pips = p.pips || [0, 0, 0];
+  const pipCol = (v, l) => `<div class="tb-pip"><span>${[1, 2, 3, 4].map(n => `<i class="${v >= n * 2 ? "f" : v === n * 2 - 1 ? "h" : ""}"></i>`).join("")}</span>${l}</div>`;
+  const low = p.lowest_module;
+  document.getElementById("tbShipCard").innerHTML = (pic ? `<img src="${pic}" alt="">` : "") +
+    `<div class="tb-shipwho"><div class="tb-shipname">${esc(name)}</div><div class="tb-shipsub">${esc(sub)}</div></div><div class="tb-shipfigs">` +
+    shipFig("Hull", h && h.pct != null ? `${h.pct} %` : "—", h && h.pct, h ? "live" : "", hullBand(h) === 2 ? "bad" : hullBand(h) ? "warn" : "") +
+    shipFig("Modules", low != null ? `${low} %` : "—", low, low != null ? "lowest listed" : "", low != null && low < 80 ? "warn" : "") +
+    shipFig("Fuel", f.main != null ? `${f.main.toFixed(1)} t` : "—", f.pct, f.reservoir != null ? `reservoir ${f.reservoir.toFixed(2)} t` : "") +
+    shipFig("Cargo", p.cargo != null ? `${Math.round(p.cargo)}${s.cargo_capacity != null ? ` / ${s.cargo_capacity}` : ""} t` : "—", s.cargo_capacity ? 100 * (p.cargo || 0) / s.cargo_capacity : 0, "") +
+    `<div class="tb-shipfig"><span class="tb-k">Power</span><div class="tb-pips">${pipCol(pips[0], "SYS")}${pipCol(pips[1], "ENG")}${pipCol(pips[2], "WEP")}</div></div></div>`;
+  document.getElementById("shipLights").innerHTML = shipPageLights().map(shipLightHtml).join("");
+  TB.shipGot = Date.now();
+  TB.shipOxygen = p.oxygen_left;
+}
+// the oxygen counts down between payloads (the server sends one only when something changes)
+setInterval(() => { if (!TABLET || view !== "ship" || TB.shipOxygen == null || !TB.shipGot) return;
+  const el = document.querySelector("#shipLights [data-oxygen]");
+  if (el) el.textContent = oxygenWords(Math.max(0, TB.shipOxygen - Math.floor((Date.now() - TB.shipGot) / 1000))); }, 1000);
+document.getElementById("shipView").addEventListener("click", async e => {
+  const b = e.target.closest("[data-panel-ack]");
+  if (!b) return;
+  try {
+    const r = await fetch("api/panel/ack", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({id: b.dataset.panelAck})});
+    if (!r.ok) throw new Error(String(r.status));
+  } catch { toast("Could not reach Outrider to clear that light"); }
+});
 function tabAutoView() {
   // docked at a planetary port Now has no map (round 11 B): the pad brings Now up, docking ends it as anywhere else
   const shown = (surfaceShows(data.surface) && !dockedOnBody()) || !!(data.docking && data.docking.pad != null);
+  if (view === "ship") { TB.mapWas = shown; TB.beforeMap = null; return; }   // a tablet showing Ship stays on Ship
   if (shown && !TB.mapWas) {
     TB.beforeMap = view !== "now" ? view : null;
     if (view !== "now") { pinnedSystem = null; forgetOtherHere(); view = "now"; saveView(); }
@@ -17195,7 +17262,7 @@ function tabAutoView() {
   TB.mapWas = shown;
 }
 function tabDrawNav() {
-  const g = TB.group || tabGroupOf(view);
+  const g = TB.group || tabGroupOf(view) || "explore";
   document.querySelectorAll("#tabNav [data-group]").forEach(b => {
     const open = b.dataset.group === g;
     b.classList.toggle("open", open); b.setAttribute("aria-expanded", String(open));

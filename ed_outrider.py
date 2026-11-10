@@ -191,6 +191,7 @@ except ImportError:
     outrider.bio = None
 import outrider.materials  # engineering materials and synthesis recipes (no dependencies)
 import outrider.cargo      # the ship's hold and your carrier's, folded from the journal (no dependencies)
+import outrider.panel      # the tablet Ship page's lights, pure
 import outrider.dock       # the nearest place to dock: stations and carriers from Spansh, the DSSA list, your carrier
 import outrider.tts        # spoken alerts; Piper itself is optional (the page falls back to browser speech)
 import outrider.speech     # the words for spoken alerts, per personality (resources/speech.json)
@@ -1690,7 +1691,7 @@ SHIP_EVENTS = ("FuelScoop", "RefuelAll", "RefuelPartial", "CarrierStats", "Carri
                "CarrierBuy", "CarrierDecommission", "CarrierCancelDecommission",   # a new carrier; giving one up
                "Cargo",   # the hold's tonnage: the ship's mass, for the fuel model
                # hull and danger: live alerts only (hull % is kept; the rest are moments, not state)
-               "HullDamage", "RepairAll", "Repair", "RepairDrone", "HeatDamage", "HeatWarning", "Interdicted",
+               "HullDamage", "RepairAll", "Repair", "RepairDrone", "HeatDamage", "HeatWarning", "Interdicted", "UnderAttack", "CockpitBreached",
                "JetConeBoost",   # a neutron / white dwarf charge: the next jump's range is multiplied
                "AfmuRepairs",    # a module repaired in flight: its new health (core module health, S5)
                "NavRouteClear",  # the plotted route was cleared
@@ -3503,6 +3504,7 @@ class Journals:
     # must not announce its moments twice). A latest value another line's handler reads as a guard belongs here too
     # ("overwritten by the retry" is not enough when it is read before the line that sets it comes round again).
     MEMORY = ("moment_seq", "moments", "last_heat", "life_support_off", "modules_off", "modules_off_at", "loadout_off_said",
+              "modules_left", "under_attack_at", "canopy_breached", "overheated",
               "body_touched", "approached", "brief_key", "regions_said", "rings_said",
               "codex_said", "fss_signals_pending", "region_entered", "jumponium", "sale_run", "burst", "nsp_burst",
               "docking_hold", "chat_seq", "chat", "shots_new", "_cmdrs_backfilled",
@@ -3554,6 +3556,9 @@ class Journals:
         # modules left off (State.module_watch): the life support alarm {due, known, said}, the others waiting for their
         # one reminder {item: words} and the time of the latest, and the critical modules the last Loadout listed off
         self.life_support_off, self.modules_off, self.modules_off_at, self.loadout_off_said = None, {}, 0, set()
+        # the Ship page's latched lights: modules left off until a tap or a Loadout {item: words}, the last UnderAttack's
+        # seconds, a breached canopy (True), the last overheat's length in seconds
+        self.modules_left, self.under_attack_at, self.canopy_breached, self.overheated = {}, None, False, None
         # in memory only (a restart forgets them, which errs on the quiet side):
         self.body_touched = set()  # (system, body_id) touched down, disembarked or sampled on since arriving there
         self.approached = set()    # (system, body_id) briefed on approach this game session (once each)
@@ -3656,17 +3661,20 @@ class Journals:
         else:
             self.modules_off[item] = words
             self.modules_off_at = t
+            self.modules_left[item] = words
 
     def loadout_modules(self, ev, ts):
         """A live Loadout, the one place the game lists what is on: a module it lists on is not left off any more, and a
         critical one it lists off is said (once a login: a docking's Loadout listing the same one says nothing new)."""
         if not live_event(ts):
             return
+        self.overheated = None   # the health is listed now: the next look at the panel tells
         off = set()
         for m in ev.get("Modules") or []:
             item = str(m.get("Item") or "").lower()
             if m.get("On") is not False:
                 self.modules_off.pop(item, None)
+                self.modules_left.pop(item, None)
                 if item.startswith("int_lifesupport"):
                     self.life_support_off = None
             elif module_rank(item) < len(MODULE_WORDS):
@@ -4483,6 +4491,9 @@ class Journals:
                 return
         if name in ("LoadGame", "Died", "Shutdown"):   # what was left off is for the next Loadout to say
             self.life_support_off, self.modules_off, self.loadout_off_said = None, {}, set()
+            self.modules_left, self.under_attack_at, self.canopy_breached, self.overheated = {}, None, False, None
+        if name in ("Docked", "RepairAll"):
+            self.canopy_breached = False
         if name in ("Disembark", "DropshipDeploy", "Embark", "LoadGame", "Resurrect", "Location"):
             self.track_foot(name, ev, ts)
         if name in SALE_DOCK_EVENTS:
@@ -4574,7 +4585,7 @@ class Journals:
                     self.fresh("fuel_hist", ts)
                 # an unnamed ship's Loadout can say ShipName " ": its type then, which the page names (#23)
                 self.ship = {"name": str(ev.get("ShipName") or "").strip() or ev.get("Ship"), "type": ev.get("Ship"),
-                             "ship_id": ev.get("ShipID"), "fid": (self.commander or {}).get("fid"),   # whose (round 9)
+                             "ship_id": ev.get("ShipID"), "ident": ev.get("ShipIdent"), "fid": (self.commander or {}).get("fid"),   # whose (round 9)
                              "fuel_main": cap.get("Main"), "fuel_reserve": cap.get("Reserve"),
                              "max_range": ev["MaxJumpRange"], "fsd_size": int(size.group(1)) if size else None,
                              # the fuel model's inputs (see fuel_model): the mass without fuel or cargo, the drive
@@ -6253,6 +6264,13 @@ class Journals:
                 self.moment("heat", ts, warning=name == "HeatWarning")
                 self.last_heat = t
             return
+        if name == "UnderAttack":
+            if live_event(ts):
+                self.under_attack_at = ts_seconds(ts)
+            return
+        if name == "CockpitBreached":
+            self.canopy_breached = live_event(ts) or self.canopy_breached
+            return
         if name == "NavRouteClear":
             if self.fresh("route", ts, (meta_get(self.db, "route") or {}).get("ts")):
                 meta_set(self.db, "route", None)
@@ -6824,6 +6842,7 @@ class Journals:
                                 "cargo": prev.get("cargo") if away else st.get("Cargo"),   # tonnes aboard (the fuel model's mass)
                                 "destination": st.get("Destination"), "gui_focus": st.get("GuiFocus"),
                                 "fire_group": st.get("FireGroup"), "selected_weapon": st.get("SelectedWeapon"),   # the rail's Bio Scanner
+                                "pips": st.get("Pips"), "legal": st.get("LegalState"), "balance": st.get("Balance"),   # the Ship page
                                 "live": True}
             # the game quit after writing it (the author, 2026-10-17: the game closed in supercruise left a Status.json
             # that said so, and the Shutdown after it; chatter went on talking): a reading from before the last Shutdown
@@ -9587,6 +9606,7 @@ class State:
         self._commit_slow_said = False       # S10: the slow-commit line, once per start
         self._db_write_said = None   # S18: the db_write card's kind while it shows (its free space is not redone each tick)
         self._rig_leash = {}
+        self._danger_since, self._hot_since, self._panel_key, self._fit = None, None, None, (None, {"lowest": None, "shields": True})   # the Ship page
         self._suit_low = set()   # S9-S7: the suit's low bits at the last look (a rise is said once)
         self._kb_layout = ...    # S7-S1: the keyboard layout, read once when the Auto-target box first asks
         self._location_landing = None
@@ -9816,6 +9836,7 @@ class State:
             "mining_version": self.journals.mining_version,   # mining B: the page reads /api/mining/hotspots again on a change
             "mining_live": self.mining_live(),   # mining D: the strip while you mine in a ring, None otherwise
             "hull": self.journals.hull,
+            "panel": self.panel(),
             "modules": self.modules_summary(),
             "last_sale": self.journals.last_sale,
             # id: the exact id64 as a string (a JSON number above 2^53 loses digits in the browser), as rows have
@@ -10461,7 +10482,13 @@ class State:
         h = self.surface_here()
         self.trail.note(h)
         self.suit_watch(st, h, now)
+        self.panel_watch(st, now)
         self.module_watch(st, now)
+        panel = self.panel(now)
+        panel_key = (panel["lights"], panel["pips"])   # not the oxygen: that counts down on the page
+        if panel_key != self._panel_key:
+            self._panel_key = panel_key
+            wrote = True
         if self.in_rhino(h):
             for rig in self.rigs_out(h["system"], h["body_id"]):
                 d = surface_m(h["lat"], h["lon"], rig["lat"], rig["lon"], h["radius"])
@@ -10503,6 +10530,77 @@ class State:
         if h and m and (m["system"], m["body_id"]) == (h["system"], h["body_id"]):
             dist = round(surface_m(h["lat"], h["lon"], m["lat"], m["lon"], h["radius"]))
         self.journals.moment("suit", iso_ts(now), what=risen[0], value=value, dist=dist)
+
+    def panel_watch(self, st, now):
+        """The Ship page's own memory of the flags: when danger came on (life support's oxygen counts from it), how long
+        an overheat lasted (nothing else records it), and shields back up (a repaired generator is no longer off)."""
+        j, flags = self.journals, (st.get("flags") or 0) if st.get("live") else 0
+        self._danger_since = (self._danger_since or now) if flags & outrider.panel.FLAG_IN_DANGER else None
+        if flags & outrider.panel.FLAG_OVERHEATING:
+            self._hot_since = self._hot_since or now
+        elif self._hot_since is not None:
+            j.overheated, self._hot_since = round(now - self._hot_since), None
+        if flags & FLAG_SHIELDS_UP:
+            for item in [i for i in j.modules_left if i.startswith("int_shieldgenerator")]:
+                del j.modules_left[item]
+
+    def ship_fit(self):
+        """What the current ship's latest Loadout says: {lowest: the lowest module health in percent, shields: fitted}.
+        From fleet_loadouts, which keeps the line whole; read again only when a new Loadout came."""
+        ship = self.journals.ship or {}
+        key = (ship.get("ship_id"), ship.get("ts"))
+        if key != self._fit[0]:
+            row = self.db.execute("SELECT loadout FROM fleet_loadouts WHERE ship_id=?", (key[0],)).fetchone()
+            try:
+                mods = json.loads(row[0]).get("Modules") or [] if row else []
+            except (TypeError, ValueError, AttributeError):
+                mods = []
+            health = [m["Health"] for m in mods if isinstance(m.get("Health"), (int, float))]
+            self._fit = (key, {"lowest": int(min(health) * 100) if health else None,
+                               "shields": not mods or any("shieldgenerator" in str(m.get("Item")).lower() for m in mods)})
+        return self._fit[1]
+
+    def oxygen_left(self, now):
+        """Seconds of emergency oxygen left, counted from when the danger flag came on; None when not known."""
+        j = self.journals
+        mods = (j.modules.get(str((j.ship or {}).get("ship_id"))) or {}).get("mods") or {}
+        rated = re.search(r"class(\d)", (mods.get("LifeSupport") or {}).get("item", ""))
+        secs = outrider.panel.OXYGEN_S.get(int(rated.group(1))) if rated else None
+        return max(0, round(secs - (now - self._danger_since))) if secs and self._danger_since is not None else None
+
+    def panel(self, now=None):
+        """The Ship page's block of the payload (outrider/panel.py): the lights, and the ship card's live figures."""
+        now = time.time() if now is None else now
+        j, st = self.journals, self.shown_status()
+        live, fit = bool(st.get("live")), self.ship_fit()
+        flags = (st.get("flags") or 0) if live else 0
+        danger = bool(flags & outrider.panel.FLAG_IN_DANGER)
+        alarm, attacked = j.life_support_off, j.under_attack_at
+        life = None if not alarm else "live" if danger else "listed" if alarm["known"] else None
+        rest = [w for i, w in sorted(j.modules_left.items(), key=lambda kv: module_rank(kv[0])) if not i.startswith("int_shieldgenerator")]
+        lights = outrider.panel.lights(
+            flags, legal=st.get("legal") if live else None, settling=live and bool(self.arrival_danger_until(now, st)), life_support=life,
+            off_words=rest, shields_repaired=any(i.startswith("int_shieldgenerator") for i in j.modules_left), has_shields=fit["shields"],
+            under_attack=attacked is not None and now - attacked < outrider.panel.UNDER_ATTACK_QUIET_S, canopy=j.canopy_breached,
+            overheated=j.overheated)
+        return {"live": live, "lights": lights, "oxygen_left": self.oxygen_left(now) if life == "live" else None, "pips": st.get("pips") if live else None,
+                "cargo": st.get("cargo"), "balance": st.get("balance"), "scooping": bool(flags & FLAG_SCOOPING), "lowest_module": fit["lowest"]}
+
+    def panel_ack(self, which):
+        """A tap on a latched light (or the Clear button, "all"): it goes out on every tablet. False for an unknown id."""
+        if which != "all" and which not in outrider.panel.ACK_IDS:
+            return False
+        j = self.journals
+        if which in ("all", "off_after_repair"):
+            j.modules_left = {i: w for i, w in j.modules_left.items() if i.startswith("int_shieldgenerator")}
+        if which in ("all", "under_attack"):
+            j.under_attack_at = None
+        if which in ("all", "canopy"):
+            j.canopy_breached = False
+        if which in ("all", "overheat"):
+            j.overheated = None
+        self.bump()
+        return True
 
     def module_watch(self, st, now):
         """Modules left off after a repair (Journals.module_left_off). Nothing says a module was switched back on, but
@@ -22768,7 +22866,7 @@ class State:
                         self.uploads_hub.status(own, d)
                     gist = lambda st: st and (round(st.get("fuel_main") or 0, 1), st.get("flags"), st.get("flags2"),
                                               st.get("body"), json.dumps(st.get("destination")), st.get("live"),
-                                              st.get("selected_weapon"))
+                                              st.get("selected_weapon"), st.get("pips"), st.get("legal"), st.get("cargo"))
                     moved = self.chatter_watch()   # every read: the one that changes the flags most of all
                     if gist(self.journals.status_json) != gist(before) or moved:
                         self.bump()
@@ -24626,6 +24724,13 @@ def make_app(state, hosts=None):
         """GET /api/rail: the tablet's rail now, with every context's set and catalogue for its editor."""
         return web.json_response(state.rail_info(full=True))
 
+    async def panel_ack_view(request):
+        """POST /api/panel/ack {id}: a tap on a latched light of the tablet's Ship page, or "all" (Clear)."""
+        body = await json_object(request)
+        if body is None or not isinstance(body.get("id"), str) or not state.panel_ack(body["id"]):
+            return web.json_response({"error": "expected {id}: a latched light, or all"}, status=400)
+        return web.json_response({"ok": True})
+
     async def rail_press_view(request):
         """POST /api/rail/press {context, id}: one tap of that button's key binding (see State.rail_press)."""
         body = await json_object(request)
@@ -25703,6 +25808,7 @@ def make_app(state, hosts=None):
     app.router.add_post("/api/speech/ban", speech_ban_view)
     app.router.add_post("/api/speech/unban", speech_ban_view)
     app.router.add_post("/api/hush", hush_view)
+    app.router.add_post("/api/panel/ack", panel_ack_view)
     app.router.add_post("/api/plan/first", plan_first_view)
     app.router.add_post("/api/plan/skip", plan_skip_view)
     app.router.add_post("/api/copilot", copilot_view)

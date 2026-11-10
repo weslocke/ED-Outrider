@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · The tablet's Ship page: a ship card and a board of lights
+- **New (tablet):** Ship, at the top of the page list: hull, lowest module, fuel, cargo and power, and lights that stay dark
+  while all is well. Life support off (counts down the oxygen, goes out by itself), Off after repair (the modules the AFMU
+  left off; a tap clears it), Danger (cyan with a known cause: the FSD's leftover, life support off), Shields down,
+  Overheated (how long, then "check modules" until the next Loadout), Interdiction, Under attack, Hull, Canopy, Fuel,
+  Unsold data, Rebuy, Wanted, Mass lock, FSD, Silent running. A tablet showing Ship is never switched away from it.
+- **Server:** `outrider/panel.py`, payload `panel`, POST `/api/panel/ack`; Status.json's Pips, LegalState and Balance
+  are read, the journal's UnderAttack and CockpitBreached too (neither yet seen in a live game).
+- Not in this batch: the Ship page's game buttons, the switch folding the page list away, hiding a light, "show the ship" by voice.
+
 ## 2026-11-09 · The heat alert hears the game's HeatWarning
 - **Fix:** the heat alert only listened for `HeatDamage`, which the game did not write even at 127% heat (in game,
   2026-11-09; none in 100 journals), so it never fired. It now fires on `HeatWarning` too, titled "Overheating", at most

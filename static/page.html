@@ -150,6 +150,11 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
   </div>
   <div class="pane" id="cmdrPane"><div id="cmdrBody"></div></div>
 </section>
+<section id="shipView" class="tb-shipview" hidden>
+  <div id="tbShipCard" class="tb-ship"></div>
+  <div class="tb-shipsec"><span>Lights</span><span class="tb-shipline"></span><button type="button" class="tb-btn" data-panel-ack="all" title="put out every light that needs a tap">Clear</button></div>
+  <div id="shipLights" class="tb-lights"></div>
+</section>
 <section id="firstsView" hidden>
   <div class="srow"><span id="fStatus"></span>
     <label><input type="checkbox" id="fShowLost"> show lost</label>
@@ -544,6 +549,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
   </div>
 </div>
 <nav id="tabNav" class="tb-nav" aria-label="Pages" hidden>
+  <button type="button" class="tb-page" data-view="ship">Ship</button>
   <button type="button" class="tb-group" data-group="explore" aria-expanded="true">Explore</button>
   <div class="tb-pages" data-pages="explore">
     <button type="button" class="tb-page" data-view="now"><span class="tb-maptag" id="tabMapTag" hidden>Map</span><span>Now</span></button>
