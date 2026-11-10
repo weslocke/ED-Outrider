@@ -19,8 +19,12 @@ the game too, for a few seconds each:
   mapped, but there are still valuable bodies to map if you want to jump on the train"
 - **discoveries**, their own group in Settings → Alerts, each with its own switches, said with delight in every
   personality (the sarcastic and profane ones included: the co-pilot likes new things):
-  - notable stellar phenomena the FSS finds in a system where you have none on record ("three notable stellar
-    phenomena, all in rings")
+  - notable stellar phenomena in a system with sites you have not visited, once a visit: as you arrive, what other
+    commanders reported there ("I have reports of Albulum Gourd Mollusc in this system... One is new to your codex", from
+    Canonn, leaving out what you logged there; `[server] canonn_reports = false` stops the ask), else your own record of
+    sites you have not dropped at ("... Two still to visit."), else the FSS listing them ("three notable stellar
+    phenomena, all in rings"). Quiet once you have dropped at every site; a system Canonn knows nothing of is no proof
+    there is nothing there
   - a rare star resolved by the arrival's own scan or the FSS ("a black hole, the main star", "a Wolf-Rayet star at
     B": black holes, Wolf-Rayet, carbon, MS- and S-type, O-type and Herbig Ae/Be stars, supergiants, the rarer white
     dwarfs, exotic stars; neutron stars and ordinary giants are too common to count)

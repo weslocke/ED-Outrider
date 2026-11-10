@@ -1662,6 +1662,44 @@
     "{what}. Now that is worth the fuel, {name}!"
    ]
   },
+  "phenomena_reported": {
+   "klingon": [
+    "{name}! I have reports of {what} in this system! We must see it!",
+    "Ha! Others found {what} here! Now we claim the sight for ourselves!",
+    "Reports of {what}, {name}! The hunt has a trail!",
+    "{what}! Reported in this very system! Set a course!",
+    "Other warriors logged {what} here! We will not be outdone!",
+    "{name}, the records speak of {what}! Let us go and see!",
+    "A trail to follow! {what}, reported here!",
+    "Qapla'! Reports of {what} in this system!",
+    "{what}! On record here! Only a coward would fly past!",
+    "Ha, {name}! Somebody left us {what}! A worthy prize for our eyes!",
+    "The scouts' tales put {what} in this system! We go!",
+    "Reports of {what}! My blood sings, {name}!",
+    "{what}, reported here! Let us see if the tale is true!",
+    "Others have seen {what} here! Today we see it too!",
+    "Hear me, {name}! {what}, in this system! Do not pass it by!",
+    "{what}! The records do not lie! Probably! Let us find out!"
+   ],
+   "klingon_profane": [
+    "{name}! Reports of {what} in this system! Damn, we go!",
+    "Hell yes! Others logged {what} here!",
+    "{what}, reported here! Only a son of a targ would fly past!",
+    "Ha! {what}, on record in this system! Damn glorious!",
+    "Reports of {what}! A Ferengi would sell tickets. We just go!",
+    "{name}, somebody found {what} here first! To hell with being first! We look!",
+    "{what}! In this system! My blood sings, damn it!",
+    "Qapla'! Reports of {what}! Hell of a find!",
+    "The scouts' tales put {what} here! Let us see, damn it!",
+    "{what}! Reported here! Skip it and you are a petaQ!",
+    "Damn! Others have seen {what} here! Our turn!",
+    "{name}! {what}, on record! Hell yes, a trail to follow!",
+    "Reports of {what} in this system! What are we waiting for, damn it?",
+    "{what}! Somebody left us a prize! Bloody marvellous!",
+    "Hear me! {what}, reported here! Only cowards and targs fly past!",
+    "Hell, {name}, {what} in this system! We go now!"
+   ]
+  },
   "rare_star": {
    "klingon": [
     "{name}! {what}! A star worth a warrior's gaze!",

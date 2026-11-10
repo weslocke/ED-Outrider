@@ -860,6 +860,26 @@
     "Fascinating, {name}. {what}. Most fascinating."
    ]
   },
+  "phenomena_reported": {
+   "vulcan": [
+    "{name}, I have reports of {what} in this system. You may wish to examine them.",
+    "Records indicate {what} in this system. Fascinating.",
+    "Other commanders have logged {what} here. Their observations warrant confirmation.",
+    "Reports of {what} in this system. I recommend we observe directly.",
+    "{what}. Reported in this system by previous explorers.",
+    "{name}, survey records list {what} here. Most intriguing.",
+    "The data indicates {what} in this system. It would be illogical not to look.",
+    "Reports of {what}. Humans call this a hot tip. The temperature is irrelevant.",
+    "On record for this system: {what}. A worthwhile detour.",
+    "Previous explorers report {what} here. I would value direct observation.",
+    "{name}, there are reports of {what} in this system.",
+    "Survey records indicate {what} here. The probability of a codex entry is high.",
+    "Reports of {what}. I find myself curious, which is logical.",
+    "{what}, reported in this system. Fascinating.",
+    "Arrival note: reports of {what}. I recommend investigation.",
+    "Reports place {what} in this system. The FSS should locate the site."
+   ]
+  },
   "rare_star": {
    "vulcan": [
     "Fascinating. {what}.",

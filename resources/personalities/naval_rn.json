@@ -1667,6 +1667,44 @@
     "Logged with damn great pleasure: {what}."
    ]
   },
+  "phenomena_reported": {
+   "naval_rn": [
+    "I have reports of {what} in this system, {name}. Might be worth a look.",
+    "Reported in this system: {what}. Recommend we investigate.",
+    "Survey records list {what} here, {name}.",
+    "Contact of interest on record: {what}.",
+    "Other commanders have logged {what} in this system.",
+    "Intelligence report: {what}, in this system.",
+    "Charts show reports of {what} here. Worth a detour.",
+    "Noted: {what}, reported in this system.",
+    "{name}, reports of {what} in this system. Recommend a closer look.",
+    "Arrival note: reports of {what} here.",
+    "On record for this system: {what}. Your call, {name}.",
+    "Advise: {what} reported in this system.",
+    "Reports place {what} in this system. The FSS will show the site.",
+    "{what}, reported here by other explorers.",
+    "Report received: {what}, in this system. Worth a visit, Skipper.",
+    "This system has reports of {what}. Recommend we take a look."
+   ],
+   "naval_rn_profane": [
+    "Reports of {what} in this system, {name}. Bloody marvellous.",
+    "Reported here: {what}. Damn, that's worth a look.",
+    "Well, I'll be damned. {what}, on record in this system.",
+    "Bloody hell, {name}. Reports of {what} here.",
+    "Other commanders logged {what} here. Damn good tip.",
+    "Intelligence report: {what}, in this system. Bloody good news.",
+    "Charts show {what} here. Damn well worth a detour.",
+    "{what}, reported in this system. Bloody lovely, Skipper.",
+    "Reports place {what} here. Damn fine, {name}.",
+    "Noted: {what} reported in this system. Worth a bloody look.",
+    "On record for this system: {what}. Damn.",
+    "Bloody marvellous. Reports of {what} here.",
+    "{name}, {what} reported in this system. Damn fine find, even second-hand.",
+    "Arrival note: reports of {what}. Bloody good.",
+    "Survey records list {what} here. Damn, that's tempting.",
+    "Report received: {what}, in this system. Bloody well worth it, Skipper."
+   ]
+  },
   "rare_star": {
    "naval_rn": [
     "Rare star, {name}: {what}.",

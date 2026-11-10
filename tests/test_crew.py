@@ -593,7 +593,8 @@ class CrewLines(unittest.TestCase):
                  "hold_full": 15, "old_data": 15,   # old_data (#11): a clause after the briefing
                  # the review's suggestions (2026-10-24): rare lines, about 15 a list
                  "upload_held": 12, "suit_low": 12, "upkeep_low": 12, "bookmarked": 12, "life_support_off": 12, "modules_off": 12,
-                 "codex_picture": 15}   # a shot filed in your codex folders (2026-11-08): only with that setting on
+                 "codex_picture": 15,   # a shot filed in your codex folders (2026-11-08): only with that setting on
+                 "phenomena_reported": 12}   # Canonn's reports on arrival (2026-11-10): 16 a list
         crew_keys, said = {}, []
         for key, entry in doc["lines"].items():
             for lst, vs in entry.items():

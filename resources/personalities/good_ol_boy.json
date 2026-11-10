@@ -1666,6 +1666,44 @@
     "{what}. Lord, this galaxy sure does show off."
    ]
   },
+  "phenomena_reported": {
+   "good_ol_boy": [
+    "Hey partner, folks say there's {what} in this system. Might want to check it out.",
+    "Well, I'll be, {name}. Word is there's {what} round here somewhere.",
+    "Dadgum, buddy, other folks done found {what} in this system.",
+    "Grandpa always said, when somebody tells you where the fish are biting, go fishing. {what}, reported right here.",
+    "Y'all, there's reports of {what} in this system.",
+    "Dang, partner, {what}, on the books for this system.",
+    "Somebody left us a tip, buddy: {what}, right here.",
+    "Lord have mercy, reports of {what} in this here system.",
+    "Hey pal, {what} been spotted round these parts. Worth a look-see.",
+    "Well, shoot, {name}, other explorers logged {what} here.",
+    "Word around the campfire, buddy: {what}, in this very system.",
+    "{what}, reported here. Grandpa'd have pulled the truck over for that.",
+    "Dang, partner, there's reports of {what} here. Let's mosey on over.",
+    "Folks say there's {what} hiding in this system somewhere.",
+    "Hey you, {what}, on record right here. Ain't that something.",
+    "Buddy, I got reports of {what} in this system. Reckon it's worth the stop."
+   ],
+   "good_ol_boy_profane": [
+    "Hot damn, partner, reports of {what} in this system.",
+    "Well, shit, {name}, other folks found {what} round here.",
+    "Holy hell, buddy, {what}, on record right here.",
+    "Damn, y'all, there's reports of {what} in this system. Let's go.",
+    "Grandpa always said a tip is a gift. Hell of a gift: {what}, reported here.",
+    "Son of a gun, {what} been spotted in this system, partner.",
+    "Hot damn, somebody left us a tip: {what}.",
+    "Well, I'll be damned. Reports of {what} round these parts.",
+    "Shit, buddy, {what}, right here. Worth a look-see.",
+    "Hell yes, partner. {what}, reported in this system.",
+    "Damn, {name}, other explorers logged {what} here. Let's mosey.",
+    "Word around the campfire is {what}, right here. Damn fine news.",
+    "Holy shit, pal, there's reports of {what} in this here system.",
+    "Dang it all to hell, reports of {what} out here. Go find it.",
+    "Hot damn, y'all, {what}, on the books for this system.",
+    "Partner, I got reports of {what} here. Be a damn shame to skip it."
+   ]
+  },
   "rare_star": {
    "good_ol_boy": [
     "{name}, we got {what}. Well, I'll be.",

@@ -288,7 +288,9 @@ has a fixed place, and a value never breaks in the middle (a line wraps only bet
    📍 2 tourist beacons", a Titan after the galaxy map's Titan marker), surface sites ("🏛 Guardian sites on 10 b"),
    green gas giants, a rare star ("⭐ A black hole (main star)"), the notable stellar phenomena ("🌀 Three notable
    stellar phenomena, all in rings · 1 of 3 visited": each drop at one counts, since the journal cannot tell which of a
-   kind's sites it was) and Spansh's pre-Odyssey data).
+   kind's sites it was; then what Canonn's reports name there, "reported: ✓ Albulum Gourd Mollusc, Prasinum Metallic
+   Crystals (new)", ✓ for one you logged in the system, (new) for one new to your codex in the region; before the FSS
+   lists any, "🌀 Reported by Canonn: …" alone) and Spansh's pre-Odyssey data).
 6. **The foot,** small: your discovery streak and the nearest unvisited system, this session, the spoken captions and
    (on a tablet over plain http) the screen-sleep hint.
 

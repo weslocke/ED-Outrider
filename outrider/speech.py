@@ -61,6 +61,10 @@ KEYS = {
     "phenomena": "the FSS found notable stellar phenomena in a system where you have none on record (said with delight, in "
                  "every style: the co-pilot loves new things): {what} (already phrased, e.g. 'three notable stellar "
                  "phenomena, all in rings')",
+    "phenomena_reported": "on arriving in a system, Canonn has reports of notable stellar phenomena's codex entries there that "
+                          "you have not logged in it ([server] canonn_reports; said with delight, as the phenomena line): "
+                          "{what} (the entries' names, already joined, e.g. 'Albulum Gourd Mollusc and Prasinum Metallic "
+                          "Crystals'; the page adds 'One is new to your codex.' after it)",
     "limpets_none": "you just undocked in a mining ship (a refinery, a collector or prospector limpet controller fitted) "
                     "with no limpets in the hold: a reminder to turn back for some (Settings → Mining's reminder, said by "
                     "the Mining Officer)",
@@ -666,6 +670,7 @@ SAMPLES = {
     "docking_granted": {"pad": 34, "station": "Jameson Memorial"},
     "docking_denied": {"reason": "no pad free for your ship: try again shortly", "station": "Jameson Memorial"},
     "phenomena": {"what": "three notable stellar phenomena, all in rings"},
+    "phenomena_reported": {"what": "Albulum Gourd Mollusc and Prasinum Metallic Crystals"},
     "rare_star": {"what": "a black hole at B"}, "old_data": {"year": "2019"},
     "ring_found": {"body": "A 3", "ring": "a pristine metallic ring"}, "limpets_none": {}, "limpets_low": {"count": 5}, "hold_nearly_full": {"minutes": 5, "free": 12}, "hold_full": {},
     "prospect_hit": {"what": "Platinum, 34 percent"}, "prospect_best": {"what": "Platinum, 38 percent"}, "motherlode": {"mineral": "Void Opal"},
@@ -760,7 +765,7 @@ ROW_KEYS = {
     "sampling": ("bio_done_last", "bio_done_more", "bio_tag_near", "left_body"), "approach": ("high_g",),
     "bodybrief": ("body_brief",), "docking": ("docking_granted", "docking_denied"), "sell": ("docked_sell", "sold", "undocked_unsold", "unsold_urgent"), "saleleft": ("sale_left",),
     "unsold": ("unsold_warn", "unsold_urgent"), "firstsseen": ("firsts_seen",), "hull": ("hull", "heat", "interdicted"), "modules": ("life_support_off", "modules_off"),
-    "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena",), "ggg": ("ggg",),
+    "carrier": ("carrier_arrived", "carrier_departs"), "codex": ("codex",), "phenomena": ("phenomena", "phenomena_reported"), "ggg": ("ggg",),
     "rare_star": ("rare_star",), "surface_site": ("surface_site",), "signal_poi": ("signal_poi",), "curious": ("curious",),
     "biopic": ("codex_picture",), "geopic": ("codex_picture",),
     "loss": ("ship_lost",), "rigleash": ("rig_leash",), "ring": ("ring_found", "ring_found_many"), "limpets": ("limpets_none", "limpets_low", "hold_nearly_full", "hold_full"), "prospect": ("prospect_hit", "motherlode"),

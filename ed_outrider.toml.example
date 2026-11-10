@@ -55,6 +55,9 @@
 #                      # played on this PC, in-game overlay or screenshot converting; the pages leave them out.
 # update_check = true  # once a day, ask GitHub whether a newer Outrider release is out; the page shows a small
 #                      # "Update" pill when one is (only the request is made: nothing about you is sent)
+# canonn_reports = true  # on arriving in a system, ask Canonn which notable stellar phenomena other commanders have
+#                      # reported there; the ones you have not logged in that system are said (the phenomena alert).
+#                      # Only the system's name is sent. false: never asked (the FSS still finds them)
 # open_browser = true  # the first start (no database yet) on the game PC opens the page in your browser by itself,
 #                      # as soon as the starting page answers (never in Docker, under the service or --simulate)
 # allowed_hosts = ["mypc.lan"]   # extra names the page may be opened by. Outrider answers to any IP address,

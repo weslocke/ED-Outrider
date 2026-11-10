@@ -1657,6 +1657,44 @@
     "Now that's a bit of all right. {what}."
    ]
   },
+  "phenomena_reported": {
+   "scoundrel": [
+    "Hey buddy, word on the street says {what}, right here. Might want to check it out.",
+    "Got a tip: {what}, in this system. Tips usually cost me. This one's free.",
+    "Somebody logged {what} here. Somebody always gets there first. Still pretty, though.",
+    "{what}, reported here. Pretty lights. Do pretty lights pay?",
+    "Reports of {what} in this system. I know a guy who'd pay for pictures.",
+    "{name}, other folks found {what} here. Let's go see if they left anything shiny.",
+    "Word is there's {what} hanging around this system.",
+    "Hot tip, buddy: {what}, on record here. No charge.",
+    "Reports of {what}. Shiny, sparkly, and possibly profitable.",
+    "Somebody beat us to {what}. Story of my life. Go look anyway.",
+    "{what}, reported in this system. Codex voucher money, maybe?",
+    "I hear there's {what} round here somewhere. Worth a peek.",
+    "{name}, reports of {what} here. Let's take a look before somebody charges admission.",
+    "Psst. {what}. In this system. You didn't hear it from me.",
+    "Reports of {what} here. Ooh, now that's worth a look. And maybe a buck.",
+    "Records say {what}, right here. Records never lie. Unlike me."
+   ],
+   "scoundrel_profane": [
+    "Hot damn, buddy. Reports of {what} in this system.",
+    "Got a tip: {what}, right here. Damn, tips are never free.",
+    "Somebody logged {what} here first. Bastards. Still pretty, though.",
+    "{what}, reported here. Pretty as hell and maybe profitable.",
+    "Holy shit, {name}, reports of {what}. Let's go look.",
+    "Word is there's {what} in this damn system. Worth a peek.",
+    "Reports of {what} here. Damn, the universe is showing off.",
+    "Hell yes, {what}, on record here. I know a guy who'd pay for pictures.",
+    "Psst. {what}. In this system. You didn't hear it from me, damn it.",
+    "Somebody beat us to {what}. Story of my damn life. Go look anyway.",
+    "{name}, reports of {what}. Hot damn, codex money.",
+    "Records say {what}, right here. Hell, records never lie. Unlike me.",
+    "Shit, buddy, other folks found {what} here. Let's go see.",
+    "Hot tip: {what}, in this system. Free of charge, damn it.",
+    "Reports of {what}. Shiny as hell. Let's go.",
+    "Damn, {name}, {what}, reported in this system. Worth the detour."
+   ]
+  },
   "rare_star": {
    "scoundrel": [
     "{what}. Rare stuff, {name}. Rare means valuable.",

@@ -5,6 +5,7 @@ about you is sent. Pure: the server hands in the answers.
 
     guardian_sites(rows, body_id, radius_km) -> [{kind: "guardian", name, lat, lon}]   (GET SETTLEMENT_URL)
     geology_sites(poi, short)                -> [{kind: "geology", name, n, points: [[lat, lon]...]}]   (GET POI_URL)
+    space_entries(poi, ids)                  -> [entry id]: reported in space here (the phenomena arrival line)
 
 Canonn's older sites API (api.canonn.tech: Guardian, Thargoid and crash-site tables) no longer answers (checked
 2026-10-26); wrecks and Thargoid sites have no live source, so they stay pins you place yourself.
@@ -99,3 +100,22 @@ def geology_sites(poi, short):
         if len(e["points"]) < GEO_POINTS_MAX:
             e["points"].append([round(lat, 6), round(lon, 6)])
     return sorted(out.values(), key=lambda e: (-e["n"], e["name"]))
+
+
+def space_entries(poi, ids):
+    """The codex entries Canonn has reports of in space in this system (no body: found at notable stellar phenomena),
+    kept to `ids` (the Phenomena list's entry ids), each once, in the order Canonn lists them. Raises ValueError for an
+    answer of another shape, as geology_sites."""
+    if not isinstance(poi, dict) or "system" not in poi or not isinstance(poi.get("codex") or [], list):
+        raise ValueError("Canonn answered in an unexpected shape")
+    out = []
+    for c in poi.get("codex") or []:
+        if not isinstance(c, dict) or c.get("body") not in (None, ""):
+            continue
+        try:
+            entry = int(c.get("entryid"))
+        except (TypeError, ValueError):
+            continue
+        if entry in ids and entry not in out:
+            out.append(entry)
+    return out

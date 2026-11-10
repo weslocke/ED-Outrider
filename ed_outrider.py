@@ -493,6 +493,8 @@ CANONN_SITES_KEEP = 86400         # s a system's known sites from Canonn are kep
 CANONN_SITES_RETRY = 300          # s before a failed ask is tried again
 CANONN_SITES_SYSTEMS = 50         # systems kept in memory (the oldest dropped)
 CANONN_SITES_TIMEOUT = 45         # s: its answers take seconds (a busy system's codex reports run to 100 KB)
+NSP_REPORT_WAIT_S = 90            # s after a live arrival the phenomena line may still be said ([server] canonn_reports)
+NSP_REPORT_TIMEOUT = 15           # s Canonn's answer is waited for on arrival (the body panel's own ask waits longer)
 UPDATE_CHECK_START = 60           # s after the server starts before the first check
 UPDATE_CHECK_EVERY = 86400        # s between checks
 UPDATE_CHECK_RETRY = 3600         # s to wait after a failed check (offline, GitHub down or throttled)
@@ -1354,6 +1356,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         "allowed_hosts": [h.strip() for h in hosts if h.strip()],
         "password": password, "game_pc": game_pc,
         "update_check": flag("server", sv, "update_check", True),
+        "canonn_reports": flag("server", sv, "canonn_reports", True),   # Canonn's phenomena reports, asked on arrival
         "open_browser": flag("server", sv, "open_browser", True),   # S13: the first start opens the page (should_open_browser)
         # at least 1 ly: a bad config value is reported above; a --radius 0 flag is clamped
         "radius": max(1.0, pick(args.radius, num("server", sv, "radius", _config_radius, None), 25.0)),
@@ -1507,6 +1510,7 @@ allowed_hosts = {lst(st["allowed_hosts"])}   # extra names the page may be opene
 password = {q(st["password"])}   # devices on your network sign in with it ("" = none); this PC never needs it, except in Docker, where every browser signs in
 game_pc = {q(st["game_pc"] if st["game_pc"] == "auto" else ("true" if st["game_pc"] else "false"))}   # is this the PC the game runs on? "auto" (off inside a container, e.g. Docker), "true" or "false". Off: no auto honk, auto-target, tablet rail, co-pilot button, clipboard or playing on this PC
 update_check = {"true" if st["update_check"] else "false"}   # once a day, ask GitHub whether a newer Outrider release is out, and say so on the page (only the request: nothing about you is sent)
+canonn_reports = {"true" if st["canonn_reports"] else "false"}   # on arriving in a system, ask Canonn which notable stellar phenomena have been reported there, and say the ones you have not logged in it (only the system's name is sent)
 open_browser = {"true" if st["open_browser"] else "false"}   # the first start (no database yet) on the game PC opens the page in your browser
 radius = {n(st["radius"])}      # ly: the sphere of nearby systems the page lists
 radius_choices = [{", ".join(n(x) for x in st["radius_choices"])}]   # ly: what the page's radius dropdown offers
@@ -3509,7 +3513,7 @@ class Journals:
     MEMORY = ("moment_seq", "moments", "last_heat", "life_support_off", "modules_off", "modules_off_at", "loadout_off_said",
               "modules_left", "under_attack_at", "canopy_breached", "overheated", "nsp_drop",
               "body_touched", "approached", "brief_key", "regions_said", "rings_said",
-              "codex_said", "fss_signals_pending", "region_entered", "jumponium", "sale_run", "burst", "nsp_burst",
+              "codex_said", "fss_signals_pending", "region_entered", "jumponium", "sale_run", "burst", "nsp_burst", "nsp_told",
               "docking_hold", "chat_seq", "chat", "shots_new", "_cmdrs_backfilled",
               "last_all_found",   # read by note_jumponium as "the FSS is done here"
               "last_honk",        # read by the FSSAllBodiesFound line ("all found by the honk")
@@ -3587,6 +3591,8 @@ class Journals:
         self.jumponium = None      # this system's best jumponium body so far {system, body, material, pct, said}
         # the FSS's notable stellar phenomena as they come (several lines in one moment): {system, t, counts, new, seq}
         self.nsp_burst = None
+        # (system, its visit's arrival ts) when this visit's phenomena were said (on arrival or by the FSS): said once
+        self.nsp_told = None
         self.docking_hold = None   # #12: a grant's moment held while the docking computer may take over (State.docking_release)
         self.pad_delay = GRANT_SAY_DELAY_S   # s: [speech] pad_delay, set by run() and Settings -> Voice
         # a live sale still coming in (a 'Sell all' writes a page every 10 s to a minute or so): State.maybe_sale_left
@@ -5606,15 +5612,21 @@ class Journals:
         """One FSS line for a notable stellar phenomenon. The FSS lists a system's phenomena together, as identical lines
         for the same kind: a burst (lines of one system within NSP_BURST_S) is counted, and each kind keeps the most one
         burst had (opening the FSS again later lists them again: never added up). The first burst in a system with none
-        recorded is news: a "phenomena" moment (live play only), its count kept up to date as the burst's lines come."""
+        recorded, or with sites not yet dropped at, is news once a visit: a "phenomena" moment (live play only, `visited`:
+        the sites already dropped at), its count kept up to date as the burst's lines come."""
         b = self.nsp_burst
         try:
             near = b and b["system"] == system and abs(ts_seconds(ts) - b["t"]) <= NSP_BURST_S
         except (TypeError, ValueError):
             near = False
         if not near:
-            known = self.db.execute("SELECT 1 FROM phenomena WHERE system=? LIMIT 1", (system,)).fetchone() is not None
-            b = self.nsp_burst = {"system": system, "t": ts_seconds(ts), "counts": {}, "new": not known, "seq": None}
+            # news while the system has sites you have not dropped at (none on record: all of them), once a visit
+            # (the arrival line may have said it: State.nsp_report_say)
+            rec = nsp_record(self.db, system)
+            visit = (system, (self.pos or {}).get("ts") if (self.pos or {}).get("id64") == system else None)
+            b = self.nsp_burst = {"system": system, "t": ts_seconds(ts), "counts": {}, "seq": None,
+                                  "new": (rec is None or rec[1] < rec[0]) and self.nsp_told != visit,
+                                  "visited": rec[1] if rec else 0, "visit": visit}
         b["counts"][kind] = b["counts"].get(kind, 0) + 1
         self.db.execute("INSERT INTO phenomena (system, kind, ts, reached_ts, n) VALUES (?, ?, ?, NULL, ?) "
                         "ON CONFLICT(system, kind) DO UPDATE SET n = max(coalesce(n, 1), excluded.n)",
@@ -5623,10 +5635,11 @@ class Journals:
             return
         here = self.pos if self.pos and self.pos.get("id64") == system else {}
         fields = {"system": str(system), "system_name": here.get("name"), "count": sum(b["counts"].values()),
-                  "kinds": dict(b["counts"])}
+                  "kinds": dict(b["counts"]), "visited": b["visited"]}
         if b["seq"] is None:
             self.moment("phenomena", ts, **fields)
             b["seq"] = self.moment_seq
+            self.nsp_told = b["visit"]
         else:   # the same burst's next line: the moment says the new count (a new dict: a checkpoint holds the old one)
             for i, mo in enumerate(self.moments):
                 if mo.get("seq") == b["seq"]:
@@ -9450,6 +9463,8 @@ class State:
         self.edsm_first = {}       # id64 -> EDSM's first reporter {commander, date}, from the target's EDSM answers
         self.trail = SurfaceTrail()  # where you have been on the body you are over, this visit (the surface map's trail)
         self.sights_range = SIGHTS_RANGE   # [server] sights_range (run() sets it); 0: no catalogued sights at all
+        self.canonn_reports = False   # [server] canonn_reports (run() sets it: true by default): Canonn asked on arrival
+        self.nsp_report_key, self.nsp_report_task = None, None   # the arrival the phenomena line was looked up for, its ask
         self.shots_cfg = dict(outrider.screenshots.DEFAULTS)   # [screenshots] (run() sets it; Settings applies it at once)
         self.shots_queue, self.shots_task = [], None   # shots waiting for the converter, its task (one at a time)
         self.shots_current = None   # the shot being converted now: out of the queue, not yet recorded (the backlog skips it)
@@ -14955,6 +14970,7 @@ class State:
                 "edsm_first": self.edsm_first.get(id64),   # EDSM's first reporter, when it was asked as your target
                 "sights": self.sights_here(id64),   # EDAstro's catalogued sights in this system
                 "phenomena": phenomena, "rare_stars": rare_stars(out),
+                "phenomena_reported": self.nsp_reported_here(id64),   # Canonn's, from the arrival's ask (never asked here)
                 "pois": [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))],
                 "leaving": leaving,
                 "firsts": own_firsts(self.db, id64, name),
@@ -15038,7 +15054,7 @@ class State:
                 "row": row, "own": own, "spansh": spansh, "rings": rings,
                 "spansh_error": locals().get("lookup_error")}
 
-    async def _canonn_ask(self, id64, part, url, params=None):
+    async def _canonn_ask(self, id64, part, url, params=None, timeout=CANONN_SITES_TIMEOUT):
         """One part of a system's known sites from Canonn ("settlement": its Guardian reports, "poi": its codex reports),
         kept CANONN_SITES_KEEP (a failure CANONN_SITES_RETRY): (answer or None, error words or None)."""
         now = time.time()
@@ -15046,7 +15062,7 @@ class State:
         if got and now - got[0] < (CANONN_SITES_KEEP if got[2] is None else CANONN_SITES_RETRY):
             return got[1], got[2]
         try:
-            async with self.spansh.session.get(url, params=params, timeout=ClientTimeout(total=CANONN_SITES_TIMEOUT)) as r:
+            async with self.spansh.session.get(url, params=params, timeout=ClientTimeout(total=timeout)) as r:
                 r.raise_for_status()
                 answer, err = await r.json(content_type=None), None
         except asyncio.CancelledError:
@@ -15097,6 +15113,105 @@ class State:
         if errors:
             out["error"] = errors[0]
         return out, 200
+
+    def maybe_nsp_report(self, now=None):
+        """Phenomena on arrival (every tick): once per live hyperspace arrival, Canonn's reports of the system's
+        notable stellar phenomena ([server] canonn_reports, asked in the background), else your own record of sites
+        not yet dropped at; nsp_report_say says it."""
+        j, now = self.journals, time.time() if now is None else now
+        a = j.jump_arrival
+        if not a or self.nsp_report_key == (a["id64"], a["ts"]):
+            return
+        try:
+            age = now - ts_seconds(a["ts"])
+        except (TypeError, ValueError):
+            return
+        self.nsp_report_key = (a["id64"], a["ts"])
+        if age > NSP_REPORT_WAIT_S:
+            return   # a journal being caught up on: old news
+        if not self.canonn_reports or not a.get("name"):
+            self.nsp_report_say(a, [], now)
+            return
+        if self.nsp_report_task and not self.nsp_report_task.done():
+            self.nsp_report_task.cancel()   # the previous system's ask: you have left it
+        self.nsp_report_task = asyncio.get_running_loop().create_task(self.nsp_report(dict(a)))
+
+    async def nsp_report(self, a):
+        """Canonn's reports of phenomena in arrival `a`'s system (only its name is sent; the answer joins the body
+        panel's cache), then nsp_report_say. A failure says what your own record has, as with the setting off."""
+        ids = {e["id"] for e in self.codex_list("phen")}
+        reported = []
+        async with self.canonn_lock:
+            answer, err = await self._canonn_ask(a["id64"], "poi", outrider.canonn_sites.POI_URL,
+                                                 {"system": a["name"], "odyssey": "Y"}, timeout=NSP_REPORT_TIMEOUT)
+        if not err:
+            try:
+                reported = outrider.canonn_sites.space_entries(answer, ids)
+            except ValueError as e:
+                self._canonn_bad(a["id64"], "poi", e)
+        self.nsp_report_say(a, reported)
+
+    def nsp_reported_entries(self, id64, ids):
+        """Reported Phenomena entries (ids) as [{id, name, group, here (you logged it in this system), new (not in
+        your codex in this galactic region: None when the region is not known)}], in the order given."""
+        phen = {e["id"]: e for e in self.codex_list("phen")}
+        ids = [i for i in ids if i in phen]
+        if not ids:
+            return []
+        marks = ",".join("?" * len(ids))
+        rows = [dict(r) for r in self.db.execute(f"SELECT entry_id, system, region FROM codex WHERE entry_id IN ({marks})", ids)]
+        here_ids = {r["entry_id"] for r in rows if r["system"] == id64}
+        R = outrider.bio.load_rules() if outrider.bio else None
+        names = (R or {}).get("region_names") or []
+        number = {n.lower(): i for i, n in enumerate(names) if n}
+
+        def region_of(system, words=None):
+            loc = self.locate(system) if system is not None else None
+            r = outrider.bio.region_number(loc[1], loc[2], loc[3]) if names and loc and loc[1] is not None else None
+            return r if r is not None else number.get((words or "").lower())
+        region = region_of(id64)
+        seen = {r["entry_id"] for r in rows if region is not None and region_of(r["system"], r["region"]) == region}
+        return [{"id": i, "name": phen[i]["name"], "group": phen[i].get("group"), "here": i in here_ids,
+                 "new": None if region is None else i not in seen} for i in ids]
+
+    def nsp_reported_here(self, id64):
+        """Here's and Now's `phenomena_reported`: what Canonn's cached answer for the system names (nsp_reported_entries),
+        [] when it was not asked (drawing never asks it)."""
+        got = self.canonn_cache.get(id64, {}).get("poi")
+        if not got or got[2] is not None:
+            return []
+        try:
+            return self.nsp_reported_entries(id64, outrider.canonn_sites.space_entries(got[1], {e["id"] for e in self.codex_list("phen")}))
+        except ValueError:
+            return []
+
+    def nsp_report_say(self, a, reported, now=None):
+        """The arrival's phenomena line, while you are still on that visit and within NSP_REPORT_WAIT_S, and not when
+        the FSS said it already: Canonn's reported entries you have not logged in this system (a "phenomena_reported"
+        moment), else your record's sites not yet dropped at (a "phenomena" moment with `revisit`). Marks the visit
+        told, so the FSS listing that follows says nothing more."""
+        j, now = self.journals, time.time() if now is None else now
+        pos = j.pos or {}
+        visit = (a["id64"], a["ts"])
+        try:
+            late = now - ts_seconds(a["ts"]) > NSP_REPORT_WAIT_S
+        except (TypeError, ValueError):
+            return
+        if late or pos.get("id64") != a["id64"] or pos.get("ts") != a["ts"] or j.nsp_told == visit:
+            return
+        entries = [e for e in self.nsp_reported_entries(a["id64"], reported) if not e["here"]]
+        ts = iso_ts(now)
+        if entries:
+            j.moment("phenomena_reported", ts, system=str(a["id64"]), system_name=a.get("name"),
+                     entries=[{"name": e["name"], "group": e["group"], "new": e["new"]} for e in entries])
+        else:
+            rec = nsp_record(self.db, a["id64"])
+            if not rec or rec[1] >= rec[0]:
+                return
+            j.moment("phenomena", ts, system=str(a["id64"]), system_name=a.get("name"), count=rec[0], kinds=rec[2],
+                     visited=rec[1], revisit=True)
+        j.nsp_told = visit
+        self.bump()
 
     COUNT_QUERIES = {
         # by the first scan: undisc_ts moves on with every rescan of your own unsold discovery (still reads as
@@ -18684,6 +18799,7 @@ class State:
         """Re-merge rows whose systems you just scanned, so the page updates as you go."""
         self.maybe_honk()
         self.maybe_brief()
+        self.maybe_nsp_report()
         self.reconcile_arrival()
         sold = self.journals.sales_changed
         if sold:
@@ -22432,7 +22548,7 @@ class State:
                             self.highway_task, self.riches_task, self.carrier_trip_task, self.bio_colours_task, self.shots_task,
                             self.autotarget_task, self.autotarget_test_task, self.lease_task, self.edsm_discard_task,
                             self.edsm_bf_task, self.edsm_import_task, self.reported_task, self.route_task, self.route_list_task,
-                            *self.upload_tasks.values(), *self.boxel_tasks) if t]
+                            self.nsp_report_task, *self.upload_tasks.values(), *self.boxel_tasks) if t]
 
     def arrival_danger_until(self, now=None, st=None):
         """The game sets Status.json's in-danger flag on every use of the FSD, from the charge until some 16-26 s after
@@ -23426,6 +23542,17 @@ def reported_life(results, id64):
         if seen:
             out[b["body_id"]] = sorted(seen.values(), key=lambda r: (-r["value"], r["species"], r["variant"] or ""))
     return out
+
+
+def nsp_record(db, system):
+    """Your record of a system's notable stellar phenomena: (sites the FSS listed, sites dropped at (each kind at most its
+    count), {kind: count}), or None when the FSS never listed any there."""
+    rows = db.execute("SELECT kind, coalesce(n, 1), max((SELECT count(DISTINCT site) FROM phenomena_sites ps WHERE "
+                      "ps.system = phenomena.system AND ps.kind = phenomena.kind), reached_ts IS NOT NULL) "
+                      "FROM phenomena WHERE system=?", (system,)).fetchall()
+    if not rows:
+        return None
+    return sum(r[1] for r in rows), sum(min(r[1], r[2]) for r in rows), {r[0]: r[1] for r in rows}
 
 
 def phenomena_sites(text):
@@ -27047,6 +27174,7 @@ async def run(args, st):
     update_task = state.watch_task(asyncio.create_task(state.watch_updates()), "watch_updates") if st["update_check"] else None
     images_task = state.watch_task(asyncio.create_task(state.watch_codex_images()), "watch_codex_images")   # the checklists' picture links, once a day
     state.sights_range = st["sights_range"]
+    state.canonn_reports = st["canonn_reports"]
     state.shots_cfg = dict(st["screenshots"])
     sights_task = state.watch_task(asyncio.create_task(state.watch_sights()), "watch_sights") if st["sights_range"] else None
     # the in-game overlay's window, run by Outrider on the game PC while the overlay is wanted (never on a server,
@@ -27063,6 +27191,8 @@ async def run(args, st):
     print("update check: " + ("on (GitHub's latest release, once a day)" if st["update_check"] else "off ([server] update_check)"))
     print("firsts watch: " + ("on (your unsold firsts on Spansh: one request every 10-30 s, each system once a day)"
                               if st["watch_firsts"] else "off ([spansh] watch_firsts)"))
+    print("phenomena reports: " + ("on (Canonn is asked on each arrival, with the system's name only)" if st["canonn_reports"]
+                                   else "off ([server] canonn_reports)"))
     print("catalogued sights: " + (f"on (EDAstro's catalogue, once a day; Now names the nearest within {st['sights_range']:g} ly)"
                                    if st["sights_range"] else "off ([server] sights_range = 0)"))
     print(state.uploads_line())

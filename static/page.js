@@ -1846,11 +1846,14 @@ function nowHereChips(hd) {
   if (hd.rare_stars && hd.rare_stars.length)   // a black hole, a Wolf-Rayet...: rare stars here
     chips.push({c: "now-rare", h: `<span class="ok">⭐ ${esc(rareStarText(hd.rare_stars).replace(/^./, x => x.toUpperCase()))}</span>`});
   // notable stellar phenomena the FSS found here: how many and where, and how many are still to visit
-  const nsp = hd.phenomena && hd.phenomena.length ? hd.phenomena : null;
+  // and what Canonn's reports name here (the arrival's ask), each marked once logged here or new to your codex
+  const nsp = hd.phenomena && hd.phenomena.length ? hd.phenomena : null, rep = reportedNowHtml(hd.phenomena_reported);
   if (nsp) {
     const what = phenomenaWhat(Object.fromEntries(nsp.map(p => [p.kind, p.n || 1]))), all = phenomenaVisited(nsp) >= phenomenaCount(nsp);
-    chips.push({c: "now-nsp", h: `<span class="${all ? "ok" : "warnc"}">🌀 ${esc(what[0].toUpperCase() + what.slice(1))}</span> <span class="unk">${phenomenaLeftText(nsp)}</span>`});
+    chips.push({c: "now-nsp", h: `<span class="${all ? "ok" : "warnc"}">🌀 ${esc(what[0].toUpperCase() + what.slice(1))}</span> <span class="unk">${phenomenaLeftText(nsp)}</span>` +
+      (rep ? ` <span class="unk">· reported:</span> ${rep}` : "")});
   }
+  else if (rep) chips.push({c: "now-nsp", h: `🌀 <span class="unk">Reported by Canonn:</span> ${rep}`});
   // #11: Spansh's pre-Odyssey data, until your own scans have every body (the details in the hover)
   if (hd.spansh_old && !(hd.leaving && hd.leaving.all_found))
     chips.push({c: "now-old", a: ` title="${esc(spanshOldTitle(hd.spansh_old))}"`, h: `🪦 ${esc(spanshOldNow(hd.spansh_old))}`});
@@ -3141,7 +3144,7 @@ const ALERTS = [["discovery", "a fanfare when you target a system nobody has rep
   ["mapped", "its value, whether the efficiency bonus landed, and the next stop (needs \"Say when a planet is mapped\")", null],
   ["jumponium", "a landable body has a material you are short of for FSD injections", "find"],
   ["leaving", "leaving with bodies still worth mapping or sampling", "alert"],
-  ["phenomena", "life in clouds or rings, in a system where you have none on record", "find"],
+  ["phenomena", "life in clouds or rings you have not visited: Canonn's reports as you arrive, else the FSS", "find"],
   ["rare_star", "a black hole, Wolf-Rayet, carbon, O-type, Herbig Ae/Be, supergiant or rare white dwarf", "find"],
   ["ggg", "one of your scans fits the community's model: a guess, check the system map", "find"],
   ["surface_site", "Guardian or Thargoid sites (once mapped), or an unknown planetary anomaly", "find"],
@@ -3212,6 +3215,7 @@ const ALERT_NAMES = {discovery: "Targeting a system", jump: "FSD charging", arri
 const ALERT_DETAILS = {discovery: "Upbeat if it is known but not fully scanned, a thud if it is visited or fully scanned. Never spoken: the arrival is.",
   arrival: "The streak lengths are under Risk and warnings. The region is said only when the arrival briefing, which opens with it, is not. The sound plays only to correct a targeting call that was wrong.",
   brief: "Said after the honk, or 12 s after arriving without one.",
+  phenomena: "As you arrive, the codex entries other commanders reported in the system (Canonn, [server] canonn_reports), leaving out the ones you have logged there; else your own record of sites you have not dropped at; else the FSS's first listing of them. Once a visit, and not once you have dropped at every site.",
   biopic: "Only with Settings → Screenshots → \"Also save tagged screenshots into your codex folders\" on, for a shot taken live (not one converted later). Said by the Exobiologist.",
   geopic: "Only with Settings → Screenshots → \"Also save tagged screenshots into your codex folders\" on, for a shot taken live (not one converted later). Said by the Science Officer.",
   honk: "Not spoken while the arrival briefing is.",
@@ -4689,12 +4693,31 @@ function phenomenaWhat(kinds) {
   if (parts.length === 1) return `${head}, ${total === 1 ? "" : "all "}${nspWhere(parts[0][0], total)}`;
   return `${head}: ` + parts.map(([k, n]) => `${nspCount(n)} ${nspWhere(k, n)}`).join(" and ").replace(/ and (?=[^]* and )/g, ", ");
 }
-// the FSS found phenomena in a system with none on record (State's "phenomena" moment): said with delight
+// notable stellar phenomena with sites you have not dropped at (State's "phenomena" moment: the FSS listing them, or
+// your own record as you arrive, `revisit`): said with delight, and how many are left once you have visited some
+// Now's names of what Canonn reports in this system: logged here (✓, dimmed), new to your codex, or neither
+const reportedNowHtml = list => (list || []).map(e => e.here ? `<span class="unk" title="you logged it in this system">✓ ${esc(e.name)}</span>`
+  : `<span class="${e.new ? "ok" : "warnc"}"${e.new ? ' title="new to your codex in this region"' : ""}>${esc(e.name)}${e.new ? " (new)" : ""}</span>`).join(", ");
+const phenomenaLeftSaid = m => { const left = (m.count || 0) - (m.visited || 0);
+  return m.visited > 0 && left > 0 ? ` ${nspCount(left)[0].toUpperCase()}${nspCount(left).slice(1)} still to visit.` : ""; };
 function sayPhenomena(m) {
   const what = phenomenaWhat(m.kinds);
   if (!what) return;
-  alertOut("phenomena", `🌀 ${what[0].toUpperCase()}${what.slice(1)}`, m.system_name || "",
-           {say: () => line("phenomena", {what}, `Notable stellar phenomena: ${what}.`)});
+  const left = phenomenaLeftSaid(m);
+  alertOut("phenomena", `🌀 ${what[0].toUpperCase()}${what.slice(1)}`, [m.system_name, left.trim()].filter(Boolean).join(" · "),
+           {say: () => line("phenomena", {what}, `Notable stellar phenomena: ${what}.`) + left});
+}
+// Canonn's reports of phenomena in the system you arrived in, the ones you have not logged there (State's
+// "phenomena_reported" moment): named, and whether any is new to your codex in this region
+const reportedNewSaid = list => { const n = (list || []).filter(e => e.new).length;
+  return !n ? "" : list.length === 1 ? " It is new to your codex." : n === 1 ? " One is new to your codex."
+    : n === list.length ? " All new to your codex." : ` ${nspCount(n)[0].toUpperCase()}${nspCount(n).slice(1)} are new to your codex.`; };
+function sayPhenomenaReported(m) {
+  const names = (m.entries || []).map(e => e.name).filter(Boolean);
+  if (!names.length) return;
+  const what = andList(names), more = reportedNewSaid(m.entries);
+  alertOut("phenomena", `🌀 Reported here: ${what}`, [m.system_name, more.trim()].filter(Boolean).join(" · "),
+           {say: () => line("phenomena_reported", {what}, `I have reports of ${what} in this system.`) + more});
 }
 function sayJumponium(j) {
   const material = (j.name || j.material || "").toLowerCase(), pct = `${j.pct} percent`;
@@ -12064,6 +12087,7 @@ function onData() {
       }
       else if (m.kind === "jumponium" && m.jumponium) sayJumponium(m.jumponium);
       else if (m.kind === "phenomena" && m.count) sayPhenomena(m);
+      else if (m.kind === "phenomena_reported") sayPhenomenaReported(m);
       else if (m.kind === "curious")   // curiosities here: one line to look at the panels, never the list
         alertOut("curious", "🔭 Curiosities here", (m.bodies || []).join(", "),
                  {say: () => line("curious", {}, "You might be interested in some curious things I found here. Check your panels.")});
@@ -13454,7 +13478,7 @@ const ROW_KEYS = {arrival: ["arrival_undiscovered", "arrival_discovered", "regio
   jumponium: ["jumponium"], sampling: ["bio_done_last", "bio_done_more", "bio_tag_near", "left_body"], approach: ["high_g"],
   bodybrief: ["body_brief"], docking: ["docking_granted", "docking_denied"], sell: ["docked_sell", "sold", "undocked_unsold", "unsold_urgent"], saleleft: ["sale_left"], unsold: ["unsold_warn", "unsold_urgent"],
   firstsseen: ["firsts_seen"], hull: ["hull", "heat", "interdicted"], modules: ["life_support_off", "modules_off"], suit: ["suit_low"], carrier: ["carrier_arrived", "carrier_departs"], upkeep: ["upkeep_low"], codex: ["codex"],
-  phenomena: ["phenomena"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
+  phenomena: ["phenomena", "phenomena_reported"], ggg: ["ggg"], rare_star: ["rare_star"], surface_site: ["surface_site"], signal_poi: ["signal_poi"],
   curious: ["curious"], loss: ["ship_lost"], rigleash: ["rig_leash"], ring: ["ring_found", "ring_found_many"], limpets: ["limpets_none", "limpets_low", "hold_nearly_full", "hold_full"], prospect: ["prospect_hit", "motherlode"],
   prospectbest: ["prospect_best"], uploadheld: ["upload_held"], wanted: ["wanted"],
   biopic: ["codex_picture"], geopic: ["codex_picture"]};

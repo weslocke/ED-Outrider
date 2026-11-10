@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-10 · Phenomena: told as you arrive, from Canonn's reports
+- **New:** arriving in a system where other commanders reported notable stellar phenomena, the phenomena alert names
+  them ("I have reports of Albulum Gourd Mollusc in this system... One is new to your codex."), from Canonn, leaving out
+  what you logged there; Now's 🌀 line lists them (✓ logged here, (new) to your codex). Only the system's name is sent;
+  `[server] canonn_reports = false` stops it.
+- **Changed:** the phenomena alert speaks again on a revisit while there are sites you have not dropped at (from your
+  record as you arrive, or the FSS: "Two still to visit."), once a visit; quiet once every site is visited.
+
 ## 2026-11-09 · A clock beside the title (#26, Psilovybin)
 - **New (desktop page):** the time beside "ED Outrider", in UTC (the game's time) by default; Settings → Display →
   **Clock beside the title**: UTC, local time or off, per device; its hover gives the other. Not on the tablet.

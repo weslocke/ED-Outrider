@@ -1651,6 +1651,44 @@
     "{what}. Not bad. Not bad at all, damn it."
    ]
   },
+  "phenomena_reported": {
+   "ivanova": [
+    "{name}, I have reports of {what} in this system. You might want to check it out.",
+    "Other commanders logged {what} here. Fine. That one is worth a look.",
+    "Reports of {what} in this system. Something other than rocks. Good.",
+    "{what}, reported here. My grandmother would have called it a sign.",
+    "The records show {what} in this system. I admit, I am curious.",
+    "{name}, somebody else found {what} here first. Go anyway.",
+    "Reports of {what}. Better than another empty system, I suppose.",
+    "{what}, on record in this system. Do not fly past it, {name}.",
+    "Someone was kind enough to log {what} here. I did not expect kindness out here.",
+    "There are reports of {what} in this system. Fine. I am interested.",
+    "{what}. Reported here. At last, something happens.",
+    "{name}, reports of {what} in this system. Go look.",
+    "Survey records list {what} here. My grandmother would go. So should you.",
+    "Reports of {what} in this system. Maybe today is not so boring.",
+    "{what}, reported here by others. Let us see if they were right.",
+    "On record for this system: {what}. Worth the time, for once."
+   ],
+   "ivanova_profane": [
+    "{name}, reports of {what} in this system. Well, damn. Go look.",
+    "Somebody logged {what} here. Fuck me, something interesting.",
+    "{what}, reported here. Not a fucking rock for once.",
+    "Hell. Reports of {what}. Fine, I am curious.",
+    "{name}, {what}, on record in this system. Do not fly past it, damn it.",
+    "Somebody else found {what} first. Who cares. Go look.",
+    "Reports of {what}. Better than another goddamn empty system.",
+    "My grandmother would say go and look at {what}. She swore less than me.",
+    "{what}, reported here. At last, something happens. Hell yes.",
+    "Damn. The records show {what} in this system.",
+    "Reports of {what} here. Shit, maybe today is not boring after all.",
+    "{name}, someone left us {what}. Damn decent of them.",
+    "On record for this system: {what}. Worth the damn time.",
+    "Fuck, {name}, reports of {what}. Go.",
+    "Survey records list {what} here. Hell of a thing.",
+    "{what}, reported by others. Let us see if those bastards were right."
+   ]
+  },
   "rare_star": {
    "ivanova": [
     "{name}, {what}. Well. That is something.",

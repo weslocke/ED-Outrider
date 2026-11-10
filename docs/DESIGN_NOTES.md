@@ -209,8 +209,9 @@ upstream project's choices, not rules of the game.
   supergiants, the rarer white dwarfs; neutron stars and ordinary giants are too common), FSS signals worth a detour
   (Titans, Guardian beacons, generation ships, listening posts; tourist beacons, number stations and memorials are
   shown, not said; ordinary megaships are traffic and left out), surface sites (Guardian, Thargoid, the planetary
-  anomaly; "other" is shown, never said: nobody knows what it is), notable stellar phenomena (the first FSS listing
-  in a system with none on record). Curiosities get one line per system, never the list ("check your panels"), once
+  anomaly; "other" is shown, never said: nobody knows what it is), notable stellar phenomena (once a visit while the
+  system has sites you have not dropped at: Canonn's reports on arrival, then your own record, then the FSS listing;
+  PLAN-nsp-alert, 2026-11-10). Curiosities get one line per system, never the list ("check your panels"), once
   per system ever (meta `curious_said`, live-only, the last 2,000 in the order said).
 - **Rings to mine: the page chooses, the server only reports** (2026-10-18, Settings → Mining). Every live Scan of a
   ringed body is a "ring" moment (its ring types and Scan's ReserveLevel), once per body and visit (`Journals.rings_said`,
@@ -304,7 +305,8 @@ upstream project's choices, not rules of the game.
   colour tables and the update check), Hugging Face for voices (the page plays a voice's ▶ sample from Piper's samples
   site), Canonn (its codex reference once a day; the page loads the checklists' pictures from Canonn's storage), EDAstro
   for the DSSA carrier list when the Nearest finder opens and its catalogued sights once a day (off with `[server]
-  sights_range = 0`). The one exception is the AI layer (off by default, `[assistant]`): it sends the question and the
+  sights_range = 0`), Canonn on each live arrival for the system's reported phenomena (its name only; off with `[server]
+  canonn_reports = false`). The one exception is the AI layer (off by default, `[assistant]`): it sends the question and the
   read-only tools' answers to the endpoint the player configures, so it is not a read-only lookup. This is the one
   full list.
 - **EDSM has no test endpoint**, so its developer switch is a dry run (`OUTRIDER_EDSM_DRYRUN=1`: requests built and
@@ -1992,6 +1994,13 @@ upstream project's choices, not rules of the game.
 
 ## Known limits
 
+- **Phenomena in a system are said from Canonn's reports, your record or the FSS, once a visit** (the author,
+  2026-11-10; PLAN-nsp-alert). On a live arrival Canonn's getSystemPoi (the pins' own ask, one cache) names the codex
+  entries reported in space there; the ones you logged in that system are left out, and "new" is new to your codex in
+  the region. With none to say (or Canonn off or down), your own record speaks for a system with sites you have not
+  dropped at; else the FSS listing, as before, and now also on a revisit with sites left. "Done" can only mean dropped at
+  every site (the journal never says which). Canonn lags and is incomplete (the author's crystals of 2026-11-10 were
+  not there hours later), so the line says "reported", never "nothing here". The honk never lists phenomena.
 - **Phenomena: grouped by where you find it, not by the codex's sections** (the author, 2026-11-09). The game files the
   lettered anomalies and Lagrange clouds under Geology and Anomalies, beside the surface's fumaroles; Bio/Geo puts them
   on Phenomena with the space organisms and crystals (Organic Structures), and Geology keeps the surface. The panel

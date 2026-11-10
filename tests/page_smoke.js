@@ -6822,6 +6822,30 @@ const releasePayloads = async () => {
       sayPhenomena({kind: "phenomena", count: 3, kinds: {ring: 3}, system_name: "Smojooe XF-G b24-0"});
       window.alertOut = ao;
       o.said = !!said && said[0] === "phenomena" && /Three notable stellar phenomena/.test(said[1]) && /three notable stellar phenomena, all in rings/.test(said[2]);
+      // a revisit (your record, or the FSS again) says how many are left; Canonn's reports on arrival are named, with
+      // what is new to your codex, by the same alert row (PLAN-nsp-alert)
+      window.alertOut = (kind, title, body, opt) => { said = [kind, title, body, typeof opt.say === "function" ? opt.say() : opt.say]; };
+      sayPhenomena({kind: "phenomena", count: 3, visited: 1, revisit: true, kinds: {ring: 3}, system_name: "Sys R"});
+      o.left = said[2] + " | " + said[3].replace(/^.*\\. (?=Two)/, "");
+      said = null;
+      sayPhenomenaReported({kind: "phenomena_reported", system_name: "Aedgorn EW-N d6-1",
+                            entries: [{name: "Albulum Gourd Mollusc", new: false}, {name: "Prasinum Metallic Crystals", new: true}]});
+      o.rep = said && [said[0], said[1], said[2], /Albulum Gourd Mollusc and Prasinum Metallic Crystals/.test(said[3]), / One is new to your codex\\.$/.test(said[3])];
+      said = null; sayPhenomenaReported({kind: "phenomena_reported", entries: []});
+      o.repNone = said;
+      window.alertOut = ao;
+      o.keys = ROW_KEYS.phenomena;
+      // Now: the reported names after the FSS's count, or alone before it
+      data.on_body = null; data.position = Object.assign({}, saved.position, {id64: Number(big), id: big});
+      const reported = [{name: "Albulum Gourd Mollusc", here: true, new: false}, {name: "Prasinum Metallic Crystals", here: false, new: true}];
+      hereData = {id64: big, bodies: [], leaving: {honked: true, unscanned: 0, all_found: true, body_count: 5, bio_pending: [], unmapped: []},
+                  phenomena: [], phenomena_reported: reported};
+      renderNow();
+      const nowText = () => document.getElementById("nowView").textContent.replace(/\\s+/g, " ");
+      o.nowRep = /🌀 Reported by Canonn: ✓ Albulum Gourd Mollusc, Prasinum Metallic Crystals \\(new\\)/.test(nowText());
+      hereData.phenomena = [{kind: "ring", n: 3, reached_ts: null}]; renderNow();
+      o.nowBoth = /none visited yet · reported: ✓ Albulum Gourd Mollusc, Prasinum Metallic Crystals \\(new\\)/.test(nowText());
+      hereData = hd; Object.assign(data, saved); renderNow();
       return JSON.stringify(o); })()`));
     got.rare = JSON.parse(await w.eval(`(() => {
       const d = document.createElement("div"); d.innerHTML = rareStarTag([{body: "", what: "a black hole", main: true}, {body: "B", what: "a Wolf-Rayet star", main: false}]);
@@ -6843,6 +6867,9 @@ const releasePayloads = async () => {
       return JSON.stringify([tag([ti]), tag([ti, lp]), tag([lp]), line([ti, lp, {kind: "tourist", name: "A"}]), line([lp]), line([ti])]); })()`));
     const want = {what: ["three notable stellar phenomena, all in rings", "a notable stellar phenomenon, in a cloud",
                          "three notable stellar phenomena: two in rings and one in a cloud", ""], tag: "🌀 3", now: true, nowOne: true, allDone: true, said: true,
+                  left: "Sys R · Two still to visit. | Two still to visit.",
+                  rep: ["phenomena", "🌀 Reported here: Albulum Gourd Mollusc and Prasinum Metallic Crystals", "Aedgorn EW-N d6-1 · One is new to your codex.", true, true],
+                  repNone: null, keys: ["phenomena", "phenomena_reported"], nowRep: true, nowBoth: true,
                   rare: ["⭐ 2", "rare: a black hole (main star), a Wolf-Rayet star at B", true, true,
                          "🏛❔", "🏛👾", "🏛👾 Guardian sites, Thargoid sites on 10 b", "Titan Cocijo · a listening post · 2 tourist beacons"],
                   titan: [["[titan]", "Titan Cocijo"], ["[titan]📍 2", "Titan Cocijo · a listening post"], ["📍", "a listening post"],

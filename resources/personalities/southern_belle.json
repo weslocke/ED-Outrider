@@ -1666,6 +1666,44 @@
     "{what}. Lord willin', we'll get a good damn look."
    ]
   },
+  "phenomena_reported": {
+   "southern_belle": [
+    "Sugar, I have reports of {what} in this system. You might want to check it out.",
+    "Well, I never, {name}. Other folks found {what} right here.",
+    "Lord have mercy, reports of {what} in this system.",
+    "Darlin', the records put {what} somewhere in this system.",
+    "Ooh, honey, {what}, reported right here. Ain't that a treat.",
+    "Grandmama always said a good tip is like a good pie: you share it. {what}, reported here.",
+    "{name}, there are reports of {what} in this system. Worth a little detour, sugar.",
+    "Well, bless their hearts, somebody logged {what} here for us.",
+    "Dang, darlin', {what}, on record in this system.",
+    "Honey, word is there's {what} round here somewhere.",
+    "Oh, sugar, reports of {what}! I could just squeal.",
+    "{what}, reported here, darlin'. Your codex will be tickled pink.",
+    "Lord have mercy, {name}, other explorers saw {what} here. Our turn.",
+    "Y'all, there's reports of {what} in this system. Come look.",
+    "Sugar, someone left us the sweetest note: {what}, right here.",
+    "Darlin', reports of {what} in this system. Don't you dare fly past."
+   ],
+   "southern_belle_profane": [
+    "Hot damn, sugar, reports of {what} in this system.",
+    "Well, I'll be damned, {name}. Other folks found {what} right here.",
+    "Holy shit, darlin', {what}, on record in this system.",
+    "Lord have mercy, reports of {what}. Damn, let's go.",
+    "Honey, word is there's {what} in this damn system.",
+    "Hell yes, sugar. {what}, reported right here.",
+    "Well, bless their hearts and damn their luck, somebody saw {what} here first.",
+    "Darlin', reports of {what}. Don't you dare fly past, damn it.",
+    "Shit, honey, {what} reported in this system. Ain't that a treat.",
+    "Grandmama'd say hush and go look. Hell, so do I. {what}, reported here.",
+    "Damn, {name}, the records put {what} somewhere in this system.",
+    "Hot damn, y'all, there's reports of {what} in this system.",
+    "{what}, reported here, sugar. Prettier than hell, I bet.",
+    "Oh, hell, darlin', other explorers logged {what} here. Our turn.",
+    "Honey, reports of {what}. Damn, I could just squeal.",
+    "Sugar, someone left us a damn fine tip: {what}, right here."
+   ]
+  },
   "rare_star": {
    "southern_belle": [
     "Well, I never, {name}. {what}.",

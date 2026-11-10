@@ -1653,6 +1653,44 @@
     "Damn fine phenomena, {name}. {what}."
    ]
   },
+  "phenomena_reported": {
+   "naval_us": [
+    "I have reports of {what} in this system, {name}. Might want to check it out.",
+    "Now hear this: {what}, reported in this system.",
+    "Survey records list {what} here, {name}.",
+    "Contact of note on record: {what}.",
+    "Intel report: {what}, in this system.",
+    "Other commanders have logged {what} here.",
+    "Reported in this system: {what}. Recommend we investigate.",
+    "Arrival note: reports of {what} here.",
+    "{name}, charts show {what} in this system.",
+    "Heads up: {what} reported in this system.",
+    "On record for this system: {what}. Your call, {name}.",
+    "Reports place {what} in this system. The FSS will show the site.",
+    "Noted: {what}, reported here.",
+    "Bravo Zulu to whoever found {what} here. Worth a look, {name}.",
+    "Intel puts {what} in this system, Skipper.",
+    "This system has reports of {what}. Recommend a closer look."
+   ],
+   "naval_us_profane": [
+    "Damn, {name}. Reports of {what} in this system.",
+    "Hell of a tip: {what}, reported here.",
+    "{what}, on record in this system. Damn fine.",
+    "Now hear this: {what} reported here. Hell yes.",
+    "Intel report: {what}, in this system. Damn good news.",
+    "Other commanders logged {what} here. Hell of a find.",
+    "Reports of {what} here, {name}. Damn well worth a look.",
+    "Heads up: {what} in this system. Hell yes.",
+    "Charts show {what} here. Damn, Skipper.",
+    "Bravo Zulu to whoever found {what} here. Damn nice.",
+    "On record: {what}. Hell, let's go look.",
+    "Damn, reports place {what} in this system.",
+    "{what}, reported here. Hell of a thing, {name}.",
+    "Intel puts {what} in this system, Skipper. Damn tempting.",
+    "Arrival note: reports of {what}. Hell yes.",
+    "Noted: {what} reported in this system. Damn, recommend a look."
+   ]
+  },
   "rare_star": {
    "naval_us": [
     "Rare stellar body: {what}.",
