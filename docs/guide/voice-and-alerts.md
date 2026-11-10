@@ -328,8 +328,8 @@ the sentence ends:
   warnings, your carrier leaving without you, a ship lost, a rig too far, a bounty on you, so a danger line is never mistaken for chatter. Off, they stay with
   their alert's crew member. Danger still comes first either way.
 - **Who says which alert:** ⚙ Settings → Alerts has a **Crew** column while the crew is on: move any alert to another
-  member there. Each drop-down marks the member the alert starts with (**· default**), and **defaults** in the column's
-  heading puts every alert back to it at once, keeping the names, voices and personalities. A danger alert says "spoken
+  member there. Each drop-down marks the member the alert starts with (**· default**), and **(Revert to Crew Defaults)**
+  in the column's heading puts every alert back to it at once, after asking, keeping the names, voices and personalities. A danger alert says "spoken
   by Tactical (danger)" while that switch is on.
 - Outrider keeps the crew, so every browser and the tablet (with Play alerts here) speak with it. The tablet's own
   Settings has none of this: the crew is set on the PC.

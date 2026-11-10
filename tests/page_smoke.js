@@ -10059,10 +10059,14 @@ const releasePayloads = async () => {
     // #25: each row's drop-down marks the member it starts with; "defaults" puts every row back in one change
     got.defaults = JSON.parse(w.eval(`data.crew.on = true; data.crew.rows = {fuel: "navigator"}; drawAlertCrew(true);
       const o = [...document.querySelectorAll('#alertOpts [data-arole="fuel"] option')].filter(x => / · default$/.test(x.textContent)).map(x => x.value);
-      const sel = document.querySelector('#alertOpts [data-arole="fuel"]').value, posted = [], real = crewPost;
+      const sel = document.querySelector('#alertOpts [data-arole="fuel"]').value, posted = [], real = crewPost, realAsk = window.confirm, asked = [];
       crewPost = b => { posted.push(b); return Promise.resolve(); };
-      document.querySelector('[data-reset="crewRows"]').click(); crewPost = real;
-      JSON.stringify([o, sel, posted, crewSaid({rows: "defaults"}).startsWith("Every alert back")])`));
+      const link = document.querySelector('[data-reset="crewRows"]');
+      window.confirm = q => (asked.push(q), false); link.click();   // "Are you sure?" answered no: nothing changes
+      const afterNo = posted.length;
+      window.confirm = q => (asked.push(q), true); link.click();
+      crewPost = real; window.confirm = realAsk;
+      JSON.stringify([o, sel, afterNo, posted, asked.length, /^Revert every alert/.test(asked[0] || ""), link.textContent, crewSaid({rows: "defaults"}).startsWith("Every alert back")])`));
     w.eval(`const k = window.__c3; data.crew = k.crew; speechLib = k.lib; labPlayLine = k.play; lineNoRecord = k.noRec;
       Object.assign(recentLines, JSON.parse(k.heard)); store.set("speechHeard", k.stored);
       if (k.styles === null) localStorage.removeItem("speechStyles"); else localStorage.setItem("speechStyles", k.styles);
@@ -10077,7 +10081,7 @@ const releasePayloads = async () => {
       lab: ["Jumping. Ask the Engineer about the drive.", "Jumping. Ask Mira about the drive.", null, "The Navigator can plot."],
       audition: [[["fsd_charge", "business", "Jumping. Ask Mira about the drive."]], [["Audition done", false]]],
       buttons: [true, true],
-      defaults: [["engineer"], "navigator", [{rows: "defaults"}], true],
+      defaults: [["engineer"], "navigator", 0, [{rows: "defaults"}], 2, true, "(Revert to Crew Defaults)", true],
     };
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const good = !bad.length && errors.length === before;

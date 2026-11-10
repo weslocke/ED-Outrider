@@ -15744,7 +15744,10 @@ document.querySelectorAll("[data-reset]").forEach(r => r.onclick = e => {
   else if (id === "surfaceCfg") { store.set("surfaceCfg", {}); showSurfCfg(); }
   else if (id === "skipFloor") { store.set("skipFloor", null); showSkip(); renderHere(); }
   else if (id === "speechSpeed") { store.set("speechSpeed", null); drawSpeechStyles(); }
-  else if (id === "crewRows") { crewPost({rows: "defaults"}); return; }   // the server's: every browser (#25)
+  else if (id === "crewRows") {   // the server's: every browser (#25); asked first, since it undoes every move at once
+    if (confirm("Revert every alert to its default crew member?\n\nNames, voices and personalities stay as they are.")) crewPost({rows: "defaults"});
+    return;
+  }
   else { unsoldCfg[id === "unsoldWarn" ? "warn" : "urgent"] = null; store.set("unsoldCfg", unsoldCfg); thresholdEls[id].dispatchEvent(new Event("focus")); }
   render();
 });

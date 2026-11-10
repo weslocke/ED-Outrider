@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · The crew's revert asks first
+- **Settings → Alerts, Crew column:** the heading's link is **(Revert to Crew Defaults)** and asks "Revert every alert to
+  its default crew member?" before it changes anything.
+
 ## 2026-11-09 · The crew: one person in two roles, and every alert back to its default (#25, Kurbo26)
 - **Fix:** a crew line naming another member was said by a member with the same name (one person covering two roles:
   "Mathers has called dibs" said by Mathers). A line is now left out for the member it names by role or by name.
