@@ -1992,6 +1992,10 @@ upstream project's choices, not rules of the game.
 
 ## Known limits
 
+- **The warning levels are the one shared exception to per-device settings** (2026-11-09): a desktop page sends
+  `unsoldCfg` and `fuelJumps` as it saves them (POST `/api/levels`, meta `shared_levels`) and a tablet follows the
+  server's copy over its own, since a tablet has no control for them. The last desktop to save (or load with its own
+  levels) wins; two desktops with different levels each keep theirs.
 - **Modules left off: the game reports only half of it** (`State.module_watch`, 2026-11-09). Nothing says a module was
   switched back on. Life support can be followed by the in-danger flag (an alarm that stops by itself), so it repeats;
   every other module gets one reminder, worded as a nudge because it may already be back on. The flag has other causes

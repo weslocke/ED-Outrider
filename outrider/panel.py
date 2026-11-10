@@ -12,6 +12,8 @@ FLAG_SILENT, FLAG_SCOOPING = 1 << 10, 1 << 11
 FLAG_MASS_LOCKED, FLAG_FSD_CHARGING, FLAG_FSD_COOLDOWN = 1 << 16, 1 << 17, 1 << 18
 FLAG_OVERHEATING, FLAG_IN_DANGER, FLAG_INTERDICTED, FLAG_IN_MAIN_SHIP = 1 << 20, 1 << 22, 1 << 23, 1 << 24
 
+PANEL_SETTLE_S = 30         # s after a jump or supercruise entry the danger flag may be the FSD's leftover (16-26 s seen)
+FLAG_FSD_JUMP = 1 << 30
 UNDER_ATTACK_QUIET_S = 60    # s with no new UnderAttack before that light goes out by itself
 OXYGEN_S = {1: 300, 2: 450, 3: 600, 4: 900, 5: 1500}   # a life support's emergency oxygen, by its class (1 = E ... 5 = A)
 # a tap clears these; "all" (the Clear button) clears every one
@@ -46,16 +48,18 @@ def lights(flags, legal=None, settling=False, life_support=None, off_words=(), s
         danger_light = light("danger", "settling", "life support off")
     elif settling:
         danger_light = light("danger", "settling", "FSD settling")
-    else:
+    elif flags & (FLAG_SCOOPING | FLAG_OVERHEATING | FLAG_FSD_CHARGING | FLAG_FSD_JUMP):
         danger_light = light("danger", "warning", "in danger")
+    else:   # life support switched off by hand writes nothing: this is the one sign of it
+        danger_light = light("danger", "warning", "check life support")
     return [
-        light("life_support", "warning", "listed off" if life_support == "listed" else "") if life_support else light("life_support"),
-        light("off_after_repair", "caution", " · ".join(capitalised(w) for w in off_words) + " · tap when back on", True)
+        light("life_support", "warning", "off · listed at login" if life_support == "listed" else "off") if life_support else light("life_support"),
+        light("off_after_repair", "caution", "off: " + " · ".join(capitalised(w) for w in off_words) + " · tap when back on", True)
         if off_words else light("off_after_repair"),
         danger_light,
-        light("shields", "caution", "repaired · recharging" if shields_repaired else "down") if down else light("shields"),
+        light("shields", "caution", "down · repaired, recharging" if shields_repaired else "down") if down else light("shields"),
         light("overheat", "warning", "overheating") if hot else
-        (light("overheat", "advisory", f"{overheated} s · check modules", True) if overheated is not None else light("overheat")),
+        (light("overheat", "advisory", f"overheated {overheated} s · check modules", True) if overheated is not None else light("overheat")),
         light("interdiction", "warning", "being interdicted") if interdicted else light("interdiction"),
         light("under_attack", "warning", "tap to clear", True) if under_attack else light("under_attack"),
         light("canopy", "warning", "breached · tap to clear", True) if canopy else light("canopy"),

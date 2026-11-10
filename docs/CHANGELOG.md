@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · The Ship page in game: plainer lights, and the PC's warning levels on the tablet
+- **Fix (tablet):** the unsold levels set on the PC never reached a tablet, which kept the defaults (50M amber), so the
+  Ship page and the strip went amber at 101.6M with 500M set. A desktop page now sends its unsold levels and fuel-jumps
+  warning to the server as it saves them (POST `/api/levels`, payload `levels`) and every tablet follows them; every
+  other setting stays per device.
+- **Fix (Ship page):** a dark light read as lit ("Life support off", "Shields down"): the lights are named for what they
+  watch (Life support, Modules, Shields, Heat) and say the state when lit. Danger with no known cause (no heat, scooping,
+  FSD or attack) says "check life support", since switching it off by hand writes nothing; "FSD settling" lasts 30 s
+  after a jump or supercruise entry, not auto-target's whole minute (it hid life support off for 40 s in game).
+
 ## 2026-11-09 · The tablet's Ship page: a ship card and a board of lights
 - **New (tablet):** Ship, at the top of the page list: hull, lowest module, fuel, cargo and power, and lights that stay dark
   while all is well. Life support off (counts down the oxygen, goes out by itself), Off after repair (the modules the AFMU

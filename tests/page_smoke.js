@@ -6218,7 +6218,7 @@ const releasePayloads = async () => {
       view = "ship"; const off = id => ({id, level: "off", words: "", latched: false});
       data.ship = Object.assign({}, data.ship, {type: "explorer_nx", name: "explorer_nx", ident: "BR-03E", max_range: 90.66, cargo_capacity: 64});
       data.hull = {pct: 20}; data.fuel = {live: true, main: 20, pct: 12, capacity: 160};
-      data.panel = {live: true, oxygen_left: 90, pips: [2, 8, 2], cargo: 4, balance: 5, scooping: true, lowest_module: 70, lights: [{id: "life_support", level: "warning", words: "", latched: false},
+      data.panel = {live: true, oxygen_left: 90, pips: [2, 8, 2], cargo: 4, balance: 5, scooping: true, lowest_module: 70, lights: [{id: "life_support", level: "warning", words: "off", latched: false},
         {id: "off_after_repair", level: "caution", words: "FSD · tap when back on", latched: true}, {id: "danger", level: "settling", words: "life support off", latched: false},
         ...["shields", "overheat", "interdiction", "under_attack", "canopy", "wanted", "mass_lock", "fsd", "silent"].map(off)]};
       render();
@@ -6227,14 +6227,18 @@ const releasePayloads = async () => {
         life: [q(".pulse .tb-ltname").textContent, q("[data-oxygen]").textContent], tap: q("button[data-panel-ack]").dataset.panelAck, oneTapOnly: document.querySelectorAll("#shipLights button").length,
         hull: [...tiles].find(t => /^Hull/i.test(t.textContent)).className, fuel: [...tiles].find(t => /^Fuel/i.test(t.textContent)).textContent,
         card: [document.querySelector("#tbShipCard img").getAttribute("src"), document.querySelector(".tb-shipname").textContent, document.querySelector(".tb-shipsub").textContent], group: document.querySelector('#tabNav [data-view="ship"]').classList.contains("on"), hereGroup: !!document.querySelector("#tabNav [data-group].here")};
+      const lv = data.levels, cfg = Object.assign({}, unsoldCfg);
+      data.levels = {unsoldCfg: {warn: 500000000, urgent: 1000000000}}; followLevels();
+      out.levels = [unsoldLevel({total: 101600000}), unsoldLevel({total: 600000000}), unsoldLevel({total: 1200000000})];
+      data.levels = lv; Object.keys(unsoldCfg).forEach(k => delete unsoldCfg[k]); Object.assign(unsoldCfg, cfg);
       out.voice = tabShowPage("near"); out.stayedVoice = view;
       data.docking = {pad: 7}; TB.mapWas = false; tabAutoView(); out.stayedPad = view; out.beforeMap = TB.beforeMap;
       Object.assign(data, {panel: was.panel, fuel: was.fuel, hull: was.hull, docking: was.docking, ship: was.ship}); TB.mapWas = was.mapWas; view = was.view; render();
       out.backHidden = document.getElementById("shipView").hidden; out.backOff = !document.body.classList.contains("tb-on-ship");
       return JSON.stringify(out); })()`));
-    const shipWant = {shown: true, onShip: true, tiles: 16, wide: 2, life: ["Life support off", "oxygen about 1:30 · goes out when it's back on"], tap: "off_after_repair", oneTapOnly: 1,
+    const shipWant = {shown: true, onShip: true, tiles: 16, wide: 2, life: ["Life support", "off · oxygen about 1:30 · goes out when it's back on"], tap: "off_after_repair", oneTapOnly: 1,
       hull: "tb-lt tb-lt-warning", fuel: "Fuellow · 12 % · scooping", card: ["static/ships/explorer_nx.webp", "BR-03E", "Caspian Explorer · 90.7 ly"], group: true, hereGroup: false,
-      voice: false, stayedVoice: "ship", stayedPad: "ship", beforeMap: null, backHidden: true, backOff: true};
+      levels: ["ok", "warn", "urgent"], voice: false, stayedVoice: "ship", stayedPad: "ship", beforeMap: null, backHidden: true, backOff: true};
     const goodShip = JSON.stringify(shipGot) === JSON.stringify(shipWant);
     allOk = allOk && goodShip;
     console.log(goodShip ? "OK" : "FAIL", "| ship page |", goodShip ? "card, lights, stays put" : JSON.stringify(shipGot));

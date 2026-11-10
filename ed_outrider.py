@@ -2048,6 +2048,7 @@ FLAG_SHIELDS_UP = 1 << 3   # Status.json Flags: shields up (down at once when sw
 MODULE_WORDS = (("lifesupport", "life support"), ("hyperdrive", "FSD"), ("engine", "thrusters"),
                 ("powerdistributor", "power distributor"), ("sensors", "sensors"), ("fuelscoop", "fuel scoop"),
                 ("shieldgenerator", "shields"))
+SHARED_LEVELS = ("unsoldCfg", "fuelJumps")   # page settings a tablet takes from the PC (State.set_levels)
 LIFE_SUPPORT_FIRST_S = 20    # s after its repair (or Loadout) before life support is said: the flag clears 7-10 s after it is on
 LIFE_SUPPORT_REPEAT_S = 45   # s between sayings while it stays off (5 to 25 minutes of oxygen, by its rating)
 MODULES_OFF_SETTLE_S = 20    # s after the latest repair before the others are said: repairs come one after another
@@ -9606,6 +9607,7 @@ class State:
         self._commit_slow_said = False       # S10: the slow-commit line, once per start
         self._db_write_said = None   # S18: the db_write card's kind while it shows (its free space is not redone each tick)
         self._rig_leash = {}
+        self.levels = meta_get(self.db, "shared_levels") or {}   # set_levels
         self._danger_since, self._hot_since, self._panel_key, self._fit = None, None, None, (None, {"lowest": None, "shields": True})   # the Ship page
         self._suit_low = set()   # S9-S7: the suit's low bits at the last look (a rise is said once)
         self._kb_layout = ...    # S7-S1: the keyboard layout, read once when the Auto-target box first asks
@@ -9837,6 +9839,7 @@ class State:
             "mining_live": self.mining_live(),   # mining D: the strip while you mine in a ring, None otherwise
             "hull": self.journals.hull,
             "panel": self.panel(),
+            "levels": self.levels,   # the warning levels a desktop page saved (set_levels): a tablet follows them
             "modules": self.modules_summary(),
             "last_sale": self.journals.last_sale,
             # id: the exact id64 as a string (a JSON number above 2^53 loses digits in the browser), as rows have
@@ -10579,12 +10582,35 @@ class State:
         life = None if not alarm else "live" if danger else "listed" if alarm["known"] else None
         rest = [w for i, w in sorted(j.modules_left.items(), key=lambda kv: module_rank(kv[0])) if not i.startswith("int_shieldgenerator")]
         lights = outrider.panel.lights(
-            flags, legal=st.get("legal") if live else None, settling=live and bool(self.arrival_danger_until(now, st)), life_support=life,
+            flags, legal=st.get("legal") if live else None, settling=live and self.fsd_settling(now, st), life_support=life,
             off_words=rest, shields_repaired=any(i.startswith("int_shieldgenerator") for i in j.modules_left), has_shields=fit["shields"],
             under_attack=attacked is not None and now - attacked < outrider.panel.UNDER_ATTACK_QUIET_S, canopy=j.canopy_breached,
             overheated=j.overheated)
         return {"live": live, "lights": lights, "oxygen_left": self.oxygen_left(now) if life == "live" else None, "pips": st.get("pips") if live else None,
                 "cargo": st.get("cargo"), "balance": st.get("balance"), "scooping": bool(flags & FLAG_SCOOPING), "lowest_module": fit["lowest"]}
+
+    def fsd_settling(self, now, st):
+        """The danger flag is the FSD's leftover: arrival_danger_until's judgement, but within PANEL_SETTLE_S of the jump or
+        entry, not auto-target's whole minute of patience (a light that says "settling" for longer hides a real cause)."""
+        until = self.arrival_danger_until(now, st)
+        return bool(until) and now < until - AUTOTARGET_DANGER_WAIT + outrider.panel.PANEL_SETTLE_S
+
+    def set_levels(self, body):
+        """POST /api/levels: the warning levels a desktop page saved (unsoldCfg, fuelJumps), which every tablet follows
+        (meta shared_levels, payload `levels`). False when the body is not that shape."""
+        if not isinstance(body, dict) or not body or set(body) - set(SHARED_LEVELS):
+            return False
+        num = lambda v: v is None or (isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v < 1e15)
+        u = body.get("unsoldCfg", {})
+        if not isinstance(u, dict) or set(u) - {"warn", "urgent", "rebuyWarn", "rebuyUrgent"} or not all(map(num, u.values())):
+            return False
+        if "fuelJumps" in body and not (body["fuelJumps"] is None or num(body["fuelJumps"]) and body["fuelJumps"] <= 99):
+            return False
+        self.levels = dict(self.levels, **body)
+        meta_set(self.db, "shared_levels", self.levels)
+        self.db.commit()
+        self.bump()
+        return True
 
     def panel_ack(self, which):
         """A tap on a latched light (or the Clear button, "all"): it goes out on every tablet. False for an unknown id."""
@@ -24724,6 +24750,13 @@ def make_app(state, hosts=None):
         """GET /api/rail: the tablet's rail now, with every context's set and catalogue for its editor."""
         return web.json_response(state.rail_info(full=True))
 
+    async def levels_view(request):
+        """POST /api/levels {unsoldCfg?, fuelJumps?}: a desktop page's warning levels, for the tablets (State.set_levels)."""
+        body = await json_object(request)
+        if not state.set_levels(body):
+            return web.json_response({"error": "expected {unsoldCfg?: {warn, urgent, rebuyWarn, rebuyUrgent}, fuelJumps?}"}, status=400)
+        return web.json_response({"ok": True})
+
     async def panel_ack_view(request):
         """POST /api/panel/ack {id}: a tap on a latched light of the tablet's Ship page, or "all" (Clear)."""
         body = await json_object(request)
@@ -25809,6 +25842,7 @@ def make_app(state, hosts=None):
     app.router.add_post("/api/speech/unban", speech_ban_view)
     app.router.add_post("/api/hush", hush_view)
     app.router.add_post("/api/panel/ack", panel_ack_view)
+    app.router.add_post("/api/levels", levels_view)
     app.router.add_post("/api/plan/first", plan_first_view)
     app.router.add_post("/api/plan/skip", plan_skip_view)
     app.router.add_post("/api/copilot", copilot_view)

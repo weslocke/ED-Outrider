@@ -30,7 +30,9 @@ was clicked).
   board of lights that stays dark while all is well. Red is danger, amber a caution, cyan a danger with a known cause.
   **Life support off** counts down your oxygen and goes out by itself once it is back on. **Off after repair** lists the
   modules the AFMU left off (the game does not report switching one back on, so tap it when you have); **Clear** puts
-  out every light that needs a tap. A tablet showing Ship stays on it: nothing switches its page but a tap.
+  out every light that needs a tap. A tablet showing Ship stays on it: nothing switches its page but a tap. Danger
+  with no known cause says "check life support": the game writes nothing when you switch it off by hand. The unsold
+  and fuel warning levels are the PC's (Settings there), on every tablet.
 - **Tap a row** in a table for all of its facts, including the columns too narrow to show, with Show in Here,
   Bookmark and, on a route's row, a bookmark or a Nearby row (game PC), **Target** (the galaxy map's destination marker). On the galaxy map a tap on a system shows its card,
   with **Target** when auto-target works on the game PC, Copy name and **Plot route**.

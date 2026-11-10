@@ -24,11 +24,13 @@ class Lights(unittest.TestCase):
         """Never colour alone."""
         lit = P.lights(SHIP | P.FLAG_IN_DANGER | P.FLAG_OVERHEATING | P.FLAG_INTERDICTED | P.FLAG_MASS_LOCKED | P.FLAG_FSD_CHARGING | P.FLAG_SILENT,
                        legal="Wanted", life_support="live", off_words=["FSD"], under_attack=True, canopy=True)
-        self.assertEqual([l["id"] for l in lit if l["level"] != "off" and not l["words"]], ["life_support"])   # the page's oxygen line
+        self.assertEqual([l["id"] for l in lit if l["level"] != "off" and not l["words"]], [])
 
     def test_danger_is_explained_or_red(self):
         danger = SHIP | P.FLAG_IN_DANGER
-        self.assertEqual(level(P.lights(danger), "danger")["level"], "warning")
+        got = level(P.lights(danger), "danger")
+        self.assertEqual((got["level"], got["words"]), ("warning", "check life support"))   # switched off by hand: no event
+        self.assertEqual(level(P.lights(danger | P.FLAG_SCOOPING), "danger")["words"], "in danger")   # a star's heat
         got = level(P.lights(danger, settling=True), "danger")
         self.assertEqual((got["level"], got["words"]), ("settling", "FSD settling"))
         got = level(P.lights(danger, life_support="live"), "danger")
@@ -42,16 +44,16 @@ class Lights(unittest.TestCase):
         self.assertEqual(level(P.lights(SHIP | P.FLAG_DOCKED), "shields")["level"], "off")
         self.assertEqual(level(P.lights(SHIP | P.FLAG_LANDED), "shields")["level"], "off")
         self.assertEqual(level(P.lights(0), "shields")["level"], "off")                              # in the SRV or on foot
-        self.assertEqual(level(P.lights(SHIP, shields_repaired=True), "shields")["words"], "repaired · recharging")
+        self.assertEqual(level(P.lights(SHIP, shields_repaired=True), "shields")["words"], "down · repaired, recharging")
 
     def test_overheat_is_red_while_hot_then_a_latched_reminder(self):
         self.assertEqual(level(P.lights(SHIP | P.FLAG_OVERHEATING), "overheat")["level"], "warning")
         got = level(P.lights(SHIP, overheated=38), "overheat")
-        self.assertEqual((got["level"], got["words"], got["latched"]), ("advisory", "38 s · check modules", True))
+        self.assertEqual((got["level"], got["words"], got["latched"]), ("advisory", "overheated 38 s · check modules", True))
 
     def test_the_rest_named_with_a_capital(self):
         got = level(P.lights(SHIP, off_words=["FSD", "fuel scoop"]), "off_after_repair")
-        self.assertEqual((got["level"], got["words"], got["latched"]), ("caution", "FSD · Fuel scoop · tap when back on", True))
+        self.assertEqual((got["level"], got["words"], got["latched"]), ("caution", "off: FSD · Fuel scoop · tap when back on", True))
 
     def test_only_a_real_legal_state_is_wanted(self):
         for fine in ("Clean", "Allied", "Thargoid", None, ""):
@@ -119,7 +121,7 @@ class ShipPanel(unittest.TestCase):
         self.repair("$int_dockingcomputer_advanced_name;", "Docking Computer")
         self.repair("$int_hyperdrive_overcharge_size8_class5_overchargebooster_mkii_name;", "FSD (SCO)")
         got = level(self.lights(), "off_after_repair")
-        self.assertEqual(got["words"], "FSD · Docking computer · tap when back on")
+        self.assertEqual(got["words"], "off: FSD · Docking computer · tap when back on")
         self.state.module_watch(self.j.status_json, self.t0 + 600)           # said out loud: the light stays
         self.assertEqual(level(self.lights(), "off_after_repair")["level"], "caution")
         self.assertTrue(self.state.panel_ack("off_after_repair"))
@@ -135,7 +137,7 @@ class ShipPanel(unittest.TestCase):
         self.status(SHIP)
         self.repair("$int_shieldgenerator_size5_class2_name;", "Shield Generator")
         got = self.lights()
-        self.assertEqual(level(got, "shields")["words"], "repaired · recharging")
+        self.assertEqual(level(got, "shields")["words"], "down · repaired, recharging")
         self.assertEqual(level(got, "off_after_repair")["level"], "off")     # shields have their own light
         self.status(FULL)
         self.state.panel_watch(self.j.status_json, self.t0 + 180)
@@ -146,7 +148,7 @@ class ShipPanel(unittest.TestCase):
         self.state.panel_watch(self.j.status_json, self.t0)
         self.status(SHIP)
         self.state.panel_watch(self.j.status_json, self.t0 + 38)
-        self.assertEqual(level(self.lights(), "overheat")["words"], "38 s · check modules")
+        self.assertEqual(level(self.lights(), "overheat")["words"], "overheated 38 s · check modules")
         self.loadout([("LifeSupport", "int_lifesupport_size5_class2", 1.0, True)], off=40)
         self.assertEqual(level(self.lights(), "overheat")["level"], "off")
 
@@ -183,6 +185,36 @@ class ShipPanel(unittest.TestCase):
         self.assertFalse(self.state.panel_ack("danger"))
         self.assertTrue(self.state.panel_ack("all"))
         self.assertEqual({l["level"] for l in self.lights()}, {"off"})
+
+    def test_settling_is_the_fsds_half_minute_not_auto_targets_whole_one(self):
+        """2026-11-09: life support off 20-60 s after a supercruise entry showed as "FSD settling"."""
+        self.j.supercruise_entry = {"id64": 7, "ts": self.iso()}
+        self.j.pos = {"id64": 7, "ts": self.iso(-600)}
+        self.status(SHIP | P.FLAG_IN_DANGER)
+        self.assertEqual(level(self.lights(20), "danger")["words"], "FSD settling")
+        self.assertEqual(level(self.lights(40), "danger")["words"], "check life support")
+
+    def test_warning_levels_shared_with_the_tablets(self):
+        self.assertTrue(self.state.set_levels({"unsoldCfg": {"warn": 500_000_000, "urgent": 1_000_000_000}}))
+        self.assertTrue(self.state.set_levels({"fuelJumps": 4}))
+        self.assertEqual(self.state.payload()["levels"], {"unsoldCfg": {"warn": 500_000_000, "urgent": 1_000_000_000}, "fuelJumps": 4})
+        for bad in ({}, {"theme": "x"}, {"unsoldCfg": {"warn": "lots"}}, {"unsoldCfg": {"other": 1}}, {"fuelJumps": 500}, {"fuelJumps": True}, [1]):
+            self.assertFalse(self.state.set_levels(bad), bad)
+        again = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        self.assertEqual(again.levels["fuelJumps"], 4)                       # kept over a restart
+
+    def test_levels_route(self):
+        import asyncio
+        from aiohttp.test_utils import TestClient, TestServer
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                ok = await c.post("/api/levels", json={"unsoldCfg": {"warn": 5, "urgent": None}})
+                bad = await c.post("/api/levels", json={"speech": True})
+                ack = await c.post("/api/panel/ack", json={"id": "nope"})
+                return ok.status, bad.status, ack.status
+        self.assertEqual(asyncio.run(go()), (200, 400, 400))
+        self.assertEqual(self.state.levels, {"unsoldCfg": {"warn": 5, "urgent": None}})
 
     def test_lowest_module_and_whether_shields_are_fitted(self):
         self.status(FULL)

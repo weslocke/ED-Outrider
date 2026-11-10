@@ -29,8 +29,39 @@ const store = {
     const sv = serverSettings();
     return SETTINGS_KEYS.includes(k) && Object.prototype.hasOwnProperty.call(sv, k) && settingOk(k, sv[k]) ? sv[k] : d;
   },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} if (SHARED_LEVELS.includes(k)) shareLevels({[k]: v}); },
 };
+// The warning levels a tablet takes from the PC (the author, 2026-11-09: the unsold levels set on the PC did not reach
+// the Ship page): a desktop page sends them to the server as it saves them (POST api/levels, data.levels), and a tablet
+// uses the server's over its own. Every other setting stays per device.
+const SHARED_LEVELS = ["unsoldCfg", "fuelJumps"];
+function shareLevels(body) {
+  if (TABLET || typeof fetch !== "function") return;
+  fetch("api/levels", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)}).catch(() => {});
+}
+function sharedLevel(k, own) {
+  const lv = TABLET && data && data.levels;
+  return lv && Object.prototype.hasOwnProperty.call(lv, k) ? lv[k] : own();
+}
+// a desktop page's levels from before it shared them (or set in another browser since): sent once with the first data
+let levelsSent = false;
+function shareOwnLevels() {
+  if (TABLET || levelsSent || !data) return;
+  levelsSent = true;
+  const own = {};
+  for (const k of SHARED_LEVELS) {
+    let v = null;
+    try { v = localStorage.getItem(k); } catch {}
+    if (v === null) continue;
+    try { v = JSON.parse(v); } catch { continue; }
+    if (JSON.stringify(v) !== JSON.stringify((data.levels || {})[k])) own[k] = v;
+  }
+  if (Object.keys(own).length) shareLevels(own);
+}
+function followLevels() {   // a tablet: the PC's unsold levels over its own (unsoldCfg is read by unsoldLevel everywhere)
+  if (!TABLET || !data || !data.levels || !data.levels.unsoldCfg) return;
+  Object.assign(unsoldCfg, {warn: null, urgent: null, rebuyWarn: null, rebuyUrgent: null}, data.levels.unsoldCfg);
+}
 let data = null, version = -1;
 // The tablet layout (GET /tablet sets body.tablet): the same views in a shell of its own, drawn by "---- the tablet
 // layout" near the end. It is silent unless its Play alerts here is ticked (tabletSpeaks), keeps its own page, and has no Overview.
@@ -5011,6 +5042,7 @@ function render() {
   renderOverlay();
   if (!data) return;
   if (TABLET) tabAutoView();   // the surface map's switch to Now and back, before the views are shown
+  followLevels(); shareOwnLevels();
   const bms = bmMap();
   renderUnsold();
   const p = data.position;
@@ -11681,7 +11713,7 @@ function scoopHint() {
 // Jumps of fuel left: at your pace (the fuel model's, else your recent burn), else at max range.
 const fuelJumps = f => f ? f.jumps_recent ?? f.jumps_max ?? null : null;
 // "Fuel alerts also under N jumps" (Settings; blank = off, the default): the % rules stay as they are
-const fuelJumpsCfg = () => { const v = store.get("fuelJumps", null), n = Number(v);
+const fuelJumpsCfg = () => { const v = sharedLevel("fuelJumps", () => store.get("fuelJumps", null)), n = Number(v);
   return v != null && v !== "" && isFinite(n) && n > 0 ? Math.round(n) : null; };
 const fuelUnderJumps = f => { const n = fuelJumpsCfg(), j = fuelJumps(f); return n != null && j != null && j < n; };
 const fuelLow = f => !!(f && f.live && ((f.pct != null && f.pct < 30) || f.low_flag || fuelUnderJumps(f)));
@@ -17189,8 +17221,9 @@ function tabDim(on) { document.documentElement.classList.toggle("tb-dim", !!on);
 // ---- the Ship page (project/PLAN-ship-panel-2026-11-08.md): a ship card and a board of lights, dark when all is well ----
 // The server works out what its flags and journals say (data.panel, outrider/panel.py); hull, fuel, unsold and rebuy use
 // the same levels as the rest of the page. [id, label, wide]: the board's fixed order.
-const SHIP_LIGHTS = [["life_support", "Life support off", true], ["off_after_repair", "Off after repair", true], ["danger", "Danger"], ["shields", "Shields down"],
-  ["overheat", "Overheated"], ["interdiction", "Interdiction"], ["under_attack", "Under attack"], ["hull", "Hull"], ["canopy", "Canopy"], ["fuel", "Fuel"],
+// The names read as a place, not a state ("Life support", never "Life support off"): a dark light must not sound lit.
+const SHIP_LIGHTS = [["life_support", "Life support", true], ["off_after_repair", "Modules", true], ["danger", "Danger"], ["shields", "Shields"],
+  ["overheat", "Heat"], ["interdiction", "Interdiction"], ["under_attack", "Under attack"], ["hull", "Hull"], ["canopy", "Canopy"], ["fuel", "Fuel"],
   ["unsold", "Unsold data"], ["rebuy", "Rebuy"], ["wanted", "Wanted"], ["mass_lock", "Mass lock"], ["fsd", "FSD"], ["silent", "Silent running"]];
 function shipPageLights() {
   const p = data.panel || {lights: []}, by = Object.fromEntries((p.lights || []).map(l => [l.id, l])), f = data.fuel, u = data.unsold, h = data.hull;
@@ -17206,10 +17239,10 @@ function shipPageLights() {
   by.rebuy = rebuy && p.balance != null && p.balance < rebuy ? {level: "warning", words: "can't cover it", latched: false} : off;
   return SHIP_LIGHTS.map(([id, label, wide]) => ({id, label, wide: !!wide, ...(by[id] || off)}));
 }
-const oxygenWords = s => `oxygen about ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} · goes out when it's back on`;
+const oxygenWords = s => `off · oxygen about ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} · goes out when it's back on`;
 function shipLightHtml(l) {
-  const oxygen = l.id === "life_support" && l.level !== "off" && l.words === "" && data.panel.oxygen_left != null;
-  const words = oxygen ? oxygenWords(data.panel.oxygen_left) : l.id === "life_support" && l.level !== "off" && !l.words ? "goes out when it's back on" : l.words;
+  const oxygen = l.id === "life_support" && l.words === "off" && data.panel.oxygen_left != null;
+  const words = oxygen ? oxygenWords(data.panel.oxygen_left) : l.id === "life_support" && l.words === "off" ? "off · goes out when it's back on" : l.words;
   const cls = `tb-lt tb-lt-${l.level}${l.wide ? " wide" : ""}${l.id === "life_support" && l.level !== "off" ? " pulse" : ""}`;
   const inner = `<span class="tb-ltname">${esc(l.label)}</span>${words ? `<small${oxygen ? " data-oxygen" : ""}>${esc(words)}</small>` : ""}`;
   return l.latched ? `<button type="button" class="${cls}" data-panel-ack="${esc(l.id)}">${inner}</button>` : `<div class="${cls}">${inner}</div>`;
