@@ -19459,7 +19459,7 @@ class State:
 
     def set_crew(self, body):
         """POST /api/voice/crew: (answer, status). The body is one change: {on} / {danger} (the switches), {row, role}
-        (an alert row to that role; role null: back to the table's), or {role, name?, personality?, voice?, speaker?,
+        (an alert row to that role; role null: back to the table's), {rows: "defaults"} (every row back), or {role, name?, personality?, voice?, speaker?,
         reset?} (a member: personality null "as the XO", voice null "as the personality", a speaker of that voice; reset:
         back to "as the XO", its name kept). The XO's voice and speaker are the main voice's (switched as POST /api/voice
         does); it has no personality of its own. Validated against the lines file's personalities and the voices installed."""
@@ -19473,6 +19473,10 @@ class State:
                     return bad(f"{k} must be true or false")
                 if k in body:
                     crew[k] = body[k]
+        elif "rows" in body:   # every alert row back to its own role (#25): the members are left as they are
+            if body["rows"] != "defaults":
+                return bad("rows must be \"defaults\"")
+            crew["rows"] = {}
         elif "row" in body:
             row, role = body["row"], body.get("role")
             if not isinstance(row, str) or row not in outrider.speech.CREW_ROW_ROLE:

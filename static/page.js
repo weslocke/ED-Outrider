@@ -3936,7 +3936,12 @@ const isCrewKey = k => crewRoles().some(r => r.id === k);
 const crewName = role => { const m = data && data.crew && data.crew.members && data.crew.members[role];
   return m && typeof m.name === "string" && m.name.trim() ? m.name.trim() : null; };
 const crewNamed = t => [...String(t).matchAll(/\{(\w+)\}/g)].map(m => m[1]).filter(isCrewKey);
-const crewLineOk = (t, crew) => { const n = crewNamed(t); return !n.length || !!(crew && !n.includes(crew.role)); };
+// Never by the member it names, by role or by name: one person covering two roles has the same name in both (#25,
+// Kurbo26: the Science Officer, also named for the Exobiologist, said "Mathers has called dibs" as Mathers)
+const crewLineOk = (t, crew) => { const n = crewNamed(t); if (!n.length) return true;
+  if (!crew || n.includes(crew.role)) return false;
+  const me = (crewName(crew.role) || "").toLowerCase();
+  return !me || !n.some(r => (crewName(r) || "").toLowerCase() === me); };
 // the crew member who says a line of alert row `row` with speech key `key`: {role, personality, voice, speaker, fill,
 // for}; null with the crew off. `row` null (a line that is no alert's: speech on, the ▶ try) is the XO's.
 // why the XO speaks for a crew member (the server's crew_fill), or null: with this browser's voice a Piper voice's
@@ -13451,7 +13456,8 @@ const XO_SPEAKS = "voice answers, the status report, the co-pilot, the hush and 
 const crewOn = () => !!(data && data.crew && data.crew.on);
 const crewDangerOn = () => !!(data && data.crew && data.crew.danger !== false);
 // the crew member an alert row is said by: moved in Settings > Alerts, else the table's (a row no role covers: the XO)
-const crewRowRole = row => (data && data.crew && data.crew.rows && data.crew.rows[row]) || (crewRoles().find(r => (r.rows || []).includes(row)) || {}).id || "xo";
+const crewRowDefault = row => (crewRoles().find(r => (r.rows || []).includes(row)) || {}).id || "xo";   // CREW_ROLES' own
+const crewRowRole = row => (data && data.crew && data.crew.rows && data.crew.rows[row]) || crewRowDefault(row);
 const crewRowsOf = role => ALERTS.map(a => a[0]).filter(k => !UNSPOKEN.has(k) && crewRowRole(k) === role);
 // an alert row's danger lines (DANGER): "all" of its lines, "some" (your carrier's departure warning) or none
 function dangerRow(row) {
@@ -13540,7 +13546,7 @@ function drawAlertCrew(force = false) {
     if (UNSPOKEN.has(row)) { td.innerHTML = `<span class="unk" title="not spoken: nobody says it">·</span>`; continue; }
     const cur = crewRowRole(row), d = crewDangerOn() && cur !== "tactical" && dangerRow(row);
     td.innerHTML = `<select data-arole="${esc(row)}" data-sfone aria-label="crew member">` + crewRoles().map(r =>
-      `<option value="${esc(r.id)}"${r.id === cur ? " selected" : ""}>${esc(crewLabel(r.id, true))}</option>`).join("") + `</select>` +
+      `<option value="${esc(r.id)}"${r.id === cur ? " selected" : ""}>${esc(crewLabel(r.id, true))}${r.id === crewRowDefault(row) ? " · default" : ""}</option>`).join("") + `</select>` +
       (d ? ` <span class="badc crewdanger">· ${d === "all" ? "spoken by Tactical (danger)" : "its danger lines by Tactical"}</span>` : "");
   }
 }
@@ -13549,6 +13555,7 @@ function crewSaid(b) {
   if ("on" in b) return b.on ? "The crew speaks from now on: every member starts as the XO" : "One voice for everything again";
   if ("danger" in b) return b.danger ? "Danger lines in Tactical's voice" : "Danger lines in their alert's crew member's voice";
   if ("row" in b) return `${ROW_WORDS[b.row] || b.row}: said by ${crewLabel(crewRowRole(b.row))}`;
+  if ("rows" in b) return "Every alert back to the crew member it starts with (names, voices and personalities kept)";
   return `${crewLabel(b.role)}: ${b.reset ? "as the XO again" : "kept"}`;
 }
 async function crewPost(body) {
@@ -15737,6 +15744,7 @@ document.querySelectorAll("[data-reset]").forEach(r => r.onclick = e => {
   else if (id === "surfaceCfg") { store.set("surfaceCfg", {}); showSurfCfg(); }
   else if (id === "skipFloor") { store.set("skipFloor", null); showSkip(); renderHere(); }
   else if (id === "speechSpeed") { store.set("speechSpeed", null); drawSpeechStyles(); }
+  else if (id === "crewRows") { crewPost({rows: "defaults"}); return; }   // the server's: every browser (#25)
   else { unsoldCfg[id === "unsoldWarn" ? "warn" : "urgent"] = null; store.set("unsoldCfg", unsoldCfg); thresholdEls[id].dispatchEvent(new Event("focus")); }
   render();
 });

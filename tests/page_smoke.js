@@ -10041,7 +10041,9 @@ const releasePayloads = async () => {
     got.named = [pick("jump", "fsd_charge", {system: "X"}, "Jumping."), pick("brief", "arrival_brief", {text: "Known. 4 bodies."}, "Brief.")];
     w.eval(`data.crew.rows = {jump: "engineer"}`);   // moved to the Engineer: never its own name
     got.moved = pick("jump", "fsd_charge", {system: "X"}, "Jumping.");
-    w.eval(`data.crew.rows = {}`);
+    w.eval(`data.crew.rows = {}; data.crew.members.navigator.name = " mira "`);   // #25: one person in two roles
+    got.sameName = pick("jump", "fsd_charge", {system: "X"}, "Jumping.");   // the Navigator, also Mira: not "Ask Mira"
+    w.eval(`data.crew.members.navigator.name = null`);
     got.xoFor = pick(null, "speech_on", {}, "On.");   // the XO's own line: never {xo}
     // the voice lab: as the alerts (none with the crew off), "only" with made-up names, and the audition
     got.lab = JSON.parse(w.eval(`data.crew.members.engineer.name = null;
@@ -10054,6 +10056,13 @@ const releasePayloads = async () => {
     await w.eval(`crewLinesAudition((t, bad) => window.__audSaid.push([t, bad]))`);
     got.audition = JSON.parse(w.eval(`JSON.stringify([window.__aud, window.__audSaid.slice(-1)])`));
     got.buttons = [!!w.document.getElementById("labCrewLines"), !!w.document.getElementById("crewLinesAudition")];
+    // #25: each row's drop-down marks the member it starts with; "defaults" puts every row back in one change
+    got.defaults = JSON.parse(w.eval(`data.crew.on = true; data.crew.rows = {fuel: "navigator"}; drawAlertCrew(true);
+      const o = [...document.querySelectorAll('#alertOpts [data-arole="fuel"] option')].filter(x => / · default$/.test(x.textContent)).map(x => x.value);
+      const sel = document.querySelector('#alertOpts [data-arole="fuel"]').value, posted = [], real = crewPost;
+      crewPost = b => { posted.push(b); return Promise.resolve(); };
+      document.querySelector('[data-reset="crewRows"]').click(); crewPost = real;
+      JSON.stringify([o, sel, posted, crewSaid({rows: "defaults"}).startsWith("Every alert back")])`));
     w.eval(`const k = window.__c3; data.crew = k.crew; speechLib = k.lib; labPlayLine = k.play; lineNoRecord = k.noRec;
       Object.assign(recentLines, JSON.parse(k.heard)); store.set("speechHeard", k.stored);
       if (k.styles === null) localStorage.removeItem("speechStyles"); else localStorage.setItem("speechStyles", k.styles);
@@ -10063,10 +10072,12 @@ const releasePayloads = async () => {
       on: [["Tank full.", "The Navigator can plot."], ["Jumping. Ask the Engineer about the drive."], ["Known. 4 bodies. The Engineer agrees."]],
       named: [["Jumping. Ask Mira about the drive."], ["Known. 4 bodies. Mira agrees."]],
       moved: ["Jumping."],
+      sameName: ["Jumping."],
       xoFor: ["On."],
       lab: ["Jumping. Ask the Engineer about the drive.", "Jumping. Ask Mira about the drive.", null, "The Navigator can plot."],
       audition: [[["fsd_charge", "business", "Jumping. Ask Mira about the drive."]], [["Audition done", false]]],
       buttons: [true, true],
+      defaults: [["engineer"], "navigator", [{rows: "defaults"}], true],
     };
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
     const good = !bad.length && errors.length === before;

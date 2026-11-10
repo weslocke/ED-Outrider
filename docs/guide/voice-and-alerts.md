@@ -328,7 +328,9 @@ the sentence ends:
   warnings, your carrier leaving without you, a ship lost, a rig too far, a bounty on you, so a danger line is never mistaken for chatter. Off, they stay with
   their alert's crew member. Danger still comes first either way.
 - **Who says which alert:** ⚙ Settings → Alerts has a **Crew** column while the crew is on: move any alert to another
-  member there. A danger alert says "spoken by Tactical (danger)" while that switch is on.
+  member there. Each drop-down marks the member the alert starts with (**· default**), and **defaults** in the column's
+  heading puts every alert back to it at once, keeping the names, voices and personalities. A danger alert says "spoken
+  by Tactical (danger)" while that switch is on.
 - Outrider keeps the crew, so every browser and the tablet (with Play alerts here) speak with it. The tablet's own
   Settings has none of this: the crew is set on the PC.
 - **Crew lines.** With the crew on, some lines have one crew member mention another: "Fuel 18 percent. Ask the Navigator
@@ -338,7 +340,8 @@ the sentence ends:
   other personalities have one to three in all). A member with a name is called by it ("Ask Mira");
   without one, by its role. They are said only while the crew is on (with it off you hear exactly the lines you heard
   before), and never by the member they mention: move the fuel alerts to the Navigator and the lines that mention the
-  Navigator are left out for them. **▶ Audition: crew lines** (here and in the voice lab) plays them.
+  Navigator are left out for them. Nor by a member with the same name: one person covering two roles (the same name
+  given to the Science Officer and the Exobiologist) never says their own name. **▶ Audition: crew lines** (here and in the voice lab) plays them.
 - **Writing your own** (in `speech.json`): any line may name a crew member with these placeholders. Each says the
   member's name when it has one, else its role, with a capital when it starts a sentence (the line's start, or after
   ". ", "! ", "? " or "... "):

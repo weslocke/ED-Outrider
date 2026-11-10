@@ -250,6 +250,15 @@ class CrewState(unittest.TestCase):
         self.assertTrue(all(m == {"name": None, "personality": None, "voice": None, "speaker": None, "fill": None}
                             for r, m in c["members"].items() if r != "xo"))
 
+    def test_every_row_back_to_its_default(self):
+        """#25: one change puts every alert row back to CREW_ROLES' member, the members' names and voices kept."""
+        out = self.post({"on": True}, {"role": "science", "name": "Mathers"}, {"row": "exo", "role": "science"}, {"row": "fuel", "role": "navigator"},
+                        {"rows": "defaults"})
+        self.assertEqual([s for s, _ in out], [200] * 5)
+        c = out[-1][1]["crew"]
+        self.assertEqual((c["rows"], c["members"]["science"]["name"], c["on"]), ({}, "Mathers", True))
+        self.assertEqual([s for s, _ in self.post({"rows": "all"}, {"rows": {}})], [400, 400])
+
     def test_storage_and_validation(self):
         """POST /api/voice/crew keeps one change at a time in meta crew (for every browser): the switches, a member (name,
         personality, voice, speaker), a row moved, ↺; refuses what the lines file or the installed voices cannot give;

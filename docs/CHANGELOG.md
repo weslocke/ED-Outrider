@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-09 · The crew: one person in two roles, and every alert back to its default (#25, Kurbo26)
+- **Fix:** a crew line naming another member was said by a member with the same name (one person covering two roles:
+  "Mathers has called dibs" said by Mathers). A line is now left out for the member it names by role or by name.
+- **Settings → Alerts, Crew column:** each drop-down marks the member the alert starts with (· default), and
+  **defaults** in the column's heading puts every alert back (POST `/api/voice/crew` `{rows: "defaults"}`), keeping the
+  members' names, voices and personalities.
+
 ## 2026-11-09 · The Ship page's lights get icons
 - **Tablet:** each light has a line icon before its name, in every theme (Lucide, ISC, as the dark theme's; ten more of
   them in `static/icons/lucide/`, written into `tablet.css` by `scripts/dark_icons.py`); a light's words wrap to two lines.

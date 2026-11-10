@@ -665,7 +665,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <label class="master"><input type="checkbox" data-alert="enabled"> Desktop notifications (the browser will ask permission once)</label>
       <table id="alertTable" class="alerttable"><thead><tr><th>Alert</th><th title="desktop notification">notify</th>
         <th title="its sound (when 🔊 is on)">sound</th><th title="spoken (when 🗣 is on)">speak</th>
-        <th class="acrew" hidden title="the crew member who says it (Settings → Voice → Crew)">crew</th></tr></thead><tbody id="alertOpts"></tbody></table>
+        <th class="acrew" hidden title="the crew member who says it (Settings → Voice → Crew)">crew <span class="reset" data-reset="crewRows" title="every alert back to the crew member it starts with (marked · default); names, voices and personalities stay">defaults</span></th></tr></thead><tbody id="alertOpts"></tbody></table>
       <div class="hint">Alerts only fire for something out of the ordinary. The tab title also carries the current state, so a background tab still tells you something.</div>
       <div data-find="defaults.sounds" class="opts inline">Try the alert sounds:
         <button type="button" class="try" data-try="fanfare" title="a brand-new discovery">▶ new</button>
@@ -878,7 +878,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <span class="hint">said by the Mining Officer as each prospector reports, a rock already mined never; the minerals ticked also rate your hotspots (CMDR → Sessions: hit rate)</span></div>
       <table id="miningAlertTable" class="alerttable"><thead><tr><th>Mining alert</th><th title="desktop notification">notify</th>
         <th title="its sound (when 🔊 is on)">sound</th><th title="spoken (when 🗣 is on)">speak</th>
-        <th class="acrew" hidden title="the crew member who says it (Settings → Voice → Crew)">crew</th></tr></thead><tbody id="miningAlertOpts"></tbody></table>
+        <th class="acrew" hidden title="the crew member who says it (Settings → Voice → Crew)">crew <span class="reset" data-reset="crewRows" title="every alert back to the crew member it starts with (marked · default); names, voices and personalities stay">defaults</span></th></tr></thead><tbody id="miningAlertOpts"></tbody></table>
       <div class="hint">These are mining's own alerts, here rather than under Alerts for now.</div>
     </details>
     <details class="setsec pcOnly" data-sec-key="honk" data-chip="Auto honk" id="honkSettings"><summary>Auto honk and the co-pilot button</summary>
