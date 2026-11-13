@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-12 · Smoke: two load flakes held steady
+- **Tests:** the voice lab block holds the scratch server's payloads (one landing mid-block replaced its stubbed voice);
+  the route pane waits for the Overview to draw its route button instead of a fixed 200 ms.
+
 ## 2026-11-12 · The voice guide points to PiperHub
 - **Docs:** Voice and alerts' "A voice of your own" names [PiperHub](https://piperhub.org/), a community catalogue of
   Piper voices with samples, for voices beyond the ones More voices lists.

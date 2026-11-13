@@ -2079,7 +2079,9 @@ const releasePayloads = async () => {
     d.querySelector("#routeRows tr td.bodies").click(); await settle(1500);
     got.pinned = w.eval(`pinnedSystem === RT.data.rows[0].id`);
     w.eval(`unpinSystem()`); await settle(800);
-    d.querySelector('[data-view="overview"]').click(); await sleep(200);
+    d.querySelector('[data-view="overview"]').click();
+    // until the Overview has drawn it (a fixed 200 ms was too short under the full run's load: hidden still, 2026-11-12)
+    await until(() => w.eval(`!document.getElementById("routeBtn").hidden && !document.getElementById("routeWrap").hidden`), 3000);
     got.overview = w.eval(`[document.getElementById("routeBtn").hidden, document.getElementById("routeWrap").hidden,
       !!document.querySelector("#overView .ovbar #routeBtn"), !!document.querySelector("#ovNear #routeWrap")]`);
     d.querySelector('[data-view="near"]').click(); await sleep(200);
@@ -7599,6 +7601,9 @@ const releasePayloads = async () => {
   // the voice lab (2026-10-11; it was voice_lab.py): Settings > Voice shows a several-person voice's speaker; the lab
   // steps through speakers (each played, through api/say with the speaker), uses one, plays and cuts a line, saves a WAV
   voice_lab: { if (skip("voice_lab")) break voice_lab;
+    // the scratch server's payloads held: one landing mid-block replaced the stubbed data.tts, and Use this voice
+    // posted the server's voice (a full run's flake, 2026-11-12)
+    holdPayloads();
     const w = dom.window, realFetch = w.fetch, before = errors.length, said = [], posted = [];
     const people = [{id: 0, name: "p225"}, {id: 1, name: "p226"}, {id: 2, name: "p227"}];
     const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
@@ -7671,6 +7676,7 @@ const releasePayloads = async () => {
       drawTts();
       return o; })()`);
     w.fetch = realFetch;
+    await releasePayloads();
     const ban = posted.find(p => p[0] === "api/speech/ban");
     const want = {
       settings: JSON.stringify(got.settings) === JSON.stringify([true, "1", 3]),
