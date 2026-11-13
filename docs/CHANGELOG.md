@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-12 · The voice guide points to PiperHub
+- **Docs:** Voice and alerts' "A voice of your own" names [PiperHub](https://piperhub.org/), a community catalogue of
+  Piper voices with samples, for voices beyond the ones More voices lists.
+
 ## 2026-11-12 · Community voices in More voices (#25, Kurbo26)
 - **New:** the voice lab's More voices lists four community Piper voices beside Piper's own, marked **community**
   (its maker, licence and page in the hover): **warmf** (American English), **Mira** (American English), **LibriVox**

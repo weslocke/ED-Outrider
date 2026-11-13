@@ -214,6 +214,7 @@ Outrider runs (a Docker server too):
   `en_US-myvoice-medium.onnx.json`; rename them if they come named otherwise, keeping the endings). It is then an
   installed voice like any other: in Main voice, the lab, a personality or a crew member. Outrider lists only the
   voices above, so what you add yourself is your choice (check its licence, and whose voice it copies).
+  [PiperHub](https://piperhub.org/) is a community catalogue of Piper voices, with samples, if you want to look further.
 - **Lines**: pick an alert and a personality for **▶ Random line** (filled with made-up values), or **▶ Audition** for
   eight key alerts in a row. A personality with a voice or speaker of its own speaks in it. **▶ Audition: by crew**
   has each crew member say one of its own lines in its own voice and personality. **▶ Audition: crew lines** plays one
