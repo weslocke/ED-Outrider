@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-12 · Community voices in More voices (#25, Kurbo26)
+- **New:** the voice lab's More voices lists four community Piper voices beside Piper's own, marked **community**
+  (its maker, licence and page in the hover): **warmf** (American English), **Mira** (American English), **LibriVox**
+  (ten Australian English speakers: the first `en_AU` voice) and **ManyVoice** (sixteen speakers, American and British).
+  ▶ sample plays the maker's recording where there is one; Download fetches the exact files Outrider was tried with
+  (pinned to a commit, sha256-checked) and installs them under a Piper-form name.
+- Listed only when free to use, its training stated, not a copy of a real person's or a character's voice, and tried in
+  Outrider (DESIGN_NOTES). Any other voice still works dropped into `data/piper-voices/` as `name.onnx` +
+  `name.onnx.json`: the guide and Settings → Voice now say so.
+
 ## 2026-11-10 · Phenomena: told as you arrive, from Canonn's reports
 - **New:** arriving in a system where other commanders reported notable stellar phenomena, the phenomena alert names
   them ("I have reports of Albulum Gourd Mollusc in this system... One is new to your codex."), from Canonn, leaving out

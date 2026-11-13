@@ -12976,7 +12976,7 @@ function drawTts() {
     ? `Piper is installed but would not load (${t.import_error}), so the browser's own voice is used. To fix it: ${t.fix || "delete the .venv folder where Outrider runs and start it again with its launcher, which sets Piper up afresh"}; if it still will not load, that error is the one to report.`
     : !t || !t.available
     ? "Piper is not installed, so the browser's own voice is used (robotic on Linux). For a natural voice: python3 -m venv --system-site-packages .venv && .venv/bin/pip install piper-tts, then restart Outrider."
-    : "Voices live in data/piper-voices/ where Outrider runs; More voices below downloads any of Piper's there.";
+    : "Voices live in data/piper-voices/ where Outrider runs; More voices below downloads any of Piper's (and a few community voices) there, and a voice's two files of your own (name.onnx and name.onnx.json) dropped in there show up here too.";
   const opts = (t && t.voices) || [];
   if (sel.dataset.opts !== opts.join(",")) {
     sel.innerHTML = opts.map(v => `<option>${esc(v)}</option>`).join("") || `<option value="">(none installed yet)</option>`;
@@ -13723,15 +13723,21 @@ function mvSorted(list) {
   return [...list].sort(k === "quality" ? (a, b) => q(b) - q(a) || byName(a, b) : k === "size" ? (a, b) => mb(a) - mb(b) || byName(a, b)
     : k === "-size" ? (a, b) => (b.size_mb ?? -1) - (a.size_mb ?? -1) || byName(a, b) : byName);
 }
+// a community voice (resources/community_voices.json, #25): not one of Piper's own, so who made it, its licence and
+// what it is in the hover, its page a click away
+const mvCommunityTag = v => v.community
+  ? ` · <a class="mvcomm" href="${esc(v.source || "")}" target="_blank" rel="noopener" title="${esc([v.about,
+      `By ${v.credit} · ${v.licence}`, "A community voice, not one of Piper's own: from its maker's page, the files Outrider was tried with"].filter(Boolean).join("\n"))}">community</a>`
+  : "";
 function drawMoreVoices() {
   const lang = document.getElementById("mvLang").value, t = data && data.tts, cur = t && t.voice;
   const fetching = (t && t.fetching) || [], failed = (t && t.fetch_failed) || {};
   document.getElementById("mvSort").value = mvSortKey();
   document.getElementById("mvList").innerHTML = mvSorted((mvVoices || []).filter(v => v.language === lang)).map(v =>
     `<div class="mvrow"><span class="mvname">${esc(v.name.split("-")[1].replace(/_/g, " "))}</span>` +
-    `<span class="unk">${esc(v.quality)}${v.speakers > 1 ? ` · ${v.speakers} speakers` : ""}${v.size_mb ? ` · ${v.size_mb} MB` : ""}</span>` +
-    // Piper's own recording of the voice (its website), before downloading anything
-    (v.sample ? `<button type="button" class="try" data-mvsample="${esc(v.sample)}" title="Piper's own recording of this voice, from its website${v.speakers > 1 ? " (its first speaker)" : ""}">▶ sample</button>` : "<span></span>") +   // a cell either way: the columns line up
+    `<span class="unk">${esc(v.quality)}${v.speakers > 1 ? ` · ${v.speakers} speakers` : ""}${v.size_mb ? ` · ${v.size_mb} MB` : ""}${mvCommunityTag(v)}</span>` +
+    // Piper's own recording of the voice (its website), or a community voice's maker's, before downloading anything
+    (v.sample ? `<button type="button" class="try" data-mvsample="${esc(v.sample)}" title="${v.community ? "its maker's own recording, from its page" : "Piper's own recording of this voice, from its website"}${v.speakers > 1 ? " (its first speaker)" : ""}">▶ sample</button>` : "<span></span>") +   // a cell either way: the columns line up
     // in the lab: Download fetches it without switching (then it is picked above, to hear and use); one already here is
     // Select (picked above); the voice in use says so
     (v.name === cur ? `<span class="ok">in use</span>`
@@ -13745,7 +13751,7 @@ document.getElementById("mvSort").onchange = e => { store.set("mvSort", e.target
 document.getElementById("mvRefresh").onclick = () => loadMoreVoices(true);
 document.getElementById("mvList").addEventListener("click", async e => {
   const smp = e.target.closest("[data-mvsample]");
-  if (smp) { labPlayUrl(smp.dataset.mvsample, "Piper's sample could not be played (offline, or the browser held it back: click the page first)"); return; }
+  if (smp) { labPlayUrl(smp.dataset.mvsample, "The sample could not be played (offline, or the browser held it back: click the page first)"); return; }
   const b = e.target.closest("[data-mv]"); if (!b) return;
   const name = b.dataset.mv, v = (mvVoices || []).find(x => x.name === name);
   if (v && v.installed) { labSelectVoice(name); return; }   // already here: picked above, to hear and use

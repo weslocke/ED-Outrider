@@ -25857,8 +25857,9 @@ def make_app(state, hosts=None):
 
     async def voice_catalogue_view(request):
         """GET /api/voices/catalogue[?refresh=1]: Piper's voices for Settings > Voice > More voices, {voices: [{name,
-        language, language_name, quality, speakers, size_mb, installed}], current}. One is fetched and used with POST
-        /api/voice (the server downloads it): a Docker install has no voice lab. 503 without Piper, 502 offline."""
+        language, language_name, quality, speakers, size_mb, installed, sample}], current}, with the community voices
+        (resources/community_voices.json: community, licence, credit, about, source too). One is fetched and used with
+        POST /api/voice (the server downloads it): a Docker install has no voice lab. 503 without Piper, 502 offline."""
         if not state.speaker or not state.speaker.available:
             return web.json_response({"error": no_piper_words(state.speaker), "code": "no_piper"}, status=503)
         try:
@@ -25866,7 +25867,7 @@ def make_app(state, hosts=None):
                 None, lambda: outrider.tts.fetch_catalogue(force=request.query.get("refresh") == "1"))
         except (OSError, ValueError) as e:
             return web.json_response({"error": f"Piper's voice list cannot be fetched ({e})", "code": "catalogue_unavailable"}, status=502)
-        return web.json_response({"voices": outrider.tts.catalogue_summary(doc, state.speaker.installed()),
+        return web.json_response({"voices": outrider.tts.catalogue_summary(doc, state.speaker.installed(), state.speaker.community()),
                                   "current": state.speaker.voice_name})
 
     async def radius_view(request):

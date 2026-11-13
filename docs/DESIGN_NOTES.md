@@ -302,8 +302,8 @@ upstream project's choices, not rules of the game.
   yours or Spansh's.
 - **Nothing is uploaded unless the player switches it on.** EDDN, EDSM and Inara (Settings → Uploads, off by default)
   are the only uploads. Every other outside call is a read-only lookup: Spansh, EDSM, GitHub (the bio rules, ExploData's
-  colour tables and the update check), Hugging Face for voices (the page plays a voice's ▶ sample from Piper's samples
-  site), Canonn (its codex reference once a day; the page loads the checklists' pictures from Canonn's storage), EDAstro
+  colour tables and the update check), Hugging Face for voices (Piper's repository, and a community voice's own pinned
+  one; the page plays a voice's ▶ sample from Piper's samples site, or a community voice's from its repository), Canonn (its codex reference once a day; the page loads the checklists' pictures from Canonn's storage), EDAstro
   for the DSSA carrier list when the Nearest finder opens and its catalogued sights once a day (off with `[server]
   sights_range = 0`), Canonn on each live arrival for the system's reported phenomena (its name only; off with `[server]
   canonn_reports = false`). The one exception is the AI layer (off by default, `[assistant]`): it sends the question and the
@@ -1409,6 +1409,19 @@ upstream project's choices, not rules of the game.
   PC". More voices downloads a voice without switching to it: you hear it first, then Use this voice. A voice trained
   on many people speaks as the speaker picked for it, kept per voice (meta `voice_speakers`, live-only); before, the
   first speaker always spoke.
+- **Community voices are a short list Outrider vets, not a live feed** (#25, 2026-11-12; `resources/community_voices.json`,
+  `tts.load_community`). More voices lists them beside Piper's own, marked "community" with their maker, licence and
+  page. Each is pinned to one commit of its Hugging Face repository with a sha256 per file (what downloads is what was
+  tried; a maker's later change is not taken until the list is updated) and installed under a Piper-form name of
+  Outrider's choosing (the files are renamed: `en_US-manyvoice-medium` is `16Speakers.onnx`). The rule for a voice to be
+  listed: a licence that lets anyone use it; its training data stated; that data not a copy of a real person's or a
+  character's voice (celebrity, actor and game-character clones, and voices copied from a paid voice service, are out,
+  whatever the repository's licence says: it covers the code, not the voice); it loads and speaks in Outrider's Piper.
+  PiperHub's catalogue (fox3000foxy/piper-bank, checked 2026-11-12: 115 English voices besides Piper's) was not used as
+  a feed: most of it fails that rule and half has no licence. The first four (warmf, Mira, LibriVox Australian,
+  ManyVoice) were checked against Piper's own 182 names on 2026-11-12; should Piper ever use one of the names, the
+  community voice is the one listed and downloaded under it (`catalogue_summary`, `Speaker._download`). Any other voice
+  stays the player's choice: its two files dropped into `data/piper-voices/` are an installed voice like any other.
 - **A voice per personality is kept by the server** (S40, 2026-10-13; the author's default of 2026-10-12): Settings →
   Voice → Personality voices and the voice lab's Give to this personality store {style: {voice, speaker}} in meta
   `style_picks` (live-only, like the voice itself), so every browser and the tablet say a personality the same way.

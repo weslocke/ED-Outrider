@@ -1543,6 +1543,7 @@ body.notgamepc .pcOnly, body.notgamepc [data-aim] { display: none !important; }
 .mvrow { display: grid; grid-template-columns: minmax(6em, 10em) minmax(0, 1fr) 6.5em 8.5em; align-items: center; gap: 0.7em; padding: 2px 0; }
 .mvrow .mvname { text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mvrow > :nth-child(3), .mvrow > :nth-child(4) { justify-self: end; }
+.mvrow .mvcomm { color: var(--accent); }
 
 /* ---- a desktop theme (Settings > Display; themes/*.css, loaded here too): only with one chosen, never the Default.
    Each theme's display face (the one it gives the tablet) on the frame of the page: the title, the view pills, the

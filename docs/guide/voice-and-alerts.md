@@ -196,6 +196,24 @@ Outrider runs (a Docker server too):
   recording of a voice (from its website) before you download anything. **Download** fetches it without switching:
   when it is ready it is picked above, so you can ▶ Hear it (and its speakers) and press Use this voice if you like it.
   **Select** picks one you already have.
+- **Community voices** are in More voices too, marked **community**: voices made by others, not by Piper's project.
+  Hover the word for who made it, its licence and what it is; a click opens its page. Their ▶ sample is the maker's
+  own recording, where there is one. There are only a few, each checked before it was listed: free to use, its
+  training stated, not a copy of a real person's or a character's voice, and tried in Outrider. Each downloads
+  the exact files Outrider was tried with.
+
+  | Voice | What it is | Licence |
+  |---|---|---|
+  | **warmf** (`en_US-warmf-medium`) | American English, a young woman's voice | CC BY 4.0, by sushanth9 |
+  | **Mira** (`en_US-mira-medium`) | American English, a woman's voice (LJSpeech's timbre) | CC0 1.0, by BTimber |
+  | **LibriVox** (`en_AU-librivox-medium`) | Ten Australian English speakers (Piper has no Australian voice of its own) | CC BY 4.0, by DataCraftsmanAustralia |
+  | **ManyVoice** (`en_US-manyvoice-medium`) | Sixteen speakers, twelve American and four British | Public domain, by Bryce Beattie |
+
+- **A voice of your own**: any Piper voice you find elsewhere works too. Put its two files in `data/piper-voices/`
+  where Outrider runs, named alike: `name.onnx` and `name.onnx.json` (for example `en_US-myvoice-medium.onnx` and
+  `en_US-myvoice-medium.onnx.json`; rename them if they come named otherwise, keeping the endings). It is then an
+  installed voice like any other: in Main voice, the lab, a personality or a crew member. Outrider lists only the
+  voices above, so what you add yourself is your choice (check its licence, and whose voice it copies).
 - **Lines**: pick an alert and a personality for **▶ Random line** (filled with made-up values), or **▶ Audition** for
   eight key alerts in a row. A personality with a voice or speaker of its own speaks in it. **▶ Audition: by crew**
   has each crew member say one of its own lines in its own voice and personality. **▶ Audition: crew lines** plays one

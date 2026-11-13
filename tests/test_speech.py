@@ -1643,7 +1643,8 @@ class VoiceCatalogue(unittest.TestCase):
         import types
         import outrider.tts
         from aiohttp.test_utils import TestClient, TestServer
-        self.state.speaker = speaker = types.SimpleNamespace(available=True, installed=lambda: ["en_GB-cori-medium"], voice_name="en_GB-cori-medium")
+        self.state.speaker = speaker = types.SimpleNamespace(available=True, installed=lambda: ["en_GB-cori-medium"], voice_name="en_GB-cori-medium",
+                                                             community=lambda: {})
         calls = []
 
         def fetch(force=False):

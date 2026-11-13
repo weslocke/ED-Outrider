@@ -1,0 +1,71 @@
+{
+  "_readme": [
+    "Piper voices made by others, listed in the voice lab's More voices beside Piper's own (outrider/tts.py load_community).",
+    "Each is pinned to one commit of its Hugging Face repository and checked by sha256, so what downloads is what was tried.",
+    "A voice is listed only when: its licence lets anyone use it, it says what it was trained on, and that is not a",
+    "copy of a real person's or a character's voice (no celebrity, actor or game-character clones, nor voices copied from",
+    "a paid voice service). It must load and speak in Outrider's Piper. Its name is Piper's form (language_REGION-name-",
+    "quality) and must not be one of Piper's own; the files are installed under that name. docs/DESIGN_NOTES.md has the rule."
+  ],
+  "voices": {
+    "en_US-warmf-medium": {
+      "language": {"code": "en_US", "name_english": "English", "country_english": "United States"},
+      "quality": "medium",
+      "num_speakers": 1,
+      "repo": "sushanth9/warmf-en-us-piper",
+      "revision": "3e196066a064cbe98f0f23b64a8473b484f600a4",
+      "model": {"path": "en_US-warmf-medium.onnx", "size_bytes": 63531379,
+                "sha256": "a7b54eb7cf42969f6aa58ab7f325daf3d9fbf4a247b780beda965758bddf9671"},
+      "config": {"path": "en_US-warmf-medium.onnx.json", "size_bytes": 5036,
+                 "sha256": "7f148fbd2f9ec7af2bb464af3229fed50acb51038d2769b0b802e98826a5b4ae"},
+      "sample": "samples/sample_01.wav",
+      "licence": "CC BY 4.0",
+      "credit": "sushanth9",
+      "about": "American English, a young woman's voice. Distilled from the Kokoro-82M voice af_heart; not a copy of anyone."
+    },
+    "en_US-mira-medium": {
+      "language": {"code": "en_US", "name_english": "English", "country_english": "United States"},
+      "quality": "medium",
+      "num_speakers": 1,
+      "repo": "BTimber/piper-en_US-mira",
+      "revision": "a8196d6fecbf8b8de9c7d36261e91bd1a92cb434",
+      "model": {"path": "en_US-mira-tokens2.onnx", "size_bytes": 63516050,
+                "sha256": "5ade04032d8d04a6d1d01db9f74ab3c122af9c60ca75503280c6a3ce2930b42f"},
+      "config": {"path": "en_US-mira-tokens2.onnx.json", "size_bytes": 2169,
+                 "sha256": "d1f3dcb3275806c9318e5f0eba1f18b121117d18698f679dc7497ddbb5a89180"},
+      "licence": "CC0 1.0",
+      "credit": "BTimber",
+      "about": "American English, a woman's voice with LJSpeech's timbre, trained on speech made by ChatterBox Turbo. Its laughs and sighs need its maker's own program: here it is a plain voice."
+    },
+    "en_AU-librivox-medium": {
+      "language": {"code": "en_AU", "name_english": "English", "country_english": "Australia"},
+      "quality": "medium",
+      "num_speakers": 10,
+      "repo": "DataCraftsmanAustralia/piper-en_AU-librivox-medium",
+      "revision": "7f35faf19fe1789ece4b14233448f7c04e35a84f",
+      "model": {"path": "en_AU-librivox-medium.onnx", "size_bytes": 77072486,
+                "sha256": "f34849bce64d803d0fe90087766d5d6f2a8215a12edad43e486d77072df7dd41"},
+      "config": {"path": "en_AU-librivox-medium.onnx.json", "size_bytes": 5285,
+                 "sha256": "e0d8d381bf3eedeb7483cfa4ab5333d45284d30822bbc93f39fd10dc2935c1c1"},
+      "sample": "samples/clancy.wav",
+      "licence": "CC BY 4.0",
+      "credit": "DataCraftsmanAustralia",
+      "about": "Ten Australian English speakers in one voice, trained on public-domain LibriVox recordings. Piper has no Australian voice of its own."
+    },
+    "en_US-manyvoice-medium": {
+      "language": {"code": "en_US", "name_english": "English", "country_english": "United States"},
+      "quality": "medium",
+      "num_speakers": 16,
+      "repo": "agentvibes/piper-custom-voices",
+      "revision": "aca138594af5ccd37d79fde299991576a2aaab5f",
+      "model": {"path": "16Speakers.onnx", "size_bytes": 77100103,
+                "sha256": "3cc7b8f55b82146c09265e909beaa539254a882b9a6ac915792cbfc7d41ba235"},
+      "config": {"path": "16Speakers.onnx.json", "size_bytes": 7528,
+                 "sha256": "1dae6569843412ace557acdc2f2136405219ab75219efb3ddf882af2055a4c1c"},
+      "sample": "previews/speaker_0_Cori_Samuel.wav",
+      "licence": "Public domain",
+      "credit": "Bryce Beattie (ManyVoice), copied to Hugging Face by AgentVibes with his blessing",
+      "about": "Sixteen speakers in one voice, twelve American and four British, trained on public-domain LibriVox recordings."
+    }
+  }
+}

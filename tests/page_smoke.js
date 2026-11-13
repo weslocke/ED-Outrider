@@ -7107,7 +7107,11 @@ const releasePayloads = async () => {
       {name: "en_GB-alan-low", language: "en_GB", language_name: "English (Great Britain)", quality: "low", speakers: 1, size_mb: 63, installed: false,
        sample: "https://rhasspy.github.io/piper-samples/samples/en/en_GB/alan/low/speaker_0.mp3"},
       {name: "en_GB-cori-medium", language: "en_GB", language_name: "English (Great Britain)", quality: "medium", speakers: 1, size_mb: 63, installed: true},
-      {name: "en_GB-vctk-medium", language: "en_GB", language_name: "English (Great Britain)", quality: "medium", speakers: 109, size_mb: 77, installed: false}]};
+      {name: "en_GB-vctk-medium", language: "en_GB", language_name: "English (Great Britain)", quality: "medium", speakers: 109, size_mb: 77, installed: false},
+      // a community voice (#25): its maker, licence and page in the "community" tag, its maker's sample
+      {name: "en_AU-librivox-medium", language: "en_AU", language_name: "English (Australia)", quality: "medium", speakers: 10, size_mb: 77, installed: false,
+       sample: "https://huggingface.co/m/v/resolve/abc/samples/clancy.wav", community: true, licence: "CC BY 4.0", credit: "Maker",
+       about: "Ten Australian speakers.", source: "https://huggingface.co/m/v"}]};
     const json = body => Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
     w.fetch = (u, o) => /api\/voices\/catalogue/.test(String(u)) ? json(cat)
       : /api\/voices\/download$/.test(String(u)) && o && o.method === "POST" ? (posted.push(JSON.parse(o.body).voice), json({ok: true}))
@@ -7137,13 +7141,22 @@ const releasePayloads = async () => {
     got.picked = [d.getElementById("labVoice").value, /alan-low downloaded/.test(d.getElementById("labMsg").textContent)];
     d.getElementById("mvLang").value = "de_DE"; d.getElementById("mvLang").dispatchEvent(new w.Event("change"));
     got.de = rows();
+    d.getElementById("mvLang").value = "en_AU"; d.getElementById("mvLang").dispatchEvent(new w.Event("change"));
+    const tag = d.querySelector("#mvList a.mvcomm"), smpAu = d.querySelector("#mvList [data-mvsample]");
+    got.au = [rows(), tag ? [tag.getAttribute("href"), tag.target, tag.title] : null, smpAu ? smpAu.title : null];
+    w.eval("__played = []"); if (smpAu) smpAu.click();
+    await sleep(50);
+    got.au.push(w.eval("__played.slice()"));
     w.fetch = real; mv.open = false; w.eval("mvVoices = null; labSound = __sound0; store.set('mvSort', null); tabClose(document.getElementById('labDlg')); data.tts = __tts0; drawTts()");
-    const want = {langs: ["en_GB", "de_DE"], lang: "en_GB", rows: ["alanlow · 63 MB▶ sampleDownload", "corimedium · 63 MBin use",
+    const want = {langs: ["en_AU", "en_GB", "de_DE"], lang: "en_GB", rows: ["alanlow · 63 MB▶ sampleDownload", "corimedium · 63 MBin use",
                                                                    "vctkmedium · 109 speakers · 77 MBDownload"],   // (the spans' text run together)
                   cells: "4,4,4", grid: "grid",
                   played: ["https://rhasspy.github.io/piper-samples/samples/en/en_GB/alan/low/speaker_0.mp3"],
                   sorted: ["cori,vctk,alan", "vctk,alan,cori", "alan,cori,vctk", "alan,cori,vctk"],
-                  posted: ["en_GB-alan-low"], downloading: "downloading…", picked: ["en_GB-alan-low", true], de: ["thorstenhigh · 114 MBDownload"]};
+                  posted: ["en_GB-alan-low"], downloading: "downloading…", picked: ["en_GB-alan-low", true], de: ["thorstenhigh · 114 MBDownload"],
+                  au: [["librivoxmedium · 10 speakers · 77 MB · community▶ sampleDownload"],
+                       ["https://huggingface.co/m/v", "_blank", "Ten Australian speakers.\nBy Maker · CC BY 4.0\nA community voice, not one of Piper's own: from its maker's page, the files Outrider was tried with"],
+                       "its maker's own recording, from its page (its first speaker)", ["https://huggingface.co/m/v/resolve/abc/samples/clancy.wav"]]};
     const goodV = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodV;
     console.log(goodV ? "OK" : "FAIL", "| more voices |", goodV ? "Piper's catalogue by language, sorted by name, quality or size; ▶ sample plays Piper's recording; Download fetches it without switching, then it is picked in the lab" : JSON.stringify(got), errors.slice(before));

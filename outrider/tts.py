@@ -8,7 +8,8 @@ Piper is not required: without it the page falls back to the browser's own speec
 Outrider finds Piper whether it is started with .venv/bin/python or plain python3 (a .venv in the
 repository folder is searched when the system Python has no Piper). Voices live in data/piper-voices/; a
 configured voice that is missing is downloaded there in the background on first use
-(about 63 MB each, from the Piper voices repository on Hugging Face). Installing them beforehand
+(about 63 MB each, from the Piper voices repository on Hugging Face; a community voice, resources/
+community_voices.json, from its own repository's pinned commit). Installing them beforehand
 with `python -m piper.download_voices --download-dir data/piper-voices <voice>` just skips that wait.
 
 "Play speech and sounds on this PC" (a tick on the page) plays the lines and the alert sounds here instead of in
@@ -71,6 +72,14 @@ CATALOGUE_CACHE = os.path.join(VOICES_DIR, "voices.json")
 # Piper's own recording of each voice (its first speaker), on the project's samples site: More voices' ▶ sample
 SAMPLE_URL = "https://rhasspy.github.io/piper-samples/samples/{base}/speaker_0.mp3"
 CATALOGUE_MAX_AGE = 7 * 86400
+# Voices made by others (resources/community_voices.json, #25): listed in More voices beside Piper's own, each file
+# fetched from one pinned commit of its Hugging Face repository and checked by its sha256 (load_community)
+COMMUNITY_FILE = os.path.join(ROOT, "resources", "community_voices.json")
+COMMUNITY_URL = "https://huggingface.co/{repo}/resolve/{revision}/{path}"
+_HF_REPO = re.compile(r"^[A-Za-z0-9][\w.-]*/[\w.-]+$")
+_HF_PATH = re.compile(r"^(?!.*\.\.)[\w.-]+(?:/[\w.-]+)*$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 # The longest line spoken (about a minute of speech): a cap on the synthesis work one request can ask for.
 # A longer line is cut at a sentence or clause boundary, never mid-word (see clip_text).
 SAY_MAX = 1000
@@ -217,23 +226,87 @@ def fetch_catalogue(force=False, cache=None):
     return doc
 
 
-def catalogue_summary(doc, installed=()):
+def _community_entry(name, v):
+    """One community voice as load_community keeps it, or None when anything about it is not as it must be (a name
+    that is not Piper's form, a repository, commit, path or sha256 that is not well formed, no licence or credit)."""
+    if not (isinstance(v, dict) and VOICE_NAME.fullmatch(name or "")):
+        return None
+    repo, rev = v.get("repo"), v.get("revision")
+    if not (isinstance(repo, str) and _HF_REPO.fullmatch(repo) and isinstance(rev, str) and _COMMIT.fullmatch(rev)):
+        return None
+    files = []
+    for part, suffix in (("config", ".onnx.json"), ("model", ".onnx")):   # the small config first, as Piper's
+        f = v.get(part)
+        if not (isinstance(f, dict) and isinstance(f.get("path"), str) and _HF_PATH.fullmatch(f["path"])
+                and f["path"].endswith(suffix) and isinstance(f.get("sha256"), str) and _SHA256.fullmatch(f["sha256"])
+                and isinstance(f.get("size_bytes"), int) and not isinstance(f.get("size_bytes"), bool) and f["size_bytes"] > 0):
+            return None
+        files.append((f["path"], {"url": COMMUNITY_URL.format(repo=repo, revision=rev, path=f["path"]), "dest": name + suffix,
+                                  "size_bytes": f["size_bytes"], "sha256": f["sha256"]}))
+    if not all(isinstance(v.get(k), str) and v[k].strip() for k in ("licence", "credit")):
+        return None
+    sample = v.get("sample")
+    sample = COMMUNITY_URL.format(repo=repo, revision=rev, path=sample) if isinstance(sample, str) and _HF_PATH.fullmatch(sample) else None
+    speakers = v.get("num_speakers")
+    return {"language": v.get("language") if isinstance(v.get("language"), dict) else {}, "quality": name.rsplit("-", 1)[1],
+            "num_speakers": speakers if isinstance(speakers, int) and not isinstance(speakers, bool) and speakers > 0 else 1,
+            "files": files, "sample": sample, "licence": v["licence"].strip(), "credit": v["credit"].strip(),
+            "about": v.get("about").strip() if isinstance(v.get("about"), str) else "",
+            "source": f"https://huggingface.co/{repo}"}
+
+
+def load_community(path=None):
+    """resources/community_voices.json: {voice name: {language, quality, num_speakers, files [(path, {url, dest,
+    size_bytes, sha256})] config first, sample (URL or None), licence, credit, about, source (its page)}}. An entry
+    that is not well formed is left out (and named on stderr); a missing or unreadable file is {}."""
+    path = path or COMMUNITY_FILE
+    try:
+        with open(path, encoding="utf-8") as f:
+            doc = json.load(f)
+    except (OSError, ValueError) as e:
+        print(f"spoken alerts: community voices not read ({path}: {type(e).__name__})", file=sys.stderr)
+        return {}
+    voices = doc.get("voices") if isinstance(doc, dict) and isinstance(doc.get("voices"), dict) else {}
+    out = {}
+    for name, v in voices.items():
+        entry = _community_entry(name, v)
+        if entry is None:
+            print(f"spoken alerts: community voice {name!r} left out (not as resources/community_voices.json needs it)",
+                  file=sys.stderr)
+        else:
+            out[name] = entry
+    return out
+
+
+def _language_name(lang):
+    return f"{lang.get('name_english') or ''} ({lang.get('country_english') or ''})".replace(" ()", "").strip()
+
+
+def catalogue_summary(doc, installed=(), community=None):
     """The catalogue for the page: [{name, language (en_GB), language_name ("English (Great Britain)"), quality,
     speakers, size_mb (the model), installed, sample (Piper's recording of it)}], by name; entries that are not
-    well-formed voices are left out."""
-    out, have = [], set(installed)
+    well-formed voices are left out. `community` (load_community's) adds those, each with community True, licence,
+    credit, about and source. Should Piper ever list one under the same name, the community one is shown, as it is the
+    one Speaker downloads under that name (a test keeps the names apart)."""
+    out, have, community = [], set(installed), community or {}
     for name, v in (doc or {}).items():
-        if not isinstance(v, dict) or not VOICE_NAME.fullmatch(name):
+        if not isinstance(v, dict) or not VOICE_NAME.fullmatch(name) or name in community:
             continue
         lang = v.get("language") if isinstance(v.get("language"), dict) else {}
         files = v.get("files") if isinstance(v.get("files"), dict) else {}
         size = sum((m or {}).get("size_bytes") or 0 for p, m in files.items() if p.endswith(".onnx") and isinstance(m, dict))
         out.append({"name": name, "language": lang.get("code") or name.split("-")[0],
-                    "language_name": f"{lang.get('name_english') or ''} ({lang.get('country_english') or ''})".replace(" ()", "").strip(),
+                    "language_name": _language_name(lang),
                     "quality": v.get("quality") or name.rsplit("-", 1)[1],
                     "speakers": v.get("num_speakers") if isinstance(v.get("num_speakers"), int) else 1,
                     "size_mb": round(size / 1e6) if size else None, "installed": name in have,
                     "sample": SAMPLE_URL.format(base=voice_paths(name)[1].rsplit("/", 1)[0])})
+    for name, c in community.items():
+        model = c["files"][-1][1]["size_bytes"]
+        out.append({"name": name, "language": c["language"].get("code") or name.split("-")[0],
+                    "language_name": _language_name(c["language"]), "quality": c["quality"], "speakers": c["num_speakers"],
+                    "size_mb": round(model / 1e6), "installed": name in have, "sample": c["sample"], "community": True,
+                    "licence": c["licence"], "credit": c["credit"], "about": c["about"], "source": c["source"]})
     return sorted(out, key=lambda x: x["name"])
 
 
@@ -271,36 +344,45 @@ def sweep_parts(voices_dir, now=None):
 
 
 def download_voice_files(files, voices_dir, progress=None, timeout=60):
-    """Download [(repository path, {"size_bytes", "md5_digest"} or {})] into voices_dir. Each file goes to a
-    .part first, and they are moved into place only once every one has arrived complete (length and, when
-    given, MD5 checked), the model last: an interrupted download never leaves a voice that looks installed,
-    or stray .part files. `timeout` is per read, so a stalled connection fails instead of hanging.
-    progress(done, total) after each chunk (total is 0 when the sizes are not known)."""
+    """Download [(repository path, {"size_bytes", "md5_digest"} or {})] into voices_dir. A community voice's file
+    (load_community) carries its own "url" (a pinned commit), "dest" (the name it is installed under) and "sha256"
+    instead. Each file goes to a .part first, and they are moved into place only once every one has arrived complete
+    (length and, when given, MD5 or sha256 checked), the model last: an interrupted download never leaves a voice
+    that looks installed, or stray .part files. `timeout` is per read, so a stalled connection fails instead of
+    hanging. progress(done, total) after each chunk (total is 0 when the sizes are not known)."""
     total, done, parts = sum((m or {}).get("size_bytes") or 0 for _, m in files), 0, []
     os.makedirs(voices_dir, exist_ok=True)
     sweep_parts(voices_dir)
+
+    def dest_name(item):
+        return (item[1] or {}).get("dest") or os.path.basename(item[0])
     try:
-        for path, meta in sorted(files, key=lambda x: x[0].endswith(".onnx")):   # the small config first
-            dest = os.path.join(voices_dir, os.path.basename(path))
+        for path, meta in sorted(files, key=lambda x: dest_name(x).endswith(".onnx")):   # the small config first
+            meta = meta or {}
+            name = dest_name((path, meta))
+            if os.path.basename(name) != name or name.startswith("."):
+                raise ValueError(f"{name!r} is not a voice file's name")
+            dest = os.path.join(voices_dir, name)
             # a .part of its own: two downloads of the same voice at once (two copies of Outrider, or a start-up
             # download while the page picks the same voice) must not write into one file, or one installs a mix and the other finds its file gone
-            fd, part = tempfile.mkstemp(dir=voices_dir, prefix=os.path.basename(path) + ".", suffix=".part")
+            fd, part = tempfile.mkstemp(dir=voices_dir, prefix=name + ".", suffix=".part")
             parts.append((part, dest))
-            md5, got = hashlib.md5(), 0
+            md5, sha, got = hashlib.md5(), hashlib.sha256(), 0
             os.chmod(part, 0o644)   # mkstemp's 0600 would carry over to the installed voice
-            with os.fdopen(fd, "wb") as f, tls.urlopen(FILE_URL.format(path=path), timeout=timeout) as r:
+            with os.fdopen(fd, "wb") as f, tls.urlopen(meta.get("url") or FILE_URL.format(path=path), timeout=timeout) as r:
                 size = r.headers.get("Content-Length") if getattr(r, "headers", None) else None
                 while chunk := r.read(1 << 16):
                     f.write(chunk)
                     md5.update(chunk)
+                    sha.update(chunk)
                     got += len(chunk)
                     done += len(chunk)
                     if progress:
                         progress(done, total)
-            name = os.path.basename(path)
             if not got or (size and size.isdigit() and got != int(size)):
                 raise IOError(f"{name} did not download completely ({got} bytes); try again")
-            if (meta or {}).get("md5_digest") and md5.hexdigest() != meta["md5_digest"]:
+            if (meta.get("md5_digest") and md5.hexdigest() != meta["md5_digest"]) or \
+                    (meta.get("sha256") and sha.hexdigest() != meta["sha256"]):
                 raise IOError(f"{name} did not download correctly (checksum mismatch); try again")
     except BaseException:   # a network error, a full disk, Ctrl-C: nothing half-written stays behind
         for part, _ in parts:
@@ -451,6 +533,8 @@ class Speaker:
         self._in_use = 0            # how many voices besides the main one lines may ask for now (size_extra)
         self.fetching = set()       # voices downloading for the voice lab (fetch: not switched to)
         self.fetch_failed = {}      # voice -> why its last fetch failed (the lab says so)
+        self.community_file = COMMUNITY_FILE   # the voices made by others (community()), read once
+        self._community = None
         self.status = ("starting" if self.PiperVoice else f"Piper would not load: {self.import_error}" if self.import_error
                        else "Piper not installed")
 
@@ -464,6 +548,12 @@ class Speaker:
 
     def installed(self):
         return installed_voices(self.dir)
+
+    def community(self):
+        """The community voices (load_community), read on first use and kept: the shipped file changes with a release."""
+        if self._community is None:
+            self._community = load_community(self.community_file)
+        return self._community
 
     def _set_status(self, text):
         """Change the status and tell the page (the worker thread runs outside the event loop, and a
@@ -663,16 +753,22 @@ class Speaker:
         self._prepare(name, remember=False)
 
     def _download(self, name, status=None):
-        """Download a voice into the voices folder (see download_voice_files); True once it is there."""
-        try:
-            paths = voice_paths(name)
-        except ValueError as e:
-            print(f"spoken alerts: {e}", file=sys.stderr)
-            return False
+        """Download a voice into the voices folder (see download_voice_files); True once it is there. A community
+        voice (resources/community_voices.json) comes from its own pinned files, the rest from Piper's repository."""
+        community = self.community().get(name)
+        if community:
+            files = community["files"]
+        else:
+            try:
+                files = [(p, {}) for p in voice_paths(name)]
+            except ValueError as e:
+                print(f"spoken alerts: {e}", file=sys.stderr)
+                return False
         self._set_status(status or f"downloading {name} (about 63 MB)")
-        print(f"spoken alerts: downloading Piper voice {name} into {self.dir} (browser speech until it is ready)")
+        print(f"spoken alerts: downloading Piper voice {name} into {self.dir} (browser speech until it is ready)"
+              + (f", from {community['source']}" if community else ""))
         try:
-            download_voice_files([(p, {}) for p in paths], self.dir)
+            download_voice_files(files, self.dir)
             return True
         except Exception as e:
             print(f"spoken alerts: could not download {name}: {type(e).__name__}: {e}", file=sys.stderr)
