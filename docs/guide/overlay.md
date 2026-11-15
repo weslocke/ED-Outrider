@@ -217,7 +217,7 @@ running as a Wayland window (Firefox and most GNOME and KDE apps do) can sit ove
 knowing, so it draws over that window too; an XWayland window (most games, Steam, Discord) is seen.
 
 <p align="center">
-  <img src="../images/overlay-settings.png" alt="Settings, In-game overlay: the switch, the window's state, the theme and text size, the test panels and Arrange buttons, and each panel's row with its tick box, corner, offsets, size and opacities" width="740">
+  <img src="../images/overlay-settings.png" alt="Settings, In-game overlay: the switch, the window's state, the theme and text size, the test panels and Arrange buttons, the system panel's time, the radar range and the strip's distance, and each panel's row with its tick box, corner, offsets, size and opacities" width="740">
 </p>
 
 ## Good to know

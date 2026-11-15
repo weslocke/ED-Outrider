@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-15 · Four screenshots retaken for the next release
+- **Docs:** tablet.png (the Ship button at the top of the page list), samples.png and checklist.png (Bio/Geo's switch
+  with Phenomena; the clock beside the title) and overlay-settings.png (the "Strip's distance to" row, named in its alt
+  text), from the docs sweep's screenshot audit. The other desktop shots lack only the clock: left for their next retake.
+
 ## 2026-11-15 · The Opus docs sweep for the next release
 An Opus sweep of every doc and screenshot since v2026.11.08 (7 auditors, each area's findings checked by a verifier
 against the code): 56 confirmed (1 high, 17 medium, 38 low; several the same gap seen from two areas), 9 refuted.
