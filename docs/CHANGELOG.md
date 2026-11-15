@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-15 · Version 2026.11.15: The Ship Page Release
+- **Release:** `__version__` 2026.11.15; whats-new.md's coming-release section named "2026.11.15 · 15 November 2026 ·
+  The Ship Page Release", with a line on the guide's reorganisation. No re-read (PARSER_VERSION 76 and CACHE_VERSION
+  20 as in 2026.11.08); API_VERSION 1.
+
 ## 2026-11-15 · The user guide reorganised
 The guide had grown by accretion: views.md held the tabs, Now and its maps, the exploration tools and CMDR in one
 two-column HTML table and its tail; settings.md ended in a "Good to know" grab bag; plot-route.md and

@@ -11,7 +11,7 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
-## Next release · not released yet
+## 2026.11.15 · 15 November 2026 · The Ship Page Release
 
 **A Ship page for the tablet with a board of lights, a voice that tells you when a repair has left life support off,
 the phenomena found in space as a checklist of their own and told as you arrive, community voices in More voices, and
@@ -63,6 +63,12 @@ a clock beside the title.** Nothing is re-read at the first start.
 - **The overlay's system strip** (thanks to Hiner399, [issue #24](https://github.com/weslocke/ED-Outrider/issues/24))
   names whose reputation it is, on a line of its own ("Allied with Mother Gaia"), and can measure its distance from a
   system of your choice instead of Sol: Settings → In-game overlay → **Strip's distance to**.
+
+### 📖 The guide
+
+- **Reorganised:** Now with its system and surface maps, pins and rigs has a page of its own ([Now](now.md)), and so
+  do Bio/Geo, the checklists, boxels and green gas giants ([Exploring and exobiology](exploration.md)); every page
+  has a heading per part. A bookmarked link into an old section may land at the top of its page.
 
 ### 🐛 Fixes
 
