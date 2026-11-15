@@ -2,6 +2,31 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-15 · The user guide reorganised
+The guide had grown by accretion: views.md held the tabs, Now and its maps, the exploration tools and CMDR in one
+two-column HTML table and its tail; settings.md ended in a "Good to know" grab bag; plot-route.md and
+voice-and-alerts.md kept nearly everything under one or two headings. Seven agents rewrote it to one page map (every
+fact kept, only true duplicates folded into a link), and five fresh agents checked old against new sentence by
+sentence: nothing dropped; the meaning shifts and new claims they found were fixed against the code.
+- **New pages:** now.md (Now part by part, the system map, the surface map, pins, the Rhino's rigs) and exploration.md
+  (Bio/Geo and its three checklists with their pictures, how the exobiology guesses work, codex-new marks, potential
+  green gas giants, boxels), both from views.md. views.md is now the page, its tiles, the route lines and every other
+  tab, each with its heading (no more HTML layout table).
+- **settings.md** is "Settings": the panel and Find a setting, Server, notices, the config file (`[overlay]` and
+  `[screenshots]` in tables of their own, the defaults of `format`, `copies_format` and `original` stated), the command
+  line. Its Good to know went beside what each note is about; "New versions" to install.md's Updating.
+- **Headings throughout:** plot-route.md a `##` per plotter kind, following, targeting; voice-and-alerts.md a `###` per
+  Settings → Alerts group in its order, the Voice lab, names, personalities, the crew; tablet.md and for-developers.md
+  lose the `##` that repeated the title; install.md, overlay.md, automation.md, uploads.md and cargo-and-trading.md
+  sub-headed. Trade-route plotting lives on plot-route.md, your own checklist pictures on exploration.md.
+- **Fixed on the way:** the plotters' shared form (Trade has no To and no ship; Conservative range is Exact and Neutron
+  only); "survey route" used in two senses; the surface-shot distance is a number, not a tick (and phenomenon shots do
+  not use it); the status report's core-module clause after the Highway's; the FSS codex line's timing, phenomena on
+  arrival vs. in the FSS, English-only exobiology readings; the tablet's emblem credits (the README).
+- **Anchors:** U+FE0F (an emoji's variation selector) left every heading: GitHub keeps it in the anchor, so links such
+  as `views.md#-the-views` never landed. `test_docs.slug` now keeps it as GitHub does. README's index has the new pages;
+  the nav bars list 14; whats-new.md's links follow the moves; AGENT_GUIDE names each topic's page.
+
 ## 2026-11-15 · Four screenshots retaken for the next release
 - **Docs:** tablet.png (the Ship button at the top of the page list), samples.png and checklist.png (Bio/Geo's switch
   with Phenomena; the clock beside the title) and overlay-settings.png (the "Strip's distance to" row, named in its alt

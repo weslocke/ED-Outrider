@@ -1,14 +1,13 @@
-[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · **For the curious**
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings](settings.md) · **For the curious**
 
 # For the curious
 
-## 🔬 For the curious
-
+<a id="-for-the-curious"></a>
 Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUIDE.md`](../AGENT_GUIDE.md).
 
-<details>
-<summary>What's in the box</summary>
-<br>
+## 📦 What's in the box
+
+What each file and folder in the box does.
 
 | File | What it does |
 |---|---|
@@ -97,14 +96,18 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `data/` | Your own files, git-ignored: the database, `browser_defaults.json`, `speech_banned.json`, `pronounce.json`, `personalities/`, `backups/`, `piper-voices/`, `fonts/` |
 | `docs/` | Notes for contributors and their coding agents (code map, rules, journal traps, design notes, changelog); `guide/` is this user guide, `images/` its screenshots |
 
-For overlays, `GET /api/status` returns a compact JSON status and
-`GET /api/status.txt?fields=system,region,fuel,target,unsold,body,sampling` one line for an OBS text
-source. Both are read-only, and they are the only parts of `/api/` another web site's page may read: every
-other request a browser labels as coming from another site is refused (curl and scripts send no such label and
-pass). No other site may show the page in a frame.
+## 📡 The status API for overlays
 
-</details>
+For overlays, two read-only addresses give your status:
+
+- **`GET /api/status`** returns a compact JSON status.
+- **`GET /api/status.txt?fields=system,region,fuel,target,unsold,body,sampling`** returns one line for an OBS text
+  source.
+
+They are the only parts of `/api/` another web site's page may read. Every other request a browser labels as coming
+from another site is refused (curl and scripts send no such label and pass). No other site may show the page in a
+frame.
 
 ---
 
-[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · **For the curious**
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings](settings.md) · **For the curious**

@@ -14,8 +14,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def slug(heading):
-    """GitHub's anchor for a heading: lower case, punctuation and emoji gone, spaces to hyphens."""
-    t = re.sub(r"[^\w\- ]", "", heading.lstrip("#").strip().lower())
+    """GitHub's anchor for a heading: lower case, punctuation and emoji gone, spaces to hyphens. An emoji's variation
+    selector (U+FE0F, as in "⚙️") is a mark, which GitHub keeps: `## ⚙️ Settings` is "\ufe0f-settings", so a link to
+    "#-settings" never lands (docs sweep 2026-11-15). Kept here too, so such a heading fails its links."""
+    t = re.sub(r"[^\w\- \ufe0f]", "", heading.lstrip("#").strip().lower())
     return t.replace(" ", "-")
 
 

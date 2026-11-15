@@ -1,11 +1,11 @@
-[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · **In-game overlay** · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · **In-game overlay** · [Uploads](uploads.md) · [Settings](settings.md) · [For the curious](for-developers.md)
 
 # In-game overlay
 
 Outrider can draw a few panels right over the game: what is worth your time in the system, your target (the body you
-are at or heading to, or the next system), a radar on a body's surface, and (when you tick them) the system strip, Now (To-Do & Info), the bio signals and your alerts. A
-small window on the game PC draws them; it sits over Elite's window and lets every click through, so you play as
-before.
+are at or heading to, or the next system) and a radar on a body's surface. When you tick them, it also draws the
+system strip, Now (To-Do & Info), the bio signals and your alerts. A small window on the game PC draws them. It sits
+over Elite's window and lets every click through, so you play as before.
 
 <p align="center">
   <img src="../images/overlay.png" alt="Five panels over a starfield: the system strip at the top, the system panel top left, the targeted body top right, Now bottom left and Bio signals bottom right" width="900">
@@ -15,150 +15,215 @@ before.
 
 ## What it shows
 
-- **The system panel**, in supercruise: each body worth your time, numbered in the suggested order as on Here's
-  schematic (①②③; the body you made the first stop, by a tap on Here's schematic or **Do first** on the system map, leads;
-  one you **Skip** on the system map is left out until you leave the system or put it back), with what is left to do (TO MAP,
-  TO LAND, a sample run under way such as "Bacterium 1/3") and what it pays, the codex mark with the new colour
-  ("✪ Lime"), then the valuable bodies you have finished (MAPPED, SAMPLED); curiosities on an "Also here" line; what
-  is left in the whole system, and how many bodies are under your levels. A body you have not scanned yet (known to
-  Spansh only) is listed unnumbered after the stops. It uses the levels in your config
-  (`body_highlight_level`, `bio_min`), as Here's to-do line does.
-- **The Target panel**, flying your ship (it was the body panel: it keeps that panel's place, size and switch). Close
-  to a body (once the game shows its altitude, where the approach begins) it shows **that body**, even when you have
-  targeted something else; once you leave, it goes back to your target after 5 seconds out (the edge of that zone
-  comes and goes, so it may flick back now and then). Elsewhere it shows **the body you have targeted** in this
-  system, or else **the system you have targeted** (in the galaxy map, or the next jump of the route plotted there).
-  Nothing targeted: no panel.
-  - A body: landable, gravity (amber at your high-gravity level), atmosphere, temperature, what mapping is still
-    worth, first discovered; its life, each likely species with its codex mark, colony distance and value, the runs
-    under way (what each pays, "1.0M (×5: 5.0M)" with the first-footfall bonus) and the species finished; and whether
-    it is worth landing (with the ×5 first-footfall note).
-  - A system: "next jump of your route · 5 to go" when a route is plotted; with a route you follow in Outrider, whether
-    the target is its next stop ("✓ the next stop of your route", "↷ 2 stops ahead on your route" or "⚠ not the next
-    stop: Pru Aim XY-Z d1", see [Plot Route](plot-route.md)); whether anyone reported it (never reported,
-    no scan data, partly or fully scanned, visited; "checking…" while Outrider asks), how many bodies Spansh knows of
-    how many, and EDSM's; the star with ⛽, or ✕ when it cannot be scooped, and "⚠ throttle down" at a neutron star,
-    white dwarf or black hole (⚡ marks a supercharge); the jump: how far, the fuel it burns and the max-range jumps
-    left after it, or "out of range"; and, when it is in your Nearby list, what scanning and mapping it could pay, the
-    bio up to, and its notable bodies (ELW, WW, AW, T).
+### The system panel
 
-  It is the one panel that shows **over the galaxy map**, with the system you target there, so you see what you
-  picked before you jump (docked too). Docked, outside the galaxy map, it stays off unless you untick its
+In supercruise, each body worth your time, numbered in the suggested order as on Here's schematic (①②③).
+
+- **The order:** the body you made the first stop leads, by a tap on Here's schematic or **Do first** on the system
+  map. One you **Skip** on the system map is left out until you leave the system or put it back.
+- **Each body** shows what is left to do (TO MAP, TO LAND, a sample run under way such as "Bacterium 1/3") and what
+  it pays, and the codex mark with the new colour ("✪ Lime").
+- **Then** the valuable bodies you have finished (MAPPED, SAMPLED), and curiosities on an "Also here" line.
+- **The foot:** what is left in the whole system, and how many bodies are under your levels.
+- A body you have not scanned yet (known to Spansh only) is listed unnumbered after the stops.
+- It uses the levels in your config (`body_highlight_level`, `bio_min`), as Here's to-do line does.
+
+### The Target panel
+
+Flying your ship. It was the body panel, and keeps that panel's place, size and switch.
+
+- **Close to a body** (once the game shows its altitude, where the approach begins) it shows **that body**, even when
+  you have targeted something else. Once you leave, it goes back to your target after 5 seconds out. The edge of that
+  zone comes and goes, so it may flick back now and then.
+- **Elsewhere** it shows **the body you have targeted** in this system, or else **the system you have targeted** (in
+  the galaxy map, or the next jump of the route plotted there). Nothing targeted: no panel.
+- **For a body:** landable, gravity (amber at your high-gravity level), atmosphere, temperature, what mapping is
+  still worth, first discovered.
+  - Its life: each likely species with its codex mark, colony distance and value, the runs under way (what each pays,
+    "1.0M (×5: 5.0M)" with the first-footfall bonus) and the species finished.
+  - Whether it is worth landing (with the ×5 first-footfall note).
+- **For a system:**
+  - "next jump of your route · 5 to go" when a route is plotted.
+  - With a route you follow in Outrider, whether the target is its next stop: "✓ the next stop of your route", "↷ 2
+    stops ahead on your route" or "⚠ not the next stop: Pru Aim XY-Z d1" (see [Plot Route](plot-route.md)).
+  - Whether anyone reported it: never reported, no scan data, partly or fully scanned, visited ("checking…" while
+    Outrider asks). How many bodies Spansh knows of how many, and EDSM's.
+  - The star with ⛽, or ✕ when it cannot be scooped, and "⚠ throttle down" at a neutron star, white dwarf or black
+    hole (⚡ marks a supercharge).
+  - The jump: how far, the fuel it burns and the max-range jumps left after it, or "out of range".
+  - When it is in your Nearby list: what scanning and mapping it could pay, the bio up to, and its notable bodies
+    (ELW, WW, AW, T).
+- **Over the galaxy map:** it is the one panel that shows there, with the system you target there, so you see what
+  you picked before you jump (docked too). Docked, outside the galaxy map, it stays off unless you untick its
   **Docked** box (see [Settings](#settings)).
-- **The surface radar**, on a body (landed, in the SRV, on foot) or low over it: heading up, you in the middle, N on
-  the rim; the sample points of your run with their colony rings, red while you are inside one and green once you are
-  clear; tagged plants, the ship, your rigs and your surface pins (the one you are heading for named). Underneath: how
-  far and which way that pin is ("📍 Wreck 12.4 km, 30° left"), how far the next sample must be, or "Clear: sample here".
-  It shows with nothing on it too (you, N and its edge), as the page's surface map does: low over a body looking for
-  geology, say (not while docked at a planetary port, nor on foot in its hangar or concourse). A faint line is your
-  trail on this body this visit, where you drove, walked or flew low (below `[defaults] surface_alt`, 1,000 m), as on
-  the page's map. A compass grid turns with
-  you: ticks on the rim every 15° (longest at N, E, S, W, with their letters), a crosshair and quarter rings.
-  **Docking** takes the radar's place (its corner, size and switch: the radar has nothing to show in space; at a
-  planetary port the pad comes first until you touch down): from the moment a station gives you a pad until you touch
-  down it shows
-  **PAD 34** in large letters under the station's name (any station, carrier, outpost, port or settlement); a refusal
-  that isn't obvious shows "Docking denied" and why for a minute. At a starport (Coriolis, Orbis, Ocellus, asteroid
-  base, Dodec) or a carrier it also says where the pad is ("at the back · up on your right"; a carrier "port side,
-  toward the bow") and draws it: the starport as you see it coming through the slot (outer ring near the slot, inner
-  ring the back, the slot's lights across the middle, green on the right), the carrier from above with the bow up.
-  **Show the pad diagram while docking** (Settings → In-game overlay, `pad_diagram`) turns the drawing off; the words
-  stay. Pad positions come from bgol's LandingPad plugin.
 
-  <p align="center">
-    <img src="../images/overlay-pad.png" alt="Two docking panels over a starfield: PAD 34 at Jameson Memorial, at the back, up on your right, with the starport seen from the slot; PAD 7 at a fleet carrier, port side, toward the bow, with the deck seen from above" width="900">
-  </p>
+### The surface radar
 
-- **The system strip** (optional, off until you tick it), made for the top of the screen: two short lines, centred
-  (three in a populated system).
-  The first says where you are: the system, its region and the star (⛽ scoopable, ⚡ a neutron star or white dwarf),
-  and in a populated system, on its right, the security level.
-  The second, condensed: the distance from Sol (or from the system you name under **Strip's distance to** in
-  Settings → In-game overlay, say an expedition's end or your home system), what its data pays now and at most, 🏁 when you discovered it, how many
-  bodies and how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether
-  Spansh knows the system ("Spansh ✗ (new to it)" when it does not; "Spansh ✓ (pre-Odyssey)" when its data predates
-  Odyssey's surface data: worth a rescan).
-  In a populated system a short line of its own under it names your reputation with the controlling faction: "Allied
-  with Mother Gaia" (Hostile in red; Unfriendly up to -35, Neutral to +4, Cordial to +35, Friendly to +90, then Allied).
-  While you mine in a ring in a mining ship, a last line: "⛏ 4 B Ring · Platinum · 38 t/h · hold 112/256 t (Platinum
-  80, Painite 32) · limpets 14 · full in ~41 min" (the same line as on Now, without Now's "hits 3/8"; under 10 limpets,
-  "(+12 by synthesis)" when your materials make more; Settings → Mining).
-- **Now (To-Do & Info)** (optional): the page's Now view in a few lines, anywhere in the system (by default not while
-  docked: see [Settings](#settings)). The system (and for 20 s after the jump whether it was
-  undiscovered), the system you have targeted next ("checking…" while Outrider asks, then never reported, no scan
-  data, partly or fully scanned, or visited; how many bodies are known; the star with ⛽ or ✕, and ⚠ for a neutron
-  star, white dwarf or black hole), where the next jump goes
-  (the next stop of the unfinished route you plotted last: the Highway, a survey or trade route;
-  and a kept boxel's Next), fuel (while scooping, the seconds to a full tank), and what the data
-  aboard stands to lose once it passes your `unsold_warn` level: 🗺 and 🧬, how many times your rebuy it is ("× rebuy";
-  none for a ship bought with Arx, whose hull has no credit value) and how long since you sold ("3 days unsold"; from a
-  week "2 weeks 2 days since sold", or "2wk2d since sold" when that would not fit; whole days). Then, on a body,
-  each genus there with its samples and how far the next sample must be; elsewhere **Next**: first any scans lost
-  with a ship still to redo ("rescan 12 lost scans in the FSS (4.1M)"), else the first item of Here's
-  suggested order (never a body you skipped) with what it pays, how far it is from where you are and how many more, and the body you have targeted when it is
-  not that one. Last, this session's figures.
-- **Bio signals** (optional): every body in the system with bio signals, whether it meets your levels or not. A body
-  worth it (over `bio_min`, a run started, new to your codex, or not priced yet) is in bright colours, the rest are
-  muted and the finished ones carry a green ✓. Under each body, each species: sampled ✓ with its colour, a run under
-  way ("2/3"), lost, or not started with its likeliest species, codex mark and value; signals the DSS has not named yet
-  show what they could be. The foot says how many are sampled, what is left and how many bodies are under your level.
-- **Alerts** (optional): the page's alerts for a few seconds each, under the system strip at the top: what you
-  would hear or see as a notification ("B 1: Earth-like world", "Fuel low", "Interdicted"), its title and a line or two
-  of its text, newest first, three at most. Each stays 8 seconds; danger (hull, heat, interdiction, a module left off after a repair, fuel, a rig too far,
-  the suit running low, the ship lost, a bounty put on you, the carrier leaving without you) stays 15 seconds, in red with a red frame. It
-  shows every alert switched on in **Settings → Alerts** (mining's in **Settings → Mining**) in the browser that saw it (any of notify, sound or speak ticked), even while
-  the voice is off or hushed. The alerts are worded by Outrider's page, so a page must be open somewhere (a browser
-  window, the second screen or the tablet): with none open, the panel stays empty. Several windows open count once.
+On a body (landed, in the SRV, on foot) or low over it: heading up, you in the middle, N on the rim.
 
-No panel covers the system map, the orrery, the FSS, the SAA or the codex, and over the galaxy map only the Target
-panel and the alerts show. While docked (at a station, a carrier or a port, or on foot inside one) the panels ticked
-**Docked** in Settings hide: by default the system, Target, Now and Bio signals panels, while the system strip and the
-alerts stay. None shows in the hyperspace tunnel or while the game is loading (from its launch, the main menu included, until your session is in), even after a
-crash left the old session's status behind.
+- **On it:** the sample points of your run with their colony rings, red while you are inside one and green once you
+  are clear; tagged plants, the ship, your rigs and your surface pins (the one you are heading for named).
+- **Underneath:** how far and which way that pin is ("📍 Wreck 12.4 km, 30° left"), how far the next sample must be,
+  or "Clear: sample here".
+- **With nothing on it** it shows too (you, N and its edge), as the page's surface map does: low over a body looking
+  for geology, say. Not while docked at a planetary port, nor on foot in its hangar or concourse.
+- **Your trail:** a faint line is your trail on this body this visit, where you drove, walked or flew low (below
+  `[defaults] surface_alt`, 1,000 m), as on the page's map.
+- **A compass grid** turns with you: ticks on the rim every 15° (longest at N, E, S, W, with their letters), a
+  crosshair and quarter rings.
+
+### Docking
+
+**Docking** takes the radar's place: its corner, size and switch, since the radar has nothing to show in space. At a
+planetary port the pad comes first until you touch down.
+
+- **From the moment a station gives you a pad until you touch down** it shows **PAD 34** in large letters under the
+  station's name (any station, carrier, outpost, port or settlement).
+- **A refusal** that isn't obvious shows "Docking denied" and why for a minute.
+- **At a starport** (Coriolis, Orbis, Ocellus, asteroid base, Dodec) **or a carrier** it also says where the pad is
+  ("at the back · up on your right"; a carrier "port side, toward the bow") and draws it:
+  - the starport as you see it coming through the slot: outer ring near the slot, inner ring the back, the slot's
+    lights across the middle, green on the right;
+  - the carrier from above with the bow up.
+- **Show the pad diagram while docking** (Settings → In-game overlay, `pad_diagram`) turns the drawing off; the words
+  stay.
+- Pad positions come from bgol's LandingPad plugin.
+
+<p align="center">
+  <img src="../images/overlay-pad.png" alt="Two docking panels over a starfield: PAD 34 at Jameson Memorial, at the back, up on your right, with the starport seen from the slot; PAD 7 at a fleet carrier, port side, toward the bow, with the deck seen from above" width="900">
+</p>
+
+### The system strip
+
+Optional, off until you tick it. Made for the top of the screen: two short lines, centred (three in a populated
+system).
+
+- **The first line** says where you are: the system, its region and the star (⛽ scoopable, ⚡ a neutron star or
+  white dwarf), and in a populated system, on its right, the security level.
+- **The second line,** condensed:
+  - the distance from Sol, or from the system you name under **Strip's distance to** in Settings → In-game overlay
+    (say an expedition's end or your home system);
+  - what its data pays now and at most, and 🏁 when you discovered it;
+  - how many bodies and how many found of them, 🏁 how many you discovered, and 🗺 the planets you mapped of all of
+    them;
+  - whether Spansh knows the system: "Spansh ✗ (new to it)" when it does not; "Spansh ✓ (pre-Odyssey)" when its data
+    predates Odyssey's surface data, worth a rescan.
+- **In a populated system,** a short line of its own under it names your reputation with the controlling faction:
+  "Allied with Mother Gaia". Hostile is in red; Unfriendly up to -35, Neutral to +4, Cordial to +35, Friendly to +90,
+  then Allied.
+- **While you mine** in a ring in a mining ship, a last line: "⛏ 4 B Ring · Platinum · 38 t/h · hold 112/256 t
+  (Platinum 80, Painite 32) · limpets 14 · full in ~41 min". It is the same line as on Now, without Now's "hits 3/8".
+  Under 10 limpets it adds "(+12 by synthesis)" when your materials make more (Settings → Mining).
+
+### Now (To-Do & Info)
+
+Optional: the page's Now view in a few lines, anywhere in the system (by default not while docked: see
+[Settings](#settings)). From the top:
+
+- **The system,** and for 20 s after the jump whether it was undiscovered.
+- **The system you have targeted next:** "checking…" while Outrider asks, then never reported, no scan data, partly or
+  fully scanned, or visited; how many bodies are known; the star with ⛽ or ✕, and ⚠ for a neutron star, white dwarf
+  or black hole.
+- **Where the next jump goes:** the next stop of the unfinished route you plotted last (the Highway, a survey or trade
+  route), and a kept boxel's Next.
+- **Fuel,** and while scooping the seconds to a full tank.
+- **The data aboard,** once it passes your `unsold_warn` level: what it stands to lose (🗺 and 🧬), how many times
+  your rebuy it is ("× rebuy"; none for a ship bought with Arx, whose hull has no credit value), and how long since
+  you sold.
+  - "3 days unsold"; from a week "2 weeks 2 days since sold", or "2wk2d since sold" when that would not fit. Whole
+    days.
+- **On a body,** each genus there with its samples and how far the next sample must be.
+- **Elsewhere, Next:**
+  - first any scans lost with a ship still to redo ("rescan 12 lost scans in the FSS (4.1M)");
+  - else the first item of Here's suggested order (never a body you skipped), with what it pays, how far it is from
+    where you are and how many more;
+  - and the body you have targeted when it is not that one.
+- **Last,** this session's figures.
+
+### Bio signals
+
+Optional: every body in the system with bio signals, whether it meets your levels or not.
+
+- **Worth it** (over `bio_min`, a run started, new to your codex, or not priced yet): in bright colours. The rest are
+  muted, and the finished ones carry a green ✓.
+- **Under each body, each species:** sampled ✓ with its colour, a run under way ("2/3"), lost, or not started with its
+  likeliest species, codex mark and value. Signals the DSS has not named yet show what they could be.
+- **The foot** says how many are sampled, what is left and how many bodies are under your level.
+
+### Alerts
+
+Optional: the page's alerts for a few seconds each, under the system strip at the top. It shows what you would hear
+or see as a notification ("B 1: Earth-like world", "Fuel low", "Interdicted"): its title and a line or two of its
+text, newest first, three at most.
+
+- **How long:** each stays 8 seconds. Danger stays 15 seconds, in red with a red frame: hull, heat, interdiction, a
+  module left off after a repair, fuel, a rig too far, the suit running low, the ship lost, a bounty put on you, the
+  carrier leaving without you.
+- **Which:** every alert switched on in **Settings → Alerts** (mining's in **Settings → Mining**) in the browser that
+  saw it (any of notify, sound or speak ticked), even while the voice is off or hushed.
+- **A page must be open:** the alerts are worded by Outrider's page, so a page must be open somewhere (a browser
+  window, the second screen or the tablet). With none open, the panel stays empty. Several windows open count once.
+
+### Where no panel shows
+
+- **Game screens:** no panel covers the system map, the orrery, the FSS, the SAA or the codex. Over the galaxy map
+  only the Target panel and the alerts show.
+- **Docked** (at a station, a carrier or a port, or on foot inside one), the panels ticked **Docked** in Settings
+  hide: by default the system, Target, Now and Bio signals panels. The system strip and the alerts stay.
+- **Jumping and loading:** none shows in the hyperspace tunnel or while the game is loading (from its launch, the main
+  menu included, until your session is in), even after a crash left the old session's status behind.
 
 ## Starting it
 
 1. In Outrider's **⚙ Settings → In-game overlay**, tick **Show the overlay**. Outrider starts the overlay window itself
-   on the game PC (and closes it when you untick it or stop Outrider): one application, nothing else to run.
-2. The overlay window needs PyQt6 (about 100 MB). Nothing to press: whenever the window is wanted (the overlay on,
-   the test panels or Arrange mode) and PyQt6 is missing, Outrider installs it once into the Python it runs with (the
-   launcher's `.venv`, nothing system-wide; a minute or two, with a popup at the top of every page window until it is
-   done). launch_outrider.sh / .bat also install it before Outrider starts whenever `[overlay] enabled = true` is in
-   the config (a new PC with your config copied over); a failed install never stops Outrider starting. If installing
-   fails, Settings → In-game overlay says why, and Outrider tries again once you switch the overlay off and on. On
-   Linux the window finds Elite's with `wmctrl` and `xprop` / `xwininfo`, system programs pip cannot install (Debian
-   and Ubuntu: `sudo apt install wmctrl x11-utils`); the launcher says when `wmctrl` is missing.
+   on the game PC, and closes it when you untick it or stop Outrider: one application, nothing else to run.
+2. The overlay window needs PyQt6 (about 100 MB). There is nothing to press:
+   - Whenever the window is wanted (the overlay on, the test panels or Arrange mode) and PyQt6 is missing, Outrider
+     installs it once into the Python it runs with: the launcher's `.venv`, nothing system-wide. It takes a minute or
+     two, with a popup at the top of every page window until it is done.
+   - launch_outrider.sh / .bat also install it before Outrider starts whenever `[overlay] enabled = true` is in the
+     config (a new PC with your config copied over). A failed install never stops Outrider starting.
+   - If installing fails, Settings → In-game overlay says why, and Outrider tries again once you switch the overlay
+     off and on.
+   - On Linux the window finds Elite's with `wmctrl` and `xprop` / `xwininfo`, system programs pip cannot install
+     (Debian and Ubuntu: `sudo apt install wmctrl x11-utils`). The launcher says when `wmctrl` is missing.
 3. Play Elite **borderless or windowed**; exclusive fullscreen hides anything drawn over it.
 
-Settings → In-game overlay says how the window is doing (starting, drawing, waiting for the game's window), and so
-does the **overlay pill** in the page's header, beside the link pill, while the overlay is on:
+Start Outrider from your desktop (the launcher, or a terminal in your session): the window needs your screen.
 
-- **overlay ✓** (green): drawing over Elite;
+### Is it working?
+
+Settings → In-game overlay says how the window is doing (starting, drawing, waiting for the game's window). So does
+the **overlay pill** in the page's header, beside the link pill, while the overlay is on:
+
+- **overlay ✓** (green): drawing over Elite.
 - **overlay …** (amber): starting, Elite not running or loading, Elite behind this page (you are looking at
-  Outrider), minimised or on another desktop, or covered by another window;
+  Outrider), minimised or on another desktop, or covered by another window.
 - **overlay ✗** (red): something to fix, the reason on hover: wmctrl or xprop not installed, Elite's window not
   found, the overlay window not answering, Elite set to exclusive fullscreen (Outrider reads the game's own
   DisplaySettings.xml), or another window in front of the game while you are not on Outrider's page.
 
-On the tablet the link line says it too ("linked · overlay ✓"). If the window stops by itself, Outrider starts it again after a growing wait; after five times in a row it gives up (Settings
-says so) until you switch the overlay off and on. A window that drew for a minute or more before it stopped starts
-the count again. **Show test panels** draws every panel (all seven, switched on or
-not) with made-up contents for a minute, without flying anywhere, even while Outrider's page is in front of the game.
-Start Outrider from your desktop (the launcher, or a terminal in your session): the window needs your screen.
+On the tablet the link line says it too ("linked · overlay ✓").
 
-**A game-PC feature.** Like auto honk and auto-target, the overlay needs Outrider running on the game PC: an
-Outrider on a server (Docker) has no overlay (its Settings leave the section out). With Outrider on both, the game
-PC's draws it.
+- **If the window stops by itself,** Outrider starts it again after a growing wait. After five times in a row it gives
+  up (Settings says so) until you switch the overlay off and on. A window that drew for a minute or more before it
+  stopped starts the count again.
+- **Show test panels** draws every panel (all seven, switched on or not) with made-up contents for a minute, without
+  flying anywhere, even while Outrider's page is in front of the game.
+
+**A game-PC feature.** Like auto honk and auto-target, the overlay needs Outrider running on the game PC. An Outrider
+on a server (Docker) has no overlay (its Settings leave the section out). With Outrider on both, the game PC's draws
+it.
 
 ## Arranging the panels
 
 **Arrange panels** (in Settings → In-game overlay) frames each panel over the game. Then:
 
-- **drag** a panel to move it; it is kept from the nearest corner of the game window (or, dropped about the middle,
+- **drag** a panel to move it. It is kept from the nearest corner of the game window (or, dropped about the middle,
   centred along the top or bottom edge), so it stays there when the window or resolution changes;
 - **drag its corner** (the square handle) to make it bigger or smaller;
-- **mouse wheel** over it: its background, from solid to text only; **Shift and wheel**: the whole panel's
-  transparency; **Ctrl and wheel**: the size of all the panels at once (**All Panels: Scale** in Settings);
+- **mouse wheel** over it: its background, from solid to text only. **Shift and wheel**: the whole panel's
+  transparency. **Ctrl and wheel**: the size of all the panels at once (**All Panels: Scale** in Settings);
 - **Done**, at the top of the game window (or the button in Settings), ends it. Arranging ends by itself after ten
   minutes, so the overlay never stays in the way of the mouse.
 
@@ -171,50 +236,86 @@ The arrangement is kept in Outrider's database, not the config file: to take it 
 
 ## Settings
 
-Each panel has its tick box at the start of its row in Settings → In-game overlay's table (hover its name for what
-it shows; a panel switched off has its row dimmed). The headings are short: hover one for its full meaning.
-Under **Hide in mode**, **Combat** keeps a panel off in your ship while the HUD is in combat mode: it shows only
-in analysis mode, so the screen stays clear in a fight. In the SRV and on foot (no HUD modes there) and over the
-galaxy map it shows as the others. **Docked** hides a panel while you are docked (the ship at a station, a carrier or
-a port, or you on foot in a station, hangar or social space); ticked to start with for the system, Target, Now and
-Bio signals panels, not for the system strip and the alerts. The radar has no Docked box: it shows only on a body or
-low over it. The Target panel still shows over the galaxy map while docked, so you see the system you pick. **Foot** hides a
-panel on foot, anywhere (in a station or on a planet's surface); none is ticked to start with. The system, Target and radar
-panels start on; the system strip, Now, Bio signals
-and Alerts start off. The **theme** colours and frames the panels as the page's themes do (Elite's orange with
-cut corners, LCARS's bars, ...). **System panel stays** keeps the system panel only that long after arriving (0: while
-you are in supercruise there), and **Radar range** is the radar's edge in metres (it widens to fit a colony ring). In
-the config file (`[overlay]`, `system_seconds` and `radar_range` for those two): `analysis_only` lists the panels
-ticked Combat (`["system", "bio"]`; the Target panel is `body`), `hide_docked` the ones ticked Docked
-(`["system", "body", "now", "bio"]` when the key is missing) and `hide_on_foot` the ones ticked Foot.
+Each panel has its tick box at the start of its row in Settings → In-game overlay's table. Hover its name for what it
+shows; a panel switched off has its row dimmed. The headings are short: hover one for its full meaning.
 
-<a id="mouse-lock"></a>**The mouse on foot and in the DSS.** There Elite locks the mouse to its window, and a window
-lying over the game can break that lock on some systems: the cursor runs off the screen while you look around. On
-Linux each panel has a window of its own, only as big as the panel, and none shows while there is nothing to draw (the
-DSS), so the middle of the screen stays Elite's (a panel you drag to the middle would be in the way again). If the
-lock still breaks for you, tick **Hide the overlay on foot and in the DSS** (`hide_mouse_lock`): no overlay at all
-there. The game asks for the lock as you step out or open the DSS, so a change counts from the next time.
+- **Which start on:** the system, Target and radar panels. The system strip, Now, Bio signals and Alerts start off.
+- **The theme** colours and frames the panels as the page's themes do (Elite's orange with cut corners, LCARS's bars,
+  ...).
+- **System panel stays** keeps the system panel only that long after arriving (0: while you are in supercruise there).
+- **Radar range** is the radar's edge in metres (it widens to fit a colony ring).
 
-<a id="sizes"></a>**Sizes and text.** The row at the top reads **All Panels: Theme · Text Size** (small, normal or large,
-for every panel: `text_size`) **· Scale** (a %, 100 to start: `panel_scale`), with Show test panels and Arrange panels
-on the line under it. Each panel's **Size %** (down to 20 %) is multiplied with the Scale (Scale 100 %: each panel at its own
-size; Scale 50 % and a panel at 50 %: 25 %), and its **Text** column gives it a text size of its own, or "as all
-panels". Panels follow the game window's height, so a panel takes the same share of the screen at 4K as at 1080p: on a
-big TV seen from the sofa, turn the **Scale** down (or Ctrl and wheel over a panel in
-Arrange mode). Text is never drawn smaller than **9 pixels**, whatever the sizes say: a small setting on a 1080p screen
-stays readable, while a 4K screen can go much smaller. While the overlay window draws, each Size % shows what its
-text comes to in the game window ("≈ 11 px text"), or "held at 9 px" when the sizes ask for smaller (the line under the
-table names those panels: your screen is too small to go lower). With the game not running there is no figure.
+### Hide in mode: Combat, Docked and Foot
 
-<a id="keep-showing"></a>**Keep showing when Elite is not the active window** (`show_inactive`, off by default): the
-overlay normally hides as soon as another window is in front, Outrider's page included. With this on it stays over the
-game while you use a window beside it (a browser on another screen, a chat), and still hides when the game is
-minimised, on another desktop, or when other windows cover more than a quarter of it (then the pill says "another
-window covers Elite's"). On Linux that is judged from the X11 windows' stacking and sizes; a desktop with a workspace
-per screen (i3 and the like) counts the game's workspace as in sight while its screen shows it; on Windows from the
-windows above the game (not yet tried). **A native Wayland window cannot be seen:** on a Wayland desktop, a program
-running as a Wayland window (Firefox and most GNOME and KDE apps do) can sit over the game without the overlay
-knowing, so it draws over that window too; an XWayland window (most games, Steam, Discord) is seen.
+- **Combat** keeps a panel off in your ship while the HUD is in combat mode: it shows only in analysis mode, so the
+  screen stays clear in a fight. In the SRV and on foot (no HUD modes there) and over the galaxy map it shows as the
+  others.
+- **Docked** hides a panel while you are docked: the ship at a station, a carrier or a port, or you on foot in a
+  station, hangar or social space.
+  - Ticked to start with for the system, Target, Now and Bio signals panels; not for the system strip and the alerts.
+  - The radar has no Docked box: it shows only on a body or low over it.
+  - The Target panel still shows over the galaxy map while docked, so you see the system you pick.
+- **Foot** hides a panel on foot, anywhere (in a station or on a planet's surface). None is ticked to start with.
+
+### In the config file
+
+Under `[overlay]`:
+
+- `system_seconds` and `radar_range`: System panel stays and Radar range.
+- `analysis_only`: the panels ticked Combat (`["system", "bio"]`; the Target panel is `body`).
+- `hide_docked`: the ones ticked Docked (`["system", "body", "now", "bio"]` when the key is missing).
+- `hide_on_foot`: the ones ticked Foot.
+
+<a id="mouse-lock"></a>
+
+### The mouse on foot and in the DSS
+
+There Elite locks the mouse to its window, and a window lying over the game can break that lock on some systems: the
+cursor runs off the screen while you look around.
+
+- **On Linux** each panel has a window of its own, only as big as the panel, and none shows while there is nothing to
+  draw (the DSS). So the middle of the screen stays Elite's (a panel you drag to the middle would be in the way
+  again).
+- **If the lock still breaks for you,** tick **Hide the overlay on foot and in the DSS** (`hide_mouse_lock`): no
+  overlay at all there. The game asks for the lock as you step out or open the DSS, so a change counts from the next
+  time.
+
+<a id="sizes"></a>
+
+### Sizes and text
+
+The row at the top reads **All Panels: Theme · Text Size · Scale**, with Show test panels and Arrange panels on the
+line under it.
+
+- **Text Size:** small, normal or large, for every panel (`text_size`).
+- **Scale:** a %, 100 to start (`panel_scale`).
+- **Each panel's Size %** (down to 20 %) is multiplied with the Scale. Scale 100 %: each panel at its own size; Scale
+  50 % and a panel at 50 %: 25 %.
+- **Each panel's Text** column gives it a text size of its own, or "as all panels".
+- **Panels follow the game window's height,** so a panel takes the same share of the screen at 4K as at 1080p. On a
+  big TV seen from the sofa, turn the **Scale** down (or Ctrl and wheel over a panel in Arrange mode).
+- **Text is never drawn smaller than 9 pixels,** whatever the sizes say. A small setting on a 1080p screen stays
+  readable, while a 4K screen can go much smaller.
+- **While the overlay window draws,** each Size % shows what its text comes to in the game window ("≈ 11 px text"),
+  or "held at 9 px" when the sizes ask for smaller. The line under the table names those panels: your screen is too
+  small to go lower. With the game not running there is no figure.
+
+<a id="keep-showing"></a>
+
+### Keep showing when Elite is not the active window
+
+**Keep showing when Elite is not the active window** (`show_inactive`, off by default). The overlay normally hides as
+soon as another window is in front, Outrider's page included.
+
+- **With this on** it stays over the game while you use a window beside it (a browser on another screen, a chat).
+- **It still hides** when the game is minimised, on another desktop, or when other windows cover more than a quarter
+  of it. Then the pill says "another window covers Elite's".
+- **How it judges:** on Linux, from the X11 windows' stacking and sizes. A desktop with a workspace per screen (i3 and
+  the like) counts the game's workspace as in sight while its screen shows it. On Windows, from the windows above the
+  game (not yet tried).
+- **A native Wayland window cannot be seen:** on a Wayland desktop, a program running as a Wayland window (Firefox and
+  most GNOME and KDE apps do) can sit over the game without the overlay knowing, so it draws over that window too. An
+  XWayland window (most games, Steam, Discord) is seen.
 
 <p align="center">
   <img src="../images/overlay-settings.png" alt="Settings, In-game overlay: the switch, the window's state, the theme and text size, the test panels and Arrange buttons, the system panel's time, the radar range and the strip's distance, and each panel's row with its tick box, corner, offsets, size and opacities" width="740">
@@ -224,20 +325,20 @@ knowing, so it draws over that window too; an XWayland window (most games, Steam
 
 - **Linux on X11** (Xfce, Cinnamon, MATE, KDE on X11...): the native case. Transparency needs a compositor, as every
   modern desktop runs; with a bare window manager the space around the panels shows black.
-- **Linux on Wayland**: through XWayland, as Elite under Proton runs. Tried on GNOME. KDE Plasma should behave the same;
-  sway and Hyprland treat XWayland windows their own way and are not tried.
+- **Linux on Wayland**: through XWayland, as Elite under Proton runs. Tried on GNOME. KDE Plasma should behave the
+  same; sway and Hyprland treat XWayland windows their own way and are not tried.
 - **Proton's native Wayland mode** (`PROTON_ENABLE_WAYLAND=1`) makes Elite a native Wayland window, which the overlay
   cannot find or follow: leave it off. Fractional display scaling on Wayland (125%, 150%) may put the panels a little
   off or blur them: not tried yet.
 - **Windows**: the same window (finding Elite's with the Windows API, letting clicks through, always on top), seen
   working over the game by players on Windows (October 2026). Play borderless or windowed. In a window, the panels
   are placed in the game's picture, below its title bar and inside its frame (not yet tried in the game).
-- Exclusive fullscreen and gamescope (the Steam Deck's game mode) are not supported: nothing can draw over them. The
-  overlay pill turns red when the game's DisplaySettings.xml says exclusive fullscreen.
-- The window's code for finding and following the game's window, and drawing over it, is adapted from
+- **Exclusive fullscreen and gamescope** (the Steam Deck's game mode) are not supported: nothing can draw over them.
+  The overlay pill turns red when the game's DisplaySettings.xml says exclusive fullscreen.
+- **Credit:** the window's code for finding and following the game's window, and drawing over it, is adapted from
   [EDMC Modern Overlay](https://github.com/SweetJonnySauce/EDMCModernOverlay); neither EDMC nor Modern Overlay is
   needed.
 
 ---
 
-[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · **In-game overlay** · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · **In-game overlay** · [Uploads](uploads.md) · [Settings](settings.md) · [For the curious](for-developers.md)

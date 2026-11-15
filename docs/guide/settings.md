@@ -1,84 +1,188 @@
-[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · **Settings and good to know** · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · **Settings** · [For the curious](for-developers.md)
 
-# Settings and good to know
+# Settings
 
-## ⚙️ Settings
+Outrider needs no configuration, but everything can be changed: in ⚙ Settings on the page, in the config file
+`ed_outrider.toml`, or with command-line flags for a single run. What each setting does is explained beside its
+feature; this page is about the Settings panel itself, the Server section, notices, the config file and the command
+line.
 
-<details>
-<summary>Outrider needs no configuration — but everything can be changed.</summary>
-<br>
+## ⚙ Settings
 
-**⚙ Settings** (top right) holds everything, in folding sections: Alerts (with the alert sounds to try), Voice (with
-what the voice says: signals, routine systems, hazards, mapped planets), Worth stopping for, Risk & warnings, Surface
-map, Mining, Auto honk (and the co-pilot button), Auto-target, In-game overlay, Screenshots, Uploads, Display, Sharing,
-**Server**, Spoken lines and Questions asked.
-**Find a setting…** at the top leaves only what matches the words typed (a setting's name, its help or its config key,
-`speech_speed` finds the Speed slider too), in every section at once, Server's keys included; clear it and every
-section is back as it was. A section's name shows all of it, and so does a block's heading inside one: "crew" shows the
-whole Crew block (every member, the switches, the note on the XO), "backups" the whole Backups fold, "inara" all of
-Inara's part of Uploads. A table is never cut down to one row: when a row of it matches, the whole table shows with the
-matching rows marked ("tactical" shows every crew member, Tactical's row marked). Most are this browser's
-own (Sharing exports them or makes them the defaults for new browsers). **Server** is the config file's keys that have
-no section of their own, in six groups: **Network and access**, **Files and backups**, **Online checks**, **Nearby**,
-**Plot Route** and **The voice's AI and AI clients**, each row with its `[section]` in the file. The rest of the file
-is set in its own sections, and Find a setting finds it there by its key too: `[defaults]` in the rows it starts new
-browsers with (Worth stopping for, Risk and warnings, Voice, the surface map: Sharing makes this browser's choices
-every new browser's defaults), `[speech]` in Voice, `[autohonk]` and `[copilot]` in Auto honk, `[highway]
-autotarget_*` in Auto-target, `[overlay]` in In-game overlay, `[screenshots]` in Screenshots, `[eddn]`, `[edsm]` and `[inara]` in Uploads. The file
-keeps every key, to edit by hand if you like. Saving there writes `ed_outrider.toml` (only the keys you changed; its
-comments stay, and the previous file is kept as `ed_outrider.toml.bak`), and Outrider uses them from its next start:
-**Restart now** beside "Saved" does that at once. A few keys take effect at once instead: `[speech] voices_loaded` and
-`voices_preload` (Settings → Voice writes them too: **Keep loaded** and **Load them at start** under Voices kept
-loaded, shown whenever a voice besides the main one is in use), `[speech] pad_delay` (the next docking grant),
-`[autohonk] delay` and `skip_honked` (the next honk), `[defaults] rig_warn` (Settings → Surface map's far-rig distance:
-the leash warning and every window's map), `[defaults] pickup_pins` (Settings → Surface map's pickup pins tick: the next
-pickup), every `[screenshots]` key (the next shot) and every `[highway] autotarget_*` key (auto-target's next run, so a sequence can be tried without restarting; the
-galaxy map's steps and timings have their own section, **Auto-target**: see [Plot Route](plot-route.md)). **Find a setting** finds them by those words, by
-"memory" or by their keys, and the crew by "crew" (all of it), "xo" or a role's name ("navigator").
+**⚙ Settings** (top right) holds everything, in folding sections; its chips jump to its sections. The sections are
+Alerts (with the alert sounds to try), Voice (with what the voice says: signals, routine systems, hazards, mapped
+planets), Worth stopping for, Risk & warnings, Surface map, Mining,
+Auto honk (and the co-pilot button), Auto-target, In-game overlay, Screenshots, Uploads, Display,
+Sharing, **Server**, Spoken lines and Questions asked.
+
+### Find a setting…
+
+**Find a setting…** at the top leaves only what matches the words typed, in every section at once, Server's keys
+included. Clear it and every section is back as it was.
+
+- **What it matches:** a setting's name, its help or its config key. `speech_speed` finds the Speed slider too.
+- **A whole section or block:** a section's name shows all of it, and so does a block's heading inside one. "backups"
+  shows the whole Backups fold, "inara" all of Inara's part of Uploads.
+- **The crew:** "crew" shows the whole Crew block (every member, the switches, the note on the XO); "xo" or a role's
+  name ("navigator") finds it too.
+- **Tables:** a table is never cut down to one row. When a row of it matches, the whole table shows with the matching
+  rows marked: "tactical" shows every crew member, Tactical's row marked.
+- **The config file's keys:** the keys set in a section of their own (below) are found there by their key too.
+
+### This browser's settings and the server's
+
+Most settings are this browser's own. Sharing exports them or makes them the defaults for new browsers.
+
+**Server** is the config file's keys that have no section of their own, each row with its `[section]` in the file.
+They come in six groups:
+
+- **Network and access**
+- **Files and backups**
+- **Online checks**
+- **Nearby**
+- **Plot Route**
+- **The voice's AI and AI clients**
+
+The rest of the file is set in its own sections:
+
+| In the file | In ⚙ Settings |
+|---|---|
+| `[defaults]` | The rows it starts new browsers with: Worth stopping for, Risk and warnings, Voice, the surface map. Sharing makes this browser's choices every new browser's defaults. |
+| `[speech]` | Voice |
+| `[autohonk]` and `[copilot]` | Auto honk |
+| `[highway] autotarget_*` | Auto-target |
+| `[overlay]` | In-game overlay |
+| `[screenshots]` | Screenshots |
+| `[eddn]`, `[edsm]` and `[inara]` | Uploads |
+
+The file keeps every key, to edit by hand if you like: see [The config file](#-the-config-file).
+
+### Saving and Restart now
+
+Saving a config-file key in Settings writes `ed_outrider.toml`:
+
+- only the keys you changed;
+- its comments stay;
+- the previous file is kept as `ed_outrider.toml.bak`.
+
+Outrider uses them from its next start: **Restart now** beside "Saved" does that at once.
+
+### The keys that take effect at once
+
+A few keys take effect at once instead of at the next start:
+
+- **`[speech] voices_loaded` and `voices_preload`.** Settings → Voice writes them too: **Keep loaded** and **Load them
+  at start** under Voices kept loaded, shown whenever a voice besides the main one is in use.
+- **`[speech] pad_delay`:** the next docking grant.
+- **`[autohonk] delay` and `skip_honked`:** the next honk.
+- **`[defaults] rig_warn`** (Settings → Surface map's far-rig distance): the leash warning and every window's map.
+- **`[defaults] pickup_pins`** (Settings → Surface map's pickup pins tick): the next pickup.
+- **Every `[screenshots]` key:** the next shot.
+- **Every `[highway] autotarget_*` key:** auto-target's next run, so a sequence can be tried without restarting. The
+  galaxy map's steps and timings have their own section, **Auto-target**: see
+  [Plot Route](plot-route.md#-targeting-and-auto-target).
+
+**Find a setting** finds them by those words, by "memory" or by their keys.
+
+### Passwords
+
 The passwords (`[server]`'s and `[mcp]`'s) and the AI key are never shown, only whether they are set.
 
-**Not saved yet.** The sections with a Save button of their own (Auto honk, Auto-target, Screenshots, Server, and the
-EDSM and Inara keys in Uploads) keep what you type until you save it. While a field there differs from what is saved,
-its section's heading says **· not saved**, and **Done** (or Esc) keeps Settings open on it once, with "Not saved yet:
-**Save** keeps it · **Discard**" (Discard puts the saved values back). A second Done closes Settings anyway: what you
-typed stays in its fields, still marked, until you save it, discard it or reload the page.
+### Not saved yet
 
-**Server**'s top row says which Outrider is running and has **Restart** and **Show log**. **Restart** stops Outrider
-cleanly (a backup running finishes first) and starts it again, from any device the page answers (signed in when a
-password is set); every window reconnects by itself (and says "starting" while it reads the journals). It works when
-Outrider was started by `launch_outrider.sh` (started again in the same window, its setup included), `python
-ed_outrider.py`, `launch_outrider.bat`, as a service (systemd starts it again) or in Docker (compose's restart policy);
-otherwise the button is greyed out and says why. "Outrider has been updated: restart it"
-under the header has the same button. **Show log** shows what Outrider has printed in its terminal
-since it started (its last 2,000 lines, newest at the bottom, following along while it is open; problems in amber),
-with **Copy** for a bug report. It works from any device, a server's too. The same lines are saved beside the database
-in `outrider.log` (`data/outrider.log` by default; the older part in `outrider.log.1`). Passwords and API keys never
-appear in it. Below it, **Backups** lists the backup zips with the command that restores one, and **Start with this
-computer** installs Outrider as a service (a systemd user service on Linux, a Startup entry on Windows; see [Install
-and run](install.md#start-with-your-computer)), or removes it; only from the browser on that PC, elsewhere it shows
-the command.
+The sections with a Save button of their own keep what you type until you save it. They are Auto honk, Auto-target,
+Screenshots, Server, and the EDSM and Inara keys in Uploads.
 
-**Notices.** What Outrider finds wrong when it starts (a journal folder not found, problems in the config file or the
-spoken lines file, listening on your network with no password, journals on a share that shows them late, the in-game
-overlay's address taken, a `[server] host` that is no longer this PC's address) shows as a line under the header, in
-every window and on the tablet, with a button where one helps (Server settings, Show log). Others come while Outrider
-runs, and go once the cause does: the journal folder cannot be reached, the backups' disk is nearly full, a second
-commander in the journal folder (or another commander playing), an upload on hold, your carrier's upkeep running low.
-✕ hides it everywhere until Outrider restarts, or until the message changes.
+- **The mark:** while a field there differs from what is saved, its section's heading says **· not saved**.
+- **Done (or Esc)** keeps Settings open on it once, with "Not saved yet: **Save** keeps it · **Discard**". Discard puts
+  the saved values back.
+- **A second Done** closes Settings anyway: what you typed stays in its fields, still marked, until you save it,
+  discard it or reload the page.
 
-You can also edit the file by hand: copy `ed_outrider.toml.example` to `ed_outrider.toml` next to the script and
-edit the lines you need. The example explains every key. Relative paths in it (`db`, `backup_dir`, `speech_file`, `sound_dir`,
-`background_image`) are relative to the Outrider folder; the first three default to `data/ed_outrider.sqlite`, `data/backups`
-and `resources/speech.json`.
-`python3 ed_outrider.py --write-config` writes one with the settings in effect. Switches take a bare `true` or
-`false`; a wrong value is reported at start and the default kept. A number out of its range is refused in words when
-you save it in Settings ("[highway] efficiency must be 1 to 100 %"); in a file edited by hand it is brought into range.
+## 🖥 Server: Restart, Show log and Backups
+
+⚙ Settings → **Server**'s top row says which Outrider is running and has **Restart** and **Show log**. Below it are
+**Backups** and **Start with this computer**.
+
+### Restart
+
+**Restart** stops Outrider cleanly and starts it again. A backup that is running finishes first.
+
+- **From any device** the page answers (signed in when a password is set). Every window reconnects by itself, and
+  says "starting" while it reads the journals.
+- **It works when Outrider was started by** `launch_outrider.sh` (started again in the same window, its setup
+  included), `python ed_outrider.py`, `launch_outrider.bat`, as a service (systemd starts it again) or in Docker
+  (compose's restart policy). Otherwise the button is greyed out and says why.
+- **After an update:** "Outrider has been updated: restart it" under the header has the same button.
+
+### Show log
+
+**Show log** shows what Outrider has printed in its terminal since it started: its last 2,000 lines, newest at the
+bottom, following along while it is open. Problems are in amber.
+
+- **Copy** copies it for a bug report.
+- It works from any device, a server's too.
+- The same lines are saved beside the database in `outrider.log` (`data/outrider.log` by default; the older part in
+  `outrider.log.1`).
+- Passwords and API keys never appear in it.
+
+### Backups
+
+**Backups** lists the backup zips with the command that restores one. How backups work:
+[Backups](install.md#-backups).
+
+### Start with this computer
+
+**Start with this computer** installs Outrider as a service, or removes it: a systemd user service on Linux, a Startup
+entry on Windows (see [Install and run](install.md#start-with-your-computer)). It does that only from the browser on
+that PC; elsewhere it shows the command.
+
+## 📢 Notices
+
+A notice is a line under the header, in every window and on the tablet, saying what is wrong. It has a button where
+one helps (Server settings, Show log).
+
+- **At start**, Outrider says what it finds wrong:
+  - a journal folder not found;
+  - problems in the config file or the spoken lines file;
+  - listening on your network with no password;
+  - journals on a share that shows them late;
+  - the in-game overlay's address taken;
+  - a `[server] host` that is no longer this PC's address.
+- **While Outrider runs**, others come, and go once the cause does:
+  - the journal folder cannot be reached;
+  - the backups' disk is nearly full;
+  - a second commander in the journal folder (or another commander playing);
+  - an upload on hold;
+  - your carrier's upkeep running low.
+- **✕** hides a notice everywhere until Outrider restarts, or until the message changes.
+
+## 📝 The config file
+
+The server's settings are kept in `ed_outrider.toml`, next to the script by default. ⚙ Settings writes it for you, and you can
+also edit it by hand.
+
+### Editing it by hand
+
+Copy `ed_outrider.toml.example` to `ed_outrider.toml` next to the script and edit the lines you need. The example
+explains every key.
+
+- **The settings in effect:** `python3 ed_outrider.py --write-config` writes a file with them.
+- **Relative paths** in it (`db`, `backup_dir`, `speech_file`, `sound_dir`, `background_image`) are relative to the
+  Outrider folder. The first three default to `data/ed_outrider.sqlite`, `data/backups` and `resources/speech.json`.
+- **Switches** take a bare `true` or `false`. A wrong value is reported at start and the default kept.
+- **A number out of its range** is refused in words when you save it in Settings ("[highway] efficiency must be 1 to
+  100 %"). In a file edited by hand it is brought into range.
 
 > [!IMPORTANT]
 > **Windows paths in the file:** use forward slashes, `"C:/Users/you/Saved Games/..."`, or single quotes,
 > `'C:\Users\you\Saved Games\...'`. In double quotes a backslash starts an escape (`"C:\Users"` is an error),
 > and a file that cannot be read is ignored as a whole: every setting back at its default, with one line in the
 > console saying why. Settings → Server takes paths either way and writes them correctly.
+
+### Every key
+
+Each section's keys, with their defaults in brackets. `[overlay]` and `[screenshots]` have tables of their own below.
 
 | Section | What it holds (default) |
 |---|---|
@@ -90,11 +194,72 @@ you save it in Settings ("[highway] efficiency must be 1 to 100 %"); in a file e
 | `[speech]` | `server_player` ("auto"), for **Play speech and sounds on this PC**; `pad_delay` (5: seconds after a docking grant before your landing pad is said, Settings → Voice); `sound_dir` (none), your own alert sounds; `voices_loaded` (unset: the voices in use up to 4; a number, or "all"), how many voices besides the main one stay loaded (each about 1.6 times its file's size in memory, about 100 MB for a medium voice; one set aside waits about a second the next time it speaks); `voices_preload` (false), load them when Outrider starts instead of on their first line (both also in Settings → Voice → Voices kept loaded, used at once) |
 | `[copilot]` | `enabled` (false), `device` (""), `button` (""), `hold_ms` (600), `double_ms` (400) |
 | `[assistant]` | `enabled` (false), `base_url` (""), `api_key` (""), `model` (""), `timeout` (20 s), `max_rounds` (4): the voice's optional AI layer |
-| `[mcp]` | `url` (this PC at `[server] port`), `max_rows` (25), `password` (""): for the MCP bridge (see Ask an AI about your game) |
+| `[mcp]` | `url` (this PC at `[server] port`), `max_rows` (25), `password` (""): for the MCP bridge (see [Ask an AI about your game](voice-and-alerts.md#-ask-an-ai-about-your-game)) |
 | `[eddn]`, `[edsm]`, `[inara]` | `enabled` (false): written by the switches in Settings → Uploads (the only place to change them) |
-| `[overlay]` | `enabled` (false), `theme` ("default"; or lcars, elite, babylon5, narn, minbari, centauri, vorlon, shadow, sith, alliance, dark), `text_size` ("normal"; a panel can have its own in Settings), `panel_scale` (100: all panels' size in %, 20 to 250, Settings' All Panels: Scale, multiplied with each panel's own Size %; text is never drawn under 9 px), `system_panel` (true), `body_panel` (true: the Target panel), `radar` (true), `strip_panel` (false), `now_panel` (false), `bio_panel` (false), `alerts_panel` (false: the page's alerts for a few seconds), `system_seconds` (0: while in supercruise there; up to 3600 s), `radar_range` (800 m, 100 to 20000), `strip_reference` ("": Sol; the system the strip measures its distance to), `analysis_only` ([]: the panels shown in your ship only while the HUD is in analysis mode), `hide_docked` (["system", "body", "now", "bio"]: the panels hidden while docked), `show_inactive` (false: keep showing when Elite is not the active window), `pad_diagram` (true: while docking at a starport or carrier, a diagram of where your pad is, in the Surface radar's place and on Now), `hide_on_foot` ([]: the panels hidden on foot), `hide_mouse_lock` (false: no overlay at all on foot and in the DSS, where Elite locks the mouse) (the overlay is a game-PC feature: see In-game overlay) |
-| `[screenshots]` | `enabled` (false), `pictures` ("": the game's Pictures folder, found beside its journals), `folder` ("": that folder's `Converted`), `by_cmdr` (true), `by_system` (false), `subfolder` ("": the two above; else a pattern such as `{cmdr}/{date}`), `filename` (`{system} {body} {date} {time}{highres}`; also `{cmdr}` and `{subject}`), `format` ("png", "jpg" or "webp"), `quality` (90, 50 to 100: JPG and WebP), `full` (true: false keeps only the copies and the crop, or the full size anyway when there are none), `medium` (0: none; a long edge in px up to 7680, 1920 when ticked), `small` (0; up to 3840, 1080 when ticked), `crop` ("": none; "left, top, width, height" in %), `crop_px` (0: as cut; up to 7680), `copies_format` ("jpg" or "webp"), `copies_quality` (85, 50 to 100), `original` ("keep", "delete" or "move"), `move_to` (""), `subject_m` (50 m, 0 to 500: a surface shot names the plant or formation this close; 0 never), `clipboard` ("": none; "full", "medium", "small" or "crop" after each shot), `codex` (false: true also saves a shot of a named plant or formation to `Biology/<genus>/<species>/<colour>` (no colour folder for a species with none) or `Geology/<group>/<name>`, and a shot taken at a stellar phenomenon (dropped there, until back in supercruise) to `Phenomena/<group>/<entry>`, in the export folder), `codex_format` ("": a copy of the picture exported; "png", "jpg" or "webp": the shot converted again at full size), `codex_quality` (90, 50 to 100: a codex JPG or WebP), `codex_show` (false: true shows a random picture from those folders on the Bio/Geo checklists, Canonn's when there is none) (every key takes effect at once; `~/` in a folder is your home folder; game PC only: see [Screenshots](automation.md#-screenshots)) |
+| `[overlay]` | The in-game overlay: see [The `[overlay]` keys](#the-overlay-keys) |
+| `[screenshots]` | Screenshots: see [The `[screenshots]` keys](#the-screenshots-keys) |
 | `[highway]` | `clipboard` (true), `efficiency` (60 %), `conservative` (false), `conservative_ly` (5 ly), `voice_plot` (true: the voice's "nearest station"... also plots a neutron route there past `voice_plot_ly`, 500 ly), `background_image` ("": none), `background_extent` ([-45000, 45000, -20000, 70000]), `background_opacity` (0.6); auto-target: `autotarget` (false), `autotarget_delay` (5 s) (once the Plot Route tab's or Settings → Auto-target's switch or delay has been used, Outrider keeps their last state in the database and these two keys are no longer read), `autotarget_entry` ("type"), `autotarget_map_wait` (5 s), `autotarget_search_wait` (3 s: a second more for each 200 ly to the system, up to 7), `autotarget_key_delay` (0.05 s: the typing delay, between the name's characters when typed), `autotarget_step_pause` (0.25 s: the pause after each key of the steps), `autotarget_target` (the Target System steps) and `autotarget_route_target` (true: a route's next stop one jump away is targeted, not plotted), `autotarget_keys` ({}: read from your controls preset), `autotarget_search`, `autotarget_submit`, `autotarget_plot` (the galaxy map's steps: see the example file), `autotarget_dry_run` (false) |
+
+### The `[overlay]` keys
+
+The overlay is a game-PC feature: see [In-game overlay](overlay.md).
+
+| Key | Default | What it does |
+|---|---|---|
+| `enabled` | false | |
+| `theme` | "default" | Or lcars, elite, babylon5, narn, minbari, centauri, vorlon, shadow, sith, alliance, dark. |
+| `text_size` | "normal" | A panel can have its own in Settings. |
+| `panel_scale` | 100 | All panels' size in %, 20 to 250 (Settings' All Panels: Scale), multiplied with each panel's own Size %. Text is never drawn under 9 px. |
+| `system_panel` | true | |
+| `body_panel` | true | The Target panel. |
+| `radar` | true | |
+| `strip_panel` | false | |
+| `now_panel` | false | |
+| `bio_panel` | false | |
+| `alerts_panel` | false | The page's alerts for a few seconds. |
+| `system_seconds` | 0 | 0: while in supercruise there; up to 3600 s. |
+| `radar_range` | 800 m | 100 to 20000. |
+| `strip_reference` | "" | "": Sol; the system the strip measures its distance to. |
+| `analysis_only` | [] | The panels shown in your ship only while the HUD is in analysis mode. |
+| `hide_docked` | ["system", "body", "now", "bio"] | The panels hidden while docked. |
+| `show_inactive` | false | Keep showing when Elite is not the active window. |
+| `pad_diagram` | true | While docking at a starport or carrier, a diagram of where your pad is, in the Surface radar's place and on Now. |
+| `hide_on_foot` | [] | The panels hidden on foot. |
+| `hide_mouse_lock` | false | No overlay at all on foot and in the DSS, where Elite locks the mouse. |
+
+### The `[screenshots]` keys
+
+Every key takes effect at once. `~/` in a folder is your home folder. Screenshots are a game-PC feature only: see
+[Screenshots](automation.md#-screenshots).
+
+| Key | Default | What it does |
+|---|---|---|
+| `enabled` | false | |
+| `pictures` | "" | "": the game's Pictures folder, found beside its journals. |
+| `folder` | "" | "": that folder's `Converted`. |
+| `by_cmdr` | true | |
+| `by_system` | false | |
+| `subfolder` | "" | "": the two above; else a pattern such as `{cmdr}/{date}`. |
+| `filename` | `{system} {body} {date} {time}{highres}` | Also `{cmdr}` and `{subject}`. |
+| `format` | "png" | Or "jpg" or "webp". |
+| `quality` | 90 | 50 to 100: JPG and WebP. |
+| `full` | true | False keeps only the copies and the crop, or the full size anyway when there are none. |
+| `medium` | 0 | 0: none; a long edge in px up to 7680, 1920 when ticked. |
+| `small` | 0 | Up to 3840, 1080 when ticked. |
+| `crop` | "" | "": none; "left, top, width, height" in %. |
+| `crop_px` | 0 | 0: as cut; up to 7680. |
+| `copies_format` | "jpg" | Or "webp". |
+| `copies_quality` | 85 | 50 to 100. |
+| `original` | "keep" | Or "delete" or "move". |
+| `move_to` | "" | |
+| `subject_m` | 50 m | 0 to 500: a surface shot names the plant or formation this close; 0 never. |
+| `clipboard` | "" | "": none; "full", "medium", "small" or "crop" after each shot. |
+| `codex` | false | True also saves, in the export folder: a shot of a named plant or formation to `Biology/<genus>/<species>/<colour>` (no colour folder for a species with none) or `Geology/<group>/<name>`; a shot taken at a stellar phenomenon (dropped there, until back in supercruise) to `Phenomena/<group>/<entry>`. |
+| `codex_format` | "" | "": a copy of the picture exported; "png", "jpg" or "webp": the shot converted again at full size. |
+| `codex_quality` | 90 | 50 to 100: a codex JPG or WebP. |
+| `codex_show` | false | True shows a random picture from those folders on the Bio/Geo checklists, Canonn's when there is none. |
+
+## ⌨ Command-line flags
 
 Command-line flags override the file for a single run:
 
@@ -106,51 +271,14 @@ Command-line flags override the file for a single run:
 | `--write-config` | Write the settings in effect to the config file (never overwrites) |
 | `--journals PATH`, `--legacy PATH` | Journal folders to follow, or older ones to import once (repeatable) |
 | `--rescan` | Rebuild from the journals, keeping the Spansh cache |
-| `--restore [ZIP]`, `--list-backups` | See Backups |
+| `--restore [ZIP]`, `--list-backups` | See [Backups](install.md#-backups) |
 | `--simulate` | For screenshots and demos: the panels show the last known values (fuel...) as if the game were running; auto honk, auto-target, the co-pilot button, the clipboard, the in-game overlay's window, the screenshot conversion and the uploads (nothing goes to EDDN, EDSM or Inara) are off |
-| `--install-service`, `--uninstall-service` | Start Outrider with your computer, or stop doing so: see [Getting started](install.md) ("Start with your computer") |
+| `--install-service`, `--uninstall-service` | Start Outrider with your computer, or stop doing so: see [Start with your computer](install.md#start-with-your-computer) |
 
-The environment variable `ED_JOURNALS` (folders separated by `:` on Linux, `;` on Windows) also names the live journal
-folders: it beats `[journals] live` in the file (and, like it, stops the older folders being found by themselves), and
+The environment variable `ED_JOURNALS` also names the live journal folders, separated by `:` on Linux and `;` on
+Windows. It beats `[journals] live` in the file and, like it, stops the older folders being found by themselves.
 `--journals` beats it.
-
-</details>
-
-## 🧭 Good to know
-
-> [!NOTE]
-> **"Not on the page" means "nobody with an uploader has reported it."** Players who don't run
-> EDMC or a similar tool never reach Spansh or EDSM, so a missing system is *almost* certainly
-> undiscovered. A second after you arrive, the arrival star's scan settles it — and the page
-> (and the voice) says which it was.
-
-- **Exobiology guesses are possibilities, not promises.** They come from each species' known spawn
-  conditions, as maintained by the [BioScan](https://github.com/Silarn/EDMC-BioScan) project, including
-  its check on which star types a species appears around. Until every body is found, nothing is ruled out
-  on what isn't known yet. The genus is usually right, the species sometimes not, so values show as
-  "up to". The ✦ "new to your codex" mark checks the colour variant when it can be told, and names it ("✦ Grey");
-  ✪ is a species or colour in your codex nowhere at all ("✪ Cobalt"), worth more effort. A Bacterium's colour
-  comes from a rare element in each body's own materials, so bodies in one system can differ. Each start checks GitHub for newer rules. Settings → Display can
-  leave out of Here's bio column the species you have finished and the bodies with few signals, and show each species'
-  colour word in that colour ("Red" in red; this device). A finished species is one line in Here: its codex entry with what it
-  pays ("📖 Bacterium Alcyoneum - Red ✦ 8.3M").
-- **Values are estimates** using the community tools' formula, bonuses included (the full-scan bonus too: 1,000 cr
-  per body of a system you found complete while all of it was undiscovered). An NPC crew member's cut
-  comes off automatically, based on what your past sales paid.
-- **Losing your ship loses your data.** Discoveries and samples that went down show as *lost* until you scan
-  them again. Scanning a body you've already sold adds nothing; only mapping it still pays.
-- **New versions.** Once a day Outrider asks GitHub whether a newer release is out (only that request: nothing
-  about you is sent; `[server] update_check = false` turns it off). When there is one, a small **⬆ Update** pill
-  appears beside the link pill (on the tablet, beside "linked"), in the theme's colours. It opens what's new and how
-  to update this copy: Docker, a git clone or a downloaded release. **Skip this version** hides it until the next
-  one (per browser).
-- **Small things worth knowing:** the pill at the top right says whether the page is linked to Outrider:
-  "linked", "linked · no game" (the game is not running), "unlinked · retrying" (after 30 s without an answer); Here's Dist, Grav, Now and Max headings sort the bodies; a genus's tooltip gives
-  its colony distance; Search's mining list includes minerals you have refined, with those bodies first; the
-  Settings' chips jump to its sections; and Settings → Display chooses this browser's theme, the **clock beside the title** (UTC, the game's time, by
-  default; local time or off; its hover gives the other; never on the tablet), whether the header tiles fold to one line on a
-  small window, and which header tiles show, on this device.
 
 ---
 
-[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · **Settings and good to know** · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · [Install and run](install.md) · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · **Settings** · [For the curious](for-developers.md)

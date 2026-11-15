@@ -730,8 +730,12 @@ should show it. Check `JOURNAL_REFERENCE.md` for the event's quirks.
   overlay is switched on without it, `outrider/overlay_runner.py`).
 - The README is the front page: what Outrider is, a short start and the guide's index. The user guide is
   `docs/guide/` (one page per topic, a nav bar on each); keep it user-facing, short bullets. A new feature goes on its
-  topic's page; a section moved between pages keeps an `<a id>` for its old anchor in the README's index (old links
-  still land). `test_docs.py` checks every relative link and anchor. Implementation detail belongs in code comments.
+  topic's page, under its `##`, and is told once: elsewhere a line and a link. The homes since the 2026-11-15
+  reorganisation: the page, its header tiles, the route lines and every other tab `views.md`; Now, the system map, the
+  surface map, pins and rigs `now.md`; Bio/Geo, the checklists, the exobiology guesses, codex marks, green gas giants and
+  boxels `exploration.md`; the Settings panel, Server, notices, the config file's keys and the command line
+  `settings.md` (a setting's meaning goes beside its feature); updating `install.md`. A section moved between pages
+  keeps an `<a id>` for its old anchor in the README's index (old links still land). `test_docs.py` checks every relative link and anchor. Implementation detail belongs in code comments.
 - Per-player defaults (names the voice uses, thresholds, voice) are only defaults; never hard-code a
   player's preference.
 - Keep optional parts optional: the server must run without Piper, evdev, network or journals.

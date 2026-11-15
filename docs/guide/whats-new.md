@@ -1,4 +1,4 @@
-[ED Outrider](../../README.md) · **What's new** · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · **What's new** · [Install and run](install.md) · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings](settings.md) · [For the curious](for-developers.md)
 
 # What's new
 
@@ -93,7 +93,7 @@ voice, a surface map that zooms out and keeps what you finished, and a few thing
 - **The system you are in, in 3D**, on Now (🪐 map beside the title on a PC, **Text | 🪐 Map** on a tablet or a narrow
   window, **Surface | 🪐 System** on a body) and in Here (🪐 3D): each body you have scanned where it is on its orbit
   now, drawn as in the schematic, with the suggested order on it, numbered, each leg with its distance. Drag to turn,
-  the wheel to zoom; **Fit**, **Top** and **Whole system**. See [the system map](views.md#-the-views).
+  the wheel to zoom; **Fit**, **Top** and **Whole system**. See [the system map](now.md#-the-system-map).
 - **Where you have been this visit**: a grey broken line from the arrival star through each body you were at, each
   with a ✓; the list starts at the body you were last at.
 - **The stops listed beside it**, one line each ("map 1.9M", "bio 3 · 19.3M", the leg). **Tap a stop** (its row, its
@@ -116,7 +116,7 @@ voice, a surface map that zooms out and keeps what you finished, and a few thing
 - **🛣 Show route** in Nearby's heading (and the Overview's bar) opens the **Plotted route** pane under the list: the
   route the game plotted (or the Highway's, or your carrier's trip), system by system, with Nearby's columns, how far
   along and how far from you (thanks to Psilovybin, [issue #22](https://github.com/weslocke/ED-Outrider/issues/22)).
-  See [the views](views.md#-the-views).
+  See [the views](views.md#-the-route-lines-and-the-plotted-route-pane).
 
 ### 🌿 On the surface
 
@@ -194,7 +194,7 @@ modules and ships are at, Sell all for the whole hold, known Guardian and geolog
   shows; docking at either shows that one, and your pick is kept on this device. Its side has the squadron carrier
   marker and its name, where it is (or Spansh's newer report of it, marked "Spansh"), how far, 🎯 and 🛣, your jumps to
   it, and UC and Vista. An officer who opens its management or books a jump gets the tritium reading and the countdown
-  too. See [the views](views.md#-the-views).
+  too. See [the views](views.md#-the-header-and-its-tiles).
 - **Somewhere to sell and dock**: the sell lists and Now's sell line offer it as your squadron's; Nearest place to
   dock lists it as **your squadron's**, with no "squadron only" warning; the voice says "your squadron's carrier".
 
@@ -230,11 +230,11 @@ modules and ships are at, Sell all for the whole hold, known Guardian and geolog
 
 - **Known sites from Canonn**: on a landable body with Guardian or geological signals, the body panel's 📍 Pins lists
   what other commanders reported with a position (Guardian ruins and structures, each geological formation), each with
-  **📍 pin it**; one you have pinned shows ✓. See [the surface map](views.md#-the-surface-map).
+  **📍 pin it**; one you have pinned shows ✓. See [the surface map](now.md#-the-surface-map).
 - **The schematic gives the orbit's distance too** (thanks to Hiner399): under a moon or another star's planet,
   "2,026 ls / 2.6 ls", from arrival and from what it orbits.
 - **Sweep ticks on the checklists' 🔍 nearby lists**: tick a body for each species you are missing, then **🧹 Plot a
-  sweep** for one trip to them all. See [the exobiology checklist](views.md#-the-exobiology-checklist).
+  sweep** for one trip to them all. See [the exobiology checklist](exploration.md#-the-exobiology-checklist).
 
 ### 🎙 Voice
 
@@ -897,7 +897,7 @@ danger line, while that switch is on) and the Mining Officer. More in [The voice
 - **✦ on geology** new to your codex, on Here's bodies.
 - **👥 Species other commanders reported** to Spansh on a body, beside the guess.
 - The guess's hover adds **your own runs** on bodies like this ("Informem 11 of 14").
-- The [Exo-Biology checklist](views.md#-the-exobiology-checklist)'s **🔍 nearby** lists the nearest bodies with a
+- The [Exo-Biology checklist](exploration.md#-the-exobiology-checklist)'s **🔍 nearby** lists the nearest bodies with a
   species or colour you still need, with 🎯.
 - Search → Planets: **Potential green gas giant**; or ask by voice "nearest green gas giant".
 - Missing colour tables say so, with **Retry**, instead of quietly guessing without them.
@@ -1373,4 +1373,4 @@ its own.
 
 Every change, small ones included, is in the [changelog](../CHANGELOG.md).
 
-[ED Outrider](../../README.md) · **What's new** · [Install and run](install.md) · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · **What's new** · [Install and run](install.md) · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings](settings.md) · [For the curious](for-developers.md)

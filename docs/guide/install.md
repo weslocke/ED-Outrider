@@ -1,4 +1,4 @@
-[ED Outrider](../../README.md) · [What's new](whats-new.md) · **Install and run** · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · **Install and run** · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings](settings.md) · [For the curious](for-developers.md)
 
 # Install and run
 
@@ -18,93 +18,131 @@ Open **<http://127.0.0.1:8025/>** and go fly. The window the launcher runs in **
 closing it stops the page, so leave it open, minimised, while you play. Problems on the first start:
 [If the first start fails](#if-the-first-start-fails).
 
-`launch_outrider.sh` sets Outrider up the first time (a virtual environment in `.venv` with `requirements.txt`),
-installs again only when `requirements.txt` has changed (after a `git pull`), the environment is broken or the
-folder was moved or renamed (a `.venv` keeps the folder it was made in, so it is made afresh there), and
-otherwise starts Outrider at once (once a week it first checks for a newer certificate bundle: a few seconds); its
-arguments go to Outrider (`./launch_outrider.sh --port 8026`), and relative paths in them (`--config my.toml`) are
-taken from the folder you run it in. With the [in-game overlay](overlay.md) on (`[overlay] enabled = true`) it also
-installs PyQt6 (about 100 MB, into `.venv`) when it is missing; a failed install
-never stops Outrider starting. ⚙ Settings → Server → **Restart** (after saving settings, or after a `git pull`) starts
-the launcher again in the same window, setup included; started with `python ed_outrider.py`, it starts that again; on
-Windows it needs `launch_outrider.bat` around it. By hand it is
-`python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, then `.venv/bin/python ed_outrider.py`.
+Your own files (the database, backups, downloaded voices, banned lines, your own pronunciations) all go in `data/`.
 
-**On Windows**, install [Python](https://www.python.org/downloads/) 3.11 or newer and double-click
-**`launch_outrider.bat`** (or run it in a Command Prompt): it does the same. Everything works there; auto honk, auto-target and the control rail
-are **experimental on Windows** (they press keys the Windows way, untested against the game so far), and the
-co-pilot button is Linux only for now. Windows is less tested than Linux: if something goes wrong, an issue on GitHub
-is welcome.
+### What the launcher does
 
-<a id="windows-certificate-errors"></a>**Windows: certificate errors.** Older Outriders on some Windows PCs failed every lookup with `CERTIFICATE_VERIFY_FAILED
-… certificate has expired` (Spansh, EDSM, GitHub): Windows only fetches a new or renewed root certificate when
-something asks it to (a browser does, Python does not), so a site on a newer root could not be verified. Outrider now
-also trusts Mozilla's list of roots (the `certifi` package in `requirements.txt`, installed by the launcher), so this
-fixes itself after an update: no setting, no `SSL_CERT_FILE`. The launchers keep the certificate bundle current,
-checking once a week (offline, they say so in one line and start anyway). If the Data tile still says *couldn't verify …'s
-certificate*, check the PC's **date and time** first (a clock that is wrong gives the same error); if they are right,
-update Outrider.
+`launch_outrider.sh` sets Outrider up and starts it:
 
-> [!TIP]
-> The first start reads all your journals (a few seconds, or a few minutes for years of them); after that it only
-> reads what's new. When an update changes how journals are read, its first start reads them all again once (after a
-> backup), and the start-up log says so first, with why. Meanwhile the page already answers: "Reading your journals:
-> March 2024, 41%", with Show log, and it opens by itself when Outrider is ready (a page left open says "starting").
-> If Outrider stops answering for 20 s, the starting page says so and points at its terminal and `data/outrider.log`;
-> it opens by itself if Outrider comes back. A database that cannot be opened is said there and in the terminal, with
-> the command that puts a backup back.
-> The very first start (no database yet) on the game PC opens the page in your browser by itself, and a card at
-> the top says what it found: how many journals, from which folder and which months, the systems visited and what
-> speaks (`[server] open_browser = false` turns the opening off; never in Docker, under the
-> [service](#start-with-your-computer) or with `--simulate`).
-> Journal folders are found automatically on Windows (also when the Saved Games folder was moved to another drive)
-> and on Linux under Steam/Proton (the native, Flatpak and snap Steams, and the game added to Steam by hand), Heroic,
-> Lutris and Bottles. When none is found, or the folder holds no
-> journals yet, the Data tile and a line at the top of the page say so (with the two usual folders, and how many places
-> were looked in: the terminal lists them), and **set the journal folder** opens ⚙
-> Settings → Server at `[journals] live`. A folder typed there that does not exist is not saved ("… is not a folder
-> on this PC"); one with no journals yet is saved with a note, naming the folder below it that has them (the usual
-> slip stops at `Frontier Developments`). A browser needs one click on the
-> page before it plays sound: the red **Click Here To Allow Audio** pill asks for it.
+- **The first time,** it sets Outrider up: a virtual environment in `.venv` with `requirements.txt`.
+- **It installs again** only when `requirements.txt` has changed (after a `git pull`), the environment is broken or the
+  folder was moved or renamed. A `.venv` keeps the folder it was made in, so it is made afresh there.
+- **Otherwise it starts Outrider at once.** Once a week it first checks for a newer certificate bundle: a few seconds.
+- **Its arguments go to Outrider** (`./launch_outrider.sh --port 8026`). Relative paths in them (`--config my.toml`)
+  are taken from the folder you run it in.
+- **The in-game overlay:** with the [in-game overlay](overlay.md) on (`[overlay] enabled = true`) it also installs
+  PyQt6 (about 100 MB, into `.venv`) when it is missing. A failed install never stops Outrider starting.
+- **Restart:** ⚙ Settings → Server → **Restart** (after saving settings, or after a `git pull`) starts the launcher
+  again in the same window, setup included. Started with `python ed_outrider.py`, it starts that again; on Windows it
+  needs `launch_outrider.bat` around it.
+
+By hand it is `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, then
+`.venv/bin/python ed_outrider.py`. Start Outrider with the `.venv`'s Python (`.venv/bin/python ed_outrider.py`, as
+above): plain `python3 ed_outrider.py` finds Piper and evdev in a `.venv` in the Outrider folder, but aiohttp must then
+be installed for that `python3` too.
+
+### On Windows
+
+Install [Python](https://www.python.org/downloads/) 3.11 or newer and double-click **`launch_outrider.bat`** (or run it
+in a Command Prompt): it does the same.
+
+- Everything works there. Auto honk, auto-target and the control rail are **experimental on Windows**: they press keys
+  the Windows way, untested against the game so far.
+- The co-pilot button is Linux only for now.
+- Windows is less tested than Linux: if something goes wrong, an issue on GitHub is welcome.
+
+<a id="windows-certificate-errors"></a>
+### Certificate errors on Windows
+
+Older Outriders on some Windows PCs failed every lookup (Spansh, EDSM, GitHub) with
+`CERTIFICATE_VERIFY_FAILED … certificate has expired`. Windows only fetches a new or renewed root certificate when
+something asks it to (a browser does, Python does not), so a site on a newer root could not be verified.
+
+- **An update fixes it:** Outrider now also trusts Mozilla's list of roots (the `certifi` package in
+  `requirements.txt`, installed by the launcher). No setting, no `SSL_CERT_FILE`.
+- **The bundle stays current:** the launchers check for a newer certificate bundle once a week. Offline, they say so
+  in one line and start anyway.
+- **If the Data tile still says** *couldn't verify …'s certificate*, check the PC's **date and time** first: a clock
+  that is wrong gives the same error. If they are right, update Outrider.
+
+### The first start
+
+The first start reads all your journals (a few seconds, or a few minutes for years of them); after that it only reads
+what's new.
+
+- **The page answers meanwhile:** "Reading your journals: March 2024, 41%", with Show log. It opens by itself when
+  Outrider is ready (a page left open says "starting").
+- **After an update that changes how journals are read,** its first start reads them all again once (after a backup).
+  The start-up log says so first, with why.
+- **If Outrider stops answering for 20 s,** the starting page says so and points at its terminal and
+  `data/outrider.log`. It opens by itself if Outrider comes back.
+- **A database that cannot be opened** is said there and in the terminal, with the command that puts a backup back.
+- **The very first start** (no database yet) on the game PC opens the page in your browser by itself. A card at the
+  top says what it found: how many journals, from which folder and which months, the systems visited and what speaks.
+  `[server] open_browser = false` turns the opening off; it never happens in Docker, under the
+  [service](#start-with-your-computer) or with `--simulate`.
+- **Sound:** a browser needs one click on the page before it plays sound. The red **Click Here To Allow Audio** pill
+  asks for it.
+
+### Journal folders
+
+Journal folders are found automatically on Windows (also when the Saved Games folder was moved to another drive) and on
+Linux under Steam/Proton (the native, Flatpak and snap Steams, and the game added to Steam by hand), Heroic, Lutris
+and Bottles.
+
+- **None found:** when none is found, or the folder holds no journals yet, the Data tile and a line at the top of the
+  page say so. They give the two usual folders and how many places were looked in (the terminal lists them), and
+  **set the journal folder** opens ⚙ Settings → Server at `[journals] live`.
+- **A folder typed there** that does not exist is not saved ("… is not a folder on this PC"). One with no journals yet
+  is saved with a note, naming the folder below it that has them (the usual slip stops at `Frontier Developments`).
+
+### The optional parts
 
 `requirements.txt` also installs three optional parts. Leave the file as it is: one that will not install is
 skipped by itself (below), and an edited `requirements.txt` stops a later `git pull` (`git checkout --
 requirements.txt` puts it back):
 
 - **Piper** (`piper-tts`, about 100 MB) for a natural speaking voice. It needs a **64-bit Python 3.11 to 3.14**: its
-  onnxruntime has no build for Python 3.15 yet. The launchers pick such a Python by themselves when you have one
-  (Windows: through the `py` launcher; Linux: `python3`, else `python3.14` … `python3.11`) and say so before the setup
-  when you have none: Outrider then runs with the browser's voice. Installed Python 3.14 afterwards? Delete the `.venv`
-  folder and start again. `PYTHON=` still picks one yourself. An installed Piper that will not load says why (⚙
-  Settings, beside Voice, and Outrider's start-up line) rather than "not installed".
-- **evdev** (Linux only) for auto honk, auto-target, the control rail and the co-pilot button (Windows needs
-  nothing extra for the first three). It is built from
-  source, so it needs your distribution's Python development headers.
+  onnxruntime has no build for Python 3.15 yet.
+  - The launchers pick such a Python by themselves when you have one (Windows: through the `py` launcher; Linux:
+    `python3`, else `python3.14` … `python3.11`). `PYTHON=` still picks one yourself.
+  - When you have none, they say so before the setup: Outrider then runs with the browser's voice. Installed Python
+    3.14 afterwards? Delete the `.venv` folder and start again.
+  - An installed Piper that will not load says why (⚙ Settings, beside Voice, and Outrider's start-up line) rather
+    than "not installed".
+- **evdev** (Linux only) for auto honk, auto-target, the control rail and the co-pilot button (Windows needs nothing
+  extra for the first three). It is built from source, so it needs your distribution's Python development headers.
 - **Pillow** (`pillow`, about 10 MB) to convert the game's screenshots as you take them, copy them into your own codex
-  folders and shrink those pictures for the Bio/Geo checklists ([Screenshots](automation.md#-screenshots)); without
+  folders and shrink those pictures for the Bio/Geo checklists ([Screenshots](automation.md#-screenshots)). Without
   it they stay the game's BMPs (pictures already in your codex folders still show, at full size).
 
-If one of these will not install, the launcher still starts Outrider without it and says what is off and how to add
-it; once you have fixed that (say `sudo apt install python3-dev`), start it with `OUTRIDER_REINSTALL=1
-./launch_outrider.sh` (Windows: `set OUTRIDER_REINSTALL=1` first) to install it. Offline after an update, the launcher
-starts with the packages already installed and installs a new required one at the next start; a new optional one
-(Pillow, say) waits for `OUTRIDER_REINSTALL=1` once you are online, as the launcher's message says.
+If one of these will not install:
 
-Not from pip, and optional too: on Linux the Highway's clipboard copy (and auto-target's paste), and a screenshot put on
-the clipboard, need **`xclip`**
-(used wherever there is an X display: X11, and Wayland desktops with XWayland, which the game runs under) or
-**`wl-copy`** (the `wl-clipboard` package, for Wayland without one), from your distribution, e.g. `sudo apt install
-xclip`. On GNOME's Wayland `xclip` matters: `wl-copy` there takes the keyboard focus for a moment to copy, which can
-leave a pasted name empty in the game. Without either, nothing is copied and everything else works
-(the start-up log says which one it found). `launch_outrider.sh` checks your desktop session (Wayland or X11) at
-every start and, while the one it needs is missing, prints a block with the command for your package manager (apt,
-dnf, pacman or zypper) and the one that installs both. Windows needs nothing. On Linux the [in-game overlay](overlay.md) finds
-Elite's window with **`wmctrl`** and **`xprop`** / **`xwininfo`** (the `x11-utils` package):
-`sudo apt install wmctrl x11-utils`. Auto-target uses the same two to bring the game window to the front before pressing keys,
-and the tablet's control rail to press only while the game is the window in front.
+- **The launcher still starts Outrider without it** and says what is off and how to add it. Once you have fixed that
+  (say `sudo apt install python3-dev`), start it with `OUTRIDER_REINSTALL=1 ./launch_outrider.sh` (Windows:
+  `set OUTRIDER_REINSTALL=1` first) to install it.
+- **Offline after an update,** the launcher starts with the packages already installed and installs a new required one
+  at the next start. A new optional one (Pillow, say) waits for `OUTRIDER_REINSTALL=1` once you are online, as the
+  launcher's message says.
 
-Start Outrider with the `.venv`'s Python (`.venv/bin/python ed_outrider.py`, as above): plain `python3 ed_outrider.py` finds Piper and evdev in a `.venv` in the Outrider folder, but aiohttp must then be installed for that `python3` too.
-Your own files (the database, backups, downloaded voices, banned lines, your own pronunciations) all go in `data/`.
+### Clipboard and window tools on Linux
+
+These are not from pip, and optional too. Windows needs nothing.
+
+- **The clipboard:** on Linux the Highway's clipboard copy (and auto-target's paste), and a screenshot put on the
+  clipboard, need **`xclip`** or **`wl-copy`** from your distribution, e.g. `sudo apt install xclip`.
+  - `xclip` is used wherever there is an X display: X11, and Wayland desktops with XWayland, which the game runs under.
+    `wl-copy` (the `wl-clipboard` package) is for Wayland without one.
+  - On GNOME's Wayland `xclip` matters: `wl-copy` there takes the keyboard focus for a moment to copy, which can leave
+    a pasted name empty in the game.
+  - Without either, nothing is copied and everything else works (the start-up log says which one it found).
+  - `launch_outrider.sh` checks your desktop session (Wayland or X11) at every start. While the one it needs is
+    missing, it prints a block with the command for your package manager (apt, dnf, pacman or zypper) and the one
+    that installs both.
+- **The game's window:** on Linux the [in-game overlay](overlay.md) finds Elite's window with **`wmctrl`** and
+  **`xprop`** / **`xwininfo`** (the `x11-utils` package): `sudo apt install wmctrl x11-utils`. Auto-target uses the
+  same two to bring the game window to the front before pressing keys, and the tablet's control rail to press only
+  while the game is the window in front.
 
 ### If the first start fails
 
@@ -119,7 +157,7 @@ The launchers and Outrider say what went wrong in their window (and Outrider in 
 | `OPTIONAL packages not installed: ED Outrider starts without them` | Not an error either: each line says what is off and why; fix that, then start with `OUTRIDER_REINSTALL=1` once. |
 | `port 8025 is already in use: is ED Outrider already running? …` | Another Outrider runs already (another window, or [Start with your computer](#start-with-your-computer)): open <http://127.0.0.1:8025/>. Or start this one with `--port 8026`. |
 | `cannot listen on …: … (is [server] host this machine's address or name? …)` | `[server] host` in `ed_outrider.toml` is not this PC's address: `127.0.0.1` (this PC only) or `0.0.0.0` (every device). |
-| `No Elite Dangerous journal folder found. Set Settings -> Server -> [journals] live …`, or the page's card `No journals in … yet` | Point `[journals] live` at the folder holding `Journal.*.log` (the card's button opens it); see the tip above. |
+| `No Elite Dangerous journal folder found. Set Settings -> Server -> [journals] live …`, or the page's card `No journals in … yet` | Point `[journals] live` at the folder holding `Journal.*.log` (the card's button opens it); see [Journal folders](#journal-folders) above. |
 | The Data tile says `couldn't verify spansh.co.uk's certificate` | Check the PC's date and time, then update Outrider ([certificate errors](#windows-certificate-errors) above). |
 | The page says `Outrider has not answered for 20 s` | Outrider stopped: the last lines in its window (or `data/outrider.log`) say why. |
 | The page shows `NOT CONNECTED` and says "Lost contact with Outrider" after its black window was closed | That window **was** Outrider, as its banner says (`This window IS Outrider: closing it stops the page.`): start the launcher again and leave its window open (minimise it). |
@@ -128,8 +166,15 @@ Still stuck? An [issue on GitHub](https://github.com/weslocke/ED-Outrider/issues
 
 ### Updating
 
-The page's **⬆ Update** pill says when a new release is out. Everything of yours stays in two places an update never
-touches:
+Once a day Outrider asks GitHub whether a newer release is out. Only that request: nothing about you is sent, and
+`[server] update_check = false` turns it off.
+
+- **The ⬆ Update pill:** when there is a newer release, a small **⬆ Update** pill appears beside the link pill (on the
+  tablet, beside "linked"), in the theme's colours. It opens what's new and how to update this copy: Docker, a git
+  clone or a downloaded release.
+- **Skip this version** hides it until the next one (per browser).
+
+Everything of yours stays in two places an update never touches:
 - the **`data`** folder (the database, which holds your EDSM and Inara keys, your history and bookmarks, backups,
   downloaded voices, banned lines, your own personalities);
 - **`ed_outrider.toml`** (your config: the page password, the AI key, journal folders and the rest).
@@ -137,10 +182,11 @@ touches:
 The page's own settings (theme, alerts, voice choices) live in each browser.
 
 - **A `git clone`:** quit Outrider, run `git pull` in its folder, and start it again (`launch_outrider.sh` or
-  `launch_outrider.bat`: it installs whatever changed). If `git pull` stops on `resources/bio_rules.json` ("Your local
-  changes ... would be overwritten"), an Outrider before 2026.10.30 wrote its rules update there: run `git checkout
-  resources/bio_rules.json` and pull again (yours are downloaded again beside your database). Outrider says so at
-  start while that file is changed.
+  `launch_outrider.bat`: it installs whatever changed).
+  - If `git pull` stops on `resources/bio_rules.json` ("Your local changes ... would be overwritten"), an Outrider
+    before 2026.10.30 wrote its rules update there. Run `git checkout resources/bio_rules.json` and pull again (yours
+    are downloaded again beside your database).
+  - Outrider says so at start while that file is changed.
 - **A downloaded ZIP:**
   1. Quit Outrider.
   2. Rename its folder (say `ED-Outrider` to `ED-Outrider-old`).
@@ -151,8 +197,7 @@ The page's own settings (theme, alerts, voice choices) live in each browser.
   Keeping the folder's name keeps a "start with your computer" service pointing at it. Delete the old folder once
   the new one runs.
 
-When an update changes how journals are read, the first start reads them again once, and backs up the database
-before it does.
+When an update changes how journals are read, the first start reads them again once (see [the first start](#the-first-start)).
 
 ### Start with your computer
 
@@ -164,19 +209,26 @@ To have Outrider running without a terminal to keep open, install it as a servic
 launch_outrider.bat --install-service           # Windows
 ```
 
-Or ⚙ Settings → Server → **Start with this computer**, in the browser on that PC (not from another device). On Linux
-it is a systemd user service (`~/.config/systemd/user/ed-outrider.service`) that starts when you log in to your desktop;
-switch to it now with `systemctl --user start ed-outrider` after stopping the Outrider you started by hand. Its output:
-`journalctl --user -u ed-outrider -f`, and Show log as always. It comes back by itself after a crash, and Settings'
-**Restart** goes through it. systemd stops starting it after 30 starts in 10 minutes (a crash loop); after that,
-`systemctl --user reset-failed ed-outrider` and `systemctl --user start ed-outrider`. If it does not start at login, your desktop does not start `graphical-session.target`
-(GNOME and KDE do). When your desktop does not pass its display to user services (the overlay, the clipboard and
-bringing the game to the front need it), the install says so and gives the command: `systemctl --user
-import-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY` from the desktop, then `systemctl --user restart ed-outrider`.
-On a Linux server (`[server] game_pc = false`) it starts with your user's systemd instead; `loginctl
-enable-linger` starts it at boot. On Windows it is `ED Outrider.cmd` in your Startup folder (`shell:startup`), which
-starts `launch_outrider.bat` minimised when you sign in. Not in Docker (the container's restart policy already is the
-service) and not on macOS yet (add `launch_outrider.sh` to Login Items).
+Or ⚙ Settings → Server → **Start with this computer**, in the browser on that PC (not from another device).
+
+- **On Linux** it is a systemd user service (`~/.config/systemd/user/ed-outrider.service`) that starts when you log in
+  to your desktop.
+  - Switch to it now with `systemctl --user start ed-outrider` after stopping the Outrider you started by hand.
+  - Its output: `journalctl --user -u ed-outrider -f`, and Show log as always.
+  - It comes back by itself after a crash, and Settings' **Restart** goes through it.
+  - systemd stops starting it after 30 starts in 10 minutes (a crash loop). After that,
+    `systemctl --user reset-failed ed-outrider` and `systemctl --user start ed-outrider`.
+  - If it does not start at login, your desktop does not start `graphical-session.target` (GNOME and KDE do).
+  - When your desktop does not pass its display to user services (the overlay, the clipboard and bringing the game to
+    the front need it), the install says so and gives the command:
+    `systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY` from the desktop, then
+    `systemctl --user restart ed-outrider`.
+- **On a Linux server** (`[server] game_pc = false`) it starts with your user's systemd instead;
+  `loginctl enable-linger` starts it at boot.
+- **On Windows** it is `ED Outrider.cmd` in your Startup folder (`shell:startup`), which starts `launch_outrider.bat`
+  minimised when you sign in.
+- **Not in Docker** (the container's restart policy already is the service) and **not on macOS yet** (add
+  `launch_outrider.sh` to Login Items).
 
 Run this way, on the PC the game runs on, everything works. Further down: [opening the page from a tablet or
 another device](#-other-devices-on-your-network), [running Outrider as a server in Docker](#-running-as-a-server-docker)
@@ -184,21 +236,25 @@ another device](#-other-devices-on-your-network), [running Outrider as a server 
 
 ### Two commanders on one PC
 
-The journal folder belongs to the Windows (or Proton) user, so an alt, or someone else's account played on the same
-login, writes into the same folder, and Outrider would mix both into one history. When the journals name a second
-commander, a card says so ("This journal folder also logs CMDR B ... Choose the one to follow?"). Its **Choose a
-commander** button lists every commander the journals hold (their journals, when each last played) and "every
-commander"; a pick sets `[journals] commander`, restarts Outrider and reads every journal again for that commander
-(about a minute for 1,400 journals). To change your mind later, the same list is behind **Choose…** beside ⚙ Settings →
-Server → Files and backups → `[journals] commander` (or type the FID or the name as the game shows it there, blank for
-every commander). While the other commander plays, this Outrider stands down: the page says "CMDR B is playing: not
-tracked here" (its button opens the same list), Status.json, NavRoute.json, Cargo.json and ShipLocker.json are not
-read, and auto-target and the tablet's control rail press nothing (the rail is greyed). The estimate of the data on
-board and the Log follow the commander you chose too;
-uploads still go per commander, each with its own key.
+The journal folder belongs to the Windows (or Proton) user. So an alt, or someone else's account played on the same
+login, writes into the same folder, and Outrider would mix both into one history.
+
+- **The card:** when the journals name a second commander, a card says so ("This journal folder also logs CMDR B ...
+  Choose the one to follow?").
+- **The card's button:** **Choose a commander** lists every commander the journals hold (their journals, when each last
+  played) and "every commander". A pick sets `[journals] commander`, restarts Outrider and reads every journal again for that
+  commander (about a minute for 1,400 journals).
+- **Changing your mind later:** the same list is behind **Choose…** beside ⚙ Settings → Server → Files and backups →
+  `[journals] commander`. Or type the FID or the name as the game shows it there, blank for every commander.
+- **While the other commander plays,** this Outrider stands down:
+  - the page says "CMDR B is playing: not tracked here" (its button opens the same list);
+  - Status.json, NavRoute.json, Cargo.json and ShipLocker.json are not read;
+  - auto-target and the tablet's control rail press nothing (the rail is greyed).
+- **The rest follows your pick:** the estimate of the data on board and the Log follow the commander you chose too.
+  Uploads still go per commander, each with its own key.
 
 To track the alt too, run a second Outrider with its own port, database and config file (`--port 8027 --db
-data/alt.sqlite --config alt.toml`) and `[journals] commander` set to that commander: each is live only while its
+data/alt.sqlite --config alt.toml`) and `[journals] commander` set to that commander. Each is live only while its
 commander plays, so the two never press keys together. Keep the uploads switched on in one of them only.
 
 ## 🐳 Running as a server (Docker)
@@ -225,9 +281,14 @@ folder from a network share, and serve the pages and the tablet from there.
 > and they don't interfere.
 
 Everything else works: every page and the tablet, alerts and captions, the voice, Status.json's live fuel and surface
-map, the Highway's routes, Search, backups, Ask and the MCP bridge. The voice plays in a browser with the page open
-(after a click: the red pill asks for it) or on the tablet with **Play alerts here**. `[server] game_pc = "auto"`
-turns the automation off inside a container by itself; `false` does the same on a server without Docker.
+map, the Highway's routes, Search, backups, Ask and the MCP bridge.
+
+- **The voice** plays in a browser with the page open (after a click: the red pill asks for it) or on the tablet with
+  **Play alerts here**.
+- **`[server] game_pc = "auto"`** turns the automation off inside a container by itself; `false` does the same on a
+  server without Docker.
+
+### Installing it
 
 **You need** Docker with Compose v2: `docker compose version` must work (on Ubuntu's `docker.io`, install
 `docker-compose-v2`; with Docker's own packages it is `docker-compose-plugin`).
@@ -237,18 +298,20 @@ turns the automation off inside a container by itself; `false` does the same on 
 
 - **NFS:** export it on the game PC (`/etc/exports`:
   `"/path/to/Elite Dangerous" 192.168.1.0/24(ro,no_subtree_check)`) and mount it on the server **with `actimeo=1`**,
-  e.g. in `/etc/fstab`: `gamepc:/path/to/Elite\040Dangerous /mnt/elite-journals nfs ro,actimeo=1 0 0`. Without it,
-  NFS may show the journal's growth up to a minute late, and the alerts come late and all at once (Outrider warns at
-  start). After changing the options, unmount and mount it again; `findmnt -t nfs,nfs4 -o TARGET,OPTIONS` should
-  show `acregmin=1,acregmax=1`.
+  e.g. in `/etc/fstab`: `gamepc:/path/to/Elite\040Dangerous /mnt/elite-journals nfs ro,actimeo=1 0 0`.
+  - Without it, NFS may show the journal's growth up to a minute late, and the alerts come late and all at once
+    (Outrider warns at start).
+  - After changing the options, unmount and mount it again; `findmnt -t nfs,nfs4 -o TARGET,OPTIONS` should show
+    `acregmin=1,acregmax=1`.
 - **CIFS / Samba:** share the folder read-only and mount it on the server
   (`//gamepc/elite-journals /mnt/elite-journals cifs ro,username=you,password=…,vers=3.0 0 0`); CIFS caches for a
   second by default.
 - Or let Docker mount it: `docker-compose.yml` has NFS and CIFS volume examples.
-- Every second Outrider lists the folder and checks only the newest journals and those still growing: a long journal
-  history costs the share no more than a short one. Each older file is checked once a minute, so a sync tool that adds
-  to one is still read. If the folder goes away while Outrider runs (the share dropped, the game PC off), a red card
-  at the top of the page says so, and goes when the folder is back.
+
+Every second Outrider lists the folder and checks only the newest journals and those still growing: a long journal
+history costs the share no more than a short one. Each older file is checked once a minute, so a sync tool that adds
+to one is still read. If the folder goes away while Outrider runs (the share dropped, the game PC off), a red card at
+the top of the page says so, and goes when the folder is back.
 
 **2. Install,** as the user who will own the files, one of three ways:
 
@@ -269,7 +332,7 @@ turns the automation off inside a container by itself; `false` does the same on 
   docker compose up -d
   ```
   Its INSTALL.txt has the same steps. `scripts/docker_bundle.sh` makes one, on a computer with this repository and
-  Docker, into `dist/` (with the registry's compose file and `env.example` for a release); it is built for that
+  Docker, into `dist/` (with the registry's compose file and `env.example` for a release). It is built for that
   computer's architecture (`PLATFORM=linux/arm64` for an ARM server, if your Docker can build for it).
 - **From a checkout:**
   ```bash
@@ -279,19 +342,28 @@ turns the automation off inside a container by itself; `false` does the same on 
   ```
 
 **3. First run.** `docker compose logs -f` shows it reading every journal (a while for years of them) and then
-"serving on…". With no journals in `/journals` (the share not mounted, or `JOURNALS` in `.env` pointing elsewhere)
-the page says so at the top and in the Data tile. It writes its config to `docker/config/ed_outrider.toml` (every network address, the journals at
-`/journals`) and downloads the Cori voice. Open `http://<server>:8025/`, then ⚙ Settings → Server: set a
-**password** (nothing on a server counts as "this PC", so every device signs in, your own browser too), add the
-server's name to **allowed hosts** if you open it by name (with the port when `PORT` in `.env` is not 8025:
-`nas:8030`; the refusal page names the exact text to add), save, and **Restart** (or `docker compose restart`). The address and port
-inside the container are fixed (0.0.0.0, 8025): to use another port, set `PORT` in `.env`, not in Settings. If the log says it
-cannot write `/config` or `/app/data`, the folders belong to someone else: `sudo chown -R $(id -u):$(id -g) docker/`
-and `docker compose restart`. Later, ⚙ Settings → Server → **Show log** shows Outrider's log from any device, and
-**Restart** restarts it: the container stops and compose's `restart: unless-stopped` starts it again (a container
-started by hand with `docker run` and no `--restart` policy just stops).
+"serving on…".
 
-**Updating.** The page's **⬆ Update** pill says when a new release is out.
+- **No journals:** with none in `/journals` (the share not mounted, or `JOURNALS` in `.env` pointing elsewhere) the
+  page says so at the top and in the Data tile.
+- **Its config:** it writes its config to `docker/config/ed_outrider.toml` (every network address, the journals at
+  `/journals`) and downloads the Cori voice.
+- **Then** open `http://<server>:8025/` and go to ⚙ Settings → Server:
+  - set a **password** (nothing on a server counts as "this PC", so every device signs in, your own browser too);
+  - add the server's name to **allowed hosts** if you open it by name (with the port when `PORT` in `.env` is not
+    8025: `nas:8030`; the refusal page names the exact text to add);
+  - save, and **Restart** (or `docker compose restart`).
+- **The port:** the address and port inside the container are fixed (0.0.0.0, 8025). To use another port, set `PORT`
+  in `.env`, not in Settings.
+- **Cannot write:** if the log says it cannot write `/config` or `/app/data`, the folders belong to someone else:
+  `sudo chown -R $(id -u):$(id -g) docker/` and `docker compose restart`.
+- **Later,** ⚙ Settings → Server → **Show log** shows Outrider's log from any device, and **Restart** restarts it:
+  the container stops and compose's `restart: unless-stopped` starts it again. A container started by hand with
+  `docker run` and no `--restart` policy just stops.
+
+### Updating the container
+
+The page's **⬆ Update** pill says when a new release is out ([Updating](#updating)).
 
 - **From the registry:** `docker compose pull && docker compose up -d`.
 - **A newer bundle:** extract it beside the old one, then from the new folder:
@@ -306,49 +378,75 @@ started by hand with `docker run` and no `--restart` policy just stops).
   its image (`docker rmi ed-outrider:<old version>`).
 - **A checkout:** `git pull && docker compose up -d --build`.
 
-**Good to know.** Your data lives in `docker/data/` (the database, backups, Piper voices) and `docker/config/` (the
-config); back those up. `docker compose down` waits for a backup that is running (up to 5 minutes). Every bundle and
-checkout uses the Compose project name `ed-outrider`, so a new one replaces the old container. If you also run
-Outrider on the game PC, set `[spansh] watch_firsts = false` on one of them, or both check the same firsts on Spansh.
-To ask an AI client about the server, give the MCP bridge `[mcp] url` and `password`.
-To upload to EDDN, EDSM or Inara from the server, read [Uploads](uploads.md) first: one uploader at a time, and the server's
-note folder in the journal share.
+### Good to know in Docker
+
+- **Your data** lives in `docker/data/` (the database, backups, Piper voices) and `docker/config/` (the config); back
+  those up.
+- `docker compose down` waits for a backup that is running (up to 5 minutes).
+- Every bundle and checkout uses the Compose project name `ed-outrider`, so a new one replaces the old container.
+- **Also on the game PC?** If you also run Outrider on the game PC, set `[spansh] watch_firsts = false` on one of
+  them, or both check the same firsts on Spansh.
+- **An AI client:** to ask one about the server, give the MCP bridge `[mcp] url` and `password`.
+- **Uploads:** to upload to EDDN, EDSM or Inara from the server, read [Uploads](uploads.md) first: one uploader at a
+  time, and the server's note folder in the journal share.
 
 ## 🌐 Other devices on your network
 
 Outrider listens on 127.0.0.1 only unless `[server] host` says otherwise (`"0.0.0.0"` for your network; ⚙ Settings →
-Server, or the config file). Under that row Settings → Server says how a tablet or phone gets there: on this PC only,
-what to change (host `0.0.0.0`, a password, Restart); on your network, the address to open (`http://192.168.1.23:8025/tablet`,
-this PC's private addresses, up to three, each with Copy); in Docker, the address of the machine running Docker.
+Server, or the config file). Under that row Settings → Server says how a tablet or phone gets there:
+
+- **On this PC only:** what to change (host `0.0.0.0`, a password, Restart).
+- **On your network:** the address to open (`http://192.168.1.23:8025/tablet`, this PC's private addresses, up to
+  three, each with Copy).
+- **In Docker:** the address of the machine running Docker.
+
+### Windows' firewall
+
 **Windows' firewall** asks once, the first time Outrider listens on your network, whether Python may use it: tick
 **Private networks** and Allow. If Cancel was clicked, a tablet only spins: open Windows Security → Firewall &
-network protection → Allow an app through firewall → Change settings, and tick Private beside Python. A host that is no longer an address of this PC (the router gave it another) does not
-stop Outrider: it listens on 127.0.0.1 only, with a card saying so, until you fix it in Settings. A port already in
-use still stops it. It answers to any IP address, but by name only to `localhost`, the configured host and
-this machine's name; add others (a router's `mypc.lan`, say) to `[server] allowed_hosts`. This, and refusing changes
-sent by other web sites, stops a malicious page from reading your journals or pressing keys.
+network protection → Allow an app through firewall → Change settings, and tick Private beside Python.
 
-It does not stop people on your network, so set **`[server] password`** as well: a tablet or phone then shows a
-sign-in page once (the Android app its own) and stays signed in, also across Outrider restarts, until you change the
-password. The PC Outrider runs on never asks (except in Docker, where every browser signs in). The page is plain http, so the password crosses your network
-unencrypted: pick one you use nowhere else. Without one, anything on your network can do whatever the page does: read
-it, change bookmarks and the settings (the password and journal folders included), restart Outrider, use your stored
-EDSM and Inara keys and, on the game PC, press keys in the game (the control rail, the tests of auto honk and
-auto-target). Outrider says so at start.
+### Addresses and names
+
+- **A host that is no longer an address of this PC** (the router gave it another) does not stop Outrider. It listens
+  on 127.0.0.1 only, with a card saying so, until you fix it in Settings. A port already in use still stops it.
+- **Names:** it answers to any IP address, but by name only to `localhost`, the configured host and this machine's
+  name. Add others (a router's `mypc.lan`, say) to `[server] allowed_hosts`.
+- This, and refusing changes sent by other web sites, stops a malicious page from reading your journals or pressing
+  keys.
+
+### A password
+
+It does not stop people on your network, so set **`[server] password`** as well.
+
+- **Signing in:** a tablet or phone then shows a sign-in page once (the Android app its own) and stays signed in, also
+  across Outrider restarts, until you change the password.
+- **The PC Outrider runs on never asks** (except in Docker, where every browser signs in).
+- **Plain http:** the page is plain http, so the password crosses your network unencrypted. Pick one you use nowhere
+  else.
+- **Without one,** anything on your network can do whatever the page does: read it, change bookmarks and the settings
+  (the password and journal folders included), restart Outrider, use your stored EDSM and Inara keys and, on the game
+  PC, press keys in the game (the control rail, the tests of auto honk and auto-target). Outrider says so at start.
+
+### Behind an HTTPS reverse proxy
 
 An HTTPS reverse proxy on your own network (Caddy, nginx, a NAS's) works too: put its name in
-`[server] allowed_hosts` (say `outrider.lan`); Outrider answers it with or without a port and accepts its `https://`
-pages. A proxy running on the Outrider PC itself is fine with a password too, as long as it sends a forwarding
-header (`X-Forwarded-For`, `Forwarded` or `X-Real-IP`): Outrider then asks each device to sign in, as it would without
-the proxy. Caddy adds one by itself; nginx does not: add
-`proxy_set_header Host $host;` and `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` beside its
-`proxy_pass` (or `include proxy_params;` on Debian and Ubuntu, which has both). Without the forwarding header every
-device looks like this PC and skips the password, so check once from a phone: the page must ask for the password.
-Without the Host line nginx names Outrider's own address to it, and every change, the sign-in included, is refused as
-coming from another web site. A **TCP-level** forwarder on the Outrider PC (stunnel, an ssh or socat tunnel, HAProxy in tcp
-mode) adds no such header: every device it serves looks like this PC and skips the password, so do not put one in
-front of Outrider (in Docker, Outrider never counts loopback as this PC, so the container's own port forwarding is
-safe).
+`[server] allowed_hosts` (say `outrider.lan`). Outrider answers it with or without a port and accepts its `https://`
+pages.
+
+- **A proxy on the Outrider PC itself** is fine with a password too, as long as it sends a forwarding header
+  (`X-Forwarded-For`, `Forwarded` or `X-Real-IP`). Outrider then asks each device to sign in, as it would without the
+  proxy.
+- **Caddy** adds one by itself.
+- **nginx** does not: add `proxy_set_header Host $host;` and `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`
+  beside its `proxy_pass` (or `include proxy_params;` on Debian and Ubuntu, which has both).
+  - Without the forwarding header every device looks like this PC and skips the password, so check once from a phone:
+    the page must ask for the password.
+  - Without the Host line nginx names Outrider's own address to it, and every change, the sign-in included, is refused
+    as coming from another web site.
+- **A TCP-level forwarder** on the Outrider PC (stunnel, an ssh or socat tunnel, HAProxy in tcp mode) adds no such
+  header: every device it serves looks like this PC and skips the password, so do not put one in front of Outrider.
+  In Docker, Outrider never counts loopback as this PC, so the container's own port forwarding is safe.
 
 > [!CAUTION]
 > **Do not expose Outrider to the internet** (no port forwarding, no public name, no tunnel). It serves your
@@ -372,15 +470,18 @@ the game. **Back up now** in the Data tile, or in ⚙ Settings → Server → **
   backup…"). While the disk has room for fewer than two more, a card at the top of the page says so.
 - `backup_every_days = 0` turns automatic backups off.
 - Before a journal re-read (after an update that changes how journals are read, or `--rescan`) the database is always
-  backed up first, even with `backup_every_days = 0`: the zip's name ends in `-pre-reread`, and it rotates out with
-  the others. If more than half the journals the database was read from are gone (neither where they were read nor
-  in your journal folders now), Outrider says so at the top of the page.
+  backed up first, even with `backup_every_days = 0`. The zip's name ends in `-pre-reread`, and it rotates out with
+  the others.
+- If more than half the journals the database was read from are gone (neither where they were read nor in your
+  journal folders now), Outrider says so at the top of the page.
 - ⚙ Settings → Server → **Backups** lists the zips, newest first (marked "automatic", "by hand" or "before a re-read"
   where that is known), with the command that restores the one you click and a **Copy** button. Under the list it
   says what they take on the disk (the zips, the journal archive, any pre-restore copies) and the space left free.
 
-**Restoring.** The journals alone can rebuild everything:
-`python3 ed_outrider.py --legacy data/backups/journals` reads them into a fresh database.
+### Restoring
+
+The journals alone can rebuild everything: `python3 ed_outrider.py --legacy data/backups/journals` reads them into a
+fresh database.
 
 To get the database back (bookmarks, the Spansh cache, your settings), stop Outrider, then from the Outrider folder:
 
@@ -391,13 +492,15 @@ To get the database back (bookmarks, the Spansh cache, your settings), stop Outr
 | Windows | `launch_outrider.bat --restore` |
 | Docker (from the folder with `docker-compose.yml`) | `docker compose stop`, then `docker compose run --rm outrider --restore`, then `docker compose up -d` |
 
-Settings → Server → Backups gives the exact command for the zip you pick, with `--config` and `--db` when Outrider
-was started with them. `--restore` refuses while Outrider is running (it holds `ed_outrider.sqlite.lock` beside the
-database, in any container or on any port), checks the zip first, and keeps the database it replaces as
-`ed_outrider.sqlite.pre-restore-<date-time>`. `--list-backups` lists the zips; add `--db` for a second database.
-`--restore` leaves `speech.json`, `speech_banned.json`, `pronounce.json`, `ed_outrider.toml` and your personality files
-alone: unzip those by hand if you need them (an old `speech.json` lacks newer lines).
+- **The exact command:** Settings → Server → Backups gives it for the zip you pick, with `--config` and `--db` when
+  Outrider was started with them.
+- **`--restore` refuses while Outrider is running:** it holds `ed_outrider.sqlite.lock` beside the database, in any
+  container or on any port.
+- **It checks the zip first,** and keeps the database it replaces as `ed_outrider.sqlite.pre-restore-<date-time>`.
+- **`--list-backups`** lists the zips; add `--db` for a second database.
+- **Left alone:** `--restore` leaves `speech.json`, `speech_banned.json`, `pronounce.json`, `ed_outrider.toml` and your
+  personality files alone. Unzip those by hand if you need them (an old `speech.json` lacks newer lines).
 
 ---
 
-[ED Outrider](../../README.md) · [What's new](whats-new.md) · **Install and run** · [The views](views.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings and good to know](settings.md) · [For the curious](for-developers.md)
+[ED Outrider](../../README.md) · [What's new](whats-new.md) · **Install and run** · [The views](views.md) · [Now](now.md) · [Exploring](exploration.md) · [Plot Route](plot-route.md) · [Cargo and trading](cargo-and-trading.md) · [Voice and alerts](voice-and-alerts.md) · [Automation](automation.md) · [On a tablet](tablet.md) · [In-game overlay](overlay.md) · [Uploads](uploads.md) · [Settings](settings.md) · [For the curious](for-developers.md)
