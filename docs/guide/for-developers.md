@@ -21,7 +21,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/dock.py` | The nearest place to dock: Spansh's stations and carriers, the DSSA list, your carrier and your squadron's, merged and filtered |
 | `outrider/pads.py` | Where your landing pad is: the pad layouts of starports and carriers (after bgol's LandingPad plugin, GPL-2+), the pad's place in words, the pad diagrams |
 | `outrider/cargo.py` | Cargo: the ship's hold and your carrier's (folded from the journal), the carrier's tritium, the Sell / Buy lookup, Sell all's stations for the whole hold and trade routes |
-| `outrider/tts.py` | Spoken alerts with Piper (optional), and playing lines and sounds on the PC |
+| `outrider/tts.py`, `resources/community_voices.json` | Spoken alerts with Piper (optional), Piper's voices and the vetted community voices (pinned to a commit, sha256-checked) for More voices, and playing lines and sounds on the PC |
 | `resources/speech.json` | The spoken lines, yours to edit (bans go in `data/speech_banned.json`) |
 | `resources/personalities/` | The shipped personality files (naval, Vulcan, Klingon...), one each in `speech.json`'s format; yours go in `data/personalities/` |
 | `outrider/speech.py` | Loads and checks `speech.json`; `--skeleton "Name"` writes a personality file to fill in |
@@ -30,6 +30,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/button.py` | The co-pilot button (Linux, optional); `--listen` |
 | `outrider/auth.py` | Sign-in for other devices: `[server] password`, session tokens, the sign-in rate limit |
 | `outrider/rail.py` | The tablet's control rail: the contexts (ship, SRV, Nomad, fighter, on foot), the default buttons, their states |
+| `outrider/panel.py` | The tablet's Ship page: its board of lights (life support, modules left off, danger, shields, heat, interdiction, under attack...) worked out from Status.json and the journal; a tap clears a latched one |
 | `outrider/config_edit.py` | Settings' Server settings: every config key, changed in the file in place |
 | `outrider/service.py` | Start with this computer: the systemd user unit (Linux) or the Startup folder entry (Windows); `--install-service`, `--uninstall-service` |
 | `outrider/serverlog.py` | Outrider's own log (`data/outrider.log`, shown in Settings → Server), with the passwords and keys kept out |
@@ -50,7 +51,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/bio.py` | The exobiology predictor; `--backtest` scores it against your journals, `--update-rules` fetches the rules by hand |
 | `resources/bio_rules.json` | Spawn rules, nebulae and regions from BioScan and klightspeed's region map; the server never writes it: its refreshed copy and ExploData's colour variants (`bio_colours.json`, never shipped) are downloaded beside your database, in `data/`, on the first start (`outrider/bio.py`) |
 | `outrider/checklist.py` | The Exo-Biology, Geology and Phenomena checklists: every species and site by galactic region, with what you have done with it there |
-| `outrider/canonn_sites.py` | A body's known Guardian sites and geology from Canonn, read for the body panel's Pins (📍 pin it) |
+| `outrider/canonn_sites.py` | What Canonn has had reported: a body's known Guardian sites and geology for the body panel's Pins (📍 pin it), and a system's phenomena in space, said as you arrive (`[server] canonn_reports`) |
 | `outrider/codex_images.py` | The checklists' pictures: links to Canonn's screenshots and their credits, refreshed from Canonn once a day |
 | `resources/geo_codex.json` | The codex entries of the Geology (the surface) and Phenomena (in space) checklists, each with its `list`, and how many sites of each are reported per region |
 | `outrider/ggg.py` | Potential green gas giants: the community's seven-layer ladder model, from a scan's temperature, mass and radius |
@@ -92,7 +93,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `scripts/landmarks_probe.py` | A one-off probe of what Spansh reports about the life on a body (dumps, body search, its filters); saves the answers; not part of the tests |
 | `scripts/trader_probe.py`, `scripts/exact_probe.py` | One-off probes of Spansh's material-trader fields and of its exact plotter's jumps; save the answers; not part of the tests |
 | `scripts/build_blueprints.py` | Rebuilds `resources/blueprints.json` from EDCD's coriolis-data at its pinned commit |
-| `scripts/dark_icons.py` | Writes the tablet's Dark theme icons (Lucide, ISC) into `static/themes/dark.css` |
+| `scripts/dark_icons.py` | Writes the tablet's Dark theme icons into `static/themes/dark.css` and the Ship page's light icons (every theme) into `static/tablet.css` (Lucide, ISC) |
 | `data/` | Your own files, git-ignored: the database, `browser_defaults.json`, `speech_banned.json`, `pronounce.json`, `personalities/`, `backups/`, `piper-voices/`, `fonts/` |
 | `docs/` | Notes for contributors and their coding agents (code map, rules, journal traps, design notes, changelog); `guide/` is this user guide, `images/` its screenshots |
 

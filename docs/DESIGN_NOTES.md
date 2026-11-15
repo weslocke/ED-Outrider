@@ -1904,7 +1904,9 @@ upstream project's choices, not rules of the game.
   captions. Pillow 11 or newer (`requirements.txt`): Pillow 10 writes a JPG without its XMP and says nothing.
 - **Codex folders are a copy, under the export folder, in English, never filed by a guess** (2026-10-26, `[screenshots]
   codex`, off by default): a shot that knows its plant or formation is also saved to `Biology/<genus>/<species>/<colour>/`
-  (no colour folder for a species with none) or `Geology/<group>/<formation>/` inside the export folder, whichever
+  (no colour folder for a species with none) or `Geology/<group>/<formation>/`, or, for a shot taken during a drop at
+  a phenomenon in space, `Phenomena/<group>/<entry>/` (the codex entry logged in that visit, the latest before the shot
+  or else the visit's first; none logged, none filed), inside the export folder, whichever
   commander took it: a copy beside the shot's own, never instead of it. The names are the shipped lists' English ones
   (the exobiology rules and their colour tables, `geo_codex.json`) in any game language, so the checklists find them.
   The Exo-Biology checklist itself reads colours the same way (each run's variant code, `own_organic.variant`, PARSER
@@ -1926,7 +1928,7 @@ upstream project's choices, not rules of the game.
   copied). One that fails halfway leaves nothing behind, and a failure is said on the screenshots card: the shot
   itself is kept.
 - **Your own pictures on the checklists follow one switch** (2026-10-26, `[screenshots] codex_show`, off by default):
-  the Exo-Biology and Geology checklists show a random picture from the entry's codex folder (any picture put there,
+  the Exo-Biology, Geology and Phenomena checklists show a random picture from the entry's codex folder (any picture put there,
   edited or cropped, not only Outrider's), Canonn's where there is none, and each click on a colour picks another (GET
   `/api/checklist/picture`). The 📷 beside the entries and colours you have pictures of shows only while it is on, as
   the panel shows Canonn's otherwise (`own_pics`, one walk of the folders per checklist). Only what is inside the
@@ -2114,6 +2116,12 @@ confirmed while playing. Treat reports about them as likely real.
   the oxygen countdown takes a life support's emergency oxygen by class (D = 7.5 min fits the author's death).
 - Modules left off, said out loud (2026-11-09): the flags and events were read in a live game, the alert itself is tested
   with fakes only; life support off at a login (does the flag come on, when?) has not been seen.
+- Phenomena (2026-11-09/10): the arrival line from Canonn's reports (and the revisit line from your record) on a live
+  arrival, Phenomena's 🔍 nearby against Canonn's live lists, and a shot at a phenomenon filed under
+  `Phenomena/<group>/<entry>` (tested on stubbed Canonn answers and the author's replayed 2026-11-10 visit).
+- The heat alert's "Overheating" on a live `HeatWarning` (the event was seen in game; the alert after it only with
+  fakes), and the overlay strip's reputation line and its reference system (`[overlay] strip_reference`) over a real
+  game (rendered frames only).
 - A codex picture said (2026-11-08): a plant's (the Exobiologist's, row biopic) works in game (the author, 2026-11-08); a
   geology formation's (the Science Officer's, geopic) is tested on the fixture's Water Ice Geyser only.
 - Ring mining: a stint on a live drop with its hotspot from Status.json's Destination, the

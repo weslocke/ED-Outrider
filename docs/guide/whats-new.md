@@ -11,6 +11,67 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## Next release · not released yet
+
+**A Ship page for the tablet with a board of lights, a voice that tells you when a repair has left life support off,
+the phenomena found in space as a checklist of their own and told as you arrive, community voices in More voices, and
+a clock beside the title.** Nothing is re-read at the first start.
+
+### 📱 The tablet's Ship page
+
+- **Ship**, at the top of the tablet's page list: your ship's hull, lowest module, fuel, cargo and power, and a board
+  of lights that stays dark while all is well: Life support (counts down your oxygen), Modules (left off by the AFMU:
+  tap it once they are back on), Danger, Shields, Heat, Interdiction, Under attack, Hull, Canopy, Fuel, Unsold data,
+  Rebuy, Wanted, Mass lock, FSD and Silent running, each with its icon. See [On a tablet](tablet.md).
+- **The PC's warning levels on every tablet:** the unsold data levels and the fuel jumps warning set on the PC now
+  reach the tablet (they used to keep the defaults there).
+
+### 🔧 Modules left off after a repair
+
+- **A new alert, Module left off** (the Chief Engineer, under Danger and risk): the AFMU switches a module off to
+  repair it and leaves it off. Life support is said 20 seconds after its repair and again every 45 seconds until it is
+  back on; any other module once, after the last repair of a run ("Switch FSD, fuel scoop and thrusters back on."). A
+  login or docking that finds a vital one off (life support, FSD, thrusters, distributor, sensors, scoop, shields)
+  says so too. See [Voice and alerts](voice-and-alerts.md#-alerts).
+- **The heat alert works again:** it listened for an event the game does not write; it now hears the game's own heat
+  warning ("Overheating").
+
+### 🌀 Phenomena
+
+- **Bio/Geo's fourth checklist, Phenomena:** the codex entries found in space at notable stellar phenomena (Lagrange
+  and storm clouds, crystals, mineral spheres, the space organisms, the lettered anomalies), by galactic region, with
+  **🔍 nearby** for the closest systems where one has been reported. Geology is now the surface formations only.
+- **Told as you arrive:** where other commanders reported phenomena in a system, the phenomena alert names them and
+  says which is new to your codex, from Canonn's reports (only the system's name is sent; `[server] canonn_reports =
+  false` stops it). It speaks again on a revisit while there are sites you have not dropped at.
+- **Screenshots** taken at a phenomenon go into your codex folders too, under `Phenomena/<group>/<entry>/`.
+
+### 🗣 Voices and the crew
+
+- **Community voices in More voices** (thanks to Kurbo26, [issue #25](https://github.com/weslocke/ED-Outrider/issues/25)):
+  warmf, Mira, LibriVox (ten Australian English speakers) and ManyVoice (sixteen speakers), marked **community**, each
+  with its maker, licence and page in the hover. Any other Piper voice still works dropped into `data/piper-voices/`;
+  the guide points to [PiperHub](https://piperhub.org/) for more.
+- **One person in two roles:** a crew line naming another member is no longer said by someone with the same name.
+- **(Revert to Crew Defaults)** in Settings → Alerts puts every alert back to its own crew member, after asking;
+  each drop-down marks the default.
+
+### 🖥 The page and the overlay
+
+- **A clock beside the title** (thanks to Psilovybin, [issue #26](https://github.com/weslocke/ED-Outrider/issues/26)): UTC,
+  the game's time, by default; Settings → Display → **Clock beside the title**: local time or off. Not on the tablet.
+- **The overlay's system strip** (thanks to Hiner399, [issue #24](https://github.com/weslocke/ED-Outrider/issues/24))
+  names whose reputation it is, on a line of its own ("Allied with Mother Gaia"), and can measure its distance from a
+  system of your choice instead of Sol: Settings → In-game overlay → **Strip's distance to**.
+
+### 🐛 Fixes
+
+- A mission done but not handed in no longer vanishes from CMDR → Missions at the next login; ☆ Bookmark works on Sell
+  / Buy rows; long distances are spoken right in browsers that group thousands with a dot; old pre-3.3 scans no longer
+  sit in the Unsold estimate for good; Sell / Buy for a medium ship finds the Odyssey settlements with large pads.
+- A pin typed letter first (`N 12.34 W 45.67`) lands on the right side of the planet; a body skipped on the system map
+  shows as "skipped:" on Here's to-do line; a Restart after `--rescan` on Windows no longer re-reads every journal.
+
 ## 2026.11.08 · 8 November 2026 · The System Map Release
 
 **The system you are in drawn in 3D with the suggested order on it and where you have been, an order that follows

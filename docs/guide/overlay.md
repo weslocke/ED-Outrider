@@ -69,17 +69,18 @@ before.
     <img src="../images/overlay-pad.png" alt="Two docking panels over a starfield: PAD 34 at Jameson Memorial, at the back, up on your right, with the starport seen from the slot; PAD 7 at a fleet carrier, port side, toward the bow, with the deck seen from above" width="900">
   </p>
 
-- **The system strip** (optional, off until you tick it), made for the top of the screen: two short lines, centred.
+- **The system strip** (optional, off until you tick it), made for the top of the screen: two short lines, centred
+  (three in a populated system).
   The first says where you are: the system, its region and the star (⛽ scoopable, ⚡ a neutron star or white dwarf),
-  and in a populated system, on its right, the security level. In a populated system a short line of its own names
-  your reputation with the controlling faction: "Allied with Mother Gaia" (Hostile in red; Unfriendly up to -35,
-  Neutral to +4, Cordial to +35, Friendly to +90, then Allied).
+  and in a populated system, on its right, the security level.
   The second, condensed: the distance from Sol (or from the system you name under **Strip's distance to** in
   Settings → In-game overlay, say an expedition's end or your home system), what its data pays now and at most, 🏁 when you discovered it, how many
   bodies and how many found of them, 🏁 how many you discovered, 🗺 the planets you mapped of all of them, and whether
   Spansh knows the system ("Spansh ✗ (new to it)" when it does not; "Spansh ✓ (pre-Odyssey)" when its data predates
   Odyssey's surface data: worth a rescan).
-  While you mine in a ring in a mining ship, a third line: "⛏ 4 B Ring · Platinum · 38 t/h · hold 112/256 t (Platinum
+  In a populated system a short line of its own under it names your reputation with the controlling faction: "Allied
+  with Mother Gaia" (Hostile in red; Unfriendly up to -35, Neutral to +4, Cordial to +35, Friendly to +90, then Allied).
+  While you mine in a ring in a mining ship, a last line: "⛏ 4 B Ring · Platinum · 38 t/h · hold 112/256 t (Platinum
   80, Painite 32) · limpets 14 · full in ~41 min" (the same line as on Now, without Now's "hits 3/8"; under 10 limpets,
   "(+12 by synthesis)" when your materials make more; Settings → Mining).
 - **Now (To-Do & Info)** (optional): the page's Now view in a few lines, anywhere in the system (by default not while
@@ -103,7 +104,7 @@ before.
   show what they could be. The foot says how many are sampled, what is left and how many bodies are under your level.
 - **Alerts** (optional): the page's alerts for a few seconds each, under the system strip at the top: what you
   would hear or see as a notification ("B 1: Earth-like world", "Fuel low", "Interdicted"), its title and a line or two
-  of its text, newest first, three at most. Each stays 8 seconds; danger (hull, heat, interdiction, fuel, a rig too far,
+  of its text, newest first, three at most. Each stays 8 seconds; danger (hull, heat, interdiction, a module left off after a repair, fuel, a rig too far,
   the suit running low, the ship lost, a bounty put on you, the carrier leaving without you) stays 15 seconds, in red with a red frame. It
   shows every alert switched on in **Settings → Alerts** (mining's in **Settings → Mining**) in the browser that saw it (any of notify, sound or speak ticked), even while
   the voice is off or hushed. The alerts are worded by Outrider's page, so a page must be open somewhere (a browser

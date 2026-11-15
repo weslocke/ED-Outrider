@@ -126,8 +126,8 @@ what each death cost, and your 25 most valuable finds.
 <b>Bio/Geo</b> — <b>My Samples</b>: every exobiology sample run: species, variant, body, value, and whether it is
 <i>aboard</i>, <i>sold</i> or <i>lost</i>. Filter, sort, export; codex entries underneath. Unsold runs are
 priced one by one ("x5 on 42 of 47 runs"); a sold run shows what Vista Genomics paid for it, the estimate in its hover
-(≈ before an estimate where the sale was made before Outrider kept what each entry paid). Beside it, the <a href="#-the-exobiology-checklist">Exo-Biology and Geology
-checklists</a>.
+(≈ before an estimate where the sale was made before Outrider kept what each entry paid). Beside it, the <a href="#-the-exobiology-checklist">Exo-Biology, Geology and
+Phenomena checklists</a> (Phenomena: what is found in space at notable stellar phenomena).
 <br><br><img src="../images/samples.png" alt="Bio/Geo: My Samples">
 </td>
 <td width="50%" valign="top">
@@ -162,8 +162,9 @@ path between them from where you are (the body you are at or were last at, else 
 of each leg, from body to body where the bodies are now ("≈" when about: from one star's family to another's in
 a multi-star system, or an orbit your scans do not give). Tap a number to go there first: Now, the voice, the to-do
 line and the overlay follow; <i>↺ order</i> puts the suggested order back. A body you Skip on the system map is left
-out here too, from the to-do line and the numbers, until you leave the system; the system map's <b>skipped:</b> line
-(Now, or 🪐 3D here) puts it back. <i>🪐 3D</i> draws the system you are in
+out here too, from the order and the numbers, until you leave the system: the to-do line names it ("skipped: 5 b")
+with <i>↺ order</i>, which puts all of them back, and the system map's <b>skipped:</b> line (Now, or 🪐 3D here) puts
+one back. <i>🪐 3D</i> draws the system you are in
 as the system map does (below, under Now).
 <br><br><img src="../images/schematic.png" alt="The system schematic">
 </td>
@@ -290,7 +291,8 @@ has a fixed place, and a value never breaks in the middle (a line wraps only bet
    stellar phenomena, all in rings · 1 of 3 visited": each drop at one counts, since the journal cannot tell which of a
    kind's sites it was; then what Canonn's reports name there, "reported: ✓ Albulum Gourd Mollusc, Prasinum Metallic
    Crystals (new)", ✓ for one you logged in the system, (new) for one new to your codex in the region; before the FSS
-   lists any, "🌀 Reported by Canonn: …" alone) and Spansh's pre-Odyssey data).
+   lists any, "🌀 Reported by Canonn: …" alone; Canonn is asked once as you arrive, with the system's name only, and
+   `[server] canonn_reports = false` stops it) and Spansh's pre-Odyssey data).
 6. **The foot,** small: your discovery streak and the nearest unvisited system, this session, the spoken captions and
    (on a tablet over plain http) the screen-sleep hint.
 
@@ -320,7 +322,7 @@ map.
 - **Tap a stop** (a row of the list, its number or the body on the map) for why it is on the list, under its row: the
   body's class, its mapping value now and with your bonuses, each genus with its likely species and value (and with the
   ×5 first footfall when it still pays it), what is sampled or lost, its gravity and air, and its leg. At the top,
-  **Skip** leaves it out of the order everywhere (Next, the "then:" line, the map, Here's to-do line and schematic, the overlay) until you leave the
+  **Skip** leaves it out of the order everywhere (Next, the "then:" line, the map, Here's schematic, the overlay; Here's to-do line names it under "skipped:") until you leave the
   system; the **skipped:** line under the list puts one back, and ↺ order puts back all of them. **Do first** makes it
   the first stop. Tap it again, or another, to close it. **Hover or tap any other body** for its card (its class and how
   far it is from where you are).
@@ -678,7 +680,7 @@ back to.
 
 - **Adding one:** open the body's panel (Here or Overview, before you reach it too: from a Canonn page while still in
   supercruise), its **📍 Pins** section, and paste or type the coordinates: `-12.34, 45.67`, `Lat -12.34 Lon 45.67`,
-  `12.34 S, 45.67 E`, text around them is fine; it shows what it read before you add it. On a body, **📍 Pin here** (by
+  `12.34 S, 45.67 E`, `N 12.34 W 45.67`, text around them is fine; it shows what it read before you add it. On a body, **📍 Pin here** (by
   the map's legend title) pins where you are, and **📋** copies your coordinates to share. **📍** beside a site, a
   mining location or the ship in the legend pins it and takes you there.
 - **Known sites:** on a landable body with Guardian or geological signals, the 📍 Pins section also lists what other

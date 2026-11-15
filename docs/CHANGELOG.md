@@ -2,6 +2,26 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-15 · The Opus docs sweep for the next release
+An Opus sweep of every doc and screenshot since v2026.11.08 (7 auditors, each area's findings checked by a verifier
+against the code): 56 confirmed (1 high, 17 medium, 38 low; several the same gap seen from two areas), 9 refuted.
+- **What's new:** a section for the coming release (the Ship page, Module left off, the heat alert, Phenomena, community
+  voices, the crew, the clock, the overlay strip, fixes), its version and name to be set at release.
+- **Guides:** tablet.md (the Ship page's lights by their real names, Life support and Modules; the grey level; the lights
+  a tap puts out; Lucide on the lights); voice-and-alerts.md (the Module left off alert, the Engineer's and Tactical's
+  lists, More voices one language at a time); views.md (Phenomena in Bio/Geo's summary, skipped bodies on Here's to-do
+  line, when Canonn is asked, letter-first pin coordinates); automation.md and settings.md (Phenomena codex folders, the
+  clock); overlay.md (the strip's three lines, Module left off as danger); plot-route.md (Phenomena's 🔍 nearby); README
+  (Phenomena, the Ship page, the module alert, Canonn's phenomena reports, a Lucide credit).
+- **Developer docs:** AGENT_GUIDE (module_watch and panel_watch, HeatWarning, the crew's `{rows: "defaults"}`, the strip's
+  reference system, `rescan_asked`, Phenomena codex folders, the Ship icons, the clock, `phenomena_reported`'s 16 lines);
+  for-developers.md (outrider/panel.py, community voices, canonn_sites, dark_icons); JOURNAL_REFERENCE (HeatWarning,
+  UnderAttack, CockpitBreached, Loadout's `On`, the Ship page's Status.json fields and flags, the 2026-11-15 Rhino check:
+  still no rig events, collections add raw `MaterialCollected`); DESIGN_NOTES (Phenomena codex folders and checklist
+  pictures; not yet tried: Phenomena, HeatWarning's alert, the strip's reputation and reference).
+- **Page:** the Bio/Geo tab's hover and the codex-folders tooltip name Phenomena; the `[screenshots] codex` comment in
+  ed_outrider.toml.example and the written config too.
+
 ## 2026-11-12 · Smoke: two load flakes held steady
 - **Tests:** the voice lab block holds the scratch server's payloads (one landing mid-block replaced its stubbed voice);
   the route pane waits for the Overview to draw its route button instead of a fixed 200 ms.

@@ -171,7 +171,7 @@ on a server, without the keyboard, or while the box below lists a missing bindin
 is greyed out too, and a failed row gets no ⟳ Retry).
 
 **🎯 and Plot route anywhere.** A 🎯 also sits beside each bookmark, the header's next stop, the Nearest finder's rows,
-Search's results, the Exo-Biology and Geology checklists' "🔍 nearby" rows, Now's nearest catalogued sight, and a
+Search's results, the Exo-Biology, Geology and Phenomena checklists' "🔍 nearby" rows, Now's nearest catalogued sight, and a
 mining session's place and each ring of Hotspots in CMDR → Sessions (never your own system), and left of
 each system's name in Nearby (the Overview's too, in a column of their own). **Plot route** beside a bookmark or the
 next stop (or on the Map's tapped card) puts the system in To and opens the form; it plots at once when you follow no

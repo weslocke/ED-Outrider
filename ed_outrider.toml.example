@@ -323,8 +323,8 @@
 # clipboard = ""            # after each shot, put this picture on the clipboard: "full", "medium", "small", "crop"
 #                           # ("" = none)
 # codex = false             # also save a tagged shot (a named plant or formation) to Biology/<genus>/<species>/<colour>
-#                           # (no colour folder for a species with none) or Geology/<group>/<name> in the export
-#                           # folder: your own codex
+#                           # (no colour folder for a species with none) or Geology/<group>/<name>, and a shot at a
+#                           # stellar phenomenon to Phenomena/<group>/<entry>, in the export folder: your own codex
 # codex_format = ""         # "" = a copy of the picture exported; "png", "jpg" or "webp" = the shot converted again at
 #                           # full size
 # codex_quality = 90        # a codex JPG's or WebP's quality (50 to 100)

@@ -127,7 +127,9 @@ package (see [Install and run](install.md)), and is off until you tick it.
   or tagged with the composition scanner, or of a geology formation you logged in your codex, knows what it shows: the
   variant ("Stratum Tectonicas - Lime") or the formation ("Water Ice Geyser"), kept with the shot, written into the
   image and in the name when you add `{subject}` to it. On foot the game's line has no position, so Outrider takes
-  yours from that moment. Every picture carries its title, a description (system, body, what it shows, position,
+  yours from that moment. A shot taken in space at a notable stellar phenomenon (from the drop there until you are back
+  in supercruise, jump or dock) knows the codex entry you logged there: the latest before the shot, or for a shot
+  taken before any, the first one logged in that visit (none: it knows nothing). Every picture carries its title, a description (system, body, what it shows, position,
   commander, time) and keywords inside it, in the places viewers look: XMP (photo managers), EXIF (Windows' Properties
   → Details, its "Date taken" in your local time) and PNG's own text.
 - **Your own codex:** with **Also save tagged screenshots into your codex folders** ticked, a shot that knows its plant
@@ -135,15 +137,15 @@ package (see [Install and run](install.md)), and is off until you tick it.
   first copy made) or as its own full-size PNG, JPG or WebP at its own quality (small everyday pictures, fine codex
   ones: the game's shot is converted again for it, before the BMP is deleted or moved), to
   `Biology/<genus>/<species>/<colour>/` (a species with no colours, such as the anemones, has no colour folder) or
-  `Geology/<group>/<formation>/` inside the export folder, whichever commander took it:
+  `Geology/<group>/<formation>/` or `Phenomena/<group>/<entry>/` inside the export folder, whichever commander took it:
   `Biology/Tussock/Tussock Albata/Green/Smojooe UW-E c11-28 7 f 2026-10-26 08-51-14.jpg`. The folders take the
   English names whatever the game's language. A shot of a plant you have not sampled or tagged yet knows no plant,
   so it is not copied, nor is one whose colour cannot be told. Each shot filed this way is a notification and a line
   ("Picture filed in your codex: Bacterium Volu."): a plant's said by the Exobiologist (the alert row **Codex picture:
-  plant**), a formation's by the Science Officer (**Codex picture: geology**), each with its own switches in Settings →
+  plant**), a formation's or a phenomenon's by the Science Officer (**Codex picture: geology**), each with its own switches in Settings →
   Alerts. Shots converted later (at start-up, or with "Convert the screenshots already there") are filed quietly.
-- **Your pictures on the checklists:** **Show your own pictures on the Bio/Geo checklists** makes the Exo-Biology and
-  Geology checklists show one of your own pictures of a species' colour or a formation, picked at random from its
+- **Your pictures on the checklists:** **Show your own pictures on the Bio/Geo checklists** makes the Exo-Biology,
+  Geology and Phenomena checklists show one of your own pictures of a species' colour, a formation or a phenomenon, picked at random from its
   codex folder each time you open it (and at each click on a colour), instead of Canonn's; Canonn's still shows where the folder is missing or has
   none. Any picture in the folder counts (PNG, JPG, WebP, GIF), so crop or edit the copies, or add your own; one that
   does not open (empty, or not really a picture) is passed over. Under the picture: "Your picture: 2026-10-26, Smojooe

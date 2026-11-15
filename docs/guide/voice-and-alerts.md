@@ -58,6 +58,14 @@ the game too, for a few seconds each:
 - a sale that left data aboard (Universal Cartographics sells 50 systems a page; at Vista Genomics, the species
   you kept back), said 90 seconds after the last page
 - hull damage, overheating, interdiction, and unsold data past a threshold
+- **a module left off** (its own row, **Module left off**, under Danger and risk): the AFMU switches a module off to
+  repair it and leaves it off. Life support is a danger line, said 20 seconds after its repair and again every 45
+  seconds until the game's danger warning clears, a few seconds after you switch it back on ("Life support is off.
+  Switch it back on."). Any other module is said once, about 20 seconds after the last repair of a run ("Switch FSD,
+  fuel scoop and thrusters back on."), because the game does not report switching one back on. A login, respawn or
+  docking that finds life support, the FSD, thrusters, power distributor, sensors, fuel scoop or shields off says so
+  too, once a login. Switching life support off by hand, with no repair, says nothing: the game writes nothing for it.
+  The tablet's Ship page shows them as lights (see [On a tablet](tablet.md)).
 - **wanted** (its own row, **Wanted**, under Danger and risk): a bounty put on you in this system, said as a danger line
   (with the crew on, by Tactical while **Danger lines always in Tactical's voice** is on, else by Comms) with where to pay it off: "Brewer Corporation has put a 500 credit bounty
   on you. Nearest Interstellar Factors: Hamilton Port in Wolf 359, 12 light-years." The nearest in another system when
@@ -197,6 +205,8 @@ Outrider runs (a Docker server too):
   when it is ready it is picked above, so you can ▶ Hear it (and its speakers) and press Use this voice if you like it.
   **Select** picks one you already have.
 - **Community voices** are in More voices too, marked **community**: voices made by others, not by Piper's project.
+  More voices shows one language at a time, starting with your own voice's: warmf, Mira and ManyVoice are under
+  English (United States), LibriVox under English (Australia).
   Hover the word for who made it, its licence and what it is; a click opens its page. Their ▶ sample is the maker's
   own recording, where there is one. There are only a few, each checked before it was listed: free to use, its
   training stated, not a copy of a real person's or a character's voice, and tried in Outrider. Each downloads
@@ -332,7 +342,7 @@ the sentence ends:
 | Navigator | jumps and every route line (the Highway, survey and trade routes), fuel short of a refuel, last scoop, auto-target, wrong target, supercharges, surface pins |
 | Science Officer | target verdicts, arrivals, the honk, briefings, the FSS, mapped planets, high-g approaches, bio bodies ahead, leaving with work left, codex, phenomena, green gas giants, rare stars, surface sites, signals, curiosities, geology codex pictures |
 | Exobiologist | valuable bodies, sampling, Exomastery routes, plant codex pictures |
-| Chief Engineer | fuel, tank full, scooping stopped, jumponium, hull and heat, the suit running low |
+| Chief Engineer | fuel, tank full, scooping stopped, jumponium, hull and heat, modules left off after a repair (life support is Tactical's while Danger lines always in Tactical's voice is on), the suit running low |
 | Quartermaster | sales, unsold data, your carrier, its upkeep and its trips, losses |
 | Comms Officer | the game's start and exit, someone scanning your firsts, an upload on hold, docking pads and refusals, a bounty on you (Tactical's while Danger lines always in Tactical's voice is on), other players' chat (read aloud, below) |
 | Tactical | every danger line (while Danger lines always in Tactical's voice is on) |
@@ -347,7 +357,7 @@ the sentence ends:
   you give a member a voice of its own. A member left "as the personality" speaks in that personality's voice
   (Personality voices). Whenever a member cannot speak (its voice not installed or failing to load), the XO says the
   line instead, so no line is ever lost; the table says why under its name, and Show log says it once.
-- **Danger lines always in Tactical's voice** (on by default): hull, heat, interdiction, the suit running low, the fuel
+- **Danger lines always in Tactical's voice** (on by default): hull, heat, interdiction, life support left off, the suit running low, the fuel
   warnings, your carrier leaving without you, a ship lost, a rig too far, a bounty on you, so a danger line is never mistaken for chatter. Off, they stay with
   their alert's crew member. Danger still comes first either way.
 - **Who says which alert:** ⚙ Settings → Alerts has a **Crew** column while the crew is on: move any alert to another

@@ -27,10 +27,12 @@ was clicked).
 - **The pages** are on the left in three groups: Explore (Now, Nearby, Here, Bio/Geo), Navigate (Bookmarks,
   Search, Map, Plot Route) and Records (History, Log, Materials, CMDR, My firsts). There is no Overview.
 - **Ship**, at the top of the page list, is a status board: your ship's hull, lowest module, fuel, cargo and power, and a
-  board of lights that stays dark while all is well. Red is danger, amber a caution, cyan a danger with a known cause.
-  **Life support off** counts down your oxygen and goes out by itself once it is back on. **Off after repair** lists the
-  modules the AFMU left off (the game does not report switching one back on, so tap it when you have); **Clear** puts
-  out every light that needs a tap. A tablet showing Ship stays on it: nothing switches its page but a tap. Danger
+  board of lights that stays dark while all is well. Red is danger, amber a caution, cyan a danger with a known cause,
+  grey a note (mass lock, the FSD charging or cooling down, fuel scooping, heat after an overheat). **Life support**
+  lights red when it is off, counts down your oxygen and goes out by itself once it is back on. **Modules** lists the
+  modules the AFMU left off ("off: Fuel scoop · tap when back on": the game does not report switching one back on, so
+  tap it when you have). Heat after an overheat ("overheated 38 s · check modules"), Under attack (also out by itself
+  after a quiet minute) and Canopy stay lit until tapped too; **Clear** puts out every light that needs a tap. A tablet showing Ship stays on it: nothing switches its page but a tap. Danger
   with no known cause says "check life support": the game writes nothing when you switch it off by hand. The unsold
   and fuel warning levels are the PC's (Settings there), on every tablet.
 - **Tap a row** in a table for all of its facts, including the columns too narrow to show, with Show in Here,
@@ -102,7 +104,7 @@ Any browser at `/tablet` works too, without the wake word and Ask, and with ever
 
 The fonts are Antonio and Barlow Condensed, both under the SIL Open Font License and shipped with Outrider, as are the
 other themes' (Michroma, Saira, Orbitron, Exo 2, Russo One, Marcellus, Cinzel, Cormorant Garamond, Share Tech Mono, Rajdhani,
-Oxanium, Inter, Metal Mania); Dark's icons
+Oxanium, Inter, Metal Mania); Dark's icons and the icons on the Ship page's lights (every theme)
 are Lucide's (ISC licence, in `static/icons/`). A heading font of your own goes in your git-ignored `data/` folder and
 is never shared: `data/fonts/<theme>-display.ttf`: `lcars-display.ttf`, `elite-display.ttf` (a Eurostile-style
 face), `babylon5-display.ttf`, `narn-display.ttf`, `minbari-display.ttf`, `centauri-display.ttf`, `vorlon-display.ttf`, `shadow-display.ttf`, `sith-display.ttf` or

@@ -1655,7 +1655,7 @@ clipboard = {q(st["screenshots"]["clipboard"])}   # after each shot, put this pi
 original = {q(st["screenshots"]["original"])}   # the game's BMP after converting: "keep", "delete" or "move"
 move_to = {q(st["screenshots"]["move_to"])}   # where "move" puts it
 subject_m = {n(st["screenshots"]["subject_m"])}   # m: a surface shot names the plant or formation this close (0 = never)
-codex = {"true" if st["screenshots"]["codex"] else "false"}   # also save such a shot (a tagged one) to Biology/<genus>/<species>/<colour> or Geology/<group>/<name> in the export folder: your own codex
+codex = {"true" if st["screenshots"]["codex"] else "false"}   # also save such a shot (a tagged one) to Biology/<genus>/<species>/<colour> or Geology/<group>/<name> (a shot at a stellar phenomenon to Phenomena/<group>/<entry>) in the export folder: your own codex
 codex_format = {q(st["screenshots"]["codex_format"])}   # as: "" (a copy of the picture exported), or the shot converted again at full size: "png", "jpg" or "webp"
 codex_quality = {st["screenshots"]["codex_quality"]}   # a codex JPG's or WebP's quality (50-100)
 codex_show = {"true" if st["screenshots"]["codex_show"] else "false"}   # the Bio/Geo checklists show a random picture from those folders (Canonn's when there is none)
