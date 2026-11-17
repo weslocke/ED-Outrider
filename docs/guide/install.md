@@ -108,6 +108,9 @@ requirements.txt` puts it back):
     `python3`, else `python3.14` … `python3.11`). `PYTHON=` still picks one yourself.
   - When you have none, they say so before the setup: Outrider then runs with the browser's voice. Installed Python
     3.14 afterwards? Delete the `.venv` folder and start again.
+  - Linux: a newer Python whose system already has Piper from its own packages (Fedora 45's Python 3.15 with
+    `sudo dnf install python3-piper-tts`) is used as it is: the launcher makes `.venv` so it sees the system's
+    packages, and Piper comes from there. Installed that package after the first start? Delete `.venv` and start again.
   - An installed Piper that will not load says why (⚙ Settings, beside Voice, and Outrider's start-up line) rather
     than "not installed".
 - **evdev** (Linux only) for auto honk, auto-target, the control rail and the co-pilot button (Windows needs nothing

@@ -2,16 +2,23 @@
 Issue #13 (2026-10-25): a Windows player's newest Python was 3.15, onnxruntime has no build for it, and pip reported
 every piper-tts version as "conflicting dependencies". Both launchers use this to pick a Python and to warn first:
 
-    python scripts/python_check.py        the notice when this Python cannot install Piper (exit 0 always)
-    python scripts/python_check.py --ok   exit 0 when this Python suits ED Outrider with Piper, else 1 (silent)
+    python scripts/python_check.py           the notice when this Python cannot install Piper (exit 0 always)
+    python scripts/python_check.py --ok      exit 0 when this Python suits ED Outrider with Piper, else 1 (silent)
+    python scripts/python_check.py --system  exit 0 when the environment should see this Python's own packages, else 1
+
+Issue #27 (2026-11-14): Fedora 45's Python 3.15 has Piper from Fedora's own packages (python3-piper-tts, built with
+Fedora's onnxruntime), which pip cannot install there. Such a Python suits as it is: the launcher makes the environment
+with --system-site-packages (--system), so Piper comes from the system. Only then: one that pip can install Piper into
+keeps its environment apart from the system's packages.
 
 Plain syntax only: the launchers run it with whatever Python they find, an old one included.
 """
 import struct
 import sys
 
-# onnxruntime's builds (PyPI, 1.31.0 of 2026-10-09): CPython 3.11 to 3.14, 64-bit (x86-64 and ARM). Move the top up
-# when onnxruntime publishes builds for a newer Python.
+# onnxruntime's builds (PyPI, 1.32.0 of 2026-11-13): CPython 3.11 to 3.14, 64-bit (x86-64 and ARM). Move the top up
+# when onnxruntime publishes builds for a newer Python. (1.32.0 added 3.13t and 3.14t on Linux, but piper-tts's wheels
+# are abi3, which a free-threaded build cannot load, so free-threaded still fails below.)
 PIPER_PYTHONS = ((3, 11), (3, 14))
 DOWNLOAD = "https://www.python.org/downloads/"
 
@@ -54,6 +61,18 @@ def has_venv():
     return True
 
 
+def own_piper():
+    """This Python already has Piper's voices, installed with the system (issue #27: Fedora's python3-piper-tts for its
+    Python 3.15): piper and its onnxruntime both load. Imported, not only found, so a broken one does not count."""
+    import importlib
+    try:
+        importlib.import_module("onnxruntime")
+        importlib.import_module("piper")
+    except Exception:  # noqa: BLE001 -- not installed, or installed but will not load: either way not usable
+        return False
+    return True
+
+
 def notice(reason, forced=None):
     """The block the launchers print before setting up with a Python that cannot install Piper. forced: PYTHON= chose
     it (the launchers then never pick one: third in-depth review 2026-10-25, "it picks that Python by itself" was
@@ -73,9 +92,15 @@ def notice(reason, forced=None):
 
 def main(argv):
     reason = why_not()
+    system = bool(reason) and own_piper()   # pip cannot install Piper here, but the system already has it
+    if "--system" in argv:
+        return 0 if system else 1
     if "--ok" in argv:
-        return 0 if not reason and has_venv() else 1
-    if reason:
+        return 0 if (not reason or system) and has_venv() else 1
+    if system:
+        print("%s: using its own Piper (installed with the system), so the environment sees the system's packages."
+              % reason.split(" is ")[0])
+    elif reason:
         print(notice(reason))
     return 0
 

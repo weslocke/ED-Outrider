@@ -11,6 +11,14 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## Next release · not released yet
+
+- **Linux with a Python newer than Piper supports** (Fedora 45's Python 3.15, for one): when your system already has
+  Piper from its own packages (Fedora: `sudo dnf install python3-piper-tts`), the launcher now uses it instead of
+  saying Piper cannot be installed. Already set up without Piper? Delete the `.venv` folder and start again.
+
+---
+
 ## 2026.11.15 · 15 November 2026 · The Ship Page Release
 
 **A Ship page for the tablet with a board of lights, a voice that tells you when a repair has left life support off,

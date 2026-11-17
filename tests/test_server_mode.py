@@ -947,11 +947,52 @@ class PiperPython(unittest.TestCase):
         with unittest.mock.patch.object(self.pc, "why_not", return_value=""), unittest.mock.patch.object(self.pc, "has_venv", return_value=False):
             self.assertEqual(self.pc.main(["--ok"]), 1)   # no venv/ensurepip (Debian without python3.x-venv): not picked
         with unittest.mock.patch.object(self.pc, "why_not", return_value="Python 3.15 is newer"), \
+                unittest.mock.patch.object(self.pc, "own_piper", return_value=False), \
                 unittest.mock.patch("sys.stdout", new_callable=io.StringIO) as out:
             self.assertEqual(self.pc.main(["--ok"]), 1)
             self.assertEqual(out.getvalue(), "")           # --ok is silent
             self.assertEqual(self.pc.main([]), 0)          # never stops a launcher
             self.assertIn("Python 3.15 is newer", out.getvalue())
+
+    def test_a_python_with_its_own_piper(self):
+        """Issue #27 (2026-11-14): Fedora 45's Python 3.15 has Piper from Fedora's packages, which pip cannot install
+        there: it suits, and --system tells the launcher to let the environment see the system's packages."""
+        import io
+        import unittest.mock
+        newer = "Python 3.15 is newer than Piper's voices support yet"
+        for reason, own, ok, system in ((newer, True, 0, 0), (newer, False, 1, 1), ("", True, 0, 1), ("", False, 0, 1)):
+            with unittest.mock.patch.object(self.pc, "why_not", return_value=reason), \
+                    unittest.mock.patch.object(self.pc, "own_piper", return_value=own), \
+                    unittest.mock.patch.object(self.pc, "has_venv", return_value=True), \
+                    unittest.mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+                self.assertEqual(self.pc.main(["--ok"]), ok, (reason, own))
+                self.assertEqual(self.pc.main(["--system"]), system, (reason, own))   # isolated whenever pip can
+                self.assertEqual(out.getvalue(), "")
+                self.pc.main([])
+                said = out.getvalue()
+            if reason and own:   # a line that says what happens, not the "install Python 3.14" block
+                self.assertIn("Python 3.15: using its own Piper", said)
+                self.assertNotIn("browser's own voice", said)
+            elif reason:
+                self.assertIn("browser's own voice", said)
+            else:
+                self.assertEqual(said, "")
+
+    def test_own_piper_loads_both(self):
+        import importlib
+        import unittest.mock
+        real = importlib.import_module
+        for missing in ("piper", "onnxruntime"):
+            def fake(name, *a, missing=missing):
+                if name == missing:
+                    raise ImportError(name)
+                return object() if name in ("piper", "onnxruntime") else real(name, *a)
+            with unittest.mock.patch("importlib.import_module", fake):
+                self.assertFalse(self.pc.own_piper(), missing)
+        with unittest.mock.patch("importlib.import_module", lambda name, *a: object() if name in ("piper", "onnxruntime") else real(name, *a)):
+            self.assertTrue(self.pc.own_piper())
+        with unittest.mock.patch("importlib.import_module", unittest.mock.Mock(side_effect=OSError("libonnxruntime.so"))):
+            self.assertFalse(self.pc.own_piper())   # installed but will not load
 
     def test_the_installer_says_why_piper_failed(self):
         import importlib.util
@@ -978,7 +1019,7 @@ class PiperPython(unittest.TestCase):
         import tempfile
         self.assertIn(" ".join(["python3"] + ["python" + v for v in self.wanted()]), self.read("launch_outrider.sh"))
 
-        def run(ok):
+        def run(ok, system=()):
             d, bins = tempfile.mkdtemp(), tempfile.mkdtemp()
             self.addCleanup(shutil.rmtree, d)
             self.addCleanup(shutil.rmtree, bins)
@@ -995,9 +1036,10 @@ class PiperPython(unittest.TestCase):
             for name in ["python3"] + ["python" + v for v in self.wanted()]:
                 with open(os.path.join(bins, name), "w") as f:
                     f.write('#!/bin/sh\nif [ "$2" = "--ok" ]; then exit %d; fi\n'
+                            'if [ "$2" = "--system" ]; then exit %d; fi\n'
                             'if [ "$1" = "scripts/python_check.py" ]; then echo "NOTICE from %s"; exit 0; fi\n'
-                            'if [ "$1" = "-m" ] && [ "$2" = "venv" ]; then echo "VENV by %s"; exit 1; fi\n'
-                            'exit 0\n' % (0 if name in ok else 1, name, name))
+                            'if [ "$1" = "-m" ] && [ "$2" = "venv" ]; then echo "VENV by %s"; echo "VENV ARGS $*"; exit 1; fi\n'
+                            'exit 0\n' % (0 if name in ok else 1, 0 if name in system else 1, name, name))
                 os.chmod(os.path.join(bins, name), 0o755)
             env = {k: v for k, v in os.environ.items() if k != "PYTHON"}
             env["PATH"] = bins
@@ -1012,6 +1054,11 @@ class PiperPython(unittest.TestCase):
         out = run(set())                                                           # nothing suits: python3, warned first
         self.assertIn("VENV by python3\n", out)
         self.assertLess(out.index("NOTICE from python3"), out.index("Setting up ED Outrider"))
+        self.assertIn("VENV ARGS -m venv .venv\n", out)                           # apart from the system's packages
+        # issue #27: python3 is Fedora's 3.15 with its own Piper: it suits, and the environment sees the system's packages
+        out = run({"python3", "python3.13"}, system={"python3"})
+        self.assertIn("VENV by python3\n", out)
+        self.assertIn("VENV ARGS -m venv --system-site-packages .venv\n", out)
 
     def test_the_windows_launcher_picks_a_python_piper_can_use(self):
         bat = self.read("launch_outrider.bat")

@@ -1999,6 +1999,12 @@ upstream project's choices, not rules of the game.
   venv; `PYTHON=` still wins. With none that suits Outrider still runs, with the browser's voice, and a block before
   the setup says how to get Piper (install 3.14, delete `.venv`). An existing `.venv` is kept, except one made by a
   Python older than 3.11.
+  A Python that pip cannot install Piper into but whose system already has it (2026-11-16, issue #27: Fedora 45's
+  Python 3.15 with Fedora's python3-piper-tts, built on Fedora's own onnxruntime) suits as it is: `python_check.py`
+  `own_piper` (piper and onnxruntime both import) makes `--ok` pass, and `--system` tells the Linux launcher to make
+  `.venv` with `--system-site-packages`. Only then: a Python pip can serve keeps its environment apart from the
+  system's packages, so a distribution's older aiohttp or pillow never stands in for requirements.txt's. Windows is
+  left as it was (no system Python packages there; pip cannot put Piper on a 3.15 either).
 - **A genus your codex entry on a body names is there before the DSS** (complete review 2026-10-30,
   `bio_left_groups` / `bio_guess_seen` / `bio_options` with the body's `codex_species_seen`): a composition scan from
   the ship logs the species, so it takes one of the body's signals whatever the rules rank it, priced at that

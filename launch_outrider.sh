@@ -6,8 +6,9 @@
 # X11 or XWayland; wl-copy under Wayland without one) it says how to install it, at every start until it is there. Any arguments go to Outrider
 # (./launch_outrider.sh --port 8026).
 # PYTHON=/path/to/python3.x picks the Python that makes the environment (3.11 or newer); otherwise python3 when it can
-# install Piper's voices (scripts/python_check.py: 3.11 to 3.14, 64-bit, with venv), else the newest python3.14 ...
-# python3.11 that can, else python3; a Python that cannot install Piper is said before the setup (issue #13).
+# install Piper's voices (scripts/python_check.py: 3.11 to 3.14, 64-bit, with venv) or already has them from the system
+# (issue #27: Fedora's Python 3.15 packages), else the newest python3.14 ... python3.11 that can, else python3; a Python
+# that cannot install Piper is said before the setup (issue #13).
 set -euo pipefail
 # relative paths in the arguments (--config my.toml, --db, --journals .) are the caller's: Outrider is started from
 # the folder this was run in, with the repository's files by their full path
@@ -125,7 +126,11 @@ if needs_install; then
         fi
         "$PY" scripts/python_check.py || true   # one that cannot install Piper's voices: said before the setup
         echo "Setting up ED Outrider: creating $VENV (the first time takes a minute or two: about 100 MB with Piper)"
-        if ! "$PY" -m venv "$VENV" || ! "$VENV/bin/python" -m pip --version >/dev/null 2>&1; then
+        # a Python pip cannot install Piper into, whose system has it (issue #27: Fedora 45's Python 3.15 with
+        # python3-piper-tts): the environment sees the system's packages, so Piper comes from there
+        SITE=""
+        "$PY" scripts/python_check.py --system >/dev/null 2>&1 && SITE=--system-site-packages
+        if ! "$PY" -m venv ${SITE:+"$SITE"} "$VENV" || ! "$VENV/bin/python" -m pip --version >/dev/null 2>&1; then
             rm -rf "$VENV"   # nothing half-made left behind: the next run starts clean
             echo "Could not create $VENV. On Debian or Ubuntu: sudo apt install python3-venv" >&2
             exit 1

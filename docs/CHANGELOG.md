@@ -2,6 +2,20 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-16 · Issue #27: the system's own Piper on a newer Python
+- **Launcher (Linux):** Kurbo26 on Fedora 45 (Python 3.15, with Fedora's python3-piper-tts on its own onnxruntime 1.26)
+  got the 3.15 notice and pip's "conflicting dependencies" on a fresh `.venv`, and Outrider spoke with the browser's
+  voice; `python3 -m venv --system-site-packages .venv` fixed it by hand. PyPI's onnxruntime (1.32.0 of 2026-11-13)
+  still stops at 3.14, so `PIPER_PYTHONS` stays. `scripts/python_check.py` `own_piper` (piper and onnxruntime both
+  import): a Python outside the range that has it passes `--ok` (picked like one in the range), the new `--system`
+  exits 0 for it alone and the launcher makes `.venv` with `--system-site-packages`; the notice block becomes one line
+  saying so. A Python pip can serve still gets an environment apart from the system's packages. Checked in a
+  fedora:45 container (python3-piper-tts): HEAD's launcher repeats the report word for word, this one starts with
+  Piper from `/usr/lib64/python3.15`. The launcher's `.bat` is unchanged (no system packages on Windows). Tests
+  `test_a_python_with_its_own_piper`, `test_own_piper_loads_both`, the Linux launcher test's `--system-site-packages`
+  case; `test_main` pins `own_piper` (this PC's `.venv` has Piper). Docs: install.md, whats-new.md's next release,
+  DESIGN_NOTES, AGENT_GUIDE, for-developers.
+
 ## 2026-11-15 · Version 2026.11.15: The Ship Page Release
 - **Release:** `__version__` 2026.11.15; whats-new.md's coming-release section named "2026.11.15 · 15 November 2026 ·
   The Ship Page Release", with a line on the guide's reorganisation. No re-read (PARSER_VERSION 76 and CACHE_VERSION
