@@ -841,6 +841,23 @@ class Batch2Values(unittest.TestCase):
         self.assertEqual(outrider.unsold.planet_base_value(300.0, 0.01), 500.0)
         self.assertEqual(outrider.unsold.body_value(icy, True, False, True), int((500 * 3.699622554 + 555) * 2.6))
 
+    def test_the_eddiscovery_port_keeps_its_notice(self):
+        """The value model is ported from EDDiscovery's EstimatedValues.cs (Apache 2.0, the author, 2026-11-22): its
+        copyright and licence stay beside the code, the licence's text ships with it, and the README credits it."""
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        def read(*p):
+            with open(os.path.join(root, *p), encoding="utf-8") as f:
+                return f.read()
+        src = read("outrider", "unsold.py")
+        for part in ("EstimatedValues.cs", "Copyright 2021-2023 EDDiscovery development team",
+                     "Apache License, Version 2.0", "outrider/LICENSE-apache-2.0.txt", "Changed for ED Outrider"):
+            self.assertIn(part, src)
+        text = read("outrider", "LICENSE-apache-2.0.txt")
+        self.assertIn("Apache License\n                           Version 2.0, January 2004", text)
+        self.assertIn("END OF TERMS AND CONDITIONS", text)
+        credits = [x for x in read("README.md").splitlines() if "EDDiscovery" in x and x.startswith("|")]
+        self.assertTrue(credits and "Apache 2.0" in credits[0] and "outrider/LICENSE-apache-2.0.txt" in credits[0], credits)
+
     def test_sold_bio_is_not_on_board(self):   # F3
         if not outrider.bio:
             self.skipTest("no rules")

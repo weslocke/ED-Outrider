@@ -146,8 +146,13 @@ DEFAULT_DIRS = LIVE_DIRS + LEGACY_DIRS
 # --------------------------------------------------------------------------
 # Exploration value model
 #
-# Ported from EDDiscovery's EstimatedValues.cs (the 3.3-and-later branch),
-# which is the reference implementation the community back-tests against.
+# Ported to Python from EDDiscovery's EliteDangerousCore, EliteDangerous/FrontierData/Enumerations/
+# EstimatedValues.cs (the 3.3-and-later branch): https://github.com/EDDiscovery/EliteDangerousCore
+# Copyright 2021-2023 EDDiscovery development team, licensed under the Apache License, Version 2.0
+# (outrider/LICENSE-apache-2.0.txt). The formulas are the community's, from the Frontier forum; EDDiscovery's
+# is the reference implementation the community back-tests against.
+# Changed for ED Outrider: written as Python functions; the efficiency bonus is off by default
+# (efficiency_bonus), since it overshot real payouts by about 23%; the pre-3.3 branch is left out.
 # --------------------------------------------------------------------------
 
 Q = 0.56591828

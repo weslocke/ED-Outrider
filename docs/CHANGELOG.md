@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-11-22 · EDDiscovery credited for the value model
+- **Credits:** the exploration value model in `outrider/unsold.py` is ported from EDDiscovery's EliteDangerousCore
+  `EstimatedValues.cs` (Apache 2.0), and said so only in a one-line comment. It now carries EDDiscovery's copyright
+  and licence, the link, and what changed (Python functions, the efficiency bonus off by default, no pre-3.3 branch);
+  the licence's text ships as `outrider/LICENSE-apache-2.0.txt` (the Docker image's allow list takes `outrider/`
+  whole); the README's credits table has an EDDiscovery row (the value model, and the synthesis recipes' journal
+  names in `outrider/materials.py`). Apache 2.0 code in a GPL v3 program is fine. An audit of the rest found every
+  other borrowed piece credited already (EDMC Modern Overlay, LandingPad, EDMC's EDDN rules, the data sources).
+  Test `test_the_eddiscovery_port_keeps_its_notice`.
+
 ## 2026-11-16 · Issue #27: the system's own Piper on a newer Python
 - **Launcher (Linux):** Kurbo26 on Fedora 45 (Python 3.15, with Fedora's python3-piper-tts on its own onnxruntime 1.26)
   got the 3.15 notice and pip's "conflicting dependencies" on a fresh `.venv`, and Outrider spoke with the browser's
